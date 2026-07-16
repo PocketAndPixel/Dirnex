@@ -1,17 +1,19 @@
 import AppKit
 import DirnexCore
 
-/// One rounded button in the function-key bar: the F-key token in a dimmer, monospaced weight
-/// beside the operation caption ("F5 Copy"). Borderless and self-drawn so the row reads as a
-/// command bar of rounded chips rather than a row of macOS push buttons — a subtle rounded fill
-/// by default, brighter on hover, brightest while pressed, each chip stretched to the bar's full
-/// height.
+/// One flush button in the function-key bar: the F-key token in a dimmer, monospaced weight beside
+/// the operation caption ("F5 Copy"). Borderless and self-drawn so the row reads as a command bar
+/// of edge-to-edge cells rather than macOS push buttons — transparent at rest, a label-tinted wash
+/// on hover, a stronger wash while pressed, each cell stretched to the bar's full height. A hairline
+/// `|` on the trailing edge separates it from the next cell.
 final class FunctionBarButton: NSButton {
     /// The slot this button runs, carried so the bar can hand it to its `onRun` callback without a
     /// parallel index lookup.
     let slot: FunctionBarSlot
 
-    private static let cornerRadius: CGFloat = 6
+    /// Draw a `|` divider on the trailing edge — set on every cell except the last so the dividers
+    /// sit *between* cells and never against the bar's edge.
+    var showsTrailingSeparator = false
 
     private var hoverArea: NSTrackingArea?
     private var isHovered = false
@@ -55,15 +57,18 @@ final class FunctionBarButton: NSButton {
     }
 
     override func draw(_ dirtyRect: NSRect) {
-        // A neutral label-tinted fill so the chip reads the same over the bar's vibrant material in
-        // either appearance: faint at rest, a touch brighter hovered, brightest while pressed.
-        let alpha: CGFloat = isHighlighted ? 0.22 : (isHovered ? 0.14 : 0.07)
-        NSColor.labelColor.withAlphaComponent(alpha).setFill()
-        NSBezierPath(
-            roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5),
-            xRadius: Self.cornerRadius,
-            yRadius: Self.cornerRadius
-        ).fill()
+        // Transparent at rest so each cell reads flush over the panel-coloured bar; a label-tinted
+        // wash appears on hover and deepens while pressed.
+        let alpha: CGFloat = isHighlighted ? 0.20 : (isHovered ? 0.12 : 0)
+        if alpha > 0 {
+            NSColor.labelColor.withAlphaComponent(alpha).setFill()
+            bounds.fill()
+        }
+        // A hairline `|` between adjacent cells, inset from the top and bottom edges.
+        if showsTrailingSeparator {
+            NSColor.separatorColor.setFill()
+            NSRect(x: bounds.maxX - 1, y: 5, width: 1, height: bounds.height - 10).fill()
+        }
         super.draw(dirtyRect)
     }
 
@@ -105,9 +110,9 @@ final class FunctionBarButton: NSButton {
 /// a new user can find without the manual. A click reports its slot to `onRun`; the window
 /// controller focuses the active pane and dispatches the slot's command there (a nil-target
 /// responder-chain dispatch misses, because clicking a bottom-bar button drops the pane's
-/// first-responder status first). Its background is the app's own window material, so it reads as
-/// the same dark chrome as the sidebar rather than a flat black strip. The window controller owns
-/// the bar's height and collapses it when the feature is off.
+/// first-responder status first). Its background is the same `.textBackgroundColor` as the file
+/// panes, so the bar reads as a continuation of the panels rather than separate chrome. The window
+/// controller owns the bar's height and collapses it when the feature is off.
 final class FunctionBarView: NSView {
     /// The bar's fixed height. The window controller uses this for the constraint it collapses to
     /// zero when the bar is hidden.
@@ -122,47 +127,35 @@ final class FunctionBarView: NSView {
     init(slots: [FunctionBarSlot] = FunctionBar.defaultSlots) {
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
+        wantsLayer = true // the panel-coloured fill is painted in updateLayer, tracking appearance
 
-        // The bar's background is the *same* vibrant material as the sidebar, so it reads as the
-        // app's own dark-blue chrome rather than an opaque near-black fill — `.windowBackground`
-        // comes out a flat neutral grey here, where `.sidebar` carries the tint the user sees.
-        let material = NSVisualEffectView()
-        material.material = .sidebar
-        material.blendingMode = .behindWindow
-        material.state = .followsWindowActiveState
-        material.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(material)
+        stack.orientation = .horizontal
+        stack.distribution = .fillEqually
+        stack.spacing = 0 // cells sit flush; the `|` dividers they draw stand in for the gap
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
 
-        // A hairline along the top divides the bar from the panes above it, like the queue bar's.
+        // A hairline along the top divides the bar from the queue bar above it. Added last so it
+        // paints over the flush cells rather than being covered by them.
         let separator = NSBox()
         separator.boxType = .separator
         separator.translatesAutoresizingMaskIntoConstraints = false
         addSubview(separator)
 
-        stack.orientation = .horizontal
-        stack.distribution = .fillEqually
-        stack.spacing = 5
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(stack)
-
         NSLayoutConstraint.activate([
-            material.topAnchor.constraint(equalTo: topAnchor),
-            material.leadingAnchor.constraint(equalTo: leadingAnchor),
-            material.trailingAnchor.constraint(equalTo: trailingAnchor),
-            material.bottomAnchor.constraint(equalTo: bottomAnchor),
             separator.topAnchor.constraint(equalTo: topAnchor),
             separator.leadingAnchor.constraint(equalTo: leadingAnchor),
             separator.trailingAnchor.constraint(equalTo: trailingAnchor),
-            // Inset the chips from the edges so their rounded corners and the gaps between them
-            // read, while still stretching each to (almost) the bar's full height.
-            stack.topAnchor.constraint(equalTo: topAnchor, constant: 3),
-            stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -3),
-            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 6),
-            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -6)
+            // Flush to every edge: no padding around or between the cells.
+            stack.topAnchor.constraint(equalTo: topAnchor),
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor)
         ])
 
-        for slot in slots {
+        for (index, slot) in slots.enumerated() {
             let button = FunctionBarButton(slot: slot)
+            button.showsTrailingSeparator = index < slots.count - 1
             button.target = self
             button.action = #selector(runSlot(_:))
             stack.addArrangedSubview(button)
@@ -172,6 +165,18 @@ final class FunctionBarView: NSView {
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    override var wantsUpdateLayer: Bool { true }
+
+    override func updateLayer() {
+        // Match the file panes' `.textBackgroundColor`; resolved here so it tracks light/dark.
+        layer?.backgroundColor = NSColor.textBackgroundColor.cgColor
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        needsDisplay = true // re-resolve the CGColor for the new appearance
     }
 
     @objc private func runSlot(_ sender: FunctionBarButton) {

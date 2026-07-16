@@ -41,6 +41,15 @@ struct FunctionBarViewTests {
         }
     }
 
+    @Test("a `|` divider sits between cells but never after the last one")
+    func dividersSitBetweenCells() {
+        let slots = FunctionBar.defaultSlots
+        let buttons = Self.buttons(in: FunctionBarView(slots: slots))
+        for (index, button) in buttons.enumerated() {
+            #expect(button.showsTrailingSeparator == (index < buttons.count - 1))
+        }
+    }
+
     @Test("clicking a button reports its slot to onRun")
     func clickReportsSlot() {
         let bar = FunctionBarView(slots: FunctionBar.defaultSlots)
