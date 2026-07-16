@@ -2054,6 +2054,25 @@ proven end-to-end. Core-first as always; one new core file, five app touch-point
   command id, so it's a UI field on the organizer + one core field on `UserScript`). Then the iCloud
   sync-status column, which closes M6.
 
+Refinement (2026-07-16, VERIFIED LIVE — three visual asks from the user): (1) **the bar no longer spans
+under the sidebar** — it moved out of the window-wide container and into the *panes column*, a new
+`makePaneColumnController` that wraps `[paneStackSplitViewController, functionBar]` as the outer split's
+**second** item (the sidebar is the first and now stays full height beside it, exactly as the terminal
+drawer already did). The queue bar stays full-width in the container below. (2) **Background is the
+sidebar's vibrant material, not a flat fill** — the earlier `windowBackgroundColor` came out RGB(30,30,30),
+a near-black neutral grey that read as "black"; the app's actual dark-*blue* is the sidebar's vibrancy, so
+the bar now hosts an `NSVisualEffectView` with material **`.sidebar`** (probed live: `.windowBackground`
+renders a flat grey, `.sidebar` carries the blue tint) behind the buttons, with an `NSBox` top hairline.
+(3) **Buttons are rounded chips filling the height** — self-drawn `NSBezierPath(roundedRect:)` per state
+(rest 0.07 / hover 0.14 / press 0.22 `labelColor` alpha, radius 6), the hairline separators dropped, a
+`fillEqually` stack with 5 pt gaps and a 3 pt vertical inset, bar height 28→**32**. GOTCHA (recurring):
+`makePaneColumnController` tipped `BrowserWindowController` over `type_body_length` 250 → moved both
+view-builders into a same-file `private extension` (shares the type's `private` scope, doesn't count toward
+the limit). Verified live: the bar sits flush right of the full-height sidebar, its blue matches the
+sidebar, the F3 button still opened Quick Look (dispatch survives the reparent — `focusedPanel.focusTable()`
++ nil-target dispatch is independent of where the bar lives). One app test dropped (the leading-separator
+invariant) → **55 app**; 740 core green, lint + format clean.
+
 ### M7 — Release readiness (M)
 
 - [ ] Sparkle 2 updates + appcast infrastructure; notarized DMG pipeline in CI

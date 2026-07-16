@@ -195,7 +195,10 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         splitViewController.addSplitViewItem(sidebarItem)
 
         installTerminalDrawer()
-        let panesItem = NSSplitViewItem(viewController: paneStackSplitViewController)
+        // The pane stack and the function-key bar share one column so the bar aligns with the
+        // panes and never overlaps the sidebar — the sidebar stays full height beside it, exactly
+        // as the terminal drawer does (both live inside this second split item, not the window).
+        let panesItem = NSSplitViewItem(viewController: makePaneColumnController())
         panesItem.canCollapse = false
         splitViewController.addSplitViewItem(panesItem)
 
@@ -296,43 +299,6 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         fatalError("init(coder:) has not been implemented")
     }
 
-    /// Stack the two panes over the queue bar and, below that, the function-key bar — so both
-    /// span the full window width at the bottom, and a running operation surfaces its progress
-    /// just above the bar of buttons that started it. `setQueueBar(visible:)` collapses the queue
-    /// bar to zero while idle, and `applyFunctionBarVisibility()` collapses the function bar when
-    /// the feature is off; either collapse hands its height back to the panes.
-    private func makeContainerViewController() -> NSViewController {
-        let container = NSViewController()
-        container.view = NSView()
-        container.addChild(splitViewController)
-
-        let splitView = splitViewController.view
-        splitView.translatesAutoresizingMaskIntoConstraints = false
-        queueBar.translatesAutoresizingMaskIntoConstraints = false
-        queueBar.isHidden = true
-        container.view.addSubview(splitView)
-        container.view.addSubview(queueBar)
-        container.view.addSubview(functionBar)
-
-        queueBarHeight = queueBar.heightAnchor.constraint(equalToConstant: 0)
-        functionBarHeight = functionBar.heightAnchor.constraint(equalToConstant: 0)
-        NSLayoutConstraint.activate([
-            splitView.topAnchor.constraint(equalTo: container.view.topAnchor),
-            splitView.leadingAnchor.constraint(equalTo: container.view.leadingAnchor),
-            splitView.trailingAnchor.constraint(equalTo: container.view.trailingAnchor),
-            splitView.bottomAnchor.constraint(equalTo: queueBar.topAnchor),
-            queueBar.leadingAnchor.constraint(equalTo: container.view.leadingAnchor),
-            queueBar.trailingAnchor.constraint(equalTo: container.view.trailingAnchor),
-            queueBar.bottomAnchor.constraint(equalTo: functionBar.topAnchor),
-            queueBarHeight,
-            functionBar.leadingAnchor.constraint(equalTo: container.view.leadingAnchor),
-            functionBar.trailingAnchor.constraint(equalTo: container.view.trailingAnchor),
-            functionBar.bottomAnchor.constraint(equalTo: container.view.bottomAnchor),
-            functionBarHeight
-        ])
-        return container
-    }
-
     /// Show or collapse the queue bar. Driven by the queue observation: shown while any job
     /// is waiting/running/paused, collapsed to zero height (and hidden) once idle.
     func setQueueBar(visible: Bool) {
@@ -411,6 +377,73 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         // The preview always sits opposite the active pane, so a focus switch swaps which pane
         // shows its list and which shows the preview.
         if isQuickViewOn { updateQuickView() }
+    }
+}
+
+// MARK: - Container layout
+
+// In a same-file extension so the two view-builders don't count toward the class's
+// `type_body_length`; they still share the type's `private` scope and reach its stored properties.
+private extension BrowserWindowController {
+    /// Stack the sidebar-and-panes split over the queue bar, both full width. The function bar is
+    /// *not* here — it lives inside the panes column (`makePaneColumnController`) so it aligns with
+    /// the panes rather than spanning under the sidebar. `setQueueBar(visible:)` collapses the queue
+    /// bar to zero while idle, handing its height back to the panes.
+    func makeContainerViewController() -> NSViewController {
+        let container = NSViewController()
+        container.view = NSView()
+        container.addChild(splitViewController)
+
+        let splitView = splitViewController.view
+        splitView.translatesAutoresizingMaskIntoConstraints = false
+        queueBar.translatesAutoresizingMaskIntoConstraints = false
+        queueBar.isHidden = true
+        container.view.addSubview(splitView)
+        container.view.addSubview(queueBar)
+
+        queueBarHeight = queueBar.heightAnchor.constraint(equalToConstant: 0)
+        NSLayoutConstraint.activate([
+            splitView.topAnchor.constraint(equalTo: container.view.topAnchor),
+            splitView.leadingAnchor.constraint(equalTo: container.view.leadingAnchor),
+            splitView.trailingAnchor.constraint(equalTo: container.view.trailingAnchor),
+            splitView.bottomAnchor.constraint(equalTo: queueBar.topAnchor),
+            queueBar.leadingAnchor.constraint(equalTo: container.view.leadingAnchor),
+            queueBar.trailingAnchor.constraint(equalTo: container.view.trailingAnchor),
+            queueBar.bottomAnchor.constraint(equalTo: container.view.bottomAnchor),
+            queueBarHeight
+        ])
+        return container
+    }
+
+    /// The right-hand column of the outer sidebar split: the pane stack (two panes over the
+    /// terminal drawer) with the function-key bar pinned along its bottom. Wrapping them together
+    /// as the split's second item is what keeps the bar off the sidebar — the sidebar is the split's
+    /// *first* item and stays full height beside this whole column. The window controller owns
+    /// `functionBarHeight` and collapses it to zero when the feature is off.
+    func makePaneColumnController() -> NSViewController {
+        let column = NSViewController()
+        column.view = NSView()
+        column.addChild(paneStackSplitViewController)
+
+        let paneStack = paneStackSplitViewController.view
+        paneStack.translatesAutoresizingMaskIntoConstraints = false
+        functionBar.translatesAutoresizingMaskIntoConstraints = false
+        functionBar.isHidden = true
+        column.view.addSubview(paneStack)
+        column.view.addSubview(functionBar)
+
+        functionBarHeight = functionBar.heightAnchor.constraint(equalToConstant: 0)
+        NSLayoutConstraint.activate([
+            paneStack.topAnchor.constraint(equalTo: column.view.topAnchor),
+            paneStack.leadingAnchor.constraint(equalTo: column.view.leadingAnchor),
+            paneStack.trailingAnchor.constraint(equalTo: column.view.trailingAnchor),
+            paneStack.bottomAnchor.constraint(equalTo: functionBar.topAnchor),
+            functionBar.leadingAnchor.constraint(equalTo: column.view.leadingAnchor),
+            functionBar.trailingAnchor.constraint(equalTo: column.view.trailingAnchor),
+            functionBar.bottomAnchor.constraint(equalTo: column.view.bottomAnchor),
+            functionBarHeight
+        ])
+        return column
     }
 }
 

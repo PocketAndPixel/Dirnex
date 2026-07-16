@@ -51,15 +51,6 @@ struct FunctionBarViewTests {
         #expect(reported?.commandID == "file.copy")
     }
 
-    @Test("only the first button omits its leading divider")
-    func leadingSeparators() {
-        let buttons = Self.buttons(in: FunctionBarView(slots: FunctionBar.defaultSlots))
-        #expect(buttons.first?.showsLeadingSeparator == false)
-        for button in buttons.dropFirst() {
-            #expect(button.showsLeadingSeparator)
-        }
-    }
-
     /// The bar's buttons, in row order — walked from the view tree so the view keeps its stack
     /// private.
     private static func buttons(in bar: FunctionBarView) -> [FunctionBarButton] {
