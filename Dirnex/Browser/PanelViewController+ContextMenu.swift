@@ -84,6 +84,7 @@ extension PanelViewController {
         menu.addSeparator()
         add(["file.rename"], to: menu)
         menu.addItem(tagsMenuItem())
+        menu.addItem(scriptsMenuItem())
         menu.addSeparator()
         add(["edit.copy"], to: menu)
         menu.addItem(copyPathItem(for: selectionTargets().map(\.path.path)))
@@ -102,6 +103,7 @@ extension PanelViewController {
         menu.addItem(copyPathItem(for: [directory.path]))
         menu.addSeparator()
         add(["go.addToHotlist", "file.syncDirectories"], to: menu)
+        menu.addItem(scriptsMenuItem())
         return menu
     }
 
@@ -130,6 +132,19 @@ extension PanelViewController {
         submenu.delegate = self
         item.submenu = submenu
         item.isEnabled = canEditTags
+        return item
+    }
+
+    /// User scripts as a submenu, filled when it opens (`NSMenuDelegate`) so a script created in
+    /// the organizer appears without a relaunch — the same lazy pattern as Tags and Open With. The
+    /// list plus its **Manage Scripts…** tail is built by `scriptMenuItems()`, shared with nothing
+    /// else, so the right-click submenu and the ⌘K palette run scripts through one code path.
+    private func scriptsMenuItem() -> NSMenuItem {
+        let item = NSMenuItem(title: "Scripts", action: nil, keyEquivalent: "")
+        let submenu = NSMenu()
+        submenu.identifier = .scriptsSubmenu
+        submenu.delegate = self
+        item.submenu = submenu
         return item
     }
 
@@ -189,13 +204,18 @@ extension PanelViewController {
 /// Fills a lazily-built submenu when it opens. The pane is already `NSMenuDelegate`-shaped for this
 /// — the sync sheet's diff table does the same thing for its own row menu.
 ///
-/// The pane is the delegate of **two** submenus now, and `menuNeedsUpdate` is handed the menu
+/// The pane is the delegate of **three** submenus now, and `menuNeedsUpdate` is handed the menu
 /// rather than being asked per item, so each one is identified: without that, opening Open With
 /// would fill it with the tag list.
 extension PanelViewController: NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
-        let items = menu.identifier == .openWithSubmenu ? openWithMenuItems() : tagMenuItems()
+        let items: [NSMenuItem]
+        switch menu.identifier {
+        case .openWithSubmenu: items = openWithMenuItems()
+        case .scriptsSubmenu: items = scriptMenuItems()
+        default: items = tagMenuItems()
+        }
         for item in items {
             menu.addItem(item)
         }
@@ -205,6 +225,7 @@ extension PanelViewController: NSMenuDelegate {
 extension NSUserInterfaceItemIdentifier {
     static let tagsSubmenu = NSUserInterfaceItemIdentifier("dirnex.submenu.tags")
     static let openWithSubmenu = NSUserInterfaceItemIdentifier("dirnex.submenu.openWith")
+    static let scriptsSubmenu = NSUserInterfaceItemIdentifier("dirnex.submenu.scripts")
 }
 
 private extension NSMenu {

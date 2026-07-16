@@ -25,6 +25,7 @@ enum CommandBinding {
         "file.pack": #selector(PanelViewController.packSelection(_:)),
         "file.syncDirectories": #selector(PanelViewController.synchronizeDirectories(_:)),
         "file.compareByContents": #selector(PanelViewController.compareByContents(_:)),
+        "file.manageScripts": #selector(PanelViewController.manageUserScripts(_:)),
         "file.tags": #selector(PanelViewController.showTagsMenu(_:)),
         "file.rename": #selector(PanelViewController.renameSelection(_:)),
         "file.multiRename": #selector(PanelViewController.multiRenameSelection(_:)),

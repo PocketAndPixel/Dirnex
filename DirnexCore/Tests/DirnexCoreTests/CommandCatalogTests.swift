@@ -107,6 +107,16 @@ struct CommandCatalogTests {
         }
     }
 
+    @Test("the M6 manage-scripts command is a shortcut-free File command")
+    func coversManageScripts() {
+        let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })
+        let manage = byID["file.manageScripts"]
+        #expect(manage?.category == .file)
+        // No default shortcut (reached via menu/palette), so it can never collide.
+        #expect(manage?.shortcut == nil)
+        #expect(KeyBindings().conflicts(for: "file.manageScripts").isEmpty)
+    }
+
     @Test("the M5 connect-to-server command is a shortcut-free navigation command")
     func coversConnectServer() {
         let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })

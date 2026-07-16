@@ -74,6 +74,22 @@ final class CommandPaletteController: NSObject {
         let id = matches[selectedIndex].command.id
         recents.record(id)
         dismiss()
+        // A user script has no static selector — route it to the focused pane's `runUserScript`,
+        // carrying the script name in a synthetic sender's `representedObject` (the same shape the
+        // right-click Scripts ▸ items use). Dispatch on the next tick, after `dismiss()` re-keys the
+        // browser window, so the action reaches the pane and not the closing palette.
+        if let name = UserScript.name(fromCommandID: id) {
+            DispatchQueue.main.async {
+                let sender = NSMenuItem()
+                sender.representedObject = name
+                NSApp.sendAction(
+                    #selector(PanelViewController.runUserScript(_:)),
+                    to: nil,
+                    from: sender
+                )
+            }
+            return
+        }
         guard let selector = CommandBinding.selector(for: id) else { return }
         DispatchQueue.main.async {
             NSApp.sendAction(selector, to: nil, from: nil)
@@ -83,8 +99,12 @@ final class CommandPaletteController: NSObject {
     // MARK: - Results
 
     /// Re-rank against `query` and refresh the list, landing the highlight on the top result.
+    /// The registry commands are joined with the user's saved scripts (read fresh each open, so a
+    /// script created in the organizer is searchable immediately) — they rank and render alongside
+    /// the built-ins, and `runSelected` routes a `userScript.*` pick to the script runner.
     func reload(query: String) {
-        matches = CommandMatcher.search(query, in: CommandCatalog.all, recents: recents.ids)
+        let commands = CommandCatalog.all + UserScriptStore.load().paletteCommands
+        matches = CommandMatcher.search(query, in: commands, recents: recents.ids)
         selectedIndex = matches.isEmpty ? -1 : 0
         tableView.reloadData()
         if selectedIndex >= 0 {

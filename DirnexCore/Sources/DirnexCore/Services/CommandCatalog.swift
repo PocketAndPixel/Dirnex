@@ -84,6 +84,14 @@ public enum CommandCatalog {
             keywords: ["compare", "diff", "contents", "filemerge", "kaleidoscope", "bbedit"]
         ),
         Command(
+            id: "file.manageScripts",
+            title: "Manage Scripts…",
+            category: .file,
+            keywords: [
+                "script", "scripts", "automation", "shell", "command", "action", "user", "custom"
+            ]
+        ),
+        Command(
             id: "file.tags",
             title: "Tags…",
             category: .file,

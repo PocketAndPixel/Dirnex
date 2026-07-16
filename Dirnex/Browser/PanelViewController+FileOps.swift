@@ -291,6 +291,7 @@ extension PanelViewController: NSMenuItemValidation {
         if let archive = validateArchiveItem(menuItem) { return archive }
         if let navigation = validateNavigationItem(menuItem) { return navigation }
         if let handoff = validateHandoffItem(menuItem) { return handoff }
+        if let automation = validateAutomationItem(menuItem) { return automation }
         switch menuItem.action {
         case #selector(copyToOtherPane(_:)):
             // Copy to the other pane works from a results panel (real paths) and from an archive,

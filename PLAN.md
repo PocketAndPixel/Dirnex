@@ -1915,6 +1915,75 @@ Shortcuts verbs** (reveal, copy, run-op — an AppKit scripting `sdef` / App Int
 separate automation mechanism the item also names), then the iCloud sync-status column, which closes
 M6.
 
+Progress (2026-07-16, M6 pass 13 — the user-scripts app layer; the exit-criterion feature ships,
+**VERIFIED LIVE**). The automation box stays `[ ]` because the item also names the **F-key bar** and
+the **AppleScript/Shortcuts verbs**, both still to come — but its headline promise, PLAN.md §M6's
+exit criterion *"a user-defined 'convert to webp' script on selection runs from the palette"*, is now
+real and proven end-to-end. Pass 12's tested `DirnexCore` core (`UserScript`/`UserScripts`) was joined
+to AppKit through five new app files plus small wirings, in the same core→app rhythm every milestone
+used. No core change (pass 12's 724 tests stand; +1 catalog test for the new command → **725 core**).
+- **`UserScriptStore.swift`** — the persistence twin of `ServerConnectionStore`: one shared
+  `UserScripts` as JSON in `UserDefaults` (`Dirnex.userScripts`), `load`/`save`, a change
+  notification. Secret-free by construction (a script holds only its own shell text + metadata).
+- **`UserScriptRunner.swift`** — the non-hermetic half, `ExternalDiffLauncher`'s shape: spawns each
+  `UserScriptInvocation` off-main via `Process`, **sequentially** (a `perFile` "convert 400 photos"
+  must not fork 400 processes at once), captures exit code + stderr, and reports a `RunOutcome`
+  (silent on success — new files arrive via the pane's FSEvents watch, like a Service; a summary alert
+  only on a non-zero exit / launch failure). **The one real design call:** a GUI process launched by
+  LaunchServices inherits launchd's minimal `PATH`, so `cwebp`/`ffmpeg` wouldn't resolve — the runner
+  **unions the standard tool dirs (Homebrew Apple-silicon + Intel, `/usr/bin`, …) onto the inherited
+  `PATH`** rather than paying for a login-shell handshake per invocation. It merges the invocation's
+  `DIRNEX_*` over the inherited env, sets the cwd, and drains stderr before `waitUntilExit` to dodge a
+  full-pipe stall.
+- **`PanelViewController+UserScript.swift`** — builds `UserScriptContext` from `handoffTargets`
+  (local files only, the Open-With/Share line) + the active pane's dir (cwd/`DIRNEX_CURRENT_DIR`) +
+  `host.panelCounterpart`'s dir (`DIRNEX_OTHER_DIR` when local); resolves the shell via
+  `TerminalShell.login($SHELL)` (the drawer's resolution); `runUserScript(_:)` reads the script name
+  from the sender's `representedObject` (one entry point for both the palette and the submenu),
+  runs, and reports. A `perFile` script over an empty selection says "select files first" rather than
+  launching zero processes. `manageUserScripts(_:)` opens the organizer; `scriptMenuItems()` builds
+  the submenu; a `validateAutomationItem` helper folds into the pane's `validateMenuItem` chain (kept
+  under the cyclomatic-complexity limit, like its siblings).
+- **Palette dispatch** (`CommandPaletteController`): `reload` joins `CommandCatalog.all` with
+  `UserScriptStore.load().paletteCommands` (read fresh each open, so a just-created script is
+  searchable immediately); `runSelected` recognises a `userScript.*` id (`UserScript.name(fromCommandID:)`)
+  and routes it to `runUserScript(_:)` via a synthetic `representedObject`-carrying `NSMenuItem`,
+  everything else keeps the static `CommandBinding.selector` path. A new `file.manageScripts` catalog
+  command (+ `CommandBinding` + File menu) makes the organizer reachable from the menu bar and palette.
+- **Right-click Scripts ▸ submenu** (`+ContextMenu`): a third lazily-filled submenu (`menuNeedsUpdate`
+  switched on the identifier, joining tags + Open With), listing each script then **Manage Scripts…**,
+  in both the entry menu and the background menu (a `combined` script runs on the directory).
+- **`UserScriptsOrganizerController.swift`** — the *create* surface (the `HotlistOrganizer` idiom,
+  grown to a master–detail): a list on the left (+/−), a form on the right (Name, a When-run popup
+  `combined`/`perFile`, comma-separated palette Keywords, and a monospaced Command text view with
+  quote/dash substitution off so a shell body survives verbatim), each edit written straight to the
+  store; name is identity, so a name-field commit is a `rename` that reverts on a clash. GOTCHA
+  (recurring): the master–detail tipped the class over SwiftLint `type_body_length` 250 → moved the
+  Helpers cluster into a same-file `private extension` (which the rule doesn't count, and same-file
+  extensions share the type's `private` scope, so nothing had to widen — unlike the *cross-file* split
+  in `SyncDirectoriesController+DiffTable`).
+- **App tests** (+5 → **52 app tests**): `UserScriptRunnerTests` spawns real `/bin/sh` to lock the
+  runner's contract end-to-end — the cwd + merged `DIRNEX_*` env of a `combined` run, the per-file
+  fan-out of `perFile`, empty-selection → zero launches, a non-zero exit surfaced with its stderr,
+  and — the load-bearing one — **a file literally named ``$(touch pwned.txt)`` passed through and
+  asserted to arrive as one inert `"$1"`, creating no `pwned.txt`** (the security boundary, proven at
+  the spawn level, not just at invocation-building).
+LIVE VERIFICATION (fixture: two real JPEGs + a text file in a seeded left pane, a second dir in the
+right pane): the perFile **"To PNG"** script, run from ⌘K on the two marked photos, produced real
+400×400 `photo1.png`/`photo2.png` on disk (one `sips` per file) that appeared via FSEvents; the
+right-click **Scripts ▸** submenu listed "To PNG" + "Manage Scripts…"; the organizer **created a new
+`combined` "Save List"** entirely through its UI (name, mode, keywords, command), which persisted to
+`UserDefaults` and re-loaded on reopen; and running "Save List" from ⌘K wrote `_selection.txt`
+containing the two marked paths as `"$@"`, `count=2` (`DIRNEX_SELECTION_COUNT`), and the right pane's
+dir (`DIRNEX_OTHER_DIR`) — proving the argv + env contract live. (Aside: a *synthetic* ⌘K keystroke
+from the automation harness didn't open the palette — the OS swallows it — but the View-menu item,
+which shows ⌘K, opens it fine; that is a harness quirk, not an app defect.) `swift test` (725) + app
+`xcodebuild test` (52) green, swiftformat + swiftlint-strict clean. **NEXT (M6):** the **F-key bar**
+(a TC-style function-key button row — does not exist in the app yet; a natural home for both built-in
+F-key ops and a user script's optional F-key binding), then the **AppleScript/Shortcuts verbs**
+(reveal/copy/run-op — an `sdef`/App Intents surface), then the iCloud sync-status column, which closes
+M6.
+
 ### M7 — Release readiness (M)
 
 - [ ] Sparkle 2 updates + appcast infrastructure; notarized DMG pipeline in CI

@@ -47,7 +47,7 @@ enum MainMenuBuilder {
             .command("file.openWith"), .command("file.share"), .separator,
             .command("file.copy"), .command("file.move"), .command("file.pack"),
             .command("file.syncDirectories"), .command("file.compareByContents"), .separator,
-            .command("file.tags"), .separator,
+            .command("file.tags"), .command("file.manageScripts"), .separator,
             .command("file.rename"), .command("file.multiRename"), .separator,
             .command("file.newFolder"), .separator,
             .command("file.trash"), .command("file.deletePermanently")
