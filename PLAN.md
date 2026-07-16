@@ -1839,6 +1839,24 @@ M6. Optional polish now cheap: a **Settings picker for the preferred Open With a
 `ApplicationRef.bundleIdentifier` the core already carries for exactly this), and Finder's
 ⌥-toggles-to-"Always Open With".
 
+Progress (2026-07-16, M6 interlude — right-click **Copy Path** everywhere paths live; VERIFIED LIVE):
+user asked to copy a location as text from the context menu of a table row (incl. `..`), a path-bar
+crumb, and the pane's empty space. A *textual* sibling of ⌘C (which writes file URLs) — new
+`PathClipboard` (app) formats `[String]` → newline-joined text and writes it (an injectable
+`NSPasteboard` so a test asserts without clobbering the real clipboard); 4 app tests pin the shape.
+The three surfaces route to **three different path sources**, which is the whole subtlety: an entry
+row copies `selectionTargets()` (so a marked set copies all of them, titled "Copy Paths"); the empty
+space copies `panel.path`; and `..` copies **`panel.parentPath`, not the pane dir** — the two share
+`backgroundMenu(directory:)` but `contextMenu(forRow:)` hands it the parent for `..`. The item
+**captures its paths at build time** into `representedObject`, so a background refresh can't leave it
+aimed at a stale row (same reason the crumb menu is built per-crumb, carrying `crumb.target.path`).
+One trap avoided: decide entry-vs-`..` from `isParentRow(row)`, **not** the post-retarget
+`cursorOnParentRow` — right-clicking a *marked* row leaves that flag untouched and would misread the
+row as `..`. **VERIFIED LIVE** in the built app driven end to end: `old-code` row →
+`/Users/oleg/jMeter/old-code`; `..` → `/Users/oleg` (parent, not the pane dir); empty space →
+`/Users/oleg/jMeter`; the "Users" crumb → `/Users`; and a 2-mark selection → "Copy Paths" copying
+`…/old-code\n…/results`. 698 core+app tests green, swiftformat + swiftlint clean.
+
 ### M7 — Release readiness (M)
 
 - [ ] Sparkle 2 updates + appcast infrastructure; notarized DMG pipeline in CI

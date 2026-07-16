@@ -374,6 +374,10 @@ extension PathBarView {
             }
             let isLast = index == crumbs.count - 1
             let button = makeCrumb(title: crumb.title, tag: index, isCurrent: isLast)
+            // Right-click a crumb to copy the location it points at. The menu carries the crumb's
+            // own path, so a mixed-backend trail (archive ancestors, then `archive:…`) copies the
+            // right one per crumb.
+            button.menu = crumbMenu(for: crumb.target)
             // The path bar must never widen the pane — only the user's divider sets pane
             // width (the panes' split items hold at priority 250). So every crumb resists
             // compression *below* 250: a long path truncates within the pane instead of
@@ -440,5 +444,26 @@ extension PathBarView {
     /// unchanged — which it is, in the chip.
     func setBranch(_ branch: GitBranch?) {
         branchChip.branch = branch
+    }
+
+    /// A right-click menu for a single crumb: copy the location it points at as text. Built per
+    /// crumb so the path travels with the button — a background refresh that rebuilds the row can't
+    /// leave the menu aimed at a stale location.
+    private func crumbMenu(for target: VFSPath) -> NSMenu {
+        let menu = NSMenu()
+        let item = NSMenuItem(
+            title: "Copy Path",
+            action: #selector(copyCrumbPath(_:)),
+            keyEquivalent: ""
+        )
+        item.target = self
+        item.representedObject = target.path
+        menu.addItem(item)
+        return menu
+    }
+
+    @objc private func copyCrumbPath(_ sender: NSMenuItem) {
+        guard let path = sender.representedObject as? String else { return }
+        PathClipboard.copy([path])
     }
 }

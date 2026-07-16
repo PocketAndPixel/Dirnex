@@ -18,8 +18,17 @@ extension PanelViewController {
         // the responder chain, so without this a right-click in the *inactive* pane would run its
         // command against the other one — the pane you were looking at, not the one you clicked.
         focusTable()
+        // Decide `..` vs. an entry from the row itself, not the post-retarget `cursorOnParentRow`:
+        // right-clicking a *marked* entry leaves the cursor (and so that flag) untouched, which
+        // would otherwise misread a marked row as the parent row.
+        let onParentRow = isParentRow(row)
         retargetSelection(forClickedRow: row)
-        return row >= 0 && !cursorOnParentRow ? entryMenu() : backgroundMenu()
+        if row >= 0, !onParentRow { return entryMenu() }
+        // The `..` row and the empty space below the list both get the folder menu. Its Copy Path
+        // copies the folder the menu is *about*: the parent that `..` points at, or the pane's own
+        // directory for the empty space.
+        let directory = onParentRow ? (panel.parentPath ?? panel.path) : panel.path
+        return backgroundMenu(directory: directory)
     }
 
     /// Make the click's target the thing the menu will act on.
@@ -76,20 +85,38 @@ extension PanelViewController {
         add(["file.rename"], to: menu)
         menu.addItem(tagsMenuItem())
         menu.addSeparator()
-        add(["edit.copy", "edit.paste", "file.pack"], to: menu)
+        add(["edit.copy"], to: menu)
+        menu.addItem(copyPathItem(for: selectionTargets().map(\.path.path)))
+        add(["edit.paste", "file.pack"], to: menu)
         menu.addSeparator()
         add(["file.trash"], to: menu)
         return menu
     }
 
-    /// The menu over the pane's empty space: nothing is under the pointer, so this is about the
-    /// *folder* — make something in it, or paste into it.
-    private func backgroundMenu() -> NSMenu {
+    /// The menu over the pane's empty space (or the `..` row): nothing selectable is under the
+    /// pointer, so this is about the *folder* `directory` — make something in it, paste into it, or
+    /// copy its path.
+    private func backgroundMenu(directory: VFSPath) -> NSMenu {
         let menu = NSMenu()
         add(["file.newFolder", "edit.paste"], to: menu)
+        menu.addItem(copyPathItem(for: [directory.path]))
         menu.addSeparator()
         add(["go.addToHotlist", "file.syncDirectories"], to: menu)
         return menu
+    }
+
+    /// A "Copy Path" item that writes `paths` to the pasteboard as text when chosen. The paths are
+    /// captured here, as the menu is built, so it copies exactly what was under the pointer at
+    /// right-click time even if a background refresh reshuffles the pane before the click lands.
+    private func copyPathItem(for paths: [String]) -> NSMenuItem {
+        let item = NSMenuItem(
+            title: paths.count > 1 ? "Copy Paths" : "Copy Path",
+            action: #selector(copyContextPath(_:)),
+            keyEquivalent: ""
+        )
+        item.target = self
+        item.representedObject = paths
+        return item
     }
 
     /// Tags as a **submenu**, not an item that opens yet another popup: the whole point of the
@@ -148,6 +175,14 @@ extension PanelViewController {
     /// with a real target rather than a responder-chain dispatch.
     @objc private func openContextEntry(_ sender: Any?) {
         openCurrentEntry()
+    }
+
+    /// Put the paths captured by `copyPathItem` on the pasteboard. A real target rather than a
+    /// responder-chain command because it acts on what the menu captured, not on the pane's live
+    /// selection — the `..` row and the empty space have no selection to dispatch against.
+    @objc private func copyContextPath(_ sender: NSMenuItem) {
+        guard let paths = sender.representedObject as? [String] else { return }
+        PathClipboard.copy(paths)
     }
 }
 
