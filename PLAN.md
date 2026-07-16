@@ -172,7 +172,11 @@ Goal: TC's killer feature — queued, non-blocking, undoable file operations.
       already give images a preview and text files a content peek)
 - [x] Undo journal: Cmd+Z reverses move/rename/copy/new-folder + delete-to-Trash restore ✅;
       journal survives relaunch (JSON in UserDefaults) ✅; overwrites marked non-reversible and
-      surfaced ✅ — reversal logic + property tests in `DirnexCore/…/UndoJournal.swift`
+      surfaced ✅ — reversal logic + property tests in `DirnexCore/…/UndoJournal.swift`.
+      **Redo (Cmd+Shift+Z) added** ✅: every `UndoStep` is now invertible, so redo is "undo of
+      the undo" through the same `revert` executor; a redo stack rides alongside undo (a fresh
+      op clears it), both stacks persist across relaunch, and a keep-both copy is redone to its
+      exact renamed landing path — property tests `op + undo + redo == op` per operation kind.
 - [x] Errors: failures collected + summarized ✅; **per-file skip/retry/abort** ✅ — the engine
       yields per failed source (`CopyEngine.run(onError:)` → `ErrorResolution` skip/retry/abort),
       bridged to a main-actor `ErrorDialog` by `ErrorPrompter` ("apply to all" = skip-all)

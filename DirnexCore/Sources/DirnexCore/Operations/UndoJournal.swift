@@ -19,16 +19,37 @@ import Foundation
 
 /// One filesystem primitive that undoes part of an operation. Each variant is the inverse
 /// of a thing an operation did; a record is a list of them, applied in order.
+///
+/// Every step is itself invertible (`inverse`), which is what makes Redo fall out for free:
+/// reverting a record's steps undoes the operation, and reverting the *inverted* steps redoes
+/// it. So the redo executor is the same `revert` — it just runs the opposite steps.
 public enum UndoStep: Sendable, Equatable, Codable {
     /// Undo a move / rename / trash: put the item back by moving `from` (its current
     /// location) to `to` (where it lived before). Refuses to clobber a reoccupied `to`.
+    /// Symmetric — its inverse moves the item the other way.
     case restore(from: VFSPath, to: VFSPath)
-    /// Undo a copy: remove the copy that was created at `path`. A no-op if it's already
-    /// gone. Removes a copied subtree wholesale, matching Finder's "Undo Copy".
-    case removeCopy(VFSPath)
+    /// Undo a copy: remove the copy that was created at `copy`. A no-op if it's already
+    /// gone. Removes a copied subtree wholesale, matching Finder's "Undo Copy". Carries the
+    /// original `source` so the inverse (`makeCopy`) can re-create the copy for Redo.
+    case removeCopy(source: VFSPath, copy: VFSPath)
+    /// Redo a copy: re-copy `source` to exactly `copy`. The inverse of `removeCopy`.
+    case makeCopy(source: VFSPath, copy: VFSPath)
     /// Undo a New Folder: remove the folder at `path`, but *only while it is still empty* —
     /// never destroy files the user has since put inside it.
     case removeCreatedFolder(VFSPath)
+    /// Redo a New Folder: re-create the folder at `path`. The inverse of `removeCreatedFolder`.
+    case createFolder(VFSPath)
+
+    /// The step that reverses this one — the heart of Redo (see `UndoRecord.inverted`).
+    var inverse: UndoStep {
+        switch self {
+        case let .restore(from, to): return .restore(from: to, to: from)
+        case let .removeCopy(source, copy): return .makeCopy(source: source, copy: copy)
+        case let .makeCopy(source, copy): return .removeCopy(source: source, copy: copy)
+        case let .removeCreatedFolder(path): return .createFolder(path)
+        case let .createFolder(path): return .removeCreatedFolder(path)
+        }
+    }
 }
 
 // MARK: - Journal record
@@ -62,6 +83,21 @@ public struct UndoRecord: Sendable, Equatable, Codable, Identifiable {
     }
 }
 
+extension UndoRecord {
+    /// The record that reverses this one: same label and non-reversible count, every step
+    /// inverted. Undoing a record pushes its `inverted` onto the redo stack; redoing reverts
+    /// that (re-applying the original operation) and pushes *its* inverted — the original
+    /// record — back onto the undo stack. So one inversion drives both directions.
+    var inverted: UndoRecord {
+        UndoRecord(
+            label: label,
+            date: date,
+            steps: steps.map(\.inverse),
+            nonReversibleCount: nonReversibleCount
+        )
+    }
+}
+
 // MARK: - Record builders
 
 public extension UndoRecord {
@@ -88,7 +124,7 @@ public extension UndoRecord {
                 continue
             }
             switch kind {
-            case .copy: steps.append(.removeCopy(landed))
+            case .copy: steps.append(.removeCopy(source: outcome.source, copy: landed))
             case .move: steps.append(.restore(from: landed, to: outcome.source))
             }
         }
@@ -155,33 +191,60 @@ public struct UndoReport: Sendable, Equatable {
 
 // MARK: - The journal
 
-/// A bounded, newest-on-top stack of `UndoRecord`s. Value type — the app owns one per
-/// window, records completed operations into it, and persists `records` across launches.
+/// A bounded, newest-on-top pair of `UndoRecord` stacks — one for undo, one for redo. Value
+/// type: the app owns one per window, records completed operations into it, and persists both
+/// stacks across launches.
+///
+/// The redo stack mirrors every editor's undo/redo: undoing moves an action's inverse onto
+/// redo; redoing moves it (inverted again — the original) back onto undo; and a *fresh*
+/// operation clears redo, because once history diverges there is no forward to redo to.
 public struct UndoJournal: Sendable, Equatable {
-    /// The most that is kept; older records fall off the bottom. A stack, not a full
+    /// The most that is kept per stack; older records fall off the bottom. A stack, not a full
     /// history — undo walks back from the most recent action.
     public let capacity: Int
     public private(set) var records: [UndoRecord]
+    public private(set) var redoRecords: [UndoRecord]
 
-    public init(records: [UndoRecord] = [], capacity: Int = 50) {
+    public init(records: [UndoRecord] = [], redoRecords: [UndoRecord] = [], capacity: Int = 50) {
         self.capacity = max(1, capacity)
         self.records = Array(records.suffix(self.capacity))
+        self.redoRecords = Array(redoRecords.suffix(self.capacity))
     }
 
     /// The action Cmd+Z would reverse next, or `nil` when there's nothing to undo.
     public var top: UndoRecord? { records.last }
+    /// The action Cmd+Shift+Z would re-apply next, or `nil` when there's nothing to redo.
+    public var redoTop: UndoRecord? { redoRecords.last }
 
     public var canUndo: Bool { !records.isEmpty }
+    public var canRedo: Bool { !redoRecords.isEmpty }
 
-    /// Push a freshly-completed operation onto the stack, trimming the oldest past capacity.
+    /// Push a freshly-completed operation onto the undo stack. A brand-new action invalidates
+    /// the redo stack: you can't redo forward past a point where history diverged.
     public mutating func record(_ record: UndoRecord) {
-        records.append(record)
-        if records.count > capacity {
-            records.removeFirst(records.count - capacity)
-        }
+        redoRecords.removeAll()
+        records = trimmed(records + [record])
     }
 
-    /// Pop the top action so it can be reverted. Returns `nil` on an empty stack.
+    /// Pop the top undo action and move its inverse onto the redo stack. The caller reverts
+    /// the returned record (off the main thread); this only shuffles the stacks. `nil` on an
+    /// empty undo stack.
+    public mutating func takeForUndo() -> UndoRecord? {
+        guard let record = records.popLast() else { return nil }
+        redoRecords = trimmed(redoRecords + [record.inverted])
+        return record
+    }
+
+    /// Pop the top redo action and move its inverse — the original operation — back onto the
+    /// undo stack. The caller reverts the returned record, which re-applies the original op.
+    /// `nil` on an empty redo stack.
+    public mutating func takeForRedo() -> UndoRecord? {
+        guard let record = redoRecords.popLast() else { return nil }
+        records = trimmed(records + [record.inverted])
+        return record
+    }
+
+    /// Pop the top undo action without touching redo — a raw stack primitive for inspection.
     @discardableResult
     public mutating func removeTop() -> UndoRecord? {
         records.popLast()
@@ -189,6 +252,12 @@ public struct UndoJournal: Sendable, Equatable {
 
     public mutating func clear() {
         records.removeAll()
+        redoRecords.removeAll()
+    }
+
+    /// Drop the oldest records so a stack never exceeds `capacity`.
+    private func trimmed(_ stack: [UndoRecord]) -> [UndoRecord] {
+        stack.count > capacity ? Array(stack.suffix(capacity)) : stack
     }
 
     // MARK: - Reversal executor
@@ -203,10 +272,14 @@ public struct UndoJournal: Sendable, Equatable {
             switch step {
             case let .restore(from, to):
                 restore(from: from, to: to, using: backend, failures: &failures)
-            case let .removeCopy(path):
-                removeCopy(at: path, using: backend, failures: &failures)
+            case let .removeCopy(_, copy):
+                removeCopy(at: copy, using: backend, failures: &failures)
+            case let .makeCopy(source, copy):
+                makeCopy(source: source, copy: copy, using: backend, failures: &failures)
             case let .removeCreatedFolder(path):
                 removeCreatedFolder(at: path, using: backend, failures: &failures)
+            case let .createFolder(path):
+                createFolder(at: path, using: backend, failures: &failures)
             }
         }
         return UndoReport(failures: failures)
@@ -275,6 +348,49 @@ public struct UndoJournal: Sendable, Equatable {
         }
     }
 
+    /// Re-create a copy that Undo removed (Redo of a Copy): copy `source` back to exactly
+    /// `copy`. Refuses to overwrite a reoccupied `copy` — redo, like undo, never destroys data
+    /// the user created since. Runs the tested copy engine with `keepBoth` (so it always lands
+    /// somewhere without clobbering), then renames the landing to the exact recorded path, so a
+    /// keep-both original ("file copy.txt") is reproduced faithfully rather than as `source`'s
+    /// bare name.
+    private static func makeCopy(
+        source: VFSPath,
+        copy: VFSPath,
+        using backend: any VFSBackend,
+        failures: inout [OperationItemFailure]
+    ) {
+        if (try? backend.stat(at: copy)) != nil {
+            failures.append(.init(path: copy, error: .alreadyExists(copy)))
+            return
+        }
+        guard let entry = try? backend.stat(at: source), let parent = copy.parent else {
+            failures.append(.init(path: source, error: .notFound(source)))
+            return
+        }
+        let report = CopyEngine.run(
+            FileOperation(kind: .copy, sources: [entry], destinationDirectory: parent),
+            using: backend,
+            conflictPolicy: .keepBoth
+        )
+        guard report.failures.isEmpty else {
+            failures.append(contentsOf: report.failures)
+            return
+        }
+        guard let landed = report.outcomes.first?.landedAt else {
+            failures.append(.init(path: source, error: .notFound(source)))
+            return
+        }
+        guard landed != copy else { return }
+        do {
+            try backend.moveItem(at: landed, to: copy)
+        } catch let error as VFSError {
+            failures.append(.init(path: copy, error: error))
+        } catch {
+            failures.append(.init(path: copy, error: .io(path: copy, code: 0)))
+        }
+    }
+
     /// Remove a folder New Folder created — but only if it's still an empty directory.
     /// A folder the user has since filled, or one already replaced by something else, is
     /// left untouched: undo protects existing data over completing the reversal.
@@ -287,6 +403,29 @@ public struct UndoJournal: Sendable, Equatable {
         guard let children = try? backend.listDirectory(at: path), children.isEmpty else { return }
         do {
             try backend.removeItem(at: path)
+        } catch let error as VFSError {
+            failures.append(.init(path: path, error: error))
+        } catch {
+            failures.append(.init(path: path, error: .io(path: path, code: 0)))
+        }
+    }
+
+    /// Re-create a folder Undo removed (Redo of New Folder). An existing directory at `path`
+    /// means the redo is already satisfied — a no-op success. Anything *else* now occupying the
+    /// path is refused rather than clobbered, mirroring `makeCopy`/`restore`.
+    private static func createFolder(
+        at path: VFSPath,
+        using backend: any VFSBackend,
+        failures: inout [OperationItemFailure]
+    ) {
+        if let existing = try? backend.stat(at: path) {
+            if existing.kind != .directory {
+                failures.append(.init(path: path, error: .alreadyExists(path)))
+            }
+            return
+        }
+        do {
+            try backend.createDirectory(at: path)
         } catch let error as VFSError {
             failures.append(.init(path: path, error: error))
         } catch {

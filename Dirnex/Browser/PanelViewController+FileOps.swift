@@ -24,12 +24,7 @@ extension PanelViewController {
         deleteSelection(permanent: true)
     }
 
-    /// Cmd+Z — reverse the last operation on the window's undo journal (PLAN.md §M2). The
-    /// pane forwards to the window, which owns the (window-global) journal. Validation below
-    /// steps aside for an active inline-rename/path-bar field editor so text undo still works.
-    @objc func undoLastOperation(_ sender: Any?) {
-        host?.undoLastOperation()
-    }
+    // The ⌘Z / ⇧⌘Z actions and their validators live in `PanelViewController+Undo.swift`.
 
     // MARK: - FileTableViewInput (keyboard)
 
@@ -322,6 +317,8 @@ extension PanelViewController: NSMenuItemValidation {
             return canEditTags && !(view.window?.firstResponder is NSText)
         case #selector(undoLastOperation(_:)):
             return validateUndoItem(menuItem)
+        case #selector(redoLastOperation(_:)):
+            return validateRedoItem(menuItem)
         default:
             return true
         }
@@ -457,23 +454,6 @@ extension PanelViewController: NSMenuItemValidation {
         default:
             return nil
         }
-    }
-
-    /// Enable Cmd+Z only when the journal has something to reverse *and* no text field is
-    /// being edited — while an inline rename / path-bar field editor is first responder, a
-    /// disabled item lets `performKeyEquivalent` fall through so Cmd+Z undoes typing instead.
-    /// The title tracks the next action ("Undo Move"), collapsing to plain "Undo" when idle.
-    private func validateUndoItem(_ menuItem: NSMenuItem) -> Bool {
-        if view.window?.firstResponder is NSText {
-            menuItem.title = "Undo"
-            return false
-        }
-        guard let label = host?.nextUndoLabel else {
-            menuItem.title = "Undo"
-            return false
-        }
-        menuItem.title = "Undo \(label)"
-        return true
     }
 }
 

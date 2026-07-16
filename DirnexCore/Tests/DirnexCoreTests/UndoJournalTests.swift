@@ -218,7 +218,10 @@ struct UndoJournalTests {
         let record = UndoRecord.transfer(kind: .copy, outcomes: outcomes)
         #expect(record?.steps.count == 1) // only the clean copy is reversible
         #expect(record?.nonReversibleCount == 1)
-        #expect(record?.steps.first == .removeCopy(VFSPath.local("/dest/b.txt")))
+        #expect(record?.steps.first == .removeCopy(
+            source: VFSPath.local("/x/b.txt"),
+            copy: VFSPath.local("/dest/b.txt")
+        ))
     }
 
     @Test("a skipped item contributes no step, and an all-skip/all-overwrite op records nothing")
@@ -288,7 +291,7 @@ struct UndoJournalTests {
         let records = [
             UndoRecord.rename(from: .local("/dir/old name.txt"), to: .local("/dir/new name.txt")),
             UndoRecord(label: "Copy", steps: [
-                .removeCopy(.local("/dest/x")),
+                .removeCopy(source: .local("/src/x"), copy: .local("/dest/x")),
                 .restore(from: .local("/dest/y"), to: .local("/src/y"))
             ], nonReversibleCount: 2)
         ]

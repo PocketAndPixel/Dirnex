@@ -140,6 +140,13 @@ public enum CommandCatalog {
             shortcut: CommandShortcut(key: "z", modifiers: .command)
         ),
         Command(
+            id: "edit.redo",
+            title: "Redo",
+            category: .edit,
+            keywords: ["repeat", "forward", "again", "reapply"],
+            shortcut: CommandShortcut(key: "z", modifiers: [.command, .shift])
+        ),
+        Command(
             id: "edit.copy",
             title: "Copy",
             category: .edit,

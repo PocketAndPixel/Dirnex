@@ -32,6 +32,7 @@ enum CommandBinding {
         "file.trash": #selector(PanelViewController.moveSelectionToTrash(_:)),
         "file.deletePermanently": #selector(PanelViewController.deleteSelectionPermanently(_:)),
         "edit.undo": #selector(PanelViewController.undoLastOperation(_:)),
+        "edit.redo": #selector(PanelViewController.redoLastOperation(_:)),
         "edit.copy": #selector(PanelViewController.copy(_:)),
         "edit.paste": #selector(PanelViewController.paste(_:)),
         "edit.pasteMove": #selector(PanelViewController.pasteAndMoveFromClipboard(_:)),

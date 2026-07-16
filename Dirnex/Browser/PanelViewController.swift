@@ -33,9 +33,17 @@ protocol PanelHost: AnyObject {
     /// both panes and reports anything that couldn't be put back.
     func undoLastOperation()
 
+    /// Re-apply the most recently undone operation (Cmd+Shift+Z). Refreshes both panes and
+    /// reports anything that couldn't be re-applied.
+    func redoLastOperation()
+
     /// The label of the action Cmd+Z would reverse next, for the menu title, or `nil` when
     /// the journal is empty.
     var nextUndoLabel: String? { get }
+
+    /// The label of the action Cmd+Shift+Z would re-apply next, or `nil` when there's nothing
+    /// to redo.
+    var nextRedoLabel: String? { get }
 
     /// Capture both panes' current tabs into a named workspace (PLAN.md §M3 "Workspaces").
     /// The window owns this because a workspace spans both panes, which a single pane can't see.
