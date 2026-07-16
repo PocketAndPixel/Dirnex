@@ -231,6 +231,11 @@ final class PanelViewController: NSViewController {
         statusLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         statusLabel.textColor = .secondaryLabelColor
         statusLabel.lineBreakMode = .byTruncatingTail
+        // A long status line (e.g. a big type-to-filter string) must truncate, never widen the
+        // pane: a label defaults to a high horizontal compression resistance, which the enclosing
+        // split view reads as a minimum width and honours by shoving the divider across. Drop it
+        // so the pane's width wins and the text tail-truncates instead.
+        statusLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
         let stack = NSStackView(views: [tabBar, pathBar, scrollView, statusLabel])
         stack.orientation = .vertical

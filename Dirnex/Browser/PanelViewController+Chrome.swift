@@ -33,8 +33,18 @@ extension PanelViewController {
         }
 
         let filter = panel.model.filter
-        return filter.isEmpty ? counts : "Filter “\(filter)” · \(counts)"
+        guard !filter.isEmpty else { return counts }
+        // Cap the echoed filter: a normal type-to-filter is a few characters, but nothing stops a
+        // long paste, and the status line reads "Filter “…” · N items" — an unbounded prefix would
+        // crowd out the count. Keep the head, ellipsize the rest.
+        let shown = filter.count > Self.maxFilterDisplayLength
+            ? String(filter.prefix(Self.maxFilterDisplayLength)) + "…"
+            : filter
+        return "Filter “\(shown)” · \(counts)"
     }
+
+    /// The longest type-to-filter string echoed verbatim in the status line before it's ellipsized.
+    private static let maxFilterDisplayLength = 30
 
     func updateSortIndicators() {
         let sort = panel.model.sort
