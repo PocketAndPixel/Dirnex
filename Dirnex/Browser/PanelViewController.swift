@@ -29,6 +29,16 @@ protocol PanelHost: AnyObject {
     /// Copy/move are recorded by the window as their queue jobs finish, not here.
     func recordUndoableAction(_ record: UndoRecord)
 
+    /// Record a completed marking change on the same journal so Cmd+Z reverses it too. `pane` is the
+    /// pane that changed and `previousMarks` its marks *before*; `directory` is the folder they
+    /// belong to — the current one, or a *departed* folder a navigation cleared them from.
+    func recordSelectionChange(
+        on pane: PanelViewController,
+        directory: VFSPath,
+        previousMarks: Set<VFSPath>,
+        label: String
+    )
+
     /// Reverse the most recent operation on the window's undo journal (Cmd+Z). Refreshes
     /// both panes and reports anything that couldn't be put back.
     func undoLastOperation()
@@ -349,15 +359,18 @@ final class PanelViewController: NSViewController {
         // from a history trail, so leaving one starts fresh. An SFTP location *is* re-listable, so
         // it keeps a normal back/forward trail like a local directory.
         let wasVirtual = panel.path.backend != .local && !panel.path.backend.isSFTP
-        // Captured before the load: once `setListing` lands, `panel.path` is the destination and the
-        // directory whose scan queue we are abandoning is no longer nameable.
+        // Captured before the load (`setListing` makes `panel.path` the destination): the departed
+        // directory and its marks, so leaving a folder with marks records the loss against *that*
+        // folder — undo restores them on return; a same-directory reload keeps marks, so it no-ops.
         let departed = panel.path
+        let departedMarks = panel.selection
         Task {
             do {
                 let listing = try await DirectoryLoader.list(backend, at: path)
                 guard token == loadToken else { return }
                 panel.setListing(listing)
                 resetMouseSelectionAnchor()
+                recordMarkChange(since: departedMarks, in: departed, label: "Clear Selection")
                 // Entering a directory starts fresh — a quick-filter from the folder we
                 // just left shouldn't silently hide the new folder's contents.
                 if !panel.model.filter.isEmpty {

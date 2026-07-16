@@ -11,6 +11,26 @@ extension BrowserWindowController {
         undoController.record(record)
     }
 
+    /// A pane reports a completed marking change; journal it as a `SelectionChange` so Cmd+Z can
+    /// reverse it. The window supplies the pane's `side` (which the pane itself doesn't track);
+    /// `directory` names the folder the marks belong to (the pane may have already navigated away)
+    /// and the post-change marks are read live off the pane's `Panel`.
+    func recordSelectionChange(
+        on pane: PanelViewController,
+        directory: VFSPath,
+        previousMarks: Set<VFSPath>,
+        label: String
+    ) {
+        let side: PaneSide = (pane === leftPanel) ? .left : .right
+        undoController.recordSelection(SelectionChange(
+            pane: side,
+            directory: directory,
+            priorSelection: previousMarks,
+            newSelection: pane.panel.selection,
+            label: label
+        ))
+    }
+
     var nextUndoLabel: String? {
         undoController.nextLabel
     }
@@ -21,22 +41,42 @@ extension BrowserWindowController {
 
     func undoLastOperation() {
         Task {
-            guard let (record, report) = await undoController.undo() else { return }
-            // Re-list both panes so the reversal (a restored source, a removed copy) shows at
-            // once; the FSEvents watchers would catch up anyway, but this is immediate.
-            leftPanel.refreshCurrentDirectory()
-            rightPanel.refreshCurrentDirectory()
-            presentUndoOutcome(record: record, report: report)
+            switch await undoController.undo() {
+            case .none:
+                return
+            case let .fileOperation(record, report):
+                // Re-list both panes so the reversal (a restored source, a removed copy) shows at
+                // once; the FSEvents watchers would catch up anyway, but this is immediate.
+                leftPanel.refreshCurrentDirectory()
+                rightPanel.refreshCurrentDirectory()
+                presentUndoOutcome(record: record, report: report)
+            case let .selection(change):
+                applySelectionChange(change)
+            }
         }
     }
 
     func redoLastOperation() {
         Task {
-            guard let (record, report) = await undoController.redo() else { return }
-            leftPanel.refreshCurrentDirectory()
-            rightPanel.refreshCurrentDirectory()
-            presentRedoOutcome(record: record, report: report)
+            switch await undoController.redo() {
+            case .none:
+                return
+            case let .fileOperation(record, report):
+                leftPanel.refreshCurrentDirectory()
+                rightPanel.refreshCurrentDirectory()
+                presentRedoOutcome(record: record, report: report)
+            case let .selection(change):
+                applySelectionChange(change)
+            }
         }
+    }
+
+    /// Install a reverted selection's marks on the pane it came from. Undo and redo both land
+    /// here — the journal has already picked the right set (`selectionToApply`), so this only
+    /// routes to the left/right pane and lets it re-render.
+    private func applySelectionChange(_ change: SelectionChange) {
+        let pane = (change.pane == .left) ? leftPanel : rightPanel
+        pane.applyUndoSelection(change.selectionToApply, in: change.directory)
     }
 
     /// Tell the user only when the undo was less than complete: a clean reversal is silent

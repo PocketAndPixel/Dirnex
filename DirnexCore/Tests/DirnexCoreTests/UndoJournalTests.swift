@@ -279,9 +279,9 @@ struct UndoJournalTests {
         journal.record(.newFolder(at: .local("/c"))) // evicts /a
 
         #expect(journal.records.count == 2)
-        #expect(journal.top?.steps == [.removeCreatedFolder(.local("/c"))])
-        #expect(journal.removeTop()?.steps == [.removeCreatedFolder(.local("/c"))])
-        #expect(journal.top?.steps == [.removeCreatedFolder(.local("/b"))])
+        #expect(journal.top?.fileOperation?.steps == [.removeCreatedFolder(.local("/c"))])
+        #expect(journal.removeTop()?.fileOperation?.steps == [.removeCreatedFolder(.local("/c"))])
+        #expect(journal.top?.fileOperation?.steps == [.removeCreatedFolder(.local("/b"))])
     }
 
     // MARK: - Persistence

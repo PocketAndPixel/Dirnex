@@ -177,6 +177,17 @@ Goal: TC's killer feature — queued, non-blocking, undoable file operations.
       the undo" through the same `revert` executor; a redo stack rides alongside undo (a fresh
       op clears it), both stacks persist across relaunch, and a keep-both copy is redone to its
       exact renamed landing path — property tests `op + undo + redo == op` per operation kind.
+      **Selection undo added** ✅: marking gestures (Space, Cmd+A, invert, +/- pattern select,
+      Cmd/Shift-click, Esc-clear) join the *same* Cmd+Z timeline. The journal now holds a
+      heterogeneous `UndoEntry` — `.fileOperation(UndoRecord)` or `.selection(SelectionChange)` —
+      so one Cmd+Z walks back through everything in order; a selection change touches no bytes
+      (it swaps a pane's marks, routed by `PaneSide`) and is session-only (never persisted). Menu
+      titles track the gesture ("Undo Mark", "Redo Select All"). Verified live: Space→Undo/Redo
+      and Select-All-over-a-mark unwinds one entry at a time. **Side-effect clears are journaled
+      too** so a wrongly-lost selection is recoverable: leaving a folder (navigation clears marks
+      in `setListing`) records the loss against the *departed* folder — undo restores them on
+      return — and a right-click that retargets/collapses the marks records it in place. Verified
+      live: mark → navigate away+back → ⌘Z restores; mark → right-click another row → ⌘Z restores.
 - [x] Errors: failures collected + summarized ✅; **per-file skip/retry/abort** ✅ — the engine
       yields per failed source (`CopyEngine.run(onError:)` → `ErrorResolution` skip/retry/abort),
       bridged to a main-actor `ErrorDialog` by `ErrorPrompter` ("apply to all" = skip-all)

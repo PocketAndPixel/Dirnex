@@ -166,6 +166,14 @@ public struct Panel: Sendable {
         selection.removeAll()
     }
 
+    /// Replace the whole mark set — used to restore marks for undo/redo of a selection change.
+    /// Paths that have since vanished from the listing are dropped (mirroring how a live refresh
+    /// prunes marks); marks on entries merely filtered out of view survive, since those entries
+    /// still exist in the directory.
+    public mutating func setSelection(_ ids: Set<VFSPath>) {
+        selection = ids.intersection(Set(model.listing.entries.map(\.id)))
+    }
+
     public mutating func invertSelection() {
         for entry in model.visibleEntries {
             if selection.contains(entry.id) {

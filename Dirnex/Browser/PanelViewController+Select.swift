@@ -40,7 +40,9 @@ extension PanelViewController {
 
     /// Invert the mark set and re-render. Shared by the `*` key and the Select menu.
     func invertMarks() {
+        let previousMarks = panel.selection
         panel.invertSelection()
+        recordMarkChange(since: previousMarks, label: "Invert Selection")
         redrawAfterSelectionChange()
     }
 
@@ -89,11 +91,13 @@ extension PanelViewController {
     }
 
     private func applyPatternSelection(_ pattern: String, deselect: Bool) {
+        let previousMarks = panel.selection
         if deselect {
             panel.deselectMatching(pattern)
         } else {
             panel.selectMatching(pattern)
         }
+        recordMarkChange(since: previousMarks, label: deselect ? "Unselect Files" : "Select Files")
         redrawAfterSelectionChange()
     }
 

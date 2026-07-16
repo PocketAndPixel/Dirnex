@@ -44,7 +44,9 @@ extension PanelViewController {
         // it was on, `cursorOnParentRow` stays false, and `contextMenu` hands back the *entry* menu —
         // a menu about `..` that instead acts on the previously-selected file. Found live.
         if isParentRow(row) {
+            let previousMarks = panel.selection
             panel.clearSelection()
+            recordMarkChange(since: previousMarks, label: "Clear Selection")
             cursorOnParentRow = true
             renderRefresh()
             return
@@ -54,7 +56,9 @@ extension PanelViewController {
             return
         }
         if panel.isMarked(panel.model[index]) { return }
+        let previousMarks = panel.selection
         panel.clearSelection()
+        recordMarkChange(since: previousMarks, label: "Clear Selection")
         panel.moveCursor(to: index)
         cursorOnParentRow = false
         // `renderRefresh`, not `syncCursorToTable` + `updateChrome`: dropping the marks changes what

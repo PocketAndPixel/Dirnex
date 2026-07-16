@@ -170,16 +170,16 @@ struct UndoRedoTests {
         #expect(journal.canUndo && !journal.canRedo)
 
         let undone = journal.takeForUndo()
-        #expect(undone?.steps == [.removeCreatedFolder(.local("/a"))])
+        #expect(undone?.fileOperation?.steps == [.removeCreatedFolder(.local("/a"))])
         #expect(!journal.canUndo && journal.canRedo)
         // The redo entry is the inverse: it re-creates the folder.
-        #expect(journal.redoTop?.steps == [.createFolder(.local("/a"))])
+        #expect(journal.redoTop?.fileOperation?.steps == [.createFolder(.local("/a"))])
 
         // Redo brings it back to the undo stack, inverted again to the original.
         let redone = journal.takeForRedo()
-        #expect(redone?.steps == [.createFolder(.local("/a"))])
+        #expect(redone?.fileOperation?.steps == [.createFolder(.local("/a"))])
         #expect(journal.canUndo && !journal.canRedo)
-        #expect(journal.top?.steps == [.removeCreatedFolder(.local("/a"))])
+        #expect(journal.top?.fileOperation?.steps == [.removeCreatedFolder(.local("/a"))])
 
         // A brand-new operation wipes any pending redo.
         _ = journal.takeForUndo() // stage a redo
@@ -197,8 +197,8 @@ struct UndoRedoTests {
         let undo = try JSONEncoder().encode(journal.records)
         let redo = try JSONEncoder().encode(journal.redoRecords)
         let restored = UndoJournal(
-            records: try JSONDecoder().decode([UndoRecord].self, from: undo),
-            redoRecords: try JSONDecoder().decode([UndoRecord].self, from: redo)
+            records: try JSONDecoder().decode([UndoEntry].self, from: undo),
+            redoRecords: try JSONDecoder().decode([UndoEntry].self, from: redo)
         )
         #expect(restored.records == journal.records)
         #expect(restored.redoRecords == journal.redoRecords)

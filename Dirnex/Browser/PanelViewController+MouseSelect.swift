@@ -34,12 +34,15 @@ extension PanelViewController {
         // we still consume it so the table doesn't extend its own selection there.
         guard let index = entryIndex(forRow: row) else { return true }
 
+        let previousMarks = panel.selection
         if shift {
             let anchorIndex = resolvedAnchorIndex(fallingBackTo: index)
             panel.selectRange(from: anchorIndex, through: index, base: mouseSelectionBase)
+            recordMarkChange(since: previousMarks, label: "Select Range")
         } else {
             panel.toggleMarkMovingCursor(to: index)
             setAnchor(to: index)
+            recordMarkChange(since: previousMarks, label: "Mark")
         }
         cursorOnParentRow = false
         reloadEverything()

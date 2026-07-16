@@ -191,62 +191,68 @@ public struct UndoReport: Sendable, Equatable {
 
 // MARK: - The journal
 
-/// A bounded, newest-on-top pair of `UndoRecord` stacks — one for undo, one for redo. Value
-/// type: the app owns one per window, records completed operations into it, and persists both
-/// stacks across launches.
+/// A bounded, newest-on-top pair of `UndoEntry` stacks — one for undo, one for redo. Value
+/// type: the app owns one per window, records completed actions into it, and persists both
+/// stacks across launches. An entry is either a byte-touching file operation or an in-memory
+/// selection change; the journal treats them uniformly and only the app cares which is which.
 ///
 /// The redo stack mirrors every editor's undo/redo: undoing moves an action's inverse onto
 /// redo; redoing moves it (inverted again — the original) back onto undo; and a *fresh*
-/// operation clears redo, because once history diverges there is no forward to redo to.
+/// action clears redo, because once history diverges there is no forward to redo to.
 public struct UndoJournal: Sendable, Equatable {
-    /// The most that is kept per stack; older records fall off the bottom. A stack, not a full
+    /// The most that is kept per stack; older entries fall off the bottom. A stack, not a full
     /// history — undo walks back from the most recent action.
     public let capacity: Int
-    public private(set) var records: [UndoRecord]
-    public private(set) var redoRecords: [UndoRecord]
+    public private(set) var records: [UndoEntry]
+    public private(set) var redoRecords: [UndoEntry]
 
-    public init(records: [UndoRecord] = [], redoRecords: [UndoRecord] = [], capacity: Int = 50) {
+    public init(records: [UndoEntry] = [], redoRecords: [UndoEntry] = [], capacity: Int = 50) {
         self.capacity = max(1, capacity)
         self.records = Array(records.suffix(self.capacity))
         self.redoRecords = Array(redoRecords.suffix(self.capacity))
     }
 
     /// The action Cmd+Z would reverse next, or `nil` when there's nothing to undo.
-    public var top: UndoRecord? { records.last }
+    public var top: UndoEntry? { records.last }
     /// The action Cmd+Shift+Z would re-apply next, or `nil` when there's nothing to redo.
-    public var redoTop: UndoRecord? { redoRecords.last }
+    public var redoTop: UndoEntry? { redoRecords.last }
 
     public var canUndo: Bool { !records.isEmpty }
     public var canRedo: Bool { !redoRecords.isEmpty }
 
-    /// Push a freshly-completed operation onto the undo stack. A brand-new action invalidates
+    /// Push a freshly-completed action onto the undo stack. A brand-new action invalidates
     /// the redo stack: you can't redo forward past a point where history diverged.
-    public mutating func record(_ record: UndoRecord) {
+    public mutating func record(_ entry: UndoEntry) {
         redoRecords.removeAll()
-        records = trimmed(records + [record])
+        records = trimmed(records + [entry])
     }
 
-    /// Pop the top undo action and move its inverse onto the redo stack. The caller reverts
-    /// the returned record (off the main thread); this only shuffles the stacks. `nil` on an
-    /// empty undo stack.
-    public mutating func takeForUndo() -> UndoRecord? {
-        guard let record = records.popLast() else { return nil }
-        redoRecords = trimmed(redoRecords + [record.inverted])
-        return record
+    /// Convenience: record a byte-touching file operation, the common case at most call sites.
+    public mutating func record(_ record: UndoRecord) {
+        self.record(.fileOperation(record))
     }
 
-    /// Pop the top redo action and move its inverse — the original operation — back onto the
-    /// undo stack. The caller reverts the returned record, which re-applies the original op.
-    /// `nil` on an empty redo stack.
-    public mutating func takeForRedo() -> UndoRecord? {
-        guard let record = redoRecords.popLast() else { return nil }
-        records = trimmed(records + [record.inverted])
-        return record
+    /// Pop the top undo action and move its inverse onto the redo stack. The caller applies
+    /// the returned entry (a file op off the main thread, a selection change on it); this only
+    /// shuffles the stacks. `nil` on an empty undo stack.
+    public mutating func takeForUndo() -> UndoEntry? {
+        guard let entry = records.popLast() else { return nil }
+        redoRecords = trimmed(redoRecords + [entry.inverted])
+        return entry
+    }
+
+    /// Pop the top redo action and move its inverse — the original action — back onto the undo
+    /// stack. The caller applies the returned entry, which re-applies the original action. `nil`
+    /// on an empty redo stack.
+    public mutating func takeForRedo() -> UndoEntry? {
+        guard let entry = redoRecords.popLast() else { return nil }
+        records = trimmed(records + [entry.inverted])
+        return entry
     }
 
     /// Pop the top undo action without touching redo — a raw stack primitive for inspection.
     @discardableResult
-    public mutating func removeTop() -> UndoRecord? {
+    public mutating func removeTop() -> UndoEntry? {
         records.popLast()
     }
 
@@ -255,8 +261,8 @@ public struct UndoJournal: Sendable, Equatable {
         redoRecords.removeAll()
     }
 
-    /// Drop the oldest records so a stack never exceeds `capacity`.
-    private func trimmed(_ stack: [UndoRecord]) -> [UndoRecord] {
+    /// Drop the oldest entries so a stack never exceeds `capacity`.
+    private func trimmed(_ stack: [UndoEntry]) -> [UndoEntry] {
         stack.count > capacity ? Array(stack.suffix(capacity)) : stack
     }
 

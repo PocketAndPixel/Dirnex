@@ -40,7 +40,9 @@ extension PanelViewController: FileTableViewInput {
             // user stepped into, and the inactive pane's preview is the obvious thing to dismiss.
             host?.toggleQuickView()
         } else if panel.selectionCount > 0 {
+            let previousMarks = panel.selection
             panel.clearSelection()
+            recordMarkChange(since: previousMarks, label: "Clear Selection")
             resetMouseSelectionAnchor()
             tableView.reloadData()
             updateChrome()
@@ -68,7 +70,9 @@ extension PanelViewController: FileTableViewInput {
         // directory also computes its size in place (TC), applied when the walk lands.
         let sizedDirectory = panel.currentEntry.flatMap { $0.isDirectoryLike ? $0 : nil }
         let markedRow = row(forEntryIndex: panel.cursor)
+        let previousMarks = panel.selection
         panel.toggleMarkAtCursorAndAdvance()
+        recordMarkChange(since: previousMarks, label: "Mark")
         redrawRow(markedRow)
         syncCursorToTable()
         updateChrome()
@@ -83,7 +87,9 @@ extension PanelViewController: FileTableViewInput {
     }
 
     func fileTableMarkAll(_ tableView: FileTableView) {
+        let previousMarks = panel.selection
         panel.selectAll()
+        recordMarkChange(since: previousMarks, label: "Select All")
         tableView.reloadData()
         updateChrome()
         refreshQuickLookIfVisible()
