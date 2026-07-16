@@ -1,97 +1,99 @@
 import AppKit
 import DirnexCore
 
-/// The leading titlebar Back/Forward control, sitting just right of the sidebar toggle: the
-/// ⌘[ / ⌘] history commands (View ▸ Go) as a two-segment pill, the same control Finder and
-/// Safari put in their toolbars. A momentary segmented control so each half presses like a
-/// button rather than latching. The click routes through the responder chain (like the Go menu
-/// items) so it steps *the focused* pane's per-tab trail; each segment's enabled state mirrors
-/// that pane's `canGoBack`/`canGoForward`, refreshed on every navigation, tab switch, and focus
-/// change (`updateNavigationButtons`).
+/// The trailing titlebar Back/Forward controls, sitting beside the hidden-files toggle: the
+/// ⌘[ / ⌘] history commands (View ▸ Go) as two borderless chevron buttons — bare glyphs with no
+/// bezel behind them, matching the neighbouring eye toggle. The click routes through the
+/// responder chain (like the Go menu items) so it steps *the focused* pane's per-tab trail; each
+/// button's enabled state mirrors that pane's `canGoBack`/`canGoForward`, refreshed on every
+/// navigation, tab switch, and focus change (`updateNavigationButtons`).
 extension BrowserWindowController {
-    /// The two segment indices, named so the click handler and the enable/tooltip setup read
-    /// clearly rather than juggling bare 0/1.
-    private enum NavSegment {
-        static let back = 0
-        static let forward = 1
-    }
-
-    /// Mirror of `installSidebarToggle`, added as a second `.leading` accessory so the pill lands
-    /// immediately to the right of the sidebar button.
+    /// The single `.trailing` accessory for the right-hand control cluster — hidden-files toggle,
+    /// Back, Forward — evenly spaced in the otherwise empty transparent title bar. Assumes
+    /// `installHiddenToggle` has already prepared the eye button (behaviour + size); this places it.
     func installNavigationButtons() {
-        navigationControl.segmentCount = 2
-        navigationControl.segmentStyle = .rounded
-        navigationControl.trackingMode = .momentary
-        navigationControl.setImage(navImage("chevron.backward", "Back"), forSegment: NavSegment.back)
-        navigationControl.setImage(
-            navImage("chevron.forward", "Forward"),
-            forSegment: NavSegment.forward
+        configureNavButton(
+            backButton,
+            symbol: "chevron.backward",
+            label: "Back",
+            action: #selector(navigateBackPressed(_:)),
+            tooltip: navTooltip("Back", "go.back")
         )
-        navigationControl.setToolTip(navTooltip("Back", "go.back"), forSegment: NavSegment.back)
-        navigationControl.setToolTip(
-            navTooltip("Forward", "go.forward"),
-            forSegment: NavSegment.forward
+        configureNavButton(
+            forwardButton,
+            symbol: "chevron.forward",
+            label: "Forward",
+            action: #selector(navigateForwardPressed(_:)),
+            tooltip: navTooltip("Forward", "go.forward")
         )
-        navigationControl.target = self
-        navigationControl.action = #selector(navigationSegmentPressed(_:))
-        navigationControl.translatesAutoresizingMaskIntoConstraints = false
 
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: 82, height: 28))
+        // One evenly-spaced cluster: the hidden-files eye toggle, then Back/Forward. The eye button
+        // is behaviour-configured and tight-sized by `installHiddenToggle`; it just joins the row
+        // here so the three glyphs read as a single control panel rather than separate accessories.
+        let spacing: CGFloat = 12
+        let stack = NSStackView(views: [hiddenToggleButton, backButton, forwardButton])
+        stack.orientation = .horizontal
+        stack.spacing = spacing
+        stack.translatesAutoresizingMaskIntoConstraints = false
 
-        // The window runs edge-to-edge under the transparent titlebar (`fullSizeContentView`), so
-        // the sidebar↕panes split divider is drawn up through this strip and shows through the
-        // control's translucent pill bezel. An opaque rounded backing pinned under the pill hides
-        // it — `windowBackgroundColor` is a dynamic color, so `NSBox` re-resolves it light/dark.
-        let backing = NSBox()
-        backing.boxType = .custom
-        backing.borderWidth = 0
-        backing.cornerRadius = 6
-        backing.fillColor = .windowBackgroundColor
-        backing.translatesAutoresizingMaskIntoConstraints = false
-
-        container.addSubview(backing)
-        container.addSubview(navigationControl)
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 84, height: 28))
+        container.addSubview(stack)
         NSLayoutConstraint.activate([
-            navigationControl.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            navigationControl.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 4),
-            navigationControl.trailingAnchor.constraint(
-                equalTo: container.trailingAnchor,
-                constant: -8
-            ),
-            backing.leadingAnchor.constraint(equalTo: navigationControl.leadingAnchor),
-            backing.trailingAnchor.constraint(equalTo: navigationControl.trailingAnchor),
-            backing.topAnchor.constraint(equalTo: navigationControl.topAnchor),
-            backing.bottomAnchor.constraint(equalTo: navigationControl.bottomAnchor)
+            stack.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            // Pin the trailing edge only (both would stretch the row and distort the gaps), inset
+            // from the container's right edge — which the titlebar parks at the window corner — by
+            // the same `spacing` used between buttons, so the forward chevron keeps an even margin
+            // from the corner instead of jamming into it.
+            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -spacing)
         ])
 
         let accessory = NSTitlebarAccessoryViewController()
         accessory.view = container
-        accessory.layoutAttribute = .leading
+        accessory.layoutAttribute = .trailing
         window?.addTitlebarAccessoryViewController(accessory)
 
         updateNavigationButtons()
     }
 
-    /// Enable each half only when the active pane's trail can move that way, so the segments grey
-    /// out at its ends exactly as ⌘[ / ⌘] disable in the Go menu (`validateMenuItem`).
+    /// Enable each button only when the active pane's trail can move that way, so they grey out at
+    /// its ends exactly as ⌘[ / ⌘] disable in the Go menu (`validateMenuItem`).
     func updateNavigationButtons() {
-        navigationControl.setEnabled(focusedPanel.canGoBack, forSegment: NavSegment.back)
-        navigationControl.setEnabled(focusedPanel.canGoForward, forSegment: NavSegment.forward)
+        backButton.isEnabled = focusedPanel.canGoBack
+        forwardButton.isEnabled = focusedPanel.canGoForward
     }
 
-    /// Dispatch the pressed half through the responder chain to the focused pane — the same path
-    /// the ⌘[ / ⌘] menu items take, so archive/results panes and history bounds behave identically.
-    @objc private func navigationSegmentPressed(_ sender: NSSegmentedControl) {
-        let selector = sender.selectedSegment == NavSegment.forward
-            ? #selector(PanelViewController.goForward(_:))
-            : #selector(PanelViewController.goBack(_:))
-        NSApp.sendAction(selector, to: nil, from: sender)
+    /// Dispatch through the responder chain to the focused pane — the same path the ⌘[ / ⌘] menu
+    /// items take, so archive/results panes and history bounds behave identically.
+    @objc private func navigateBackPressed(_ sender: NSButton) {
+        NSApp.sendAction(#selector(PanelViewController.goBack(_:)), to: nil, from: sender)
     }
 
-    private func navImage(_ symbol: String, _ label: String) -> NSImage? {
+    @objc private func navigateForwardPressed(_ sender: NSButton) {
+        NSApp.sendAction(#selector(PanelViewController.goForward(_:)), to: nil, from: sender)
+    }
+
+    private func configureNavButton(
+        _ button: NSButton,
+        symbol: String,
+        label: String,
+        action: Selector,
+        tooltip: String
+    ) {
+        button.bezelStyle = .toolbar
+        button.isBordered = false
+        button.imagePosition = .imageOnly
         let image = NSImage(systemSymbolName: symbol, accessibilityDescription: label)
         image?.isTemplate = true
-        return image
+        button.image = image
+        button.target = self
+        button.action = action
+        button.toolTip = tooltip
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.heightAnchor.constraint(equalToConstant: 22).isActive = true
+        // A `.toolbar` button is intrinsically far wider than its glyph, padding the chevron away
+        // from the button edges; a tight width strips that so the pair reads as two bare glyphs
+        // and the trailing one can sit in the window corner.
+        button.widthAnchor.constraint(equalToConstant: 16).isActive = true
     }
 
     private func navTooltip(_ label: String, _ commandID: String) -> String {

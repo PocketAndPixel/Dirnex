@@ -6,9 +6,11 @@ import DirnexCore
 /// `AppPreferences.showHidden`; the panes re-filter themselves off `showHiddenDidChange`, which
 /// also restyles the button so its eye/eye-slash glyph always tracks the current state.
 extension BrowserWindowController {
-    /// Mirror of `installSidebarToggle`, on the trailing side: an eye button in the otherwise
-    /// empty transparent title bar. Restyled immediately to the current state, and again on
-    /// every `showHiddenDidChange`.
+    /// Prepare the eye button — behaviour, tight glyph-sized footprint, and state observer. It has
+    /// no accessory of its own: `installNavigationButtons` places it as the leading member of the
+    /// shared trailing control cluster (eye · Back · Forward), so all three read as one evenly
+    /// spaced panel. Restyled immediately to the current state, and again on every
+    /// `showHiddenDidChange`.
     func installHiddenToggle() {
         hiddenToggleButton.bezelStyle = .toolbar
         hiddenToggleButton.isBordered = false
@@ -16,26 +18,11 @@ extension BrowserWindowController {
         hiddenToggleButton.target = self
         hiddenToggleButton.action = #selector(toggleHiddenFilesFromButton)
         hiddenToggleButton.translatesAutoresizingMaskIntoConstraints = false
-
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: 40, height: 28))
-        container.addSubview(hiddenToggleButton)
         NSLayoutConstraint.activate([
-            hiddenToggleButton.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            hiddenToggleButton.leadingAnchor.constraint(
-                equalTo: container.leadingAnchor,
-                constant: 8
-            ),
-            hiddenToggleButton.trailingAnchor.constraint(
-                equalTo: container.trailingAnchor,
-                constant: -8
-            ),
-            hiddenToggleButton.heightAnchor.constraint(equalToConstant: 22)
+            hiddenToggleButton.heightAnchor.constraint(equalToConstant: 22),
+            // Same tight width as the nav chevrons so the cluster's spacing is uniform.
+            hiddenToggleButton.widthAnchor.constraint(equalToConstant: 16)
         ])
-
-        let accessory = NSTitlebarAccessoryViewController()
-        accessory.view = container
-        accessory.layoutAttribute = .trailing
-        window?.addTitlebarAccessoryViewController(accessory)
 
         NotificationCenter.default.addObserver(
             self,

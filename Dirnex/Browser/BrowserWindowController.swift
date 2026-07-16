@@ -104,11 +104,12 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     /// button form). Held so `showHiddenDidChange` can restyle it to track the current state.
     let hiddenToggleButton = NSButton()
 
-    /// The leading titlebar back/forward control beside the sidebar toggle — the ⌘[ / ⌘] history
-    /// commands (View ▸ Go) as a two-segment pill, the same control Finder/Safari use. Held so a
-    /// navigation, tab switch, or focus change can re-validate each segment's enabled state
-    /// against the active pane's trail (`updateNavigationButtons`).
-    let navigationControl = NSSegmentedControl()
+    /// The trailing titlebar back/forward controls — the ⌘[ / ⌘] history commands (View ▸ Go) as
+    /// two borderless chevron buttons, no bezel behind them. Held so a navigation, tab switch, or
+    /// focus change can re-validate each button's enabled state against the active pane's trail
+    /// (`updateNavigationButtons`).
+    let backButton = NSButton()
+    let forwardButton = NSButton()
 
     init() {
         // A composite backend so a pane can browse into an archive (`archive:…` paths route
@@ -213,8 +214,10 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         window.setFrameAutosaveName("MainWindow")
 
         installSidebarToggle()
-        installNavigationButtons()
+        // Hidden-files toggle first: it prepares the eye button that installNavigationButtons then
+        // places as the leading member of the shared trailing control cluster.
         installHiddenToggle()
+        installNavigationButtons()
 
         queueBar.onPauseToggle = { [weak self] in self?.togglePause() }
         queueBar.onCancelAll = { [weak self] in self?.cancelAllJobs() }
