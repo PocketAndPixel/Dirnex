@@ -117,6 +117,16 @@ struct CommandCatalogTests {
         #expect(KeyBindings().conflicts(for: "file.manageScripts").isEmpty)
     }
 
+    @Test("the M6 function-bar toggle is a shortcut-free View command")
+    func coversFunctionBar() {
+        let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })
+        let functionBar = byID["view.functionBar"]
+        #expect(functionBar?.category == .view)
+        // No default shortcut (a persistent-chrome toggle, like Show Tags), so it can't collide.
+        #expect(functionBar?.shortcut == nil)
+        #expect(KeyBindings().conflicts(for: "view.functionBar").isEmpty)
+    }
+
     @Test("the M5 connect-to-server command is a shortcut-free navigation command")
     func coversConnectServer() {
         let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })

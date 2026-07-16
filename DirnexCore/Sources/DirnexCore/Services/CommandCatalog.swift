@@ -251,6 +251,17 @@ public enum CommandCatalog {
             shortcut: CommandShortcut(key: "b", modifiers: .control)
         ),
         Command(
+            id: "view.functionBar",
+            title: "Show Function Key Bar",
+            category: .view,
+            keywords: [
+                "function", "keys", "f-keys", "fkeys", "f5", "f6", "f7", "f8", "toolbar", "bar",
+                "buttons", "total commander", "tc"
+            ]
+            // No shortcut: it toggles a persistent chrome strip, like Show Tags — a menu/palette
+            // action, not a gesture, and its F-keys already live on the buttons it shows.
+        ),
+        Command(
             id: "view.quickLook",
             title: "Quick Look",
             category: .view,

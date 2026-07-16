@@ -49,6 +49,18 @@ struct PanelsSettingsView: View {
             }
 
             Section {
+                Toggle("Show function key bar", isOn: $preferences.showFunctionBar)
+            } footer: {
+                Text(
+                    "A row of F-key buttons along the window bottom — Rename, View, Copy, Move, "
+                        + "New Folder, Delete — the Total Commander function bar. Also in the View "
+                        + "menu; the keys work whether or not the bar is shown."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+
+            Section {
                 Toggle(
                     "Switch focus to folders opened from search results",
                     isOn: $preferences.focusOpenedSearchDirectory

@@ -1995,6 +1995,65 @@ F-key ops and a user script's optional F-key binding), then the **AppleScript/Sh
 (reveal/copy/run-op — an `sdef`/App Intents surface), then the iCloud sync-status column, which closes
 M6.
 
+Progress (2026-07-16, M6 pass 14 — the F-key bar; **VERIFIED LIVE**): the Total-Commander function-key
+button row along the window bottom. The automation box stays `[ ]` because the item's last piece — the
+**AppleScript/Shortcuts verbs** — is still to come, but the F-key bar it also names is now real and
+proven end-to-end. Core-first as always; one new core file, five app touch-points.
+- **`DirnexCore/Services/FunctionBar.swift`** (pure, tested) — a `FunctionBarSlot` (`functionKey` +
+  short `label` + `commandID`, `Codable`) and `FunctionBar.defaultSlots`: **F2 Rename · F3 View · F5
+  Copy · F6 Move · F7 NewFolder · F8 Delete**. Data, not AppKit, so the layout is unit-tested and a
+  later user-configurable bar (and a user script's F-key binding) is a change to *data*. Every slot
+  names a real `CommandCatalog` command (a test pins it); `slot(forFunctionKey:)` is the pane key
+  handler's lookup. +7 core tests → **740**.
+- **THE key-dispatch insight (why the bar can own F3 with zero double-fire):** F2/F5–F8 already carry a
+  bare-function-key **menu key-equivalent**, and AppKit fires a menu equivalent *before* the event ever
+  reaches `keyDown`. So a `keyDown` F-key handler only ever *receives* the F-keys with **no** menu
+  equivalent — F3 (Quick Look, whose own shortcut is ⌘Y) and, later, a user script's F9–F12 — and can
+  dispatch them unconditionally without ever colliding with the menu. `FileTableView.keyDown` grew a
+  `functionKeyNumber(for:)` decode (scalars in `NSF1FunctionKey…NSF35FunctionKey`) → a new
+  `fileTable(_:functionKey:)` delegate call → `PanelViewController` looks up the slot and dispatches.
+  **Live-proven:** pressing the physical **F3** opened Quick Look on `alpha.txt`, exactly the
+  no-menu-equivalent path.
+- **THE app-layer bug the live run caught, and the real design correction:** the first cut gave each
+  button `target = nil` + `action = <selector>`, betting a nil-target dispatch would walk the responder
+  chain to the active pane like a menu item does. **It silently no-op'd** — clicking a bottom-bar button
+  (outside both panes) drops the pane's first-responder status *first*, so by the time the action
+  dispatches, no responder in the key window implements `copyToOtherPane:`. A temporary `NSLog` at the
+  dispatch site (app launched from Terminal to capture stderr — `open`-launched apps hide it) made it
+  unambiguous: with the fix, `handled=true fr=FileTableView`; the menu path had always worked, isolating
+  it to button dispatch. The fix: the button reports its slot to the bar's `onRun` callback; the window
+  controller **re-focuses the active pane** (`focusedPanel.focusTable()`) **then** dispatches to nil —
+  which both puts the pane back in the responder chain *and* matches TC, where a function-button click
+  acts on the active pane and leaves focus there. GOTCHA for the live tester: a click that has to pass
+  *through* a modal (cancelling a conflict sheet in the same batch) gets swallowed mid-animation — it
+  reads as an intermittent button, but a deliberate single click is 100% reliable (proven by the log).
+- **`FunctionBarView.swift`** — a `FunctionBarButton` (borderless, self-drawn: dim monospaced key token
+  + primary caption, hover/press fills, a leading hairline on all but the first, `refusesFirstResponder`
+  so a click never steals pane focus) in a `fillEqually` `NSStackView`, with a top hairline matching the
+  column-header/queue-bar borders. Fixed 28 pt; the window controller owns the height constraint.
+- **`BrowserWindowController+FunctionBar.swift`** + main-file layout — the bar is pinned at the **very
+  bottom, below the queue bar** (so a running op surfaces its progress just above the buttons that
+  started it), collapsed to zero height when off (the queue-bar collapse mechanism). App-wide visibility
+  via `AppPreferences.showFunctionBar` (**default on** — a signature discoverability win, the "fix TC's
+  adoption problem" goal) + `showFunctionBarDidChange`, so every window toggles together; a
+  `view.functionBar` catalog command ("Show Function Key Bar", no shortcut) drives it from the View menu
+  (checkmark via `validateToggleItem`), the ⌘K palette, and a Settings ▸ Panels toggle.
+- +4 app tests (`FunctionBarViewTests`: every slot resolves to a wired selector; one button per slot
+  carrying its slot + refusing focus; a click reports its slot to `onRun`) → **56 app**. `swift test`
+  (740) + app `xcodebuild test` (56) green, swiftformat + swiftlint-strict clean. **VERIFIED LIVE**
+  (fresh DerivedData build, `ps`-checked): the bar rendered the six buttons; the **F5 Copy** button
+  copied the active pane's cursor/marked file to the other pane (raised the real per-file conflict sheet
+  on a name clash, and cleanly landed `beta.txt` with no clash); the **F7 NewFolder** button opened the
+  create sheet and made `made-by-f7`; **View ▸ Show Function Key Bar** toggled the bar away (panes
+  reclaimed the strip) and back, its checkmark tracking; and the physical **F3** key opened Quick Look.
+  KNOWN macOS caveat (not a bug): on a Mac keyboard F3/F5/… may be media keys unless "Use F1, F2 etc.
+  as standard function keys" is set — the *buttons* always work regardless; the same caveat already
+  applied to F5–F8. **NEXT (M6, closes the automation box):** the **AppleScript/Shortcuts verbs**
+  (reveal/copy/run-op — an `sdef`/App Intents surface), plus optionally a user script's F-key binding
+  (a slot pointing at a `userScript.<name>` command id — the bar and key handler already accept any
+  command id, so it's a UI field on the organizer + one core field on `UserScript`). Then the iCloud
+  sync-status column, which closes M6.
+
 ### M7 — Release readiness (M)
 
 - [ ] Sparkle 2 updates + appcast infrastructure; notarized DMG pipeline in CI

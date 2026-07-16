@@ -75,6 +75,14 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     /// The window-bottom progress readout, collapsed to zero height while the queue is idle.
     let queueBar = QueueBarView()
     private var queueBarHeight: NSLayoutConstraint!
+
+    /// The Total-Commander-style function-key bar (PLAN.md §M6), pinned along the very bottom
+    /// below the queue bar. Collapsed to zero height when `AppPreferences.showFunctionBar` is off
+    /// — the same collapse mechanism the queue bar uses when idle.
+    let functionBar = FunctionBarView()
+    /// Internal (not private) so `BrowserWindowController+FunctionBar` can collapse/expand it —
+    /// Swift's `private` is per-file.
+    var functionBarHeight: NSLayoutConstraint!
     /// The long-lived task draining `queue.observe()` into the queue bar and pane refreshes.
     var queueObservation: Task<Void, Never>?
     /// Jobs already reacted to (panes re-listed, failures reported), so a repeat snapshot of
@@ -212,6 +220,7 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         startObservingQueue()
         installEscapeMonitor()
         observeVolumeUnmount()
+        installFunctionBar()
     }
 
     /// Esc closes Quick View from anywhere in this window. A window-scoped local monitor sees the
@@ -287,9 +296,11 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         fatalError("init(coder:) has not been implemented")
     }
 
-    /// Stack the two panes over the queue bar so the bar spans the full window width at the
-    /// bottom. `setQueueBar(visible:)` collapses it to zero height (and hides it) while the
-    /// queue is idle, giving the panes the whole window.
+    /// Stack the two panes over the queue bar and, below that, the function-key bar — so both
+    /// span the full window width at the bottom, and a running operation surfaces its progress
+    /// just above the bar of buttons that started it. `setQueueBar(visible:)` collapses the queue
+    /// bar to zero while idle, and `applyFunctionBarVisibility()` collapses the function bar when
+    /// the feature is off; either collapse hands its height back to the panes.
     private func makeContainerViewController() -> NSViewController {
         let container = NSViewController()
         container.view = NSView()
@@ -301,8 +312,10 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         queueBar.isHidden = true
         container.view.addSubview(splitView)
         container.view.addSubview(queueBar)
+        container.view.addSubview(functionBar)
 
         queueBarHeight = queueBar.heightAnchor.constraint(equalToConstant: 0)
+        functionBarHeight = functionBar.heightAnchor.constraint(equalToConstant: 0)
         NSLayoutConstraint.activate([
             splitView.topAnchor.constraint(equalTo: container.view.topAnchor),
             splitView.leadingAnchor.constraint(equalTo: container.view.leadingAnchor),
@@ -310,8 +323,12 @@ final class BrowserWindowController: NSWindowController, PanelHost {
             splitView.bottomAnchor.constraint(equalTo: queueBar.topAnchor),
             queueBar.leadingAnchor.constraint(equalTo: container.view.leadingAnchor),
             queueBar.trailingAnchor.constraint(equalTo: container.view.trailingAnchor),
-            queueBar.bottomAnchor.constraint(equalTo: container.view.bottomAnchor),
-            queueBarHeight
+            queueBar.bottomAnchor.constraint(equalTo: functionBar.topAnchor),
+            queueBarHeight,
+            functionBar.leadingAnchor.constraint(equalTo: container.view.leadingAnchor),
+            functionBar.trailingAnchor.constraint(equalTo: container.view.trailingAnchor),
+            functionBar.bottomAnchor.constraint(equalTo: container.view.bottomAnchor),
+            functionBarHeight
         ])
         return container
     }

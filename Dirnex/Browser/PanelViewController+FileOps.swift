@@ -440,6 +440,10 @@ extension PanelViewController: NSMenuItemValidation {
             // tags to show there, and unchecking the box would blame the user's setting for it.
             menuItem.state = AppPreferences.shared.showTags ? .on : .off
             return true
+        case #selector(toggleFunctionBar(_:)):
+            // "Show Function Key Bar" checkmark tracks the app-wide state.
+            menuItem.state = AppPreferences.shared.showFunctionBar ? .on : .off
+            return true
         case #selector(toggleSizeVisualization(_:)):
             // Tracks the tab's own flag rather than `areSizeBarsVisible`, for the reason above: on
             // an SFTP volume or in search results the bars are suppressed because there is nothing

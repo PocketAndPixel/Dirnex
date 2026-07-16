@@ -65,6 +65,30 @@ final class AppPreferences: ObservableObject {
         showTags.toggle()
     }
 
+    /// View ▸ show the Total-Commander-style function-key bar along the window bottom (PLAN.md
+    /// §M6). Default **on**: the bar is a signature discoverability win — it puts Copy/Move/
+    /// NewFolder/Delete on labelled buttons a new user can find without the manual, the exact
+    /// "fix TC's adoption problem" goal — and someone who works entirely by keyboard can turn it
+    /// off. App-wide, not per-window, like the tags column: every window shows or hides it
+    /// together.
+    @Published var showFunctionBar: Bool {
+        didSet {
+            guard showFunctionBar != oldValue else { return }
+            defaults.set(showFunctionBar, forKey: Keys.showFunctionBar)
+            NotificationCenter.default.post(name: Self.showFunctionBarDidChange, object: self)
+        }
+    }
+
+    /// Posted (on the main actor) when `showFunctionBar` flips, so every open window installs or
+    /// collapses its bar live. `object` is the `AppPreferences` that changed.
+    static let showFunctionBarDidChange = Notification.Name("Dirnex.showFunctionBarDidChange")
+
+    /// Flip the app-wide function-bar state — the shared entry point for the View menu item, the
+    /// palette command, and the Settings toggle.
+    func toggleShowFunctionBar() {
+        showFunctionBar.toggle()
+    }
+
     /// Operations ▸ ask for confirmation before moving items to the Trash (default off —
     /// Trash is recoverable, matching Finder). Permanent delete always confirms regardless.
     @Published var confirmTrash: Bool {
@@ -87,6 +111,9 @@ final class AppPreferences: ObservableObject {
         // Defaults on, so `object(forKey:)` rather than `bool(forKey:)` — the latter answers
         // `false` for a key that was never written, which would ship the feature turned off.
         showTags = defaults.object(forKey: Keys.showTags) as? Bool ?? true
+        // Defaults on, like `showTags`: `object(forKey:)`, not `bool(forKey:)` (which answers
+        // `false` for a never-written key and would ship the bar hidden).
+        showFunctionBar = defaults.object(forKey: Keys.showFunctionBar) as? Bool ?? true
         confirmTrash = defaults.bool(forKey: Keys.confirmTrash)
         focusOpenedSearchDirectory = defaults.bool(forKey: Keys.focusOpenedSearchDirectory)
     }
@@ -95,6 +122,7 @@ final class AppPreferences: ObservableObject {
         static let restoreSession = "Dirnex.pref.restoreSession"
         static let showHidden = "Dirnex.pref.showHidden"
         static let showTags = "Dirnex.pref.showTags"
+        static let showFunctionBar = "Dirnex.pref.showFunctionBar"
         static let confirmTrash = "Dirnex.pref.confirmTrash"
         static let focusOpenedSearchDirectory = "Dirnex.pref.focusOpenedSearchDirectory"
     }

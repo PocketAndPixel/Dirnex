@@ -30,6 +30,9 @@ protocol FileTableViewInput: AnyObject {
     func fileTableDeselectByPattern(_ tableView: FileTableView)
     /// Cmd+Y — toggle the Quick Look preview panel.
     func fileTableToggleQuickLook(_ tableView: FileTableView)
+    /// A bare function key (F1–F12) reached the table unclaimed by a menu key-equivalent — the
+    /// function bar dispatches its slot's command, if any. Returns `true` when a slot handled it.
+    func fileTable(_ tableView: FileTableView, functionKey number: Int) -> Bool
     /// Cmd+L — edit the location as text in the path bar.
     func fileTableEditPath(_ tableView: FileTableView)
     /// Cmd+Shift+N (also File ▸ New Folder / F7) — create a folder here.
@@ -162,12 +165,31 @@ final class FileTableView: NSTableView {
             }
         }
 
+        // A bare function key (F1–F12) the menu didn't already claim: hand it to the function bar.
+        // F2/F5–F8 carry menu key-equivalents, so those fire via the menu and never arrive here;
+        // only a function key *without* one (F3 View, a user script's binding) reaches this, so
+        // there is no double-dispatch. The `fn` layer rides with every F-key, so allow it.
+        if flags.subtracting([.function, .numericPad]).isEmpty,
+           let number = Self.functionKeyNumber(for: event),
+           inputDelegate?.fileTable(self, functionKey: number) == true {
+            return
+        }
+
         // Plain keys, plus Shift/keypad/function so uppercase typing and the arrow/
         // navigation cluster still route through here.
         let passthrough: NSEvent.ModifierFlags = [.shift, .numericPad, .function]
         if flags.subtracting(passthrough).isEmpty, handleTypingKey(event) { return }
 
         super.keyDown(with: event)
+    }
+
+    /// The number of the function key `event` represents (F5 → 5), or `nil` when it isn't one —
+    /// AppKit reports F-keys as scalars in the contiguous `NSF1FunctionKey…NSF35FunctionKey` range.
+    private static func functionKeyNumber(for event: NSEvent) -> Int? {
+        guard let scalar = event.charactersIgnoringModifiers?.unicodeScalars.first else { return nil }
+        let value = Int(scalar.value)
+        guard value >= NSF1FunctionKey, value <= NSF35FunctionKey else { return nil }
+        return value - NSF1FunctionKey + 1
     }
 
     /// Cmd + arrow: enter directory / go up, mirroring Finder's Cmd+Down / Cmd+Up.
