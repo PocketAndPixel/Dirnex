@@ -11,6 +11,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var browserWindowController: BrowserWindowController?
     private let commandPalette = CommandPaletteController()
 
+    /// The browser window an AppleScript verb acts on: the key window's controller when it is a
+    /// browser, otherwise the one built at launch. The scripting command handlers
+    /// (`ScriptingCommands.swift`) reach the active panel through here rather than the palette's
+    /// responder chain, since an Apple event arrives with no key window guaranteed.
+    var activeBrowserWindowController: BrowserWindowController? {
+        (NSApp.keyWindow?.windowController as? BrowserWindowController) ?? browserWindowController
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
         NSApp.mainMenu = MainMenuBuilder.build()

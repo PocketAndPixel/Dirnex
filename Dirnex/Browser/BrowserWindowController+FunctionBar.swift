@@ -21,14 +21,13 @@ extension BrowserWindowController {
     }
 
     /// Run a function-bar button's command against the active pane. A bottom-bar click lands
-    /// outside both panes and drops the pane's first-responder status, so first re-focus the active
-    /// pane — which also matches Total Commander, where a function-button click acts on the active
-    /// pane and leaves focus there — then dispatch the command to nil, exactly like the menu item,
-    /// now that the pane is back in the responder chain.
+    /// outside both panes and drops the pane's first-responder status, so `runCommand(id:)`
+    /// re-focuses the active pane — which also matches Total Commander, where a function-button
+    /// click acts on the active pane and leaves focus there — then dispatches the command, exactly
+    /// like the menu item and the AppleScript `run operation` verb, now that the pane is back in the
+    /// responder chain.
     private func runFunctionBarSlot(_ slot: FunctionBarSlot) {
-        guard let selector = CommandBinding.selector(for: slot.commandID) else { return }
-        focusedPanel.focusTable()
-        NSApp.sendAction(selector, to: nil, from: nil)
+        runCommand(id: slot.commandID)
     }
 
     @objc private func functionBarStateChanged() {

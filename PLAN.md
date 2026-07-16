@@ -919,7 +919,7 @@ remain, all deferrable to M6-ish polish.
       pass 7); open in iTerm/Terminal/WezTerm as alternative
 - [x] Size visualization mode: toggle panel to ncdu-style bars, computed async, cached
 - [x] Share sheet, "Open With" submenu, Services integration
-- [ ] Automation: AppleScript/Shortcuts verbs (reveal, copy, run-op); user actions —
+- [x] Automation: AppleScript/Shortcuts verbs (reveal, copy, run-op); user actions —
       shell scripts receiving selection as argv/env, surfaced in palette and F-key bar
 - [ ] iCloud/provider sync-status column (NSFileManager ubiquity attrs where available)
 
@@ -2072,6 +2072,72 @@ the limit). Verified live: the bar sits flush right of the full-height sidebar, 
 sidebar, the F3 button still opened Quick Look (dispatch survives the reparent — `focusedPanel.focusTable()`
 + nil-target dispatch is independent of where the bar lives). One app test dropped (the leading-separator
 invariant) → **55 app**; 740 core green, lint + format clean.
+
+Progress (2026-07-17, M6 pass 15 — the AppleScript verbs; **the automation box closes `[x]`, VERIFIED
+LIVE**): the last piece the automation item named — an AppleScript scripting surface — landed, so the
+whole item (user scripts + palette + F-key bar from passes 12–14, now the verbs) is `[x]`. I chose
+**AppleScript/`sdef`** over the App Intents/Shortcuts alternative the item also offers, for one decisive
+reason: it is driveable and observable straight from `osascript`, so every verb was verified end-to-end
+from the shell (App Intents would need a Shortcut authored in the Shortcuts app first). Core-first as
+always: one new tested core file, then the `sdef` + Info.plist + handlers.
+- **`DirnexCore/Services/Automation.swift`** (pure, tested) — three pieces the handlers lean on, so the
+  Apple-event glue stays dumb. **`AutomationVerb`** (`.reveal`/`.copySelection`/`.runOperation`, each
+  with its AppleScript `commandName`) is the one place the verb names live, referenced by the `sdef`,
+  the tests, and error strings. **`AutomationReveal.target(forPOSIXPath:)`** turns a script's POSIX path
+  into the `(container, item)` a panel navigates to — Finder semantics (a folder is selected *in its
+  parent*, not entered), root has no item, a relative/empty path yields `nil`; `VFSPath` normalizes the
+  slashes. **`AutomationOperation.resolve`** maps a free-text operation onto the flat command-id space:
+  exact id, then menu title (case- and trailing-`…`-insensitive, so `rename` hits `file.rename`), then a
+  user script by name or `userScript.<name>` id — **built-ins win over a like-named user script** (a
+  test pins it). +13 core → **753**.
+- **`Dirnex/Dirnex.sdef`** — a "Dirnex Suite" with `reveal` (text direct-param), `copy selection`, and
+  `run operation` (text direct-param), each mapped to an `NSScriptCommand` subclass via `<cocoa class>`.
+  Command names avoid AppleScript's `copy` language keyword (hence `copy selection`, not `copy`).
+- **Info.plist via a merge, not a rewrite** — the project is `GENERATE_INFOPLIST_FILE = YES`, which has
+  no `INFOPLIST_KEY_*` for the two keys AppleScript needs (`NSAppleScriptEnabled`,
+  `OSAScriptingDefinition`). THE build call: add a **partial** `Dirnex/Info.plist` holding only those two
+  keys and point `INFOPLIST_FILE` at it — modern Xcode **merges** it over the generated plist rather than
+  replacing it (verified in the built bundle: both keys present *and* `CFBundleName` etc. still
+  generated). The `.sdef` rides into `Contents/Resources/` automatically because `Dirnex/` is a
+  file-system-synchronized group — no explicit resource reference needed.
+- **`Dirnex/Scripting/ScriptingCommands.swift`** — the three `@objc(Dirnex…ScriptCommand)` subclasses
+  (the `@objc` names are exactly the `sdef`'s `<cocoa class>` strings). Each decodes its direct
+  parameter, then — since Apple events arrive on the main thread but `performDefaultImplementation` is
+  nonisolated — does the UI work inside `MainActor.assumeIsolated`. **GOTCHA: `assumeIsolated`'s result
+  must be `Sendable`, and `Any?` is not** — so the isolated closure returns a `Bool`/`Bool?` and the
+  `Any?`/scriptError is built outside it. Failures set `scriptErrorNumber`/`scriptErrorString` so a
+  script sees a real AppleScript `error` (proven live: an unknown op raised
+  `"…" is not a known Dirnex operation. (-1728)`).
+- **`Dirnex/Browser/BrowserWindowController+Scripting.swift`** — where a decoded verb meets the active
+  pane. `runCommand(id:)` is now the **single dispatch path** shared by `run operation`/`copy selection`
+  *and* the F-key bar (`runFunctionBarSlot` delegates to it), and it routes a `userScript.*` id to the
+  script runner exactly as the ⌘K palette does — so bar, palette, and AppleScript can't drift.
+- **THE two live-caught dispatch bugs (and the real fix):** first cut used `NSApp.sendAction(to: nil)`
+  like the F-key bar. From a script it returned `false` and did nothing, because **an Apple event
+  arrives while Dirnex is a *background* app — there is no key window, and `sendAction(to: nil)` starts
+  at the key window's first responder.** Adding `NSApp.activate` + `makeKeyAndOrderFront` did **not**
+  fix it: key-window status is granted **asynchronously**, so within the same synchronous handler there
+  is *still* no key window. The fix: dispatch with **`window.firstResponder.tryToPerform(_:with:)`**,
+  walking the active pane's *own* responder chain (table → pane → window → window controller), which
+  doesn't depend on key status; `NSApp.sendAction` stays only as a fallback for the app-level commands
+  (Settings/Quit) that sit above the window chain. `reveal` never had the bug — it calls `navigate`
+  directly, not through the responder chain.
+- **`DirnexTests/ScriptingCommandsTests.swift`** — pins the fragile Swift↔`sdef` string bridge: each
+  `@objc` class resolves and is an `NSScriptCommand`; every `sdef` `<cocoa class>` resolves to one;
+  the `sdef`'s command names are exactly the `AutomationVerb` set; and the bundle's Info.plist carries
+  the two scripting keys pointing at `Dirnex.sdef`. +5 app → **60 app**.
+- `swift test` (753) + app `xcodebuild test` (60) green, swiftformat + swiftlint-strict clean. **VERIFIED
+  LIVE** (fresh DerivedData build, launched from Terminal, `ps`-checked): `osascript … reveal
+  "/…/left/hello.txt"` returned `true` and the active pane navigated to `left/` with the cursor on
+  `hello.txt`; with Dirnex **backgrounded behind Finder**, `copy selection` returned `true`, copied
+  `hello.txt` left→right, and brought Dirnex forward (proving the `tryToPerform` fix); `run operation
+  "go.parent"` (id) walked the pane up and `"Show Hidden Files"` (title) toggled hidden; an unknown op
+  raised the AppleScript error above. The **F5 button still copies** after being rerouted through the
+  shared `runCommand` (no regression). **NEXT (closes M6):** the iCloud/provider sync-status column
+  (`NSFileManager` ubiquity attrs / `NSMetadataQuery` for download state). Optional, not required by the
+  box: an **App Intents / Shortcuts** surface layered on the same `Automation` core, and a user script's
+  F-key binding (the bar + key handler already accept any command id — a UI field on the organizer + one
+  `UserScript` field).
 
 ### M7 — Release readiness (M)
 

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Partial Info.plist merged over the auto-generated one (GENERATE_INFOPLIST_FILE stays YES; this
+  file is named by INFOPLIST_FILE). It carries only the two keys that make Dirnex an AppleScript
+  target (PLAN.md §M6 automation): scripting enabled, and where its terminology lives. Everything
+  else — bundle name, version, principal class — is still generated from the build settings.
+-->
+<plist version="1.0">
+<dict>
+    <key>NSAppleScriptEnabled</key>
+    <true/>
+    <key>OSAScriptingDefinition</key>
+    <string>Dirnex.sdef</string>
+</dict>
+</plist>
