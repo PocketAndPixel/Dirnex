@@ -64,10 +64,10 @@ final class FunctionBarButton: NSButton {
             NSColor.labelColor.withAlphaComponent(alpha).setFill()
             bounds.fill()
         }
-        // A hairline `|` between adjacent cells, inset from the top and bottom edges.
+        // A `|` between adjacent cells, inset only slightly from the top and bottom edges.
         if showsTrailingSeparator {
             NSColor.separatorColor.setFill()
-            NSRect(x: bounds.maxX - 1, y: 5, width: 1, height: bounds.height - 10).fill()
+            NSRect(x: bounds.maxX - 1, y: 5, width: 1, height: bounds.height - 12).fill()
         }
         super.draw(dirtyRect)
     }
@@ -159,6 +159,9 @@ final class FunctionBarView: NSView {
             button.target = self
             button.action = #selector(runSlot(_:))
             stack.addArrangedSubview(button)
+            // Stretch each cell to the bar's full height — the stack centres arranged views at
+            // their intrinsic height otherwise, leaving a gap above and below.
+            button.heightAnchor.constraint(equalTo: stack.heightAnchor).isActive = true
         }
     }
 
