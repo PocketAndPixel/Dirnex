@@ -24,6 +24,7 @@ final class UserScriptsOrganizerController: NSViewController {
 
     private let nameField = NSTextField()
     private let runModePopUp = NSPopUpButton()
+    private let functionKeyPopUp = NSPopUpButton()
     private let keywordsField = NSTextField()
     private let commandTextView = NSTextView()
     private let commandScrollView = NSScrollView()
@@ -105,6 +106,10 @@ final class UserScriptsOrganizerController: NSViewController {
         runModePopUp.target = self
         runModePopUp.action = #selector(runModeChanged(_:))
 
+        functionKeyPopUp.translatesAutoresizingMaskIntoConstraints = false
+        functionKeyPopUp.target = self
+        functionKeyPopUp.action = #selector(functionKeyChanged(_:))
+
         keywordsField.translatesAutoresizingMaskIntoConstraints = false
         keywordsField.delegate = self
         keywordsField.placeholderString = "Palette keywords (comma-separated)"
@@ -119,12 +124,14 @@ final class UserScriptsOrganizerController: NSViewController {
         detailStack.addArrangedSubview(nameField)
         detailStack.addArrangedSubview(fieldLabel("When run"))
         detailStack.addArrangedSubview(runModePopUp)
+        detailStack.addArrangedSubview(fieldLabel("Function key"))
+        detailStack.addArrangedSubview(functionKeyPopUp)
         detailStack.addArrangedSubview(fieldLabel("Keywords"))
         detailStack.addArrangedSubview(keywordsField)
         detailStack.addArrangedSubview(fieldLabel("Command"))
         detailStack.addArrangedSubview(commandScrollView)
         detailStack.addArrangedSubview(helpLabel())
-        for control in [nameField, runModePopUp, keywordsField, commandScrollView] {
+        for control in [nameField, runModePopUp, functionKeyPopUp, keywordsField, commandScrollView] {
             control.widthAnchor.constraint(equalTo: detailStack.widthAnchor).isActive = true
         }
         commandScrollView.setContentHuggingPriority(.defaultLow, for: .vertical)
@@ -218,6 +225,17 @@ final class UserScriptsOrganizerController: NSViewController {
         persist()
     }
 
+    /// Commit the function-key popup. `save` steals the key from any script already holding it, so
+    /// the newest assignment wins; the bar rebuilds off the store's change notification.
+    @objc private func functionKeyChanged(_ sender: Any?) {
+        guard let name = editingName, var script = scripts.script(named: name) else { return }
+        script.functionKey = functionKeyPopUp.selectedItem?.representedObject as? Int
+        scripts.save(script)
+        persist()
+        // A steal silently unbound another script — reload so its popup is right when selected.
+        loadFunctionKeys(selecting: script.functionKey)
+    }
+
     @objc private func done(_ sender: Any?) {
         // Flush any in-progress field edit (Done can be clicked while a field still has focus).
         view.window?.makeFirstResponder(nil)
@@ -278,6 +296,7 @@ final class UserScriptsOrganizerController: NSViewController {
             nameField.stringValue = ""
             keywordsField.stringValue = ""
             commandTextView.string = ""
+            loadFunctionKeys(selecting: nil)
             removeButton.isEnabled = false
             return
         }
@@ -288,22 +307,8 @@ final class UserScriptsOrganizerController: NSViewController {
         keywordsField.stringValue = script.keywords.joined(separator: ", ")
         commandTextView.string = script.command
         selectRunMode(script.runMode)
+        loadFunctionKeys(selecting: script.functionKey)
         removeButton.isEnabled = true
-    }
-
-    private func setDetailEnabled(_ enabled: Bool) {
-        nameField.isEnabled = enabled
-        runModePopUp.isEnabled = enabled
-        keywordsField.isEnabled = enabled
-        commandTextView.isEditable = enabled
-        commandTextView.isSelectable = enabled
-    }
-
-    private func selectRunMode(_ mode: UserScriptRunMode) {
-        let index = runModePopUp.itemArray.firstIndex {
-            $0.representedObject as? UserScriptRunMode == mode
-        }
-        if let index { runModePopUp.selectItem(at: index) }
     }
 }
 
@@ -315,6 +320,52 @@ final class UserScriptsOrganizerController: NSViewController {
 private extension UserScriptsOrganizerController {
     func persist() {
         UserScriptStore.save(scripts)
+    }
+
+    func setDetailEnabled(_ enabled: Bool) {
+        nameField.isEnabled = enabled
+        runModePopUp.isEnabled = enabled
+        functionKeyPopUp.isEnabled = enabled
+        keywordsField.isEnabled = enabled
+        commandTextView.isEditable = enabled
+        commandTextView.isSelectable = enabled
+    }
+
+    func selectRunMode(_ mode: UserScriptRunMode) {
+        let index = runModePopUp.itemArray.firstIndex {
+            $0.representedObject as? UserScriptRunMode == mode
+        }
+        if let index { runModePopUp.selectItem(at: index) }
+    }
+
+    /// Rebuild the function-key popup and select `key`.
+    ///
+    /// Only keys nothing else claims are offered: a key carrying a menu equivalent is dispatched by
+    /// AppKit *before* the pane's key handler runs, so a script bound to one would run from its bar
+    /// button and do nothing from the key itself — offering it would be offering a broken binding.
+    /// The list is derived from the user's live shortcut bindings, so rebinding a command frees or
+    /// claims a key here too.
+    ///
+    /// A script already holding a key that has *since* become reserved keeps it, shown as
+    /// unavailable rather than silently reading "None" — the popup would otherwise both lie about
+    /// the script and discard the binding on the next edit.
+    func loadFunctionKeys(selecting key: Int?) {
+        let assignable = FunctionBar.assignableFunctionKeys(
+            bindings: KeyBindingStore.shared.bindings
+        )
+        functionKeyPopUp.removeAllItems()
+        functionKeyPopUp.addItem(withTitle: "None")
+        functionKeyPopUp.lastItem?.representedObject = nil
+        for number in assignable {
+            functionKeyPopUp.addItem(withTitle: "F\(number)")
+            functionKeyPopUp.lastItem?.representedObject = number
+        }
+        if let key, !assignable.contains(key) {
+            functionKeyPopUp.addItem(withTitle: "F\(key) (unavailable)")
+            functionKeyPopUp.lastItem?.representedObject = key
+        }
+        let index = functionKeyPopUp.itemArray.firstIndex { $0.representedObject as? Int == key }
+        functionKeyPopUp.selectItem(at: index ?? 0)
     }
 
     func parseKeywords(_ text: String) -> [String] {

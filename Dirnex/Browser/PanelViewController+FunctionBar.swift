@@ -13,13 +13,30 @@ extension PanelViewController {
     }
 
     /// A bare function key reached this pane's table unclaimed by a menu key-equivalent. Look it up
-    /// in the function bar and dispatch its command down the responder chain, exactly as the
-    /// button (and the menu item) would — so F3 "View" opens Quick Look on the active pane even
-    /// though Quick Look's own shortcut is ⌘Y. Returns `false` (the press falls through) when no
-    /// slot claims the key.
+    /// in the function bar and run its command against this pane, exactly as the button (and the
+    /// menu item) would — so F3 "View" opens Quick Look on the active pane even though Quick Look's
+    /// own shortcut is ⌘Y. Returns `false` (the press falls through) when no slot claims the key.
+    ///
+    /// Only keys with *no* menu equivalent arrive here — AppKit dispatches an equivalent before
+    /// `keyDown` — which is exactly the set `FunctionBar` lets a user script bind, so a script's
+    /// key reaches this method and nothing else can shadow it.
     func fileTable(_ tableView: FileTableView, functionKey number: Int) -> Bool {
-        guard let slot = FunctionBar.slot(forFunctionKey: number),
-              let selector = CommandBinding.selector(for: slot.commandID) else { return false }
+        let scripts = UserScriptStore.load()
+        let slots = FunctionBar.slots(
+            userScripts: scripts.scripts,
+            bindings: KeyBindingStore.shared.bindings
+        )
+        guard let slot = FunctionBar.slot(forFunctionKey: number, in: slots) else { return false }
+        // A user script has no AppKit selector to send; resolve it and run it here. This pane is
+        // the first responder (the press came from its table), so it needs none of the focus
+        // restoration `BrowserWindowController.runCommand(id:)` does for a click or an Apple event
+        // — both paths converge on `runScript`, which is where the one behaviour lives.
+        if let name = UserScript.name(fromCommandID: slot.commandID) {
+            guard let script = scripts.script(named: name) else { return false }
+            runScript(script)
+            return true
+        }
+        guard let selector = CommandBinding.selector(for: slot.commandID) else { return false }
         return NSApp.sendAction(selector, to: nil, from: tableView)
     }
 }

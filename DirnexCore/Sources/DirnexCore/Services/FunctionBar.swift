@@ -51,10 +51,93 @@ public enum FunctionBar {
         FunctionBarSlot(functionKey: 8, label: "Delete", commandID: "file.trash")
     ]
 
-    /// The slot bound to function key `number`, or `nil` when nothing is — the pane's key
-    /// handler uses this to turn an unhandled F-key press into its command. Returns `nil` for an
-    /// unmapped key (e.g. F4) so the press falls through untouched.
-    public static func slot(forFunctionKey number: Int) -> FunctionBarSlot? {
-        defaultSlots.first { $0.functionKey == number }
+    /// The slot bound to function key `number` within `slots`, or `nil` when nothing is — the
+    /// pane's key handler uses this to turn an unhandled F-key press into its command. Returns
+    /// `nil` for an unmapped key (e.g. F4) so the press falls through untouched.
+    ///
+    /// `slots` is explicit rather than defaulting to `defaultSlots` on purpose: the caller that
+    /// forgot to pass the merged bar would silently never fire a user script's key, which is a
+    /// bug that looks exactly like "the feature doesn't work".
+    public static func slot(forFunctionKey number: Int, in slots: [FunctionBarSlot]) -> FunctionBarSlot? {
+        slots.first { $0.functionKey == number }
+    }
+
+    // MARK: - User-script bindings
+
+    /// The keys an editor may offer, before anything is subtracted — the row of a normal keyboard.
+    public static let functionKeyRange = 1...12
+
+    /// Keys macOS consumes itself, before the frontmost app is ever asked. Bare **F11 is Show
+    /// Desktop** (`com.apple.symbolichotkeys` id 36 — verified enabled with a bare `fn` mask on a
+    /// stock system), so a script bound to it would run from its button and do nothing from the
+    /// key. Every other F-key system hotkey (`⌃F1`–`⌃F8` keyboard navigation, `⌥⌘F5`
+    /// accessibility) needs a modifier and so leaves the bare key alone.
+    ///
+    /// This is a *default*, not a reading of the live system — a user who turned Show Desktop off
+    /// loses F11 for nothing, which is a key, against a silent no-op for everyone who didn't.
+    public static let systemReservedFunctionKeys: Set<Int> = [11]
+
+    /// The keys a user script must not take, under `bindings`.
+    ///
+    /// **Derived, never hard-coded**, from the two ways a key can already be spoken for:
+    /// 1. A command whose effective shortcut *is* that bare F-key. This is the load-bearing one —
+    ///    a menu key-equivalent is dispatched by AppKit **before** `keyDown` reaches the pane, so
+    ///    a script on such a key would fire from its button and never from the key itself. The set
+    ///    moves with the user: the Total Commander preset rebinds `view.quickLook` to bare F3 and
+    ///    `file.rename` off bare F2, which is exactly why this reads `bindings` rather than the
+    ///    catalog's defaults.
+    /// 2. A key the built-in bar already prints, so a script can't quietly displace Copy or View.
+    ///
+    /// A modified shortcut (`⇧F2`, `⌥F5`) does *not* reserve the bare key — it isn't the same
+    /// key-equivalent, and AppKit will pass the unmodified press through.
+    public static func reservedFunctionKeys(bindings: KeyBindings = KeyBindings()) -> Set<Int> {
+        var reserved = Set(defaultSlots.map(\.functionKey))
+        for command in CommandCatalog.all {
+            guard let shortcut = bindings.shortcut(for: command.id),
+                  let number = bareFunctionKey(shortcut) else { continue }
+            reserved.insert(number)
+        }
+        return reserved
+    }
+
+    /// The keys a script can actually be bound to, in ascending order — what an editor offers.
+    /// On a stock build: F1, F4, F9, F10 and F12.
+    public static func assignableFunctionKeys(bindings: KeyBindings = KeyBindings()) -> [Int] {
+        let reserved = reservedFunctionKeys(bindings: bindings)
+        return functionKeyRange.filter {
+            !reserved.contains($0) && !systemReservedFunctionKeys.contains($0)
+        }
+    }
+
+    /// The whole bar: the built-in slots plus a slot for every user script holding a usable key,
+    /// in key order, so the buttons read left to right as the keyboard does.
+    ///
+    /// Scripts whose key is unassignable *right now* are skipped rather than dropped — see
+    /// `UserScript.functionKey` for why the store is allowed to hold one. Two scripts on one key
+    /// can't normally happen (`UserScripts` upholds that), so the de-duplication here is only for
+    /// a hand-edited store; first in user order wins, matching every other tie-break.
+    public static func slots(
+        userScripts: [UserScript],
+        bindings: KeyBindings = KeyBindings()
+    ) -> [FunctionBarSlot] {
+        let assignable = Set(assignableFunctionKeys(bindings: bindings))
+        var claimed = Set<Int>()
+        var result = defaultSlots
+        for script in userScripts {
+            guard let key = script.functionKey, assignable.contains(key),
+                  claimed.insert(key).inserted else { continue }
+            result.append(
+                FunctionBarSlot(functionKey: key, label: script.name, commandID: script.commandID)
+            )
+        }
+        return result.sorted { $0.functionKey < $1.functionKey }
+    }
+
+    /// The number in a bare-function-key shortcut ("F5" + exactly `fn` → 5), or `nil` for any
+    /// other shortcut — a letter key, or a function key carrying a real modifier.
+    private static func bareFunctionKey(_ shortcut: CommandShortcut) -> Int? {
+        guard shortcut.modifiers == .function, shortcut.key.hasPrefix("F"),
+              let number = Int(shortcut.key.dropFirst()) else { return nil }
+        return number
     }
 }

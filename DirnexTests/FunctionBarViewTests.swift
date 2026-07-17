@@ -60,6 +60,57 @@ struct FunctionBarViewTests {
         #expect(reported?.commandID == "file.copy")
     }
 
+    // MARK: - User-script slots
+
+    /// The counterpart to `slotsHaveSelectors`, and the reason that test iterates the *default*
+    /// slots rather than the whole bar: a user script has no AppKit selector by design — it is
+    /// dispatched by recognizing its command-id prefix and running the script. A caller that asks
+    /// for a selector first would find `nil` and treat a perfectly good binding as a dead key.
+    @Test("a user-script slot has no wired selector and is routed by its id prefix instead")
+    func userScriptSlotsRouteByPrefix() {
+        let script = UserScript(name: "To PNG", command: "sips", functionKey: 9)
+        let slots = FunctionBar.slots(userScripts: [script])
+        let slot = FunctionBar.slot(forFunctionKey: 9, in: slots)
+        #expect(slot?.commandID == script.commandID)
+        #expect(CommandBinding.selector(for: script.commandID) == nil)
+        #expect(UserScript.name(fromCommandID: script.commandID) == "To PNG")
+    }
+
+    @Test("setSlots rebuilds the row, leaving no orphaned buttons behind")
+    func setSlotsRebuildsRow() {
+        // The bar is rebuilt live whenever a script's key changes, so a stale button must not
+        // survive in the view tree — `removeArrangedSubview` alone would leave it drawn.
+        let bar = FunctionBarView(slots: FunctionBar.defaultSlots)
+        let script = UserScript(name: "Tidy", command: "tidy", functionKey: 9)
+        bar.setSlots(FunctionBar.slots(userScripts: [script]))
+
+        let buttons = Self.buttons(in: bar)
+        #expect(buttons.count == FunctionBar.defaultSlots.count + 1)
+        #expect(buttons.last?.slot.commandID == script.commandID)
+        #expect(buttons.last?.slot.label == "Tidy")
+        #expect(bar.subviews.compactMap { $0 as? FunctionBarButton }.isEmpty)
+
+        bar.setSlots(FunctionBar.defaultSlots)
+        #expect(Self.buttons(in: bar).count == FunctionBar.defaultSlots.count)
+        #expect(!Self.buttons(in: bar).contains { $0.slot.commandID == script.commandID })
+    }
+
+    @Test("a rebuilt row's dividers and click reporting still hold for a script slot")
+    func rebuiltRowStaysWired() {
+        let bar = FunctionBarView(slots: FunctionBar.defaultSlots)
+        let script = UserScript(name: "Tidy", command: "tidy", functionKey: 9)
+        bar.setSlots(FunctionBar.slots(userScripts: [script]))
+        var reported: FunctionBarSlot?
+        bar.onRun = { reported = $0 }
+
+        let buttons = Self.buttons(in: bar)
+        for (index, button) in buttons.enumerated() {
+            #expect(button.showsTrailingSeparator == (index < buttons.count - 1))
+        }
+        buttons.last?.performClick(nil)
+        #expect(reported?.commandID == script.commandID)
+    }
+
     /// The bar's buttons, in row order — walked from the view tree so the view keeps its stack
     /// private.
     private static func buttons(in bar: FunctionBarView) -> [FunctionBarButton] {

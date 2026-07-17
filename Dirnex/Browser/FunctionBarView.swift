@@ -99,9 +99,12 @@ final class FunctionBarButton: NSButton {
         return result
     }
 
+    /// "Copy to Other Panel (F5)" — the command's full menu title, which the cell itself is too
+    /// narrow to print. A user script isn't in the catalog and its label already *is* its full
+    /// name, so it falls back to that rather than going tooltip-less.
     private static func tooltip(for slot: FunctionBarSlot) -> String? {
-        guard let command = CommandCatalog.command(for: slot.commandID) else { return nil }
-        return "\(command.title) (\(slot.keyName))"
+        let title = CommandCatalog.command(for: slot.commandID)?.title ?? slot.label
+        return "\(title) (\(slot.keyName))"
     }
 }
 
@@ -153,6 +156,17 @@ final class FunctionBarView: NSView {
             stack.trailingAnchor.constraint(equalTo: trailingAnchor)
         ])
 
+        setSlots(slots)
+    }
+
+    /// Replace the row of cells with `slots`. The bar is not a fixed layout: a user script can be
+    /// bound to a function key (or unbound, or renamed) while windows are open, so the window
+    /// controller re-derives the slots and calls this rather than rebuilding the whole window.
+    func setSlots(_ slots: [FunctionBarSlot]) {
+        for view in stack.arrangedSubviews {
+            stack.removeArrangedSubview(view)
+            view.removeFromSuperview() // removeArrangedSubview alone leaves it drawn as a subview
+        }
         for (index, slot) in slots.enumerated() {
             let button = FunctionBarButton(slot: slot)
             button.showsTrailingSeparator = index < slots.count - 1

@@ -99,4 +99,47 @@ struct UserScriptsTests {
         #expect(sanitized.scripts.count == 1)
         #expect(sanitized.script(named: "D")?.command == "a")
     }
+
+    // MARK: - Function keys
+
+    @Test("saving a script onto a taken function key steals it from the previous holder")
+    func savingStealsFunctionKey() {
+        var scripts = UserScripts(scripts: [
+            UserScript(name: "Old", command: "a", functionKey: 9),
+            script("Other")
+        ])
+        scripts.save(UserScript(name: "New", command: "b", functionKey: 9))
+        #expect(scripts.script(named: "New")?.functionKey == 9)
+        // The dispossessed script keeps everything but the key, and stays palette-runnable.
+        #expect(scripts.script(named: "Old")?.functionKey == nil)
+        #expect(scripts.script(named: "Old")?.command == "a")
+        #expect(scripts.scripts.count == 3)
+    }
+
+    @Test("re-saving a script keeps its own function key")
+    func resavingKeepsOwnKey() {
+        var scripts = UserScripts(scripts: [UserScript(name: "A", command: "a", functionKey: 4)])
+        scripts.save(UserScript(name: "A", command: "edited", functionKey: 4))
+        #expect(scripts.script(named: "A")?.functionKey == 4)
+        #expect(scripts.script(named: "A")?.command == "edited")
+    }
+
+    @Test("a store where two scripts claim one key is repaired, first keeping it")
+    func decodeUnbindsDuplicateKeys() {
+        let scripts = UserScripts(scripts: [
+            UserScript(name: "A", command: "a", functionKey: 9),
+            UserScript(name: "B", command: "b", functionKey: 9)
+        ])
+        #expect(scripts.script(named: "A")?.functionKey == 9)
+        #expect(scripts.script(named: "B")?.functionKey == nil)
+        #expect(scripts.scripts.count == 2) // unbound, not dropped
+    }
+
+    @Test("a store written before F-key bindings existed decodes with no key")
+    func decodesLegacyStoreWithoutFunctionKey() throws {
+        let legacy = #"{"scripts":[{"name":"D","command":"a","runMode":"combined","keywords":[]}]}"#
+        let decoded = try JSONDecoder().decode(UserScripts.self, from: Data(legacy.utf8))
+        #expect(decoded.script(named: "D")?.functionKey == nil)
+        #expect(decoded.script(named: "D")?.command == "a")
+    }
 }

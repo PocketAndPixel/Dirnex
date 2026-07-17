@@ -2279,10 +2279,84 @@ iCloud target offered Red with a red swatch and a checkmark, Zebra in purple; to
 mangled `Red\n1` file and a local one wrote **`Red\n6`** to disk; a file copied out of iCloud drew
 red. All 781 core + 68 app tests green, `swiftlint --strict` clean.
 
+Progress (2026-07-17, M6 pass 18 — **the user-script F-key binding, VERIFIED LIVE**): a script can be
+bound to a function key and runs from both the bar button and the physical key. This was the smallest
+of the three optional leftovers, and pass 14's prediction ("an organizer field + one `UserScript`
+field") was right about the *shape* and wrong about the *hard part*, which turned out to be deciding
+**which keys may be offered at all**.
+
+**The probe came first (the pass-1 `git` / pass-16 iCloud method), and it decided the design.** Two
+independent sources reserve an F-key, and neither is guessable:
+- **A menu key-equivalent is dispatched by AppKit before `keyDown` reaches the pane** — the same fact
+  pass 14 leaned on for "zero double-fire". Read the other way it is a trap: a script bound to F5
+  would run from its **button** and be **dead on the key**, the one asymmetry this feature must not
+  ship. So the reserved set is *derived* from `KeyBindings` + `CommandCatalog`, never hard-coded, and
+  it reads the **user's live bindings** because they move (the Total Commander preset rebinds
+  `view.quickLook` onto bare F3 and `file.rename` off bare F2). A *modified* shortcut (`⇧F2`, `⌥F5`)
+  does **not** reserve the bare key — it is a different equivalent.
+- **macOS eats bare F11 itself.** Probing `com.apple.symbolichotkeys` found id 36 (Show Desktop) bound
+  to keycode 103 with a bare `fn` mask — the WindowServer consumes it before the frontmost app is
+  asked. Every *other* F-key system hotkey needs a real modifier (`⌃F1`–`⌃F8` keyboard navigation
+  = mask 8650752 = fn+⌃; `⌥⌘F5` accessibility), so they leave the bare keys alone. Mission Control is
+  `⌃↑` here, not F3 — which is why F3 works today. F11 is excluded as a **documented default**, not a
+  live read: a user who turned Show Desktop off loses one key, against a silent no-op for everyone
+  who didn't. Net offer: **F1, F4, F9, F10, F12**.
+
+Core (+14 → **801**): `UserScript.functionKey: Int?` (optional, so a pre-existing store decodes via
+the synthesized `decodeIfPresent`; its `paletteCommand` now advertises the key as a real
+`CommandShortcut`) · `UserScripts` upholds one-script-per-key the way it already does one-per-name —
+**`save` steals the key** from a previous holder rather than refusing (refusing strands the user
+re-editing a script they can't see from where they are; the dispossessed script keeps everything else
+and stays palette-runnable), and the de-duplicating `init` repairs a hand-edited store, first holder
+winning · `FunctionBar.reservedFunctionKeys(bindings:)` / `assignableFunctionKeys(bindings:)` /
+`slots(userScripts:bindings:)` merging script slots over the built-ins in key order.
+`slot(forFunctionKey:in:)` **lost its default argument on purpose**: a caller that forgot the merged
+bar would silently never fire a script's key, a bug indistinguishable from "the feature is broken".
+
+**THE call that shapes the store: a script keeps a key that is currently unassignable.** The reserved
+set is user state that moves, so validating at *save* and stripping the key would destroy the binding
+on a preset switch, permanently. The bar filters at the point of building itself instead, so the
+button vanishes and returns with the preset. The organizer shows such a key as **"F4 (unavailable)"**
+rather than lying with "None".
+
+App (+6 → **76**): `FunctionBarView.setSlots` (the bar was build-once-in-`init`, which cannot express
+a binding that changes at runtime; `removeArrangedSubview` alone leaves the old button *drawn*, so it
+is paired with `removeFromSuperview`) · the window controller re-derives the bar on
+`UserScriptStore.didChangeNotification` **and** `KeyBindingStore.didChange` (a rebind can reserve a key
+a script was using) · the pane's key handler routes a `userScript.*` id to `runScript` directly — it
+needs none of `runCommand(id:)`'s focus restoration, because the press *came from* the focused pane,
+and both paths converge on `runScript` · organizer popup + the `type_body_length` gotcha this file
+hits every time (fixed structurally again: helpers into the same-file `private extension`).
+
+**THE live-caught bug: the palette printed no key.** `KeyBindings.shortcut(for:)` resolves an
+un-overridden id **through `CommandCatalog`** — so it answers `nil` for anything not in the registry,
+and a user script's F9 went unadvertised. Fix is deliberately narrow (`CommandPaletteController
+.shortcut(for:)`): a *non-catalog* command's own shortcut is authoritative; a *catalog* command still
+goes through the bindings, because `nil` there can mean the user **deliberately unbound** it and
+falling back to `Command.shortcut` would resurrect the default they just removed. +3 app tests pin
+both halves — the palette had no tests before, and the type system could not have caught this.
+
+LIVE: the organizer's new popup offered exactly **None · F1 · F4 · F9 · F10 · F12** (the derived set,
+on screen); binding F9 made **F9 Proof** appear in the bar *while the sheet was still open* (the
+notification rebuild), cells re-flowing in key order; the **physical F9 key** ran the script —
+`count=2`, cwd = the active pane, `DIRNEX_OTHER_DIR` = the other pane, and `jmeter copy.log` arrived
+as **one argv element despite its space**, the pass-12 security contract holding; the **button** ran
+it against a different 3-file selection (a fresh run, and the click kept the pane's marks — pass 14's
+focus fix); the palette printed "Proof **F9**" after the fix; a second script taking F9 **stole** it,
+the bar flipping to "F9 Second" with no duplicate and Proof's popup reading "None"; the binding
+survived relaunch, and removing the scripts returned the bar to its six built-ins. All 801 core + 76
+app tests green, `swiftlint --strict` and `swiftformat --lint` clean.
+
+Noted in passing, **pre-existing and not touched**: the app logs `NSEventModifierFlagFunction … is
+only supported for system-provided menu items; will not be used` for each F-key menu item. Harmless —
+the dropped `fn` flag leaves those items on the *bare* F-key, which is what the bar already relies on
+and what `reservedFunctionKeys` assumes.
+
 **NEXT: M6 is closed.** Optional leftovers, none blocking: an **App Intents / Shortcuts** surface on
 the `Automation` core, a user script's F-key binding (the bar + key handler already accept any
 command id — an organizer field + one `UserScript` field), and the .gitignore-aware folder sizes from
-pass 1. **M7 (release readiness) is next.**
+pass 1. **M7 (release readiness) is next.** → *The F-key binding is done in pass 18 above; the other
+two remain.*
 
 ### M7 — Release readiness (M)
 

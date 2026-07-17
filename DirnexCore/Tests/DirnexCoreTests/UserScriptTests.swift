@@ -178,4 +178,23 @@ struct UserScriptTests {
         #expect(UserScriptRunMode(rawValue: "perFile") == .perFile)
         #expect(UserScriptRunMode.allCases.count == 2)
     }
+
+    @Test("a bound script advertises its key to the palette; an unbound one has no shortcut")
+    func paletteCommandCarriesFunctionKey() {
+        let bound = UserScript(name: "To PNG", command: "sips", functionKey: 9)
+        #expect(bound.paletteCommand.shortcut == CommandShortcut(key: "F9", modifiers: .function))
+        #expect(bound.paletteCommand.shortcut?.display == "F9")
+        #expect(UserScript(name: "Plain", command: "x").paletteCommand.shortcut == nil)
+    }
+
+    @Test("a function key round-trips through Codable")
+    func functionKeyRoundTrip() throws {
+        let script = UserScript(name: "Tidy", command: "tidy", functionKey: 4)
+        let decoded = try JSONDecoder().decode(
+            UserScript.self,
+            from: try JSONEncoder().encode(script)
+        )
+        #expect(decoded.functionKey == 4)
+        #expect(decoded == script)
+    }
 }

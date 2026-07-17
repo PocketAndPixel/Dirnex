@@ -11,6 +11,7 @@ extension BrowserWindowController {
     /// `functionBarHeight`) exists.
     func installFunctionBar() {
         functionBar.onRun = { [weak self] slot in self?.runFunctionBarSlot(slot) }
+        reloadFunctionBarSlots()
         applyFunctionBarVisibility()
         NotificationCenter.default.addObserver(
             self,
@@ -18,6 +19,31 @@ extension BrowserWindowController {
             name: AppPreferences.showFunctionBarDidChange,
             object: nil
         )
+        // The bar's *contents* move too, not just its visibility: binding a script to F9 (or
+        // renaming it), and rebinding a command onto a function key — which can reserve a key a
+        // script was using — both change what the row should print.
+        for name in [UserScriptStore.didChangeNotification, KeyBindingStore.didChange] {
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(functionBarSlotsChanged),
+                name: name,
+                object: nil
+            )
+        }
+    }
+
+    /// Rebuild the bar: the built-in slots plus every user script holding a key that is free under
+    /// the user's current bindings. The same join the pane's key handler makes, so a button and its
+    /// key can never disagree about what F9 does.
+    func reloadFunctionBarSlots() {
+        functionBar.setSlots(FunctionBar.slots(
+            userScripts: UserScriptStore.load().scripts,
+            bindings: KeyBindingStore.shared.bindings
+        ))
+    }
+
+    @objc private func functionBarSlotsChanged() {
+        reloadFunctionBarSlots()
     }
 
     /// Run a function-bar button's command against the active pane. A bottom-bar click lands

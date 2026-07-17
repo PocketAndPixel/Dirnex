@@ -129,17 +129,30 @@ public struct UserScript: Sendable, Hashable, Identifiable, Codable {
     /// Extra terms the palette matches against beyond the name — synonyms so "image"/"convert"
     /// find a "To WebP" script whose name contains neither.
     public var keywords: [String]
+    /// The function key that runs this script from the F-key bar, or `nil` (the default) for a
+    /// script reachable only from the palette and the Scripts ▸ menu. Only a key that no menu
+    /// item claims can actually fire — see `FunctionBar.assignableFunctionKeys(bindings:)`, which
+    /// is what an editor offers. Stored even when currently unassignable, because the reserved set
+    /// is *user state that moves*: switching to the Total Commander preset rebinds F-keys, and
+    /// stripping the binding here would lose it for good on a switch back. The bar filters at the
+    /// point of building itself instead.
+    ///
+    /// Optional, so a store written before F-key bindings existed decodes with `nil` rather than
+    /// failing (`decodeIfPresent`, via the synthesized `Codable`).
+    public var functionKey: Int?
 
     public init(
         name: String,
         command: String,
         runMode: UserScriptRunMode = .combined,
-        keywords: [String] = []
+        keywords: [String] = [],
+        functionKey: Int? = nil
     ) {
         self.name = name
         self.command = command
         self.runMode = runMode
         self.keywords = keywords
+        self.functionKey = functionKey
     }
 
     public var id: String { name }
@@ -205,14 +218,18 @@ public extension UserScript {
     }
 
     /// A palette `Command` describing this script, so it ranks and renders alongside the built-in
-    /// actions. Grouped under `.file` (it acts on the selected files); it carries no default
-    /// shortcut here (an F-key binding is an app/settings concern layered on later).
+    /// actions. Grouped under `.file` (it acts on the selected files). A script bound to a function
+    /// key advertises it as the command's shortcut, so the palette prints "F9" beside the script
+    /// exactly as it does for a built-in — the binding is the same bare-F-key data a catalog
+    /// command carries, and `KeyBindings` reads shortcuts straight off the catalog, so describing
+    /// it this way is what makes a script's key visible to a user hunting for a free one.
     var paletteCommand: Command {
         Command(
             id: commandID,
             title: name,
             category: .file,
-            keywords: keywords + ["script", "user", "run", "automation"]
+            keywords: keywords + ["script", "user", "run", "automation"],
+            shortcut: functionKey.map { CommandShortcut(key: "F\($0)", modifiers: .function) }
         )
     }
 }

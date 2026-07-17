@@ -13,7 +13,19 @@ public struct UserScripts: Sendable, Equatable, Codable {
         // Collapse duplicate names on the way in (a hand-edited or legacy store), keeping the
         // first occurrence so a name maps to a single script — the same invariant `save` upholds.
         var seen = Set<String>()
-        self.scripts = scripts.filter { seen.insert($0.name).inserted }
+        var claimedKeys = Set<Int>()
+        self.scripts = scripts.filter { seen.insert($0.name).inserted }.map { script in
+            // A function key, like a name, identifies exactly one script: a store where two claim
+            // F9 is repaired the same way, first occurrence wins, so the bar can never grow two
+            // F9 buttons. Unbinding the loser (rather than dropping it) keeps the script itself.
+            guard let key = script.functionKey else { return script }
+            guard claimedKeys.insert(key).inserted else {
+                var unbound = script
+                unbound.functionKey = nil
+                return unbound
+            }
+            return script
+        }
     }
 
     /// Whether a script named `name` exists — drives an editor's replace confirmation.
@@ -35,8 +47,20 @@ public struct UserScripts: Sendable, Equatable, Codable {
 
     /// Save `script`: overwrite an existing one with the same name *in place* (keeping its
     /// position), else append. Returns whether it replaced an existing script.
+    ///
+    /// A function key is **stolen, not refused**: if another script already holds `script`'s key,
+    /// that one is unbound so the newest assignment wins. Refusing instead would leave a user
+    /// re-editing a second script to free a key they can't see from where they are — the same
+    /// steal-and-move-on macOS itself does when two apps want one shortcut. The dispossessed
+    /// script keeps everything else and stays runnable from the palette.
     @discardableResult
     public mutating func save(_ script: UserScript) -> Bool {
+        if let key = script.functionKey {
+            for index in scripts.indices
+                where scripts[index].functionKey == key && scripts[index].name != script.name {
+                scripts[index].functionKey = nil
+            }
+        }
         if let index = scripts.firstIndex(where: { $0.name == script.name }) {
             scripts[index] = script
             return true

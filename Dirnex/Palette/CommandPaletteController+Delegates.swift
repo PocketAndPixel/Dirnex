@@ -21,7 +21,7 @@ extension CommandPaletteController: NSTableViewDataSource, NSTableViewDelegate {
         let match = matches[row]
         cell.configure(
             with: match,
-            shortcut: keyBindings.shortcut(for: match.command.id),
+            shortcut: shortcut(for: match.command),
             selected: row == selectedIndex
         )
         return cell
@@ -45,7 +45,7 @@ extension CommandPaletteController: NSTableViewDataSource, NSTableViewDelegate {
             let match = matches[row]
             cell.configure(
                 with: match,
-                shortcut: keyBindings.shortcut(for: match.command.id),
+                shortcut: shortcut(for: match.command),
                 selected: row == selectedIndex
             )
         }

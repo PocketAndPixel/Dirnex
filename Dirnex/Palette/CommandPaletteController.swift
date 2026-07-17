@@ -122,6 +122,21 @@ final class CommandPaletteController: NSObject {
         tableView.scrollRowToVisible(target)
     }
 
+    /// The shortcut to print beside `command` in its row.
+    ///
+    /// `KeyBindings` models the *registry* only: it resolves an id with no override by looking it up
+    /// in `CommandCatalog`, so asking it about a command that isn't in the catalog — a user script,
+    /// whose F-key binding lives on the script itself — always answers `nil`, and the key would go
+    /// unadvertised. Those commands carry their own shortcut, and it is authoritative.
+    ///
+    /// The catalog check is what keeps this narrow: a *catalog* command must still go through the
+    /// bindings, because `nil` there can mean the user deliberately unbound it, and falling back to
+    /// `Command.shortcut` would print the default they just removed.
+    func shortcut(for command: Command) -> CommandShortcut? {
+        guard CommandCatalog.command(for: command.id) != nil else { return command.shortcut }
+        return keyBindings.shortcut(for: command.id)
+    }
+
     // MARK: - Building
 
     private func makePanel() -> NSPanel {
