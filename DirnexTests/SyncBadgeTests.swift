@@ -70,6 +70,45 @@ struct SyncBadgeTests {
         #expect(cell.syncBadge?.intrinsicContentSize.width == 0)
     }
 
+    /// The cloud hangs past the cell on purpose, into the table's intercell gutter: its ink is 16pt
+    /// against a dot's 9pt, so aligning the two *edges* — which the obvious layout does — leaves the
+    /// cloud's centre 7pt left of the dot's, and the eye reads the centre. Measured against the live
+    /// table, this lands both on the same spot, under the header's sort arrow.
+    @Test("the badge hangs into the gutter so its centre matches a dot's")
+    func badgeOverhangsTheCellToCentreOnTheDotSlot() throws {
+        let cell = FileCellView(showsImage: true, identifier: .init("name"))
+        cell.frame = NSRect(x: 0, y: 0, width: 293.5, height: 22)
+        cell.syncStatus = .notDownloaded
+        cell.layoutSubtreeIfNeeded()
+
+        let badge = try #require(cell.syncBadge)
+        #expect(badge.frame.maxX > cell.bounds.maxX)
+    }
+
+    /// The regression this nearly shipped with: the dots used to hang off the badge's leading edge,
+    /// so giving the badge its overhang dragged them out into the gutter too — 5pt off the position
+    /// they were measured into against Finder. They hold their own place now, and yield only to a
+    /// badge that is actually there.
+    @Test("the dots keep their flush place, and give way only for a real badge")
+    func dotsHoldTheirPlaceUnlessTheBadgeNeedsRoom() throws {
+        let cell = FileCellView(showsImage: true, identifier: .init("name"))
+        cell.frame = NSRect(x: 0, y: 0, width: 293.5, height: 22)
+        cell.tags = [FinderTag(name: "Red", color: .red)]
+        cell.layoutSubtreeIfNeeded()
+
+        // Within a point: Auto Layout rounds to the backing store, and the regression this guards
+        // against moved them by 5.
+        let dots = try #require(cell.tagDots)
+        #expect(abs(dots.frame.maxX - (cell.bounds.maxX - 1)) < 1)
+
+        // A tagged *and* not-downloaded file: Finder draws the dots first and the cloud outermost,
+        // so the dots step aside rather than sitting under it.
+        cell.syncStatus = .notDownloaded
+        cell.layoutSubtreeIfNeeded()
+        let badge = try #require(cell.syncBadge)
+        #expect(dots.frame.maxX <= badge.frame.minX + 0.01)
+    }
+
     @Test("the View-menu toggle is wired to a real selector")
     func toggleCommandIsWired() {
         #expect(CommandCatalog.command(for: "view.toggleSyncStatus") != nil)

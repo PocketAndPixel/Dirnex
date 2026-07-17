@@ -50,6 +50,10 @@ final class FileCellView: NSTableCellView {
         }
     }
 
+    /// How far the sync badge hangs past the name cell's trailing edge, into the table's intercell
+    /// gutter — see the constraint below for why it is positive at all.
+    private static let badgeOverhang: CGFloat = 4
+
     init(showsImage: Bool, identifier: NSUserInterfaceItemIdentifier) {
         super.init(frame: .zero)
         self.identifier = identifier
@@ -98,6 +102,13 @@ final class FileCellView: NSTableCellView {
             accessory.setContentCompressionResistancePriority(.required, for: .horizontal)
             accessory.setContentHuggingPriority(.required, for: .horizontal)
         }
+        // The dots keep their own measured place against the cell — they must NOT ride on the
+        // badge's edge, or the badge's overhang below would drag them out into the gutter with it,
+        // 5pt off the Finder position they were measured into. So: sit flush (high, not required),
+        // and give way only when a badge is actually there to make room for (required).
+        let dotsFlush = dots.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -1)
+        dotsFlush.priority = .defaultHigh
+
         NSLayoutConstraint.activate([
             image.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 3),
             image.centerYAnchor.constraint(equalTo: centerYAnchor),
@@ -106,12 +117,18 @@ final class FileCellView: NSTableCellView {
             text.leadingAnchor.constraint(equalTo: image.trailingAnchor, constant: 5),
             text.centerYAnchor.constraint(equalTo: centerYAnchor),
             text.trailingAnchor.constraint(lessThanOrEqualTo: dots.leadingAnchor, constant: -6),
-            dots.trailingAnchor.constraint(equalTo: badge.leadingAnchor),
+            dotsFlush,
+            dots.trailingAnchor.constraint(lessThanOrEqualTo: badge.leadingAnchor),
             dots.centerYAnchor.constraint(equalTo: centerYAnchor),
-            // 1, not the 4 this used to be, because the cloud is not flush with the badge's edge:
-            // every one of these symbols carries ~1.5pt of transparent margin of its own, so the gap
-            // you actually see is ~2.5pt — half the ~5pt it was, which is what was asked for.
-            badge.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -1),
+            // Positive — the badge deliberately hangs past the cell, into the table's own 17pt
+            // intercell gutter. Right-aligning the cloud flush like the dots *looks* wrong even
+            // though it is the same alignment: a dot is 9pt and the cloud's ink is 16pt, so flush
+            // right puts the cloud's centre ~7pt left of where a dot's lands, and the eye reads the
+            // centre. Measured against the live table: this puts the cloud's centre on the dot's
+            // (x=296) and under the header's sort arrow (x=298), where the dots already sit. The
+            // gutter is empty space between cells — nothing else draws there, and the column's
+            // padding is untouched.
+            badge.trailingAnchor.constraint(equalTo: trailingAnchor, constant: Self.badgeOverhang),
             badge.centerYAnchor.constraint(equalTo: centerYAnchor)
         ])
     }
