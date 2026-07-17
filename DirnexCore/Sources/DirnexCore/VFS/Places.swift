@@ -77,6 +77,15 @@ public struct MountedVolume: Sendable, Hashable, Identifiable {
     /// `isRemovable`, only `isInternal == false`, so that alone must qualify. Never the root
     /// filesystem (you can't eject the disk you booted from).
     public var canEject: Bool { !isRoot && (isEjectable || isRemovable || !isInternal) }
+
+    /// The SF Symbol standing in for this volume in the sidebar, mirroring Finder's Locations
+    /// section: built-in storage reads as an internal drive, everything else — USB sticks,
+    /// external SSDs, mounted disk images — as an external one. Deliberately only that split:
+    /// the mount-table flags can't tell an optical disc from a read-only disk image (both are
+    /// ejectable + read-only + non-removable), so guessing a third glyph would misfire.
+    public var symbolName: String {
+        isRoot || isInternal ? "internaldrive" : "externaldrive"
+    }
 }
 
 /// Enumerates the two kinds of sidebar destinations — standard user folders and

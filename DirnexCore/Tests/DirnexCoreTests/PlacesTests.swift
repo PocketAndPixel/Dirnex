@@ -94,4 +94,27 @@ struct PlacesTests {
         #expect(usbStick.canEject)
         #expect(externalDrive.canEject)
     }
+
+    @Test("volume symbol splits built-in storage from everything external")
+    func symbolFollowsInternalFlag() {
+        func volume(isRoot: Bool = false, isInternal: Bool, isRemovable: Bool = false) -> MountedVolume {
+            MountedVolume(
+                name: "V", path: .local("/Volumes/V"), isRoot: isRoot, isRemovable: isRemovable,
+                isEjectable: false, isInternal: isInternal, isReadOnly: false,
+                totalCapacity: nil, availableCapacity: nil
+            )
+        }
+        #expect(volume(isRoot: true, isInternal: true).symbolName == "internaldrive")
+        #expect(volume(isInternal: true).symbolName == "internaldrive")
+        #expect(volume(isInternal: false).symbolName == "externaldrive")
+        #expect(volume(isInternal: false, isRemovable: true).symbolName == "externaldrive")
+    }
+
+    @Test("every mounted volume names a real SF Symbol")
+    func symbolsResolve() {
+        // Guards against a typo'd or renamed symbol shipping a blank sidebar row.
+        for volume in SidebarLocations.volumes() {
+            #expect(["internaldrive", "externaldrive"].contains(volume.symbolName))
+        }
+    }
 }

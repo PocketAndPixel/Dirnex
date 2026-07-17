@@ -383,25 +383,30 @@ extension SidebarViewController: NSTableViewDelegate {
     /// it with the row's text color like the other sidebar glyphs.
     private static func serverIcon(for kind: ServerKind) -> NSImage {
         let symbol = kind == .smb ? "externaldrive.connected.to.line.below" : "network"
-        let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
-        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: "Server")?
-            .withSymbolConfiguration(config)
-        image?.isTemplate = true
-        return image ?? NSImage()
+        return templateSymbol(symbol, pointSize: 14, describedAs: "Server")
     }
 
     /// A magnifying-glass SF Symbol so a saved search reads as a query, not a folder. Template
     /// so the source list tints it with the row's text color like the favorite glyphs.
-    private static let savedSearchIcon: NSImage = {
-        let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
-        let image = NSImage(
-            systemSymbolName: "magnifyingglass",
-            accessibilityDescription: "Saved search"
-        )?
+    private static let savedSearchIcon = templateSymbol(
+        "magnifyingglass",
+        pointSize: 14,
+        describedAs: "Saved search"
+    )
+
+    /// Every sidebar glyph is a template SF Symbol, so the source list tints it with the row's
+    /// text color — and turns it white on the selected row — matching the label beside it.
+    private static func templateSymbol(
+        _ name: String,
+        pointSize: CGFloat,
+        describedAs description: String? = nil
+    ) -> NSImage {
+        let config = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .regular)
+        let image = NSImage(systemSymbolName: name, accessibilityDescription: description)?
             .withSymbolConfiguration(config)
         image?.isTemplate = true
         return image ?? NSImage()
-    }()
+    }
 
     /// A tooltip describing where a saved search runs — the scope folder, or "Everywhere".
     private func savedSearchTooltip(_ search: SavedSearch) -> String {
@@ -411,7 +416,7 @@ extension SidebarViewController: NSTableViewDelegate {
 
     /// Build (or reuse) an item cell. Favorites get a per-kind SF Symbol so Documents,
     /// Downloads, Music, etc. read at a glance instead of all sharing the generic folder
-    /// icon; volumes keep their real Finder drive glyph. A `volume` that can eject also
+    /// icon; volumes get a drive symbol the same way. A `volume` that can eject also
     /// gets the eject button wired.
     private func itemCell(
         name: String,
@@ -423,6 +428,8 @@ extension SidebarViewController: NSTableViewDelegate {
         let icon: NSImage
         if let kind {
             icon = Self.icon(for: kind)
+        } else if let volume {
+            icon = Self.templateSymbol(volume.symbolName, pointSize: 15, describedAs: volume.name)
         } else {
             icon = NSWorkspace.shared.icon(forFile: path.path)
             icon.size = NSSize(width: 18, height: 18)
@@ -434,9 +441,7 @@ extension SidebarViewController: NSTableViewDelegate {
         return cell
     }
 
-    /// A monochrome SF Symbol standing in for each favorite folder. Returned as a template
-    /// image so the source-list cell tints it with the row's text color (and white when the
-    /// row is selected), matching the label.
+    /// A monochrome SF Symbol standing in for each favorite folder.
     private static func icon(for kind: FavoritePlace.Kind) -> NSImage {
         let symbol: String
         switch kind {
@@ -449,11 +454,7 @@ extension SidebarViewController: NSTableViewDelegate {
         case .movies: symbol = "film"
         case .applications: symbol = "square.grid.3x3.fill"
         }
-        let config = NSImage.SymbolConfiguration(pointSize: 15, weight: .regular)
-        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?
-            .withSymbolConfiguration(config)
-        image?.isTemplate = true
-        return image ?? NSImage()
+        return templateSymbol(symbol, pointSize: 15)
     }
 
     private func reuse(_ identifier: NSUserInterfaceItemIdentifier) -> NSView? {
