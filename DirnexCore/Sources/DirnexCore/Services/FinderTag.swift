@@ -178,6 +178,114 @@ public struct FinderTag: Sendable, Hashable, Codable {
     }
 }
 
+// MARK: - The name → colour map
+
+/// What each tag *name* is coloured, system-wide — the map Finder resolves a dot's colour against,
+/// and the reason a file's own stored colour must not be trusted to draw one.
+///
+/// `FinderTag` already records the rule: **a colour belongs to the name, not to the file.** Each
+/// file carries a copy, and that copy is ordinarily right, so trusting it looks harmless. It is not,
+/// and the case that proves it was **probed on a real iCloud Drive**:
+///
+/// - Tagging a file inside `~/Library/Mobile Documents/` **with Finder's own Tags UI** stores
+///   `Red\n1`, not `Red\n6`. Blue lands as `Blue\n1`; a custom purple `Zebra` lands as `Zebra\n1`.
+///   The colour byte is forced to **1 for every tag, whatever its name or colour** — as is the
+///   legacy `com.apple.FinderInfo` label byte, so the file holds no second opinion to fall back on.
+/// - The identical write **outside** iCloud keeps its colour indefinitely (`Red\n6`, `Zebra\n3`).
+/// - Finder draws all of them correctly anyway, because it resolves by name against a database of
+///   its own — which is not readable through any supported API (it is not in `com.apple.finder`'s
+///   plist; `TagsCloudSerialNumber` there hints at a private synced store).
+///
+/// So the colour byte on an iCloud file is **the provider's fingerprint, not the user's intent**,
+/// and a pane that trusts it paints every tagged file in iCloud Drive grey. This type is the
+/// approximation of Finder's database that the app can honestly build: the stock seven, which are
+/// known for free, plus what browsing turns up.
+public struct FinderTagIndex: Sendable {
+    /// Keyed by the lowercased name — the case-folded identity the system itself uses, and the one
+    /// `FinderTag.==` applies.
+    private var byName: [String: FinderTag]
+
+    /// The stock names, case-folded, so a sighting can be told from a certainty.
+    private static let stockNames = Set(FinderTag.systemTags.map { $0.name.lowercased() })
+
+    /// Seeded with the seven macOS ships with, which is the whole reason this fixes anything: their
+    /// colours are constants (`FinderTag.systemTags`), so they are known before a single file is
+    /// read and are never in doubt afterwards. Every other name has to be learned.
+    public init() {
+        byName = Dictionary(
+            uniqueKeysWithValues: FinderTag.systemTags.map { ($0.name.lowercased(), $0) }
+        )
+    }
+
+    /// Take a sighting of `tag` on some file as evidence about what its name is coloured.
+    ///
+    /// Two things it deliberately refuses to believe:
+    ///
+    /// - **A stock name is never overwritten.** Red is 6 because `FinderTag.systemTags` says so, and
+    ///   a file carrying `Red\n1` — which is every tagged file in iCloud Drive — is evidence about
+    ///   iCloud, not about Red.
+    /// - **Grey never displaces a colour already known.** Grey is what iCloud normalises *to*, so a
+    ///   grey sighting is the one reading that cannot be told apart from the provider having eaten
+    ///   the real colour. Without this, a custom `Zebra` seen purple on the Desktop and grey in
+    ///   iCloud Drive would land on whichever folder was browsed last — and the Desktop's dot, which
+    ///   is correct today, would flip to grey. The cost is that genuinely recolouring a tag *to*
+    ///   grey isn't picked up until relaunch, which reseeds from the first sighting; that is a far
+    ///   smaller harm than propagating a colour the user never chose.
+    ///
+    /// Everything else is latest-sighting-wins: a name's colour can change, and the newest look at a
+    /// file whose byte survives is the best evidence available.
+    public mutating func learn(_ tag: FinderTag) {
+        let key = tag.name.lowercased()
+        guard !Self.stockNames.contains(key) else { return }
+        if tag.color == .grey, let existing = byName[key], existing.color != .grey, existing.color != .none {
+            return
+        }
+        byName[key] = tag
+    }
+
+    public mutating func learn(_ tags: some Sequence<FinderTag>) {
+        for tag in tags { learn(tag) }
+    }
+
+    /// Drop a custom name entirely — the map half of deleting a tag. A stock tag is refused for the
+    /// reason `FinderTag.isSystem` gives: the seven are seeded at init, so forgetting one would only
+    /// bring it straight back.
+    public mutating func forget(_ tag: FinderTag) {
+        guard !tag.isSystem else { return }
+        byName.removeValue(forKey: tag.name.lowercased())
+    }
+
+    /// `tag` as it should be **drawn**: the name exactly as the file spells it, in the colour the
+    /// name is known to carry.
+    ///
+    /// Splitting the two is the system's own rule, not a nicety — macOS "stores the name verbatim as
+    /// typed but resolves it to Red's colour" (see `FinderTag`), so the spelling is the user's and
+    /// the colour is the system's. A name this has never met keeps its stored colour: that is the
+    /// only evidence there is, and it is the right one everywhere the provider hasn't been.
+    public func resolve(_ tag: FinderTag) -> FinderTag {
+        guard let known = byName[tag.name.lowercased()] else { return tag }
+        return FinderTag(name: tag.name, color: known.color)
+    }
+
+    public func resolve(_ tags: [FinderTag]) -> [FinderTag] {
+        tags.map(resolve)
+    }
+
+    /// Every name known, with its colour: the stock seven in Finder's rainbow, then the custom ones
+    /// by name. This is what a list of tags should show.
+    public var tags: [FinderTag] {
+        let custom = byName.values
+            .filter { !Self.stockNames.contains($0.name.lowercased()) }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        return FinderTag.systemTags + custom
+    }
+
+    /// Just the names, in the spelling they were seen in — for completion, which matches by name.
+    public var names: Set<String> {
+        Set(byName.values.map(\.name))
+    }
+}
+
 // MARK: - The stored attribute
 
 /// The `com.apple.metadata:_kMDItemUserTags` payload: a binary plist array of `name\ncolour`

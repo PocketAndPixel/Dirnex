@@ -139,11 +139,21 @@ extension PanelViewController {
 
     // MARK: - Rendering
 
-    /// The tags on one row — `[]` when it has none, when the scan hasn't landed yet, or when the
-    /// pane isn't showing tags at all. That last case is what makes the preference work with no
-    /// column to install: the cells simply render no dots, and the names take back the width.
+    /// The tags on one row, **as they should be drawn** — `[]` when it has none, when the scan hasn't
+    /// landed yet, or when the pane isn't showing tags at all. That last case is what makes the
+    /// preference work with no column to install: the cells simply render no dots, and the names take
+    /// back the width.
+    ///
+    /// The colours come from the tag's *name*, not from the file: `FinderTagProvider.resolve` — and
+    /// the core's `FinderTagIndex` behind it — explains why the byte on disk is unusable for drawing
+    /// anywhere inside iCloud Drive, where every tagged file stores grey and Finder paints it red
+    /// regardless. Resolving here, at the point of drawing, rather than folding it into the snapshot,
+    /// keeps `FinderTagSnapshot` meaning *what the files say* — which is what `FinderTagSnapshot.==`
+    /// compares to decide a repaint, and what a later scan can legitimately find changed.
     func tags(for entry: FileEntry) -> [FinderTag] {
-        guard areTagsVisible else { return [] }
-        return tagSnapshot?.tags(for: entry.path) ?? []
+        guard areTagsVisible, let stored = tagSnapshot?.tags(for: entry.path), !stored.isEmpty else {
+            return []
+        }
+        return FinderTagProvider.shared.resolve(stored)
     }
 }

@@ -53,42 +53,36 @@ final class FinderTagProvider {
     private var running: Set<VFSPath> = []
     private var repeatRequested: Set<VFSPath> = []
 
-    /// Every tag seen this session, plus the seven macOS ships with, keyed by the lowercased name —
-    /// the case-folded identity the system itself uses. The tag editor offers these, the sidebar's
-    /// Tags section lists them, and the search sheet completes against them.
+    /// Every tag seen this session, plus the seven macOS ships with — the app's approximation of the
+    /// name → colour database Finder resolves dots against. The tag editor offers these, the
+    /// sidebar's Tags section lists them, the search sheet completes against them, and `resolve`
+    /// paints with them.
     ///
-    /// There is no public API for "the user's tags": the system's own list lives in a synced
-    /// preferences plist that is Finder's business, not a contract. So this accumulates tags as
-    /// directories are scanned, which is honest about what it knows — it grows as the user browses
-    /// rather than pretending to be authoritative, and the stock seven are always offered because
-    /// they always exist.
-    ///
-    /// **Keyed by name, holding a colour** — because that is the shape of the truth the core
-    /// established: a colour belongs to the *name*, system-wide, not to the file, and Finder keeps
-    /// exactly such a name → colour database of its own. A file's stored copy is evidence about the
-    /// name, which is why the latest sighting wins.
-    private var known: [String: FinderTag] = Dictionary(
-        uniqueKeysWithValues: FinderTag.systemTags.map { ($0.name.lowercased(), $0) }
-    )
-
-    /// The stock names, case-folded. A file carrying a malformed `Red` (no colour — a shape the core
-    /// found real files in the wild carry) must not repaint the sidebar's Red as colourless, so the
-    /// seven are seeded once and never overwritten by a sighting.
-    private static let stockNames = Set(FinderTag.systemTags.map { $0.name.lowercased() })
+    /// There is no public API for "the user's tags": the system's own list lives in a private synced
+    /// store that is Finder's business, not a contract. So this accumulates tags as directories are
+    /// scanned, which is honest about what it knows — it grows as the user browses rather than
+    /// pretending to be authoritative, and the stock seven are always offered because they always
+    /// exist. The rules for what a sighting is allowed to teach it — and why an iCloud file's colour
+    /// byte teaches it nothing — live in the core's `FinderTagIndex`.
+    private var index = FinderTagIndex()
 
     /// Every known tag with its colour: the stock seven in Finder's order, then the custom ones
     /// sorted by name. This is what a list of tags should show.
-    var knownTags: [FinderTag] {
-        let custom = known.values
-            .filter { !Self.stockNames.contains($0.name.lowercased()) }
-            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-        return FinderTag.systemTags + custom
-    }
+    var knownTags: [FinderTag] { index.tags }
 
     /// Just the names, in the spelling they were seen in — for the search sheet's chip completion,
     /// which matches by name because names are all Spotlight indexes.
-    var knownTagNames: Set<String> {
-        Set(known.values.map(\.name))
+    var knownTagNames: Set<String> { index.names }
+
+    /// `tags` as they should be **drawn**: each one's colour taken from what its name is known to
+    /// carry, rather than from the byte the file happens to hold.
+    ///
+    /// This is what keeps iCloud Drive's dots honest. Every tagged file in the drive stores colour
+    /// 1 — Finder's own Tags UI writes it that way, as does everything else, because the provider
+    /// rewrites the byte — so a pane that trusts the file paints the whole drive grey while Finder
+    /// two inches away paints it red. See `FinderTagIndex` for the probe that established it.
+    func resolve(_ tags: [FinderTag]) -> [FinderTag] {
+        index.resolve(tags)
     }
 
     // MARK: - Snapshots
@@ -165,9 +159,7 @@ final class FinderTagProvider {
     /// make the tag list flicker in and out. It is bounded by how many tags one person has.
     private func record(_ snapshot: FinderTagSnapshot) {
         for tags in snapshot.tagsByPath.values {
-            for tag in tags where !Self.stockNames.contains(tag.name.lowercased()) {
-                known[tag.name.lowercased()] = tag
-            }
+            index.learn(tags)
         }
     }
 
@@ -184,7 +176,7 @@ final class FinderTagProvider {
     /// `known` is seeded with the seven at launch, so removing one would only make it reappear.
     func forget(_ tag: FinderTag) {
         guard !tag.isSystem else { return }
-        known.removeValue(forKey: tag.name.lowercased())
+        index.forget(tag)
 
         // Collect, then mutate, then post — rather than posting inside the walk. An observer runs
         // synchronously on `post` and is free to call straight back in here (a pane re-reads its

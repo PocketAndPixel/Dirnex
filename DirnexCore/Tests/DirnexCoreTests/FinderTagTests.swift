@@ -302,3 +302,115 @@ struct FinderTagPayloadTests {
         )
     }
 }
+
+@Suite("FinderTagIndex")
+struct FinderTagIndexTests {
+    /// The bug this type exists for, in one test: iCloud stores `Red\n1` on every tagged file in the
+    /// drive — Finder's own UI does it too — and the dot must still come out red.
+    @Test("a stock tag mangled by iCloud still resolves to its real colour")
+    func resolvesStockTagNormalizedByICloud() {
+        let index = FinderTagIndex()
+        #expect(index.resolve(FinderTag(name: "Red", color: .grey)).color == .red)
+        #expect(index.resolve(FinderTag(name: "Blue", color: .grey)).color == .blue)
+        // Colour 1 is not special-cased: any wrong byte on a stock name loses to the name.
+        #expect(index.resolve(FinderTag(name: "Green", color: .orange)).color == .green)
+    }
+
+    /// The system folds case to identify a tag, so a file spelling it `red` gets Red's colour — and
+    /// keeps its own spelling, because that half belongs to the user.
+    @Test("resolution is case-insensitive and preserves the file's spelling")
+    func resolvePreservesSpelling() {
+        let resolved = FinderTagIndex().resolve(FinderTag(name: "red", color: .grey))
+        #expect(resolved.name == "red")
+        #expect(resolved.color == .red)
+    }
+
+    /// A name nothing knows about keeps its stored colour: it is the only evidence there is, and off
+    /// iCloud it is the right one.
+    @Test("an unknown name keeps the colour the file carries")
+    func resolveUnknownName() {
+        #expect(FinderTagIndex().resolve(FinderTag(name: "Zebra", color: .purple)).color == .purple)
+        #expect(FinderTagIndex().resolve(FinderTag(name: "Zebra")).color == .none)
+    }
+
+    /// Red is 6 because `systemTags` says so. A file claiming otherwise is describing iCloud.
+    @Test("a sighting never overwrites a stock tag")
+    func learnRefusesStockTags() {
+        var index = FinderTagIndex()
+        index.learn(FinderTag(name: "Red", color: .grey))
+        index.learn(FinderTag(name: "red", color: .none))
+        #expect(index.resolve(FinderTag(name: "Red", color: .grey)).color == .red)
+        #expect(index.tags.count == FinderTag.systemTags.count)
+    }
+
+    @Test("a custom name is learned from a sighting")
+    func learnCustomTag() {
+        var index = FinderTagIndex()
+        index.learn(FinderTag(name: "Zebra", color: .purple))
+        #expect(index.resolve(FinderTag(name: "Zebra", color: .grey)).color == .purple)
+    }
+
+    /// The regression this guard exists to prevent: `Zebra` is purple on the Desktop and grey in
+    /// iCloud Drive. Whichever folder is browsed last must not decide — the Desktop's dot is correct
+    /// today and has to stay correct.
+    @Test("a grey sighting does not displace a colour already known")
+    func greySightingDoesNotDowngrade() {
+        var index = FinderTagIndex()
+        index.learn(FinderTag(name: "Zebra", color: .purple))
+        index.learn(FinderTag(name: "Zebra", color: .grey))
+        #expect(index.resolve(FinderTag(name: "Zebra", color: .grey)).color == .purple)
+    }
+
+    /// The guard is only about grey, and only in that direction: a real recolour to any other colour
+    /// is still the newest evidence and wins.
+    @Test("a non-grey sighting still wins, and grey is learned when nothing is known")
+    func learnStillTracksRealRecolours() {
+        var index = FinderTagIndex()
+        index.learn(FinderTag(name: "Zebra", color: .purple))
+        index.learn(FinderTag(name: "Zebra", color: .blue))
+        #expect(index.resolve(FinderTag(name: "Zebra")).color == .blue)
+
+        // A genuinely grey tag, never seen in any other colour, is grey.
+        var fresh = FinderTagIndex()
+        fresh.learn(FinderTag(name: "Work", color: .grey))
+        #expect(fresh.resolve(FinderTag(name: "Work")).color == .grey)
+        // …and a colourless sighting is not a colour, so it does not lock grey out either.
+        fresh.learn(FinderTag(name: "Work", color: .green))
+        #expect(fresh.resolve(FinderTag(name: "Work")).color == .green)
+    }
+
+    @Test("resolving a list resolves every tag in order")
+    func resolveList() {
+        var index = FinderTagIndex()
+        index.learn(FinderTag(name: "Zebra", color: .purple))
+        let resolved = index.resolve([
+            FinderTag(name: "Red", color: .grey),
+            FinderTag(name: "Zebra", color: .grey),
+            FinderTag(name: "Unseen", color: .yellow)
+        ])
+        #expect(resolved.map(\.name) == ["Red", "Zebra", "Unseen"])
+        #expect(resolved.map(\.color) == [.red, .purple, .yellow])
+    }
+
+    @Test("known tags list the stock seven in Finder's order, then custom names sorted")
+    func tagsOrdering() {
+        var index = FinderTagIndex()
+        index.learn(FinderTag(name: "Zebra", color: .purple))
+        index.learn(FinderTag(name: "Alpha", color: .blue))
+        #expect(index.tags.map(\.name) == FinderTag.systemTags.map(\.name) + ["Alpha", "Zebra"])
+        #expect(index.names.contains("Zebra"))
+    }
+
+    @Test("a custom name can be forgotten, a stock one cannot")
+    func forget() {
+        var index = FinderTagIndex()
+        index.learn(FinderTag(name: "Zebra", color: .purple))
+        index.forget(FinderTag(name: "Zebra"))
+        #expect(!index.names.contains("Zebra"))
+        // Forgotten means unknown, so the file's own colour is all that is left.
+        #expect(index.resolve(FinderTag(name: "Zebra", color: .grey)).color == .grey)
+
+        index.forget(FinderTag(name: "Red"))
+        #expect(index.resolve(FinderTag(name: "Red", color: .grey)).color == .red)
+    }
+}

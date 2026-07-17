@@ -2220,12 +2220,69 @@ draws the stored colour → grey. So tag colours may be wrong on every tagged fi
 Whether Finder's own tagging UI produces the same stored state is **untested** — the AppleScript
 `label index` path writes only the legacy Finder-info byte, not `_kMDItemUserTags`, so it could not
 answer the question. Worth a pass of its own: the provider already keeps the name → colour map
-(`known`) that a fix would consult.
+(`known`) that a fix would consult. → **Answered and fixed in pass 17 below: Finder's own UI does it
+too, so it was every tagged file in iCloud Drive.**
+
+Progress (2026-07-17, M6 pass 17 — the iCloud tag-colour bug from pass 16; **fixed, VERIFIED LIVE
+side by side with Finder**): tag dots now take a colour from the tag's **name**, the way Finder does,
+instead of from the byte the file stores.
+
+**The probe answered pass 16's open question, and the answer was the bad one.** Tagging a file in
+iCloud Drive **with Finder's own right-click ▸ Tags UI** stores `Red\n1`, not `Red\n6` — immediately,
+not after a sync delay. So this was never about hand-written attributes: it is **every tagged file in
+a user's iCloud Drive**. Three more things the probe established, each of which killed a cheaper fix:
+
+- **The rewrite is colour-blind and name-blind.** Blue lands as `Blue\n1`; a custom purple `Zebra`
+  lands as `Zebra\n1`. Every tag, whatever it is, ends up at colour **1**. Off iCloud the same writes
+  keep their colour indefinitely (`Red\n6`, `Zebra\n3`).
+- **There is no second opinion on the file.** The legacy `com.apple.FinderInfo` label byte is
+  normalised to 1 too (read `…09 02 …` on all three probe files), so the pre-tags byte the core
+  already knows how to read cannot rescue the colour.
+- **Finder's own name → colour database is not readable.** It is not in `com.apple.finder`'s plist
+  (`FavoriteTagNames` is just the stock seven); the `TagsCloudSerialNumber` key there hints at a
+  private synced store, and a custom `Zebra` appears nowhere under `~/Library`. This confirms the
+  pass-3 decision to accumulate sightings rather than depend on Finder's list — there is nothing to
+  depend on.
+
+Core: new `FinderTagIndex` in `FinderTag.swift` (+10 → **781 core**) — the app's honest
+approximation of Finder's database. It works **only because the stock seven are constants**:
+`FinderTag.systemTags` seeds it, so Red is 6 before a file is read and is never in doubt after, and a
+sighting is refused the right to overwrite a stock name. App: `FinderTagProvider` hands it the map it
+was already keeping (`known` → `index`, `record` → `learn`, `forget`, `knownTags`/`knownTagNames`
+delegate) and exposes `resolve`; `PanelViewController+Tags.tags(for:)` resolves **at the point of
+drawing**, deliberately not folding it into the snapshot — `FinderTagSnapshot` keeps meaning *what
+the files say*, which is exactly what its hand-rolled `==` compares to decide a repaint.
+
+**A second instance of the same bug, found while fixing the first — and this one wrote to disk.**
+`PanelViewController+TagEditing.offeredTags` preferred "the spelling **and colour** the files
+themselves carry over the learned one", so the ⌃T menu drew Red's swatch grey for an iCloud target.
+Worse: that same `FinderTag` is the item's `representedObject`, i.e. the tag `toggleTag` **writes** —
+so tagging an iCloud file and a local file Red together wrote `Red\n1` to the *local* file, where the
+byte is not normalised and simply persists. The same leak arrives by plain copy: a tagged file copied
+**out** of iCloud Drive lands locally carrying `Red\n1` forever. Resolving by name fixes the swatch,
+the write, and the copied-out file's dot. Note the old comment was already at odds with the pass-3
+core doc's own "a colour belongs to the NAME, system-wide, not to the file".
+
+**THE judgement call: a grey sighting never displaces a colour already known** (`FinderTagIndex.learn`).
+Grey is what iCloud normalises *to*, so it is the one reading indistinguishable from the provider
+having eaten the real colour — and without the guard the fix would have **caused a regression**: a
+custom `Zebra` seen purple on the Desktop and grey in iCloud Drive would land on whichever folder was
+browsed last, flipping the Desktop's currently-correct dot to grey. Cost: genuinely recolouring a tag
+*to* grey isn't picked up until relaunch (which reseeds from the first sighting). Stock tags never
+reach this path — `learn` refuses them outright. Known edge, left alone: learning a colour does not
+repaint a folder already scanned, so a custom tag's dot updates on that folder's next scan.
+
+LIVE (both panes on screen, next to Finder): an iCloud folder whose **every** file stores colour 1
+read blue / red / red correctly; a custom `Zebra` showed grey until the Desktop was scanned, then
+turned **purple** on the iCloud file while the Desktop's stayed purple — the guard holding. ⌃T on an
+iCloud target offered Red with a red swatch and a checkmark, Zebra in purple; toggling Red across a
+mangled `Red\n1` file and a local one wrote **`Red\n6`** to disk; a file copied out of iCloud drew
+red. All 781 core + 68 app tests green, `swiftlint --strict` clean.
 
 **NEXT: M6 is closed.** Optional leftovers, none blocking: an **App Intents / Shortcuts** surface on
 the `Automation` core, a user script's F-key binding (the bar + key handler already accept any
-command id — an organizer field + one `UserScript` field), the .gitignore-aware folder sizes from
-pass 1, and the iCloud tag-colour bug above. **M7 (release readiness) is next.**
+command id — an organizer field + one `UserScript` field), and the .gitignore-aware folder sizes from
+pass 1. **M7 (release readiness) is next.**
 
 ### M7 — Release readiness (M)
 

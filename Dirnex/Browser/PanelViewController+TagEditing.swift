@@ -125,17 +125,25 @@ extension PanelViewController {
     /// here than alphabetical — then the custom names sorted. The same list, in the same order, that
     /// the sidebar's Tags section shows.
     ///
-    /// A tag's colour comes from the targets' own copy when they have one, else from what the
-    /// provider learned by scanning; a name it has somehow never seen falls back to colourless.
+    /// A tag's name is spelled the way the targets spell it when they carry it; its colour comes from
+    /// what that *name* is known to be, never from the targets' stored byte.
+    ///
+    /// The colour half used to work the other way — the files' own copy was preferred — and that is
+    /// exactly the bug `FinderTagIndex` documents, twice over. A target inside iCloud Drive carries
+    /// `Red\n1`, so the menu drew Red's swatch grey; worse, the item's `representedObject` *is* the
+    /// tag `toggleTag` writes, so tagging an iCloud file and a local one Red together wrote `Red\n1`
+    /// to the local file too — where the byte is not normalised and simply persists, leaving a
+    /// permanently grey Red behind. Resolving by name fixes the swatch and what gets written.
     private func offeredTags(including current: [FinderTag: Int]) -> [FinderTag] {
         var seen = Set(FinderTag.systemTags)
         let custom = (FinderTagProvider.shared.knownTags + current.keys)
             .filter { seen.insert($0).inserted }
             .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-        // Prefer the spelling and colour the files themselves carry over the learned one.
-        return (FinderTag.systemTags + custom).map { tag in
-            current.keys.first { $0 == tag } ?? tag
-        }
+        return FinderTagProvider.shared.resolve(
+            (FinderTag.systemTags + custom).map { tag in
+                current.keys.first { $0 == tag } ?? tag
+            }
+        )
     }
 
     // MARK: - Actions
