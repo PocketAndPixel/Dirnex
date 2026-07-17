@@ -40,10 +40,6 @@ struct PanelTests {
         #expect(subject.cursor == 0)
         subject.moveCursor(by: 1)
         #expect(subject.cursor == 1)
-        subject.moveCursorToEnd()
-        #expect(subject.cursor == 2)
-        subject.moveCursorToStart()
-        #expect(subject.cursor == 0)
     }
 
     @Test("currentEntry follows the cursor")

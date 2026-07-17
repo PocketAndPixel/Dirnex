@@ -109,7 +109,7 @@ struct SizeVisualizationTests {
         #expect(bar?.share == 0)
     }
 
-    @Test("pending directories are reported in display order, and completeness tracks them")
+    @Test("pending directories are reported in display order, and sized ones drop out")
     func pendingTracksUnsizedDirectories() {
         let viz = SizeVisualization(model: model([
             entry("zeta", kind: .directory),
@@ -118,14 +118,12 @@ struct SizeVisualizationTests {
         ]))
 
         #expect(viz.pendingDirectories.map(\.name) == ["alpha", "zeta"])
-        #expect(!viz.isComplete)
 
         let sized = SizeVisualization(model: model(
             [entry("zeta", kind: .directory), entry("alpha", kind: .directory)],
             sizes: ["zeta": 10, "alpha": 20]
         ))
         #expect(sized.pendingDirectories.isEmpty)
-        #expect(sized.isComplete)
     }
 
     @Test("a symlink to a directory is sized like a directory, not counted as its own inode")
@@ -192,7 +190,7 @@ struct SizeVisualizationTests {
 
         #expect(viz.maximumBytes == 0)
         #expect(viz.totalBytes == 0)
-        #expect(viz.isComplete)
+        #expect(viz.pendingDirectories.isEmpty)
     }
 
     @Test("all-zero rows produce zero bars rather than a division by zero")

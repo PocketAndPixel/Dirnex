@@ -107,12 +107,6 @@ public struct Frecency: Sendable, Equatable, Codable {
             }
     }
 
-    /// The single best-scored directory whose name matches `query`, or `nil` if none do —
-    /// the path bar's "dl → ~/Downloads" resolution.
-    public func bestMatch(for query: String, now: Date = Date()) -> VFSPath? {
-        matches(for: query, now: now).first?.path
-    }
-
     /// Whether `needle` appears in `haystack` as a left-to-right subsequence (each character
     /// in order, gaps allowed). Both are expected pre-lowercased.
     private static func isSubsequence(_ needle: [Character], of haystack: [Character]) -> Bool {

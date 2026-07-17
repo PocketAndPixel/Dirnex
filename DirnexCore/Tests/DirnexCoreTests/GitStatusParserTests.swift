@@ -31,9 +31,9 @@ struct GitStatusParserTests {
         // A collapsed directory arrives with a trailing slash; the key drops it.
         #expect(snapshot.entries["untrackeddir"]?.status == .untracked)
         #expect(snapshot.entries["node_modules"]?.status == .ignored)
-        // Staged add plus later edits: the index column wins.
+        // Staged add plus later edits: the index column wins, and the worktree edit is retained.
         #expect(snapshot.entries["bothmod.txt"]?.status == .added)
-        #expect(snapshot.entries["bothmod.txt"]?.hasWorktreeChanges == true)
+        #expect(snapshot.entries["bothmod.txt"]?.worktreeStatus == "M")
     }
 
     @Test("a rename is keyed by its new path, with the original from the following field")
@@ -125,7 +125,8 @@ struct GitStatusParserBranchTests {
         #expect(parsed.name == "main")
         #expect(parsed.upstream == nil)
         #expect(!parsed.isDetached)
-        #expect(!parsed.hasUpstreamDivergence)
+        #expect(parsed.ahead == 0)
+        #expect(parsed.behind == 0)
     }
 
     @Test("a branch tracking an upstream, in sync")
@@ -135,7 +136,6 @@ struct GitStatusParserBranchTests {
         #expect(parsed.upstream == "origin/main")
         #expect(parsed.ahead == 0)
         #expect(parsed.behind == 0)
-        #expect(!parsed.hasUpstreamDivergence)
     }
 
     @Test("ahead, behind, and both are read from the tracking bracket")
@@ -149,7 +149,6 @@ struct GitStatusParserBranchTests {
         #expect(diverged.ahead == 1)
         #expect(diverged.behind == 1)
         #expect(diverged.upstream == "origin/main")
-        #expect(diverged.hasUpstreamDivergence)
     }
 
     @Test("a deleted upstream reports no divergence rather than a bad number")

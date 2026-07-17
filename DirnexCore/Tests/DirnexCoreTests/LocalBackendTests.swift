@@ -114,8 +114,7 @@ struct LocalBackendTests {
 
         let broken = try #require(byName["broken"])
         #expect(broken.kind == .symlink)
-        #expect(broken.isBrokenSymlink)
-        #expect(broken.symlinkTargetKind == nil)
+        #expect(broken.symlinkTargetKind == nil) // dangling — the target never resolved
     }
 
     // MARK: - Unicode / weird names

@@ -1,38 +1,5 @@
 import Foundation
 
-/// The scripting verbs Dirnex exposes to AppleScript (an `.sdef` suite) and, later, Shortcuts
-/// (App Intents) — PLAN.md §M6 "Automation: AppleScript/Shortcuts verbs (reveal, copy, run-op)".
-///
-/// The verb *names* live here, in `DirnexCore`, for the same reason `FunctionBar` and `UserScript`
-/// do: they are data the app, the `.sdef`, and the tests must agree on, and a value here is the one
-/// place that agreement is pinned (a test asserts the names are distinct and non-empty). The actual
-/// Apple-event plumbing — `NSScriptCommand` subclasses reading a direct parameter — is inherently
-/// AppKit and lives in the app; this type is what those handlers, their error strings, and the
-/// `.sdef`'s human-readable command names all reference so none of them drift.
-public enum AutomationVerb: String, CaseIterable, Sendable {
-    /// `reveal "<posix path>"` — bring the active panel to the item's container and select it, the
-    /// Finder-`reveal` gesture. Resolves a path via `AutomationRevealTarget`.
-    case reveal
-    /// `copy selection` — the F5 "copy to other panel" operation on the current selection. A named
-    /// convenience verb; the same thing is reachable as `run operation "file.copy"`.
-    case copySelection
-    /// `run operation "<id or title>"` — invoke any Dirnex command by its `CommandCatalog` id or
-    /// menu title, or a user script by name. The generic bridge to the whole action registry;
-    /// resolves a requested string via `AutomationOperation.resolve`.
-    case runOperation
-
-    /// The command name as it reads in AppleScript and in the `.sdef` (`reveal`, `copy selection`,
-    /// `run operation`). Multi-word names are legal AppleScript terminology (cf. the standard `open
-    /// location`), and reading better than a squashed identifier is the whole point of a verb.
-    public var commandName: String {
-        switch self {
-        case .reveal: return "reveal"
-        case .copySelection: return "copy selection"
-        case .runOperation: return "run operation"
-        }
-    }
-}
-
 /// Where a `reveal` should take the active panel: the directory to show, and the item to put the
 /// cursor on inside it. `reveal` mirrors Finder — it selects the item *in its container*, so a path
 /// to a folder shows the folder highlighted in its parent rather than entering it.

@@ -280,8 +280,7 @@ struct UndoJournalTests {
 
         #expect(journal.records.count == 2)
         #expect(journal.top?.fileOperation?.steps == [.removeCreatedFolder(.local("/c"))])
-        #expect(journal.removeTop()?.fileOperation?.steps == [.removeCreatedFolder(.local("/c"))])
-        #expect(journal.top?.fileOperation?.steps == [.removeCreatedFolder(.local("/b"))])
+        #expect(journal.records.first?.fileOperation?.steps == [.removeCreatedFolder(.local("/b"))])
     }
 
     // MARK: - Persistence

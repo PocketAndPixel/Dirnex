@@ -164,8 +164,23 @@ extension PanelViewController {
         setSizeBarColumnInstalled(false)
         guard sizeVisualization != nil else { return }
         sizeVisualization = nil
+        // This pane just genuinely left the mode (the guard above keeps steady-state re-renders
+        // out). If no tab anywhere is in it either, nobody is left to draw a bar from what the
+        // walks are computing: tear the whole queue down mid-walk rather than leave an in-flight
+        // `/System` walk parked on a blocking thread. A tab that merely navigated somewhere bars
+        // can't apply still counts as in the mode — its walks matter again the moment it returns.
+        if !isSizeVisualizationOnAnywhere {
+            DirectorySizeProvider.shared.cancelAllScans()
+        }
         if deferRefreshIfRenaming() { return }
         renderRefresh()
+    }
+
+    /// Whether any tab — in this pane or its counterpart — still has the mode switched on.
+    private var isSizeVisualizationOnAnywhere: Bool {
+        var panes = [self]
+        if let other = host?.panelCounterpart(of: self) { panes.append(other) }
+        return panes.contains { $0.tabs.contains(where: \.isSizeVisualizationEnabled) }
     }
 
     /// Tell the provider a real filesystem change landed under `path`, so cached totals on that

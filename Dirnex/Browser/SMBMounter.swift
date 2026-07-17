@@ -11,23 +11,16 @@ import NetFS
 ///
 /// The one genuinely new surface is the mount *lifecycle*, which lives here (the non-hermetic I/O
 /// boundary, like `ArchiveMounter`): mount on connect, and unmount only what *we* mounted on
-/// disconnect / quit — a share the user already mounted in Finder is left alone. `shared` is the
+/// quit — a share the user already mounted in Finder is left alone. `shared` is the
 /// app-wide registry so quit can tear our mounts down.
 @MainActor
 final class SMBMounter {
     static let shared = SMBMounter()
 
-    /// Mount points (`/Volumes/…` paths) this app created, so `unmountOwnedMounts()` (on quit) and
-    /// `disconnect(_:)` only ever unmount ours. A share that was already mounted when we connected —
+    /// Mount points (`/Volumes/…` paths) this app created, so `unmountOwnedMounts()` (on quit)
+    /// only ever unmounts ours. A share that was already mounted when we connected —
     /// by Finder, or a prior connect — is deliberately absent, so we never eject someone else's mount.
     private var ownedMountPoints: Set<String> = []
-
-    /// The result of a mount: where the share landed, and whether *we* were the ones who mounted it
-    /// (so the caller knows whether disconnecting it later is ours to do).
-    struct MountResult {
-        let mountPoint: URL
-        let createdByUs: Bool
-    }
 
     /// Mount `location`, returning the `/Volumes/…` mount point. A `nil`/empty `username` mounts as
     /// guest; otherwise `password` authenticates (a `nil` password means "empty password"). The
@@ -35,16 +28,12 @@ final class SMBMounter {
     ///
     /// If the share is already mounted (Finder, or an earlier connect), we detect and reuse that
     /// mount point rather than re-mounting, recording it as ours only if we were the ones who
-    /// mounted it — so a later disconnect leaves someone else's mount in place.
-    func mount(_ location: SMBLocation, username: String?, password: String?) async throws -> MountResult {
+    /// mounted it — so quit leaves someone else's mount in place.
+    func mount(_ location: SMBLocation, username: String?, password: String?) async throws -> URL {
         // If this exact share is already mounted — by Finder, or an earlier connect — reuse that
-        // mount instead of asking NetFS again (which returns EEXIST with no mount point). Whether
-        // we surface it as ours depends on whether *we* were the ones who mounted it.
+        // mount instead of asking NetFS again (which returns EEXIST with no mount point).
         if let existing = Self.existingMountPoint(for: location) {
-            return MountResult(
-                mountPoint: existing,
-                createdByUs: ownedMountPoints.contains(existing.path)
-            )
+            return existing
         }
 
         let alreadyMounted = Self.mountedVolumePaths()
@@ -55,25 +44,12 @@ final class SMBMounter {
         guard outcome.status == 0, let mountPoint = outcome.mountPoint else {
             throw SMBMountError(status: outcome.status, host: location.host)
         }
-        let createdByUs = !alreadyMounted.contains(mountPoint.path)
-        if createdByUs { ownedMountPoints.insert(mountPoint.path) }
-        return MountResult(mountPoint: mountPoint, createdByUs: createdByUs)
-    }
-
-    /// Whether `path` (or any ancestor of it) is a mount this app created — so the UI can offer to
-    /// disconnect it, and only it.
-    func isOwnedMount(_ path: String) -> Bool {
-        ownedMountPoints.contains { path == $0 || path.hasPrefix($0 + "/") }
-    }
-
-    /// Unmount a specific share, but only if *we* mounted it (a no-op otherwise). Used by the
-    /// sidebar's "Disconnect" so a Finder-mounted share can't be ejected out from under the user.
-    @discardableResult
-    func disconnect(mountPoint: URL) -> Bool {
-        guard ownedMountPoints.contains(mountPoint.path) else { return false }
-        let unmounted = Self.unmount(mountPoint)
-        if unmounted { ownedMountPoints.remove(mountPoint.path) }
-        return unmounted
+        // Ours only if the mount didn't exist before we asked — NetFS can hand back a share
+        // someone else (Finder, a prior session) mounted, and quit must not tear that one down.
+        if !alreadyMounted.contains(mountPoint.path) {
+            ownedMountPoints.insert(mountPoint.path)
+        }
+        return mountPoint
     }
 
     /// Unmount every share this app mounted — called on quit so we don't leave our mounts behind,

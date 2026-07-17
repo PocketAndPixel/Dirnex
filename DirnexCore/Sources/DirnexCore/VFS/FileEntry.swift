@@ -67,10 +67,6 @@ public struct FileEntry: Sendable, Hashable, Identifiable {
     public var id: VFSPath { path }
 
     public var isDirectory: Bool { kind == .directory }
-    public var isSymlink: Bool { kind == .symlink }
-
-    /// A symlink whose target could not be resolved (dangling).
-    public var isBrokenSymlink: Bool { kind == .symlink && symlinkTargetKind == nil }
 
     /// Treated as a directory for grouping and navigation — a real directory, or a
     /// symlink that resolves to one.

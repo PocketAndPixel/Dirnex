@@ -1,4 +1,3 @@
-import DirnexCore
 import Foundation
 import Testing
 
@@ -49,10 +48,10 @@ struct ScriptingCommandsTests {
         }
     }
 
-    @Test("the sdef's command names are exactly the AutomationVerb set")
+    @Test("the sdef's command names are exactly the three automation verbs")
     func sdefCommandNamesMatchVerbs() throws {
         let names = try sdefNodes(forXPath: "//command/@name").compactMap(\.stringValue)
-        #expect(Set(names) == Set(AutomationVerb.allCases.map(\.commandName)))
+        #expect(Set(names) == ["reveal", "copy selection", "run operation"])
     }
 
     /// Nodes matching `xpath` in the bundled `Dirnex.sdef`. External entities (the system sdef DTD)

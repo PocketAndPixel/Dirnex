@@ -92,11 +92,6 @@ final class DirectorySizeProvider {
 
     // MARK: - Reading (the render path)
 
-    /// The total already known for `path`, or `nil`. Synchronous and O(1).
-    func cachedSize(for path: VFSPath) -> Int64? {
-        cache.size(for: path)
-    }
-
     /// Every total already known among `paths` — what a pane seeds itself from on arrival, in one
     /// bulk `Panel.setDirectorySizes` rather than one call per row. Pass 9 measured why that matters:
     /// seeding one-by-one re-sorts the listing per call and costs 2.5 s at 3,000 rows, which would
@@ -141,8 +136,8 @@ final class DirectorySizeProvider {
         order.removeAll { $0 == directory }
     }
 
-    /// Stop everything, mid-walk. The one caller is the last pane leaving the mode: with no queue
-    /// left, an in-flight `/System` walk has nowhere to put its answer and no reason to keep a
+    /// Stop everything, mid-walk. The one caller is the last tab anywhere leaving the mode: with no
+    /// queue left, an in-flight `/System` walk has nowhere to put its answer and no reason to keep a
     /// blocking thread parked.
     func cancelAllScans() {
         queue.removeAll()

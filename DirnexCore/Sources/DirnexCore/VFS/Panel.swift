@@ -128,14 +128,6 @@ public struct Panel: Sendable {
         moveCursor(to: cursor + delta)
     }
 
-    public mutating func moveCursorToStart() {
-        moveCursor(to: 0)
-    }
-
-    public mutating func moveCursorToEnd() {
-        moveCursor(to: model.count - 1)
-    }
-
     // MARK: - Selection
 
     public mutating func toggleMark(at index: Int) {

@@ -250,12 +250,6 @@ public struct UndoJournal: Sendable, Equatable {
         return entry
     }
 
-    /// Pop the top undo action without touching redo — a raw stack primitive for inspection.
-    @discardableResult
-    public mutating func removeTop() -> UndoEntry? {
-        records.popLast()
-    }
-
     public mutating func clear() {
         records.removeAll()
         redoRecords.removeAll()

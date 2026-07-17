@@ -133,10 +133,6 @@ public struct SizeVisualization: Sendable {
         bars[entry.id]
     }
 
-    /// Whether every visible row is sized — the point at which `share` values stop drifting and
-    /// genuinely sum to 100 %.
-    public var isComplete: Bool { pendingDirectories.isEmpty }
-
     /// The bytes a row contributes, or `nil` when a directory has not been walked yet.
     ///
     /// Directory-*like* is the test, not `.directory`, matching `DirectoryModel.effectiveByteSize`

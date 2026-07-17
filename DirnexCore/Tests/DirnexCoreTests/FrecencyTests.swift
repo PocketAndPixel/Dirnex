@@ -15,7 +15,7 @@ struct FrecencyTests {
     func startsEmpty() {
         let frecency = Frecency()
         #expect(frecency.entries.isEmpty)
-        #expect(frecency.bestMatch(for: "anything", now: now) == nil)
+        #expect(frecency.matches(for: "anything", now: now).isEmpty)
     }
 
     @Test("a first visit inserts an entry at rank 1")
@@ -71,7 +71,7 @@ struct FrecencyTests {
 
         // Query "lib" fuzzily matches both folder names; frecency picks the fresh one:
         // 2 · 4 = 8 beats 8 · 0.25 = 2.
-        #expect(frecency.bestMatch(for: "lib", now: now) == fresh)
+        #expect(frecency.matches(for: "lib", now: now).first?.path == fresh)
     }
 
     @Test("a slash-free fragment fuzzily matches the folder name (dl → Downloads)")
@@ -79,8 +79,8 @@ struct FrecencyTests {
         var frecency = Frecency()
         frecency.visit(path("/Users/me/Downloads"), now: now)
         frecency.visit(path("/Users/me/Documents"), now: now)
-        #expect(frecency.bestMatch(for: "dl", now: now) == path("/Users/me/Downloads"))
-        #expect(frecency.bestMatch(for: "dc", now: now) == path("/Users/me/Documents"))
+        #expect(frecency.matches(for: "dl", now: now).first?.path == path("/Users/me/Downloads"))
+        #expect(frecency.matches(for: "dc", now: now).first?.path == path("/Users/me/Documents"))
     }
 
     @Test("matching is against the last component only, not deeper path segments")
@@ -89,15 +89,17 @@ struct FrecencyTests {
         // "downloads" appears as an ancestor, but the folder itself is "reports".
         frecency.visit(path("/Users/me/downloads/reports"), now: now)
         // "dl" matches nothing in "reports", so no match despite the ancestor.
-        #expect(frecency.bestMatch(for: "dl", now: now) == nil)
-        #expect(frecency.bestMatch(for: "rp", now: now) == path("/Users/me/downloads/reports"))
+        #expect(frecency.matches(for: "dl", now: now).isEmpty)
+        #expect(
+            frecency.matches(for: "rp", now: now).first?.path == path("/Users/me/downloads/reports")
+        )
     }
 
     @Test("matching is case-insensitive and an empty query matches nothing")
     func caseInsensitiveAndEmpty() {
         var frecency = Frecency()
         frecency.visit(path("/A/Photos"), now: now)
-        #expect(frecency.bestMatch(for: "PHT", now: now) == path("/A/Photos"))
+        #expect(frecency.matches(for: "PHT", now: now).first?.path == path("/A/Photos"))
         #expect(frecency.matches(for: "", now: now).isEmpty)
         #expect(frecency.matches(for: "   ", now: now).isEmpty)
     }
@@ -153,7 +155,7 @@ struct FrecencyTests {
         let decoded = try JSONDecoder().decode(Frecency.self, from: data)
         #expect(decoded == frecency)
         #expect(decoded.maxAge == 500)
-        #expect(decoded.bestMatch(for: "b", now: now) == path("/a/b"))
+        #expect(decoded.matches(for: "b", now: now).first?.path == path("/a/b"))
     }
 
     @Test("a store written before maxAge existed decodes with the default budget")

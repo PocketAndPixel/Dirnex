@@ -47,9 +47,6 @@ public enum SyncStatus: Sendable, Equatable {
     /// Same name, but a file on one side and a directory on the other — a structural clash
     /// that always needs an explicit decision.
     case typeMismatch
-
-    /// Whether the two sides agree (no sync action needed by default).
-    public var isIdentical: Bool { self == .identical }
 }
 
 // MARK: - Direction & action

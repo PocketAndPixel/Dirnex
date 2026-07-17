@@ -2491,11 +2491,42 @@ own scripting since `osascript` lacks assistive access). `systemSettingsURLStrin
 works back through the Ventura System Settings rewrite. The dialog copy still reads right ("switch
 on Dirnex under Full Disk Access") — the user now just starts *in* that list.
 
+Progress (2026-07-17, interlude — **dead-code sweep, VERIFIED LIVE**): a full-codebase
+symbol-reference audit (grep-scripted, each hit hand-verified, cross-checked with `periphery` 3.7.4)
+removed every production-dead symbol: `SMBMounter.disconnect(mountPoint:)`/`isOwnedMount` (the
+sidebar ejects through `NSWorkspace` directly; `mount` now returns a bare `URL` — `MountResult`
+and its never-read `createdByUs` are gone), `DirectorySizeProvider.cachedSize(for:)` (the pass-9
+batch `cachedSizes` superseded it), `AutomationVerb` (nothing in the app ever read it; the sdef
+drift-pin it promised lives on in `ScriptingCommandsTests`, now against the literal three names),
+`Frecency.bestMatch`, `Panel.moveCursorToStart/End` (the app's `FileTableView` does Home/End
+itself), `UndoJournal.removeTop`, `GitStatusEntry.isStaged`/`hasWorktreeChanges` (+ their now-orphaned
+`isUntrackedOrIgnored`), `GitBranch.hasUpstreamDivergence`, `FileEntry.isSymlink`/`isBrokenSymlink`,
+`SizeVisualization.isComplete`, `SyncComparison.isIdentical`, and the M0 umbrella `Dirnex.version`
+(file + smoke test). Test-only conveniences were rewritten against the underlying API, not kept
+alive by their own tests; `FileOperationQueue.waitUntilIdle` stays as deliberate test support.
+**One finding was a missing call, not dead code:** `cancelAllScans`'s doc claimed "the one caller is
+the last pane leaving the mode" but no caller existed — the whole `DirectoryLoader.cancellableSize`
+cancellation machinery was unreachable. Now wired: `clearSizeVisualization` calls it when this pane
+genuinely drops its projection **and** no tab in either pane still has the mode on. Placement
+matters — the first attempt sat before the `sizeVisualization != nil` guard and fired (as a no-op)
+on *every* steady-state render pass, which the live log exposed as a ~150 ms-cadence flood; behind
+the guard it fired exactly once for the whole session, on toggle-off, catching a genuinely
+in-flight walk (`drain=true inFlight=1` — driven via the pass-15 AppleScript verb
+`run operation "view.sizeVisualization"` against a Terminal-launched build, the pass-14 stderr
+trick). 808 core (−4) + 79 app tests, lint/format clean. `periphery scan --project Dirnex.xcodeproj
+--schemes Dirnex` also surfaced a second batch — unused *overloads* the name-based scan can't split
+(`SavedSearch`/`ServerConnection`/`UserScripts`/`Workspaces` `remove`/`move`/`rename` variants,
+`ArchiveTOC.init(childrenByDirectory:directoryPaths:)`, `DirectorySizeCache.count/isEmpty/removeAll`,
+`KeyBindings.resetAll`, `OpenWithApplications.all`, `MultiRename.identity`) and assign-only stored
+properties (`FileEntry.creationDate/permissions/inode`, `GitStatusEntry.originalPath`,
+`Places.isReadOnly`, `SFTPTransport.host/line`) — **left untouched**: periphery didn't index the
+test targets, several are test-pinned design surface (e.g. `SizeVisualization.maximumBytes`), and
+`VFSBackend.id` is a protocol requirement — each needs its own keep-or-cut call.
+
 **NEXT in M7:** the first-run tour and the docs keyboard-reference (both buildable + live-verifiable
 now, core-first). The remaining four items are **blocked on the user**: Sparkle 2 + notarized-DMG CI
 needs their Developer ID signing identity + notarization creds + Sparkle EdDSA keys; crash reporting
 + telemetry is a product/privacy *decision* first; and private→public beta→1.0 is a release gate.
-
 
 ## 5. Cross-cutting: testing strategy
 

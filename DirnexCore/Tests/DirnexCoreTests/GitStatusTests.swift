@@ -53,19 +53,6 @@ struct GitStatusEntryTests {
         #expect(entry(" T").status == .modified)
     }
 
-    @Test("staged and worktree flags describe the two axes independently")
-    func stagedAndWorktreeFlags() {
-        #expect(entry("M ").isStaged)
-        #expect(!entry("M ").hasWorktreeChanges)
-        #expect(!entry(" M").isStaged)
-        #expect(entry(" M").hasWorktreeChanges)
-        #expect(entry("AM").isStaged)
-        #expect(entry("AM").hasWorktreeChanges)
-        // An untracked file is neither staged nor a worktree *change* — Git tracks nothing about it.
-        #expect(!entry("??").isStaged)
-        #expect(!entry("??").hasWorktreeChanges)
-    }
-
     @Test("a rename carries where it came from")
     func renameCarriesOrigin() {
         let renamed = GitStatusEntry(

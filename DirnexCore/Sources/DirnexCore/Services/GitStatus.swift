@@ -115,26 +115,12 @@ public struct GitStatusEntry: Sendable, Hashable {
         return Self.status(for: indexStatus) ?? Self.status(for: worktreeStatus) ?? .unmodified
     }
 
-    /// Whether anything about this path is staged for the next commit.
-    public var isStaged: Bool {
-        indexStatus != " " && !isUntrackedOrIgnored
-    }
-
-    /// Whether the files on disk differ from what is staged.
-    public var hasWorktreeChanges: Bool {
-        worktreeStatus != " " && !isUntrackedOrIgnored
-    }
-
     /// Git's unmerged states: either side literally `U`, or the `AA`/`DD` both-added/both-deleted
     /// pair. Every one of them means the same thing to a file manager — a conflict to resolve.
     private var isUnmerged: Bool {
         if indexStatus == "U" || worktreeStatus == "U" { return true }
         return (indexStatus == "A" && worktreeStatus == "A")
             || (indexStatus == "D" && worktreeStatus == "D")
-    }
-
-    private var isUntrackedOrIgnored: Bool {
-        indexStatus == "?" || indexStatus == "!"
     }
 
     /// One of Git's per-axis letters, or `nil` for an unset (`" "`) axis.
@@ -188,11 +174,5 @@ public struct GitBranch: Sendable, Hashable {
     /// What the path bar shows.
     public var displayName: String {
         name ?? "detached HEAD"
-    }
-
-    /// Whether the branch has drifted from its upstream in either direction — the condition for
-    /// showing an ahead/behind indicator at all.
-    public var hasUpstreamDivergence: Bool {
-        ahead > 0 || behind > 0
     }
 }

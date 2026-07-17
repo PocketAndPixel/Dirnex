@@ -276,7 +276,7 @@ extension PanelViewController {
         Task {
             defer { if let activityName { ServerConnectionActivity.shared.end(activityName) } }
             do {
-                let result = try await SMBMounter.shared.mount(
+                let mountPoint = try await SMBMounter.shared.mount(
                     location,
                     username: location.username,
                     password: password
@@ -288,7 +288,7 @@ extension PanelViewController {
                     SMBKeychain.store(password: password, for: location)
                 }
                 if let saveName { saveServer(name: saveName, endpoint: .smb(location)) }
-                navigate(to: .local(result.mountPoint.path))
+                navigate(to: .local(mountPoint.path))
                 // Hand keyboard focus to the pane so the freshly mounted share is ready to work
                 // with immediately — no extra click to activate it first.
                 focusTable()

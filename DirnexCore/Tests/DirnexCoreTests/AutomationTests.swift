@@ -5,21 +5,6 @@ import Testing
 
 @Suite("Automation")
 struct AutomationTests {
-    // MARK: - Verbs
-
-    @Test("every verb has a distinct, non-empty AppleScript command name")
-    func verbNamesAreDistinctAndNonEmpty() {
-        let names = AutomationVerb.allCases.map(\.commandName)
-        #expect(names.allSatisfy { !$0.isEmpty })
-        #expect(Set(names).count == names.count)
-    }
-
-    @Test("the three PLAN verbs are present")
-    func verbsCoverThePlan() {
-        let cases = Set(AutomationVerb.allCases)
-        #expect(cases == [.reveal, .copySelection, .runOperation])
-    }
-
     // MARK: - Reveal target
 
     @Test("revealing a file shows its parent and selects the file")
