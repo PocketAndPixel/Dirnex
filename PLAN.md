@@ -2480,6 +2480,17 @@ degradation). 812 core + 79 app green, swiftlint `--strict` 0 violations, swiftf
 synthetic-keys quirk the pass-13 ⌘K note records — but it uses the identical `enableEscapeToCancel`
 helper every other Dirnex sheet does.)
 
+**Follow-up fix (2026-07-17, live-probed):** the "Tahoe stopped honouring the anchor" conclusion
+above was wrong — the anchor *name* was. Asking System Settings itself
+(`name of anchors of pane "Privacy & Security"` via AppleScript) shows the pane has **no**
+`Privacy_AllFilesAccess` anchor; the real one is **`Privacy_AllFiles`**, and an unknown anchor
+silently falls back to the pane top. With the correct anchor **both** pane ids land squarely on the
+Full Disk Access sub-pane (window title "Full Disk Access", confirmed through System Settings'
+own scripting since `osascript` lacks assistive access). `systemSettingsURLString` now pins
+`com.apple.preference.security?Privacy_AllFiles` — the legacy id, because it is the one that also
+works back through the Ventura System Settings rewrite. The dialog copy still reads right ("switch
+on Dirnex under Full Disk Access") — the user now just starts *in* that list.
+
 **NEXT in M7:** the first-run tour and the docs keyboard-reference (both buildable + live-verifiable
 now, core-first). The remaining four items are **blocked on the user**: Sparkle 2 + notarized-DMG CI
 needs their Developer ID signing identity + notarization creds + Sparkle EdDSA keys; crash reporting

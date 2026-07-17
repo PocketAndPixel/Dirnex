@@ -71,12 +71,16 @@ public enum FullDiskAccess {
     /// The System Settings deep link that opens Privacy & Security ▸ Full Disk Access directly, with
     /// that pane already selected.
     ///
-    /// The `Privacy_AllFilesAccess` anchor is the stable one across the System Settings rewrite
-    /// (Ventura) all the way through macOS 26, and it is pinned by a test because a single typo would
-    /// silently drop the user on the top of Privacy & Security with nothing selected — a much worse
-    /// failure than a build error, because it still looks like it worked.
+    /// The anchor is `Privacy_AllFiles` — probed live on macOS 26.5.2 by asking System Settings for
+    /// `name of anchors of pane "Privacy & Security"`: that list has no `Privacy_AllFilesAccess`, and
+    /// an unknown anchor silently drops the user on the top of Privacy & Security with nothing
+    /// selected — a much worse failure than a build error, because it still looks like it worked.
+    /// That is exactly why the string is pinned by a test. With the real anchor, both this legacy
+    /// pane id and the modern `com.apple.settings.PrivacySecurity.extension` land on the Full Disk
+    /// Access sub-pane (window title "Full Disk Access"); the legacy id is kept because it is the
+    /// one that also works back through the Ventura System Settings rewrite.
     public static let systemSettingsURLString =
-        "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFilesAccess"
+        "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"
 
     /// Fold the per-sentinel reads into one verdict, reading each sentinel through the supplied
     /// closure — the seam the app fills with a real filesystem read and a test fills with a canned

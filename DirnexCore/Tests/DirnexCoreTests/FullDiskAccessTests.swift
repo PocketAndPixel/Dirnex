@@ -22,12 +22,13 @@ struct FullDiskAccessTests {
 
     @Test("the System Settings deep link points at the Full Disk Access pane")
     func deepLinkAnchor() {
-        // Pinned because a typo drops the user on the top of Privacy & Security with nothing
-        // selected — a failure that still looks like it worked. `Privacy_AllFilesAccess` is the
-        // stable anchor from the System Settings rewrite through macOS 26.
+        // Pinned because a wrong anchor drops the user on the top of Privacy & Security with nothing
+        // selected — a failure that still looks like it worked (and did: `Privacy_AllFilesAccess`
+        // shipped first, and no such anchor exists). `Privacy_AllFiles` is the anchor System
+        // Settings itself reports on macOS 26.5.2, and it opens the Full Disk Access sub-pane.
         #expect(
             FullDiskAccess.systemSettingsURLString
-                == "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFilesAccess"
+                == "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"
         )
         // And it must actually parse as a URL the app can open.
         #expect(URL(string: FullDiskAccess.systemSettingsURLString) != nil)
