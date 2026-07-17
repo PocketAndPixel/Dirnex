@@ -35,6 +35,10 @@ final class UserScriptsOrganizerController: NSViewController {
     override func loadView() {
         let container = EscapeDismissingView()
         container.onEscape = { [weak self] in self?.done(nil) }
+        // This sheet is a form, not a list with a transient rename: a field holds focus almost
+        // always, so Escape has to close over the field editor or it would never close at all.
+        // `done` flushes the in-progress edit first, so nothing typed is lost on the way out.
+        container.dismissesWhileEditing = true
 
         let title = NSTextField(labelWithString: "Scripts")
         title.font = .systemFont(ofSize: NSFont.systemFontSize, weight: .semibold)
@@ -70,12 +74,6 @@ final class UserScriptsOrganizerController: NSViewController {
         preferredContentSize = NSSize(width: 640, height: 460)
         tableView.reloadData()
         selectRow(scripts.scripts.isEmpty ? nil : 0)
-    }
-
-    override func viewDidAppear() {
-        super.viewDidAppear()
-        // A fresh, empty organizer is most useful pointed straight at a new script.
-        if scripts.scripts.isEmpty { addScript(nil) }
     }
 
     private func configureTable() {

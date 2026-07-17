@@ -15,6 +15,12 @@ final class EscapeDismissingView: NSView {
     /// Invoked when Escape closes the surface. Typically wired to the controller's dismiss/done.
     var onEscape: (() -> Void)?
 
+    /// Close even while a text field holds focus. Default `false` suits a list whose only editing is
+    /// a transient inline rename — there, Escape should revert the rename, not close over it. Set
+    /// `true` for a sheet built as a *permanent* form (the scripts organizer), where a field owns the
+    /// focus nearly the whole time, so bowing out would mean Escape almost never closes at all.
+    var dismissesWhileEditing = false
+
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         // Let real key-equivalent responders (a Cancel/Done button, an inline field editor) win.
         if super.performKeyEquivalent(with: event) { return true }
@@ -23,7 +29,7 @@ final class EscapeDismissingView: NSView {
               event.modifierFlags.isDisjoint(with: [.command, .control, .option, .shift]),
               let onEscape else { return false }
         // A field editor owns Escape to revert the in-progress edit; don't close over it.
-        if window?.firstResponder is NSText { return false }
+        if !dismissesWhileEditing, window?.firstResponder is NSText { return false }
         onEscape()
         return true
     }
