@@ -49,6 +49,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         browserWindowController = controller
 
         NSApp.activate(ignoringOtherApps: true)
+
+        // Offer Full Disk Access on a fresh install where the grant is missing (PLAN.md §M7). The
+        // check is off-main and the prompt attaches to the window we just showed; it is a one-shot
+        // — later launches stay silent, and "Full Disk Access…" re-opens it on demand.
+        FullDiskAccessOnboarding.presentIfNeeded(over: controller.window)
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -82,5 +87,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// the responder chain, with the app delegate as its final link.
     @objc func showSettings(_ sender: Any?) {
         SettingsWindowController.shared.present()
+    }
+
+    // MARK: - Full Disk Access
+
+    /// App menu ▸ "Full Disk Access…" (and the palette command) — re-open the onboarding prompt on
+    /// demand (PLAN.md §M7), whatever the current grant state. Reached through the responder chain,
+    /// with the app delegate as its final link.
+    @objc func showFullDiskAccess(_ sender: Any?) {
+        FullDiskAccessOnboarding.present(over: NSApp.keyWindow ?? browserWindowController?.window)
     }
 }

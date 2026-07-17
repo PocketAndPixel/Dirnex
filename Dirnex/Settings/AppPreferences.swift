@@ -117,6 +117,20 @@ final class AppPreferences: ObservableObject {
         didSet { defaults.set(confirmTrash, forKey: Keys.confirmTrash) }
     }
 
+    /// Whether the Full Disk Access onboarding prompt has been shown once already (PLAN.md §M7).
+    /// Not a user-facing setting — a one-shot latch so a fresh install is offered the grant at
+    /// first launch, but is never nagged on every subsequent one. Set the moment the prompt is
+    /// shown (or, for the on-demand menu command, whenever the user opens it). Default off, so a
+    /// brand-new install prompts; the on-demand "Full Disk Access…" command re-opens it anytime.
+    @Published var hasSeenFullDiskAccessOnboarding: Bool {
+        didSet {
+            defaults.set(
+                hasSeenFullDiskAccessOnboarding,
+                forKey: Keys.hasSeenFullDiskAccessOnboarding
+            )
+        }
+    }
+
     /// Panels ▸ move focus to a folder opened from search results (default off — stay on the
     /// results so you can keep opening hits). Opening a folder from a `.search` results tab never
     /// replaces the results in place: it lands as a new tab in the other pane (or, when there's no
@@ -140,6 +154,7 @@ final class AppPreferences: ObservableObject {
         showFunctionBar = defaults.object(forKey: Keys.showFunctionBar) as? Bool ?? true
         confirmTrash = defaults.bool(forKey: Keys.confirmTrash)
         focusOpenedSearchDirectory = defaults.bool(forKey: Keys.focusOpenedSearchDirectory)
+        hasSeenFullDiskAccessOnboarding = defaults.bool(forKey: Keys.hasSeenFullDiskAccessOnboarding)
     }
 
     private enum Keys {
@@ -150,5 +165,6 @@ final class AppPreferences: ObservableObject {
         static let showFunctionBar = "Dirnex.pref.showFunctionBar"
         static let confirmTrash = "Dirnex.pref.confirmTrash"
         static let focusOpenedSearchDirectory = "Dirnex.pref.focusOpenedSearchDirectory"
+        static let hasSeenFullDiskAccessOnboarding = "Dirnex.pref.hasSeenFullDiskAccessOnboarding"
     }
 }

@@ -455,6 +455,12 @@ extension CommandCatalog {
             shortcut: CommandShortcut(key: ",", modifiers: .command)
         ),
         Command(
+            id: "app.fullDiskAccess",
+            title: "Full Disk Access…",
+            category: .application,
+            keywords: ["permission", "privacy", "security", "access", "disk", "grant", "onboarding"]
+        ),
+        Command(
             id: "app.quit",
             title: "Quit Dirnex",
             category: .application,

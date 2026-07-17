@@ -107,6 +107,16 @@ struct CommandCatalogTests {
         }
     }
 
+    @Test("the M7 Full Disk Access command is a shortcut-free Application command")
+    func coversFullDiskAccess() {
+        let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })
+        let fullDiskAccess = byID["app.fullDiskAccess"]
+        #expect(fullDiskAccess?.category == .application)
+        // No default shortcut (reached via the app menu / palette), so it can never collide.
+        #expect(fullDiskAccess?.shortcut == nil)
+        #expect(KeyBindings().conflicts(for: "app.fullDiskAccess").isEmpty)
+    }
+
     @Test("the M6 manage-scripts command is a shortcut-free File command")
     func coversManageScripts() {
         let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })

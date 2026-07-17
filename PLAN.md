@@ -2361,7 +2361,7 @@ two remain.*
 ### M7 — Release readiness (M)
 
 - [ ] Sparkle 2 updates + appcast infrastructure; notarized DMG pipeline in CI
-- [ ] Full Disk Access onboarding flow (detect, explain, deep-link to System Settings)
+- [x] Full Disk Access onboarding flow (detect, explain, deep-link to System Settings)
 - [ ] First-run tour: palette-centric, 5 screens max
 - [ ] Performance pass: instruments audit of M1 budgets on real dirty data
       (huge Downloads, node_modules, network volumes, iCloud placeholder files)
@@ -2420,6 +2420,70 @@ swiftlint 0 violations, swiftformat clean.
 not establish what they say during a **healthy** transfer, because the probes were an eviction and a
 download — never a routine upload from a resting file. A truth table built only from interesting
 samples encodes the boring case wrong, and the boring case is every row the user has.
+
+
+Progress (2026-07-17, **M7 pass 1 — Full Disk Access onboarding; the box closes `[x]`, VERIFIED
+LIVE**, and M7 is now open): the exit-criteria centerpiece — *"a stranger can download, pass FDA
+onboarding, and move files in under 3 minutes."* A file manager without the grant browses Home fine
+but hits a permission wall at other users' folders, `~/Library/Mail`, Time Machine backups; this
+catches the wall at first launch and walks the user to the one switch.
+
+**Probed before writing Swift** (the M4/M5/M6 opener): on **macOS 26.5.2** a TCC-denied read is
+`EPERM` (errno 1), which Foundation surfaces as `NSFileReadNoPermissionError` (Cocoa 257). **The
+sentinel choice is the load-bearing decision:** `~/Library/Application Support/com.apple.TCC/TCC.db`
+is the gold standard — TCC creates it on **every** account so it is always present, and it is
+readable **only** with FDA, so a successful read is positive proof of the grant and a permission
+error positive proof of its absence. The Mail/Safari/Messages folders can't play that role: a user
+who never ran Mail simply has no `~/Library/Mail`, and that **absence must never read as denial** —
+they are fallbacks only.
+
+Core `DirnexCore/Services/FullDiskAccess.swift` (the same **core-decides-meaning / app-does-I/O**
+split `CloudSyncStatus` draws): `FullDiskAccessStatus` (`.granted`/`.denied`/**`.unknown`** — the
+honest answer when every sentinel is missing or fails for a non-permission reason, never a *guessed*
+denial), `SentinelReadOutcome`, the ordered `sentinelPaths`, a **pinned** `systemSettingsURLString`,
+`status(reading:)` (folds per-sentinel reads through an injected closure — **short-circuits at the
+first `.readable`** so the app never touches `~/Library/Mail` once TCC.db answered; a denial anywhere
+outranks the inconclusive), and `outcome(domain:code:)` (the `CloudTransferError.init(domain:code:)`
+move — Cocoa 257/513 + POSIX `EPERM`/`EACCES` → `.permissionDenied`; Cocoa 260/4 + `ENOENT` →
+`.missing`; else `.otherFailure`). +10 → **812 core**.
+
+App: `Dirnex/Onboarding/FullDiskAccessChecker.swift` (off-main real reads — `stat` for existence,
+which TCC always allows, then a one-byte file open or a directory listing, catch → core classifier;
+`status(inHomeDirectory:)` is the injectable seam a test fills with a temp home) + `FullDiskAccess`​
+`Onboarding.swift` (an `NSAlert` sheet — single-decision surface matching the app's alert-driven
+modals; `enableEscapeToCancel`; **"Open System Settings"** opens the pane via `NSWorkspace.open`; a
+distinct **"already granted"** variant for the on-demand path so the command is never a silent
+no-op) + AppDelegate launch hook (`presentIfNeeded`) and `showFullDiskAccess(_:)` selector +
+`app.fullDiskAccess` catalog command + `CommandBinding` entry + an **App-menu item after Settings** +
+an `AppPreferences.hasSeenFullDiskAccessOnboarding` **one-shot latch** (fresh install prompts once,
+never nagged after; the menu item re-opens it anytime). +3 → **79 app** (`FullDiskAccessChecker`
+against a throwaway temp home: readable→`.granted`, empty→`.unknown`, and a `chmod 000`
+denied→`.denied` **guarded by `getuid() != 0`** since root ignores permission bits).
+
+**THE macOS-26 deep-link finding (live-probed, not recalled):** *both*
+`com.apple.preference.security?Privacy_AllFilesAccess` **and**
+`com.apple.settings.PrivacySecurity.extension?Privacy_AllFilesAccess` land on the Privacy & Security
+**overview**, not the FDA sub-list — Tahoe stopped honouring the anchor into the specific pane. FDA is
+one *labelled* click away, so I kept the canonical constant and wrote the copy to match ("switch on
+Dirnex **under** Full Disk Access"). **THE test-host gotcha:** the app test host launches the real
+delegate, so `presentIfNeeded` fired **during `xcodebuild test`** and flipped the shared-defaults
+latch (that is why the latch read `1` before I ever launched by hand); guarded with
+`ProcessInfo…environment["XCTestConfigurationFilePath"]` — **empirically confirmed** by resetting the
+latch to `0`, running the full suite, and watching it stay `0`.
+
+LIVE (fresh ad-hoc build, which loses its FDA grant on every rebuild → `.denied`): first launch
+popped the prompt attached to the browser window; **Open System Settings** fronted System Settings on
+Privacy & Security with **Full Disk Access** visible; the **App-menu ▸ Full Disk Access…** item
+re-opened the same prompt on demand; **Not Now** dismissed cleanly back to normal browsing (graceful
+degradation). 812 core + 79 app green, swiftlint `--strict` 0 violations, swiftformat clean.
+(Escape-to-dismiss couldn't be confirmed through a *synthetic* key event — the same OS-swallows-
+synthetic-keys quirk the pass-13 ⌘K note records — but it uses the identical `enableEscapeToCancel`
+helper every other Dirnex sheet does.)
+
+**NEXT in M7:** the first-run tour and the docs keyboard-reference (both buildable + live-verifiable
+now, core-first). The remaining four items are **blocked on the user**: Sparkle 2 + notarized-DMG CI
+needs their Developer ID signing identity + notarization creds + Sparkle EdDSA keys; crash reporting
++ telemetry is a product/privacy *decision* first; and private→public beta→1.0 is a release gate.
 
 
 ## 5. Cross-cutting: testing strategy

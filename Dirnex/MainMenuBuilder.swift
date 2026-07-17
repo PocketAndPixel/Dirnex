@@ -155,6 +155,9 @@ enum MainMenuBuilder {
         if let settings = commandItem(for: "app.settings", bindings: bindings) {
             appMenu.addItem(settings)
         }
+        if let fullDiskAccess = commandItem(for: "app.fullDiskAccess", bindings: bindings) {
+            appMenu.addItem(fullDiskAccess)
+        }
         appMenu.addItem(.separator())
         appMenu.addItem(servicesMenuItem())
         appMenu.addItem(.separator())
