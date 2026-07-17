@@ -108,7 +108,10 @@ final class FileCellView: NSTableCellView {
             text.trailingAnchor.constraint(lessThanOrEqualTo: dots.leadingAnchor, constant: -6),
             dots.trailingAnchor.constraint(equalTo: badge.leadingAnchor),
             dots.centerYAnchor.constraint(equalTo: centerYAnchor),
-            badge.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
+            // 1, not the 4 this used to be, because the cloud is not flush with the badge's edge:
+            // every one of these symbols carries ~1.5pt of transparent margin of its own, so the gap
+            // you actually see is ~2.5pt — half the ~5pt it was, which is what was asked for.
+            badge.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -1),
             badge.centerYAnchor.constraint(equalTo: centerYAnchor)
         ])
     }

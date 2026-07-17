@@ -27,24 +27,38 @@ final class SyncBadgeView: NSView {
         }
     }
 
-    private let glyphSize: CGFloat = 13
+    private let glyphHeight: CGFloat = 15
+    /// Breathing room between the tag dots and the cloud, on the badge's own leading edge.
+    private let leadingGap: CGFloat = 3
 
     /// The width the badge needs, so Auto Layout gives the name exactly the room it doesn't — and
     /// **all** of it when there is no badge, which is the overwhelmingly common row. This is what
     /// keeps the feature from costing anything at all outside a cloud folder.
+    ///
+    /// Taken from the glyph rather than assumed square, because the symbols aren't: measured at this
+    /// configuration, `icloud.and.arrow.down` is 19×18 and `xmark.icloud` 19×14.
     override var intrinsicContentSize: NSSize {
-        guard status != nil else { return NSSize(width: 0, height: glyphSize) }
-        return NSSize(width: glyphSize + 3, height: glyphSize)
+        guard let status, let image = SyncBadgeStyle.image(for: status) else {
+            return NSSize(width: 0, height: glyphHeight)
+        }
+        return NSSize(
+            width: image.size.width + leadingGap,
+            height: max(glyphHeight, image.size.height)
+        )
     }
 
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
         guard let status, let image = SyncBadgeStyle.image(for: status) else { return }
+        // At its natural size rather than scaled into a box of our choosing: the box was square and
+        // the symbols are not, and — the reason this was too small to read — a box smaller than the
+        // symbol silently shrank it. The configuration's point size is now the only size control.
+        let size = image.size
         let rect = NSRect(
-            x: bounds.maxX - glyphSize,
-            y: (bounds.height - glyphSize) / 2,
-            width: glyphSize,
-            height: glyphSize
+            x: bounds.maxX - size.width,
+            y: ((bounds.height - size.height) / 2).rounded(),
+            width: size.width,
+            height: size.height
         )
         image.draw(in: rect)
     }
@@ -71,7 +85,10 @@ enum SyncBadgeStyle {
             systemSymbolName: symbolName(for: status),
             accessibilityDescription: label(for: status)
         ) else { return nil }
-        let configuration = NSImage.SymbolConfiguration(pointSize: 11, weight: .regular)
+        // Sized against the 16pt file icon at the other end of the row rather than against the
+        // 13pt name text: a monochrome cloud at text weight reads as a smudge at a glance, and this
+        // badge only ever appears on the rows where it is the point.
+        let configuration = NSImage.SymbolConfiguration(pointSize: 13, weight: .medium)
             .applying(NSImage.SymbolConfiguration(paletteColors: [color(for: status)]))
         return symbol.withSymbolConfiguration(configuration)
     }
