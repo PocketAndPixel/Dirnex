@@ -68,6 +68,63 @@ public enum CloudDownloadingStatus: String, Sendable, Hashable, CaseIterable {
     case notDownloaded = "NSURLUbiquitousItemDownloadingStatusNotDownloaded"
 }
 
+/// Why a provider says a transfer has not gone through, keyed by the Cocoa error codes it reports.
+///
+/// **This type exists because "there is an error" turned out not to mean "something is wrong".**
+/// Probed against a live iCloud file, `NSUbiquitousFileUbiquityServerNotAvailable` (4355, *"Couldn't
+/// access your iCloud account"*) is attached to **every** ordinary pending upload — from the instant
+/// there is something to push until it lands. Three samples, all of them healthy syncs that completed
+/// in seconds: a Finder-tag write, a one-line content edit, and a 60 MB file where the error was
+/// already there in the first sample, *before* `isUploading` had even flipped true. Reading its
+/// presence as a failure meant the red `xmark.icloud` was painted over the whole of every upload —
+/// which is what a user reported seeing on every tag they applied, and why `status` no longer asks
+/// merely *whether* there is an error.
+///
+/// So the mapping is here, in the core, rather than the app matching `NSError` codes inline: it is
+/// the same "the core decides what the system's raw values mean" split `CloudDownloadingStatus`
+/// draws, and it makes the distinction testable without an iCloud account, a network, or a file.
+public enum CloudTransferError: Sendable, Hashable, CaseIterable {
+    /// The provider could not reach its server on the last attempt. **Not a verdict** — see
+    /// `isVerdict`.
+    case serverUnavailable
+    /// The account is out of space, so the upload will not happen until a human does something.
+    case quotaExceeded
+    /// The bytes are on no device the provider can reach, so the download cannot be satisfied.
+    case itemUnavailable
+    /// Anything else, including any error from a domain other than Cocoa's. Unrecognised is treated
+    /// as real: the states worth suppressing are the ones proven to be noise, and this one isn't.
+    case other
+
+    /// Classify an error the system reported. The domain is checked because these codes are only
+    /// meaningful in Cocoa's — code 4355 in some provider's own domain means something else entirely.
+    public init(domain: String, code: Int) {
+        guard domain == NSCocoaErrorDomain else {
+            self = .other
+            return
+        }
+        switch CocoaError.Code(rawValue: code) {
+        case .ubiquitousFileUbiquityServerNotAvailable: self = .serverUnavailable
+        case .ubiquitousFileNotUploadedDueToQuota: self = .quotaExceeded
+        case .ubiquitousFileUnavailable: self = .itemUnavailable
+        default: self = .other
+        }
+    }
+
+    /// Whether this error is a verdict about the file, or merely a note about the attempt in flight.
+    ///
+    /// `.serverUnavailable` is the note, and the only one: the transfer states already say the true
+    /// and useful thing about a file whose server cannot be reached — it is **waiting to upload** —
+    /// and that stays true whether the provider is quietly retrying or the Mac is on a plane. A file
+    /// that is going to arrive as soon as there is a network has not failed at anything, so it gets
+    /// the blue arrow that says so and not a red cross that says it needs help.
+    ///
+    /// The others are answers about the file itself, and outrank whatever transfer state the provider
+    /// happens to also be reporting.
+    public var isVerdict: Bool {
+        self != .serverUnavailable
+    }
+}
+
 /// One row's ubiquity attributes, as the system reports them.
 ///
 /// The app reads them (`CloudSyncStatusProvider`) and this decides what they mean — the same
@@ -87,8 +144,11 @@ public struct CloudItemAttributes: Sendable, Hashable {
     /// progress — that would badge every row of a provider that doesn't report it.
     public var isUploaded: Bool
     public var hasUnresolvedConflicts: Bool
-    public var hasDownloadingError: Bool
-    public var hasUploadingError: Bool
+    /// The errors the provider reports, **classified rather than counted** — the presence of one says
+    /// nothing on its own, because iCloud attaches `.serverUnavailable` to every healthy pending
+    /// upload. `CloudTransferError` is where that discovery is written down.
+    public var downloadingError: CloudTransferError?
+    public var uploadingError: CloudTransferError?
     public var isExcludedFromSync: Bool
 
     public init(
@@ -98,8 +158,8 @@ public struct CloudItemAttributes: Sendable, Hashable {
         isUploading: Bool = false,
         isUploaded: Bool = true,
         hasUnresolvedConflicts: Bool = false,
-        hasDownloadingError: Bool = false,
-        hasUploadingError: Bool = false,
+        downloadingError: CloudTransferError? = nil,
+        uploadingError: CloudTransferError? = nil,
         isExcludedFromSync: Bool = false
     ) {
         self.isUbiquitous = isUbiquitous
@@ -108,8 +168,8 @@ public struct CloudItemAttributes: Sendable, Hashable {
         self.isUploading = isUploading
         self.isUploaded = isUploaded
         self.hasUnresolvedConflicts = hasUnresolvedConflicts
-        self.hasDownloadingError = hasDownloadingError
-        self.hasUploadingError = hasUploadingError
+        self.downloadingError = downloadingError
+        self.uploadingError = uploadingError
         self.isExcludedFromSync = isExcludedFromSync
     }
 
@@ -124,7 +184,10 @@ public struct CloudItemAttributes: Sendable, Hashable {
     /// **The order is a precedence, and it is not the order the attributes are documented in:**
     ///
     /// - Errors and conflicts first — they are verdicts about the file, and they outrank whatever
-    ///   transfer state the provider happens to also be reporting.
+    ///   transfer state the provider happens to also be reporting. **But only the errors that really
+    ///   are verdicts**, which is not all of them: iCloud reports "server not available" throughout
+    ///   every perfectly healthy upload, so asking whether an error *exists* red-crossed every file
+    ///   the user touched. `CloudTransferError.isVerdict` is the sieve, and the story is on it.
     /// - `.excluded` before the transfer states, because a file the user excluded is never going to
     ///   upload, and `isUploaded` is `false` on one forever. Asking about uploads first would badge
     ///   it as eternally pending.
@@ -139,7 +202,7 @@ public struct CloudItemAttributes: Sendable, Hashable {
     ///   an upload, and both mean one thing to someone browsing a folder.
     public var status: CloudSyncStatus? {
         guard isUbiquitous else { return nil }
-        if hasDownloadingError || hasUploadingError { return .failed }
+        if downloadingError?.isVerdict == true || uploadingError?.isVerdict == true { return .failed }
         if hasUnresolvedConflicts { return .conflicted }
         if isExcludedFromSync { return .excluded }
         if isDownloading { return .downloading }

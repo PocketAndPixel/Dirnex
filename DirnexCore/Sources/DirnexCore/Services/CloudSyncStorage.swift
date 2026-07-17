@@ -79,10 +79,17 @@ public enum CloudSyncStorage {
             isUploading: values.ubiquitousItemIsUploading ?? false,
             isUploaded: values.ubiquitousItemIsUploaded ?? true,
             hasUnresolvedConflicts: values.ubiquitousItemHasUnresolvedConflicts ?? false,
-            hasDownloadingError: values.ubiquitousItemDownloadingError != nil,
-            hasUploadingError: values.ubiquitousItemUploadingError != nil,
+            downloadingError: classify(values.ubiquitousItemDownloadingError),
+            uploadingError: classify(values.ubiquitousItemUploadingError),
             isExcludedFromSync: values.ubiquitousItemIsExcludedFromSync ?? false
         )
+    }
+
+    /// Hand an error's identity — not merely its existence — to the core, which decides whether it is
+    /// a verdict on the file or the routine "server not available" iCloud attaches to every pending
+    /// upload. See `CloudTransferError`.
+    private static func classify(_ error: NSError?) -> CloudTransferError? {
+        error.map { CloudTransferError(domain: $0.domain, code: $0.code) }
     }
 
     /// Where macOS mounts third-party file providers. Resolved against the real home directory

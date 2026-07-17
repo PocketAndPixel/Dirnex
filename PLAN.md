@@ -2299,6 +2299,55 @@ Exit: a stranger can download, pass FDA onboarding, and move files in under 3 mi
 
 ---
 
+
+Progress (2026-07-17, M6 pass 18 — the red sync badge on every tag write; **fixed, VERIFIED LIVE
+against real iCloud**): a user reported the sync badge flashing the **red `xmark.icloud`** for the
+couple of seconds after applying a Finder tag, then settling — while the tag itself synced to their
+phone fine. It was real, it was ours, and it was not about tags at all.
+
+**Probed before writing a line of Swift** (a fresh `URL` per read, polling every 50 ms). iCloud
+attaches `NSCocoaErrorDomain` **4355** `NSUbiquitousFileUbiquityServerNotAvailable` — *"Couldn't
+access your iCloud account. The iCloud servers might be unreachable"* — to **every ordinary pending
+upload**, on a healthy account, with the upload completing seconds later. Three samples, all healthy:
+
+- a tag write: error appears with `isUploading=true, isUploaded=false` at the instant the tag lands,
+  gone 1.5 s later;
+- a **one-line content edit** — so this was never tag-specific, tagging is just the cheapest way for a
+  file manager to start an upload;
+- a **60 MB file**, where the error was already in the *first* sample, **before `isUploading` had even
+  flipped true**.
+
+So `CloudItemAttributes.status`'s first question — `if hasDownloadingError || hasUploadingError` —
+was true for the whole of every upload, and errors are the top of the precedence. The red cross was
+painted over every upload the user ever made, and `.uploading`'s blue arrow was **effectively dead
+code**: unreachable on the one provider we can test against.
+
+**THE fix: the presence of an error is not information; its identity is.** New core
+`CloudTransferError` (`.serverUnavailable` / `.quotaExceeded` / `.itemUnavailable` / `.other`,
+mapped from `(domain, code)` so 4355 in someone else's domain stays `.other`), and
+`CloudItemAttributes` now carries `downloadingError`/`uploadingError` as classified values rather
+than two Bools. Only an error that `isVerdict` yields `.failed`; `.serverUnavailable` falls through
+to the transfer states — which is not a suppression but **the more honest reading**: a file whose
+server is unreachable *is* waiting to upload, and that stays true whether the provider is quietly
+retrying or the Mac is on a plane. It is `.failed` that was the lie. Same core-decides-meaning /
+app-does-I/O split as `CloudDownloadingStatus`, and the codes are pinned by a test for the same
+reason the status strings are.
+
+The suppression is **per-error, not per-file**: a real `.itemUnavailable` alongside a routine
+`.serverUnavailable` still fails, and a conflict mid-upload still reads `.conflicted` (both pinned).
+`.quotaExceeded` — the one that genuinely demands a human — is untouched.
+
+LIVE (the shipping reader + truth table driven against a real iCloud file, the user's exact gesture):
+`upToDate` → **`uploading`** (`uling=true uploaded=false uploadErr=serverUnavailable`) → `upToDate`.
+That middle line is precisely the window that used to read `failed`. 785 core + 70 app tests green,
+swiftlint 0 violations, swiftformat clean.
+
+**Worth remembering beyond this bug:** the pass-16 probe established what the attributes *say*; it did
+not establish what they say during a **healthy** transfer, because the probes were an eviction and a
+download — never a routine upload from a resting file. A truth table built only from interesting
+samples encodes the boring case wrong, and the boring case is every row the user has.
+
+
 ## 5. Cross-cutting: testing strategy
 
 | Layer | Approach |

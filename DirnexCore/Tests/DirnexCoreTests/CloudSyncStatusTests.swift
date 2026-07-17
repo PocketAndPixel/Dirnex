@@ -30,6 +30,26 @@ struct CloudSyncStatusTests {
         #expect(CloudDownloadingStatus(rawValue: "something else") == nil)
     }
 
+    @Test("the transfer errors map from the codes the system actually reports")
+    func transferErrorCodes() {
+        // Probed off live files too: 4355 is what a real iCloud upload reports, every time, and the
+        // numbers are pinned here rather than left implicit in the Cocoa constants because that
+        // reading is the whole reason this type exists.
+        #expect(CloudTransferError(domain: NSCocoaErrorDomain, code: 4355) == .serverUnavailable)
+        #expect(CloudTransferError(domain: NSCocoaErrorDomain, code: 4354) == .quotaExceeded)
+        #expect(CloudTransferError(domain: NSCocoaErrorDomain, code: 4353) == .itemUnavailable)
+        #expect(CloudTransferError(domain: NSCocoaErrorDomain, code: 999_999) == .other)
+        // The same number in someone else's domain is someone else's meaning.
+        #expect(CloudTransferError(domain: NSURLErrorDomain, code: 4355) == .other)
+    }
+
+    @Test("only an unreachable server is not a verdict on the file")
+    func onlyServerUnavailableIsNoise() {
+        for error in CloudTransferError.allCases {
+            #expect(error.isVerdict == (error != .serverUnavailable))
+        }
+    }
+
     // MARK: - Is this a cloud row at all?
 
     @Test("a file outside any cloud container has no status")
@@ -111,13 +131,13 @@ struct CloudSyncStatusTests {
 
     // MARK: - Precedence
 
-    @Test("an error outranks every transfer state")
+    @Test("a real error outranks every transfer state")
     func errorWins() {
         let failed = CloudItemAttributes(
             isUbiquitous: true,
             downloadingStatus: .notDownloaded,
             isDownloading: true,
-            hasDownloadingError: true
+            downloadingError: .itemUnavailable
         )
         #expect(failed.status == .failed)
 
@@ -125,9 +145,47 @@ struct CloudSyncStatusTests {
             isUbiquitous: true,
             downloadingStatus: .current,
             isUploaded: false,
-            hasUploadingError: true
+            uploadingError: .quotaExceeded
         )
         #expect(failedUpload.status == .failed)
+    }
+
+    @Test("the error iCloud reports on every healthy upload does not read as a failure")
+    func serverUnavailableDoesNotFail() {
+        // THE regression, live-reported and then reproduced: applying a Finder tag red-crossed the
+        // row for the couple of seconds the upload took. This is that exact sample — iCloud reports
+        // `isUploading` **and** "server not available" together, on a sync that completes fine.
+        let taggedAndUploading = CloudItemAttributes(
+            isUbiquitous: true,
+            downloadingStatus: .current,
+            isUploading: true,
+            isUploaded: false,
+            uploadingError: .serverUnavailable
+        )
+        #expect(taggedAndUploading.status == .uploading)
+
+        // And the 60 MB sample, where the error was there before `isUploading` had caught up: still
+        // an upload, still not a failure.
+        let pending = CloudItemAttributes(
+            isUbiquitous: true,
+            downloadingStatus: .current,
+            isUploaded: false,
+            uploadingError: .serverUnavailable
+        )
+        #expect(pending.status == .uploading)
+    }
+
+    @Test("an unreachable server does not suppress a real error alongside it")
+    func serverUnavailableDoesNotMaskAVerdict() {
+        // The suppression is per-error, not "any noise means no failure": a download that genuinely
+        // has nowhere to come from still fails while the server is also unreachable.
+        let both = CloudItemAttributes(
+            isUbiquitous: true,
+            downloadingStatus: .notDownloaded,
+            downloadingError: .itemUnavailable,
+            uploadingError: .serverUnavailable
+        )
+        #expect(both.status == .failed)
     }
 
     @Test("a conflict outranks a transfer, and yields only to an error")
@@ -144,9 +202,19 @@ struct CloudSyncStatusTests {
             isUbiquitous: true,
             downloadingStatus: .current,
             hasUnresolvedConflicts: true,
-            hasUploadingError: true
+            uploadingError: .quotaExceeded
         )
         #expect(both.status == .failed)
+
+        // A conflict still wins over the routine upload noise, rather than being hidden by it.
+        let conflictedMidUpload = CloudItemAttributes(
+            isUbiquitous: true,
+            downloadingStatus: .current,
+            isUploaded: false,
+            hasUnresolvedConflicts: true,
+            uploadingError: .serverUnavailable
+        )
+        #expect(conflictedMidUpload.status == .conflicted)
     }
 
     @Test("an excluded file is excluded, not eternally uploading")
