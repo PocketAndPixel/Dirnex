@@ -65,6 +65,28 @@ final class AppPreferences: ObservableObject {
         showTags.toggle()
     }
 
+    /// Panels ▸ show each file's cloud sync state as a badge at the right edge of its name, where
+    /// Finder puts it (PLAN.md §M6 "iCloud/provider sync status"). Default **on**, and it can afford
+    /// to be: a folder that isn't a cloud folder is recognised in a single read and never scanned,
+    /// so someone with no provider pays one attribute read per folder visit and sees nothing.
+    @Published var showSyncStatus: Bool {
+        didSet {
+            guard showSyncStatus != oldValue else { return }
+            defaults.set(showSyncStatus, forKey: Keys.showSyncStatus)
+            NotificationCenter.default.post(name: Self.showSyncStatusDidChange, object: self)
+        }
+    }
+
+    /// Posted (on the main actor) when `showSyncStatus` flips, so every open pane picks the badges
+    /// up or drops them live. `object` is the `AppPreferences` that changed.
+    static let showSyncStatusDidChange = Notification.Name("Dirnex.showSyncStatusDidChange")
+
+    /// Flip the app-wide sync-badge state — the shared entry point for the View menu item, the
+    /// palette command, and the Settings toggle.
+    func toggleShowSyncStatus() {
+        showSyncStatus.toggle()
+    }
+
     /// View ▸ show the Total-Commander-style function-key bar along the window bottom (PLAN.md
     /// §M6). Default **on**: the bar is a signature discoverability win — it puts Copy/Move/
     /// NewFolder/Delete on labelled buttons a new user can find without the manual, the exact
@@ -111,6 +133,8 @@ final class AppPreferences: ObservableObject {
         // Defaults on, so `object(forKey:)` rather than `bool(forKey:)` — the latter answers
         // `false` for a key that was never written, which would ship the feature turned off.
         showTags = defaults.object(forKey: Keys.showTags) as? Bool ?? true
+        // Defaults on, like `showTags`, and for the same `object(forKey:)` reason.
+        showSyncStatus = defaults.object(forKey: Keys.showSyncStatus) as? Bool ?? true
         // Defaults on, like `showTags`: `object(forKey:)`, not `bool(forKey:)` (which answers
         // `false` for a never-written key and would ship the bar hidden).
         showFunctionBar = defaults.object(forKey: Keys.showFunctionBar) as? Bool ?? true
@@ -122,6 +146,7 @@ final class AppPreferences: ObservableObject {
         static let restoreSession = "Dirnex.pref.restoreSession"
         static let showHidden = "Dirnex.pref.showHidden"
         static let showTags = "Dirnex.pref.showTags"
+        static let showSyncStatus = "Dirnex.pref.showSyncStatus"
         static let showFunctionBar = "Dirnex.pref.showFunctionBar"
         static let confirmTrash = "Dirnex.pref.confirmTrash"
         static let focusOpenedSearchDirectory = "Dirnex.pref.focusOpenedSearchDirectory"

@@ -440,6 +440,12 @@ extension PanelViewController: NSMenuItemValidation {
             // tags to show there, and unchecking the box would blame the user's setting for it.
             menuItem.state = AppPreferences.shared.showTags ? .on : .off
             return true
+        case #selector(toggleShowSyncStatus(_:)):
+            // "Show Sync Status" checkmark tracks the app-wide state, not `isSyncStatusVisible` —
+            // same reasoning as tags: an archive suppresses the badge because nothing in one can be
+            // a cloud item, and unchecking the box would blame the user's setting for it.
+            menuItem.state = AppPreferences.shared.showSyncStatus ? .on : .off
+            return true
         case #selector(toggleFunctionBar(_:)):
             // "Show Function Key Bar" checkmark tracks the app-wide state.
             menuItem.state = AppPreferences.shared.showFunctionBar ? .on : .off

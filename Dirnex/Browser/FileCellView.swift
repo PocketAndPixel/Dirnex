@@ -27,11 +27,27 @@ final class FileCellView: NSTableCellView {
     /// their own view, so they can sit in the name cell without fighting anything in it.
     private(set) var tagDots: TagDotsView?
 
+    /// The cloud sync badge, outermost in the name cell (PLAN.md §M6), or `nil` on the cells that
+    /// aren't the name. Outside the dots because that is where Finder puts it when a file is both
+    /// tagged and not downloaded — measured, like the dots' own placement.
+    private(set) var syncBadge: SyncBadgeView?
+
     /// The row's tags. The name column truncates before them, so a long name gives way to its dots
     /// rather than running underneath them.
     var tags: [FinderTag] {
         get { tagDots?.tags ?? [] }
         set { tagDots?.tags = newValue }
+    }
+
+    /// The row's cloud sync status, `nil` for the ordinary and the fully synced alike — both draw
+    /// nothing. Carries its own tooltip: the glyph is small and monochrome, and "not downloaded"
+    /// versus "sync failed" is exactly what it cannot say on its own.
+    var syncStatus: CloudSyncStatus? {
+        get { syncBadge?.status }
+        set {
+            syncBadge?.status = newValue
+            syncBadge?.toolTip = syncBadge?.accessibilityText
+        }
     }
 
     init(showsImage: Bool, identifier: NSUserInterfaceItemIdentifier) {
@@ -66,12 +82,22 @@ final class FileCellView: NSTableCellView {
         addSubview(dots)
         tagDots = dots
 
-        // The name yields to the dots, never the reverse: the text is allowed to compress and
-        // truncate (it already does), while the cluster holds its intrinsic width. An untagged row
-        // — nearly all of them — has a zero-width cluster, so the name gets the full cell.
+        // …and the sync badge outside them, at the cell's trailing edge. Finder's order for a file
+        // that is both tagged and not downloaded: name, dots, cloud.
+        let badge = SyncBadgeView()
+        badge.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(badge)
+        syncBadge = badge
+
+        // The name yields to the dots and the badge, never the reverse: the text is allowed to
+        // compress and truncate (it already does), while they hold their intrinsic width. An
+        // untagged, non-cloud row — nearly all of them — has a zero-width cluster and a zero-width
+        // badge, so the name gets the full cell.
         text.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        dots.setContentCompressionResistancePriority(.required, for: .horizontal)
-        dots.setContentHuggingPriority(.required, for: .horizontal)
+        for accessory in [dots, badge] as [NSView] {
+            accessory.setContentCompressionResistancePriority(.required, for: .horizontal)
+            accessory.setContentHuggingPriority(.required, for: .horizontal)
+        }
         NSLayoutConstraint.activate([
             image.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 3),
             image.centerYAnchor.constraint(equalTo: centerYAnchor),
@@ -80,8 +106,10 @@ final class FileCellView: NSTableCellView {
             text.leadingAnchor.constraint(equalTo: image.trailingAnchor, constant: 5),
             text.centerYAnchor.constraint(equalTo: centerYAnchor),
             text.trailingAnchor.constraint(lessThanOrEqualTo: dots.leadingAnchor, constant: -6),
-            dots.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
-            dots.centerYAnchor.constraint(equalTo: centerYAnchor)
+            dots.trailingAnchor.constraint(equalTo: badge.leadingAnchor),
+            dots.centerYAnchor.constraint(equalTo: centerYAnchor),
+            badge.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
+            badge.centerYAnchor.constraint(equalTo: centerYAnchor)
         ])
     }
 
@@ -124,12 +152,14 @@ final class FileCellView: NSTableCellView {
         // Editing a hidden file — show the field at full opacity so the text stays legible;
         // the next render pass reapplies the dim once editing ends.
         alphaValue = 1
-        // Give the editor the whole cell: the name field stops short of the dots, so a tagged file
-        // would otherwise be renamed through a box narrower than every other row's. Clearing the
-        // tags (rather than hiding the view) is what actually returns the space — a hidden view
-        // still holds its Auto Layout width. Nothing to restore: the next render sets `tags` again
-        // from the model, as it does for every other property on a recycled cell.
+        // Give the editor the whole cell: the name field stops short of the dots and the badge, so a
+        // tagged or not-downloaded file would otherwise be renamed through a box narrower than every
+        // other row's. Clearing them (rather than hiding the views) is what actually returns the
+        // space — a hidden view still holds its Auto Layout width. Nothing to restore: the next
+        // render sets both again from the model, as it does for every other property on a recycled
+        // cell.
         tagDots?.tags = []
+        syncBadge?.status = nil
         textField.isEditable = true
         textField.isSelectable = true
         textField.isBordered = true

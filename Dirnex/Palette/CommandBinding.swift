@@ -45,6 +45,7 @@ enum CommandBinding {
         "view.toggleSidebar": #selector(NSSplitViewController.toggleSidebar(_:)),
         "view.toggleHidden": #selector(PanelViewController.toggleShowHidden(_:)),
         "view.toggleTags": #selector(PanelViewController.toggleShowTags(_:)),
+        "view.toggleSyncStatus": #selector(PanelViewController.toggleShowSyncStatus(_:)),
         "view.functionBar": #selector(PanelViewController.toggleFunctionBar(_:)),
         // The focused pane, not the app: unlike Show Tags, this mode is per tab (it *spends*
         // something to be on), so it lands wherever the responder chain does.

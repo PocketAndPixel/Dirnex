@@ -206,7 +206,12 @@ public enum CommandCatalog {
             keywords: ["wildcard", "glob", "deselect", "unmark"]
         )
     ]
+}
 
+// The View, Workspace, Window, and Application categories live in an extension so the main enum
+// body stays under SwiftLint's `type_body_length` limit; `all` above still composes them in with
+// the rest.
+extension CommandCatalog {
     // MARK: - View
 
     private static let view: [Command] = [
@@ -236,6 +241,15 @@ public enum CommandCatalog {
             title: "Show Tags",
             category: .view,
             keywords: ["finder", "tags", "labels", "colors", "colours", "dots", "column"]
+        ),
+        Command(
+            id: "view.toggleSyncStatus",
+            title: "Show Sync Status",
+            category: .view,
+            keywords: [
+                "icloud", "cloud", "sync", "dropbox", "drive", "onedrive", "download",
+                "downloaded", "offline", "placeholder", "badge"
+            ]
         ),
         Command(
             id: "view.sizeVisualization",
@@ -288,12 +302,7 @@ public enum CommandCatalog {
             shortcut: CommandShortcut(key: "`", modifiers: .control)
         )
     ]
-}
 
-// The Workspace, Window, and Application categories live in an extension so the main enum body
-// stays under SwiftLint's `type_body_length` limit; `all` above still composes them in with the
-// rest.
-extension CommandCatalog {
     // MARK: - Go
 
     private static let navigation: [Command] = [

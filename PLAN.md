@@ -913,7 +913,9 @@ remain, all deferrable to M6-ish polish.
 - [x] Git awareness: branch in path bar, status column (M/A/?/ignored) via a debounced
       `git status --porcelain` provider; optional .gitignore-aware folder sizes (the one
       optional slice, still deferred)
-- [x] Finder tags: column, edit from panel, filter chips in search
+- [x] Finder tags: ~~column~~ **dots at the right edge of the name**, where Finder puts them (the
+      word "column" was written before anyone had looked at Finder; see pass 4), edit from panel,
+      filter chips in search
 - [x] Terminal drawer: bottom pane following active panel's cwd; "cd sync back" via
       ~~shell integration snippet~~ `proc_pidinfo` (no snippet exists, and none should — see
       pass 7); open in iTerm/Terminal/WezTerm as alternative
@@ -921,7 +923,8 @@ remain, all deferrable to M6-ish polish.
 - [x] Share sheet, "Open With" submenu, Services integration
 - [x] Automation: AppleScript/Shortcuts verbs (reveal, copy, run-op); user actions —
       shell scripts receiving selection as argv/env, surfaced in palette and F-key bar
-- [ ] iCloud/provider sync-status column (NSFileManager ubiquity attrs where available)
+- [x] iCloud/provider sync status: ~~column~~ **a badge at the right edge of the name**, outside the
+      tag dots — again where Finder puts it (measured, pass 16); ubiquity attrs where available
 
 Exit: git repo browsing shows live status; a user-defined "convert to webp" script on
 selection runs from the palette.
@@ -2138,6 +2141,91 @@ always: one new tested core file, then the `sdef` + Info.plist + handlers.
   box: an **App Intents / Shortcuts** surface layered on the same `Automation` core, and a user script's
   F-key binding (the bar + key handler already accept any command id — a UI field on the organizer + one
   `UserScript` field).
+
+Progress (2026-07-17, M6 pass 16 — the cloud sync badge; **the last M6 box closes `[x]`, VERIFIED
+LIVE against real iCloud files**): the sync state of a file now rides at the right edge of its name.
+**No column, by decision** — the plan said "column" for this the same way it said it for tags, and
+both times the word was written before anyone had looked at Finder. Looking settled it: Finder draws
+the cloud at the **trailing edge of the Name column**, and when a file is both tagged and not
+downloaded it draws **the dots first and the cloud outermost** (measured — a file was evicted with
+`brctl evict`, tagged, opened in Finder's list view and zoomed into). A column of our own would be
+blank for every row of every folder on a Mac with no provider, which is most folders on most Macs.
+The tags box was reworded to match what it has actually shipped since pass 4.
+
+**The probe came first, and it earned its keep four times over** (the pass-1 `git` / pass-3 tags
+method: a real `brctl evict`ed file, a download sampled every 20 ms, a 60 MB upload):
+
+- **`isUbiquitousItem` is the only honest discriminator.** A `.DS_Store` *inside* iCloud Drive
+  reports `isUbiquitous == false` and yet answers `.current` for its downloading status — so keying
+  off the status, the obvious first draft, badges a local-only file as a synced cloud file. Outside a
+  container every attribute is `nil` instead.
+- **The downloading status lies during a download.** Sampling a real `brctl download` showed
+  `isDownloading == true` while the status still read `NotDownloaded`, flipping to `.current` ~0.7 s
+  later. Consulting the status first paints "in the cloud" over a file that is actively arriving —
+  so the boolean is asked first, and a test pins it.
+- **`isUploading` is not what reports an upload.** It stayed `false` for the whole of a 60 MB upload
+  while `isUploaded` was `false` throughout; the *pending* flag is the real signal.
+- **`NSURL` caches resource values on the instance.** Polling one `URL` object reported
+  `NotDownloaded` for 37 s after the file had finished arriving; a fresh `URL` each poll saw it in
+  700 ms. `CloudSyncStorage` builds and drops its own `URL` per read and says why in a comment —
+  this is a bug that would only ever appear as "the badge is stuck".
+- Cost: one read **measured at ~24 µs**, over twice a tag's `getxattr` → ~2.5 s across 100k rows,
+  against M1's 150 ms budget. Also: the percent-downloaded keys are **unavailable** through
+  `resourceValues` on macOS (`NSMetadataQuery` only), which is what rules out a progress-pie badge.
+
+Core (+18 → **771**): `Services/CloudSyncStatus.swift` — `CloudSyncStatus` (`upToDate`,
+`notDownloaded`, `downloading`, `uploading`, `conflicted`, `failed`, `excluded`; `isNoteworthy`
+keeps `.upToDate` from drawing, `isTransfer` drives the follow-up poll below) + `CloudItemAttributes`
+whose `status` is the whole truth table, precedence documented and test-pinned (errors > conflicts >
+**excluded** — an excluded file never uploads, so `isUploaded` is `false` on it forever and asking
+about uploads first would badge it as eternally pending — > downloading > notDownloaded > uploading)
++ `CloudDownloadingStatus`, a raw-string enum pinning the system's own spellings so the mapping is
+testable without a cloud file. `Services/CloudSyncStorage.swift` — the read, beside `FinderTagStorage`
+because it touches the filesystem, local-only like it (`.unsupported` for an archive/SFTP path rather
+than a false "not a cloud item"). **Naming**: `SyncStatus` was already taken by the sync-directories
+diff classification, hence `CloudSyncStatus` throughout.
+
+App (+8 → **68**): `CloudSyncStatusProvider` (`FinderTagProvider`'s twin — off-main, per-directory,
+LRU-cached, debounced, published by notification) + `SyncBadgeView`/`SyncBadgeStyle` (SF Symbols,
+system colours; the quiet states are `secondaryLabel` because a placeholder is *not* a problem) +
+`PanelViewController+SyncStatus` + app-wide `AppPreferences.showSyncStatus` (default **on**) with a
+`view.toggleSyncStatus` command, View-menu checkmark, ⌘K palette entry and Settings ▸ Panels toggle.
+**THE design call that makes it free: the directory gate.** Tags have to look at every row to find
+out, because a tag can be on any file anywhere; a cloud file cannot — it lives in a cloud folder, and
+a cloud folder announces itself in **one** read (probed: `~/Library/Mobile Documents` and everything
+under it report `isUbiquitous == true`). So an ordinary folder of 100k rows costs one read, not 100k.
+The `~/Library/CloudStorage` clause beside it is documented as **unverified insurance** — no
+third-party provider was installed to probe, and "where available" is the plan's own hedge.
+
+**THE live-caught bug: the badge stuck on "downloading" forever.** Every other refresh here is driven
+by a filesystem event, which is enough for a state the filesystem announces (evicted, materialized)
+and *not* enough for a transfer: the last event of a download arrives while the file is still
+arriving, so the scan it triggers sees `isDownloading`, paints the blue arrow — and nothing ever
+fires again. Observed on a real 3 MB file. Fix: a snapshot with anything in flight asks itself again
+a second later until nothing is (`scheduleFollowUp`), bounded both by "only while a transfer is
+actually in progress on screen" and a 60-tick cap so a wedged provider can't become a busy-wait.
+LIVE, after the fix: two evicted files badged, the synced one bare, `brctl download` → blue arrow →
+badge **cleared on its own**; tag dot + cloud rendered in Finder's order; the View toggle collapsed
+and restored them. GOTCHAS: the two additions tipped `PanelViewController.swift` to 502 lines (limit
+500) and the new command tipped `CommandCatalog` past `type_body_length` — both fixed structurally
+along each file's own existing seam (a new `PanelViewController+Render.swift`; the View group joined
+the same-file extension that already holds Workspace/Window/Application) rather than by trimming
+comments as pass 14 had to.
+
+Found in passing, **not fixed** (it is the tags feature, not this one): **iCloud rewrites a tag's
+stored colour.** Writing `Red\n6` to a file in iCloud Drive and reading it back seconds later yields
+`Red\n1` — reproducible, twice, while the identical write to a local file keeps `6`. Finder still
+draws the dot red (it looks the colour up by *name*, as the pass-3 core notes it does), and Dirnex
+draws the stored colour → grey. So tag colours may be wrong on every tagged file in iCloud Drive.
+Whether Finder's own tagging UI produces the same stored state is **untested** — the AppleScript
+`label index` path writes only the legacy Finder-info byte, not `_kMDItemUserTags`, so it could not
+answer the question. Worth a pass of its own: the provider already keeps the name → colour map
+(`known`) that a fix would consult.
+
+**NEXT: M6 is closed.** Optional leftovers, none blocking: an **App Intents / Shortcuts** surface on
+the `Automation` core, a user script's F-key binding (the bar + key handler already accept any
+command id — an organizer field + one `UserScript` field), the .gitignore-aware folder sizes from
+pass 1, and the iCloud tag-colour bug above. **M7 (release readiness) is next.**
 
 ### M7 — Release readiness (M)
 

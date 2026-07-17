@@ -44,6 +44,10 @@ final class PanelTab {
     /// lands. UI-only and session-scoped like the Git pair above: derived from the directory on
     /// switching to the tab, never persisted. Managed by `PanelViewController+Tags`.
     var tagSnapshot: FinderTagSnapshot?
+    /// The cloud sync status this tab's rows are painted from (PLAN.md §M6), `nil` until the first
+    /// scan lands — and empty, not `nil`, in the ordinary folder the scan skipped. UI-only and
+    /// session-scoped like the pairs above. Managed by `PanelViewController+SyncStatus`.
+    var syncSnapshot: CloudSyncSnapshot?
     /// Whether this tab shows ncdu-style size bars, and the projection they are drawn from (PLAN.md
     /// §M6). Per tab rather than app-wide because the mode *spends* something to be on — measured,
     /// ~16 s of background walking for one `~` — so it belongs to the tab you pointed at a tree, not

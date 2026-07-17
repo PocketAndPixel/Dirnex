@@ -40,8 +40,10 @@ extension PanelViewController: NSTableViewDelegate {
             cell.imageView?.image = FileIconProvider.icon(for: entry)
             cell.textField?.stringValue = entry.name
             cell.textField?.alignment = .natural
-            // Finder tags ride at the name's right edge (PLAN.md §M6) — no column of their own.
+            // Finder tags and the cloud badge ride at the name's right edge (PLAN.md §M6) — no
+            // column of their own, and in Finder's order: dots first, cloud outermost.
             cell.tags = tags(for: entry)
+            cell.syncStatus = syncStatus(for: entry)
         case .size:
             cell.textField?.stringValue = FileFormatting.sizeString(
                 for: entry, computedSize: panel.model.computedSize(of: entry)

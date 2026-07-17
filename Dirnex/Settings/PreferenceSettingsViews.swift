@@ -49,6 +49,19 @@ struct PanelsSettingsView: View {
             }
 
             Section {
+                Toggle("Show cloud sync status", isOn: $preferences.showSyncStatus)
+            } footer: {
+                Text(
+                    "Badges a file whose bytes are still in iCloud (or another provider), on their "
+                        + "way up or down, or in conflict — at the right edge of its name, as "
+                        + "Finder does. Folders outside a cloud provider are never scanned, and "
+                        + "fully synced files show nothing. Also in the View menu."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+
+            Section {
                 Toggle("Show function key bar", isOn: $preferences.showFunctionBar)
             } footer: {
                 Text(

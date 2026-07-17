@@ -52,6 +52,9 @@ extension PanelViewController {
             updateGitStatus()
             // Tags need no watcher of their own: this event *is* the tag change (see +Tags).
             updateTagStatus()
+            // Nor does sync status, for the same reason: a provider materializing or evicting a
+            // file lands here as an event on the file itself (see +SyncStatus).
+            updateSyncStatus()
             // Re-queues whatever the invalidation just dropped, so a folder that grew re-walks
             // instead of showing the total it had before.
             updateSizeVisualization()
