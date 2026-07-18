@@ -265,3 +265,87 @@ struct DirectoryModelTests {
         #expect(subject.index(ofID: .local("/test/absent")) == nil)
     }
 }
+
+// MARK: - Filter (sort/filter split — PLAN.md §M7 perf pass)
+
+/// The perf pass split the projection into a cached sort stage and a cheap re-filter
+/// stage, and added an ASCII byte fast path with a Unicode fallback. These pin that the
+/// split preserves the observable behaviour across every input that drives a re-filter.
+private extension DirectoryModelTests {
+    @Test("mutating the filter re-narrows without disturbing sort order")
+    func filterMutationPreservesOrder() {
+        var subject = model(
+            [entry("alpha.txt"), entry("beta.txt"), entry("alto.txt"), entry("gamma.txt")],
+            sort: FileSort(key: .name, ascending: true, directoriesFirst: false)
+        )
+        subject.filter = "al"
+        #expect(subject.visibleEntries.map(\.name) == ["alpha.txt", "alto.txt"])
+        subject.filter = "alt"
+        #expect(subject.visibleEntries.map(\.name) == ["alto.txt"])
+        subject.filter = ""
+        #expect(
+            subject.visibleEntries.map(\.name) == ["alpha.txt", "alto.txt", "beta.txt", "gamma.txt"]
+        )
+    }
+
+    @Test("an ASCII needle matches names that also contain non-ASCII bytes")
+    func filterAsciiNeedleAcrossUnicodeName() {
+        // The byte fast path must find "report" inside a name whose other characters are
+        // multi-byte UTF-8 — an ASCII byte never occurs inside a UTF-8 continuation byte.
+        let subject = model(
+            [entry("café-report.txt"), entry("café-photo.txt"), entry("日本語.txt")],
+            sort: FileSort(key: .name, ascending: true, directoriesFirst: false),
+            filter: "report"
+        )
+        #expect(subject.visibleEntries.map(\.name) == ["café-report.txt"])
+    }
+
+    @Test("an ASCII needle never matches inside a purely non-ASCII name")
+    func filterAsciiNeedleRejectsUnicodeOnlyName() {
+        let subject = model(
+            [entry("日本語.txt"), entry("data.txt")],
+            filter: "a"
+        )
+        #expect(subject.visibleEntries.map(\.name) == ["data.txt"])
+    }
+
+    @Test("a non-ASCII needle matches case-insensitively via the Unicode fallback")
+    func filterUnicodeNeedle() {
+        var subject = model(
+            [entry("Café.txt"), entry("Cafe.txt"), entry("tea.txt")],
+            sort: FileSort(key: .name, ascending: true, directoriesFirst: false)
+        )
+        subject.filter = "café"
+        #expect(subject.visibleEntries.map(\.name) == ["Café.txt"])
+        subject.filter = "CAFÉ"
+        #expect(subject.visibleEntries.map(\.name) == ["Café.txt"])
+    }
+
+    @Test("changing sort while a filter is active keeps the filter applied")
+    func filterSurvivesResort() {
+        var subject = model(
+            [
+                entry("report-b.txt", size: 30),
+                entry("image.txt", size: 20),
+                entry("report-a.txt", size: 10)
+            ],
+            sort: FileSort(key: .name, ascending: true, directoriesFirst: false),
+            filter: "report"
+        )
+        #expect(subject.visibleEntries.map(\.name) == ["report-a.txt", "report-b.txt"])
+        subject.sort = FileSort(key: .size, ascending: false, directoriesFirst: false)
+        #expect(subject.visibleEntries.map(\.name) == ["report-b.txt", "report-a.txt"])
+    }
+
+    @Test("toggling hidden files re-applies the active filter")
+    func filterSurvivesHiddenToggle() {
+        var subject = model(
+            [entry(".report-hidden.txt", hidden: true), entry("report.txt"), entry("image.txt")],
+            sort: FileSort(key: .name, ascending: true, directoriesFirst: false),
+            filter: "report"
+        )
+        #expect(subject.visibleEntries.map(\.name) == ["report.txt"])
+        subject.showHidden = true
+        #expect(subject.visibleEntries.map(\.name) == [".report-hidden.txt", "report.txt"])
+    }
+}

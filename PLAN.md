@@ -2523,10 +2523,66 @@ properties (`FileEntry.creationDate/permissions/inode`, `GitStatusEntry.original
 test targets, several are test-pinned design surface (e.g. `SizeVisualization.maximumBytes`), and
 `VFSBackend.id` is a protocol requirement — each needs its own keep-or-cut call.
 
-**NEXT in M7:** the first-run tour and the docs keyboard-reference (both buildable + live-verifiable
-now, core-first). The remaining four items are **blocked on the user**: Sparkle 2 + notarized-DMG CI
-needs their Developer ID signing identity + notarization creds + Sparkle EdDSA keys; crash reporting
-+ telemetry is a product/privacy *decision* first; and private→public beta→1.0 is a release gate.
+Progress (2026-07-18, **M7 perf pass — part 1: the filter budget, PROBED + MEASURED + CI-GATED**;
+the box stays `[ ]` because the list-responsiveness half still wants an off-main sort — see NEXT):
+the "instruments audit of M1 budgets" done as *reproducible measurement first*, not guesswork. A
+throwaway probe on a synthetic 100k listing put both key budgets **over** in release:
+**filter keystroke 51 ms** (worst 109 ms) vs the 16 ms budget, and **100k list build (name sort)
+370 ms** vs 150 ms.
+
+**Filter — fixed, budget met (1.4 ms), CI-gated.** Two root causes: (1) every keystroke re-ran the
+*whole* pipeline including the sort — because `DirectoryModel.materialize` filtered *then* sorted; and
+(2) `name.lowercased().contains(needle)` allocated a fresh lowercased String per entry per keystroke.
+Fix: **split the projection into two stages** — `sortedEntries` (showHidden + sort, the expensive
+`localizedStandardCompare` pass) is cached, and `visibleEntries` is the text filter applied on top of
+it. Text filtering is order-preserving, so a `filter` didSet now runs **only `refilter()`, never a
+re-sort** (`sort`/`showHidden`/`listing`/`directorySizes` changes run the full `resort()`). Then the
+filter predicate itself: a **pure-ASCII needle** (every real keystroke) matches the needle's bytes
+against a lazily-built, **byte-level ASCII-folded** copy of the names held in **one contiguous buffer**
+(`LoweredNames` = `bytes` + `bounds`, a single allocation, not 100k tiny `[UInt8]`s — which also
+lightens the huge-dir memory ceiling). **THE load-bearing correctness argument: for an ASCII needle a
+UTF-8 byte-substring match is provably identical to `lowercased().contains` — an ASCII byte can never
+occur inside a multi-byte UTF-8 sequence, so folding only `A`–`Z` and byte-matching changes no
+outcome.** A non-ASCII needle (rare) falls back to the exact grapheme-aware `lowercased().contains`, so
+canonical-equivalence matching is preserved. Result (release, 100k): **steady keystroke 51 → 1.4 ms,
+cold first keystroke (with the lazy fold build) ~6 ms, both under 16 ms.** +6 correctness tests
+(byte-path-across-Unicode-name, ASCII-needle-rejects-Unicode-only-name, Unicode-needle fallback,
+resort/hidden-toggle keep the filter) in a same-file `private extension` (the `type_body_length` dodge
+from the user-scripts pass).
+
+**Sort — the honest finding: exact Finder collation is a ~350 ms floor at 100k, and no in-thread trick
+safely beats it.** Probed every alternative: a **custom byte-order natural key sorts in 20 ms but
+disagrees with `localizedStandardCompare` on ~12 % of adversarial Unicode pairs** (accented letters
+collate near their base letter under ICU; byte order dumps them after ASCII) — a real, visible
+regression for international filenames, **rejected.** An ASCII-fast-path-with-localized-fallback still
+mismatched ~3 % (ICU weights punctuation/spaces and hyphen-ignorability *not* in ASCII order —
+reproducing ICU collation is a minefield), **rejected.** NSString decoration barely helped (349 ms —
+the ICU comparison, not String↔NSString bridging, is the cost); a quick parallel merge-sort was
+*slower* (418 ms) on the naïve cut. So the sort keeps `localizedStandardCompare` **exactly**, and the
+150 ms *list* budget is an **interactive-responsiveness** target to be met by sorting **off the main
+thread** at the app layer (the disk read already is), **not** by making the sort itself faster.
+
+**CI gating (the "XCTest metrics gated in CI" line, done as Swift-Testing budget tests).** New
+`PerformanceBudgetTests` measures best-of-N wall-clock on a seeded 100k dirty listing and **enforces
+budgets only in release** (`#if !DEBUG` — a debug `swift test` prints its numbers but compiles the
+`#expect`s out, since unoptimised Swift is 3–5× slower and would false-fail). A new CI step runs
+`swift test -c release --filter PerformanceBudget`. Gates: **filter keystroke (steady) < 16 ms** and
+**(cold) < 16 ms** — both pass with margin; **100k model build < 1500 ms** as a *regression ceiling*
+(catches an accidental O(n²)/per-entry-bridging blow-up; not the 150 ms target, which is off-main).
+817 core (+9) + 79 app, swiftlint `--strict` 0, swiftformat clean. Reusable gotchas: **precomputed
+`[String].contains` is still 35 ms/100k** (Swift's grapheme-aware `contains` is the cost — only the
+byte path hits 1 ms); **subtracting two noisy ~380 ms build timings to isolate an ~8 ms keystroke is
+numerically unstable** (it swung to 24 ms) — build the cache-cold model *outside* the timed region and
+time only the `filter =` set instead.
+
+**NEXT in M7:** **finish the perf pass** by moving the sort off the main thread — build the
+`DirectoryModel` inside `DirectoryLoader.list`'s detached task (and the FSEvents refresh / column
+re-sort paths) so opening a 100k dir never janks the `@MainActor` `PanelViewController`; needs a live
+app build (Xcode + Metal toolchain) and live verification, so it is its own pass. Then the first-run
+tour and the docs keyboard-reference (both buildable + live-verifiable, core-first). The remaining four
+items are **blocked on the user**: Sparkle 2 + notarized-DMG CI needs their Developer ID signing
+identity + notarization creds + Sparkle EdDSA keys; crash reporting + telemetry is a product/privacy
+*decision* first; and private→public beta→1.0 is a release gate.
 
 ## 5. Cross-cutting: testing strategy
 

@@ -20,6 +20,10 @@ jobs:
         run: swift --version
       - name: Test DirnexCore
         run: swift test --package-path DirnexCore
+      - name: Performance budgets (release)
+        # The M1 hot-path budgets (PerformanceBudgetTests) only enforce in optimized
+        # builds; a debug run prints its numbers but compiles the assertions out.
+        run: swift test -c release --package-path DirnexCore --filter PerformanceBudget
 
   app:
     name: App (xcodebuild test)
