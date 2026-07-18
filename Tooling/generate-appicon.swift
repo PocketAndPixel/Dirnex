@@ -5,6 +5,11 @@
 // is authored in a 1024x1024 top-left-origin (y-down) space and rendered at
 // each required pixel size for crisp small-icon output.
 //
+// The mark: a system-blue squircle holding a white dual-pane card, split
+// full-height, with three bold list bars per pane. One bar in the active
+// (right) pane is brand blue — the keyboard-selection cursor. Kept deliberately
+// low-detail so it still reads at 16-32px.
+//
 // Run:  swift Tooling/generate-appicon.swift
 //       (writes into Dirnex/Assets.xcassets/AppIcon.appiconset by default)
 //       swift Tooling/generate-appicon.swift <output-dir>
@@ -33,15 +38,9 @@ func drawIcon(into ctx: CGContext, size S: CGFloat) {
     ctx.scaleBy(x: k, y: k)
 
     // ---- Background squircle ----
-    let bgInset: CGFloat = 92
-    let bgRect = CGRect(
-        x: bgInset,
-        y: bgInset,
-        width: 1024 - 2 * bgInset,
-        height: 1024 - 2 * bgInset
-    )
-    let bgRadius = bgRect.width * 0.2237
-    let bgPath = roundedRectPath(bgRect, radius: bgRadius)
+    let inset: CGFloat = 92
+    let bg = CGRect(x: inset, y: inset, width: 1024 - 2 * inset, height: 1024 - 2 * inset)
+    let bgPath = roundedRectPath(bg, radius: bg.width * 0.2237)
 
     ctx.saveGState()
     ctx.addPath(bgPath)
@@ -54,8 +53,8 @@ func drawIcon(into ctx: CGContext, size S: CGFloat) {
     )!
     ctx.drawLinearGradient(
         grad,
-        start: CGPoint(x: bgRect.minX, y: bgRect.minY),
-        end: CGPoint(x: bgRect.maxX, y: bgRect.maxY),
+        start: CGPoint(x: bg.minX, y: bg.minY),
+        end: CGPoint(x: bg.maxX, y: bg.maxY),
         options: []
     )
     // Top sheen.
@@ -81,7 +80,7 @@ func drawIcon(into ctx: CGContext, size S: CGFloat) {
     ctx.drawLinearGradient(
         vignette,
         start: CGPoint(x: 512, y: 560),
-        end: CGPoint(x: 512, y: bgRect.maxY),
+        end: CGPoint(x: 512, y: bg.maxY),
         options: []
     )
     ctx.restoreGState()
@@ -94,10 +93,9 @@ func drawIcon(into ctx: CGContext, size S: CGFloat) {
     ctx.strokePath()
     ctx.restoreGState()
 
-    // ---- Dual-pane window card ----
-    let cardRect = CGRect(x: 232, y: 268, width: 560, height: 496)
-    let cardRadius: CGFloat = 60
-    let cardPath = roundedRectPath(cardRect, radius: cardRadius)
+    // ---- Dual-pane card ----
+    let card = CGRect(x: 214, y: 286, width: 596, height: 452)
+    let cardPath = roundedRectPath(card, radius: 58)
 
     // Floating drop shadow.
     ctx.saveGState()
@@ -111,110 +109,48 @@ func drawIcon(into ctx: CGContext, size S: CGFloat) {
     ctx.addPath(cardPath)
     ctx.clip()
 
-    let headerH: CGFloat = 96
-    let centerX: CGFloat = 512
-    let headerBottom = cardRect.minY + headerH
+    let cx: CGFloat = 512
+    // Full-height dual-pane split.
+    ctx.setFillColor(rgb(0.80, 0.84, 0.90))
+    ctx.fill(CGRect(x: cx - 2.5, y: card.minY, width: 5, height: card.height))
 
-    // Inactive (left) and active (right, blue-tinted) pane headers.
-    ctx.setFillColor(rgb(0.945, 0.960, 0.976))
-    ctx.fill(
-        CGRect(x: cardRect.minX, y: cardRect.minY, width: centerX - cardRect.minX, height: headerH)
-    )
-    ctx.setFillColor(rgb(0.898, 0.949, 1.0))
-    ctx.fill(CGRect(x: centerX, y: cardRect.minY, width: cardRect.maxX - centerX, height: headerH))
-    ctx.setFillColor(rgb(0.86, 0.89, 0.93))
-    ctx.fill(CGRect(x: cardRect.minX, y: headerBottom - 2, width: cardRect.width, height: 3))
+    // ---- Three bold bars per pane ----
+    let sidePad: CGFloat = 52
+    let midPad: CGFloat = 40
+    let leftStart = card.minX + sidePad
+    let leftEnd = cx - midPad
+    let rightStart = cx + midPad
+    let rightEnd = card.maxX - sidePad
+    let leftW = leftEnd - leftStart
+    let rightW = rightEnd - rightStart
 
-    func headerPill(centerAt cx: CGFloat, color: CGColor, width w: CGFloat) {
-        let pill = CGRect(x: cx - w / 2, y: cardRect.minY + headerH / 2 - 12, width: w, height: 24)
-        ctx.addPath(roundedRectPath(pill, radius: 12))
+    let barH: CGFloat = 48
+    let ys: [CGFloat] = [372, 488, 604]
+    let gray = rgb(0.73, 0.78, 0.85)
+    let leftFrac: [CGFloat] = [1.0, 0.72, 0.88]
+    let rightFrac: [CGFloat] = [0.85, 1.0, 0.6]
+    let selected = 1
+
+    func bar(x: CGFloat, y: CGFloat, w: CGFloat, h: CGFloat, color: CGColor) {
+        ctx.addPath(roundedRectPath(CGRect(x: x, y: y, width: w, height: h), radius: h / 2.6))
         ctx.setFillColor(color)
         ctx.fillPath()
     }
-    headerPill(centerAt: (cardRect.minX + centerX) / 2, color: rgb(0.78, 0.82, 0.87), width: 150)
-    headerPill(centerAt: (centerX + cardRect.maxX) / 2, color: rgb(0.36, 0.60, 0.98), width: 150)
 
-    // Full-height dual-pane split.
-    ctx.setFillColor(rgb(0.85, 0.88, 0.92))
-    ctx.fill(CGRect(x: centerX - 1.5, y: cardRect.minY, width: 3, height: cardRect.height))
-
-    // ---- Directory rows ----
-    let rowH: CGFloat = 40
-    let rowGap: CGFloat = 42
-    let firstRowY: CGFloat = headerBottom + 44
-    let sidePad: CGFloat = 40
-    let midPad: CGFloat = 30
-    let dotW: CGFloat = 30
-
-    let leftStart = cardRect.minX + sidePad
-    let leftEnd = centerX - midPad
-    let rightStart = centerX + midPad
-    let rightEnd = cardRect.maxX - sidePad
-
-    let barWidths: [CGFloat] = [1.0, 0.66, 0.82, 0.5]
-    let selectedRow = 1
-
-    func drawRow(
-        y: CGFloat,
-        xStart: CGFloat,
-        xEnd: CGFloat,
-        widthFrac: CGFloat,
-        dotColor: CGColor,
-        barColor: CGColor
-    ) {
-        let dot = CGRect(x: xStart, y: y + (rowH - dotW) / 2, width: dotW, height: dotW)
-        ctx.addPath(roundedRectPath(dot, radius: 8))
-        ctx.setFillColor(dotColor)
-        ctx.fillPath()
-        let barX = xStart + dotW + 18
-        let maxBar = xEnd - barX
-        let barRect = CGRect(x: barX, y: y + (rowH - 20) / 2, width: maxBar * widthFrac, height: 20)
-        ctx.addPath(roundedRectPath(barRect, radius: 10))
-        ctx.setFillColor(barColor)
-        ctx.fillPath()
-    }
-
-    let grayDot = rgb(0.72, 0.77, 0.84)
-    let grayBar = rgb(0.80, 0.84, 0.89)
-
-    for i in 0..<4 {
-        let y = firstRowY + CGFloat(i) * (rowH + rowGap)
-        drawRow(
-            y: y,
-            xStart: leftStart,
-            xEnd: leftEnd,
-            widthFrac: barWidths[i],
-            dotColor: grayDot,
-            barColor: grayBar
-        )
-        if i == selectedRow {
-            // Keyboard-cursor selection highlight in brand blue.
-            let hi = CGRect(
-                x: rightStart - 14,
-                y: y - 8,
-                width: (rightEnd - rightStart) + 28,
-                height: rowH + 16
-            )
-            ctx.addPath(roundedRectPath(hi, radius: 14))
-            ctx.setFillColor(rgb(0.04, 0.52, 1.0))
-            ctx.fillPath()
-            drawRow(
-                y: y,
-                xStart: rightStart,
-                xEnd: rightEnd,
-                widthFrac: barWidths[i],
-                dotColor: rgb(1, 1, 1, 0.95),
-                barColor: rgb(1, 1, 1, 0.92)
+    for i in 0..<3 {
+        let y = ys[i]
+        bar(x: leftStart, y: y, w: leftW * leftFrac[i], h: barH, color: gray)
+        if i == selected {
+            // Bold brand-blue selection bar (the keyboard cursor).
+            bar(
+                x: rightStart - 10,
+                y: y - 6,
+                w: rightW + 20,
+                h: barH + 12,
+                color: rgb(0.04, 0.52, 1.0)
             )
         } else {
-            drawRow(
-                y: y,
-                xStart: rightStart,
-                xEnd: rightEnd,
-                widthFrac: barWidths[i],
-                dotColor: grayDot,
-                barColor: grayBar
-            )
+            bar(x: rightStart, y: y, w: rightW * rightFrac[i], h: barH, color: gray)
         }
     }
 
@@ -223,12 +159,12 @@ func drawIcon(into ctx: CGContext, size S: CGFloat) {
     // Card hairline border.
     ctx.saveGState()
     ctx.addPath(cardPath)
-    ctx.setStrokeColor(rgb(0.62, 0.70, 0.82, 0.35))
+    ctx.setStrokeColor(rgb(0.62, 0.70, 0.82, 0.32))
     ctx.setLineWidth(2)
     ctx.strokePath()
     ctx.restoreGState()
 
-    ctx.restoreGState() // design space
+    ctx.restoreGState()
 }
 
 func renderPNG(size: Int, to url: URL) {
