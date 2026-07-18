@@ -131,6 +131,15 @@ final class AppPreferences: ObservableObject {
         }
     }
 
+    /// Whether the first-run tour has been shown once already (PLAN.md §M7 "First-run tour"). Not a
+    /// user-facing setting — a one-shot latch, the twin of `hasSeenFullDiskAccessOnboarding`, so a
+    /// fresh install is walked through the tour at first launch but never again. Set the moment the
+    /// tour is presented (launch or on-demand); the "Welcome to Dirnex…" menu/palette command
+    /// reopens it anytime. Default off, so a brand-new install sees it.
+    @Published var hasSeenFirstRunTour: Bool {
+        didSet { defaults.set(hasSeenFirstRunTour, forKey: Keys.hasSeenFirstRunTour) }
+    }
+
     /// Panels ▸ move focus to a folder opened from search results (default off — stay on the
     /// results so you can keep opening hits). Opening a folder from a `.search` results tab never
     /// replaces the results in place: it lands as a new tab in the other pane (or, when there's no
@@ -155,6 +164,7 @@ final class AppPreferences: ObservableObject {
         confirmTrash = defaults.bool(forKey: Keys.confirmTrash)
         focusOpenedSearchDirectory = defaults.bool(forKey: Keys.focusOpenedSearchDirectory)
         hasSeenFullDiskAccessOnboarding = defaults.bool(forKey: Keys.hasSeenFullDiskAccessOnboarding)
+        hasSeenFirstRunTour = defaults.bool(forKey: Keys.hasSeenFirstRunTour)
     }
 
     private enum Keys {
@@ -166,5 +176,6 @@ final class AppPreferences: ObservableObject {
         static let confirmTrash = "Dirnex.pref.confirmTrash"
         static let focusOpenedSearchDirectory = "Dirnex.pref.focusOpenedSearchDirectory"
         static let hasSeenFullDiskAccessOnboarding = "Dirnex.pref.hasSeenFullDiskAccessOnboarding"
+        static let hasSeenFirstRunTour = "Dirnex.pref.hasSeenFirstRunTour"
     }
 }

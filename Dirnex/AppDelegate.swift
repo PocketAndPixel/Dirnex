@@ -50,10 +50,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         NSApp.activate(ignoringOtherApps: true)
 
-        // Offer Full Disk Access on a fresh install where the grant is missing (PLAN.md §M7). The
-        // check is off-main and the prompt attaches to the window we just showed; it is a one-shot
-        // — later launches stay silent, and "Full Disk Access…" re-opens it on demand.
-        FullDiskAccessOnboarding.presentIfNeeded(over: controller.window)
+        // First-run onboarding, in order (PLAN.md §M7): a fresh install gets the palette-centric
+        // tour, and only then the Full Disk Access prompt — the presenter chains the two so the
+        // welcome comes before the permission wall. On later launches the tour is skipped and the
+        // FDA check runs directly; both are one-shots the user can re-open from the app menu/palette.
+        FirstRunTourPresenter.presentIfNeeded(over: controller.window)
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -96,5 +97,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// with the app delegate as its final link.
     @objc func showFullDiskAccess(_ sender: Any?) {
         FullDiskAccessOnboarding.present(over: NSApp.keyWindow ?? browserWindowController?.window)
+    }
+
+    // MARK: - First-run tour
+
+    /// App menu ▸ "Welcome to Dirnex…" (and the palette command) — re-open the first-run tour on
+    /// demand (PLAN.md §M7), whatever the launch latch says. Reached through the responder chain,
+    /// with the app delegate as its final link.
+    @objc func showFirstRunTour(_ sender: Any?) {
+        FirstRunTourPresenter.present(over: NSApp.keyWindow ?? browserWindowController?.window)
     }
 }

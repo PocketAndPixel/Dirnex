@@ -158,6 +158,9 @@ enum MainMenuBuilder {
         if let fullDiskAccess = commandItem(for: "app.fullDiskAccess", bindings: bindings) {
             appMenu.addItem(fullDiskAccess)
         }
+        if let tour = commandItem(for: "app.showTour", bindings: bindings) {
+            appMenu.addItem(tour)
+        }
         appMenu.addItem(.separator())
         appMenu.addItem(servicesMenuItem())
         appMenu.addItem(.separator())

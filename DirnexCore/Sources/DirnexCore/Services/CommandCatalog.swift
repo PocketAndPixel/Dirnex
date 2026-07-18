@@ -461,6 +461,12 @@ extension CommandCatalog {
             keywords: ["permission", "privacy", "security", "access", "disk", "grant", "onboarding"]
         ),
         Command(
+            id: "app.showTour",
+            title: "Welcome to Dirnex…",
+            category: .application,
+            keywords: ["tour", "welcome", "guide", "intro", "onboarding", "help", "getting started"]
+        ),
+        Command(
             id: "app.quit",
             title: "Quit Dirnex",
             category: .application,

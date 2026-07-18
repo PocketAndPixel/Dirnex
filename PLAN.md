@@ -2362,7 +2362,7 @@ two remain.*
 
 - [ ] Sparkle 2 updates + appcast infrastructure; notarized DMG pipeline in CI
 - [x] Full Disk Access onboarding flow (detect, explain, deep-link to System Settings)
-- [ ] First-run tour: palette-centric, 5 screens max
+- [x] First-run tour: palette-centric, 5 screens max
 - [x] Performance pass: instruments audit of M1 budgets on real dirty data
       (huge Downloads, node_modules, network volumes, iCloud placeholder files)
 - [ ] Crash reporting (opt-in) + anonymized op-failure telemetry decision
@@ -2644,6 +2644,53 @@ This pass does that for every path that builds a pane's `DirectoryModel`. Core�
   beta→1.0). Optional perf follow-ups, neither blocking: move the show-hidden toggle's all-tabs re-sort
   off-main (lazy per-tab), and move the size-sorted-with-computed-totals streaming re-sort off-main
   (the one case `resortIfOrderDependsOnSize` still runs on the main actor).
+
+Progress (2026-07-19, **M7 — First-run tour; the box closes `[x]`, VERIFIED LIVE**): the
+palette-centric welcome the exit criterion needs a stranger to meet *before* the permission wall.
+Core→app as always, and it slots in **ahead of** the shipped Full Disk Access onboarding rather than
+beside it — the two now run as one sequence on a fresh install.
+- **Core** (pure, tested): new `DirnexCore/Services/FirstRunTour.swift` — a `TourScreen` (id, SF
+  symbol, title, body, and the highlighted **command ids**, not baked-in glyphs) and `FirstRunTour`
+  with the ordered `screens` + a `maximumScreens = 5` ceiling. **THE data decision, the same
+  `FunctionBar.defaultSlots` move: a screen names its actions by `CommandCatalog` id, so the app
+  resolves each to the command's title and its *effective* shortcut through the user's `KeyBindings`
+  — the tour prints exactly what the menu/⌘K palette print and can never advertise a key the app no
+  longer honours.** Five screens: Welcome (dual-pane, no chip) · the command palette (`view.
+  commandPalette`) · file ops (`file.copy/move/newFolder/trash`) · navigation (`go.editLocation`,
+  `file.newTab`, `go.hotlist`) · You're-ready (`app.fullDiskAccess`). +7 tour tests pin length ≤ 5,
+  well-formedness, unique ids, that **every highlighted id resolves to a real catalog command**, that
+  the **palette is featured** (the load-bearing "palette-centric" claim), and that the tour opens on
+  Welcome and closes on FDA. Plus a new `app.showTour` catalog command ("Welcome to Dirnex…",
+  shortcut-free Application command, +1 catalog test). +8 → **831 core**.
+- **App**: `Dirnex/Onboarding/FirstRunTourWindowController.swift` (a paged sheet over the browser
+  window — SF-symbol illustration, headline, body, and a keyboard-reference list of the screen's
+  commands as aligned **key-cap** rows resolved live from the registry; page dots + Back/Skip/Next,
+  ⏎ = default advance, ⎋ = leave; **fixed-width right-aligned key-cap column so a shortcut-less row
+  like Full Disk Access keeps its title aligned**) + `FirstRunTourPresenter.swift` (the
+  `FullDiskAccessOnboarding` twin: a `hasSeenFirstRunTour` one-shot latch in `AppPreferences`, the
+  `XCTestConfigurationFilePath` guard so it never fires mid-suite, and the **sequencing** — launch
+  path shows the tour once then chains `FullDiskAccessOnboarding.presentIfNeeded`; on-demand path
+  ("Welcome to Dirnex…" app-menu item + palette) always shows it and hands off to nothing). **THE
+  sequencing decision: the last screen's primary button is parameterised, not hard-coded — the launch
+  flow leaves "Get Started" (→ FDA hand-off), the on-demand flow sets "Open Command Palette" (→ opens
+  ⌘K), so the palette-centric payoff never collides with the FDA sheet the first run needs.**
+  `AppDelegate` now calls `FirstRunTourPresenter.presentIfNeeded` (was `FullDiskAccessOnboarding`
+  directly); `showFirstRunTour(_:)` selector + `app.showTour` in `CommandBinding` + the menu item
+  after Full Disk Access. +4 app tests (show-tour is wired; every highlighted command is
+  real+dispatchable; the palette screen resolves to "⌘K"; the controller builds a window) → **83
+  app**. 831 core + 83 app green, swiftformat + swiftlint `--strict` clean.
+- **VERIFIED LIVE** (fresh Debug build, both latches reset, launched clean after killing the stale
+  pre-rebuild instance — the recurring `open`-reactivates-the-old-binary trap): first launch popped
+  the tour as a sheet on Welcome (no chip, no Back); paging showed the resolved **⌘K** cap on the
+  palette screen, the **F5/F6/F7/F8** file-op rows aligned to the function bar below, the
+  **⌘L/⌘T/⌃D** navigation rows, and the shortcut-less **Full Disk Access…** row with its title still
+  column-aligned; **Get Started closed the tour and the FDA prompt appeared** (the hand-off);
+  **Not Now** dismissed it; **App-menu ▸ Welcome to Dirnex…** reopened the tour, whose last screen now
+  read **Open Command Palette** and, clicked, closed the tour and opened ⌘K with **no** FDA prompt;
+  and a palette search for "welcome" found the command. **NEXT in M7:** the docs keyboard-reference
+  (buildable now, core-first — the action registry already is the reference); the remaining four
+  items stay blocked on the user (Sparkle/notarized-DMG CI creds, the crash-reporting/telemetry
+  decision, beta→1.0).
 
 ## 5. Cross-cutting: testing strategy
 
