@@ -2366,7 +2366,6 @@ two remain.*
 - [x] Performance pass: instruments audit of M1 budgets on real dirty data
       (huge Downloads, node_modules, network volumes, iCloud placeholder files)
 - [ ] Crash reporting (opt-in) + anonymized op-failure telemetry decision
-- [ ] Docs site: keyboard reference generated from the action registry
 - [ ] Private beta → public beta → 1.0
 
 Exit: a stranger can download, pass FDA onboarding, and move files in under 3 minutes.
