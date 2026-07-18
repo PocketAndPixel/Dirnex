@@ -92,11 +92,38 @@ public struct DirectoryModel: Sendable {
         showHidden: Bool = false,
         filter: String = ""
     ) {
+        self.init(
+            listing: listing,
+            sort: sort,
+            showHidden: showHidden,
+            filter: filter,
+            directorySizes: [:]
+        )
+    }
+
+    /// Build a model whose directory totals are already known — the **off-main constructor** for
+    /// the M7 perf pass (PLAN.md §M7). `DirectoryLoader` runs the ~350 ms `localizedStandardCompare`
+    /// sort of a 100k listing on a background thread and hands the finished, `Sendable` model to
+    /// `Panel.setModel`, so the sort never janks the `@MainActor` pane. `directorySizes` are pruned
+    /// to entries actually present (exactly as `updateListing` prunes on refresh), so a size-sorted
+    /// build orders on live totals and a vanished folder's number can't resurface.
+    public init(
+        listing: DirectoryListing,
+        sort: FileSort = .default,
+        showHidden: Bool = false,
+        filter: String = "",
+        directorySizes: [VFSPath: Int64]
+    ) {
         self.listing = listing
         self.sort = sort
         self.showHidden = showHidden
         self.filter = filter
-        directorySizes = [:]
+        if directorySizes.isEmpty {
+            self.directorySizes = [:]
+        } else {
+            let present = Set(listing.entries.map(\.id))
+            self.directorySizes = directorySizes.filter { present.contains($0.key) }
+        }
         sortedEntries = []
         loweredNames = nil
         visibleEntries = []
@@ -129,25 +156,39 @@ public struct DirectoryModel: Sendable {
     // MARK: - Computed directory sizes (Space-on-dir)
 
     /// Record a recursively-computed size for the directory identified by `id`
-    /// (Space-on-dir). Re-materializes the visible list because size-sorting may move
-    /// the row.
+    /// (Space-on-dir). Re-materializes the visible list only when the order depends on
+    /// the total — see `resortIfOrderDependsOnSize`.
     public mutating func setDirectorySize(_ id: VFSPath, bytes: Int64) {
         directorySizes[id] = bytes
-        resort()
+        resortIfOrderDependsOnSize()
     }
 
     /// Record many recursively-computed totals at once, re-materializing the visible list **once**
-    /// instead of once per entry. Existing totals for paths not mentioned are kept; a repeated path
-    /// takes the new value.
+    /// instead of once per entry (and only when sorting by size). Existing totals for paths not
+    /// mentioned are kept; a repeated path takes the new value.
     ///
     /// This exists for one measured reason: seeding a panel from `DirectorySizeCache` arrives as a
-    /// burst of N totals, and `setDirectorySize` re-sorts the whole listing on every call. Measured
-    /// on this machine, seeding one-by-one costs 5.7 ms at 68 rows but **284 ms at 1,000 and 2.5 s
-    /// at 3,000** — on the main actor, and quadratic. That would make the cache *slower* than no
-    /// cache at the one job it has, which is making bars appear the instant a directory opens.
+    /// burst of N totals, and a per-entry `setDirectorySize` re-sorts the whole listing on every
+    /// call. Measured on this machine, seeding one-by-one costs 5.7 ms at 68 rows but **284 ms at
+    /// 1,000 and 2.5 s at 3,000** — on the main actor, and quadratic. That would make the cache
+    /// *slower* than no cache at the one job it has, which is making bars appear the instant a
+    /// directory opens.
     public mutating func setDirectorySizes(_ sizes: [VFSPath: Int64]) {
         guard !sizes.isEmpty else { return }
         directorySizes.merge(sizes) { _, new in new }
+        resortIfOrderDependsOnSize()
+    }
+
+    /// Re-materialize the visible list after a directory-total change, but **only when the row
+    /// order actually depends on those totals** — i.e. when the sort key is `.size`. Under a
+    /// name/date/extension sort the totals feed the size column and selection math but never the
+    /// order, so `sortedEntries`/`visibleEntries` are unchanged and re-running the ~350 ms sort
+    /// would be pure waste. That waste is not hypothetical: size-visualization streams totals in
+    /// (the comment on `directorySizesDidChange` measured up to ten publishes a second), and each
+    /// one would otherwise re-sort the whole 100k listing on the main actor. The size column reads
+    /// `directorySizes` directly at render time, so it still updates without a re-sort.
+    private mutating func resortIfOrderDependsOnSize() {
+        guard sort.key == .size else { return }
         resort()
     }
 

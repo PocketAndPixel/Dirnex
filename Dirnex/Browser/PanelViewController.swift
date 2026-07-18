@@ -367,16 +367,18 @@ final class PanelViewController: NSViewController {
         let departedMarks = panel.selection
         Task {
             do {
-                let listing = try await DirectoryLoader.list(backend, at: path)
+                // Sort the fresh listing off the main thread (PLAN.md §M7 perf pass): a 100k
+                // directory's ~350 ms `localizedStandardCompare` pass must not jank the pane.
+                // Built with an empty filter, so entering a directory starts fresh — a quick-filter
+                // from the folder we just left shouldn't silently hide the new folder's contents —
+                // and with no computed sizes, since a directory we're arriving at has none yet.
+                let model = try await DirectoryLoader.model(
+                    backend, at: path, sort: panel.model.sort, showHidden: panel.model.showHidden
+                )
                 guard token == loadToken else { return }
-                panel.setListing(listing)
+                panel.setModel(model)
                 resetMouseSelectionAnchor()
                 recordMarkChange(since: departedMarks, in: departed, label: "Clear Selection")
-                // Entering a directory starts fresh — a quick-filter from the folder we
-                // just left shouldn't silently hide the new folder's contents.
-                if !panel.model.filter.isEmpty {
-                    panel.setFilter("")
-                }
                 if let child, let index = panel.model.index(ofID: child) {
                     panel.moveCursor(to: index)
                 }

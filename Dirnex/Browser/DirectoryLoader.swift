@@ -16,6 +16,52 @@ enum DirectoryLoader {
         }.value
     }
 
+    /// List `path` **and** sort it into a ready-to-render `DirectoryModel`, both off the main
+    /// thread — so opening a 100k directory never runs its ~350 ms `localizedStandardCompare` sort
+    /// on the `@MainActor` pane (PLAN.md §M7 perf pass). Install the result with `Panel.setModel`.
+    ///
+    /// The text `filter` is deliberately *not* baked in: it is cheap to apply (~1 ms) and must
+    /// reflect the caller's latest keystroke, so the caller sets it on the main actor after the
+    /// `await`. `directorySizes` seed size-sorting (pruned to present entries by the model); pass
+    /// empty when navigating to a fresh directory, which has no computed totals yet.
+    static func model(
+        _ backend: any VFSBackend,
+        at path: VFSPath,
+        sort: FileSort,
+        showHidden: Bool,
+        directorySizes: [VFSPath: Int64] = [:]
+    ) async throws -> DirectoryModel {
+        try await Task.detached(priority: .userInitiated) {
+            let entries = try backend.listDirectory(at: path)
+            let listing = DirectoryListing(path: path, entries: entries)
+            return DirectoryModel(
+                listing: listing,
+                sort: sort,
+                showHidden: showHidden,
+                directorySizes: directorySizes
+            )
+        }.value
+    }
+
+    /// Re-project an **already-loaded** listing under a new sort/hidden setting off the main
+    /// thread — the column-header re-sort and the show-hidden toggle, which change the row order
+    /// without re-reading the directory. Same filter/sizes contract as `model`.
+    static func sorted(
+        _ listing: DirectoryListing,
+        sort: FileSort,
+        showHidden: Bool,
+        directorySizes: [VFSPath: Int64] = [:]
+    ) async -> DirectoryModel {
+        await Task.detached(priority: .userInitiated) {
+            DirectoryModel(
+                listing: listing,
+                sort: sort,
+                showHidden: showHidden,
+                directorySizes: directorySizes
+            )
+        }.value
+    }
+
     /// Stat a single path off the main thread — used to check whether a typed location is a
     /// real directory before deciding to fall back to a frecency fuzzy match. Returns `nil`
     /// on any failure (not found, permission, …), so the caller treats a missing path the

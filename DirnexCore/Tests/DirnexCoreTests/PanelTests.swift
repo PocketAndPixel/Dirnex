@@ -199,6 +199,58 @@ struct PanelTests {
         #expect(subject.cursor == 1)
     }
 
+    // MARK: - setModel (off-main pre-sorted install — PLAN.md §M7 perf pass)
+
+    /// The off-main sort path hands `Panel` a fully-materialised `DirectoryModel` via `setModel`
+    /// instead of a raw listing via `setListing`. These pin that it reconciles cursor and marks
+    /// exactly as `setListing` does — the same refresh-vs-navigation decision, by the model's path.
+    private func model(_ names: [String], at path: String = "/dir") -> DirectoryModel {
+        DirectoryModel(listing: listing(names, at: path), sort: flatSort)
+    }
+
+    @Test("setModel to a new directory resets cursor and clears selection")
+    func setModelNavigationResets() {
+        var subject = panel(["a", "b", "c"], sort: flatSort)
+        subject.moveCursor(to: 2)
+        subject.selectAll()
+
+        subject.setModel(model(["x", "y"], at: "/other"))
+        #expect(subject.path == .local("/other"))
+        #expect(subject.cursor == 0)
+        #expect(subject.selectionCount == 0)
+    }
+
+    @Test("setModel same-directory refresh keeps the cursor on the same entry by identity")
+    func setModelRefreshPreservesCursorByIdentity() {
+        var subject = panel(["a", "b", "c"], sort: flatSort)
+        subject.moveCursor(to: 1) // on "b"
+
+        subject.setModel(model(["a", "aa", "b", "c"])) // a file appears before "b"
+        #expect(subject.currentEntry?.name == "b")
+        #expect(subject.cursor == 2)
+    }
+
+    @Test("setModel prunes marks for vanished entries but keeps the rest")
+    func setModelRefreshPrunesSelection() {
+        var subject = panel(["a", "b", "c"], sort: flatSort)
+        subject.selectAll() // a, b, c
+
+        subject.setModel(model(["a", "c"])) // b deleted
+        #expect(Set(subject.selectedEntries.map(\.name)) == ["a", "c"])
+    }
+
+    @Test("setModel installs the model's own sort without re-sorting")
+    func setModelInstallsPreSortedOrder() {
+        var subject = panel(["a", "b", "c"], sort: flatSort)
+        // A model sorted the other way is installed verbatim — the pane adopts its order.
+        let descending = DirectoryModel(
+            listing: listing(["a", "b", "c"]),
+            sort: FileSort(key: .name, ascending: false, directoriesFirst: false)
+        )
+        subject.setModel(descending)
+        #expect(subject.model.visibleEntries.map(\.name) == ["c", "b", "a"])
+    }
+
     // MARK: - View settings preserve cursor
 
     @Test("changing sort keeps the cursor on the same entry")

@@ -118,10 +118,25 @@ extension PanelViewController: NSTableViewDelegate {
         } else {
             sort = FileSort(key: sortKey, ascending: true)
         }
-        panel.setSort(sort)
-        reloadEverything()
-        updateSortIndicators()
-        // Sort is per-tab and persisted (PLAN.md §M1).
-        persistState()
+        // Re-sort the current listing off the main thread (PLAN.md §M7 perf pass) — re-ordering a
+        // 100k directory is the same ~350 ms sort as opening one and must not freeze the header
+        // click. Guarded on `loadToken` so a navigation started before it lands wins.
+        let token = loadToken
+        let listing = panel.model.listing
+        let showHidden = panel.model.showHidden
+        let sizes = panel.model.directorySizes
+        Task {
+            let model = await DirectoryLoader.sorted(
+                listing, sort: sort, showHidden: showHidden, directorySizes: sizes
+            )
+            guard token == loadToken, panel.path == listing.path else { return }
+            if deferRefreshIfRenaming() { return }
+            reconcileCursorFromTable()
+            installSortedModel(model)
+            reloadEverything()
+            updateSortIndicators()
+            // Sort is per-tab and persisted (PLAN.md §M1).
+            persistState()
+        }
     }
 }

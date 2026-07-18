@@ -209,6 +209,44 @@ struct DirectoryModelTests {
         #expect(subject.visibleEntries.map(\.name) == ["small.bin", "big"]) // ordering applied
     }
 
+    @Test("the off-main initializer seeds directory totals, sorting by them and pruning absent ones")
+    func sizesInitializerSeedsAndPrunes() {
+        let big = entry("big", kind: .directory)
+        let small = entry("small.bin", size: 5)
+        let subject = DirectoryModel(
+            listing: DirectoryListing(path: .local("/test"), entries: [big, small]),
+            sort: FileSort(key: .size, ascending: true, directoriesFirst: false),
+            // The stray key belongs to no present entry (a total for a folder that has since been
+            // deleted) and must be dropped, exactly as `updateListing` prunes on refresh.
+            directorySizes: [big.id: 1000, .local("/test/ghost"): 999]
+        )
+        // The seeded 1000-byte directory outweighs the 5-byte file, so it sorts after it.
+        #expect(subject.visibleEntries.map(\.name) == ["small.bin", "big"])
+        #expect(subject.computedSize(of: big) == 1000)
+        #expect(subject.directorySizes[.local("/test/ghost")] == nil)
+    }
+
+    @Test("recording a size under a name sort updates the total without reordering rows")
+    func sizeRecordUnderNameSortKeepsOrder() {
+        // Under a name sort, directory totals feed the size column but never the row order, so
+        // `setDirectorySize` must not disturb `visibleEntries` — the optimisation that keeps a
+        // streaming size-visualization scan from re-sorting a 100k listing on every result.
+        var subject = model(
+            [
+                entry("a", kind: .directory),
+                entry("m", kind: .directory),
+                entry("z", kind: .directory)
+            ],
+            sort: FileSort(key: .name, ascending: true, directoriesFirst: false)
+        )
+        #expect(subject.visibleEntries.map(\.name) == ["a", "m", "z"])
+        let mid = subject.visibleEntries.first { $0.name == "m" }!
+
+        subject.setDirectorySize(mid.id, bytes: 1_000_000)
+        #expect(subject.visibleEntries.map(\.name) == ["a", "m", "z"]) // order untouched
+        #expect(subject.computedSize(of: mid) == 1_000_000) // total still recorded
+    }
+
     // MARK: - Hidden
 
     @Test("hidden entries are excluded unless showHidden is on")

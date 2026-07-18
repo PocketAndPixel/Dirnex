@@ -252,11 +252,19 @@ extension PanelViewController {
         let token = loadToken
         let path = panel.path
         let tabIndex = activeTabIndex
+        // Off-main sort (PLAN.md §M7 perf pass): re-listing a 100k directory after a mutation must
+        // not re-sort on the main actor. `installSortedModel` re-applies the live filter and any
+        // total that lands during the sort.
+        let sort = panel.model.sort
+        let showHidden = panel.model.showHidden
+        let sizes = panel.model.directorySizes
         Task {
-            guard let listing = try? await DirectoryLoader.list(backend, at: path) else { return }
+            guard let model = try? await DirectoryLoader.model(
+                backend, at: path, sort: sort, showHidden: showHidden, directorySizes: sizes
+            ) else { return }
             guard token == loadToken, panel.path == path, activeTabIndex == tabIndex else { return }
             reconcileCursorFromTable()
-            panel.setListing(listing)
+            installSortedModel(model)
             if let target, let index = panel.model.index(ofID: target) {
                 panel.moveCursor(to: index)
                 cursorOnParentRow = false

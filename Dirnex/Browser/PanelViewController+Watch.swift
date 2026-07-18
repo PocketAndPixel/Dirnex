@@ -34,12 +34,20 @@ extension PanelViewController {
     private func directoryDidChange(_ watchedPath: VFSPath) {
         guard panel.path == watchedPath else { return }
         let token = loadToken
+        // Snapshot the sort context for the off-main sort (PLAN.md §M7 perf pass): a re-list of a
+        // churning 100k directory must not re-sort on the main actor. `installSortedModel` re-applies
+        // the live filter and any total that lands during the sort.
+        let sort = panel.model.sort
+        let showHidden = panel.model.showHidden
+        let sizes = panel.model.directorySizes
         Task {
-            guard let listing = try? await DirectoryLoader.list(backend, at: watchedPath) else { return }
+            guard let model = try? await DirectoryLoader.model(
+                backend, at: watchedPath, sort: sort, showHidden: showHidden, directorySizes: sizes
+            ) else { return }
             guard token == loadToken, panel.path == watchedPath else { return }
             if deferRefreshIfRenaming() { return }
             reconcileCursorFromTable()
-            panel.setListing(listing)
+            installSortedModel(model)
             // Before the re-render, which re-seeds bars from the cache: this event is the only proof
             // available that a cached total went stale, and seeding first would re-plant the number
             // we are about to disprove. `DirectoryWatcher` discards the event's paths and its stream

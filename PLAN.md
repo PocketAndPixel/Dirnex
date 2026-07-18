@@ -2363,7 +2363,7 @@ two remain.*
 - [ ] Sparkle 2 updates + appcast infrastructure; notarized DMG pipeline in CI
 - [x] Full Disk Access onboarding flow (detect, explain, deep-link to System Settings)
 - [ ] First-run tour: palette-centric, 5 screens max
-- [ ] Performance pass: instruments audit of M1 budgets on real dirty data
+- [x] Performance pass: instruments audit of M1 budgets on real dirty data
       (huge Downloads, node_modules, network volumes, iCloud placeholder files)
 - [ ] Crash reporting (opt-in) + anonymized op-failure telemetry decision
 - [ ] Docs site: keyboard reference generated from the action registry
@@ -2583,6 +2583,60 @@ tour and the docs keyboard-reference (both buildable + live-verifiable, core-fir
 items are **blocked on the user**: Sparkle 2 + notarized-DMG CI needs their Developer ID signing
 identity + notarization creds + Sparkle EdDSA keys; crash reporting + telemetry is a product/privacy
 *decision* first; and private→public beta→1.0 is a release gate.
+
+Progress (2026-07-18, **M7 perf pass — part 2: the off-main sort; the "Performance pass" box now
+closes `[x]`, VERIFIED LIVE on a 100k directory**): part 1 met the filter budget and proved the exact
+`localizedStandardCompare` sort is a ~350 ms floor at 100k that no in-thread trick beats without
+diverging from Finder — so the 150 ms *list* target has to be met by sorting **off the main thread**.
+This pass does that for every path that builds a pane's `DirectoryModel`. Core→app as always.
+- **Core** (pure, tested): `DirectoryModel` gained an **off-main constructor** `init(listing:sort:
+  showHidden:filter:directorySizes:)` (the existing 4-arg init now delegates to it with `[:]`) — it
+  prunes the seeded `directorySizes` to present entries (as `updateListing` does) and sorts once, so a
+  fully-materialised, `Sendable` model can be built on a background thread and handed over whole.
+  `Panel` gained `setModel(_:)` — the off-main twin of `setListing`: it installs an already-sorted
+  model and does **only** the cheap cursor/selection reconciliation (same refresh-vs-navigation
+  decision by path, now factored into a shared `reconcile`), never a re-sort. **Second, a
+  behaviour-preserving optimisation with its own payoff:** `setDirectorySize`/`setDirectorySizes` now
+  re-sort **only when `sort.key == .size`** (`resortIfOrderDependsOnSize`) — under a name/date/ext sort
+  the totals feed the size column and selection math but never the row order, so re-running the 350 ms
+  sort was pure waste. That waste was real: size-visualization streams totals in ~ten a second, each of
+  which used to re-sort the whole 100k listing on the main actor. The size-order tests (all `.size`
+  sort) still pass; new tests pin that a name-sorted `setDirectorySize` updates the total without
+  reordering, and that the sizes-init prunes + size-sorts. +6 core → **823 core**.
+- **App**: `DirectoryLoader` gained `model(_:at:sort:showHidden:directorySizes:)` (readdir **and** sort
+  in one detached task) and `sorted(_:sort:showHidden:directorySizes:)` (re-project an already-loaded
+  listing off-main — the header re-sort). **THE decomposition decision: the loader sorts; the caller
+  filters.** The text filter is *not* baked into the off-main model — it is the cheap ~1 ms stage and
+  must reflect the caller's latest keystroke, so a new `installSortedModel` helper re-applies the live
+  filter on the main actor after the `await`. It also re-applies **any directory total that completed
+  while the sort ran** (a Space-on-dir / size-viz result lands on the live model; the wholesale swap
+  would drop it) — restricted to present entries, and cheap because `setDirectorySizes` now no-ops the
+  re-sort under a name sort. Six call sites converted: **navigation** (`navigate` → `DirectoryLoader.
+  model`, empty filter+sizes → the filter-clear step is now implicit and was deleted); **FSEvents
+  refresh** (`directoryDidChange`); **column-header re-sort** (`tableView(_:didClick:)`, now an async
+  `Task` guarded on `loadToken`); **tab-activation refresh**; **post-mutation refresh**
+  (`refreshCurrentDirectory`, local + SFTP). Each snapshots `sort`/`showHidden`/`directorySizes` on the
+  main actor *before* the `await` and guards `token == loadToken` (+ path) after. Left synchronous on
+  purpose: `refreshArchiveDirectory` (virtual, bounded, size-viz-disabled) and the app-wide
+  **show-hidden toggle** (`applyGlobalShowHidden` re-sorts *every* tab in a loop — an off-main, lazy,
+  all-tabs rebuild is a separate change; a single-tab hidden toggle at 100k still costs one 350 ms
+  main-actor sort, the one residual jank). 823 core + 79 app tests green, swiftformat + swiftlint
+  `--strict` clean, release `PerformanceBudget` unregressed (steady filter 1.7 ms, cold 11 ms, 100k
+  build 432 ms). **VERIFIED LIVE on a seeded 100k `many/` fixture** (both panes seeded via the
+  `Dirnex.tabs.<side>` defaults blob, app launched from Terminal for stderr): the 100k dir opened
+  instantly in correct natural order; the **Name header toggled to descending off-main** with the
+  cursor kept on `entry-000000` by identity; a **"999" filter** narrowed to 280 rows preserving the
+  descending order; **navigating up cleared the filter, kept the sort, and landed the cursor on the
+  departed child**; re-entering reloaded 100k instantly; the right pane's **Size sort** ordered
+  empty<tiny<kilobyte<megabyte off-main; and an **FSEvents refresh** (a 512 KB file dropped on disk via
+  the shell) inserted the new row **in size order** while **keeping a marked `tiny.bin` marked and the
+  cursor on `kilobyte.bin`** (footer "1 of 5 selected · 1 byte") — the off-main refresh's identity
+  preservation proven end-to-end. Clean stderr, no crash/race. **NEXT in M7:** the first-run tour and
+  the docs keyboard-reference (both buildable + live-verifiable, core-first); the remaining four items
+  stay blocked on the user (Sparkle/notarized-DMG CI creds, the crash-reporting/telemetry decision,
+  beta→1.0). Optional perf follow-ups, neither blocking: move the show-hidden toggle's all-tabs re-sort
+  off-main (lazy per-tab), and move the size-sorted-with-computed-totals streaming re-sort off-main
+  (the one case `resortIfOrderDependsOnSize` still runs on the main actor).
 
 ## 5. Cross-cutting: testing strategy
 

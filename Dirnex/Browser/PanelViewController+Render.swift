@@ -20,6 +20,36 @@ extension PanelViewController {
         updateChrome()
     }
 
+    /// Install a model that was **sorted off the main thread** into the active pane, restoring the
+    /// two pieces of live state the background sort could not see:
+    ///
+    /// 1. the current type-to-filter text — a keystroke typed while the sort ran must survive;
+    /// 2. any directory total (Space-on-dir or a size-visualization result) that *completed* while
+    ///    the sort ran — it landed on the live model, and the wholesale swap would drop it.
+    ///
+    /// Both are cheap to re-apply on the main actor: re-filtering a sorted 100k listing is ~1 ms,
+    /// and `setDirectorySizes` re-sorts only when sorting by size (see `DirectoryModel`), so the
+    /// size re-apply is a plain dictionary merge under the usual name/date sort. Restricted to
+    /// entries still present, so a total for a since-deleted folder can't resurface.
+    ///
+    /// Used by the same-directory off-main paths — a live FSEvents refresh and a column-header
+    /// re-sort. A *navigation* installs its model directly (`panel.setModel`): a fresh directory
+    /// carries no filter of its own and has no totals in flight yet. Internal so the refresh site in
+    /// `+Watch` and the header-click in `+Table` can share it.
+    func installSortedModel(_ sortedModel: DirectoryModel) {
+        var model = sortedModel
+        model.filter = panel.model.filter
+        let liveSizes = panel.model.directorySizes
+        panel.setModel(model)
+        let present = Set(panel.model.listing.entries.map(\.id))
+        let landed = liveSizes.filter {
+            present.contains($0.key) && panel.model.directorySizes[$0.key] != $0.value
+        }
+        if !landed.isEmpty {
+            panel.setDirectorySizes(landed)
+        }
+    }
+
     /// Re-render after a live FSEvents refresh. Unlike a navigation, this must not yank
     /// the view: the cursor is re-applied but not scrolled to, so a background change
     /// leaves the user's scroll position (and reading spot) where it was. Internal so a

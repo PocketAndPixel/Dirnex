@@ -75,13 +75,35 @@ public struct Panel: Sendable {
     /// Install a directory snapshot. Same-directory calls are treated as a live
     /// refresh (cursor and selection preserved by identity); a different path is a
     /// navigation (cursor resets to the top, selection clears).
+    ///
+    /// This re-sorts on the calling actor. Where that sort would jank the main thread (a huge
+    /// directory), the app builds the sorted `DirectoryModel` off the main thread and installs it
+    /// with `setModel` instead; both funnel through the same reconciliation.
     public mutating func setListing(_ listing: DirectoryListing) {
         let isRefresh = listing.path == model.listing.path
         let anchorID = isRefresh ? currentEntry?.id : nil
         model.updateListing(listing)
+        reconcile(isRefresh: isRefresh, anchorID: anchorID)
+    }
 
+    /// Install a **pre-sorted** snapshot — the off-main twin of `setListing` (PLAN.md §M7 perf
+    /// pass). The caller (via `DirectoryLoader`) has already run the expensive sort on a background
+    /// thread, so this does none of it: it just swaps the model in and does the same cheap cursor
+    /// and selection reconciliation `setListing` does. Refresh vs navigation is decided identically,
+    /// by whether `newModel` describes the same directory. The caller is responsible for setting the
+    /// intended `filter`/`directorySizes` on `newModel` before handing it over.
+    public mutating func setModel(_ newModel: DirectoryModel) {
+        let isRefresh = newModel.listing.path == model.listing.path
+        let anchorID = isRefresh ? currentEntry?.id : nil
+        model = newModel
+        reconcile(isRefresh: isRefresh, anchorID: anchorID)
+    }
+
+    /// Shared tail of `setListing`/`setModel`: on a refresh keep the cursor on the same entry by
+    /// identity and prune marks to entries that survived; on a navigation reset both.
+    private mutating func reconcile(isRefresh: Bool, anchorID: VFSPath?) {
         if isRefresh {
-            selection.formIntersection(Set(listing.entries.map(\.id)))
+            selection.formIntersection(Set(model.listing.entries.map(\.id)))
             restoreCursor(to: anchorID)
         } else {
             selection.removeAll()

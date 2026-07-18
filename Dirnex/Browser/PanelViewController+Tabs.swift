@@ -46,11 +46,18 @@ extension PanelViewController {
         let path = panel.path
         let index = activeTabIndex
         startWatching(path)
+        // Off-main sort (PLAN.md §M7 perf pass): re-activating a stale 100k tab must not re-sort on
+        // the main actor. `installSortedModel` re-applies the live filter and any in-flight total.
+        let sort = panel.model.sort
+        let showHidden = panel.model.showHidden
+        let sizes = panel.model.directorySizes
         Task {
-            guard let listing = try? await DirectoryLoader.list(backend, at: path) else { return }
+            guard let model = try? await DirectoryLoader.model(
+                backend, at: path, sort: sort, showHidden: showHidden, directorySizes: sizes
+            ) else { return }
             guard token == loadToken, panel.path == path, activeTabIndex == index else { return }
             reconcileCursorFromTable()
-            panel.setListing(listing)
+            installSortedModel(model)
             tabs[index].hasLoaded = true
             renderRefresh()
         }
