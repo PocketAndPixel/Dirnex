@@ -1,14 +1,21 @@
 // Dirnex app-icon generator.
 //
 // Renders the AppIcon set natively with CoreGraphics — no external tools, no
-// SVG conversion — so the icon is fully reproducible from source. The design
-// is authored in a 1024x1024 top-left-origin (y-down) space and rendered at
-// each required pixel size for crisp small-icon output.
+// SVG conversion — so the icon is fully reproducible from source.
 //
 // The mark: a system-blue squircle holding a white dual-pane card, split
-// full-height, with three bold list bars per pane. One bar in the active
-// (right) pane is brand blue — the keyboard-selection cursor. Kept deliberately
-// low-detail so it still reads at 16-32px.
+// full-height, with list bars per pane. One bar in the active (right) pane is
+// brand blue — the keyboard-selection cursor.
+//
+// Small-size quality: a single detailed artwork shrunk to 16-32px turns to
+// mush — the drop shadow becomes a halo and thin strokes fall below one pixel.
+// So the drawing is SIZE-AWARE (the same thing Apple does by shipping distinct
+// 16/32 vs 128+ artwork):
+//   * >=128px  full detail: shadow, rim highlight, hairline border, 3 bars.
+//   * 64px     3 crisp bars, flat (no shadow/border).
+//   * <=32px   2 chunky bars, larger card, no decoration.
+//   * every edge/length is snapped to the device-pixel grid, strokes clamped
+//     to a whole-pixel minimum, so nothing blurs.
 //
 // Run:  swift Tooling/generate-appicon.swift
 //       (writes into Dirnex/Assets.xcassets/AppIcon.appiconset by default)
@@ -31,11 +38,21 @@ func roundedRectPath(_ rect: CGRect, radius r: CGFloat) -> CGPath {
 }
 
 func drawIcon(into ctx: CGContext, size S: CGFloat) {
-    let k = S / 1024.0
+    let scale = S / 1024.0
+    let px = 1024.0 / S // design units per device pixel
+    // Snap a design coordinate to the device-pixel grid.
+    func sv(_ v: CGFloat) -> CGFloat { (v * scale).rounded() / scale }
+    // Snap a length to whole device pixels, at least `minPx`.
+    func sl(_ v: CGFloat, _ minPx: CGFloat = 1) -> CGFloat { max((v * scale).rounded(), minPx) / scale }
+
+    let decorate = S >= 128 // shadow, rim highlight, hairline border
+    let useVignette = S >= 96
+    let barsN = S <= 40 ? 2 : 3
+
     ctx.saveGState()
     ctx.translateBy(x: 0, y: S)
     ctx.scaleBy(x: 1, y: -1)
-    ctx.scaleBy(x: k, y: k)
+    ctx.scaleBy(x: scale, y: scale)
 
     // ---- Background squircle ----
     let inset: CGFloat = 92
@@ -45,7 +62,6 @@ func drawIcon(into ctx: CGContext, size S: CGFloat) {
     ctx.saveGState()
     ctx.addPath(bgPath)
     ctx.clip()
-    // On-brand system-blue diagonal gradient.
     let grad = CGGradient(
         colorsSpace: sRGB,
         colors: [rgb(0.29, 0.64, 1.00), rgb(0.02, 0.33, 0.86)] as CFArray,
@@ -57,10 +73,9 @@ func drawIcon(into ctx: CGContext, size S: CGFloat) {
         end: CGPoint(x: bg.maxX, y: bg.maxY),
         options: []
     )
-    // Top sheen.
     let sheen = CGGradient(
         colorsSpace: sRGB,
-        colors: [rgb(1, 1, 1, 0.22), rgb(1, 1, 1, 0)] as CFArray,
+        colors: [rgb(1, 1, 1, 0.20), rgb(1, 1, 1, 0)] as CFArray,
         locations: [0, 1]
     )!
     ctx.drawRadialGradient(
@@ -71,98 +86,137 @@ func drawIcon(into ctx: CGContext, size S: CGFloat) {
         endRadius: 560,
         options: []
     )
-    // Bottom vignette.
-    let vignette = CGGradient(
-        colorsSpace: sRGB,
-        colors: [rgb(0, 0.10, 0.35, 0), rgb(0, 0.06, 0.24, 0.28)] as CFArray,
-        locations: [0, 1]
-    )!
-    ctx.drawLinearGradient(
-        vignette,
-        start: CGPoint(x: 512, y: 560),
-        end: CGPoint(x: 512, y: bg.maxY),
-        options: []
-    )
+    if useVignette {
+        let vignette = CGGradient(
+            colorsSpace: sRGB,
+            colors: [rgb(0, 0.10, 0.35, 0), rgb(0, 0.06, 0.24, 0.28)] as CFArray,
+            locations: [0, 1]
+        )!
+        ctx.drawLinearGradient(
+            vignette,
+            start: CGPoint(x: 512, y: 560),
+            end: CGPoint(x: 512, y: bg.maxY),
+            options: []
+        )
+    }
     ctx.restoreGState()
 
-    // Inner top rim highlight.
-    ctx.saveGState()
-    ctx.addPath(bgPath)
-    ctx.setStrokeColor(rgb(1, 1, 1, 0.18))
-    ctx.setLineWidth(3)
-    ctx.strokePath()
-    ctx.restoreGState()
+    if decorate {
+        ctx.saveGState()
+        ctx.addPath(bgPath)
+        ctx.setStrokeColor(rgb(1, 1, 1, 0.18))
+        ctx.setLineWidth(3)
+        ctx.strokePath()
+        ctx.restoreGState()
+    }
 
-    // ---- Dual-pane card ----
-    let card = CGRect(x: 214, y: 286, width: 596, height: 452)
-    let cardPath = roundedRectPath(card, radius: 58)
+    // ---- Dual-pane card (pixel-snapped edges) ----
+    let marginX: CGFloat = S <= 40 ? 176 : 214
+    let cardTopY: CGFloat = S <= 40 ? 250 : 286
+    let cardBotY: CGFloat = S <= 40 ? 774 : 738
+    let cx = sv(512)
+    let cardL = sv(marginX), cardR = sv(1024 - marginX)
+    let cardT = sv(cardTopY), cardB = sv(cardBotY)
+    let card = CGRect(x: cardL, y: cardT, width: cardR - cardL, height: cardB - cardT)
+    let cardPath = roundedRectPath(card, radius: S <= 40 ? sl(38) : 58)
 
-    // Floating drop shadow.
-    ctx.saveGState()
-    ctx.setShadow(offset: CGSize(width: 0, height: 22), blur: 46, color: rgb(0.02, 0.10, 0.30, 0.38))
-    ctx.addPath(cardPath)
-    ctx.setFillColor(rgb(1, 1, 1))
-    ctx.fillPath()
-    ctx.restoreGState()
+    if decorate {
+        ctx.saveGState()
+        ctx.setShadow(
+            offset: CGSize(width: 0, height: 22),
+            blur: 46,
+            color: rgb(0.02, 0.10, 0.30, 0.38)
+        )
+        ctx.addPath(cardPath)
+        ctx.setFillColor(rgb(1, 1, 1))
+        ctx.fillPath()
+        ctx.restoreGState()
+    } else {
+        ctx.addPath(cardPath)
+        ctx.setFillColor(rgb(1, 1, 1))
+        ctx.fillPath()
+    }
 
     ctx.saveGState()
     ctx.addPath(cardPath)
     ctx.clip()
 
-    let cx: CGFloat = 512
-    // Full-height dual-pane split.
-    ctx.setFillColor(rgb(0.80, 0.84, 0.90))
-    ctx.fill(CGRect(x: cx - 2.5, y: card.minY, width: 5, height: card.height))
+    // Full-height dual-pane split, >= 2 device px, snapped.
+    let dividerW = sl(max(5, 2 * px), 2)
+    ctx.setFillColor(rgb(0.78, 0.83, 0.89))
+    ctx.fill(CGRect(x: sv(cx - dividerW / 2), y: card.minY, width: dividerW, height: card.height))
 
-    // ---- Three bold bars per pane ----
-    let sidePad: CGFloat = 52
-    let midPad: CGFloat = 40
-    let leftStart = card.minX + sidePad
+    // ---- Bars ----
+    let sidePad: CGFloat = S <= 40 ? 34 : 52
+    let midPad: CGFloat = S <= 40 ? 26 : 40
+    let leftStart = sv(card.minX + sidePad)
     let leftEnd = cx - midPad
     let rightStart = cx + midPad
-    let rightEnd = card.maxX - sidePad
+    let rightEnd = sv(card.maxX - sidePad)
     let leftW = leftEnd - leftStart
     let rightW = rightEnd - rightStart
 
-    let barH: CGFloat = 48
-    let ys: [CGFloat] = [372, 488, 604]
-    let gray = rgb(0.73, 0.78, 0.85)
-    let leftFrac: [CGFloat] = [1.0, 0.72, 0.88]
-    let rightFrac: [CGFloat] = [0.85, 1.0, 0.6]
-    let selected = 1
+    let vPad: CGFloat = S <= 40 ? 74 : 86
+    let barTop = card.minY + vPad
+    let barBot = card.maxY - vPad
+    let barHpx: CGFloat = S <= 24 ? 2 : (S <= 40 ? 3 : (S < 128 ? 4 : 48 * scale))
+    let barH = sl(barHpx * px, 2)
 
-    func bar(x: CGFloat, y: CGFloat, w: CGFloat, h: CGFloat, color: CGColor) {
-        ctx.addPath(roundedRectPath(CGRect(x: x, y: y, width: w, height: h), radius: h / 2.6))
+    let gray = rgb(0.71, 0.76, 0.84)
+    let blue = rgb(0.04, 0.52, 1.0)
+
+    func bar(x: CGFloat, cY: CGFloat, w: CGFloat, h: CGFloat, color: CGColor) {
+        let rect = CGRect(x: x, y: sv(cY - h / 2), width: w, height: h)
+        ctx.addPath(roundedRectPath(rect, radius: min(h / 2.4, w / 2)))
         ctx.setFillColor(color)
         ctx.fillPath()
     }
 
-    for i in 0..<3 {
-        let y = ys[i]
-        bar(x: leftStart, y: y, w: leftW * leftFrac[i], h: barH, color: gray)
+    // Row centers.
+    var centers: [CGFloat] = []
+    if barsN == 2 {
+        // Two rows grouped near the middle (a tidy short list), not pinned to edges.
+        let mid = (barTop + barBot) / 2
+        let spread = (barBot - barTop) * 0.24
+        centers = [mid - spread, mid + spread]
+    } else {
+        for i in 0..<barsN {
+            centers.append(barTop + (barBot - barTop) * CGFloat(i) / CGFloat(barsN - 1))
+        }
+    }
+
+    let leftFrac: [CGFloat] = barsN == 2 ? [1.0, 0.74] : [1.0, 0.72, 0.88]
+    let rightFrac: [CGFloat] = barsN == 2 ? [0.82, 1.0] : [0.85, 1.0, 0.6]
+    let selected = 1
+
+    for i in 0..<barsN {
+        let cY = centers[i]
+        bar(x: leftStart, cY: cY, w: sl(leftW * leftFrac[i]), h: barH, color: gray)
         if i == selected {
             // Bold brand-blue selection bar (the keyboard cursor).
+            let selH = sl(barH + (S <= 40 ? 0 : 12), 2)
             bar(
-                x: rightStart - 10,
-                y: y - 6,
-                w: rightW + 20,
-                h: barH + 12,
-                color: rgb(0.04, 0.52, 1.0)
+                x: sv(rightStart - (S <= 40 ? 0 : 10)),
+                cY: cY,
+                w: sl(rightW + (S <= 40 ? 0 : 20)),
+                h: selH,
+                color: blue
             )
         } else {
-            bar(x: rightStart, y: y, w: rightW * rightFrac[i], h: barH, color: gray)
+            bar(x: rightStart, cY: cY, w: sl(rightW * rightFrac[i]), h: barH, color: gray)
         }
     }
 
     ctx.restoreGState() // card clip
 
-    // Card hairline border.
-    ctx.saveGState()
-    ctx.addPath(cardPath)
-    ctx.setStrokeColor(rgb(0.62, 0.70, 0.82, 0.32))
-    ctx.setLineWidth(2)
-    ctx.strokePath()
-    ctx.restoreGState()
+    if decorate {
+        ctx.saveGState()
+        ctx.addPath(cardPath)
+        ctx.setStrokeColor(rgb(0.62, 0.70, 0.82, 0.32))
+        ctx.setLineWidth(2)
+        ctx.strokePath()
+        ctx.restoreGState()
+    }
 
     ctx.restoreGState()
 }
