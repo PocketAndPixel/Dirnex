@@ -2363,7 +2363,8 @@ two remain.*
 - [x] Sparkle 2 updates + appcast infrastructure; notarized DMG pipeline in CI
       (shipped 2026-07-19, VERIFIED LIVE — v0.0.3 published a signed/notarized/stapled DMG + Sparkle
       appcast from GitHub Actions; the app has a "Check for Updates…" command wired through the
-      registry)
+      registry, plus a titlebar update indicator that keeps a postponed update visible — see the
+      2026-07-19 "titlebar update indicator" note below)
 - [x] Beta + stable update channels (Sparkle `<sparkle:channel>`, in-app opt-in)
       (shipped 2026-07-19 — tested core `UpdateChannels`, an app-side beta opt-in wired through
       `AppUpdater`'s `SPUUpdaterDelegate.allowedChannels(for:)`, and a two-channel merging appcast
@@ -2841,6 +2842,51 @@ is draft-gated now, so a draft still produces a correct merged artifact to inspe
 resolve step and the VERSION-file gate switched from `github.event_name` to **`github.ref_type`**,
 because under `workflow_call` the event name is the caller's and would read `workflow_dispatch` no
 matter what actually triggered the run.
+
+Progress (2026-07-19, **M7 — titlebar update indicator, VERIFIED LIVE**): closed the ambient gap the
+Sparkle work left behind. Until now the *only* signal that a new version existed was Sparkle's own
+dialog, and it is a one-shot — dismiss it and the update is invisible until the next scheduled check
+hours later; the `app.checkForUpdates` command (App menu + ⌘K) is the only way back to it, and it
+tells you nothing until you run it. Now an accented ⬇ glyph appears in the **leading** titlebar
+accessory, immediately right of the sidebar toggle (traffic lights · sidebar · ⬇), whenever an update
+is waiting — tooltipped with the version, and clicking it re-enters the same `app.checkForUpdates`
+path through the responder chain rather than a private one. Hidden — not disabled — at rest: an
+always-visible badge trains the eye to ignore it, which is the one thing an update indicator must not
+do. (Built first into the trailing cluster; **the user moved it beside the sidebar toggle** — it reads
+as app-level status there, next to the window's other app-level control, rather than as a fourth
+navigation glyph. The leading row is pinned at its *leading* edge, so the sidebar button holds its
+spot beside the traffic lights and the badge extends rightwards into empty title bar.)
+
+Split the usual way. Core owns the part that can be *wrong*: `UpdateAvailability` (+ `UpdateChoice`,
+a Sparkle-free stand-in for `SPUUserUpdateChoice`) is a value type whose transitions are the policy —
+**dismiss keeps the badge** (the user postponed; that is precisely what the ambient signal is for),
+while **skip and install clear it** (Sparkle will not raise a skipped version again on its own, and
+an install is about to relaunch into it). 11 tests pin that, plus the blank/whitespace version
+normalisation that keeps the tooltip from reading "Dirnex  is available". The app half is adapter
+only: `AppUpdater` gained `didFindValidUpdate` / `updaterDidNotFindUpdate` /
+`userDidMake:forUpdate:state:`, each a one-line assignment into an `availability` property whose
+`didSet` posts `AppUpdater.availabilityDidChange`; `BrowserWindowController+Updates` mirrors it.
+Two wiring notes worth keeping: the delegate witnesses must be `nonisolated` under Swift 6, so they
+funnel through a `Thread.isMainThread ? assumeIsolated : Task` hop — `SPUUpdater` is documented
+main-thread-only, so the fast path is the real one and the `Task` is just insurance against trapping
+in a shipping build; and Swift imports the choice callback as `updater(_:userDidMake:forUpdate:state:)`,
+*not* `userDidMakeChoice:` (which fails to compile — a rename, but the app test asserts the
+Objective-C selector `updater:userDidMakeChoice:forUpdate:state:` by name anyway, since Sparkle
+dispatches by selector and a Swift signature that drifts stops being the witness *silently*).
+
+**The bug the live check caught, which no test would have:** a titlebar accessory clips to its
+container's fixed frame, and the trailing cluster's 84pt was exactly three glyphs wide
+(`n·16 + (n−1)·12 + 12`). A fourth button is laid out but **clipped off the leading edge** — state
+correct, `isHidden` false, nothing on screen. Both accessory containers now derive their width from
+what they actually hold (the trailing one as `n·(16+12)`, which reproduces 84 for three), and the
+same trap is called out in the leading accessory's comment, since it sizes for a button that is
+usually hidden. Verified in the running app with a temporary seeded
+availability: the badge renders at even spacing, and clicking it ran a real check
+whose "You're up to date!" answer drove `updaterDidNotFindUpdate` → the badge removed itself and the
+row collapsed with no gap — the found *and* cleared halves both proven live, then the seed reverted.
+Housekeeping: `installEscapeMonitor` moved to `BrowserWindowController+QuickView` (the Quick View
+machinery it exists for) to keep the window controller under the 500-line lint ceiling.
+845 core + 87 app tests green; swiftformat + swiftlint --strict clean.
 
 ## 5. Cross-cutting: testing strategy
 

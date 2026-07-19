@@ -31,12 +31,18 @@ extension BrowserWindowController {
         // is behaviour-configured and tight-sized by `installHiddenToggle`; it just joins the row
         // here so the three glyphs read as a single control panel rather than separate accessories.
         let spacing: CGFloat = 12
-        let stack = NSStackView(views: [hiddenToggleButton, backButton, forwardButton])
+        let glyphWidth: CGFloat = 16
+        let buttons = [hiddenToggleButton, backButton, forwardButton]
+        let stack = NSStackView(views: buttons)
         stack.orientation = .horizontal
         stack.spacing = spacing
         stack.translatesAutoresizingMaskIntoConstraints = false
 
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: 84, height: 28))
+        // The accessory clips to its container's frame, so the container has to be wide enough for
+        // every button in the row. One glyph plus one gap each covers the inter-button spacing and
+        // the trailing inset below: n·16 + (n−1)·12 + 12 == n·28.
+        let width = CGFloat(buttons.count) * (glyphWidth + spacing)
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: width, height: 28))
         container.addSubview(stack)
         NSLayoutConstraint.activate([
             stack.centerYAnchor.constraint(equalTo: container.centerYAnchor),

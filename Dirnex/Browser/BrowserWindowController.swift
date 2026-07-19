@@ -61,8 +61,10 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     /// `cancelOperation:` override because a focused `PDFView` may never translate the Esc key
     /// into that action, so the message would never bubble. `nonisolated(unsafe)` so the
     /// nonisolated `deinit` can hand the token to `NSEvent.removeMonitor` — it's only ever
-    /// touched on the main actor. See `installEscapeMonitor()`.
-    nonisolated(unsafe) private var escapeMonitor: Any?
+    /// touched on the main actor. Installed by `installEscapeMonitor()`, which lives with the rest
+    /// of the Quick View machinery it serves (`BrowserWindowController+QuickView`) — hence internal
+    /// rather than private.
+    nonisolated(unsafe) var escapeMonitor: Any?
 
     /// The shared background operation engine both panes route F5/F6 through, so copies and
     /// moves queue and run without blocking browsing (PLAN.md §M2). Volume-aware scheduling
@@ -110,6 +112,12 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     /// (`updateNavigationButtons`).
     let backButton = NSButton()
     let forwardButton = NSButton()
+
+    /// The leading titlebar button — right of the sidebar toggle — that appears only while a Sparkle
+    /// update is waiting: the ambient counterpart to Sparkle's one-shot dialog. Held so
+    /// `updateAvailabilityDidChange` can show, hide, and re-tooltip it
+    /// (`BrowserWindowController+Updates`).
+    let updateIndicatorButton = NSButton()
 
     init() {
         // A composite backend so a pane can browse into an archive (`archive:…` paths route
@@ -213,10 +221,12 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         }
         window.setFrameAutosaveName("MainWindow")
 
-        installSidebarToggle()
-        // Hidden-files toggle first: it prepares the eye button that installNavigationButtons then
-        // places as the leading member of the shared trailing control cluster.
+        // Each of these three only prepares its button; the two accessory installers below place
+        // them — the update indicator into the leading accessory beside the sidebar toggle, the eye
+        // into the trailing cluster (eye · Back · Forward).
+        installUpdateIndicator()
         installHiddenToggle()
+        installSidebarToggle()
         installNavigationButtons()
 
         queueBar.onPauseToggle = { [weak self] in self?.togglePause() }
@@ -229,37 +239,15 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         installFunctionBar()
     }
 
-    /// Esc closes Quick View from anywhere in this window. A window-scoped local monitor sees the
-    /// raw key event ahead of responder dispatch, so it works even when the focused view (the
-    /// preview `PDFView`) would otherwise swallow the key. It deliberately stands aside for the
-    /// responders that own Esc themselves: a focused file table runs its progressive Esc (clear
-    /// filter → close Quick View → clear marks) via `fileTableCancel`, and a text field editor
-    /// cancels the edit. Only fires while this window is key, so a sheet, the ⌘K palette, or the
-    /// Settings window keep their own Esc.
-    private func installEscapeMonitor() {
-        escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self,
-                  event.keyCode == 53, // Esc
-                  event.modifierFlags.isDisjoint(with: [.command, .control, .option, .shift]),
-                  window?.isKeyWindow == true,
-                  isQuickViewOn
-            else { return event }
-            let responder = window?.firstResponder
-            // A file table or a text edit owns Esc for its own purpose — let the event through.
-            if responder is FileTableView || responder is NSText { return event }
-            // So does the terminal drawer, far more so: Esc is `vim`'s entire modal interface, and
-            // a monitor that swallowed it to close a preview would make the drawer useless for the
-            // editor most likely to be running in it.
-            if isTerminalFocused { return event }
-            toggleQuickView()
-            return nil
-        }
-    }
-
     /// Put a sidebar show/hide button immediately to the right of the traffic lights, in
-    /// the otherwise-empty transparent title bar. A `.leading` titlebar accessory is the
-    /// standard slot for it; the button drives the split controller's `toggleSidebar`, the
-    /// same action as View ▸ Show Sidebar (⌃⌘S).
+    /// the otherwise-empty transparent title bar, and the update indicator immediately right of
+    /// *that*. A `.leading` titlebar accessory is the standard slot for both; the sidebar button
+    /// drives the split controller's `toggleSidebar`, the same action as View ▸ Show Sidebar (⌃⌘S).
+    ///
+    /// Assumes `installUpdateIndicator` has already prepared its button (behaviour + size); this
+    /// only places it. The row is pinned at its *leading* edge so the sidebar toggle keeps its spot
+    /// beside the traffic lights whether or not an update is waiting, and the indicator — hidden at
+    /// rest, and `NSStackView` detaches hidden arranged subviews — leaves no gap behind it.
     private func installSidebarToggle() {
         let button = NSButton()
         button.bezelStyle = .toolbar
@@ -275,13 +263,25 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         button.action = #selector(NSSplitViewController.toggleSidebar(_:))
         button.translatesAutoresizingMaskIntoConstraints = false
 
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: 40, height: 28))
-        container.addSubview(button)
+        let inset: CGFloat = 8
+        let spacing: CGFloat = 12
+        let sidebarWidth: CGFloat = 24
+        let stack = NSStackView(views: [button, updateIndicatorButton])
+        stack.orientation = .horizontal
+        stack.spacing = spacing
+        stack.translatesAutoresizingMaskIntoConstraints = false
+
+        // The accessory clips to this frame, so it has to be wide enough for both buttons even
+        // while the indicator is hidden — a container sized for one alone would cut the badge off
+        // on the day it appears. `updateIndicatorButton` carries its own 16pt width.
+        let width = inset + sidebarWidth + spacing + 16 + inset
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: width, height: 28))
+        container.addSubview(stack)
         NSLayoutConstraint.activate([
-            button.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            button.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 8),
-            button.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -8),
-            button.heightAnchor.constraint(equalToConstant: 22)
+            button.widthAnchor.constraint(equalToConstant: sidebarWidth),
+            button.heightAnchor.constraint(equalToConstant: 22),
+            stack.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: inset)
         ])
 
         let accessory = NSTitlebarAccessoryViewController()
