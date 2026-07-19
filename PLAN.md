@@ -2811,8 +2811,36 @@ publishes the **DMG to the per-tag release** (stable `--latest`, beta `--prerele
 `releases/download/appcast/appcast.xml` (the stable feed URL). **Migration gotcha (documented in
 RELEASING.md): builds ≤ v0.0.3 still poll the old `latest/…` URL, so the first channelled release
 must be installed manually once** — the design accepted this ("no external users on the old feed
-yet"). The monotonic-`CFBundleVersion`-across-channels invariant is already met (build number = run
-number).
+yet").
+
+Follow-up (2026-07-19, same day — **a dedicated Beta workflow**, user-requested): cutting a beta by
+hand-inventing `vX.Y.Z-beta.N` was the remaining friction, so `.github/workflows/beta.yml` now gives
+betas their own *Run workflow* button. It is a **thin caller, not a second pipeline**: a cheap
+`ubuntu-latest` job picks the version (base = `VERSION`+1 patch, overridable via a `base_version`
+input; `.N` = highest existing `v<base>-beta.*` tag + 1, `sort -n` so `beta.10` → `beta.11`), then
+`uses: ./.github/workflows/release.yml` with `secrets: inherit` — so `release.yml` gained a
+`workflow_call` trigger and remains the single home of the signing/notarizing/appcast logic. The tag
+itself is still created by the existing `gh release create --target` (no PAT needed; a
+`GITHUB_TOKEN`-pushed tag would NOT re-trigger a workflow, which is exactly why the reusable-workflow
+route beats "push a tag and let `on: push` fire").
+
+**THE trap this surfaced, and the reason the build-number rule CHANGED:** `github.run_number` is
+**per-workflow-FILE**, and under `workflow_call` the `github` context is the *caller's* — so a beta
+run through `beta.yml` would draw from a fresh counter starting at **1**, while stable runs sat at
+~5. That silently breaks the monotonic-`CFBundleVersion` invariant this whole design rests on, and
+it fails in the quiet direction: a beta stamped *below* the installed stable is simply never offered,
+so the beta channel would look empty rather than broken. Fix: a new **"Resolve the build number"**
+step floors every build at `max(run_number, highest <sparkle:version> in the published feed + 1)` —
+the feed is the one number line every release shares regardless of which workflow started it, and
+because the appcast always holds the highest build of *each* channel, its max is the highest ever
+published. Verified locally: the trap case (run_number 1 vs a feed at 10) raises to 11, a run_number
+already ahead is left alone (so the existing stable flow doesn't regress), and an absent feed falls
+back to the run number for the very first release. Two supporting changes: the appcast fetch moved
+**before** the build (it now decides the build number) and lost its draft gate — only *publishing*
+is draft-gated now, so a draft still produces a correct merged artifact to inspect; and both the
+resolve step and the VERSION-file gate switched from `github.event_name` to **`github.ref_type`**,
+because under `workflow_call` the event name is the caller's and would read `workflow_dispatch` no
+matter what actually triggered the run.
 
 ## 5. Cross-cutting: testing strategy
 

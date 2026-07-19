@@ -3,7 +3,9 @@
 Dirnex ships as a **signed, notarized DMG** that updates itself through **Sparkle 2**. Cutting a
 release is one GitHub Actions run: [`.github/workflows/release.yml`](../.github/workflows/release.yml)
 archives the app, signs it with Developer ID, notarizes the DMG, signs the Sparkle appcast, and
-publishes the DMG to a GitHub release. Users on an older build then see the update automatically,
+publishes the DMG to a GitHub release. A second workflow,
+[`beta.yml`](../.github/workflows/beta.yml), is a thin convenience caller that picks the next beta
+version and reuses that same pipeline. Users on an older build then see the update automatically,
 because the app's `SUFeedURL` points at the persistent appcast feed (see
 [Update channels](#update-channels-stable-and-beta) below).
 
@@ -61,6 +63,8 @@ rm sparkle_private_key
 
 Two ways, both run the same job:
 
+- **Beta (easiest)** — Actions → *Beta* → *Run workflow*. It picks the next `-beta.N` for you and
+  hands off to the Release pipeline. See [Cutting a beta](#cutting-a-beta) below.
 - **Tag push** — `git tag v0.1.0 && git push origin v0.1.0` for a stable release, or
   `git tag v0.1.1-beta.1 && git push origin v0.1.1-beta.1` for a beta. The version *and the channel*
   come from the tag (a `-beta.N` suffix means beta).
@@ -68,6 +72,30 @@ Two ways, both run the same job:
   the `VERSION` file (and commit the bump), or type an explicit version — including a `-beta.N` one
   to cut a beta (a beta version is **not** written back to the `VERSION` file). Tick *draft* to
   stage the release without publishing it or touching the live feed.
+
+### Cutting a beta
+
+Actions → **Beta** → *Run workflow*. Both inputs are optional:
+
+| Input | Leave empty | Or set it to |
+| --- | --- | --- |
+| `base_version` | previews the next patch — `VERSION` + 1 (so `0.0.3` → betas of `0.0.4`) | a plain `X.Y.Z` to preview a minor/major instead, e.g. `0.1.0` |
+| `draft` | publishes normally | tick to stage without touching the live feed |
+
+It reads the `v<base>-beta.*` tags that already exist and takes the next number — first run gives
+`v0.0.4-beta.1`, then `-beta.2`, and so on — then calls
+[`release.yml`](../.github/workflows/release.yml) through `workflow_call`. **All the real work
+(signing, notarization, appcast merge, GitHub release) happens in that one workflow**;
+[`beta.yml`](../.github/workflows/beta.yml) only answers "which version is next?", so there is no
+second copy of the pipeline to drift. A beta never rewrites the `VERSION` file — that tracks the
+stable line only.
+
+> **Build numbers are shared across channels on purpose.** Sparkle ranks candidates by
+> `CFBundleVersion`, so it must increase globally, not per channel. `github.run_number` is
+> per-workflow-*file*, so a beta run counts separately from a stable one and would restart at 1 —
+> which would stamp a beta *below* the installed stable and it would never be offered. The Release
+> workflow therefore floors every build number at "highest build in the published feed + 1", so all
+> releases share one number line no matter which workflow started them.
 
 The run produces:
 

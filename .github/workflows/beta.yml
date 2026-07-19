@@ -1,0 +1,89 @@
+name: Beta
+
+# Cuts a beta build (PLAN.md §M7 "Beta + stable update channels"). Press Run workflow and this picks
+# the next `-beta.N` for you — you never hand-pick a number — then hands off to the Release workflow,
+# which does the real work: signing, notarization, the appcast merge, and the GitHub release.
+#
+# Deliberately a thin caller over `release.yml` (`workflow_call`) rather than a second copy of the
+# pipeline: the signing/notarizing/appcast logic is subtle enough that two copies would drift. The
+# only thing that lives here is "which version is the next beta?".
+#
+# Versioning: a beta previews the NEXT stable, so its base is the VERSION file's patch + 1 (override
+# with base_version to preview a minor/major instead), and `.N` counts up from the beta tags that
+# already exist for that base. VERSION itself is never rewritten by a beta.
+#
+# Uses the same repository secrets as the Release workflow (inherited); see docs/RELEASING.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_version:
+        description: "Stable version this beta previews, e.g. 0.1.0. Empty = bump VERSION's patch."
+        required: false
+      draft:
+        description: "Create the GitHub release as a draft (does not touch the live feed)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  resolve:
+    name: Pick the next beta version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.pick.outputs.version }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+        with:
+          # Full history so the existing `v<base>-beta.*` tags are visible to `git tag --list`;
+          # a shallow default checkout fetches none of them and every beta would come out as .1.
+          fetch-depth: 0
+
+      - name: Pick the next beta version
+        id: pick
+        run: |
+          BASE="${{ inputs.base_version }}"
+
+          if [ -z "$BASE" ]; then
+            BASE="$(awk -F. '
+              NF == 3 && $1 ~ /^[0-9]+$/ && $2 ~ /^[0-9]+$/ && $3 ~ /^[0-9]+$/ {
+                printf "%d.%d.%d\n", $1, $2, $3 + 1
+                ok = 1
+              }
+              END { if (!ok) exit 1 }
+            ' VERSION)" || {
+              echo "VERSION must use numeric MAJOR.MINOR.PATCH format to derive a beta base." >&2
+              exit 1
+            }
+          fi
+
+          case "$BASE" in
+            *-*)
+              echo "base_version must be a plain X.Y.Z — the '-beta.N' part is added here." >&2
+              exit 1
+              ;;
+          esac
+
+          # Highest N already published for this base, so re-running never reuses a tag.
+          LAST="$(git tag --list "v${BASE}-beta.*" \
+            | sed "s|^v${BASE}-beta\.||" \
+            | grep -E '^[0-9]+$' \
+            | sort -n \
+            | tail -1)"
+          VERSION="${BASE}-beta.$(( ${LAST:-0} + 1 ))"
+
+          echo "Next beta for $BASE: v$VERSION (previous: ${LAST:-none})"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+  release:
+    name: Build and publish
+    needs: resolve
+    uses: ./.github/workflows/release.yml
+    secrets: inherit
+    with:
+      version: ${{ needs.resolve.outputs.version }}
+      draft: ${{ inputs.draft }}

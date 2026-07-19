@@ -7,6 +7,9 @@ name: Release
 # feed so only opted-in installs are offered it). Run manually to bump VERSION's patch for a stable
 # build.
 #
+# This is also a **reusable** workflow (`workflow_call`): `beta.yml` picks the next `-beta.N` and
+# then calls it, so the signing / notarization / appcast-merge logic lives here only, once.
+#
 # Required repository secrets (see docs/RELEASING.md):
 #   DEVELOPER_ID_CERTIFICATE_P12       base64 of the Developer ID Application .p12
 #   DEVELOPER_ID_CERTIFICATE_PASSWORD  its export password
@@ -29,6 +32,21 @@ on:
         description: "Create the GitHub release as a draft"
         type: boolean
         default: false
+  workflow_call:
+    inputs:
+      version:
+        description: "Release version, for example 0.1.3. Leave empty to bump VERSION patch."
+        type: string
+        required: false
+      build_number:
+        description: "Internal build number. Defaults to the workflow run number."
+        type: string
+        required: false
+      draft:
+        description: "Create the GitHub release as a draft"
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: write
@@ -50,7 +68,15 @@ jobs:
         run: |
           RELEASE_NOTES_REF="$(git rev-parse HEAD)"
 
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          # Discriminate on the ref type, not the event name: under `workflow_call` the event name
+          # is the CALLER's (beta.yml is dispatched, so it would read `workflow_dispatch` here
+          # whatever triggered it), while the ref type is always the ref this run checked out.
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            TAG_NAME="${GITHUB_REF_NAME}"
+            VERSION="${TAG_NAME#v}"
+            BUILD_NUMBER="${GITHUB_RUN_NUMBER}"
+            DRAFT="false"
+          else
             VERSION="${{ inputs.version }}"
             BUILD_NUMBER="${{ inputs.build_number }}"
             DRAFT="${{ inputs.draft }}"
@@ -67,11 +93,6 @@ jobs:
               }
             fi
             TAG_NAME="v$VERSION"
-          else
-            TAG_NAME="${GITHUB_REF_NAME}"
-            VERSION="${TAG_NAME#v}"
-            BUILD_NUMBER="${GITHUB_RUN_NUMBER}"
-            DRAFT="false"
           fi
 
           if [ -z "$BUILD_NUMBER" ]; then
@@ -100,20 +121,16 @@ jobs:
           echo "DOWNLOAD_URL=https://github.com/${GITHUB_REPOSITORY}/releases/download/$TAG_NAME/Dirnex.dmg" >> "$GITHUB_ENV"
 
       - name: Update VERSION for manual release
-        # Only a stable manual release advances the tracked VERSION file. A beta version carries a
-        # `-beta.N` suffix, which must never land in VERSION — the auto-bump `awk` above requires a
-        # numeric MAJOR.MINOR.PATCH and would refuse it on the next run.
-        if: github.event_name == 'workflow_dispatch' && env.CHANNEL == 'stable'
+        # Only a stable release cut from a branch advances the tracked VERSION file. A beta version
+        # carries a `-beta.N` suffix, which must never land in VERSION — the auto-bump `awk` above
+        # requires a numeric MAJOR.MINOR.PATCH and would refuse it on the next run. (Ref type, not
+        # event name, for the same `workflow_call` reason as above.)
+        if: github.ref_type == 'branch' && env.CHANNEL == 'stable'
         run: |
           FILE_VERSION="$(sed -n '1p' VERSION | tr -d '[:space:]')"
           if [ "$VERSION" = "$FILE_VERSION" ]; then
             echo "VERSION is already $VERSION."
             exit 0
-          fi
-
-          if [ "${GITHUB_REF_TYPE}" != "branch" ]; then
-            echo "Run manual releases from a branch when VERSION needs an update." >&2
-            exit 1
           fi
 
           printf '%s\n' "$VERSION" > VERSION
@@ -122,6 +139,45 @@ jobs:
           git add VERSION
           git commit -m "Release $TAG_NAME"
           git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Fetch the current appcast
+        # The feed lives on one persistent `appcast` release and always holds both channels' latest
+        # items. Pull it here — early, because it also decides the build number below — so this
+        # release's item can be merged in while keeping the other channel's. Absent on the very
+        # first channelled release; make_appcast.sh then starts the feed fresh. Always fetched (a
+        # draft still wants a correct merged artifact to inspect); only *publishing* is draft-gated.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p existing
+          if gh release download appcast --pattern appcast.xml --dir existing 2>/dev/null; then
+            echo "Fetched the current appcast to merge into."
+          else
+            echo "No appcast release yet — the merged feed will start fresh."
+          fi
+
+      - name: Resolve the build number
+        # Sparkle ranks EVERY candidate by <sparkle:version> (CFBundleVersion), so build numbers
+        # must stay **globally monotonic across both channels** or an old beta outranks a new
+        # stable — or, worse, a beta is stamped below the installed stable and is never offered
+        # at all. A run number alone can't guarantee that any more: `github.run_number` is
+        # per-workflow-FILE, so a beta run via beta.yml draws from a different counter than a
+        # stable run of this workflow and would restart at 1. So the floor comes from the feed
+        # itself — one number line every release shares, whatever triggered it. The appcast always
+        # holds the highest build of each channel, so its max IS the highest ever published.
+        run: |
+          APPCAST_MAX="$(sed -n \
+            's|.*<sparkle:version>\([0-9][0-9]*\)</sparkle:version>.*|\1|p' \
+            existing/appcast.xml 2>/dev/null | sort -n | tail -1)"
+          FLOOR=$(( ${APPCAST_MAX:-0} + 1 ))
+
+          if [ "$FLOOR" -gt "$BUILD_NUMBER" ]; then
+            echo "Raising build number $BUILD_NUMBER -> $FLOOR (published feed is at ${APPCAST_MAX:-0})."
+            BUILD_NUMBER="$FLOOR"
+          fi
+
+          echo "Build number: $BUILD_NUMBER"
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
 
       - name: Check signing secrets
         run: |
@@ -198,22 +254,6 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           TEAM_ID: ${{ secrets.TEAM_ID }}
           APP_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
-
-      - name: Fetch the current appcast
-        # The feed lives on one persistent `appcast` release and always holds both channels' latest
-        # items. Pull it so this release's item can be merged in (keeping the other channel). Absent
-        # on the very first channelled release — make_appcast.sh then starts the feed fresh. Skipped
-        # for drafts, which must not touch the live feed.
-        if: env.DRAFT != 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          mkdir -p existing
-          if gh release download appcast --pattern appcast.xml --dir existing 2>/dev/null; then
-            echo "Fetched the current appcast to merge into."
-          else
-            echo "No appcast release yet — the merged feed will start fresh."
-          fi
 
       - name: Create appcast
         run: |
