@@ -3,8 +3,31 @@
 Dirnex ships as a **signed, notarized DMG** that updates itself through **Sparkle 2**. Cutting a
 release is one GitHub Actions run: [`.github/workflows/release.yml`](../.github/workflows/release.yml)
 archives the app, signs it with Developer ID, notarizes the DMG, signs the Sparkle appcast, and
-publishes both to a GitHub release. Users on an older build then see the update automatically,
-because the app's `SUFeedURL` points at that release's `appcast.xml`.
+publishes the DMG to a GitHub release. Users on an older build then see the update automatically,
+because the app's `SUFeedURL` points at the persistent appcast feed (see
+[Update channels](#update-channels-stable-and-beta) below).
+
+## Update channels: stable and beta
+
+Dirnex serves **one** Sparkle feed that carries two channels — stable and beta — and the git tag
+decides which channel a release belongs to:
+
+| Tag | Channel | GitHub release | Appcast item |
+| --- | --- | --- | --- |
+| `v0.1.0` | stable | marked **Latest** | untagged (everyone sees it) |
+| `v0.1.1-beta.1` | beta | marked **Pre-release** | tagged `<sparkle:channel>beta</sparkle:channel>` |
+
+The feed is the single `appcast.xml` asset on a fixed **`appcast`** GitHub release (created
+`--latest=false` so it never shadows a real release). Every run **merges**: it replaces the item for
+the channel being released and keeps the other, so the feed always holds the latest stable *and* the
+latest beta. Build numbers are the GitHub run number, so they stay globally monotonic across both
+channels — which is what lets a newer stable outrank a running beta.
+
+- A normal install only ever sees **stable** releases.
+- Ticking **Settings → General → Receive beta updates** opts in to the beta channel; Sparkle then
+  offers newer beta builds too. It's read live on each check, so no relaunch is needed.
+- A beta tester **graduates automatically**: when a stable release outranks their beta build, Sparkle
+  offers the stable and rolls them back onto the stable line — the reason for one feed over two.
 
 ## One-time setup: repository secrets
 
@@ -38,24 +61,36 @@ rm sparkle_private_key
 
 Two ways, both run the same job:
 
-- **Tag push** — `git tag v0.1.0 && git push origin v0.1.0`. The version comes from the tag.
+- **Tag push** — `git tag v0.1.0 && git push origin v0.1.0` for a stable release, or
+  `git tag v0.1.1-beta.1 && git push origin v0.1.1-beta.1` for a beta. The version *and the channel*
+  come from the tag (a `-beta.N` suffix means beta).
 - **Manual** — Actions → *Release* → *Run workflow*. Leave the version blank to bump the patch of
-  the `VERSION` file (and commit the bump), or type an explicit version. Tick *draft* to stage the
-  release without publishing it as latest.
+  the `VERSION` file (and commit the bump), or type an explicit version — including a `-beta.N` one
+  to cut a beta (a beta version is **not** written back to the `VERSION` file). Tick *draft* to
+  stage the release without publishing it or touching the live feed.
 
-The run produces, on the GitHub release for that tag:
+The run produces:
 
-- `Dirnex.dmg` — the signed, notarized, stapled disk image.
-- `appcast.xml` — the Sparkle feed, served at the stable
-  `releases/latest/download/appcast.xml` URL the app checks.
+- On the **tag** release: `Dirnex.dmg` — the signed, notarized, stapled disk image. Stable tags are
+  marked *Latest*; beta tags are marked *Pre-release*.
+- On the fixed **`appcast`** release: `appcast.xml` — the merged Sparkle feed, served at the stable
+  `releases/download/appcast/appcast.xml` URL every app checks. This release is infrastructure —
+  don't delete it.
 
 ## What the app does with it
 
 - **Check for Updates…** lives in the app menu (and the ⌘K palette as `app.checkForUpdates`); it
   asks Sparkle to check the feed now.
 - Sparkle also checks periodically in the background once the user has opted in on first launch.
+- **Receive beta updates** (Settings → General) decides whether beta items are eligible; see
+  [Update channels](#update-channels-stable-and-beta).
 - Only a DMG whose appcast entry is signed with our EdDSA private key will ever be offered, and the
   hardened-runtime + notarization means Gatekeeper installs it without warnings.
+
+> **Feed migration (one-time):** the feed URL moved from `releases/latest/download/appcast.xml` to
+> the persistent `releases/download/appcast/appcast.xml`. Builds from before this change (≤ v0.0.3)
+> still check the old URL, so install the first release cut after the move manually once; every
+> release after that updates in place.
 
 ## Building locally (without publishing)
 
