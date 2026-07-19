@@ -2948,4 +2948,6 @@ not a licensing task, and stays open.
   Validate with real use in M1.
 - Quick view panel shortcut (Ctrl+Q vs Cmd+Shift+Q) — Cmd+Q is untouchable.
 - Tabs UI: native-style segmented tabs vs compact TC-style. Prototype both in M1.
-- Name/brand check for "Dirnex" before 1.0 (M7).
+- ~~Name/brand check for "Dirnex" before 1.0 (M7).~~ **Resolved 2026-07-19: the name is free
+  — cleared by the user, no conflicting prior marks. Nothing to rename; the `NOTICE` /
+  `TRADEMARKS.md` carve-out stands as written.**
