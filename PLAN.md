@@ -2686,10 +2686,9 @@ beside it — the two now run as one sequence on a fresh install.
   column-aligned; **Get Started closed the tour and the FDA prompt appeared** (the hand-off);
   **Not Now** dismissed it; **App-menu ▸ Welcome to Dirnex…** reopened the tour, whose last screen now
   read **Open Command Palette** and, clicked, closed the tour and opened ⌘K with **no** FDA prompt;
-  and a palette search for "welcome" found the command. **NEXT in M7:** the docs keyboard-reference
-  (buildable now, core-first — the action registry already is the reference); the remaining four
-  items stay blocked on the user (Sparkle/notarized-DMG CI creds, the crash-reporting/telemetry
-  decision, beta→1.0).
+  and a palette search for "welcome" found the command. **NEXT in M7:** the remaining items all stay
+  blocked on the user (Sparkle/notarized-DMG CI creds, the crash-reporting/telemetry decision,
+  beta→1.0).
 
 ## 5. Cross-cutting: testing strategy
 
