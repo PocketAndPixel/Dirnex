@@ -2360,7 +2360,12 @@ two remain.*
 
 ### M7 — Release readiness (M)
 
-- [ ] Sparkle 2 updates + appcast infrastructure; notarized DMG pipeline in CI
+- [x] Sparkle 2 updates + appcast infrastructure; notarized DMG pipeline in CI
+      (shipped 2026-07-19, VERIFIED LIVE — v0.0.3 published a signed/notarized/stapled DMG + Sparkle
+      appcast from GitHub Actions; the app has a "Check for Updates…" command wired through the
+      registry)
+- [ ] Beta + stable update channels (Sparkle `<sparkle:channel>`, in-app opt-in) — design in the
+      2026-07-19 channels note below; deferred, implement later
 - [x] Full Disk Access onboarding flow (detect, explain, deep-link to System Settings)
 - [x] First-run tour: palette-centric, 5 screens max
 - [x] Performance pass: instruments audit of M1 budgets on real dirty data
@@ -2690,9 +2695,10 @@ beside it — the two now run as one sequence on a fresh install.
   blocked on the user (Sparkle/notarized-DMG CI creds, the crash-reporting/telemetry decision,
   beta→1.0).
 
-Progress (2026-07-19, **M7 — Sparkle 2 auto-update + notarized-DMG release pipeline SCAFFOLDED; box
-stays `[ ]` until a tagged release is cut and verified live**): the whole non-secret half of the first
-M7 box is in place, reusing the sibling `system-utilities-macos` app's proven pipeline. **Probed the
+Progress (2026-07-19, **M7 — Sparkle 2 auto-update + notarized-DMG release pipeline SHIPPED + VERIFIED
+LIVE; the box is `[x]`**): built the whole pipeline, then cut a real release — **v0.0.3 published a
+signed/notarized/stapled DMG + Sparkle appcast from GitHub Actions**, closing the box. Reused the
+sibling `system-utilities-macos` app's proven pipeline. **Probed the
 reference first** (the M4/M5/M6 opener): it is a pure-SwiftPM app that hand-assembles its bundle from
 `swift build`, so its `make_dmg`/`notarize_dmg`/`make_appcast` scripts + the CI cert-install/notarize
 steps port almost verbatim, but its `build_app.sh` does **not** — Dirnex is an Xcode project with
@@ -2719,13 +2725,40 @@ tweaks (`dist/`, un-ignore the one committed `ExportOptions.plist`). **VERIFIED 
 without the secrets:** `xcodebuild -resolvePackageDependencies` checked out Sparkle 2.9.4; a Debug app
 build **BUILD SUCCEEDED** (Sparkle + `AppUpdater` compile and link); the app suite **TEST SUCCEEDED,
 83 tests** (the test-host guard held — no live updater, no prompt, no hang); core `CommandCatalog`
-tests green; swiftformat + swiftlint --strict clean. **What's left for the box to close `[x]` is
-user-only:** add the six repo secrets (`DEVELOPER_ID_CERTIFICATE_P12` + password, `APPLE_ID`,
-`TEAM_ID`, `APP_SPECIFIC_PASSWORD`, `SPARKLE_PRIVATE_KEY` — all reused from system-utilities-macos,
-GitHub secrets being per-repo), then push a `v*` tag and confirm the DMG downloads, passes Gatekeeper,
-and an older build self-updates. Known: committed feed/key means **Debug/dev launches also check the
-feed** (dogfood-friendly; gate on `#if !DEBUG` later if it grates). **NEXT in M7:** crash-reporting/
-telemetry decision, then beta→1.0.
+tests green; swiftformat + swiftlint --strict clean. **Then the live release:** the six repo secrets
+had to be **re-created, not copied** — GitHub secrets are write-only, so the sibling repo's values
+can't be read back; each was re-derived from source (`.p12` base64'd to clipboard, `TEAM_ID` =
+`A9N92VGA2M`, a fresh app-specific password, the Sparkle private key exported from the login keychain
+with `generate_keys -x`, a new App-Specific password). One first-run failure — `security import` hit
+"passphrase not correct", i.e. a wrong `DEVELOPER_ID_CERTIFICATE_PASSWORD` (the `.p12` had decoded
+fine, so the cert secret was good); recoverable by testing the `.p12` password locally or re-exporting
+the cert with a known one. After the fix, **v0.0.3 shipped clean**. Known: committed feed/key means
+**Debug/dev launches also check the feed** (dogfood-friendly; gate on `#if !DEBUG` later if it grates).
+**NEXT in M7:** the beta/stable channels below (deferred), then the crash-reporting/telemetry decision,
+then beta→1.0.
+
+Design deferred (2026-07-19, **M7 — beta + stable update channels; box `[ ]`, implement later**): the
+user wants two release tracks — a "complete" (stable) release and an opt-in beta — served by the one
+pipeline. **Approach: Sparkle 2 channels, single appcast** (chosen over separate feeds because it
+handles beta→stable graduation for free: when a stable version outranks a running beta, the beta
+tester rolls onto stable automatically; separate feeds strand them). Beta items carry
+`<sparkle:channel>beta</sparkle:channel>`, stable items are untagged; untagged is the default channel
+everyone sees. **Three parts to build when we pick this up:** (1) **App opt-in** — a new
+`AppPreferences.receiveBetaUpdates` (default off) + `AppUpdater` becomes the `updaterDelegate` and
+implements `SPUUpdaterDelegate.allowedChannels(for:) -> Set<String>` returning `["beta"]` when the
+pref is on, `[]` otherwise (read each check, so a Settings toggle takes effect without relaunch);
+core-first + a Settings toggle. (2) **Release trigger** — a tag convention: `vX.Y.Z` = stable
+(`--latest`), `vX.Y.Z-beta.N` = beta (GitHub `--prerelease`); `release.yml` derives the channel from
+the `-` suffix, no new inputs. (3) **Persistent two-channel appcast** — today `make_appcast.sh` writes
+a fresh **one-item** appcast to each release and the feed reads `releases/latest/…`, which structurally
+can't carry two channels. Fix: host the appcast at ONE stable location (recommended: a fixed `appcast`
+GitHub release whose sole asset is `appcast.xml`, created `--latest=false` — reuses the existing
+`gh release upload` path, no new infra; GitHub Pages is the conventional alternative) and, on each
+release, **merge** — fetch the current appcast, replace the item for *this* channel, keep the other —
+so it always holds exactly two items (latest stable + latest beta). `SUFeedURL` moves to that stable
+location (free now — no external users on the old `latest/…` feed yet). **Gotcha to preserve:** Sparkle
+ranks by `CFBundleVersion`, which must stay **globally monotonic across both channels** or an old beta
+could outrank a new stable — already satisfied because build numbers are the GitHub run number.
 
 ## 5. Cross-cutting: testing strategy
 
