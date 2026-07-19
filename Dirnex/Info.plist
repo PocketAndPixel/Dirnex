@@ -2,9 +2,14 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
   Partial Info.plist merged over the auto-generated one (GENERATE_INFOPLIST_FILE stays YES; this
-  file is named by INFOPLIST_FILE). It carries only the two keys that make Dirnex an AppleScript
-  target (PLAN.md §M6 automation): scripting enabled, and where its terminology lives. Everything
-  else — bundle name, version, principal class — is still generated from the build settings.
+  file is named by INFOPLIST_FILE). It carries the keys the build settings can't express:
+    - AppleScript target (PLAN.md §M6 automation): scripting enabled + where its terminology lives.
+    - Sparkle auto-update (PLAN.md §M7): the appcast feed and the EdDSA public key that every
+      update must be signed against. Both are public and stable, so they live in source rather than
+      being injected at release time. The feed is the repo's GitHub "latest release" appcast; the
+      private half of the key lives only in the login keychain / the CI SPARKLE_PRIVATE_KEY secret.
+  Everything else — bundle name, version, principal class — is still generated from the build
+  settings.
 -->
 <plist version="1.0">
 <dict>
@@ -12,5 +17,9 @@
     <true/>
     <key>OSAScriptingDefinition</key>
     <string>Dirnex.sdef</string>
+    <key>SUFeedURL</key>
+    <string>https://github.com/olegasd123/Dirnex/releases/latest/download/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>fCW4U7xNZWXNVPxhNxIbqRSbPk12zzDW1MjmmEv5oWA=</string>
 </dict>
 </plist>

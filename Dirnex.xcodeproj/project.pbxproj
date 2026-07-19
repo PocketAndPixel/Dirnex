@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		1000000000000000000000201 /* DirnexCore in Frameworks */ = {isa = PBXBuildFile; productRef = 1000000000000000000000202 /* DirnexCore */; };
 		1000000000000000000000206 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = 1000000000000000000000205 /* SwiftTerm */; };
+		1000000000000000000000303 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 1000000000000000000000302 /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -38,6 +39,7 @@
 			files = (
 				1000000000000000000000201 /* DirnexCore in Frameworks */,
 				1000000000000000000000206 /* SwiftTerm in Frameworks */,
+				1000000000000000000000303 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -93,6 +95,7 @@
 			packageProductDependencies = (
 				1000000000000000000000202 /* DirnexCore */,
 				1000000000000000000000205 /* SwiftTerm */,
+				1000000000000000000000302 /* Sparkle */,
 			);
 			productName = Dirnex;
 			productReference = 1000000000000000000000C1 /* Dirnex.app */;
@@ -150,6 +153,7 @@
 			packageReferences = (
 				1000000000000000000000203 /* XCLocalSwiftPackageReference "DirnexCore" */,
 				1000000000000000000000204 /* XCRemoteSwiftPackageReference "SwiftTerm" */,
+				1000000000000000000000301 /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 1000000000000000000000A3 /* Products */;
@@ -473,6 +477,14 @@
 				version = 1.14.0;
 			};
 		};
+		1000000000000000000000301 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle.git";
+			requirement = {
+				kind = exactVersion;
+				version = 2.9.4;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -484,6 +496,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 1000000000000000000000204 /* XCRemoteSwiftPackageReference "SwiftTerm" */;
 			productName = SwiftTerm;
+		};
+		1000000000000000000000302 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1000000000000000000000301 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

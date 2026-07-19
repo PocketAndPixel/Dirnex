@@ -152,6 +152,10 @@ enum MainMenuBuilder {
             keyEquivalent: ""
         )
         appMenu.addItem(.separator())
+        if let checkForUpdates = commandItem(for: "app.checkForUpdates", bindings: bindings) {
+            appMenu.addItem(checkForUpdates)
+            appMenu.addItem(.separator())
+        }
         if let settings = commandItem(for: "app.settings", bindings: bindings) {
             appMenu.addItem(settings)
         }

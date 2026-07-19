@@ -467,6 +467,12 @@ extension CommandCatalog {
             keywords: ["tour", "welcome", "guide", "intro", "onboarding", "help", "getting started"]
         ),
         Command(
+            id: "app.checkForUpdates",
+            title: "Check for Updates…",
+            category: .application,
+            keywords: ["update", "upgrade", "sparkle", "version", "release", "new"]
+        ),
+        Command(
             id: "app.quit",
             title: "Quit Dirnex",
             category: .application,

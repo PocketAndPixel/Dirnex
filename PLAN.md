@@ -2690,6 +2690,43 @@ beside it — the two now run as one sequence on a fresh install.
   blocked on the user (Sparkle/notarized-DMG CI creds, the crash-reporting/telemetry decision,
   beta→1.0).
 
+Progress (2026-07-19, **M7 — Sparkle 2 auto-update + notarized-DMG release pipeline SCAFFOLDED; box
+stays `[ ]` until a tagged release is cut and verified live**): the whole non-secret half of the first
+M7 box is in place, reusing the sibling `system-utilities-macos` app's proven pipeline. **Probed the
+reference first** (the M4/M5/M6 opener): it is a pure-SwiftPM app that hand-assembles its bundle from
+`swift build`, so its `make_dmg`/`notarize_dmg`/`make_appcast` scripts + the CI cert-install/notarize
+steps port almost verbatim, but its `build_app.sh` does **not** — Dirnex is an Xcode project with
+SwiftTerm (and now Sparkle) as embedded frameworks/XPC services, and only `xcodebuild archive` +
+`-exportArchive` sign that nested code correctly. **App wiring (the registry is the single source of
+truth, so the updater is a real command, not a hardcoded menu target):** new `Dirnex/AppUpdater.swift`
+(AppKit-only wrapper over `SPUStandardUpdaterController`, built lazily and skipped under
+`XCTestConfigurationFilePath` — same test-host guard FDA/tour use — but **never `#if`-d out, so the
+Debug `xcodebuild test` job still compiles the Sparkle path**); `app.checkForUpdates` added to
+`CommandCatalog` (Application category) + `CommandBinding` → `AppDelegate.checkForUpdates(_:)` +
+`MainMenuBuilder` places it under About; `Dirnex/Info.plist` gains committed `SUFeedURL`
+(`…/releases/latest/download/appcast.xml`) + `SUPublicEDKey` (public, reused from
+system-utilities-macos — one Sparkle key across both apps). **Sparkle added to the Xcode project the
+same way SwiftTerm is** — six mirrored `project.pbxproj` entries (remote ref `…301`, product dep
+`…302`, build file `…303`), pinned `exactVersion 2.9.4`; `Package.resolved` regenerated. **Release
+infra:** `VERSION`, `Packaging/ExportOptions.plist` (Developer ID / manual / team A9N92VGA2M — the
+hardened runtime is already on, so the export re-sign just preserves it + adds a timestamp),
+`scripts/build_app.sh` (archive+export), `scripts/{make_dmg,notarize_dmg,make_appcast}.sh` (the
+appcast script's only real change vs the reference: `sign_update` now ships in the SwiftPM artifact
+bundle, so it's found under the release derived-data tree, not `.build/`), `.github/workflows/
+release.yml` (tag `v*` or manual dispatch; Metal-toolchain download for SwiftTerm; core-test gate;
+cert install; build→DMG→notarize→appcast→GitHub release), `docs/RELEASING.md`, and `.gitignore`
+tweaks (`dist/`, un-ignore the one committed `ExportOptions.plist`). **VERIFIED as far as is possible
+without the secrets:** `xcodebuild -resolvePackageDependencies` checked out Sparkle 2.9.4; a Debug app
+build **BUILD SUCCEEDED** (Sparkle + `AppUpdater` compile and link); the app suite **TEST SUCCEEDED,
+83 tests** (the test-host guard held — no live updater, no prompt, no hang); core `CommandCatalog`
+tests green; swiftformat + swiftlint --strict clean. **What's left for the box to close `[x]` is
+user-only:** add the six repo secrets (`DEVELOPER_ID_CERTIFICATE_P12` + password, `APPLE_ID`,
+`TEAM_ID`, `APP_SPECIFIC_PASSWORD`, `SPARKLE_PRIVATE_KEY` — all reused from system-utilities-macos,
+GitHub secrets being per-repo), then push a `v*` tag and confirm the DMG downloads, passes Gatekeeper,
+and an older build self-updates. Known: committed feed/key means **Debug/dev launches also check the
+feed** (dogfood-friendly; gate on `#if !DEBUG` later if it grates). **NEXT in M7:** crash-reporting/
+telemetry decision, then beta→1.0.
+
 ## 5. Cross-cutting: testing strategy
 
 | Layer | Approach |

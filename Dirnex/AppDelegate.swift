@@ -11,6 +11,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var browserWindowController: BrowserWindowController?
     private let commandPalette = CommandPaletteController()
 
+    /// Sparkle auto-update (PLAN.md §M7). Constructed at launch; a no-op in tests and in builds that
+    /// lack the feed configuration. Reached through the `app.checkForUpdates` command.
+    private let appUpdater = AppUpdater()
+
     /// The browser window an AppleScript verb acts on: the key window's controller when it is a
     /// browser, otherwise the one built at launch. The scripting command handlers
     /// (`ScriptingCommands.swift`) reach the active panel through here rather than the palette's
@@ -106,5 +110,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// with the app delegate as its final link.
     @objc func showFirstRunTour(_ sender: Any?) {
         FirstRunTourPresenter.present(over: NSApp.keyWindow ?? browserWindowController?.window)
+    }
+
+    // MARK: - Software update
+
+    /// App menu ▸ "Check for Updates…" (and the palette command) — ask Sparkle to check the appcast
+    /// now (PLAN.md §M7). Reached through the responder chain, with the app delegate as its final
+    /// link. A no-op when the updater is disabled (tests, or a build without feed configuration).
+    @objc func checkForUpdates(_ sender: Any?) {
+        appUpdater.checkForUpdates()
     }
 }

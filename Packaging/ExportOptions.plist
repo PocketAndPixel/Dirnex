@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Options for `xcodebuild -exportArchive` (PLAN.md §M7 release pipeline). Exports the archived app
+  as a Developer ID build for distribution outside the App Store: manual signing with the
+  "Developer ID Application" certificate under team A9N92VGA2M. The hardened runtime is already on
+  in the target's build settings, so the re-sign here preserves it and adds a secure timestamp —
+  both prerequisites for notarization, which happens on the resulting DMG (scripts/notarize_dmg.sh).
+  Contains no secrets: only the public team id and the certificate's *name*, not the key.
+-->
+<plist version="1.0">
+<dict>
+    <key>method</key>
+    <string>developer-id</string>
+    <key>teamID</key>
+    <string>A9N92VGA2M</string>
+    <key>signingStyle</key>
+    <string>manual</string>
+    <key>signingCertificate</key>
+    <string>Developer ID Application</string>
+</dict>
+</plist>

@@ -76,6 +76,7 @@ enum CommandBinding {
         "app.settings": #selector(AppDelegate.showSettings(_:)),
         "app.fullDiskAccess": #selector(AppDelegate.showFullDiskAccess(_:)),
         "app.showTour": #selector(AppDelegate.showFirstRunTour(_:)),
+        "app.checkForUpdates": #selector(AppDelegate.checkForUpdates(_:)),
         "app.quit": #selector(NSApplication.terminate(_:))
     ]
 }

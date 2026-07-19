@@ -23,11 +23,18 @@ Package.resolved
 # and a tag can be moved. Apple's own rule: apps commit their resolution, libraries don't.
 !Dirnex.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 
+# Release build outputs (the .app, .xcarchive, appcast, and notarization staging live here)
+dist/
+
 # Notarization / signing artifacts
 *.dmg
 *.p12
 *.provisionprofile
 ExportOptions.plist
+# …except the one the release pipeline actually uses to export the Developer ID build. It carries
+# no secrets (team id + cert *name*), and the workflow needs it in the checkout. Same "apps commit
+# what they ship" reasoning as the Package.resolved negation above.
+!Packaging/ExportOptions.plist
 
 # Fixtures generated locally
 /.fixtures/
