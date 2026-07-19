@@ -182,6 +182,14 @@ final class PanelViewController: NSViewController {
     /// already moved on is discarded instead of clobbering the current directory.
     /// Internal so `PanelViewController+Tabs` can discard a stale load on tab switch.
     var loadToken = 0
+    /// A short-lived message that outranks the computed item count in the status line — how a
+    /// detached background action (an external diff launch) reports itself without stealing focus
+    /// with an alert. `nil` when the line is showing its normal contents. Driven entirely by
+    /// `PanelViewController+Chrome`; a stored property cannot live in that extension.
+    var transientStatus: String?
+    /// Bumped by each `showTransientStatus`, so a later message's expiry can't clear an earlier
+    /// one's — the same stale-callback guard as `loadToken`.
+    var transientStatusToken = 0
     /// FSEvents watcher for the directory on screen — live-refreshes the pane when the
     /// folder changes underneath us. Replaced on every navigation; `nil` for backends
     /// without the `.watch` capability. Internal (like `gitWatcher` below) because the code that

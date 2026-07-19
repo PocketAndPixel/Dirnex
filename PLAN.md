@@ -3077,6 +3077,76 @@ untouched — clearing them on every ping would empty the column continuously th
 payload delivery fix has no unit test: `DirectorySizeProvider` is a `private init` singleton wired to
 `NotificationCenter`, and making it injectable for one test was judged scope creep this pass.
 
+### Compare By Contents — the UX pass on the handoff (2026-07-20, VERIFIED LIVE)
+
+Not a new feature: the M5 external-diff handoff worked, and a UX review of the *shipped* thing
+found four defects around it. Worth recording because three of the four are the same shape — the
+app knew something useful and didn't say it.
+
+**The bug: the two columns could be transposed.** `comparableCursorPair()` built its pair as
+`(self, counterpart)`, and `self` is whichever pane the responder chain dispatched to — the
+*focused* one. Focus the right pane and the right pane's file opened in the diff tool's **left**
+column. This is exactly the trap `beginSync` had already documented itself out of ("the physical
+left pane is always the left side … so the direction controls match the on-screen layout"), and it
+bites harder here: the diff tool labels its columns by filename, so comparing `report.log` against
+`report.log` leaves the pane-of-origin readable only in a path subtitle. Now reads
+`window.leftPanel`/`window.rightPanel`, like its sibling.
+
+**Nothing was said, three times over.** (1) `launchExternalDiff` discarded the success case and
+reported only failures — while a cold FileMerge takes seconds to draw its first window, so the app
+looked like it had swallowed the keystroke. The launcher's own doc comment already promised the fix
+("on success it carries the tool that was launched (for a status message)"); the caller just never
+used it. (2) The menu item read "Compare By Contents…" with no hint what was about to launch, while
+the *sync sheet's* row menu had said "Compare with FileMerge…" since M5. (3) With two tools
+installed there was no way to choose: `ExternalDiffTool.preferred(identifier:)` existed and its doc
+said the identifier was "used to persist the user's chosen tool", but nothing ever wrote or read
+one — the hardcoded Kaleidoscope → BBEdit → FileMerge order was the only order there was.
+
+**And the launch was unconditional**, though `ByteComparator` — the documented other half of this
+very feature — was sitting right there. Spending a multi-second GUI launch to be told "0
+differences" is the worst payoff the feature has.
+
+Core: `ByteComparator.prescan(_:_:byteLimit:chunkSize:isCancelled:)` → `ContentComparison`
+(`.identical` / `.different` / `.tooLargeToScan(largestByteSize:)`). **The size gate deliberately
+runs first and outranks the free answer**: two differently-sized 2 GB files are known-unequal
+without reading a byte, but that is not a reason to hand them to FileMerge — and settling
+identical-or-not above the 64 MiB budget would mean reading both files end to end, which is the
+regression the naive "just byte-compare first" ordering would have shipped. Within budget it is
+`localFilesEqual`, so every existing short-circuit still applies.
+
+App: the compare code moved out of `PanelViewController+Sync` (near its length budget, and the two
+share only a launcher) into `PanelViewController+Compare.swift`. A pre-flight *failure* launches
+anyway — this is an optimization, not a gate, and the diff tool reports an unreadable file better
+than a second alert would. New `transientStatus` on the pane, a status-line message that outranks
+the item count for 4 s with a `loadToken`-style generation guard; deliberately not an alert, since
+nothing here needs a decision. One wrinkle the sync sheet forced: **a sheet covers the status line
+it would land in**, so a final result becomes an alert on the sheet when one is up, while in-flight
+notes stay status-line-only (a modal you must dismiss before the answer arrives is worse than
+silence). Menu title is now set in `validateMenuItem` — AppKit's only hook for a title that tracks
+live state — while the **palette keeps the generic catalog title, which is what its fuzzy search
+matches against**. `AppPreferences.diffToolIdentifier` ("" = automatic) with an Operations-tab
+picker whose footer names the installed tools, and covers the case that needs it most: none
+installed, where the command greys out with no explanation. Shortcut **⌥F3**, the sibling of F3
+"View" — F3 looks at the file under the cursor, ⌥F3 looks at it *against* the other pane's — checked
+conflict-free under **both** presets (the TC preset claims bare F3 for Quick Look).
+
+Verified live without a single pixel, which is the part worth stealing: **`ps -axo args` on the
+spawned process is the assertion.** Differing pair → `FileMerge -left …/cmpL/differ.txt -right
+…/cmpR/differ.txt`, proving the pane order end to end; identical pair → no diff tool in the process
+table at all; an 80 MB/90 MB pair (different sizes, so the "free answer" case) → nothing launched,
+held at the confirmation. Driven entirely through the existing AppleScript verbs (`reveal` +
+`run operation "file.compareByContents"`) with the right pane's directory seeded into
+`Dirnex.tabs.right` — System Events keystrokes are blocked without an accessibility grant, so the
+right pane's *cursor* was positioned by controlling which row sorts first. The one thing that grant
+would have added: reading the status-line text back. 882 core + 94 app tests green, swiftformat +
+swiftlint --strict clean.
+
+**Not done, and deliberately:** a built-in compare view. The diff window in the screenshot that
+started this is FileMerge's, not ours — truncated lines, the single difference below the fold, no
+visible next-difference affordance — and none of that is reachable from here. Owning it is a real
+feature, not a polish pass; worth it only if external tools turn out to be a persistent
+disappointment rather than an occasional one.
+
 ## 5. Cross-cutting: testing strategy
 
 | Layer | Approach |

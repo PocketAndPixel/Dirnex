@@ -115,6 +115,13 @@ extension PanelViewController: NSMenuItemValidation {
             // Compares the two panes' folders — needs two distinct real local directories.
             return canSynchronize
         case #selector(compareByContents(_:)):
+            // Name the tool that would open, as the Synchronize sheet's row menu already does:
+            // "Compare By Contents…" gives no hint what is about to launch, and with two tools
+            // installed the answer depends on a setting. `validateMenuItem` is AppKit's only hook
+            // for a title that tracks live state. The palette keeps the generic catalog title —
+            // that one is what its fuzzy search matches against, so it must not move.
+            menuItem.title = ExternalDiffLauncher.preferredTool()
+                .map { "Compare with \($0.displayName)…" } ?? "Compare By Contents…"
             // Diffs the two panes' cursor files — needs a real file under each cursor.
             return canCompareByContents
         default:

@@ -149,6 +149,15 @@ final class AppPreferences: ObservableObject {
         didSet { defaults.set(focusOpenedSearchDirectory, forKey: Keys.focusOpenedSearchDirectory) }
     }
 
+    /// Operations ▸ which external tool "Compare By Contents" hands its two files to, as an
+    /// `ExternalDiffTool.identifier`. The empty string means **automatic** — the default — and
+    /// leaves the choice to `ExternalDiffTool.preferred`'s install order (Kaleidoscope, BBEdit,
+    /// FileMerge). A named tool wins whenever it is still installed; uninstall it and the
+    /// automatic order quietly takes over again rather than the command breaking.
+    @Published var diffToolIdentifier: String {
+        didSet { defaults.set(diffToolIdentifier, forKey: Keys.diffToolIdentifier) }
+    }
+
     /// General ▸ also offer pre-release (beta) builds when checking for updates (PLAN.md §M7
     /// "Beta + stable update channels"). Default **off**: a normal install only ever sees stable
     /// releases. When on, Sparkle's `allowedChannels(for:)` — implemented on `AppUpdater` — adds
@@ -182,6 +191,8 @@ final class AppPreferences: ObservableObject {
         // `false` for a never-written key and would ship the bar hidden).
         showFunctionBar = defaults.object(forKey: Keys.showFunctionBar) as? Bool ?? true
         confirmTrash = defaults.bool(forKey: Keys.confirmTrash)
+        // Empty (never written) = automatic, so a fresh install keeps the install-order default.
+        diffToolIdentifier = defaults.string(forKey: Keys.diffToolIdentifier) ?? ""
         focusOpenedSearchDirectory = defaults.bool(forKey: Keys.focusOpenedSearchDirectory)
         // Defaults off — a fresh install rides the stable channel until the user opts in.
         receiveBetaUpdates = defaults.bool(forKey: Keys.receiveBetaUpdates)
@@ -196,6 +207,7 @@ final class AppPreferences: ObservableObject {
         static let showSyncStatus = "Dirnex.pref.showSyncStatus"
         static let showFunctionBar = "Dirnex.pref.showFunctionBar"
         static let confirmTrash = "Dirnex.pref.confirmTrash"
+        static let diffToolIdentifier = "Dirnex.pref.diffToolIdentifier"
         static let focusOpenedSearchDirectory = "Dirnex.pref.focusOpenedSearchDirectory"
         static let receiveBetaUpdates = "Dirnex.pref.receiveBetaUpdates"
         static let hasSeenFullDiskAccessOnboarding = "Dirnex.pref.hasSeenFullDiskAccessOnboarding"

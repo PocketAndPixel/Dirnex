@@ -81,7 +81,11 @@ public enum CommandCatalog {
             id: "file.compareByContents",
             title: "Compare By Contents…",
             category: .file,
-            keywords: ["compare", "diff", "contents", "filemerge", "kaleidoscope", "bbedit"]
+            keywords: ["compare", "diff", "contents", "filemerge", "kaleidoscope", "bbedit"],
+            // ⌥F3 as the sibling of F3 "View": F3 looks at the file under the cursor, ⌥F3 looks at
+            // it *against* the other pane's. Free on both presets (stock leaves F3/F4 unbound;
+            // the Total Commander preset takes bare F3 for Quick Look, not ⌥F3).
+            shortcut: CommandShortcut(key: "F3", modifiers: [.function, .option])
         ),
         Command(
             id: "file.manageScripts",
