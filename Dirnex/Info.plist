@@ -6,8 +6,10 @@
     - AppleScript target (PLAN.md §M6 automation): scripting enabled + where its terminology lives.
     - Sparkle auto-update (PLAN.md §M7): the appcast feed and the EdDSA public key that every
       update must be signed against. Both are public and stable, so they live in source rather than
-      being injected at release time. The feed is the repo's GitHub "latest release" appcast; the
-      private half of the key lives only in the login keychain / the CI SPARKLE_PRIVATE_KEY secret.
+      being injected at release time. The feed is the appcast.xml asset on the fixed `appcast`
+      GitHub release — one stable URL that holds both the latest stable and beta items, so the
+      channels feature (Beta + stable update channels) works from a single feed. The private half
+      of the key lives only in the login keychain / the CI SPARKLE_PRIVATE_KEY secret.
   Everything else — bundle name, version, principal class — is still generated from the build
   settings.
 -->
@@ -18,7 +20,7 @@
     <key>OSAScriptingDefinition</key>
     <string>Dirnex.sdef</string>
     <key>SUFeedURL</key>
-    <string>https://github.com/olegasd123/Dirnex/releases/latest/download/appcast.xml</string>
+    <string>https://github.com/olegasd123/Dirnex/releases/download/appcast/appcast.xml</string>
     <key>SUPublicEDKey</key>
     <string>fCW4U7xNZWXNVPxhNxIbqRSbPk12zzDW1MjmmEv5oWA=</string>
 </dict>

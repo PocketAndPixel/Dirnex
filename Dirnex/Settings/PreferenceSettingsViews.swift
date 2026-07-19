@@ -16,6 +16,18 @@ struct GeneralSettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            Section {
+                Toggle("Receive beta updates", isOn: $preferences.receiveBetaUpdates)
+            } footer: {
+                Text(
+                    "Also offers pre-release builds when Dirnex checks for updates. Betas are newer "
+                        + "but less tested; you're moved back onto a stable release automatically "
+                        + "once one catches up."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
     }

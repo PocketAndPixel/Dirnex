@@ -1,7 +1,11 @@
 name: Release
 
-# Cuts a signed, notarized, Sparkle-updatable DMG and publishes it (plus its appcast) to a GitHub
-# release (PLAN.md §M7). Push a tag like v0.1.0, or run manually and let it bump VERSION's patch.
+# Cuts a signed, notarized, Sparkle-updatable DMG and publishes it to a GitHub release, then merges
+# its appcast item into the persistent two-channel Sparkle feed (PLAN.md §M7 "Beta + stable update
+# channels"). The tag decides the channel: `vX.Y.Z` is a stable release (marked Latest); a
+# pre-release tag like `vX.Y.Z-beta.N` is a beta (marked Pre-release, and tagged `beta` in the
+# feed so only opted-in installs are offered it). Run manually to bump VERSION's patch for a stable
+# build.
 #
 # Required repository secrets (see docs/RELEASING.md):
 #   DEVELOPER_ID_CERTIFICATE_P12       base64 of the Developer ID Application .p12
@@ -79,15 +83,27 @@ jobs:
             exit 1
           fi
 
+          # The channel is read off the version, no separate input: a pre-release suffix (the `-` in
+          # `0.1.0-beta.1`) means beta, a plain `X.Y.Z` means stable. This is the same convention
+          # the app opts into (DirnexCore.UpdateChannels) and make_appcast.sh tags items with.
+          case "$VERSION" in
+            *-*) CHANNEL="beta" ;;
+            *)   CHANNEL="stable" ;;
+          esac
+
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
           echo "TAG_NAME=$TAG_NAME" >> "$GITHUB_ENV"
           echo "DRAFT=$DRAFT" >> "$GITHUB_ENV"
+          echo "CHANNEL=$CHANNEL" >> "$GITHUB_ENV"
           echo "RELEASE_NOTES_REF=$RELEASE_NOTES_REF" >> "$GITHUB_ENV"
           echo "DOWNLOAD_URL=https://github.com/${GITHUB_REPOSITORY}/releases/download/$TAG_NAME/Dirnex.dmg" >> "$GITHUB_ENV"
 
       - name: Update VERSION for manual release
-        if: github.event_name == 'workflow_dispatch'
+        # Only a stable manual release advances the tracked VERSION file. A beta version carries a
+        # `-beta.N` suffix, which must never land in VERSION — the auto-bump `awk` above requires a
+        # numeric MAJOR.MINOR.PATCH and would refuse it on the next run.
+        if: github.event_name == 'workflow_dispatch' && env.CHANNEL == 'stable'
         run: |
           FILE_VERSION="$(sed -n '1p' VERSION | tr -d '[:space:]')"
           if [ "$VERSION" = "$FILE_VERSION" ]; then
@@ -183,6 +199,22 @@ jobs:
           TEAM_ID: ${{ secrets.TEAM_ID }}
           APP_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
 
+      - name: Fetch the current appcast
+        # The feed lives on one persistent `appcast` release and always holds both channels' latest
+        # items. Pull it so this release's item can be merged in (keeping the other channel). Absent
+        # on the very first channelled release — make_appcast.sh then starts the feed fresh. Skipped
+        # for drafts, which must not touch the live feed.
+        if: env.DRAFT != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p existing
+          if gh release download appcast --pattern appcast.xml --dir existing 2>/dev/null; then
+            echo "Fetched the current appcast to merge into."
+          else
+            echo "No appcast release yet — the merged feed will start fresh."
+          fi
+
       - name: Create appcast
         run: |
           printf '%s' "$SPARKLE_PRIVATE_KEY" > "$SPARKLE_PRIVATE_KEY_FILE"
@@ -195,6 +227,8 @@ jobs:
           BUILD_NUMBER: ${{ env.BUILD_NUMBER }}
           DOWNLOAD_URL: ${{ env.DOWNLOAD_URL }}
           APPCAST_LINK: https://github.com/${{ github.repository }}
+          CHANNEL: ${{ env.CHANNEL }}
+          EXISTING_APPCAST: ${{ github.workspace }}/existing/appcast.xml
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
           SPARKLE_PRIVATE_KEY_FILE: ${{ runner.temp }}/sparkle_private_key
 
@@ -206,28 +240,52 @@ jobs:
             git log -1 --pretty=%B "$RELEASE_NOTES_REF"
           } > dist/release-notes.md
 
-      - name: Create or update GitHub release
+      - name: Publish the DMG to its tag release
+        # The DMG lives on the per-tag release. A stable tag is marked Latest; a beta tag is marked
+        # Pre-release (never Latest), so GitHub's "Latest release" always points at stable. The
+        # appcast is published separately, to its own persistent release below.
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          RELEASE_FLAGS=""
-          LATEST_FLAGS="--latest"
+          CREATE_FLAGS=""
           if [ "$DRAFT" = "true" ]; then
-            RELEASE_FLAGS="--draft"
-            LATEST_FLAGS=""
+            CREATE_FLAGS="--draft"
+            PROMOTE_FLAGS=""
+          elif [ "$CHANNEL" = "beta" ]; then
+            PROMOTE_FLAGS="--prerelease"
+          else
+            PROMOTE_FLAGS="--latest"
           fi
 
           if gh release view "$TAG_NAME" >/dev/null 2>&1; then
             gh release edit "$TAG_NAME" \
               --title "$TAG_NAME" \
               --notes-file dist/release-notes.md \
-              $LATEST_FLAGS
-            gh release upload "$TAG_NAME" "$RELEASE_DMG" dist/appcast.xml --clobber
+              $PROMOTE_FLAGS
+            gh release upload "$TAG_NAME" "$RELEASE_DMG" --clobber
           else
-            gh release create "$TAG_NAME" "$RELEASE_DMG" dist/appcast.xml \
+            gh release create "$TAG_NAME" "$RELEASE_DMG" \
               --title "$TAG_NAME" \
               --notes-file dist/release-notes.md \
               --target "$(git rev-parse HEAD)" \
-              $LATEST_FLAGS \
-              $RELEASE_FLAGS
+              $PROMOTE_FLAGS \
+              $CREATE_FLAGS
+          fi
+
+      - name: Publish the merged appcast to the feed release
+        # The Sparkle feed (SUFeedURL) is the sole appcast.xml asset on one fixed `appcast` release,
+        # created `--latest=false` so it never shadows a real release. Every run replaces the asset
+        # in place, so the download URL stays stable. Skipped for drafts, which must not go live.
+        if: env.DRAFT != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view appcast >/dev/null 2>&1; then
+            gh release upload appcast dist/appcast.xml --clobber
+          else
+            gh release create appcast dist/appcast.xml \
+              --title "Sparkle appcast (infrastructure — do not delete)" \
+              --notes "The persistent Sparkle update feed for Dirnex. Its appcast.xml asset is the SUFeedURL every installed app checks; the Release workflow keeps it holding the latest stable and beta items. Not a downloadable app release." \
+              --target "$(git rev-parse HEAD)" \
+              --latest=false
           fi

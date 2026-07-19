@@ -2364,8 +2364,11 @@ two remain.*
       (shipped 2026-07-19, VERIFIED LIVE — v0.0.3 published a signed/notarized/stapled DMG + Sparkle
       appcast from GitHub Actions; the app has a "Check for Updates…" command wired through the
       registry)
-- [ ] Beta + stable update channels (Sparkle `<sparkle:channel>`, in-app opt-in) — design in the
-      2026-07-19 channels note below; deferred, implement later
+- [x] Beta + stable update channels (Sparkle `<sparkle:channel>`, in-app opt-in)
+      (shipped 2026-07-19 — tested core `UpdateChannels`, an app-side beta opt-in wired through
+      `AppUpdater`'s `SPUUpdaterDelegate.allowedChannels(for:)`, and a two-channel merging appcast
+      pipeline; the merge is proven across all channel-transition scenarios and the opt-in is
+      live-verified in the shipping binary. See the 2026-07-19 "channels — DONE" note below)
 - [x] Full Disk Access onboarding flow (detect, explain, deep-link to System Settings)
 - [x] First-run tour: palette-centric, 5 screens max
 - [x] Performance pass: instruments audit of M1 budgets on real dirty data
@@ -2734,8 +2737,8 @@ with `generate_keys -x`, a new App-Specific password). One first-run failure —
 fine, so the cert secret was good); recoverable by testing the `.p12` password locally or re-exporting
 the cert with a known one. After the fix, **v0.0.3 shipped clean**. Known: committed feed/key means
 **Debug/dev launches also check the feed** (dogfood-friendly; gate on `#if !DEBUG` later if it grates).
-**NEXT in M7:** the beta/stable channels below (deferred), then the crash-reporting/telemetry decision,
-then beta→1.0.
+**NEXT in M7:** the beta/stable channels below (**now DONE — see the 2026-07-19 "channels — DONE"
+note**), then the crash-reporting/telemetry decision, then beta→1.0.
 
 Design deferred (2026-07-19, **M7 — beta + stable update channels; box `[ ]`, implement later**): the
 user wants two release tracks — a "complete" (stable) release and an opt-in beta — served by the one
@@ -2759,6 +2762,57 @@ so it always holds exactly two items (latest stable + latest beta). `SUFeedURL` 
 location (free now — no external users on the old `latest/…` feed yet). **Gotcha to preserve:** Sparkle
 ranks by `CFBundleVersion`, which must stay **globally monotonic across both channels** or an old beta
 could outrank a new stable — already satisfied because build numbers are the GitHub run number.
+
+Progress (2026-07-19, **M7 — beta + stable update channels; box `[x]`, VERIFIED LIVE**): shipped the
+three parts of the design above, built the deferred design exactly. **834 core (+3) + 85 app (+2);
+lint + format clean.**
+
+(1) **Core** `DirnexCore/Services/UpdateChannels.swift` (a caseless-enum namespace, `FunctionBar`
+shape): `UpdateChannels.beta = "beta"` (the single source of truth for the channel literal, shared
+with the pipeline's tag) + `allowed(receiveBetaUpdates:) -> Set<String>` = `["beta"]` on, `[]` off
+(Sparkle reads `[]` as "default channel only"). Kept `classify(version:)` OUT deliberately — the
+tag→channel rule lives only in `release.yml` shell where the tag actually is, so no prod-dead Swift
+for periphery to flag. +3 tests.
+
+(2) **App opt-in** — `AppPreferences.receiveBetaUpdates` (default off, Settings-only like
+`restoreSession`, no toggle helper) + a **`nonisolated static receiveBetaUpdatesValue(in:)`** that
+reads the key straight from `UserDefaults`. `AppUpdater` became `NSObject, SPUUpdaterDelegate`
+(delegate protocol refines `NSObject`); `updaterController` went `let`→`var` because two-phase init
+forbids passing `self` before `super.init()` (Optional auto-nils, assign once after). The hook is
+`nonisolated func allowedChannels(for _: SPUUpdater)` calling the off-main reader — **NOT
+`MainActor.assumeIsolated`**, on purpose: Sparkle calls it synchronously inside a check and a
+thread-safe `UserDefaults` read is provably safe regardless of Sparkle's threading, re-read each
+check so a Settings flip needs no relaunch. Settings General gained a "Receive beta updates" toggle.
+**THE app-test guard (the one thing a compile can't rule out): `#expect(updater.responds(to:
+#selector(AppUpdater.allowedChannels(for:))))`** — `#selector` only *compiles* because Swift exposed
+the witness under Sparkle's exact `allowedChannelsForUpdater:` selector (a signature mismatch drops
+the `@objc` and fails the build), and `responds(to:)` proves it's live; without this a wrong selector
+would compile yet silently never be consulted. The Swift-name→ObjC-selector mapping was independently
+confirmed by the compiler's own fixit (it offered `#selector(AppUpdater.allowedChannels(for:))` as the
+replacement for the literal `"allowedChannelsForUpdater:"`). +2 app tests. **LIVE-verified in the
+shipping binary:** the Settings toggle renders on General with its footer, defaults off, and
+round-trips to the real `com.dirnex.Dirnex` domain (`Dirnex.pref.receiveBetaUpdates` → `1` on / `0`
+off) — so the delegate's reader returns `["beta"]`/`[]` accordingly.
+
+(3) **Two-channel appcast pipeline** — `make_appcast.sh` gained `CHANNEL` (stable|beta) + an optional
+`EXISTING_APPCAST`: it emits the current build's item (beta gets the `<sparkle:channel>beta>` tag,
+stable is untagged) and **merges** — an `awk` classifies each `<item>` block of the existing feed as
+beta iff it carries a `<sparkle:channel>` tag and keeps only the OTHER channel, so the feed always
+holds exactly the latest stable + latest beta. **PROVEN LIVE with a stubbed `sign_update` across
+every transition:** first-stable (1 item), first-beta-over-stable (2), new-stable-keeps-beta,
+new-beta-keeps-stable, beta-only-feed-then-stable, and a missing/empty existing file (→ fresh
+1-item); output is `xmllint`-well-formed and preserves each kept item's own signed enclosure URL.
+`release.yml`: derives `CHANNEL` from the tag's `-` suffix (no new inputs; **beta versions are NOT
+written back to `VERSION`** so the numeric auto-bump can't break), fetches the current appcast from a
+fixed **`appcast` GitHub release** (created `--latest=false`, its sole asset is `appcast.xml`),
+publishes the **DMG to the per-tag release** (stable `--latest`, beta `--prerelease`, so GitHub's
+"Latest" always points at stable), and re-uploads the merged appcast to the `appcast` release
+(`--clobber`, drafts skip the live feed). **`SUFeedURL` moved** from `releases/latest/download/…` to
+`releases/download/appcast/appcast.xml` (the stable feed URL). **Migration gotcha (documented in
+RELEASING.md): builds ≤ v0.0.3 still poll the old `latest/…` URL, so the first channelled release
+must be installed manually once** — the design accepted this ("no external users on the old feed
+yet"). The monotonic-`CFBundleVersion`-across-channels invariant is already met (build number = run
+number).
 
 ## 5. Cross-cutting: testing strategy
 

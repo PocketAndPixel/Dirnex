@@ -149,6 +149,26 @@ final class AppPreferences: ObservableObject {
         didSet { defaults.set(focusOpenedSearchDirectory, forKey: Keys.focusOpenedSearchDirectory) }
     }
 
+    /// General ▸ also offer pre-release (beta) builds when checking for updates (PLAN.md §M7
+    /// "Beta + stable update channels"). Default **off**: a normal install only ever sees stable
+    /// releases. When on, Sparkle's `allowedChannels(for:)` — implemented on `AppUpdater` — adds
+    /// the `beta` channel, so newer beta builds are offered too; a stable release still supersedes
+    /// a running beta once it outranks it, rolling the tester back onto the stable line
+    /// automatically. Read live on each update check via `receiveBetaUpdatesValue`, so toggling it
+    /// takes effect without a relaunch.
+    @Published var receiveBetaUpdates: Bool {
+        didSet { defaults.set(receiveBetaUpdates, forKey: Keys.receiveBetaUpdates) }
+    }
+
+    /// A thread-safe read of the beta-updates opt-in straight from `UserDefaults`, for the one
+    /// caller that runs off the main actor: Sparkle's `allowedChannels(for:)` delegate hook, which
+    /// it invokes synchronously inside an update check. `UserDefaults` is itself thread-safe, so
+    /// this reads the same key the `@MainActor` `receiveBetaUpdates` property writes without hopping
+    /// actors, and re-reads every call so a Settings toggle is picked up on the next check.
+    nonisolated static func receiveBetaUpdatesValue(in defaults: UserDefaults = .standard) -> Bool {
+        defaults.bool(forKey: Keys.receiveBetaUpdates)
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         restoreSession = defaults.object(forKey: Keys.restoreSession) as? Bool ?? true
@@ -163,6 +183,8 @@ final class AppPreferences: ObservableObject {
         showFunctionBar = defaults.object(forKey: Keys.showFunctionBar) as? Bool ?? true
         confirmTrash = defaults.bool(forKey: Keys.confirmTrash)
         focusOpenedSearchDirectory = defaults.bool(forKey: Keys.focusOpenedSearchDirectory)
+        // Defaults off — a fresh install rides the stable channel until the user opts in.
+        receiveBetaUpdates = defaults.bool(forKey: Keys.receiveBetaUpdates)
         hasSeenFullDiskAccessOnboarding = defaults.bool(forKey: Keys.hasSeenFullDiskAccessOnboarding)
         hasSeenFirstRunTour = defaults.bool(forKey: Keys.hasSeenFirstRunTour)
     }
@@ -175,6 +197,7 @@ final class AppPreferences: ObservableObject {
         static let showFunctionBar = "Dirnex.pref.showFunctionBar"
         static let confirmTrash = "Dirnex.pref.confirmTrash"
         static let focusOpenedSearchDirectory = "Dirnex.pref.focusOpenedSearchDirectory"
+        static let receiveBetaUpdates = "Dirnex.pref.receiveBetaUpdates"
         static let hasSeenFullDiskAccessOnboarding = "Dirnex.pref.hasSeenFullDiskAccessOnboarding"
         static let hasSeenFirstRunTour = "Dirnex.pref.hasSeenFirstRunTour"
     }
