@@ -2374,8 +2374,6 @@ two remain.*
 - [x] First-run tour: palette-centric, 5 screens max
 - [x] Performance pass: instruments audit of M1 budgets on real dirty data
       (huge Downloads, node_modules, network volumes, iCloud placeholder files)
-- [ ] Crash reporting (opt-in) + anonymized op-failure telemetry decision
-- [ ] Private beta → public beta → 1.0
 
 Exit: a stranger can download, pass FDA onboarding, and move files in under 3 minutes.
 
@@ -2594,10 +2592,9 @@ time only the `filter =` set instead.
 `DirectoryModel` inside `DirectoryLoader.list`'s detached task (and the FSEvents refresh / column
 re-sort paths) so opening a 100k dir never janks the `@MainActor` `PanelViewController`; needs a live
 app build (Xcode + Metal toolchain) and live verification, so it is its own pass. Then the first-run
-tour and the docs keyboard-reference (both buildable + live-verifiable, core-first). The remaining four
+tour and the docs keyboard-reference (both buildable + live-verifiable, core-first). The remaining
 items are **blocked on the user**: Sparkle 2 + notarized-DMG CI needs their Developer ID signing
-identity + notarization creds + Sparkle EdDSA keys; crash reporting + telemetry is a product/privacy
-*decision* first; and private→public beta→1.0 is a release gate.
+identity + notarization creds + Sparkle EdDSA keys.
 
 Progress (2026-07-18, **M7 perf pass — part 2: the off-main sort; the "Performance pass" box now
 closes `[x]`, VERIFIED LIVE on a 100k directory**): part 1 met the filter budget and proved the exact
@@ -2647,9 +2644,9 @@ This pass does that for every path that builds a pane's `DirectoryModel`. Core�
   the shell) inserted the new row **in size order** while **keeping a marked `tiny.bin` marked and the
   cursor on `kilobyte.bin`** (footer "1 of 5 selected · 1 byte") — the off-main refresh's identity
   preservation proven end-to-end. Clean stderr, no crash/race. **NEXT in M7:** the first-run tour and
-  the docs keyboard-reference (both buildable + live-verifiable, core-first); the remaining four items
-  stay blocked on the user (Sparkle/notarized-DMG CI creds, the crash-reporting/telemetry decision,
-  beta→1.0). Optional perf follow-ups, neither blocking: move the show-hidden toggle's all-tabs re-sort
+  the docs keyboard-reference (both buildable + live-verifiable, core-first); the remaining items
+  stay blocked on the user (Sparkle/notarized-DMG CI creds).
+  Optional perf follow-ups, neither blocking: move the show-hidden toggle's all-tabs re-sort
   off-main (lazy per-tab), and move the size-sorted-with-computed-totals streaming re-sort off-main
   (the one case `resortIfOrderDependsOnSize` still runs on the main actor).
 
@@ -2696,8 +2693,7 @@ beside it — the two now run as one sequence on a fresh install.
   **Not Now** dismissed it; **App-menu ▸ Welcome to Dirnex…** reopened the tour, whose last screen now
   read **Open Command Palette** and, clicked, closed the tour and opened ⌘K with **no** FDA prompt;
   and a palette search for "welcome" found the command. **NEXT in M7:** the remaining items all stay
-  blocked on the user (Sparkle/notarized-DMG CI creds, the crash-reporting/telemetry decision,
-  beta→1.0).
+  blocked on the user (Sparkle/notarized-DMG CI creds).
 
 Progress (2026-07-19, **M7 — Sparkle 2 auto-update + notarized-DMG release pipeline SHIPPED + VERIFIED
 LIVE; the box is `[x]`**): built the whole pipeline, then cut a real release — **v0.0.3 published a
@@ -2739,7 +2735,7 @@ fine, so the cert secret was good); recoverable by testing the `.p12` password l
 the cert with a known one. After the fix, **v0.0.3 shipped clean**. Known: committed feed/key means
 **Debug/dev launches also check the feed** (dogfood-friendly; gate on `#if !DEBUG` later if it grates).
 **NEXT in M7:** the beta/stable channels below (**now DONE — see the 2026-07-19 "channels — DONE"
-note**), then the crash-reporting/telemetry decision, then beta→1.0.
+note**).
 
 Design deferred (2026-07-19, **M7 — beta + stable update channels; box `[ ]`, implement later**): the
 user wants two release tracks — a "complete" (stable) release and an opt-in beta — served by the one
@@ -2916,4 +2912,4 @@ machinery it exists for) to keep the window controller under the 500-line lint c
   Validate with real use in M1.
 - Quick view panel shortcut (Ctrl+Q vs Cmd+Shift+Q) — Cmd+Q is untouchable.
 - Tabs UI: native-style segmented tabs vs compact TC-style. Prototype both in M1.
-- Name/brand check for "Dirnex" before public beta (M7).
+- Name/brand check for "Dirnex" before 1.0 (M7).
