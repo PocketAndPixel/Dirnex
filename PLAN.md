@@ -2355,8 +2355,9 @@ and what `reservedFunctionKeys` assumes.
 **NEXT: M6 is closed.** Optional leftovers, none blocking: an **App Intents / Shortcuts** surface on
 the `Automation` core, a user script's F-key binding (the bar + key handler already accept any
 command id — an organizer field + one `UserScript` field), and the .gitignore-aware folder sizes from
-pass 1. **M7 (release readiness) is next.** → *The F-key binding is done in pass 18 above; the other
-two remain.*
+pass 1. **M7 (release readiness) is next.** → *The F-key binding is done in pass 18 above; the
+**App Intents surface is done 2026-07-19**, see the "App Intents / Shortcuts" note at the end of this
+file; only the .gitignore-aware folder sizes remain.*
 
 ### M7 — Release readiness (M)
 
@@ -2918,7 +2919,71 @@ official Dirnex builds onto its own users, so it is called out as never permitte
 to inference. `NOTICE` also carries Sparkle's MIT attribution, which the shipped binary owes anyway.
 
 The open question in §7 — "name/brand check for Dirnex before 1.0" — is a *search* for prior marks,
-not a licensing task, and stays open.
+not a licensing task, and stays open. → **Closed 2026-07-19: the user cleared the name, it is free.**
+
+Progress (2026-07-19, **M6 leftover — App Intents / Shortcuts surface; VERIFIED LIVE**): the half of
+"Automation: AppleScript/Shortcuts verbs" that M6 shipped only one side of. The `.sdef` gave
+AppleScript `reveal` / `copy selection` / `run operation`; this is the same three verbs as **App
+Intents**, which is what actually puts Dirnex in Shortcuts.app, Spotlight, and the Shortcuts menu bar.
+No extension target — intents compile into the app bundle.
+
+**The design question was the picker, and it inverted the core API.** AppleScript asks "what does
+this *typed string* mean", which `AutomationOperation.resolve` already answered. Shortcuts asks the
+opposite: it renders a **list**, so it needs the operations up front. So `AutomationOperation` gained
+three list-shaped entry points beside `resolve` — `all`, `search`, `operations(ids:)` — and they
+returned `Command`, not a new struct, because a user script *already* becomes a `Command` via
+`UserScript.paletteCommand` and `CommandMatcher` *already* fuzzy-ranks `[Command]` for ⌘K. The whole
+core addition is 40 lines of glue over parts that existed; +9 tests.
+
+Two rules are deliberately **different from `resolve`**, and both are pinned by tests. `search` is
+*fuzzier* — a picker is a search box, so "cop" must surface Copy the way the palette does.
+`operations(ids:)` is *stricter*: **exact ids only**. A saved Shortcut stores the id it was built
+with, so that call is identity, not search; if a user renames the script a Shortcut points at, the id
+must stop resolving (Shortcuts then shows the action as needing a value) rather than fall back to
+fuzzy matching and silently bind to *some other* operation. A shortcut that visibly breaks beats one
+that quietly runs the wrong command.
+
+App side: `DirnexOperation: AppEntity` + a `DirnexOperationQuery` conforming to **both**
+`EnumerableEntityQuery` (what makes the parameter a browsable dropdown — the thing the AppleScript
+verb can never be, since it requires already knowing a command's name) and `EntityStringQuery` (the
+search field on top). Every query call re-reads `UserScriptStore` rather than caching, because a user
+can add a script while the Shortcuts editor is open. Three `AppIntent`s with `@MainActor perform()`
+(an async intent may be main-isolated directly, so these read straight through where the Apple-event
+handlers next door need `MainActor.assumeIsolated`), all `openAppWhenRun` since every verb acts on a
+visible panel. `Reveal` takes an `IntentFile` rather than a path string, so it chains off Finder's
+"Get Selected Files" — Dirnex is unsandboxed, so a file passed by reference keeps its real URL.
+`Scripting.activeWindow` moved out of `ScriptingCommands.swift` into `ScriptingTarget.swift`, shared
+by both surfaces so "which window does automation hit" has one answer; the AppleScript-only error
+numbers stayed behind as `AppleScriptError`. Only the zero-parameter verb is an `AppShortcut`
+(Spotlight needs to run it with no input); the other two are Shortcuts actions.
+
+**The trap, and it is a big one: an ad-hoc-signed build can never register App Intents.** The code
+was correct and the metadata extracted from the first build, but Shortcuts showed nothing — because
+`linkd` logs `Unable to get teamId from com.dirnex.Dirnex` and drops the connection. A local Debug
+build is ad-hoc signed (M0's decision), so `TeamIdentifier=not set` and registration is refused
+outright. Re-signing the DerivedData bundle with the Developer ID identity fixed the teamId error —
+and then *still* showed nothing, because **`linkd` only indexes apps in standard install locations**;
+it never opened an indexing transaction for a bundle under DerivedData. Only after installing the
+signed build to `/Applications` did the log read `Registering "com.dirnex.Dirnex" in the metadata
+store` → `Interpolating AppShortcuts` and the app appear in the Shortcuts action library. Two
+consequences worth keeping: **this works automatically in release builds** (the notarized Developer
+ID DMG pipeline satisfies both conditions), and **verifying it locally requires a signed copy in
+/Applications** — no amount of rebuilding in place will do. The same refusal is why `xcodebuild test`
+now prints `connection to service named com.apple.linkd.autoShortcut` noise: the ad-hoc test host is
+being turned away. Harmless, and the tests read the emitted metadata off disk instead of asking the
+daemon.
+
+Verified live end to end, in Shortcuts against a `/Applications` copy of the signed build: Dirnex
+appears in the Apps list; its four actions are there (the three written ones plus a **"Find Dirnex
+Operation"** Shortcuts generates for free out of the enumerable query); "Run Dirnex Operation" renders
+as the `ParameterSummary` sentence "Run *Operation* in Dirnex"; the Operation picker populates from
+the live registry in registry order with the category as each row's subtitle; and running it with
+"New Tab" selected brought Dirnex forward and opened a second tab — proving the whole chain, Shortcuts
+→ intent → entity id → the same `runCommand(id:)` the palette and F-key bar use. The user's installed
+notarized v0.0.4 was backed up first and restored afterwards (Gatekeeper: accepted, Notarized
+Developer ID). 854 core (+9) + 94 app (+7) tests green; swiftformat + swiftlint --strict clean.
+
+Still open from M6, and still non-blocking: the .gitignore-aware folder sizes from pass 1.
 
 ## 5. Cross-cutting: testing strategy
 

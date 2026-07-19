@@ -99,4 +99,82 @@ struct AutomationTests {
             #expect(AutomationOperation.resolve(id) == id, "\(id) is not a real command")
         }
     }
+
+    // MARK: - Browsing the operation list (the Shortcuts picker)
+
+    private static let webP = UserScript(
+        name: "To WebP",
+        command: "cwebp \"$1\"",
+        runMode: .perFile
+    )
+
+    @Test("the operation list is the whole catalog followed by the user's scripts")
+    func allListsCatalogThenScripts() {
+        let operations = AutomationOperation.all(userScripts: [Self.webP])
+        #expect(operations.count == CommandCatalog.all.count + 1)
+        #expect(operations.first?.id == CommandCatalog.all.first?.id)
+        // The script lands last, carrying the userScript.* id the app routes to the script runner.
+        #expect(operations.last?.id == "userScript.To WebP")
+        #expect(operations.last?.title == "To WebP")
+    }
+
+    @Test("the operation list defaults to the catalog with no scripts")
+    func allDefaultsToCatalog() {
+        #expect(AutomationOperation.all().map(\.id) == CommandCatalog.all.map(\.id))
+    }
+
+    @Test("search ranks a prefix hit first, the way the palette does")
+    func searchRanksLikeThePalette() throws {
+        let results = AutomationOperation.search("copy to other")
+        #expect(results.first?.id == "file.copy")
+    }
+
+    @Test("search finds a user script by name")
+    func searchFindsUserScripts() {
+        let results = AutomationOperation.search("webp", userScripts: [Self.webP])
+        #expect(results.first?.id == "userScript.To WebP")
+    }
+
+    @Test("an empty search returns the whole list in order — the picker's resting state")
+    func searchEmptyReturnsEverything() {
+        let all = AutomationOperation.all(userScripts: [Self.webP])
+        #expect(AutomationOperation.search("", userScripts: [Self.webP]).map(\.id) == all.map(\.id))
+    }
+
+    @Test("a search matching nothing is empty rather than everything")
+    func searchUnknownIsEmpty() {
+        // The failure mode worth pinning: a picker that falls back to "show all" on a typo looks
+        // like it matched.
+        #expect(AutomationOperation.search("zzzznotacommand").isEmpty)
+    }
+
+    @Test("ids resolve back to operations in the order asked for")
+    func operationsPreserveRequestedOrder() {
+        let operations = AutomationOperation.operations(
+            ids: ["userScript.To WebP", "file.copy"],
+            userScripts: [Self.webP]
+        )
+        #expect(operations.map(\.id) == ["userScript.To WebP", "file.copy"])
+    }
+
+    @Test("an id lookup is exact — a title or a stale script id resolves to nothing")
+    func operationsMatchIDsExactly() {
+        // A saved Shortcut stores an id. Matching a *title* here would let a renamed script bind to
+        // whatever else happens to share its spelling, so a title must miss even though `resolve`
+        // accepts one.
+        #expect(AutomationOperation.operations(ids: ["Copy to Other Panel"]).isEmpty)
+        // The renamed/deleted-script case: the id simply stops resolving.
+        #expect(AutomationOperation.operations(ids: ["userScript.To WebP"]).isEmpty)
+        #expect(AutomationOperation.operations(ids: []).isEmpty)
+    }
+
+    @Test("every listed operation resolves back by its own id")
+    func everyOperationRoundTrips() {
+        // The round trip the Shortcuts picker depends on: whatever the picker offers must still be
+        // findable when a saved shortcut runs later.
+        let operations = AutomationOperation.all(userScripts: [Self.webP])
+        let ids = operations.map(\.id)
+        let resolved = AutomationOperation.operations(ids: ids, userScripts: [Self.webP])
+        #expect(resolved.map(\.id) == ids)
+    }
 }

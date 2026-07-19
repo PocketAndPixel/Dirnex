@@ -72,6 +72,63 @@ public enum AutomationOperation {
         return nil
     }
 
+    // MARK: - Browsing the operation list
+
+    /// Every operation an automation surface can offer, in presentation order: the whole command
+    /// registry followed by the user's own scripts.
+    ///
+    /// `resolve` above answers "what does this *typed string* mean", which is all AppleScript ever
+    /// needs — a script author writes the name. Shortcuts asks the opposite question: it renders a
+    /// **picker**, so it needs the list up front. Both doors therefore open onto the same space,
+    /// and a user script is a first-class entry in it rather than an afterthought — dropping the
+    /// scripts here would quietly make the Shortcuts action less capable than the AppleScript verb
+    /// it mirrors, which is the whole reason `UserScript.paletteCommand` already exists.
+    ///
+    /// Returning `Command` rather than a new automation-only struct is deliberate: it is already the
+    /// registry's presentation type (id, title, category, shortcut), the palette already renders
+    /// scripts through it, and a parallel type would be one more thing to keep in step.
+    public static func all(
+        commands: [Command] = CommandCatalog.all,
+        userScripts: [UserScript] = []
+    ) -> [Command] {
+        commands + userScripts.map(\.paletteCommand)
+    }
+
+    /// The operations matching `query`, best first — what a Shortcuts search field lists as the user
+    /// types. An empty query returns everything in registry order (the picker's resting state).
+    ///
+    /// This is the palette's own fuzzy ranking (`CommandMatcher`), not `resolve`'s exact matching:
+    /// a picker is a search box, so "cop" should surface Copy the way ⌘K does. Exactness is
+    /// `resolve`'s job, for the one caller that is handed a finished name.
+    public static func search(
+        _ query: String,
+        commands: [Command] = CommandCatalog.all,
+        userScripts: [UserScript] = []
+    ) -> [Command] {
+        CommandMatcher.search(query, in: all(commands: commands, userScripts: userScripts))
+            .map(\.command)
+    }
+
+    /// The operations with `ids`, in the order asked for; unknown ids are dropped.
+    ///
+    /// Matching is by **exact id only** — deliberately stricter than `resolve`. A saved Shortcut
+    /// stores the id it was built with, so this is an identity lookup, not a search: if a user
+    /// renames or deletes the script a Shortcut points at, the id stops resolving and Shortcuts
+    /// shows the action as needing a value. That is the honest outcome. Falling back to fuzzy
+    /// matching here would instead let a renamed script silently bind to *some other* operation,
+    /// and a shortcut that quietly runs the wrong command is far worse than one that visibly breaks.
+    public static func operations(
+        ids: [String],
+        commands: [Command] = CommandCatalog.all,
+        userScripts: [UserScript] = []
+    ) -> [Command] {
+        let byID = Dictionary(
+            all(commands: commands, userScripts: userScripts).map { ($0.id, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        return ids.compactMap { byID[$0] }
+    }
+
     /// Lower-case, whitespace-trimmed, and stripped of a single trailing `…`, so `Rename…`,
     /// `rename`, and `  Rename …` all compare equal to a `rename` query.
     private static func normalized(_ raw: String) -> String {
