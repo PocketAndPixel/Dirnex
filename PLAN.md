@@ -911,8 +911,8 @@ remain, all deferrable to M6-ish polish.
 ### M6 — Mac-native power features (M)
 
 - [x] Git awareness: branch in path bar, status column (M/A/?/ignored) via a debounced
-      `git status --porcelain` provider; optional .gitignore-aware folder sizes (the one
-      optional slice, still deferred)
+      `git status --porcelain` provider; .gitignore-aware folder sizes (the optional slice —
+      **done 2026-07-19**, see the pass note at the end of this file)
 - [x] Finder tags: ~~column~~ **dots at the right edge of the name**, where Finder puts them (the
       word "column" was written before anyone had looked at Finder; see pass 4), edit from panel,
       filter chips in search
@@ -2983,7 +2983,99 @@ the live registry in registry order with the category as each row's subtitle; an
 notarized v0.0.4 was backed up first and restored afterwards (Gatekeeper: accepted, Notarized
 Developer ID). 854 core (+9) + 94 app (+7) tests green; swiftformat + swiftlint --strict clean.
 
-Still open from M6, and still non-blocking: the .gitignore-aware folder sizes from pass 1.
+~~Still open from M6, and still non-blocking: the .gitignore-aware folder sizes from pass 1.~~ →
+**Done 2026-07-19, see below. M6 has no leftovers.**
+
+### .gitignore-aware folder sizes (2026-07-19, VERIFIED LIVE — the last M6 leftover, now closed)
+
+The one optional slice deferred since M6 pass 1. **Probed first**, and the probe decided the design:
+`GitCommand.status` already passes `--ignored=traditional`, and a real repository shows it reports
+every ignored *directory* collapsed to one row — including `untracked/build/`, an ignored directory
+nested inside an untracked one. So the ignore data was **already in hand**: no second `git` run, no
+`check-ignore`, no `ls-files`. It also shows `.git` appears in no status output at all, and that a
+nested repository is a single `?? nested/` whose own rules the outer status cannot see.
+
+Semantics chosen: **"what Git would care about"** — ignored paths and `.git` pruned. The rejected
+alternative was showing ignored bytes as a second bar segment, which reads better but forfeits the
+whole performance win: an excluded directory is never *walked*, and walk cost tracks entry count, so
+skipping `node_modules` is most of what makes the mode cheap enough to leave on. The rows left out are
+exactly the rows the status column already paints `!`, so a shrunken number has an on-screen
+explanation — the same coherence argument that made `SizeBar` measure logical bytes.
+
+Core (all tested): `DirectorySizer.size(excluding:)` prunes a subtree instead of walking and
+discarding it; `GitStatusSnapshot.isExcludedFromSize` is the predicate, resting on two properties of
+`GitFileStatus` that tests now pin — `.ignored` does **not** roll up (one `debug.log` must not delete
+`src` from the chart) but **is** inherited (everything inside a collapsed `build/` goes with it);
+`GitStatusSnapshot.ignoredPaths` isolates "did the rules change?" from "did anything change?";
+`DirectorySizeCache` is keyed by `(path, DirectorySizeScope)` — **the bug that would otherwise have
+shipped**, since one folder has two legitimate totals differing 500x in a source tree and a
+path-keyed cache serves the wrong one instantly and silently; `DirectoryModel/Panel.clearDirectorySizes`
+for the toggle, because a total from the other scope is not stale but wrong.
+
+App: `DirectorySizeRule` (`.everything` / `.gitAware(snapshot)`) makes "filtered sizing with no idea
+what is ignored" unrepresentable, and rides through the provider's queue, which is now scope-keyed
+end to end (`queue`, `order`, `inFlight`). Space-on-dir obeys the same rule, so one size column never
+mixes two kinds of number. Per-tab toggle (View ▸ Exclude Git-Ignored from Sizes, palette, no
+shortcut), greyed outside a repository, with the status line saying **"sizes exclude Git-ignored"**
+whenever it is in force. `DirectorySizeProvider` watches `GitStatusProvider`'s notification and
+invalidates git-aware totals **only when `ignoredPaths` moved** — that provider republishes on every
+debounced read, so hanging invalidation on it would re-walk the tree on every ⌘S.
+
+**Two traps this pass paid for, both found only by running the thing:**
+
+1. **`DirectorySizer.size` now takes two closures, and a bare trailing closure binds to `excluding`,
+   not `isCancelled`.** That silently reverses what every pre-existing call meant; it failed loudly
+   here only because the two have different arities. Every call site is labelled now, and the doc
+   comment says why.
+2. **A landed total could be erased between its walk and its publish.** The publish used to say
+   "something changed, go re-read the cache" — but any pane's FSEvents watcher invalidates every
+   total on its root-to-leaf line, and the other pane sitting on `~` produced (measured live)
+   **546 invalidations in two minutes, ~one every 150 ms**, faster than a scan can publish. Five of
+   nine freshly walked folders were wiped that way and *nothing ever re-delivered them* — the rows
+   stayed blank forever. This was pre-existing churn made visible only by `clearDirectorySizes`
+   removing the safety net of stale-but-present numbers. Fixed by carrying the totals **in** the
+   notification (`totalsKey`/`scopeKey`), so a computed number cannot be lost in transit; the cache
+   went back to being a pure latency optimization.
+
+**A third trap, caught by the user reading the screenshot rather than by any test — and the fix went
+two rounds.** An ignored folder was first rendered as its filtered total, which for a wholly-ignored
+`build/` is **"Zero KB · 0.0 %"**. That is a lie of the most ordinary kind: it reads as *"measured,
+and this folder is empty"* — a claim about the folder, when the truth is a claim about the question
+("nothing here counts toward what you asked to see"). **An excluded row is now omitted from the
+projection entirely** (`SizeVisualization.init(model:isExcluded:)`): no bar, no contribution to either
+denominator, and — the part that makes it stable rather than a flicker — **kept out of
+`pendingDirectories`**, since a row with no total is otherwise pending forever and the pane would
+re-queue a walk for it on every render. Space-on-dir refuses it for the same reason. The row falls
+back to the `—` and blank bar an unwalked directory shows, which is exactly right: in both cases the
+honest answer is *we are not telling you a number here*, and the `!` in the Git column plus the status
+line carry the reason. No third rendering had to be invented.
+
+Round one had tuned the *empty bar's* contrast instead, which was the wrong layer but exposed a
+genuine pre-existing bug worth keeping: on the **cursor row** an empty bar read as a *full* one.
+`SizeBarView` draws no ink at zero bytes (the core's rule, working correctly) but still draws the
+empty track — and on the emphasized row track and ink are both `alternateSelectedControlTextColor`,
+separated by alpha alone, with the track owning the column's whole width where the ink may own a
+point. At 0.25 that inverted the reading: an empty track looked like the heaviest row in the folder.
+Track alpha is now **0.12**, verified live against a partially-filled emphasized row (solid white ink
+to 31 %, the remainder clearly recessed). Still worth having independently of the omission fix above,
+because a *genuinely* empty folder does draw an empty track by design ("an empty folder is not
+negligible, it is empty" — `SizeBar.inkWidth`), and any of those under the cursor hit the same
+inversion.
+
+Live verification against this repository: `DirnexCore` 587.3 MB → **1,097,930 bytes**, matching
+`git ls-files` + untracked-not-ignored summed by hand *exactly*; `build/` (wholly ignored) reads
+Zero KB rather than 1.63 GB; toggling off restores every unfiltered total. In a scratch repository,
+appending `artifacts/` to `.gitignore` flipped that folder from `?` 5.3 MB / 50.1 % to `!` Zero KB
+with the bars re-scaling — the rules-change path, with no byte moving on disk. 871 core (+17) + 94 app
+tests green, swiftformat + swiftlint --strict clean (`PanelViewController+FileOps` crossed its length
+budget and was split at its own `MARK` into `PanelViewController+MenuValidation.swift`).
+
+**Known limits, documented rather than papered over:** a nested repository's or submodule's own
+ignore rules are invisible to the outer snapshot (only its `.git` is pruned), and the pre-existing
+staleness where an FSEvents invalidation drops the cache but leaves the panel's numbers on screen is
+untouched — clearing them on every ping would empty the column continuously through a build. The
+payload delivery fix has no unit test: `DirectorySizeProvider` is a `private init` singleton wired to
+`NotificationCenter`, and making it injectable for one test was judged scope creep this pass.
 
 ## 5. Cross-cutting: testing strategy
 

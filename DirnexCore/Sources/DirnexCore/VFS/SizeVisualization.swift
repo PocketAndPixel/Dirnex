@@ -92,13 +92,31 @@ public struct SizeVisualization: Sendable {
 
     private let bars: [VFSPath: SizeBar]
 
-    public init(model: DirectoryModel) {
+    /// `isExcluded` marks rows the current sizing rule leaves out entirely — under `.gitignore`-aware
+    /// sizing, what Git ignores (§M6). They are **omitted, not zeroed**: no bar, nothing added to
+    /// either denominator, and *not* queued for a walk.
+    ///
+    /// Zeroing them was the first attempt and it lies. An ignored `build/` holding 1.6 GB rendered as
+    /// "Zero KB · 0.0 %", which reads as *"measured, and this folder is empty"* — a claim about the
+    /// folder rather than about the question being asked. There is no third rendering to invent
+    /// either: the row falls back to the same "—" and blank bar an unwalked directory shows, which is
+    /// exactly right, because in both cases the honest answer is *we are not telling you a number
+    /// here*. The status line carries the reason ("sizes exclude Git-ignored"), and the Git column
+    /// already paints the row `!`.
+    ///
+    /// Keeping them out of `pendingDirectories` is what makes that stable rather than a flicker: a
+    /// row with no total is otherwise pending forever, and the pane would re-queue a walk for it on
+    /// every render.
+    public init(model: DirectoryModel, isExcluded: (VFSPath) -> Bool = { _ in false }) {
         var known: [(id: VFSPath, bytes: Int64)] = []
         var pending: [FileEntry] = []
         var maximum: Int64 = 0
         var total: Int64 = 0
 
         for entry in model.visibleEntries {
+            // Excluded rows are not "unknown pending a walk" and not "known to be zero" — they are
+            // outside the question, so they leave no trace in the projection at all.
+            if isExcluded(entry.id) { continue }
             guard let bytes = Self.knownBytes(of: entry, in: model) else {
                 pending.append(entry)
                 continue

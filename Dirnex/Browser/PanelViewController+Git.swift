@@ -93,7 +93,15 @@ extension PanelViewController {
     /// saved a file that was already modified) costs no reload.
     private func applyGitSnapshot(_ snapshot: GitStatusSnapshot?) {
         guard snapshot != gitSnapshot else { return }
+        // Gaining or losing a snapshot switches git-aware sizing between filtering and not, so the
+        // totals already on screen were counted the other way. Only the nil boundary: a snapshot
+        // merely *differing* is the common case (one file saved), and the ignore rules it excludes
+        // by have almost certainly not moved — `DirectorySizeProvider` watches for the ones that do.
+        let gainedOrLostRules = (snapshot == nil) != (gitSnapshot == nil)
         gitSnapshot = snapshot
+        if isGitAwareSizesEnabled, gainedOrLostRules {
+            directorySizeRuleDidChange()
+        }
         // A rename in progress owns the table; the end-editing handler replays what it skipped.
         if deferRefreshIfRenaming() { return }
         updateGitColumn()
@@ -111,10 +119,18 @@ extension PanelViewController {
         gitWatcher = nil
         gitWatchedRoot = nil
         guard gitRepositoryRoot != nil || gitSnapshot != nil else { return }
+        let hadRules = gitSnapshot != nil
         gitRepositoryRoot = nil
         gitSnapshot = nil
         if deferRefreshIfRenaming() { return }
         updateGitColumn()
+        // Walking out of a repository with git-aware sizing on unfilters every total, so the ones on
+        // screen were counted under rules that no longer apply here — the same boundary
+        // `applyGitSnapshot` handles from the other side. It re-renders, so this returns.
+        if isGitAwareSizesEnabled, hadRules {
+            directorySizeRuleDidChange()
+            return
+        }
         // Re-anchors the cursor after the reload, as in `applyGitSnapshot` — leaving a repository
         // must not cost the user their place any more than entering one does.
         renderRefresh()

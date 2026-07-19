@@ -80,9 +80,13 @@ enum DirectoryLoader {
     /// **Detached, so it outlives its caller's cancellation** — deliberate for Space-on-dir, where
     /// the walk the user explicitly asked for should finish and land in the cache even if they
     /// arrow onward. Size-visualization mode wants the opposite and uses `cancellableSize`.
-    static func size(_ backend: any VFSBackend, of path: VFSPath) async -> Int64? {
+    static func size(
+        _ backend: any VFSBackend,
+        of path: VFSPath,
+        excluding isExcluded: @escaping @Sendable (VFSPath) -> Bool = { _ in false }
+    ) async -> Int64? {
         await Task.detached(priority: .utility) {
-            try? DirectorySizer.size(of: path, using: backend)
+            try? DirectorySizer.size(of: path, using: backend, excluding: isExcluded)
         }.value
     }
 
@@ -96,7 +100,20 @@ enum DirectoryLoader {
     ///
     /// Returns `nil` when cancelled, exactly as it does when the walk fails — both mean "no total",
     /// and the cache stores neither.
-    static func cancellableSize(_ backend: any VFSBackend, of path: VFSPath) async -> Int64? {
-        try? DirectorySizer.size(of: path, using: backend) { Task.isCancelled }
+    ///
+    /// `isExcluded` prunes subtrees out of the total — `.gitignore`-aware sizing, whose predicate is
+    /// `GitStatusSnapshot.isExcludedFromSize`. It is `@Sendable` because it crosses onto the walk's
+    /// task; the snapshot it closes over is a `Sendable` value, so nothing is shared.
+    static func cancellableSize(
+        _ backend: any VFSBackend,
+        of path: VFSPath,
+        excluding isExcluded: @escaping @Sendable (VFSPath) -> Bool = { _ in false }
+    ) async -> Int64? {
+        try? DirectorySizer.size(
+            of: path,
+            using: backend,
+            excluding: isExcluded,
+            isCancelled: { Task.isCancelled }
+        )
     }
 }

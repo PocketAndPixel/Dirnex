@@ -181,6 +181,71 @@ struct GitStatusSnapshotTests {
         #expect(tree.status(for: root.appending(decomposed)) == .untracked)
     }
 
+    // MARK: - .gitignore-aware sizing
+
+    @Test("an ignored directory and everything inside it is excluded from a total")
+    func excludesIgnoredSubtree() {
+        // Exactly what `--ignored=traditional` emits: the directory collapsed to one row, with not
+        // a word about its contents.
+        let tree = snapshot([("build", "!!")])
+        #expect(tree.isExcludedFromSize(root.appending("build")))
+        #expect(tree.isExcludedFromSize(root.appending("build").appending("deep/a.o")))
+    }
+
+    @Test("a source folder holding one ignored file is not itself excluded")
+    func ignoredFileDoesNotExcludeItsFolder() {
+        // The load-bearing half of `GitFileStatus.rollsUpToAncestors`: were `.ignored` to roll up
+        // like every other status, one stray `debug.log` would delete `src` from the chart.
+        let tree = snapshot([("src/debug.log", "!!")])
+        #expect(tree.isExcludedFromSize(root.appending("src/debug.log")))
+        #expect(!tree.isExcludedFromSize(root.appending("src")))
+        #expect(!tree.isExcludedFromSize(root.appending("src/main.swift")))
+    }
+
+    @Test("an ignored directory nested in an untracked one is excluded")
+    func excludesIgnoredInsideUntracked() {
+        // Probed against a real repository: `untracked/build/` is reported even though its parent is
+        // merely untracked, so the ignore data needs no second `git` run to be complete here.
+        let tree = snapshot([("untracked", "??"), ("untracked/build", "!!")])
+        #expect(tree.isExcludedFromSize(root.appending("untracked/build/b.o")))
+        // The untracked parent is the user's own content and stays in the total.
+        #expect(!tree.isExcludedFromSize(root.appending("untracked")))
+        #expect(!tree.isExcludedFromSize(root.appending("untracked/keep.txt")))
+    }
+
+    @Test("`.git` is excluded even though Git never reports it")
+    func excludesGitDirectory() {
+        // It appears in no `status` output, ignored or otherwise (probed), so nothing but this rule
+        // keeps the object store — routinely the largest thing in the tree — out of the total.
+        let tree = snapshot([])
+        #expect(tree.isExcludedFromSize(root.appending(".git")))
+        #expect(tree.isExcludedFromSize(root.appending(".git/objects/pack")))
+        // Including a nested repository's, whose own ignore rules this snapshot cannot see.
+        #expect(tree.isExcludedFromSize(root.appending("vendor/lib/.git")))
+    }
+
+    @Test("nothing outside the repository is excluded")
+    func keepsPathsOutsideRepository() {
+        let tree = snapshot([("build", "!!")])
+        #expect(!tree.isExcludedFromSize(.local("/elsewhere/build")))
+        // The root itself is a folder someone can point at; it must produce a number.
+        #expect(!tree.isExcludedFromSize(root))
+    }
+
+    @Test("ignoredPaths reports the exclusions and nothing else about the tree")
+    func ignoredPathsIsolatesTheRules() {
+        // The basis for "did the rules change?" — it must not move when an ordinary edit does, or a
+        // repository under a build would re-walk every sized folder several times a second.
+        let before = snapshot([("build", "!!"), ("src/main.swift", " M")])
+        let afterEdit = snapshot([("build", "!!"), ("src/main.swift", "M "), ("new.txt", "??")])
+        let afterIgnoreChange = snapshot([("build", "!!"), ("dist", "!!"), ("src/main.swift", " M")])
+
+        #expect(before.ignoredPaths == ["build"])
+        #expect(before.ignoredPaths == afterEdit.ignoredPaths)
+        #expect(before != afterEdit) // the snapshots differ; the rules did not
+        #expect(before.ignoredPaths != afterIgnoreChange.ignoredPaths)
+    }
+
     // MARK: - Empty
 
     @Test("a clean tree answers unmodified for everything")

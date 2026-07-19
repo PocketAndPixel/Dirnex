@@ -65,7 +65,7 @@ enum MainMenuBuilder {
             .command("view.toggleSidebar"), .command("view.toggleHidden"),
             .command("view.toggleTags"), .command("view.toggleSyncStatus"),
             .command("view.functionBar"),
-            .command("view.sizeVisualization"), .separator,
+            .command("view.sizeVisualization"), .command("view.gitAwareSizes"), .separator,
             .command("view.quickLook"), .command("view.quickView"), .separator,
             .command("view.terminal")
         ]),

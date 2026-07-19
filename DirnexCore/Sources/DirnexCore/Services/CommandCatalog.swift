@@ -265,6 +265,18 @@ extension CommandCatalog {
             shortcut: CommandShortcut(key: "b", modifiers: .control)
         ),
         Command(
+            id: "view.gitAwareSizes",
+            title: "Exclude Git-Ignored from Sizes",
+            category: .view,
+            keywords: [
+                "git", "gitignore", "ignored", "ignore", "sizes", "size", "folder", "build",
+                "node_modules", "artifacts", "source", "repo", "repository", "clean"
+            ]
+            // No shortcut: it changes what a number *means* rather than what is on screen, and a
+            // stray keystroke silently restating every size in the column is not a mistake anyone
+            // would connect to the key they hit. The menu and the palette are deliberate enough.
+        ),
+        Command(
             id: "view.functionBar",
             title: "Show Function Key Bar",
             category: .view,

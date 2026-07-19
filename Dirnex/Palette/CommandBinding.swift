@@ -50,6 +50,7 @@ enum CommandBinding {
         // The focused pane, not the app: unlike Show Tags, this mode is per tab (it *spends*
         // something to be on), so it lands wherever the responder chain does.
         "view.sizeVisualization": #selector(PanelViewController.toggleSizeVisualization(_:)),
+        "view.gitAwareSizes": #selector(PanelViewController.toggleGitAwareSizes(_:)),
         "view.quickLook": #selector(PanelViewController.toggleQuickLookPreview(_:)),
         "view.quickView": #selector(PanelViewController.toggleQuickViewPanel(_:)),
         // The window controller, not a pane: the drawer spans both panes, and this is the one

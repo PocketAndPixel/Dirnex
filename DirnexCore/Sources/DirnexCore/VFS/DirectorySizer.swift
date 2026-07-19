@@ -24,9 +24,25 @@ public enum DirectorySizer {
     /// The walk is iterative (an explicit stack) so arbitrarily deep trees cannot blow
     /// the call stack. Pass `isCancelled` to abandon a huge tree when the user has
     /// navigated away — it throws `CancellationError` in that case.
+    ///
+    /// `isExcluded` leaves a subtree out of the total entirely — the `.gitignore`-aware sizing of
+    /// §M6, whose predicate is `GitStatusSnapshot.isExcludedFromSize`. An excluded *directory* is
+    /// never pushed onto the stack, so it costs nothing to leave out rather than being walked and
+    /// then discarded. That pruning is most of the point: walk cost tracks **entry count**, not
+    /// bytes (a 1 TB `~/Movies` walks fast where a 17 GB `node_modules` does not), so skipping the
+    /// build output is also what makes the mode fast enough to leave on.
+    ///
+    /// The top-level `path` is never tested — sizing a folder you explicitly pointed at must
+    /// produce a number even when it is itself ignored, or the ignored rows in a listing would all
+    /// read as empty.
+    ///
+    /// **Label both closures at the call site.** With two of them a bare trailing closure binds to
+    /// `excluding`, not to `isCancelled` — which is silently the opposite of what every pre-existing
+    /// caller meant, and only failed loudly here because the two have different arities.
     public static func size(
         of path: VFSPath,
         using backend: some VFSBackend,
+        excluding isExcluded: (VFSPath) -> Bool = { _ in false },
         isCancelled: () -> Bool = { false }
     ) throws -> Int64 {
         var total: Int64 = 0
@@ -40,6 +56,7 @@ public enum DirectorySizer {
                 continue // unreadable subtree contributes nothing
             }
             for entry in entries {
+                if isExcluded(entry.path) { continue }
                 if entry.kind == .directory {
                     stack.append(entry.path)
                 } else {
