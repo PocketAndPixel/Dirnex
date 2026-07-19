@@ -79,4 +79,11 @@ own team in the target's signing settings for local development if you prefer.
 
 ## License
 
-TBD.
+Dirnex source code is licensed under the [Apache License 2.0](LICENSE) — fork
+it, modify it, ship it commercially, keep your changes private.
+
+Two things are carved out of that grant: the **name "Dirnex"** and the
+**application icon**. A fork must ship under its own name and its own icon.
+Saying "a fork of Dirnex" or "based on Dirnex" is explicitly fine — see
+[TRADEMARKS.md](TRADEMARKS.md) for the full policy and a checklist of what to
+change before distributing a fork.

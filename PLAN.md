@@ -2374,6 +2374,10 @@ two remain.*
 - [x] First-run tour: palette-centric, 5 screens max
 - [x] Performance pass: instruments audit of M1 budgets on real dirty data
       (huge Downloads, node_modules, network volumes, iCloud placeholder files)
+- [x] Licensing: Apache 2.0 for the code, with the name "Dirnex" and the app icon
+      carved out of the grant (shipped 2026-07-19 — `LICENSE` verbatim Apache 2.0,
+      `NOTICE` carrying the carve-out into every redistribution, `TRADEMARKS.md`
+      with the fork checklist; see the 2026-07-19 "licensing" note below)
 
 Exit: a stranger can download, pass FDA onboarding, and move files in under 3 minutes.
 
@@ -2883,6 +2887,38 @@ row collapsed with no gap — the found *and* cleared halves both proven live, t
 Housekeeping: `installEscapeMonitor` moved to `BrowserWindowController+QuickView` (the Quick View
 machinery it exists for) to keep the window controller under the 500-line lint ceiling.
 845 core + 87 app tests green; swiftformat + swiftlint --strict clean.
+
+Progress (2026-07-19, **M7 — licensing; the box closes `[x]`**): the goal was "fork freely, but not
+under our name or our icon", which is two different bodies of law and needs two different
+instruments.
+
+**Apache 2.0, not MIT.** Both permit forking; only Apache has §6, an *explicit* refusal to grant
+trademark rights, plus a patent grant with a retaliation clause. Under MIT the name question is
+merely unaddressed — the reader has to know trademark law applies independently. Apache states it in
+the license the forker is already reading. `LICENSE` is the canonical text **verbatim** (sha256
+`cfc7749b…`, only the appendix copyright line filled in) so GitHub's licence detector recognises it
+and nobody has to diff it against upstream to trust it.
+
+**The icon needs a separate carve-out, because §6 does not reach it.** §6 is about *trademarks* — it
+stops a forker calling their build "Dirnex". But the icon PNGs are **copyrighted artwork sitting in
+the repo**, and Apache 2.0 licenses "the Work", which by default is everything in it. Section 6
+would not have stopped a fork from shipping our icon; the Apache grant would have *permitted* it. So
+the exclusion is stated explicitly, naming the path
+`Dirnex/Assets.xcassets/AppIcon.appiconset/`.
+
+**That exclusion lives in `NOTICE`, and that placement is the point.** §4(d) obliges every
+redistributor to carry the `NOTICE` text along — it is the one file in an Apache project that
+*propagates by license terms* into derivative works. A carve-out stated only in the README travels
+exactly as far as the README, which a forker rewrites first thing. `TRADEMARKS.md` then carries the
+long form: what is allowed without asking (nominative fair use — "a fork of Dirnex", "based on
+Dirnex"), what is not, and a **table of everything to change before shipping a fork** (icon set,
+`CFBundleName`/`CFBundleIdentifier`, scheme/product name, user-visible strings, and the Sparkle
+appcast URL). The appcast row is the one with teeth: a fork left pointing at our feed would push
+official Dirnex builds onto its own users, so it is called out as never permitted rather than left
+to inference. `NOTICE` also carries Sparkle's MIT attribution, which the shipped binary owes anyway.
+
+The open question in §7 — "name/brand check for Dirnex before 1.0" — is a *search* for prior marks,
+not a licensing task, and stays open.
 
 ## 5. Cross-cutting: testing strategy
 
