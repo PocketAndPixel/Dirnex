@@ -1,0 +1,27 @@
+Dirnex
+Copyright 2026 Oleg Verhoglyad
+
+This product includes software developed by Oleg Verhoglyad
+(https://github.com/olegasd123/Dirnex).
+
+Licensed under the Apache License, Version 2.0. See the LICENSE file.
+
+TRADEMARKS AND BRAND ASSETS
+---------------------------
+The name "Dirnex" and the Dirnex application icon (all files under
+Dirnex/Assets.xcassets/AppIcon.appiconset/, and any derivative artwork) are NOT
+licensed under the Apache License, Version 2.0, and are excluded from the grant
+of rights in that license. Forks and derivative works must be distributed under
+a different name and with a different application icon. See TRADEMARKS.md for
+the full policy and for the uses that are permitted without asking.
+
+THIRD-PARTY COMPONENTS
+----------------------
+Sparkle (https://sparkle-project.org) — MIT License.
+Copyright (c) 2006-2013 Andy Matuschak.
+Copyright (c) 2009-2013 Elgato Systems GmbH.
+Copyright (c) 2011-2014 Kornel Lesinski.
+Copyright (c) 2015-2017 Mayur Pawashe.
+Copyright (c) 2014 C.W. Betts.
+Copyright (c) 2014 Petroules Corporation.
+Copyright (c) 2014 Big Nerd Ranch.

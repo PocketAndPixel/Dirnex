@@ -71,7 +71,7 @@ struct DirectorySizerTests {
         try tree.writeFile("a.bin", bytes: 1)
 
         #expect(throws: CancellationError.self) {
-            try DirectorySizer.size(of: tree.vfsPath(), using: backend) { true }
+            try DirectorySizer.size(of: tree.vfsPath(), using: backend, isCancelled: { true })
         }
     }
 
@@ -83,4 +83,105 @@ struct DirectorySizerTests {
         // The top-level listing fails and is skipped, leaving an empty total.
         #expect(try DirectorySizer.size(of: tree.vfsPath("nope"), using: backend) == 0)
     }
+
+    // MARK: - Exclusion (.gitignore-aware sizing)
+
+    @Test("an excluded file contributes nothing")
+    func excludedFileIsNotCounted() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        try tree.writeFile("keep.bin", bytes: 100)
+        try tree.writeFile("debug.log", bytes: 900)
+
+        let total = try DirectorySizer.size(
+            of: tree.vfsPath(),
+            using: backend,
+            // Labelled rather than trailing, at every call site: `size` now takes two closures, and
+            // a bare trailing one binds to `isCancelled`.
+            excluding: { $0.lastComponent == "debug.log" }
+        )
+        #expect(total == 100)
+    }
+
+    @Test("an excluded directory is pruned, not walked")
+    func excludedDirectoryIsNotWalked() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        try tree.writeFile("keep.bin", bytes: 10)
+        try tree.makeDir("build/deep")
+        try tree.writeFile("build/deep/a.o", bytes: 5000)
+
+        // Not walking it is the point, not a side effect: walk cost tracks entry count, so pruning
+        // `node_modules` is most of what makes the mode fast enough to leave on. A counting backend
+        // is the only way to prove the subtree was skipped rather than walked and then discarded.
+        let counting = CountingBackend()
+        let total = try DirectorySizer.size(
+            of: tree.vfsPath(),
+            using: counting,
+            excluding: { $0.lastComponent == "build" }
+        )
+
+        #expect(total == 10)
+        #expect(!counting.listed.contains { $0.lastComponent == "build" })
+        #expect(!counting.listed.contains { $0.lastComponent == "deep" })
+    }
+
+    @Test("the path being sized is never tested against the predicate")
+    func topLevelIsNeverExcluded() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        try tree.makeDir("build")
+        try tree.writeFile("build/a.o", bytes: 42)
+
+        // Pointing at an ignored folder must produce its real size — otherwise every ignored row in
+        // a listing would read as empty, which is a different fact entirely.
+        let total = try DirectorySizer.size(
+            of: tree.vfsPath("build"),
+            using: backend,
+            excluding: { $0.lastComponent == "build" }
+        )
+        #expect(total == 42)
+    }
+
+    @Test("excluding nothing matches the unfiltered total")
+    func emptyExclusionMatchesDefault() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        try tree.writeFile("a.bin", bytes: 100)
+        try tree.makeDir("sub")
+        try tree.writeFile("sub/b.bin", bytes: 200)
+
+        let filtered = try DirectorySizer.size(
+            of: tree.vfsPath(),
+            using: backend,
+            excluding: { _ in false }
+        )
+        #expect(try filtered == DirectorySizer.size(of: tree.vfsPath(), using: backend))
+    }
+}
+
+/// `LocalBackend` that records every directory it was asked to list — the only way to tell a pruned
+/// subtree from one that was walked and then thrown away, since both produce the same total.
+private final class CountingBackend: VFSBackend, @unchecked Sendable {
+    private let inner = LocalBackend()
+    private let lock = NSLock()
+    private var listedPaths: [VFSPath] = []
+
+    var listed: [VFSPath] {
+        lock.lock()
+        defer { lock.unlock() }
+        return listedPaths
+    }
+
+    var id: VFSBackendID { inner.id }
+    var capabilities: VFSCapabilities { inner.capabilities }
+
+    func listDirectory(at path: VFSPath) throws -> [FileEntry] {
+        lock.lock()
+        listedPaths.append(path)
+        lock.unlock()
+        return try inner.listDirectory(at: path)
+    }
+
+    func stat(at path: VFSPath) throws -> FileEntry { try inner.stat(at: path) }
 }

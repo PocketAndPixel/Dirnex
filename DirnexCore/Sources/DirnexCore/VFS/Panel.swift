@@ -139,6 +139,13 @@ public struct Panel: Sendable {
         mutatingPreservingCursor { $0.model.setDirectorySizes(sizes) }
     }
 
+    /// Forget every computed total — the `.gitignore`-aware mode being switched, or its rules
+    /// changing (see `DirectoryModel.clearDirectorySizes`). Cursor anchored by identity as above,
+    /// since dropping the totals can re-sort a size-sorted listing just as landing them can.
+    public mutating func clearDirectorySizes() {
+        mutatingPreservingCursor { $0.model.clearDirectorySizes() }
+    }
+
     // MARK: - Cursor
 
     public mutating func moveCursor(to index: Int) {

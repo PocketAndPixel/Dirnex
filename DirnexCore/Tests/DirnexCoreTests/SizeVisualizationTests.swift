@@ -182,6 +182,59 @@ struct SizeVisualizationTests {
         #expect(viz.bar(for: rows[1]) == nil) // filtered out entirely
     }
 
+    // MARK: - Excluded rows (.gitignore-aware sizing)
+
+    @Test("an excluded directory gets no bar and is never queued for a walk")
+    func excludedDirectoryIsOmitted() {
+        // The distinction the user caught on screen: an ignored `build/` holding gigabytes must not
+        // render "Zero KB · 0.0 %", which claims it was measured and found empty. It falls back to
+        // the unwalked look — no total, no bar — and, crucially, stays out of `pendingDirectories`,
+        // or the pane would re-queue a walk for it on every render forever.
+        let rows = [entry("build", kind: .directory), entry("src", kind: .directory)]
+        let viz = SizeVisualization(model: model(rows)) { $0.lastComponent == "build" }
+
+        #expect(viz.bar(for: rows[0]) == nil)
+        #expect(viz.pendingDirectories.map(\.name) == ["src"])
+    }
+
+    @Test("an excluded row is left out of both denominators, not counted as zero")
+    func excludedRowLeavesNoTrace() {
+        // Counting it as zero would be harmless arithmetic and a misleading chart: the row would
+        // still occupy the projection, and every other row's share would be computed against a
+        // total that pretends to include it.
+        let rows = [entry("keep.bin", size: 100), entry("ignored.log", size: 900)]
+        let viz = SizeVisualization(model: model(rows)) { $0.lastComponent == "ignored.log" }
+
+        #expect(viz.totalBytes == 100)
+        #expect(viz.maximumBytes == 100)
+        #expect(viz.bar(for: rows[0])?.share == 1.0)
+        #expect(viz.bar(for: rows[1]) == nil)
+    }
+
+    @Test("a sized directory that becomes excluded stops showing its total")
+    func excludedWinsOverAKnownTotal() {
+        // Order matters: the exclusion is tested before the model's computed size, so a total
+        // banked under the previous rule cannot leak through the moment the rules change.
+        let rows = [entry("build", kind: .directory), entry("src", kind: .directory)]
+        let sized = model(rows, sizes: ["build": 1_600_000_000, "src": 2000])
+        let viz = SizeVisualization(model: sized) { $0.lastComponent == "build" }
+
+        #expect(viz.bar(for: rows[0]) == nil)
+        #expect(viz.totalBytes == 2000)
+        #expect(viz.pendingDirectories.isEmpty)
+    }
+
+    @Test("excluding nothing is the default and changes no existing behaviour")
+    func defaultExcludesNothing() {
+        let rows = [entry("a.bin", size: 100), entry("b.bin", size: 300)]
+        let plain = SizeVisualization(model: model(rows))
+        let explicit = SizeVisualization(model: model(rows)) { _ in false }
+
+        #expect(plain.totalBytes == explicit.totalBytes)
+        #expect(plain.maximumBytes == explicit.maximumBytes)
+        #expect(plain.bar(for: rows[0])?.share == explicit.bar(for: rows[0])?.share)
+    }
+
     // MARK: - Degenerate and hostile input
 
     @Test("an empty directory yields no bars and divides by nothing")

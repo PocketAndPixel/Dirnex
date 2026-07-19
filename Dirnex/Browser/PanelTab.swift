@@ -56,6 +56,12 @@ final class PanelTab {
     /// visible. Managed by `PanelViewController+SizeViz`.
     var isSizeVisualizationEnabled = false
     var sizeVisualization: SizeVisualization?
+    /// Whether this tab's folder totals leave out what Git ignores (PLAN.md §M6, the optional slice
+    /// of Git awareness). Per tab and session-scoped like the mode above, and for a stronger reason:
+    /// it changes what a *number* means, so it must belong to the pane you set it on rather than
+    /// silently reinterpreting the size column in every other tab. Managed by
+    /// `PanelViewController+SizeViz`.
+    var isGitAwareSizesEnabled = false
     /// An explicit chip label overriding the path-derived one — set when a search is saved (or a
     /// saved search is re-run) so a results tab reads as its friendly name ("JMeter search")
     /// rather than the raw query (`"jmeter"`). `nil` for an ordinary tab. Session-scoped like

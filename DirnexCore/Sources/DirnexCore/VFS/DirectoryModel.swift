@@ -179,6 +179,24 @@ public struct DirectoryModel: Sendable {
         resortIfOrderDependsOnSize()
     }
 
+    /// Forget every computed total, re-sorting if the order depended on them.
+    ///
+    /// The one caller is a change in *what a total counts* rather than in the bytes it counted:
+    /// switching `.gitignore`-aware folder sizes on or off, or the ignore rules themselves moving
+    /// underneath the mode (PLAN.md §M6). Both leave every number on screen describing a question
+    /// nobody is asking any more, and — unlike a stale total, which is merely old — a total from the
+    /// *other* scope is wrong in a way no amount of waiting corrects.
+    ///
+    /// Deliberately not wired to filesystem-change invalidation, which is a different situation: a
+    /// stale total is still an approximation of the right answer, and dropping every bar on each
+    /// FSEvents ping would empty the column continuously through a build while re-walking the tree
+    /// behind it.
+    public mutating func clearDirectorySizes() {
+        guard !directorySizes.isEmpty else { return }
+        directorySizes = [:]
+        resortIfOrderDependsOnSize()
+    }
+
     /// Re-materialize the visible list after a directory-total change, but **only when the row
     /// order actually depends on those totals** — i.e. when the sort key is `.size`. Under a
     /// name/date/extension sort the totals feed the size column and selection math but never the

@@ -94,6 +94,67 @@ public struct GitStatusSnapshot: Sendable, Equatable {
         return String(suffix.drop { $0 == "/" })
     }
 
+    /// Whether a path is left out of a `.gitignore`-aware folder total (PLAN.md §M6, the optional
+    /// slice of Git awareness): everything Git ignores, plus any `.git` directory.
+    ///
+    /// This is `DirectorySizer`'s prune predicate, and it is deliberately built out of the very
+    /// snapshot the status column already renders — so **the rows left out of the total are exactly
+    /// the rows already painted `!`**, and a folder whose size shrank has an on-screen explanation.
+    /// It needs no new `git` run for the same reason: `GitCommand.status` already passes
+    /// `--ignored=traditional`, which reports each ignored directory as one collapsed row (probed:
+    /// even `untracked/build/`, an ignored directory nested inside an *untracked* one, is listed).
+    ///
+    /// Two properties of `GitFileStatus` make the one-line `.ignored` test right rather than merely
+    /// convenient, and both are pinned by tests because a change to either would silently move
+    /// bytes: `.ignored` does **not** roll up to ancestors, so a source folder holding one ignored
+    /// `debug.log` is not itself pruned; and it **is** inherited by descendants, so everything
+    /// inside a collapsed `build/` is pruned without Git having listed any of it.
+    ///
+    /// **`.git` is excluded even though Git never reports it** (probed — it appears in no `status`
+    /// output, ignored or otherwise). It is the repository's own bookkeeping rather than the user's
+    /// content, and it is routinely one of the largest directories in the tree; leaving it in would
+    /// make "what of this is mine" answer mostly "the object store". Matching on the name rather
+    /// than on the root's own `.git` also prunes the metadata of **nested** repositories and
+    /// submodules, whose ignore rules this snapshot cannot see at all (probed: the outer status
+    /// reports a nested repository as a single `?? nested/` and says nothing about its contents).
+    /// That is the known limit of this feature, not an oversight.
+    ///
+    /// Anything outside this repository is kept, since these rules do not describe it.
+    public func isExcludedFromSize(_ path: VFSPath) -> Bool {
+        guard let relativePath = relativePath(for: path), !relativePath.isEmpty else { return false }
+        if Self.isGitMetadata(relativePath) { return true }
+        return status(forRelativePath: relativePath) == .ignored
+    }
+
+    /// Whether a repository-relative path *is* a `.git` or lies inside one.
+    ///
+    /// Testing every component rather than just the last one costs an extra pass and, in the walk,
+    /// almost never changes the answer — `DirectorySizer` prunes `.git` at its own boundary and so
+    /// never descends into it. It matters for the predicate asked in isolation, which is how the
+    /// **`..` row and Space-on-dir** reach it: a caller that starts *inside* the object store would
+    /// otherwise be told its contents count.
+    private static func isGitMetadata(_ relativePath: String) -> Bool {
+        relativePath.split(separator: "/").contains { $0 == gitDirectoryName }
+    }
+
+    /// The repository metadata directory — a directory in a normal clone, a `gitdir:` pointer *file*
+    /// in a worktree or submodule, and pruned in either case.
+    private static let gitDirectoryName = ".git"
+
+    /// Every path Git reported as ignored — precisely what `isExcludedFromSize` prunes, and nothing
+    /// else about the working tree.
+    ///
+    /// This exists so a caller can ask *"did the exclusions change?"* rather than *"did anything
+    /// change?"*, and the distinction is what keeps git-aware totals from thrashing. Two snapshots
+    /// differ (`Equatable`) the instant one file is saved, and the app's status provider republishes
+    /// on **every** debounced read whether or not anything moved; hanging cache invalidation on that
+    /// would re-walk every folder on screen each time the user hit ⌘S. The ignored set, by contrast,
+    /// only moves when the rules do — a `.gitignore` edit, a branch switch, a `git add` of a
+    /// previously ignored file — which is exactly when a git-aware total stops being true.
+    public var ignoredPaths: Set<String> {
+        Set(entries.lazy.filter { $0.value.status == .ignored }.map(\.key))
+    }
+
     /// The status of the nearest untracked or ignored ancestor — the directory Git collapsed —
     /// or `.unmodified` when there is none.
     private func inheritedStatus(forKey key: String) -> GitFileStatus {

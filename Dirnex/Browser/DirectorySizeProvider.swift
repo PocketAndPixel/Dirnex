@@ -1,6 +1,37 @@
 import DirnexCore
 import Foundation
 
+/// How a scan counts bytes, carrying whatever it needs to do it (PLAN.md §M6 "optional
+/// .gitignore-aware folder sizes").
+///
+/// An enum rather than a `scope` flag plus an optional snapshot, so "git-aware sizing with no idea
+/// what is ignored" — which would silently count everything while labelling the answer filtered — is
+/// not a state anyone can construct.
+enum DirectorySizeRule {
+    /// Every byte beneath the folder: Finder's answer, and Space-on-dir's since §M1.
+    case everything
+    /// Git's ignores and `.git` pruned, per the snapshot the status column is already painted from.
+    case gitAware(GitStatusSnapshot)
+
+    /// How totals under this rule are keyed in the cache — the two are never interchangeable.
+    var scope: DirectorySizeScope {
+        switch self {
+        case .everything: .all
+        case .gitAware: .gitAware
+        }
+    }
+
+    /// The walk's prune predicate. `@Sendable` because it crosses onto a background walk; the
+    /// snapshot it captures is a `Sendable` value type, so the walk holds a copy of the rules rather
+    /// than a reference to the provider that produced them.
+    var exclude: @Sendable (VFSPath) -> Bool {
+        switch self {
+        case .everything: { _ in false }
+        case let .gitAware(snapshot): { snapshot.isExcludedFromSize($0) }
+        }
+    }
+}
+
 /// The app's live source of recursive directory totals: it walks directories off the main thread,
 /// banks every total in a `DirnexCore.DirectorySizeCache`, and publishes batches for the panes to
 /// render (PLAN.md §M6 "Size visualization mode: … computed async, cached").
@@ -43,6 +74,25 @@ final class DirectorySizeProvider {
     /// showing.
     static let didChangeNotification = Notification.Name("Dirnex.directorySizesDidChange")
     static let directoryKey = "directory"
+    /// The totals that just landed (`[child: bytes]`), and the scope they were counted under.
+    ///
+    /// **The results ride in the notification rather than being left in the cache for the pane to
+    /// re-read, because between a walk landing and its publish the cache can be emptied underneath
+    /// them.** Any pane's FSEvents watcher invalidates every total on its directory's root-to-leaf
+    /// line, and a pane sitting on `~` therefore wipes *everything*: measured live, the other pane
+    /// on the home directory produced **546 invalidations in two minutes**, roughly one every 150 ms,
+    /// which is faster than a scan can publish. Announcing "something changed, go look" lost five of
+    /// nine freshly-walked totals that way, and no later event re-delivered them — the folders simply
+    /// stayed blank. Carrying the payload makes a computed total impossible to lose in transit.
+    ///
+    /// Absent on the invalidation publish, which genuinely has nothing to hand over.
+    static let totalsKey = "totals"
+    static let scopeKey = "scope"
+    /// Set on the one publish that means "the totals you are showing answer the wrong question":
+    /// the repository's ignore rules moved, so every git-aware number is not stale but *invalid*.
+    /// Panes drop what they are holding rather than merely re-seeding — the distinction
+    /// `DirectoryModel.clearDirectorySizes` documents.
+    static let rulesChangedKey = "rulesChanged"
 
     /// Walks in flight at once — half the machine's logical cores (see the type's note). Clamped so
     /// a 4-core Mac still overlaps a little and a future 32-core one does not spawn 16 blocking
@@ -61,12 +111,14 @@ final class DirectorySizeProvider {
     private var cache = DirectorySizeCache()
 
     /// Directories with a scan requested, and the children each still owes a walk. Keyed by the
-    /// *displayed* directory rather than by pane, so two panes on one folder coalesce.
-    private var queue: [VFSPath: Scan] = [:]
+    /// *displayed* directory **and scope** rather than by pane, so two panes on one folder coalesce
+    /// — while one pane sizing it git-aware and another sizing it whole stay two jobs producing two
+    /// answers, which is what they are.
+    private var queue: [DirectorySizeKey: Scan] = [:]
     /// Requested directories, **most recently requested last** — the order `nextWork` drains in
     /// reverse. Newest-first is the whole point: navigating to a new folder must not wait behind the
     /// queue of one the user has already left.
-    private var order: [VFSPath] = []
+    private var order: [DirectorySizeKey] = []
     /// The running drain loop, or `nil` when idle. Cancelling it cancels every walk in flight, which
     /// is why the walks go through `DirectoryLoader.cancellableSize`.
     private var drain: Task<Void, Never>?
@@ -77,15 +129,39 @@ final class DirectorySizeProvider {
     /// yet, so it is still "pending" from the pane's side, and without this set every publish (ten a
     /// second while a scan streams) would re-queue the whole in-flight batch and walk each of them
     /// again, several times over, against the same disk.
-    private var inFlight: Set<VFSPath> = []
-    /// Directories whose totals have changed since the last publish.
-    private var dirty: Set<VFSPath> = []
+    ///
+    /// Keyed by scope as well, or the same folder's git-aware total could never be requested while
+    /// its unfiltered one was being walked — the request would be swallowed as a duplicate and the
+    /// row would sit without a bar until something else disturbed it.
+    private var inFlight: Set<DirectorySizeKey> = []
+    /// Totals banked since the last publish, grouped by the directory they belong to and the scope
+    /// they were counted under — the payload described on `totalsKey`, and the reason a landing can
+    /// no longer be lost to an invalidation arriving before the publish does.
+    private var landed: [DirectorySizeKey: [VFSPath: Int64]] = [:]
     private var publish: Task<Void, Never>?
+    /// The ignored set each repository had when its git-aware totals were last walked — the basis
+    /// `gitStatusDidChange` compares against. Bounded by `GitStatusProvider`'s own 8-snapshot cache
+    /// in practice, since only repositories it is tracking ever appear here.
+    private var ignoredPaths: [VFSPath: Set<String>] = [:]
+
+    private init() {
+        // Ignore rules changing is the one thing that invalidates a git-aware total without a byte
+        // moving on disk, so FSEvents — which drives every other invalidation here — cannot see it.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(gitStatusDidChange),
+            name: GitStatusProvider.didChangeNotification,
+            object: nil
+        )
+    }
 
     private struct Scan {
         /// The backend to walk with — carried per request because the provider is shared while
         /// backends are the panes'. `VFSBackend` is `Sendable`, so it crosses to the walk freely.
         let backend: any VFSBackend
+        /// How this scan counts bytes, carried for the same reason as the backend: the rule is the
+        /// pane's (it holds the repository snapshot), the queue is everyone's.
+        let rule: DirectorySizeRule
         /// Children still owing a walk, in display order.
         var children: [VFSPath]
     }
@@ -96,10 +172,10 @@ final class DirectorySizeProvider {
     /// bulk `Panel.setDirectorySizes` rather than one call per row. Pass 9 measured why that matters:
     /// seeding one-by-one re-sorts the listing per call and costs 2.5 s at 3,000 rows, which would
     /// make the cache slower than having no cache at the one job it has.
-    func cachedSizes(for paths: [VFSPath]) -> [VFSPath: Int64] {
+    func cachedSizes(for paths: [VFSPath], rule: DirectorySizeRule) -> [VFSPath: Int64] {
         var known: [VFSPath: Int64] = [:]
         for path in paths {
-            guard let bytes = cache.size(for: path) else { continue }
+            guard let bytes = cache.size(for: path, scope: rule.scope) else { continue }
             known[path] = bytes
         }
         return known
@@ -112,17 +188,27 @@ final class DirectorySizeProvider {
     /// Re-requesting a directory **replaces** its outstanding work rather than appending: the caller
     /// passes what is pending *now*, so a re-list that removed a folder must not leave it queued.
     /// Already-cached children are dropped here rather than in the pane, so a revisit costs nothing.
-    func requestScan(for directory: VFSPath, children: [VFSPath], backend: any VFSBackend) {
-        let unknown = children.filter { cache.size(for: $0) == nil && !inFlight.contains($0) }
+    func requestScan(
+        for directory: VFSPath,
+        children: [VFSPath],
+        backend: any VFSBackend,
+        rule: DirectorySizeRule
+    ) {
+        let scope = rule.scope
+        let unknown = children.filter { child in
+            cache.size(for: child, scope: scope) == nil
+                && !inFlight.contains(DirectorySizeKey(path: child, scope: scope))
+        }
         guard !unknown.isEmpty else {
             // Nothing to do — but the directory may have had work a moment ago (everything just
             // landed, or the cache was seeded), so clear it rather than leave a spent entry behind.
             cancelScan(for: directory)
             return
         }
-        queue[directory] = Scan(backend: backend, children: unknown)
-        order.removeAll { $0 == directory }
-        order.append(directory)
+        let key = DirectorySizeKey(path: directory, scope: scope)
+        queue[key] = Scan(backend: backend, rule: rule, children: unknown)
+        order.removeAll { $0 == key }
+        order.append(key)
         startDraining()
     }
 
@@ -131,9 +217,15 @@ final class DirectorySizeProvider {
     /// keyed by path rather than by who asked, and abandoning a walk that is nearly done only means
     /// paying for it again on the way back. The mid-walk cancellation that
     /// `DirectoryLoader.cancellableSize` provides is for the whole queue going quiet, below.
+    ///
+    /// Across **both** scopes, deliberately: the callers are "this pane navigated away" and "this
+    /// pane left the mode", and neither wants the folder's other total either. Taking a scope here
+    /// would only create a way to forget to cancel the one the pane just stopped using.
     func cancelScan(for directory: VFSPath) {
-        queue.removeValue(forKey: directory)
-        order.removeAll { $0 == directory }
+        for scope in DirectorySizeScope.allCases {
+            queue.removeValue(forKey: DirectorySizeKey(path: directory, scope: scope))
+        }
+        order.removeAll { $0.path == directory }
     }
 
     /// Stop everything, mid-walk. The one caller is the last tab anywhere leaving the mode: with no
@@ -146,25 +238,31 @@ final class DirectorySizeProvider {
         drain = nil
     }
 
-    /// One walk to perform: which child, on whose behalf, with what.
+    /// One walk to perform: which child, on whose behalf, with what, counted how.
     private struct Work {
         let directory: VFSPath
         let child: VFSPath
         let backend: any VFSBackend
+        let rule: DirectorySizeRule
     }
 
     /// The next child to walk: from the **most recently requested** directory that still owes work.
     private func nextWork() -> Work? {
-        while let directory = order.last {
-            guard var scan = queue[directory], !scan.children.isEmpty else {
+        while let key = order.last {
+            guard var scan = queue[key], !scan.children.isEmpty else {
                 // Spent or cancelled — drop it and look at the next-newest.
-                queue.removeValue(forKey: directory)
+                queue.removeValue(forKey: key)
                 order.removeLast()
                 continue
             }
             let child = scan.children.removeFirst()
-            queue[directory] = scan
-            return Work(directory: directory, child: child, backend: scan.backend)
+            queue[key] = scan
+            return Work(
+                directory: key.path,
+                child: child,
+                backend: scan.backend,
+                rule: scan.rule
+            )
         }
         return nil
     }
@@ -188,26 +286,35 @@ final class DirectorySizeProvider {
             var running = 0
             while true {
                 while running < width, let work = nextWork() {
-                    inFlight.insert(work.child)
+                    let scope = work.rule.scope
+                    inFlight.insert(DirectorySizeKey(path: work.child, scope: scope))
+                    let exclude = work.rule.exclude
                     group.addTask(priority: .utility) {
                         let bytes = await DirectoryLoader.cancellableSize(
                             work.backend,
-                            of: work.child
+                            of: work.child,
+                            excluding: exclude
                         )
-                        return Landing(directory: work.directory, child: work.child, bytes: bytes)
+                        return Landing(
+                            directory: work.directory,
+                            child: work.child,
+                            scope: scope,
+                            bytes: bytes
+                        )
                     }
                     running += 1
                 }
                 guard running > 0, let landing = await group.next() else { break }
                 running -= 1
-                inFlight.remove(landing.child)
+                inFlight.remove(DirectorySizeKey(path: landing.child, scope: landing.scope))
                 guard !Task.isCancelled else { break }
                 // A failed or cancelled walk banks nothing: an absent total re-walks next visit,
                 // where a wrong one would be believed. The core's cache is a latency optimization
                 // and never an authority — this is the boundary that keeps it honest.
                 guard let bytes = landing.bytes else { continue }
-                cache.store(bytes, for: landing.child)
-                dirty.insert(landing.directory)
+                cache.store(bytes, for: landing.child, scope: landing.scope)
+                let key = DirectorySizeKey(path: landing.directory, scope: landing.scope)
+                landed[key, default: [:]][landing.child] = bytes
                 schedulePublish()
             }
             group.cancelAll()
@@ -221,6 +328,7 @@ final class DirectorySizeProvider {
     private struct Landing: Sendable {
         let directory: VFSPath
         let child: VFSPath
+        let scope: DirectorySizeScope
         let bytes: Int64?
     }
 
@@ -240,13 +348,17 @@ final class DirectorySizeProvider {
     }
 
     private func flush() {
-        let directories = dirty
-        dirty = []
-        for directory in directories {
+        let batches = landed
+        landed = [:]
+        for (key, totals) in batches {
             NotificationCenter.default.post(
                 name: Self.didChangeNotification,
                 object: self,
-                userInfo: [Self.directoryKey: directory]
+                userInfo: [
+                    Self.directoryKey: key.path,
+                    Self.scopeKey: key.scope,
+                    Self.totalsKey: totals
+                ]
             )
         }
     }
@@ -269,6 +381,39 @@ final class DirectorySizeProvider {
             name: Self.didChangeNotification,
             object: self,
             userInfo: [Self.directoryKey: path]
+        )
+    }
+
+    /// A repository was re-read. Drop its git-aware totals **only if what it ignores actually
+    /// changed**, and tell the panes to stop showing the ones they hold.
+    ///
+    /// The conditional is the whole method. `GitStatusProvider` republishes on every debounced read
+    /// — the pane it feeds does its own equality check — so in a repository under a build this fires
+    /// continuously. Invalidating on each would re-walk every sized folder several times a second,
+    /// against the same disk the build is using. `GitStatusSnapshot.ignoredPaths` moves only when
+    /// the rules do (a `.gitignore` edit, a branch switch, a `git add` of an ignored file), which is
+    /// exactly when a git-aware total stops being true.
+    ///
+    /// A repository whose status could not be read caches no snapshot; its remembered set is dropped
+    /// so the next successful read is treated as a first look rather than compared against a basis
+    /// that no longer describes anything.
+    @objc private func gitStatusDidChange(_ notification: Notification) {
+        guard let root = notification.userInfo?[GitStatusProvider.repositoryRootKey] as? VFSPath
+        else { return }
+        guard let snapshot = GitStatusProvider.shared.cachedSnapshot(for: root) else {
+            ignoredPaths.removeValue(forKey: root)
+            return
+        }
+        let ignored = snapshot.ignoredPaths
+        let previous = ignoredPaths.updateValue(ignored, forKey: root)
+        // A first look establishes the basis without invalidating: nothing has been walked under
+        // rules we never saw, so there is nothing to be wrong.
+        guard let previous, previous != ignored else { return }
+        cache.invalidateGitAware(under: root)
+        NotificationCenter.default.post(
+            name: Self.didChangeNotification,
+            object: self,
+            userInfo: [Self.directoryKey: root, Self.rulesChangedKey: true]
         )
     }
 }

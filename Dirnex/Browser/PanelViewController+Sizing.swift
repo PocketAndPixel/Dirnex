@@ -17,11 +17,22 @@ extension PanelViewController {
     /// run of folders never re-walks one that was already sized.
     func computeDirectorySize(for entry: FileEntry) {
         guard panel.model.computedSize(of: entry) == nil else { return }
+        // The same rule the bars are drawn under, so one pane never shows two kinds of number in one
+        // size column: with git-aware sizes on, a folder sized by hand excludes what Git ignores
+        // exactly as an auto-scanned one does.
+        let rule = directorySizeRule
+        // A folder the rule excludes has no filtered total to compute — walking it would answer
+        // "Zero KB", which reads as *"measured, and empty"* about a `build/` holding gigabytes. Space
+        // leaves the dash exactly as the auto-scan does (`SizeVisualization.init`); the row is marked
+        // `!` and the status line says sizes exclude Git-ignored.
+        guard !rule.exclude(entry.path) else { return }
         let path = entry.path
         let directory = panel.path
         let token = loadToken
+        let exclude = rule.exclude
         Task {
-            guard let bytes = await DirectoryLoader.size(backend, of: path) else { return }
+            guard let bytes = await DirectoryLoader.size(backend, of: path, excluding: exclude)
+            else { return }
             // Discard a total that resolved after the user navigated away or switched
             // tabs — both bump `loadToken`; the path check is belt-and-suspenders.
             guard token == loadToken, panel.path == directory else { return }

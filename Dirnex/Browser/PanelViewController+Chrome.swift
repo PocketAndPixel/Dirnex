@@ -32,15 +32,20 @@ extension PanelViewController {
             counts = total == 1 ? "1 item" : "\(total) items"
         }
 
+        // Say so whenever folder totals are filtered. Without this the mode is invisible in exactly
+        // the situation that matters — a folder reading 2 GB where Finder says 17 GB — and the user
+        // has no way to connect the number to the setting that produced it.
+        let counted = areGitAwareSizesActive ? counts + " · sizes exclude Git-ignored" : counts
+
         let filter = panel.model.filter
-        guard !filter.isEmpty else { return counts }
+        guard !filter.isEmpty else { return counted }
         // Cap the echoed filter: a normal type-to-filter is a few characters, but nothing stops a
         // long paste, and the status line reads "Filter “…” · N items" — an unbounded prefix would
         // crowd out the count. Keep the head, ellipsize the rest.
         let shown = filter.count > Self.maxFilterDisplayLength
             ? String(filter.prefix(Self.maxFilterDisplayLength)) + "…"
             : filter
-        return "Filter “\(shown)” · \(counts)"
+        return "Filter “\(shown)” · \(counted)"
     }
 
     /// The longest type-to-filter string echoed verbatim in the status line before it's ellipsized.

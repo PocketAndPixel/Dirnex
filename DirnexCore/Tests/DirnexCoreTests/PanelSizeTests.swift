@@ -65,4 +65,34 @@ struct PanelSizeTests {
         #expect(subject.currentEntry?.name == "file.bin")
         #expect(subject.cursor == 0)
     }
+
+    @Test("clearing computed sizes drops the totals, re-sorts, and keeps the cursor by identity")
+    func clearSizesPreservesCursor() throws {
+        // The `.gitignore`-aware toggle (§M6): every total was counted under the other rule, so they
+        // are not stale but wrong, and dropping them re-sorts a size-sorted listing exactly as
+        // landing them did. The cursor must survive that, in both directions.
+        var subject = panel([directory("folder"), entry("file.bin", size: 500)])
+        let folder = try #require(subject.model.visibleEntries.first { $0.name == "folder" })
+        subject.setDirectorySize(folder.id, bytes: 1000)
+        #expect(subject.model.visibleEntries.map(\.name) == ["file.bin", "folder"])
+        subject.moveCursor(to: 0)
+        #expect(subject.currentEntry?.name == "file.bin")
+
+        subject.clearDirectorySizes()
+
+        #expect(subject.model.computedSize(of: folder) == nil)
+        #expect(subject.model.visibleEntries.map(\.name) == ["folder", "file.bin"])
+        #expect(subject.currentEntry?.name == "file.bin")
+        #expect(subject.cursor == 1)
+    }
+
+    @Test("clearing a panel that holds no totals changes nothing")
+    func clearSizesWithNoneIsNoOp() {
+        var subject = panel([directory("folder"), entry("file.bin", size: 500)])
+        let before = subject.model.visibleEntries.map(\.name)
+
+        subject.clearDirectorySizes()
+
+        #expect(subject.model.visibleEntries.map(\.name) == before)
+    }
 }

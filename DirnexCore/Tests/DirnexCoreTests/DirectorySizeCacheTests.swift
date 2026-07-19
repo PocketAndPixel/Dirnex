@@ -195,4 +195,63 @@ struct DirectorySizeCacheTests {
         #expect(cache.isEmpty)
         #expect(cache.size(for: .local("/a")) == nil)
     }
+
+    // MARK: - Scope (.gitignore-aware totals)
+
+    @Test("one folder's two totals are separate entries, never substituted for each other")
+    func scopeIsPartOfTheKey() {
+        // The bug this key exists to prevent: a git-aware total served where the whole one was
+        // asked for is wrong *instantly*, silently, and by an order of magnitude in a source tree.
+        var cache = DirectorySizeCache()
+        cache.store(17_000, for: .local("/repo/pkg"), scope: .all)
+        cache.store(2000, for: .local("/repo/pkg"), scope: .gitAware)
+
+        #expect(cache.size(for: .local("/repo/pkg"), scope: .all) == 17_000)
+        #expect(cache.size(for: .local("/repo/pkg"), scope: .gitAware) == 2000)
+        #expect(cache.count == 2)
+    }
+
+    @Test("a total stored under one scope does not answer the other")
+    func scopesDoNotLeak() {
+        var cache = DirectorySizeCache()
+        cache.store(17_000, for: .local("/repo/pkg"), scope: .all)
+
+        #expect(cache.size(for: .local("/repo/pkg"), scope: .gitAware) == nil)
+        // `.all` is the default, so every pre-existing caller keeps its meaning.
+        #expect(cache.size(for: .local("/repo/pkg")) == 17_000)
+    }
+
+    @Test("a filesystem change invalidates both scopes — the bytes moved for everyone")
+    func invalidateIsScopeBlind() {
+        var cache = DirectorySizeCache()
+        cache.store(1, for: .local("/repo/pkg"), scope: .all)
+        cache.store(2, for: .local("/repo/pkg"), scope: .gitAware)
+        cache.invalidate(under: .local("/repo/pkg/sub"))
+
+        #expect(cache.isEmpty)
+    }
+
+    @Test("changed ignore rules invalidate only the git-aware totals in that repository")
+    func invalidateGitAwareIsNarrow() {
+        // A `.gitignore` edit or a branch switch moves no bytes, so the unfiltered totals are still
+        // true — and a repository's rules say nothing about folders outside it.
+        var cache = DirectorySizeCache()
+        cache.store(1, for: .local("/repo/pkg"), scope: .all)
+        cache.store(2, for: .local("/repo/pkg"), scope: .gitAware)
+        cache.store(3, for: .local("/elsewhere"), scope: .gitAware)
+        cache.invalidateGitAware(under: .local("/repo"))
+
+        #expect(cache.size(for: .local("/repo/pkg"), scope: .all) == 1)
+        #expect(cache.size(for: .local("/repo/pkg"), scope: .gitAware) == nil)
+        #expect(cache.size(for: .local("/elsewhere"), scope: .gitAware) == 3)
+    }
+
+    @Test("invalidating git-aware totals for an untouched repository is a no-op")
+    func invalidateGitAwareUnknownIsNoOp() {
+        var cache = DirectorySizeCache()
+        cache.store(1, for: .local("/repo/pkg"), scope: .gitAware)
+        cache.invalidateGitAware(under: .local("/other-repo"))
+
+        #expect(cache.size(for: .local("/repo/pkg"), scope: .gitAware) == 1)
+    }
 }

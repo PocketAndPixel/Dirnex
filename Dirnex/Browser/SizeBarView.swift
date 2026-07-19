@@ -75,9 +75,19 @@ final class SizeBarView: NSView {
 
     /// The empty track behind the bar — what makes a floored stub read as "1 % of the biggest
     /// sibling" instead of "a stray mark". Without it the tail rows are ambiguous smudges.
+    ///
+    /// **The track must read as a recess, never as ink, and the cursor row is where that is hard to
+    /// get right.** Off the cursor the two are different colours and the distinction is free. On it,
+    /// both are `alternateSelectedControlTextColor` — the only fill that survives the emphasized blue
+    /// — separated by alpha alone, and the track has the whole column's width to shout with where the
+    /// ink may have a point and a half. At 0.25 an *empty* track therefore read as a *full* bar:
+    /// caught live on a wholly-ignored `build/` showing "Zero KB · 0.0 %" beside what looked like the
+    /// heaviest row in the folder. `.gitignore`-aware sizing is what made that common — whole folders
+    /// legitimately total zero now — but the inversion was always there for any empty directory the
+    /// cursor happened to sit on.
     private func drawTrack(in rect: NSRect) {
         guard rect.width > 0 else { return }
-        (isEmphasized ? NSColor.alternateSelectedControlTextColor.withAlphaComponent(0.25)
+        (isEmphasized ? NSColor.alternateSelectedControlTextColor.withAlphaComponent(0.12)
             : NSColor.quaternaryLabelColor).setFill()
         NSBezierPath(roundedRect: rect, xRadius: 2, yRadius: 2).fill()
     }

@@ -911,8 +911,8 @@ remain, all deferrable to M6-ish polish.
 ### M6 — Mac-native power features (M)
 
 - [x] Git awareness: branch in path bar, status column (M/A/?/ignored) via a debounced
-      `git status --porcelain` provider; optional .gitignore-aware folder sizes (the one
-      optional slice, still deferred)
+      `git status --porcelain` provider; .gitignore-aware folder sizes (the optional slice —
+      **done 2026-07-19**, see the pass note at the end of this file)
 - [x] Finder tags: ~~column~~ **dots at the right edge of the name**, where Finder puts them (the
       word "column" was written before anyone had looked at Finder; see pass 4), edit from panel,
       filter chips in search
@@ -2355,8 +2355,9 @@ and what `reservedFunctionKeys` assumes.
 **NEXT: M6 is closed.** Optional leftovers, none blocking: an **App Intents / Shortcuts** surface on
 the `Automation` core, a user script's F-key binding (the bar + key handler already accept any
 command id — an organizer field + one `UserScript` field), and the .gitignore-aware folder sizes from
-pass 1. **M7 (release readiness) is next.** → *The F-key binding is done in pass 18 above; the other
-two remain.*
+pass 1. **M7 (release readiness) is next.** → *The F-key binding is done in pass 18 above; the
+**App Intents surface is done 2026-07-19**, see the "App Intents / Shortcuts" note at the end of this
+file; only the .gitignore-aware folder sizes remain.*
 
 ### M7 — Release readiness (M)
 
@@ -2374,8 +2375,10 @@ two remain.*
 - [x] First-run tour: palette-centric, 5 screens max
 - [x] Performance pass: instruments audit of M1 budgets on real dirty data
       (huge Downloads, node_modules, network volumes, iCloud placeholder files)
-- [ ] Crash reporting (opt-in) + anonymized op-failure telemetry decision
-- [ ] Private beta → public beta → 1.0
+- [x] Licensing: Apache 2.0 for the code, with the name "Dirnex" and the app icon
+      carved out of the grant (shipped 2026-07-19 — `LICENSE` verbatim Apache 2.0,
+      `NOTICE` carrying the carve-out into every redistribution, `TRADEMARKS.md`
+      with the fork checklist; see the 2026-07-19 "licensing" note below)
 
 Exit: a stranger can download, pass FDA onboarding, and move files in under 3 minutes.
 
@@ -2594,10 +2597,9 @@ time only the `filter =` set instead.
 `DirectoryModel` inside `DirectoryLoader.list`'s detached task (and the FSEvents refresh / column
 re-sort paths) so opening a 100k dir never janks the `@MainActor` `PanelViewController`; needs a live
 app build (Xcode + Metal toolchain) and live verification, so it is its own pass. Then the first-run
-tour and the docs keyboard-reference (both buildable + live-verifiable, core-first). The remaining four
+tour and the docs keyboard-reference (both buildable + live-verifiable, core-first). The remaining
 items are **blocked on the user**: Sparkle 2 + notarized-DMG CI needs their Developer ID signing
-identity + notarization creds + Sparkle EdDSA keys; crash reporting + telemetry is a product/privacy
-*decision* first; and private→public beta→1.0 is a release gate.
+identity + notarization creds + Sparkle EdDSA keys.
 
 Progress (2026-07-18, **M7 perf pass — part 2: the off-main sort; the "Performance pass" box now
 closes `[x]`, VERIFIED LIVE on a 100k directory**): part 1 met the filter budget and proved the exact
@@ -2647,9 +2649,9 @@ This pass does that for every path that builds a pane's `DirectoryModel`. Core�
   the shell) inserted the new row **in size order** while **keeping a marked `tiny.bin` marked and the
   cursor on `kilobyte.bin`** (footer "1 of 5 selected · 1 byte") — the off-main refresh's identity
   preservation proven end-to-end. Clean stderr, no crash/race. **NEXT in M7:** the first-run tour and
-  the docs keyboard-reference (both buildable + live-verifiable, core-first); the remaining four items
-  stay blocked on the user (Sparkle/notarized-DMG CI creds, the crash-reporting/telemetry decision,
-  beta→1.0). Optional perf follow-ups, neither blocking: move the show-hidden toggle's all-tabs re-sort
+  the docs keyboard-reference (both buildable + live-verifiable, core-first); the remaining items
+  stay blocked on the user (Sparkle/notarized-DMG CI creds).
+  Optional perf follow-ups, neither blocking: move the show-hidden toggle's all-tabs re-sort
   off-main (lazy per-tab), and move the size-sorted-with-computed-totals streaming re-sort off-main
   (the one case `resortIfOrderDependsOnSize` still runs on the main actor).
 
@@ -2696,8 +2698,7 @@ beside it — the two now run as one sequence on a fresh install.
   **Not Now** dismissed it; **App-menu ▸ Welcome to Dirnex…** reopened the tour, whose last screen now
   read **Open Command Palette** and, clicked, closed the tour and opened ⌘K with **no** FDA prompt;
   and a palette search for "welcome" found the command. **NEXT in M7:** the remaining items all stay
-  blocked on the user (Sparkle/notarized-DMG CI creds, the crash-reporting/telemetry decision,
-  beta→1.0).
+  blocked on the user (Sparkle/notarized-DMG CI creds).
 
 Progress (2026-07-19, **M7 — Sparkle 2 auto-update + notarized-DMG release pipeline SHIPPED + VERIFIED
 LIVE; the box is `[x]`**): built the whole pipeline, then cut a real release — **v0.0.3 published a
@@ -2739,7 +2740,7 @@ fine, so the cert secret was good); recoverable by testing the `.p12` password l
 the cert with a known one. After the fix, **v0.0.3 shipped clean**. Known: committed feed/key means
 **Debug/dev launches also check the feed** (dogfood-friendly; gate on `#if !DEBUG` later if it grates).
 **NEXT in M7:** the beta/stable channels below (**now DONE — see the 2026-07-19 "channels — DONE"
-note**), then the crash-reporting/telemetry decision, then beta→1.0.
+note**).
 
 Design deferred (2026-07-19, **M7 — beta + stable update channels; box `[ ]`, implement later**): the
 user wants two release tracks — a "complete" (stable) release and an opt-in beta — served by the one
@@ -2888,6 +2889,194 @@ Housekeeping: `installEscapeMonitor` moved to `BrowserWindowController+QuickView
 machinery it exists for) to keep the window controller under the 500-line lint ceiling.
 845 core + 87 app tests green; swiftformat + swiftlint --strict clean.
 
+Progress (2026-07-19, **M7 — licensing; the box closes `[x]`**): the goal was "fork freely, but not
+under our name or our icon", which is two different bodies of law and needs two different
+instruments.
+
+**Apache 2.0, not MIT.** Both permit forking; only Apache has §6, an *explicit* refusal to grant
+trademark rights, plus a patent grant with a retaliation clause. Under MIT the name question is
+merely unaddressed — the reader has to know trademark law applies independently. Apache states it in
+the license the forker is already reading. `LICENSE` is the canonical text **verbatim** (sha256
+`cfc7749b…`, only the appendix copyright line filled in) so GitHub's licence detector recognises it
+and nobody has to diff it against upstream to trust it.
+
+**The icon needs a separate carve-out, because §6 does not reach it.** §6 is about *trademarks* — it
+stops a forker calling their build "Dirnex". But the icon PNGs are **copyrighted artwork sitting in
+the repo**, and Apache 2.0 licenses "the Work", which by default is everything in it. Section 6
+would not have stopped a fork from shipping our icon; the Apache grant would have *permitted* it. So
+the exclusion is stated explicitly, naming the path
+`Dirnex/Assets.xcassets/AppIcon.appiconset/`.
+
+**That exclusion lives in `NOTICE`, and that placement is the point.** §4(d) obliges every
+redistributor to carry the `NOTICE` text along — it is the one file in an Apache project that
+*propagates by license terms* into derivative works. A carve-out stated only in the README travels
+exactly as far as the README, which a forker rewrites first thing. `TRADEMARKS.md` then carries the
+long form: what is allowed without asking (nominative fair use — "a fork of Dirnex", "based on
+Dirnex"), what is not, and a **table of everything to change before shipping a fork** (icon set,
+`CFBundleName`/`CFBundleIdentifier`, scheme/product name, user-visible strings, and the Sparkle
+appcast URL). The appcast row is the one with teeth: a fork left pointing at our feed would push
+official Dirnex builds onto its own users, so it is called out as never permitted rather than left
+to inference. `NOTICE` also carries Sparkle's MIT attribution, which the shipped binary owes anyway.
+
+The open question in §7 — "name/brand check for Dirnex before 1.0" — is a *search* for prior marks,
+not a licensing task, and stays open. → **Closed 2026-07-19: the user cleared the name, it is free.**
+
+Progress (2026-07-19, **M6 leftover — App Intents / Shortcuts surface; VERIFIED LIVE**): the half of
+"Automation: AppleScript/Shortcuts verbs" that M6 shipped only one side of. The `.sdef` gave
+AppleScript `reveal` / `copy selection` / `run operation`; this is the same three verbs as **App
+Intents**, which is what actually puts Dirnex in Shortcuts.app, Spotlight, and the Shortcuts menu bar.
+No extension target — intents compile into the app bundle.
+
+**The design question was the picker, and it inverted the core API.** AppleScript asks "what does
+this *typed string* mean", which `AutomationOperation.resolve` already answered. Shortcuts asks the
+opposite: it renders a **list**, so it needs the operations up front. So `AutomationOperation` gained
+three list-shaped entry points beside `resolve` — `all`, `search`, `operations(ids:)` — and they
+returned `Command`, not a new struct, because a user script *already* becomes a `Command` via
+`UserScript.paletteCommand` and `CommandMatcher` *already* fuzzy-ranks `[Command]` for ⌘K. The whole
+core addition is 40 lines of glue over parts that existed; +9 tests.
+
+Two rules are deliberately **different from `resolve`**, and both are pinned by tests. `search` is
+*fuzzier* — a picker is a search box, so "cop" must surface Copy the way the palette does.
+`operations(ids:)` is *stricter*: **exact ids only**. A saved Shortcut stores the id it was built
+with, so that call is identity, not search; if a user renames the script a Shortcut points at, the id
+must stop resolving (Shortcuts then shows the action as needing a value) rather than fall back to
+fuzzy matching and silently bind to *some other* operation. A shortcut that visibly breaks beats one
+that quietly runs the wrong command.
+
+App side: `DirnexOperation: AppEntity` + a `DirnexOperationQuery` conforming to **both**
+`EnumerableEntityQuery` (what makes the parameter a browsable dropdown — the thing the AppleScript
+verb can never be, since it requires already knowing a command's name) and `EntityStringQuery` (the
+search field on top). Every query call re-reads `UserScriptStore` rather than caching, because a user
+can add a script while the Shortcuts editor is open. Three `AppIntent`s with `@MainActor perform()`
+(an async intent may be main-isolated directly, so these read straight through where the Apple-event
+handlers next door need `MainActor.assumeIsolated`), all `openAppWhenRun` since every verb acts on a
+visible panel. `Reveal` takes an `IntentFile` rather than a path string, so it chains off Finder's
+"Get Selected Files" — Dirnex is unsandboxed, so a file passed by reference keeps its real URL.
+`Scripting.activeWindow` moved out of `ScriptingCommands.swift` into `ScriptingTarget.swift`, shared
+by both surfaces so "which window does automation hit" has one answer; the AppleScript-only error
+numbers stayed behind as `AppleScriptError`. Only the zero-parameter verb is an `AppShortcut`
+(Spotlight needs to run it with no input); the other two are Shortcuts actions.
+
+**The trap, and it is a big one: an ad-hoc-signed build can never register App Intents.** The code
+was correct and the metadata extracted from the first build, but Shortcuts showed nothing — because
+`linkd` logs `Unable to get teamId from com.dirnex.Dirnex` and drops the connection. A local Debug
+build is ad-hoc signed (M0's decision), so `TeamIdentifier=not set` and registration is refused
+outright. Re-signing the DerivedData bundle with the Developer ID identity fixed the teamId error —
+and then *still* showed nothing, because **`linkd` only indexes apps in standard install locations**;
+it never opened an indexing transaction for a bundle under DerivedData. Only after installing the
+signed build to `/Applications` did the log read `Registering "com.dirnex.Dirnex" in the metadata
+store` → `Interpolating AppShortcuts` and the app appear in the Shortcuts action library. Two
+consequences worth keeping: **this works automatically in release builds** (the notarized Developer
+ID DMG pipeline satisfies both conditions), and **verifying it locally requires a signed copy in
+/Applications** — no amount of rebuilding in place will do. The same refusal is why `xcodebuild test`
+now prints `connection to service named com.apple.linkd.autoShortcut` noise: the ad-hoc test host is
+being turned away. Harmless, and the tests read the emitted metadata off disk instead of asking the
+daemon.
+
+Verified live end to end, in Shortcuts against a `/Applications` copy of the signed build: Dirnex
+appears in the Apps list; its four actions are there (the three written ones plus a **"Find Dirnex
+Operation"** Shortcuts generates for free out of the enumerable query); "Run Dirnex Operation" renders
+as the `ParameterSummary` sentence "Run *Operation* in Dirnex"; the Operation picker populates from
+the live registry in registry order with the category as each row's subtitle; and running it with
+"New Tab" selected brought Dirnex forward and opened a second tab — proving the whole chain, Shortcuts
+→ intent → entity id → the same `runCommand(id:)` the palette and F-key bar use. The user's installed
+notarized v0.0.4 was backed up first and restored afterwards (Gatekeeper: accepted, Notarized
+Developer ID). 854 core (+9) + 94 app (+7) tests green; swiftformat + swiftlint --strict clean.
+
+~~Still open from M6, and still non-blocking: the .gitignore-aware folder sizes from pass 1.~~ →
+**Done 2026-07-19, see below. M6 has no leftovers.**
+
+### .gitignore-aware folder sizes (2026-07-19, VERIFIED LIVE — the last M6 leftover, now closed)
+
+The one optional slice deferred since M6 pass 1. **Probed first**, and the probe decided the design:
+`GitCommand.status` already passes `--ignored=traditional`, and a real repository shows it reports
+every ignored *directory* collapsed to one row — including `untracked/build/`, an ignored directory
+nested inside an untracked one. So the ignore data was **already in hand**: no second `git` run, no
+`check-ignore`, no `ls-files`. It also shows `.git` appears in no status output at all, and that a
+nested repository is a single `?? nested/` whose own rules the outer status cannot see.
+
+Semantics chosen: **"what Git would care about"** — ignored paths and `.git` pruned. The rejected
+alternative was showing ignored bytes as a second bar segment, which reads better but forfeits the
+whole performance win: an excluded directory is never *walked*, and walk cost tracks entry count, so
+skipping `node_modules` is most of what makes the mode cheap enough to leave on. The rows left out are
+exactly the rows the status column already paints `!`, so a shrunken number has an on-screen
+explanation — the same coherence argument that made `SizeBar` measure logical bytes.
+
+Core (all tested): `DirectorySizer.size(excluding:)` prunes a subtree instead of walking and
+discarding it; `GitStatusSnapshot.isExcludedFromSize` is the predicate, resting on two properties of
+`GitFileStatus` that tests now pin — `.ignored` does **not** roll up (one `debug.log` must not delete
+`src` from the chart) but **is** inherited (everything inside a collapsed `build/` goes with it);
+`GitStatusSnapshot.ignoredPaths` isolates "did the rules change?" from "did anything change?";
+`DirectorySizeCache` is keyed by `(path, DirectorySizeScope)` — **the bug that would otherwise have
+shipped**, since one folder has two legitimate totals differing 500x in a source tree and a
+path-keyed cache serves the wrong one instantly and silently; `DirectoryModel/Panel.clearDirectorySizes`
+for the toggle, because a total from the other scope is not stale but wrong.
+
+App: `DirectorySizeRule` (`.everything` / `.gitAware(snapshot)`) makes "filtered sizing with no idea
+what is ignored" unrepresentable, and rides through the provider's queue, which is now scope-keyed
+end to end (`queue`, `order`, `inFlight`). Space-on-dir obeys the same rule, so one size column never
+mixes two kinds of number. Per-tab toggle (View ▸ Exclude Git-Ignored from Sizes, palette, no
+shortcut), greyed outside a repository, with the status line saying **"sizes exclude Git-ignored"**
+whenever it is in force. `DirectorySizeProvider` watches `GitStatusProvider`'s notification and
+invalidates git-aware totals **only when `ignoredPaths` moved** — that provider republishes on every
+debounced read, so hanging invalidation on it would re-walk the tree on every ⌘S.
+
+**Two traps this pass paid for, both found only by running the thing:**
+
+1. **`DirectorySizer.size` now takes two closures, and a bare trailing closure binds to `excluding`,
+   not `isCancelled`.** That silently reverses what every pre-existing call meant; it failed loudly
+   here only because the two have different arities. Every call site is labelled now, and the doc
+   comment says why.
+2. **A landed total could be erased between its walk and its publish.** The publish used to say
+   "something changed, go re-read the cache" — but any pane's FSEvents watcher invalidates every
+   total on its root-to-leaf line, and the other pane sitting on `~` produced (measured live)
+   **546 invalidations in two minutes, ~one every 150 ms**, faster than a scan can publish. Five of
+   nine freshly walked folders were wiped that way and *nothing ever re-delivered them* — the rows
+   stayed blank forever. This was pre-existing churn made visible only by `clearDirectorySizes`
+   removing the safety net of stale-but-present numbers. Fixed by carrying the totals **in** the
+   notification (`totalsKey`/`scopeKey`), so a computed number cannot be lost in transit; the cache
+   went back to being a pure latency optimization.
+
+**A third trap, caught by the user reading the screenshot rather than by any test — and the fix went
+two rounds.** An ignored folder was first rendered as its filtered total, which for a wholly-ignored
+`build/` is **"Zero KB · 0.0 %"**. That is a lie of the most ordinary kind: it reads as *"measured,
+and this folder is empty"* — a claim about the folder, when the truth is a claim about the question
+("nothing here counts toward what you asked to see"). **An excluded row is now omitted from the
+projection entirely** (`SizeVisualization.init(model:isExcluded:)`): no bar, no contribution to either
+denominator, and — the part that makes it stable rather than a flicker — **kept out of
+`pendingDirectories`**, since a row with no total is otherwise pending forever and the pane would
+re-queue a walk for it on every render. Space-on-dir refuses it for the same reason. The row falls
+back to the `—` and blank bar an unwalked directory shows, which is exactly right: in both cases the
+honest answer is *we are not telling you a number here*, and the `!` in the Git column plus the status
+line carry the reason. No third rendering had to be invented.
+
+Round one had tuned the *empty bar's* contrast instead, which was the wrong layer but exposed a
+genuine pre-existing bug worth keeping: on the **cursor row** an empty bar read as a *full* one.
+`SizeBarView` draws no ink at zero bytes (the core's rule, working correctly) but still draws the
+empty track — and on the emphasized row track and ink are both `alternateSelectedControlTextColor`,
+separated by alpha alone, with the track owning the column's whole width where the ink may own a
+point. At 0.25 that inverted the reading: an empty track looked like the heaviest row in the folder.
+Track alpha is now **0.12**, verified live against a partially-filled emphasized row (solid white ink
+to 31 %, the remainder clearly recessed). Still worth having independently of the omission fix above,
+because a *genuinely* empty folder does draw an empty track by design ("an empty folder is not
+negligible, it is empty" — `SizeBar.inkWidth`), and any of those under the cursor hit the same
+inversion.
+
+Live verification against this repository: `DirnexCore` 587.3 MB → **1,097,930 bytes**, matching
+`git ls-files` + untracked-not-ignored summed by hand *exactly*; `build/` (wholly ignored) reads
+Zero KB rather than 1.63 GB; toggling off restores every unfiltered total. In a scratch repository,
+appending `artifacts/` to `.gitignore` flipped that folder from `?` 5.3 MB / 50.1 % to `!` Zero KB
+with the bars re-scaling — the rules-change path, with no byte moving on disk. 871 core (+17) + 94 app
+tests green, swiftformat + swiftlint --strict clean (`PanelViewController+FileOps` crossed its length
+budget and was split at its own `MARK` into `PanelViewController+MenuValidation.swift`).
+
+**Known limits, documented rather than papered over:** a nested repository's or submodule's own
+ignore rules are invisible to the outer snapshot (only its `.git` is pruned), and the pre-existing
+staleness where an FSEvents invalidation drops the cache but leaves the panel's numbers on screen is
+untouched — clearing them on every ping would empty the column continuously through a build. The
+payload delivery fix has no unit test: `DirectorySizeProvider` is a `private init` singleton wired to
+`NotificationCenter`, and making it injectable for one test was judged scope creep this pass.
+
 ## 5. Cross-cutting: testing strategy
 
 | Layer | Approach |
@@ -2916,4 +3105,6 @@ machinery it exists for) to keep the window controller under the 500-line lint c
   Validate with real use in M1.
 - Quick view panel shortcut (Ctrl+Q vs Cmd+Shift+Q) — Cmd+Q is untouchable.
 - Tabs UI: native-style segmented tabs vs compact TC-style. Prototype both in M1.
-- Name/brand check for "Dirnex" before public beta (M7).
+- ~~Name/brand check for "Dirnex" before 1.0 (M7).~~ **Resolved 2026-07-19: the name is free
+  — cleared by the user, no conflicting prior marks. Nothing to rename; the `NOTICE` /
+  `TRADEMARKS.md` carve-out stands as written.**

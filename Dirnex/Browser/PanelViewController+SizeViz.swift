@@ -46,6 +46,55 @@ extension PanelViewController {
         isSizeVisualizationEnabled && panel.path.backend == .local && !isSearchResults
     }
 
+    // MARK: - .gitignore-aware totals
+
+    /// Whether this tab's folder totals are asked to leave out what Git ignores.
+    var isGitAwareSizesEnabled: Bool {
+        get { tabs[activeTabIndex].isGitAwareSizesEnabled }
+        set { tabs[activeTabIndex].isGitAwareSizesEnabled = newValue }
+    }
+
+    /// Whether that setting is actually in force for the directory on screen — it needs a repository
+    /// and a snapshot to say what is ignored, and outside one there is nothing to exclude. Kept
+    /// separate from the flag itself for the reason the tag and sync-status toggles are: browsing out
+    /// of a repository suppresses the filtering, and that is not the user having switched it off.
+    ///
+    /// It also drives the status line, which is not decoration. A folder reading 2 GB when Finder
+    /// says 17 GB, with nothing on screen explaining why, is worse than not having the feature.
+    var areGitAwareSizesActive: Bool {
+        isGitAwareSizesEnabled && panel.path.backend == .local && gitSnapshot != nil
+    }
+
+    /// How every total this pane asks for is counted. The rule carries the snapshot itself, so a
+    /// walk holds the ignore rules as they were when it started rather than reaching back to a pane
+    /// that may have navigated on.
+    var directorySizeRule: DirectorySizeRule {
+        guard areGitAwareSizesActive, let gitSnapshot else { return .everything }
+        return .gitAware(gitSnapshot)
+    }
+
+    /// Adopt a changed rule: every total on screen was counted under the old one, so it answers a
+    /// question nobody is asking any more — drop it, then re-seed from whatever the cache already
+    /// knows under the new scope and walk the rest.
+    ///
+    /// Called on the toggle, and on entering or leaving a repository while the toggle is on. **Not**
+    /// on every snapshot change: a save flips a file to `M` without moving a single ignore rule, and
+    /// re-walking the tree on each keystroke-to-disk is exactly the thrash
+    /// `DirectorySizeProvider.gitStatusDidChange` exists to avoid. The rules genuinely changing
+    /// arrives as its own notification.
+    func directorySizeRuleDidChange() {
+        if deferRefreshIfRenaming() { return }
+        reconcileCursorFromTable()
+        panel.clearDirectorySizes()
+        // In the mode, this seeds, re-renders and re-queues the walks; outside it, the size column
+        // still has to be repainted from nothing, and Space-on-dir will re-size on demand.
+        if areSizeBarsVisible {
+            updateSizeVisualization()
+        } else {
+            renderRefresh()
+        }
+    }
+
     // MARK: - Command (dispatched to the focused pane via the responder chain)
 
     /// View ▸ Size Visualization. Per pane and tab, so — unlike Show Tags — this drives the tab
@@ -53,6 +102,13 @@ extension PanelViewController {
     @objc func toggleSizeVisualization(_ sender: Any?) {
         isSizeVisualizationEnabled.toggle()
         updateSizeVisualization()
+    }
+
+    /// View ▸ Exclude Git-Ignored from Sizes. Per tab like the mode above, and independent of it:
+    /// it filters the size *column* too, so Space-on-dir sizing obeys it with the bars switched off.
+    @objc func toggleGitAwareSizes(_ sender: Any?) {
+        isGitAwareSizesEnabled.toggle()
+        directorySizeRuleDidChange()
     }
 
     // MARK: - Keeping up to date
@@ -73,18 +129,57 @@ extension PanelViewController {
     /// invalidation as well as for scan results: an FSEvents ping deep under the folder on screen
     /// invalidates this folder's line, and the notification carries the *event's* path, not ours.
     @objc private func directorySizesDidChange(_ notification: Notification) {
-        guard areSizeBarsVisible,
-              let directory = notification.userInfo?[DirectorySizeProvider.directoryKey] as? VFSPath,
+        guard let directory = notification.userInfo?[DirectorySizeProvider.directoryKey] as? VFSPath,
               directory.isSelfOrDescendant(of: panel.path) || panel.path.isSelfOrDescendant(
                   of: directory
               )
         else { return }
+        // The repository's ignore rules moved (a `.gitignore` edit, a branch switch). What this pane
+        // is showing is not stale but *wrong*, and it is wrong whether or not the bars are on, since
+        // the size column carries the same filtered totals. Same path as the toggle: drop, re-seed,
+        // re-walk.
+        let rulesChanged = notification.userInfo?[
+            DirectorySizeProvider.rulesChangedKey
+        ] as? Bool ?? false
+        if rulesChanged {
+            guard areGitAwareSizesActive else { return }
+            directorySizeRuleDidChange()
+            return
+        }
+        guard areSizeBarsVisible else { return }
         // A rename in progress owns the table; the end-editing handler replays what it skipped.
         if deferRefreshIfRenaming() { return }
-        guard seedFromCache() else { return }
+        guard apply(notification) || seedFromCache() else { return }
         // A size can reorder the list when sorting by size, so this is a real re-render — but the
         // background kind that never scrolls: bars arriving must not yank the user's reading spot.
         renderRefresh()
+    }
+
+    /// Take the totals a publish delivered, reporting whether any of them were news.
+    ///
+    /// **The payload is the authoritative path; the cache is only the fallback.** A publish announces
+    /// walks that have already finished, and between their landing and this notification the cache
+    /// can have been emptied by any pane's FSEvents watcher — measured live, a pane sitting on `~`
+    /// invalidates every descendant total several times a second, which lost five of nine freshly
+    /// walked folders and left them permanently blank. What was computed arrives here directly, so
+    /// that race cannot cost a number any more.
+    ///
+    /// Totals counted under a scope this pane is not showing are dropped: the other pane may be
+    /// sizing the same folder git-aware while this one wants everything, and the two answers are not
+    /// interchangeable.
+    private func apply(_ notification: Notification) -> Bool {
+        guard let totals = notification.userInfo?[
+            DirectorySizeProvider.totalsKey
+        ] as? [VFSPath: Int64],
+            let scope = notification.userInfo?[DirectorySizeProvider.scopeKey]
+            as? DirectorySizeScope,
+            scope == directorySizeRule.scope
+        else { return false }
+        let fresh = totals.filter { panel.model.directorySizes[$0.key] != $0.value }
+        guard !fresh.isEmpty else { return false }
+        reconcileCursorFromTable()
+        panel.setDirectorySizes(fresh)
+        return true
     }
 
     /// Re-derive the active tab's bars for the directory now on screen: install or remove the column,
@@ -123,7 +218,8 @@ extension PanelViewController {
     @discardableResult
     private func seedFromCache() -> Bool {
         let known = DirectorySizeProvider.shared.cachedSizes(
-            for: panel.model.visibleEntries.filter(\.isDirectoryLike).map(\.path)
+            for: panel.model.visibleEntries.filter(\.isDirectoryLike).map(\.path),
+            rule: directorySizeRule
         )
         // Only totals we don't already carry — an unchanged seed must not re-sort the listing.
         let fresh = known.filter { panel.model.directorySizes[$0.key] != $0.value }
@@ -150,7 +246,8 @@ extension PanelViewController {
         DirectorySizeProvider.shared.requestScan(
             for: panel.path,
             children: pending.map(\.path),
-            backend: backend
+            backend: backend,
+            rule: directorySizeRule
         )
     }
 
@@ -203,7 +300,12 @@ extension PanelViewController {
             sizeVisualization = nil
             return
         }
-        sizeVisualization = SizeVisualization(model: panel.model)
+        // The rule's own predicate, so an ignored folder is left out of the chart rather than shown
+        // as an empty one — see `SizeVisualization.init` on why zeroing it lies.
+        sizeVisualization = SizeVisualization(
+            model: panel.model,
+            isExcluded: directorySizeRule.exclude
+        )
         // The visible set just changed, so what is pending changed with it — revealing dotfiles adds
         // 68 directories to `~` (measured), and a filter can empty the queue entirely.
         requestScan()
