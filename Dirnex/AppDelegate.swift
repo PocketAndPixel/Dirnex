@@ -1,4 +1,5 @@
 import AppKit
+import DirnexCore
 
 /// Application lifecycle owner.
 ///
@@ -120,4 +121,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func checkForUpdates(_ sender: Any?) {
         appUpdater.checkForUpdates()
     }
+
+    /// Whether a newer build is waiting, for the titlebar indicator to mirror. Read once when a
+    /// window installs its button (a window opened after a check must not miss what it found) and
+    /// again on every `AppUpdater.availabilityDidChange`. The updater itself stays private — this is
+    /// the whole surface the UI needs.
+    var updateAvailability: UpdateAvailability { appUpdater.availability }
 }

@@ -48,4 +48,31 @@ extension BrowserWindowController {
             counterpart(of: active).showQuickViewPreview(of: active.quickViewSourceURL)
         }
     }
+
+    /// Esc closes Quick View from anywhere in this window. A window-scoped local monitor sees the
+    /// raw key event ahead of responder dispatch, so it works even when the focused view (the
+    /// preview `PDFView`) would otherwise swallow the key. It deliberately stands aside for the
+    /// responders that own Esc themselves: a focused file table runs its progressive Esc (clear
+    /// filter → close Quick View → clear marks) via `fileTableCancel`, and a text field editor
+    /// cancels the edit. Only fires while this window is key, so a sheet, the ⌘K palette, or the
+    /// Settings window keep their own Esc. Installed once from `init`; torn down in `deinit`.
+    func installEscapeMonitor() {
+        escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self,
+                  event.keyCode == 53, // Esc
+                  event.modifierFlags.isDisjoint(with: [.command, .control, .option, .shift]),
+                  window?.isKeyWindow == true,
+                  isQuickViewOn
+            else { return event }
+            let responder = window?.firstResponder
+            // A file table or a text edit owns Esc for its own purpose — let the event through.
+            if responder is FileTableView || responder is NSText { return event }
+            // So does the terminal drawer, far more so: Esc is `vim`'s entire modal interface, and
+            // a monitor that swallowed it to close a preview would make the drawer useless for the
+            // editor most likely to be running in it.
+            if isTerminalFocused { return event }
+            toggleQuickView()
+            return nil
+        }
+    }
 }
