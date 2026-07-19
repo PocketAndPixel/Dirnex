@@ -29,6 +29,10 @@ enum MainMenuBuilder {
 
     private enum Item {
         case command(String)
+        /// A command shown indented under the one above it, for a setting that only qualifies
+        /// that item rather than standing on its own. Purely presentational — the command,
+        /// its shortcut, and its palette entry are unchanged.
+        case subcommand(String)
         case separator
     }
 
@@ -65,7 +69,7 @@ enum MainMenuBuilder {
             .command("view.toggleSidebar"), .command("view.toggleHidden"),
             .command("view.toggleTags"), .command("view.toggleSyncStatus"),
             .command("view.functionBar"),
-            .command("view.sizeVisualization"), .command("view.gitAwareSizes"), .separator,
+            .command("view.sizeVisualization"), .subcommand("view.gitAwareSizes"), .separator,
             .command("view.quickLook"), .command("view.quickView"), .separator,
             .command("view.terminal")
         ]),
@@ -97,6 +101,11 @@ enum MainMenuBuilder {
                 submenu.addItem(.separator())
             case let .command(id):
                 if let built = commandItem(for: id, bindings: bindings) { submenu.addItem(built) }
+            case let .subcommand(id):
+                if let built = commandItem(for: id, bindings: bindings) {
+                    built.indentationLevel = 1
+                    submenu.addItem(built)
+                }
             }
         }
         if spec.isWindow {
