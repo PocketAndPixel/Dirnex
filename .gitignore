@@ -1,0 +1,44 @@
+# macOS
+.DS_Store
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+*.xcscmblueprint
+xcuserdata/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/
+# DirnexCore is a library — its own resolution is nobody's business but its checkout's.
+Package.resolved
+# The app is not: it ships. Since M6 it has a real remote dependency (SwiftTerm), and this file
+# is the only thing that pins the exact *revision* — `exactVersion` in the project pins the tag,
+# and a tag can be moved. Apple's own rule: apps commit their resolution, libraries don't.
+!Dirnex.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+
+# Release build outputs (the .app, .xcarchive, appcast, and notarization staging live here)
+dist/
+
+# Notarization / signing artifacts
+*.dmg
+*.p12
+*.provisionprofile
+ExportOptions.plist
+# …except the one the release pipeline actually uses to export the Developer ID build. It carries
+# no secrets (team id + cert *name*), and the workflow needs it in the checkout. Same "apps commit
+# what they ship" reasoning as the Package.resolved negation above.
+!Packaging/ExportOptions.plist
+
+# Fixtures generated locally
+/.fixtures/
+
+# Editor
+.idea/
+*.swp

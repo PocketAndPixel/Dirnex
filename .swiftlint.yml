@@ -1,0 +1,56 @@
+# SwiftLint configuration for Dirnex.
+# Run: swiftlint (install via `brew install swiftlint`)
+
+included:
+  - Dirnex
+  - DirnexTests
+  - DirnexCore/Sources
+  - DirnexCore/Tests
+
+excluded:
+  - .build
+  - DerivedData
+  - build
+  - Tooling
+  - "**/.fixtures"
+
+disabled_rules:
+  - todo                     # PLAN.md tracks work; inline TODOs are fine mid-milestone
+  - trailing_comma           # SwiftFormat owns comma style
+
+opt_in_rules:
+  - empty_count
+  - empty_string
+  - explicit_init
+  - first_where
+  - contains_over_first_not_nil
+  - redundant_nil_coalescing
+  - closure_spacing
+  - overridden_super_call
+  - prohibited_super_call
+
+line_length:
+  warning: 120
+  error: 200
+  ignores_comments: true
+  ignores_urls: true
+
+identifier_name:
+  min_length: 2
+  excluded: [i, j, x, y, id, fm, to, up]
+
+type_name:
+  min_length: 3
+
+function_body_length:
+  warning: 80
+  error: 150
+
+file_length:
+  warning: 500
+  error: 1000
+
+cyclomatic_complexity:
+  warning: 15
+
+reporter: "xcode"

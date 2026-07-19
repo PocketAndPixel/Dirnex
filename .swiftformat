@@ -1,0 +1,42 @@
+# SwiftFormat configuration for Dirnex.
+# Run: swiftformat . (install via `brew install swiftformat`)
+
+--swiftversion 6.0
+--exclude .build,DerivedData,build,**/.fixtures
+
+# Style
+--indent 4
+--maxwidth 100
+--wraparguments before-first
+--wrapparameters before-first
+--wrapcollections before-first
+--commas inline
+--ranges nospace
+--trimwhitespace always
+--self remove
+--importgrouping testable-bottom
+--stripunusedargs closure-only
+
+# Keep opinions minimal; let defaults handle the rest.
+--rules \
+    blankLinesAtEndOfScope,\
+    blankLinesAtStartOfScope,\
+    blankLinesBetweenScopes,\
+    consecutiveBlankLines,\
+    consecutiveSpaces,\
+    duplicateImports,\
+    elseOnSameLine,\
+    emptyBraces,\
+    indent,\
+    linebreakAtEndOfFile,\
+    redundantParens,\
+    redundantReturn,\
+    redundantSelf,\
+    sortImports,\
+    spaceAroundBraces,\
+    spaceAroundBrackets,\
+    spaceAroundComments,\
+    spaceAroundOperators,\
+    trailingCommas,\
+    trailingSpace,\
+    wrapArguments

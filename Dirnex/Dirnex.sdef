@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE dictionary SYSTEM "file://localhost/System/Library/DTDs/sdef.dtd">
+<!--
+  Dirnex's AppleScript terminology (PLAN.md §M6 "Automation: AppleScript/Shortcuts verbs").
+
+  Three verbs, in the automation slice's own suite: `reveal` (bring the active panel to an item),
+  `copy selection` (the F5 copy-to-other-panel op), and `run operation` (invoke any Dirnex command
+  by id or menu title, the generic bridge to the whole action registry).
+
+  Each command maps to an NSScriptCommand subclass via <cocoa class>. Those subclasses carry the
+  Objective-C names set with @objc(...) in ScriptingCommands.swift, and the human-readable command
+  names mirror `AutomationVerb.commandName` in DirnexCore so the dictionary and the handlers agree.
+-->
+<dictionary title="Dirnex Terminology">
+    <suite name="Dirnex Suite" code="Dnex"
+        description="Verbs for driving the Dirnex file manager from AppleScript.">
+
+        <command name="reveal" code="DnexRvel"
+            description="Bring the active panel to a file or folder and select it, like Finder's reveal.">
+            <cocoa class="DirnexRevealScriptCommand"/>
+            <direct-parameter type="text"
+                description="POSIX path of the item to reveal, e.g. &quot;/Users/me/notes.txt&quot;."/>
+            <result type="boolean"
+                description="True if the item was revealed in the active panel."/>
+        </command>
+
+        <command name="copy selection" code="DnexCpSl"
+            description="Copy the active panel's selection to the other panel (the F5 operation).">
+            <cocoa class="DirnexCopySelectionScriptCommand"/>
+            <result type="boolean" description="True if the copy operation was started."/>
+        </command>
+
+        <command name="run operation" code="DnexRunO"
+            description="Run a Dirnex command by its id or menu title, e.g. &quot;file.copy&quot; or &quot;Copy to Other Panel&quot;.">
+            <cocoa class="DirnexRunOperationScriptCommand"/>
+            <direct-parameter type="text"
+                description="The command id, menu title, or user-script name of the operation to run."/>
+            <result type="boolean" description="True if a matching operation was found and run."/>
+        </command>
+
+    </suite>
+</dictionary>

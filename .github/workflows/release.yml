@@ -1,0 +1,233 @@
+name: Release
+
+# Cuts a signed, notarized, Sparkle-updatable DMG and publishes it (plus its appcast) to a GitHub
+# release (PLAN.md §M7). Push a tag like v0.1.0, or run manually and let it bump VERSION's patch.
+#
+# Required repository secrets (see docs/RELEASING.md):
+#   DEVELOPER_ID_CERTIFICATE_P12       base64 of the Developer ID Application .p12
+#   DEVELOPER_ID_CERTIFICATE_PASSWORD  its export password
+#   APPLE_ID / TEAM_ID / APP_SPECIFIC_PASSWORD   notarytool credentials
+#   SPARKLE_PRIVATE_KEY                the EdDSA private key that signs the appcast enclosure
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version, for example 0.1.3. Leave empty to bump VERSION patch."
+        required: false
+      build_number:
+        description: "Internal build number. Defaults to the workflow run number."
+        required: false
+      draft:
+        description: "Create the GitHub release as a draft"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+
+    env:
+      APP_NAME: Dirnex
+      RELEASE_DMG: dist/Dirnex.dmg
+      SIGN_IDENTITY: "Developer ID Application: Oleg Verkhohliad (A9N92VGA2M)"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Resolve release values
+        run: |
+          RELEASE_NOTES_REF="$(git rev-parse HEAD)"
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+            BUILD_NUMBER="${{ inputs.build_number }}"
+            DRAFT="${{ inputs.draft }}"
+            if [ -z "$VERSION" ]; then
+              VERSION="$(awk -F. '
+                NF == 3 && $1 ~ /^[0-9]+$/ && $2 ~ /^[0-9]+$/ && $3 ~ /^[0-9]+$/ {
+                  printf "%d.%d.%d\n", $1, $2, $3 + 1
+                  ok = 1
+                }
+                END { if (!ok) exit 1 }
+              ' VERSION)" || {
+                echo "VERSION must use numeric MAJOR.MINOR.PATCH format for automatic bump." >&2
+                exit 1
+              }
+            fi
+            TAG_NAME="v$VERSION"
+          else
+            TAG_NAME="${GITHUB_REF_NAME}"
+            VERSION="${TAG_NAME#v}"
+            BUILD_NUMBER="${GITHUB_RUN_NUMBER}"
+            DRAFT="false"
+          fi
+
+          if [ -z "$BUILD_NUMBER" ]; then
+            BUILD_NUMBER="${GITHUB_RUN_NUMBER}"
+          fi
+
+          if [ -z "$VERSION" ]; then
+            echo "Release version is missing. Set VERSION or pass a version input." >&2
+            exit 1
+          fi
+
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
+          echo "TAG_NAME=$TAG_NAME" >> "$GITHUB_ENV"
+          echo "DRAFT=$DRAFT" >> "$GITHUB_ENV"
+          echo "RELEASE_NOTES_REF=$RELEASE_NOTES_REF" >> "$GITHUB_ENV"
+          echo "DOWNLOAD_URL=https://github.com/${GITHUB_REPOSITORY}/releases/download/$TAG_NAME/Dirnex.dmg" >> "$GITHUB_ENV"
+
+      - name: Update VERSION for manual release
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          FILE_VERSION="$(sed -n '1p' VERSION | tr -d '[:space:]')"
+          if [ "$VERSION" = "$FILE_VERSION" ]; then
+            echo "VERSION is already $VERSION."
+            exit 0
+          fi
+
+          if [ "${GITHUB_REF_TYPE}" != "branch" ]; then
+            echo "Run manual releases from a branch when VERSION needs an update." >&2
+            exit 1
+          fi
+
+          printf '%s\n' "$VERSION" > VERSION
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add VERSION
+          git commit -m "Release $TAG_NAME"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Check signing secrets
+        run: |
+          for secret in DEVELOPER_ID_CERTIFICATE_P12 DEVELOPER_ID_CERTIFICATE_PASSWORD \
+                        APPLE_ID TEAM_ID APP_SPECIFIC_PASSWORD SPARKLE_PRIVATE_KEY; do
+            eval "value=\${$secret}"
+            if [ -z "$value" ]; then
+              echo "Missing $secret secret." >&2
+              exit 1
+            fi
+          done
+        env:
+          DEVELOPER_ID_CERTIFICATE_P12: ${{ secrets.DEVELOPER_ID_CERTIFICATE_P12 }}
+          DEVELOPER_ID_CERTIFICATE_PASSWORD: ${{ secrets.DEVELOPER_ID_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          TEAM_ID: ${{ secrets.TEAM_ID }}
+          APP_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+
+      - name: Test DirnexCore
+        run: swift test --package-path DirnexCore
+
+      - name: Install signing certificate
+        run: |
+          CERTIFICATE_PATH="$RUNNER_TEMP/developer-id.p12"
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 32)"
+
+          printf '%s' "$DEVELOPER_ID_CERTIFICATE_P12" | base64 -D > "$CERTIFICATE_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERTIFICATE_PATH" \
+            -P "$DEVELOPER_ID_CERTIFICATE_PASSWORD" \
+            -A \
+            -t cert \
+            -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s \
+            -k "$KEYCHAIN_PASSWORD" \
+            "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH"
+          security default-keychain -d user -s "$KEYCHAIN_PATH"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+
+          rm -f "$CERTIFICATE_PATH"
+        env:
+          DEVELOPER_ID_CERTIFICATE_P12: ${{ secrets.DEVELOPER_ID_CERTIFICATE_P12 }}
+          DEVELOPER_ID_CERTIFICATE_PASSWORD: ${{ secrets.DEVELOPER_ID_CERTIFICATE_PASSWORD }}
+
+      - name: Download Metal toolchain
+        # SwiftTerm pulls in Xcode 26's Metal toolchain; a Release archive needs it present.
+        # Idempotent — a no-op when the runner already has it.
+        run: xcodebuild -downloadComponent MetalToolchain || true
+
+      - name: Build and export the app
+        run: scripts/build_app.sh
+        env:
+          SIGN_IDENTITY: ${{ env.SIGN_IDENTITY }}
+          TEAM_ID: ${{ secrets.TEAM_ID }}
+          VERSION: ${{ env.VERSION }}
+          BUILD_NUMBER: ${{ env.BUILD_NUMBER }}
+
+      - name: Create DMG
+        run: scripts/make_dmg.sh
+
+      - name: Notarize DMG
+        run: scripts/notarize_dmg.sh
+        env:
+          DMG_PATH: ${{ env.RELEASE_DMG }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          TEAM_ID: ${{ secrets.TEAM_ID }}
+          APP_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
+
+      - name: Create appcast
+        run: |
+          printf '%s' "$SPARKLE_PRIVATE_KEY" > "$SPARKLE_PRIVATE_KEY_FILE"
+          scripts/make_appcast.sh
+          rm -f "$SPARKLE_PRIVATE_KEY_FILE"
+        env:
+          DMG_PATH: ${{ env.RELEASE_DMG }}
+          VERSION: ${{ env.VERSION }}
+          SHORT_VERSION: ${{ env.VERSION }}
+          BUILD_NUMBER: ${{ env.BUILD_NUMBER }}
+          DOWNLOAD_URL: ${{ env.DOWNLOAD_URL }}
+          APPCAST_LINK: https://github.com/${{ github.repository }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          SPARKLE_PRIVATE_KEY_FILE: ${{ runner.temp }}/sparkle_private_key
+
+      - name: Write release notes
+        run: |
+          {
+            echo "Dirnex $VERSION"
+            echo
+            git log -1 --pretty=%B "$RELEASE_NOTES_REF"
+          } > dist/release-notes.md
+
+      - name: Create or update GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RELEASE_FLAGS=""
+          LATEST_FLAGS="--latest"
+          if [ "$DRAFT" = "true" ]; then
+            RELEASE_FLAGS="--draft"
+            LATEST_FLAGS=""
+          fi
+
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            gh release edit "$TAG_NAME" \
+              --title "$TAG_NAME" \
+              --notes-file dist/release-notes.md \
+              $LATEST_FLAGS
+            gh release upload "$TAG_NAME" "$RELEASE_DMG" dist/appcast.xml --clobber
+          else
+            gh release create "$TAG_NAME" "$RELEASE_DMG" dist/appcast.xml \
+              --title "$TAG_NAME" \
+              --notes-file dist/release-notes.md \
+              --target "$(git rev-parse HEAD)" \
+              $LATEST_FLAGS \
+              $RELEASE_FLAGS
+          fi

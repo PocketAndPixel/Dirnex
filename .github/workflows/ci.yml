@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main, Dev]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core:
+    name: DirnexCore (swift test)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v5
+      - name: Swift version
+        run: swift --version
+      - name: Test DirnexCore
+        run: swift test --package-path DirnexCore
+      - name: Performance budgets (release)
+        # The M1 hot-path budgets (PerformanceBudgetTests) only enforce in optimized
+        # builds; a debug run prints its numbers but compiles the assertions out.
+        run: swift test -c release --package-path DirnexCore --filter PerformanceBudget
+
+  app:
+    name: App (xcodebuild test)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build & test
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project Dirnex.xcodeproj \
+            -scheme Dirnex \
+            -destination 'platform=macOS' \
+            -resultBundlePath TestResults.xcresult
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: xcresult
+          path: TestResults.xcresult
+          if-no-files-found: ignore
+
+  lint:
+    name: Lint (SwiftFormat + SwiftLint)
+    runs-on: macos-26
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: 1
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: |
+          brew untap aws/tap 2>/dev/null || true
+          brew install swiftformat swiftlint
+      - name: SwiftFormat (lint mode)
+        run: swiftformat --lint .
+      - name: SwiftLint
+        run: swiftlint --strict
