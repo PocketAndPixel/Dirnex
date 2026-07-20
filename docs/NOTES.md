@@ -98,6 +98,15 @@ at build time.
   simply invisible. Derive each accessory container's width from what it holds, and pin each row
   at the edge it is anchored to, so a badge that comes and goes extends into empty title bar
   instead of shifting the controls already there. Only launching catches this.
+- **Collapsing a split-view sidebar that holds first responder strands keyboard focus on the bare
+  window.** When the focused view is hidden by the collapse, AppKit drops first responder to the
+  `NSWindow` itself rather than to a sibling — so every pane goes grey and *Tab cannot recover it*,
+  because Tab is a pane key that only fires while a pane is first responder (there is no window-level
+  key-view loop to fall back on). `NSSplitViewController.toggleSidebar(_:)` is the one funnel both
+  the menu/palette (`toggleSidebar:` selector) and the titlebar button call, so a subclass overriding
+  it catches every collapse; capture whether the sidebar held focus *before* `super` (deterministic —
+  a post-hoc KVO observer races the first-responder move) and hand focus to a pane after. Only
+  reachable once the sidebar itself can hold focus, which it could not before M8.
 - **A background `reloadData` while an inline rename field is open destroys the edit.** An
   FSEvents refresh or a directory-size total tears the shared field editor out of its cell and,
   because `NSTableView` recycles cell views, strands it on the `..` row — the rename silently

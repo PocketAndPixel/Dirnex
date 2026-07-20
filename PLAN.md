@@ -326,6 +326,19 @@ is not synthesizable under computer-use (docs/NOTES.md), so it rode the physical
 collapse flag toggled during the run was deleted afterward, leaving the store as found; no errors in
 the log.
 
+Follow-up (2026-07-20, same day — the collapse-with-focus leak, VERIFIED LIVE): now that the sidebar
+can hold first responder, hiding it (⌃⌘S) *while it was focused* stranded keyboard focus on the bare
+window — both panes grey and Tab dead, since Tab is a pane key with no window-level fallback (see
+docs/NOTES.md). `SidebarFocusSplitViewController` subclasses the outer split only to override
+`toggleSidebar(_:)` — the one funnel both the menu/palette and the titlebar button already call —
+capturing whether the sidebar held focus *before* `super` collapses it and handing focus to the
+active pane after. Chosen over a KVO observer, which would race the first-responder move; chosen over
+retargeting the toggle, which would forfeit AppKit's automatic Show/Hide-Sidebar menu title. Verified
+live: focus sidebar → ⌃⌘S → the active pane took focus and Tab switched panes again; toggling the
+sidebar while a *pane* was focused left that pane untouched; the menu title still flipped
+Show↔Hide. A clean launch-and-quit with nothing touched left the collapse store's key absent —
+confirming no code path writes it spuriously.
+
 ## 5. Cross-cutting: testing strategy
 
 | Layer | Approach |

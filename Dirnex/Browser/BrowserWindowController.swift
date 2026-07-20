@@ -11,9 +11,8 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     // Internal for `BrowserWindowController+Sidebar` (⌥⌘S focus reveals then focuses); both set in `loadView`.
     let sidebar = SidebarViewController()
     var sidebarSplitItem: NSSplitViewItem!
-    /// Outer split: `[sidebar, panes]`. Collapsing/expanding the sidebar only ever resizes
-    /// the panes group as a whole.
-    private let splitViewController = NSSplitViewController()
+    /// Outer split `[sidebar, panes]`; subclassed so hiding the focused sidebar returns focus to a pane (§M8).
+    private let splitViewController = SidebarFocusSplitViewController()
     /// Inner split: `[leftPanel, rightPanel]`. Kept separate so the sidebar toggle can't
     /// steal width from just the adjacent pane — the two panes redistribute proportionally in
     /// both directions here, holding their ratio across any number of sidebar toggles.
@@ -205,6 +204,7 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         sidebarItem.canCollapse = true
         splitViewController.addSplitViewItem(sidebarItem)
         sidebarSplitItem = sidebarItem
+        splitViewController.onFocusedCollapse = { [weak self] in self?.focusedPanel.focusTable() }
 
         installTerminalDrawer()
         // The pane stack and the function-key bar share one column so the bar aligns with the
