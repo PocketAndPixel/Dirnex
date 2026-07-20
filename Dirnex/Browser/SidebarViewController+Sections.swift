@@ -32,19 +32,41 @@ extension SidebarViewController {
         rows.firstIndex { $0.section == section }
     }
 
+    /// The section a row belongs to: its own if the row is a header, otherwise the nearest header
+    /// above it. Used by keyboard folding, where the cursor sits on an item but ←/→ act on the
+    /// section around it.
+    func section(containingRow row: Int) -> SidebarSection? {
+        guard rows.indices.contains(row) else { return nil }
+        for index in stride(from: row, through: 0, by: -1) {
+            if let section = rows[index].section { return section }
+        }
+        return nil
+    }
+
     // MARK: - Folding
 
-    /// Fold or unfold the section whose header was clicked.
+    /// Fold or unfold the section whose header was **clicked**.
     ///
     /// Keyboard focus goes back to the active file pane exactly as an empty-space click does. A
     /// header is not a destination, and letting the source list take first responder here would
-    /// silently kill the pane's F5/F6/F8 dispatch (see `SidebarTableView`).
+    /// silently kill the pane's F5/F6/F8 dispatch (see `SidebarTableView`). The keyboard path folds
+    /// through `setSectionCollapsed` directly instead, precisely because it must *keep* sidebar
+    /// focus.
     func toggleSection(atRow row: Int) {
         defer { delegate?.sidebarDidClickEmptyArea(self) }
         guard rows.indices.contains(row), let section = rows[row].section else { return }
+        setSectionCollapsed(!sectionCollapse.isCollapsed(section), for: section)
+    }
+
+    /// Set a section's fold state, persisting it (which rebuilds every open sidebar via the store's
+    /// notification). Returns whether anything changed, so a caller can skip re-selecting or
+    /// re-scrolling on a no-op. Focus-neutral: callers that need focus moved do it themselves.
+    @discardableResult
+    func setSectionCollapsed(_ collapsed: Bool, for section: SidebarSection) -> Bool {
         var collapse = sectionCollapse
-        collapse.toggle(section)
+        guard collapse.setCollapsed(collapsed, for: section) else { return false }
         SidebarSectionCollapseStore.save(collapse)
+        return true
     }
 
     /// Unfold a section, returning whether that changed anything.
@@ -53,10 +75,7 @@ extension SidebarViewController {
     /// pinned into rows the user cannot see, which reads as the drop having done nothing.
     @discardableResult
     func expandSection(_ section: SidebarSection) -> Bool {
-        var collapse = sectionCollapse
-        guard collapse.setCollapsed(false, for: section) else { return false }
-        SidebarSectionCollapseStore.save(collapse)
-        return true
+        setSectionCollapsed(false, for: section)
     }
 
     /// Rebuild when the fold state changes — here or in another window, since one collapse state is

@@ -157,6 +157,7 @@ final class SidebarViewController: NSViewController {
         // A header click folds its section rather than doing nothing (PLAN.md §M8); it re-focuses
         // the active pane too, which is why it doesn't simply reuse `refocusActivePane`.
         tableView.onHeaderClick = { [weak self] row in self?.toggleSection(atRow: row) }
+        registerKeyboardHandlers()
         let clipView = SidebarClipView()
         clipView.onBackgroundClick = refocusActivePane
         scrollView.contentView = clipView
@@ -322,7 +323,15 @@ final class SidebarViewController: NSViewController {
     // MARK: - Actions
 
     @objc private func rowClicked() {
-        let index = tableView.clickedRow
+        activate(rowAt: tableView.clickedRow)
+    }
+
+    /// Run the row's action — navigate to a place/volume, run a saved search or tag query, connect a
+    /// server, or expand the Tags section. Shared by a mouse click (`rowClicked`) and a keyboard
+    /// Return/Space (`SidebarViewController+Keyboard`), so both surfaces dispatch a row exactly one
+    /// way. `internal`, not `private`: the keyboard companion file calls it, and Swift `private`
+    /// doesn't cross files.
+    func activate(rowAt index: Int) {
         guard rows.indices.contains(index) else { return }
         if let savedSearch = rows[index].savedSearch {
             delegate?.sidebar(self, didActivateSavedSearch: savedSearch)
@@ -372,7 +381,10 @@ extension SidebarViewController: NSTableViewDelegate {
     }
 
     func tableView(_ tableView: NSTableView, shouldSelectRow row: Int) -> Bool {
-        !rows[row].isHeader
+        // Headers are keyboard-selectable so arrow navigation can land on one and ←/→/Return fold it
+        // (PLAN.md §M8). The mouse never selects a header: `SidebarTableView.mouseDown` intercepts a
+        // header click and returns before `super`, so a click still folds rather than selects.
+        true
     }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {

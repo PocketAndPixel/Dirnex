@@ -8,7 +8,9 @@ import DirnexCore
 final class BrowserWindowController: NSWindowController, PanelHost {
     let leftPanel: PanelViewController
     let rightPanel: PanelViewController
-    private let sidebar = SidebarViewController()
+    // Internal for `BrowserWindowController+Sidebar` (⌥⌘S focus reveals then focuses); both set in `loadView`.
+    let sidebar = SidebarViewController()
+    var sidebarSplitItem: NSSplitViewItem!
     /// Outer split: `[sidebar, panes]`. Collapsing/expanding the sidebar only ever resizes
     /// the panes group as a whole.
     private let splitViewController = NSSplitViewController()
@@ -202,6 +204,7 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         sidebarItem.maximumThickness = 320
         sidebarItem.canCollapse = true
         splitViewController.addSplitViewItem(sidebarItem)
+        sidebarSplitItem = sidebarItem
 
         installTerminalDrawer()
         // The pane stack and the function-key bar share one column so the bar aligns with the

@@ -43,6 +43,9 @@ enum CommandBinding {
         "select.unselectByPattern": #selector(PanelViewController.unselectFilesByPattern(_:)),
         "view.commandPalette": #selector(AppDelegate.showCommandPalette(_:)),
         "view.toggleSidebar": #selector(NSSplitViewController.toggleSidebar(_:)),
+        // The window controller, not a pane: focusing the source list must reveal a collapsed
+        // sidebar and read the active pane's location, both window-level. Like `view.terminal`.
+        "view.focusSidebar": #selector(BrowserWindowController.focusSidebar(_:)),
         "view.toggleHidden": #selector(PanelViewController.toggleShowHidden(_:)),
         "view.toggleTags": #selector(PanelViewController.toggleShowTags(_:)),
         "view.toggleSyncStatus": #selector(PanelViewController.toggleShowSyncStatus(_:)),

@@ -21,6 +21,18 @@ final class SidebarTableView: NSTableView {
     /// compete with.
     var onHeaderClick: ((Int) -> Void)?
 
+    // Keyboard commands the focused sidebar forwards to its controller (PLAN.md §M8 "Keyboard
+    // access to the sidebar"). Row movement (↑/↓) and type-select are left to `NSTableView`; only
+    // the file-manager-specific keys are intercepted. All are `nil` until the controller wires them.
+    /// Return / Enter — activate the selected row (navigate a place, run a search, fold a header).
+    var onActivateSelection: (() -> Void)?
+    /// Left arrow — collapse the selected row's section, or step out to its header.
+    var onMoveLeft: (() -> Void)?
+    /// Right arrow — expand the selected header, or step into its first row.
+    var onMoveRight: (() -> Void)?
+    /// Tab or Escape — hand keyboard focus back to the active file pane without activating anything.
+    var onReturnToPane: (() -> Void)?
+
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
         let row = row(at: point)
@@ -34,6 +46,31 @@ final class SidebarTableView: NSTableView {
             return
         }
         super.mouseDown(with: event)
+    }
+
+    /// The file-manager keys the focused source list claims; everything else (arrows, type-select)
+    /// falls through to `NSTableView`. Left/Right are no-ops for a single-column table by default,
+    /// so claiming them for fold/step costs nothing.
+    override func keyDown(with event: NSEvent) {
+        switch event.keyCode {
+        case 36, 76: // Return, keypad Enter
+            onActivateSelection?()
+        case 48: // Tab — back to the pane, not the next key view
+            onReturnToPane?()
+        case 123: // Left
+            onMoveLeft?()
+        case 124: // Right
+            onMoveRight?()
+        default:
+            super.keyDown(with: event)
+        }
+    }
+
+    /// Escape reaches AppKit as `cancelOperation:`, not a `keyDown` we can switch on — it leaves the
+    /// sidebar for the active pane, the same exit Tab makes. (Synthetic Escape isn't delivered under
+    /// computer-use, so this path is verified with a physical key press — see docs/NOTES.md.)
+    override func cancelOperation(_ sender: Any?) {
+        onReturnToPane?()
     }
 }
 

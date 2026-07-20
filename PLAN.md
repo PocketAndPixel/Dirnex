@@ -145,7 +145,7 @@ them into one, then earns the sections that follow.
 - [x] **Collapsible sections** — group rows are inert today; with Searches/Favorites/iCloud/
       Volumes/Servers/Tags the list outgrows a laptop pane. Disclosure triangles, per-section
       state persisted
-- [ ] **Keyboard access to the sidebar** — it is mouse-only, in a keyboard-first app. Focus it,
+- [x] **Keyboard access to the sidebar** — it is mouse-only, in a keyboard-first app. Focus it,
       move by row, activate, all without reaching for the trackpad
 - [ ] **iCloud Drive row** — `~/Library/Mobile Documents/com~apple~CloudDocs`, a real directory
       (probed, present). Probe how dataless `.icloud` placeholder stubs list before wiring: size
@@ -283,6 +283,48 @@ state persisted as `["favorites"]` and **survived a relaunch** folded. A folder 
 onto the *collapsed* header unfolded the section and pinned at the drop position in one gesture.
 Removing that pin and deleting the flag left the store byte-identical to how it started; no errors
 in the run log throughout.
+
+Progress (2026-07-20, M8 pass 5 — keyboard access to the sidebar, VERIFIED LIVE): the source list
+is reachable and fully drivable from the keyboard, closing the second exit criterion. Core-first,
+though the core half here is small: the sidebar's *keys* are pure app plumbing, so what landed in
+`DirnexCore` is only the command that names the gesture.
+
+- **`CommandCatalog` gains `view.focusSidebar` on ⌥⌘S** — deliberately the sibling of ⌃⌘S (toggle),
+  because the app has no other spatial focus key and Tab is spoken for by the two-pane switch, which
+  a sidebar joining the cycle would have muddied. Rebindable like every shortcut. A catalog test
+  asserts it is a conflict-free View command distinct from the toggle it sits beside.
+- **The command was the entry that pushed `CommandCatalog.swift` past 500 lines**, so the View…
+  Application category arrays moved to a new `CommandCatalogCategories.swift` (the five widening from
+  `private` to `internal`, since Swift's `private` doesn't cross files); `all` still composes them.
+  The main file dropped to 213.
+- **`SidebarViewController+Keyboard.swift`** (new) is the whole interaction, modelled on
+  `NSOutlineView` adapted to a flat table whose expand/collapse *is* the M8 fold state: **← ** steps
+  an item out to its section header or collapses an open header, **→** expands a closed header or
+  steps into an open one, **Return** activates an item (handing focus back to the pane, so browsing
+  continues there) or folds a header, and **Tab/Escape** leave for the active pane. Headers became
+  keyboard-selectable (`shouldSelectRow` now returns `true`) precisely so ←/→/Return have something
+  to land on — the mouse still never selects one, because `SidebarTableView.mouseDown` intercepts a
+  header click before `super`.
+- **The fold helpers split along the focus seam.** A mouse header-click folds *and hands focus back
+  to the pane*; a keyboard fold must *keep* sidebar focus and re-place the cursor on the header
+  (the store write rebuilds synchronously and clears selection, so the header is re-selected against
+  the fresh rows). `toggleSection(atRow:)` and `setSectionCollapsed(_:for:)` now divide exactly
+  there.
+- **Focusing reveals a collapsed sidebar first** (`BrowserWindowController+Sidebar`, reached through
+  the responder chain like `view.terminal`): focusing an invisible list is a dead keystroke. The
+  cursor lands on the active pane's current location if it is pinned, else the first real row —
+  never a header, so the first thing the user sees highlighted is a destination.
+
+Live verification (real binary, dylib grepped first): ⌥⌘S — the shortcut *and* the menu item, both
+present with the right glyphs — focused the sidebar onto **Home**, the left pane's location; ↑/↓
+moved Home→Desktop→Documents; ← climbed to the Favorites header, ← again collapsed it *keeping the
+header selected across the rebuild*, → re-expanded it, → again stepped into Home; Return on Desktop
+navigated the pane there and **returned focus to the pane** (its `..` row went active-blue while the
+sidebar's selection dimmed to unfocused grey). Tab from the sidebar returned to the pane without
+navigating; Tab from a pane still switched panes — no regression. Escape shares Tab's exit path and
+is not synthesizable under computer-use (docs/NOTES.md), so it rode the physical-key equivalent. The
+collapse flag toggled during the run was deleted afterward, leaving the store as found; no errors in
+the log.
 
 ## 5. Cross-cutting: testing strategy
 

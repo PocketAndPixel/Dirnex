@@ -173,6 +173,19 @@ struct CommandCatalogTests {
         #expect(KeyBindings().conflicts(for: "file.pack").isEmpty)
     }
 
+    @Test("the M8 focus-sidebar command is a conflict-free View command on ⌥⌘S")
+    func coversFocusSidebar() {
+        let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })
+        let focus = byID["view.focusSidebar"]
+        #expect(focus?.category == .view)
+        #expect(focus?.shortcut == CommandShortcut(key: "s", modifiers: [.option, .command]))
+        // Distinct from the ⌃⌘S toggle it sits beside, and colliding with neither it nor anything
+        // else — the whole point of giving keyboard-sidebar its own chord.
+        let toggle = byID["view.toggleSidebar"]?.shortcut
+        #expect(toggle == CommandShortcut(key: "s", modifiers: [.control, .command]))
+        #expect(KeyBindings().conflicts(for: "view.focusSidebar").isEmpty)
+    }
+
     @Test("the show-hidden toggle is a conflict-free View command on ⇧⌘.")
     func coversShowHiddenToggle() {
         let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })
