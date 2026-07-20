@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M7 shipped, M8 unplanned · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
+Status: M0–M7 shipped, M8 planned · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
 
 ---
 
@@ -118,7 +118,46 @@ than an occasional one.
 
 ### Next
 
-_Nothing planned yet. M8 starts here._
+#### M8 — The sidebar as a first-class surface (M)
+
+The sidebar is the one navigation surface the user cannot shape. It shows a hardcoded
+**Favorites** section nobody can touch, while the *actual* user-owned pin list — `Hotlist`,
+with add/remove/rename/reorder already tested in core — hides behind Ctrl+D and a modal
+organizer. Two competing concepts, and the personalizable one is invisible. M8 collapses
+them into one, then earns the sections that follow.
+
+- [ ] **Merge the hotlist into the sidebar's Favorites section** — the pin list *becomes* the
+      section, seeded on first run from `SidebarLocations.favorites()`. That is Finder's own model:
+      user-owned, seeded with the standard folders, any of them removable. Retires the modal
+      organizer; keeps the Ctrl+D menu's bare 1–9 jumps, which are the keyboard half of the feature
+- [ ] **Drag to reorder** — `Hotlist.move(from:to:)` is already core-tested, and
+      `HotlistOrganizerController` already demonstrates the `NSTableView` reorder pattern to lift.
+      Favorites only: Volumes is a mount-table snapshot re-sorted on every mount event, so a user
+      order has nowhere to live
+- [ ] **Drag folders in from a pane** — panes already write `.fileURL` to the pasteboard, so
+      pane → sidebar is a `registerForDraggedTypes` plus `Hotlist.add`. Directories only. A remote
+      (SFTP) folder cannot ride `.fileURL` and needs a private `VFSPath` pasteboard type, or stays
+      menu-only
+- [ ] **Remove from the sidebar** — reuse the `cell.onDelete` affordance the saved-search and
+      server rows already carry
+- [ ] **Collapsible sections** — group rows are inert today; with Searches/Favorites/iCloud/
+      Volumes/Servers/Tags the list outgrows a laptop pane. Disclosure triangles, per-section
+      state persisted
+- [ ] **Keyboard access to the sidebar** — it is mouse-only, in a keyboard-first app. Focus it,
+      move by row, activate, all without reaching for the trackpad
+- [ ] **iCloud Drive row** — `~/Library/Mobile Documents/com~apple~CloudDocs`, a real directory
+      (probed, present). Probe how dataless `.icloud` placeholder stubs list before wiring: size
+      and download-on-access is the part that surprises
+- [ ] **Trash row** — cheaper-looking than it is. `~/.Trash` reads back `Operation not permitted`
+      without Full Disk Access (probed), so it needs a graceful un-granted state tied to the M7 FDA
+      flow. Trash is also per-volume (`/Volumes/X/.Trashes/$uid`), so a single row is a lie on a
+      multi-drive setup; "Put Back" has no public API; and delete-inside-Trash must invert the
+      default move-to-Trash semantics or it is a no-op loop
+- [ ] **Recents row** — Finder's is a saved search, and saved searches already render into virtual
+      result panels, so this reuses machinery instead of adding some
+
+Exit: a folder dragged from a pane lands in the sidebar, is dragged into position, survives a
+relaunch, and is reachable from the keyboard; iCloud Drive and Trash browse like any other location.
 
 ## 5. Cross-cutting: testing strategy
 
@@ -154,4 +193,10 @@ change, not a free choice:
 - **Name/brand check for "Dirnex"** — resolved 2026-07-19: the name is free, cleared by the
   user, no conflicting prior marks. The `NOTICE` / `TRADEMARKS.md` carve-out stands as written.
 
-New questions go here as M8 takes shape.
+Open as M8 takes shape:
+
+- **Seeding an existing hotlist** — the Favorites merge seeds the pin list from the standard
+  places, but an existing user already has pins. Do the seeded places go above what they pinned
+  (familiar sidebar, their own entries pushed down) or below (their pins keep pride of place, the
+  sidebar reads unlike Finder's)? Needs a one-shot "seeded" flag either way, so it is a real
+  migration and not a first-run branch.
