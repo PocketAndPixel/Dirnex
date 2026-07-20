@@ -53,7 +53,7 @@ extension SidebarViewController {
     }
 
     /// One management item, carrying the search's *name* so a mid-open store change can't act
-    /// on the wrong (index-shifted) search — mirroring the hotlist/workspace popups.
+    /// on the wrong (index-shifted) search — mirroring the favorites/workspace popups.
     private func savedSearchMenuItem(_ title: String, _ action: Selector, _ name: String) -> NSMenuItem {
         let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
         item.target = self

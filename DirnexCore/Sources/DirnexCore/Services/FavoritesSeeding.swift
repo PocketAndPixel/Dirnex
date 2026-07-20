@@ -1,17 +1,17 @@
 import Foundation
 
-/// Merging standard places into the pin list — the ordering half of PLAN.md §M8 "the hotlist
+/// Merging standard places into the pin list — the ordering half of PLAN.md §M8 "the favorites
 /// *becomes* the sidebar's Favorites section".
 ///
-/// The once-only trigger and the `UserDefaults` flag behind it are app policy (`HotlistStore`
+/// The once-only trigger and the `UserDefaults` flag behind it are app policy (`FavoritesStore`
 /// owns those, as it owns the rest of the persistence); what lives here is the rule for how a
 /// seeded list and a user's existing pins interleave, so it stays unit-testable headless like
-/// the rest of `Hotlist`.
-public extension HotlistEntry {
+/// the rest of `Favorites`.
+public extension FavoriteEntry {
     /// Pin a standard place under its *place* name rather than its folder name.
     ///
     /// Not cosmetic, and the reason this exists instead of the conversion being inlined at the
-    /// call site: `HotlistEntry(path:)` derives the label from the path's last component, which
+    /// call site: `FavoriteEntry(path:)` derives the label from the path's last component, which
     /// for `/Users/oleg` is the account name. Seeding through the generic initializer would put a
     /// row called "oleg" at the top of every sidebar.
     init(place: FavoritePlace) {
@@ -19,7 +19,7 @@ public extension HotlistEntry {
     }
 }
 
-public extension Hotlist {
+public extension Favorites {
     /// Insert `newEntries` at the front, ahead of everything already pinned.
     ///
     /// A path present in both lands **at the prepended position, under the prepended name** —
@@ -35,9 +35,9 @@ public extension Hotlist {
     ///
     /// Returns whether the list actually changed, so a caller can skip a needless write.
     @discardableResult
-    mutating func prepend(_ newEntries: [HotlistEntry]) -> Bool {
+    mutating func prepend(_ newEntries: [FavoriteEntry]) -> Bool {
         let before = entries
-        self = Hotlist(entries: newEntries + before)
+        self = Favorites(entries: newEntries + before)
         return entries != before
     }
 }

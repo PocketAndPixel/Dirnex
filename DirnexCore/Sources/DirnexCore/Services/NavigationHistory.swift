@@ -7,7 +7,7 @@ import Foundation
 ///
 /// A pure value type with no persistence or AppKit — the app owns the tab that stores it
 /// and the popup UI, this owns the trail rules so they stay unit-testable headless
-/// (matching `Panel`, `Hotlist`, and the command registry). Session-scoped: each tab
+/// (matching `Panel`, `Favorites`, and the command registry). Session-scoped: each tab
 /// seeds a fresh history at its starting directory (frecency's persistent visit tracking
 /// is the separate M3 item that follows).
 public struct NavigationHistory: Sendable, Equatable {

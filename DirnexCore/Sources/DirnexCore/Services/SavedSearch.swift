@@ -31,7 +31,7 @@ public struct SavedSearch: Sendable, Equatable, Identifiable, Codable {
 /// An ordered, name-de-duplicated collection of saved searches — the model behind the sidebar's
 /// Searches section and its right-click management. A pure value type with no persistence or
 /// AppKit: the app owns the `UserDefaults` store and the sidebar UI, this owns the ordering and
-/// naming rules so they stay unit-testable headless (matching `Workspaces` and `Hotlist`).
+/// naming rules so they stay unit-testable headless (matching `Workspaces` and `Favorites`).
 public struct SavedSearches: Sendable, Equatable, Codable {
     /// The saved searches in user order — the order the sidebar presents.
     public private(set) var searches: [SavedSearch]
@@ -97,7 +97,7 @@ public struct SavedSearches: Sendable, Equatable, Codable {
     }
 
     /// Reorder: pull the search out of `source` and reinsert it so it lands at `destination` in
-    /// the *resulting* list (Array semantics, matching the hotlist/workspace reorder).
+    /// the *resulting* list (Array semantics, matching the favorites/workspace reorder).
     public mutating func move(from source: Int, to destination: Int) {
         guard searches.indices.contains(source) else { return }
         let search = searches.remove(at: source)

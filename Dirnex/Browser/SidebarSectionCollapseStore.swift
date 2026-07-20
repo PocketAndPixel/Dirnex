@@ -2,7 +2,7 @@ import DirnexCore
 import Foundation
 
 /// App-wide persistence for which sidebar sections are folded shut (PLAN.md §M8 "Disclosure
-/// triangles, per-section state persisted"). Boring JSON in `UserDefaults`, like `HotlistStore`
+/// triangles, per-section state persisted"). Boring JSON in `UserDefaults`, like `FavoritesStore`
 /// and `SavedSearchStore` beside it.
 ///
 /// **One state shared by every window, not one per window.** "Persisted" and "per window" pull in

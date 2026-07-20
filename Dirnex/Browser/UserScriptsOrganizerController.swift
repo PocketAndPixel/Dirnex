@@ -9,7 +9,7 @@ import DirnexCore
 /// Presented over the browser window via `presentAsSheet`, which retains it. Every edit is written
 /// straight to `UserScriptStore` (which posts its change notification, so an open palette picks the
 /// change up on its next open), so closing — by Done or Escape — always persists the current state,
-/// exactly like the hotlist / saved-search organizers.
+/// exactly like the favorites / saved-search organizers.
 @MainActor
 final class UserScriptsOrganizerController: NSViewController {
     private var scripts = UserScriptStore.load()

@@ -60,7 +60,7 @@ DirnexCore
 │   ├── ConflictPolicy: ask / overwrite / skip / keep-both / newer-only
 │   └── UndoJournal: reversible record per operation (SQLite)
 └── Services
-    ├── Frecency store · Hotlist · History
+    ├── Frecency store · Favorites · History
     ├── Search (mdfind + streamed content grep)
     └── GitStatusProvider (M6)
 ```
@@ -121,21 +121,21 @@ than an occasional one.
 #### M8 — The sidebar as a first-class surface (M)
 
 The sidebar is the one navigation surface the user cannot shape. It shows a hardcoded
-**Favorites** section nobody can touch, while the *actual* user-owned pin list — `Hotlist`,
+**Favorites** section nobody can touch, while the *actual* user-owned pin list — `Favorites`,
 with add/remove/rename/reorder already tested in core — hides behind Ctrl+D and a modal
 organizer. Two competing concepts, and the personalizable one is invisible. M8 collapses
 them into one, then earns the sections that follow.
 
-- [x] **Merge the hotlist into the sidebar's Favorites section** — the pin list *becomes* the
+- [x] **Merge the favorites into the sidebar's Favorites section** — the pin list *becomes* the
       section, seeded on first run from `SidebarLocations.favorites()`. That is Finder's own model:
       user-owned, seeded with the standard folders, any of them removable. Retires the modal
       organizer; keeps the Ctrl+D menu's bare 1–9 jumps, which are the keyboard half of the feature
-- [x] **Drag to reorder** — `Hotlist.move(from:to:)` is already core-tested, and
-      `HotlistOrganizerController` already demonstrates the `NSTableView` reorder pattern to lift.
+- [x] **Drag to reorder** — `Favorites.move(from:to:)` is already core-tested, and
+      `FavoritesOrganizerController` already demonstrates the `NSTableView` reorder pattern to lift.
       Favorites only: Volumes is a mount-table snapshot re-sorted on every mount event, so a user
       order has nowhere to live
 - [x] **Drag folders in from a pane** — panes already write `.fileURL` to the pasteboard, so
-      pane → sidebar is a `registerForDraggedTypes` plus ~~`Hotlist.add`~~ **`Hotlist.insert(_:at:)`**
+      pane → sidebar is a `registerForDraggedTypes` plus ~~`Favorites.add`~~ **`Favorites.insert(_:at:)`**
       (a drop has a position; `add` only appends). Directories only. A remote
       (SFTP) folder cannot ride `.fileURL` and needs a private `VFSPath` pasteboard type, or stays
       menu-only — still true, still menu-only
@@ -167,13 +167,13 @@ no store flag, no sidebar section, no app wiring yet; this is only the model. On
 plus two additive functions, so the app is untouched and needed no rebuild (its suite was run
 anyway, since the core it links changed).
 
-- **`Services/HotlistSeeding.swift`** — `Hotlist.prepend(_:)`, the seed-vs-pins ordering rule, and
-  `HotlistEntry(place:)`. `prepend` does **not** reimplement de-duplication: `init(entries:)`
+- **`Services/FavoritesSeeding.swift`** — `Favorites.prepend(_:)`, the seed-vs-pins ordering rule, and
+  `FavoriteEntry(place:)`. `prepend` does **not** reimplement de-duplication: `init(entries:)`
   already collapses duplicate paths keeping the *first* occurrence, so prepending and
   re-initializing yields the decided semantic (seed wins, at the seeded position, under the seeded
   name) out of the rule that already existed. It returns whether the list actually changed, so the
-  app can skip a needless write. `HotlistEntry(place:)` exists because the generic
-  `HotlistEntry(path:)` derives its label from the path's last component — which for `/Users/oleg`
+  app can skip a needless write. `FavoriteEntry(place:)` exists because the generic
+  `FavoriteEntry(path:)` derives its label from the path's last component — which for `/Users/oleg`
   is the account name, so seeding through it would put a row called "oleg" atop every sidebar.
 - **`VFS/Places.swift`** — `SidebarLocations.standardKind(for:home:)`, the icon lookup. Once
   Favorites is a pin list its rows arrive as bare paths rather than pre-tagged `FavoritePlace`s, and
@@ -190,13 +190,13 @@ section now *is* the pin list. **Box stays `[ ]` for one reason only**: the moda
 deliberately still alive, because retiring it before the sidebar has drag-reorder would leave no way
 to reorder at all. It retires when the drag slice lands, not before.
 
-- **`HotlistStore`** — gained `didChangeNotification` (posted on save, matching `SavedSearchStore`)
+- **`FavoritesStore`** — gained `didChangeNotification` (posted on save, matching `SavedSearchStore`)
   and `seedStandardPlacesIfNeeded()`, called from `applicationDidFinishLaunching` before any window
   builds a sidebar. The seeded flag is set **even when the merge changes nothing**, so the migration
   is genuinely once: a fresh install whose `~` has no Desktop yet must not quietly re-seed on some
   later launch.
-- **`SidebarViewController`** — `Row.place(FavoritePlace)` became `Row.favorite(HotlistEntry)`;
-  `rebuild()` reads `HotlistStore`. The Favorites header is now rendered **even when the section is
+- **`SidebarViewController`** — `Row.place(FavoritePlace)` became `Row.favorite(FavoriteEntry)`;
+  `rebuild()` reads `FavoritesStore`. The Favorites header is now rendered **even when the section is
   empty**, unlike every other section: it is the drop target for dragging a folder in, so hiding it
   would hide the way back from having removed everything.
 - **`SidebarViewController+Favorites.swift`** (new) — cell rendering and the Open / Rename… /
@@ -210,7 +210,7 @@ to reorder at all. It retires when the drag slice lands, not before.
   glyph table moved to the companion file. It sits at 494.
 
 Live verification (real store, real binary — the debug dylib was grepped first to prove the new code
-was actually in it): the migration ran against a hotlist that already held one pin, `Dev`, and
+was actually in it): the migration ran against a favorites that already held one pin, `Dev`, and
 produced exactly the decided shape — eight standard places, then `Dev`. Favorites rendered all nine
 with their per-kind symbols and `Dev` correctly falling back to a plain folder, which is the
 regression `standardKind` exists to prevent and which no test would have caught. ⌃D showed the same
@@ -223,7 +223,7 @@ and with them the first four boxes close. **The modal organizer is now deleted**
 alive through pass 2 precisely so that reorder never disappeared between the two passes, and the
 sidebar only earned its removal once dragging worked.
 
-- **`Hotlist.insert(_:at:)`** (core, tested) — the drop half, where `move` is the reorder half.
+- **`Favorites.insert(_:at:)`** (core, tested) — the drop half, where `move` is the reorder half.
   `add` could not serve: a drop has a *position*. A path already pinned **repositions and keeps its
   existing entry** rather than duplicating, so a user-given name survives being dragged — the same
   refusal-to-rename `add` already had on a duplicate.
@@ -235,7 +235,7 @@ sidebar only earned its removal once dragging worked.
   real answer. Files among the dragged URLs are filtered out: a pin navigates a pane to a folder, so
   a pinned file would be a row that cannot do the one thing a row does.
 - **The off-by-one**: `NSTableView` reports a drop as an insertion index in *pre-removal*
-  coordinates while `Hotlist.move` takes a destination in the resulting list. Both directions were
+  coordinates while `Favorites.move` takes a destination in the resulting list. Both directions were
   driven live for exactly this reason — an upward move is unaffected by the adjustment and would
   have passed either way.
 - Room for all this came from *removing* code: the saved-search and server cell rendering moved into
@@ -244,7 +244,7 @@ sidebar only earned its removal once dragging worked.
 Live verification: `Dev` dragged from last position to second and back, landing exactly where the
 insertion line showed each time; `~/Public` dragged in from a pane and pinned; a **file** dragged
 over the sidebar drew no insertion line and pinned nothing. The store finished byte-identical to
-how it started. ⌃D still lists the same rows with 1–9 intact and no gap where "Organize Hotlist…"
+how it started. ⌃D still lists the same rows with 1–9 intact and no gap where "Organize Favorites…"
 used to be.
 
 Progress (2026-07-20, M8 pass 4 — collapsible sections, VERIFIED LIVE): every header now folds its
@@ -539,13 +539,13 @@ change, not a free choice:
 
 Opened and closed during M8:
 
-- **Seeding an existing hotlist** — resolved 2026-07-20: **standard places lead, existing pins
+- **Seeding an existing favorites** — resolved 2026-07-20: **standard places lead, existing pins
   follow.** The sidebar therefore looks unchanged on the launch after the merge, which matters more
   than the one thing it costs: a path pinned under a custom label ("Dl" for Downloads) is reclaimed
   as the standard row and loses that label. The alternatives were pins-first (nothing the user chose
   moves, but the sidebar's top rows change on update) and seeding fresh installs only (honest about
   ownership, but Home/Desktop/Documents visibly vanish on update). Still needs a one-shot "seeded"
-  flag in `HotlistStore`, so it is a real migration and not a first-run branch.
+  flag in `FavoritesStore`, so it is a real migration and not a first-run branch.
 
 Open for M10 (Google Drive), still undecided:
 

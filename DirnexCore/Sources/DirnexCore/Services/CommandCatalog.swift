@@ -100,7 +100,7 @@ public enum CommandCatalog {
             title: "Tags…",
             category: .file,
             keywords: ["finder", "tag", "label", "colour", "color", "mark"],
-            // ⌃T next to ⌃D's hotlist and ⌃Q's quick view — the control layer is where this app's
+            // ⌃T next to ⌃D's favorites and ⌃Q's quick view — the control layer is where this app's
             // own popups live, and ⌘T is already New Tab.
             shortcut: CommandShortcut(key: "t", modifiers: .control)
         ),

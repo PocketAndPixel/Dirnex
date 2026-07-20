@@ -2,7 +2,7 @@ import AppKit
 import DirnexCore
 
 /// Drag-and-drop for the sidebar's Favorites section (PLAN.md §M8): reordering pins by dragging
-/// them, and pinning a folder by dragging it in from a pane. Both land in `Hotlist`, whose
+/// them, and pinning a folder by dragging it in from a pane. Both land in `Favorites`, whose
 /// `move(from:to:)` and `insert(_:at:)` own the ordering rules and are tested headless; what lives
 /// here is the mapping between `NSTableView`'s row indices and the pin list's own.
 ///
@@ -12,7 +12,7 @@ import DirnexCore
 extension SidebarViewController {
     /// Identifies our own row drag on the pasteboard. Checking for this type is more reliable than
     /// comparing dragging-source identity, which a synthetic drag doesn't preserve (the lesson the
-    /// hotlist organizer's reorder already encodes).
+    /// favorites organizer's reorder already encodes).
     static let favoriteRowType = NSPasteboard.PasteboardType("com.dirnex.sidebar.favorite-row")
 
     /// Called from `loadView`. Accepts our own rows (reorder) and file URLs (a folder dragged in
@@ -81,17 +81,17 @@ extension SidebarViewController {
     ) -> Bool {
         let base = favoriteDropRange.lowerBound
         let index = clampedToFavorites(row) - base
-        var hotlist = HotlistStore.load()
+        var favorites = FavoritesStore.load()
 
         if let raw = info.draggingPasteboard.string(forType: Self.favoriteRowType),
            let sourceRow = Int(raw) {
             // `NSTableView` reports the drop as an insertion index in *pre-removal* coordinates,
-            // while `Hotlist.move` takes a destination in the resulting list — so a move further
+            // while `Favorites.move` takes a destination in the resulting list — so a move further
             // down shifts by one to land where the gap was. Same adjustment the organizer sheet
             // makes; it is the one off-by-one this whole feature hinges on.
             let source = sourceRow - base
-            hotlist.move(from: source, to: index > source ? index - 1 : index)
-            HotlistStore.save(hotlist)
+            favorites.move(from: source, to: index > source ? index - 1 : index)
+            FavoritesStore.save(favorites)
             return true
         }
 
@@ -99,11 +99,11 @@ extension SidebarViewController {
         guard !directories.isEmpty else { return false }
         var changed = false
         for (offset, url) in directories.enumerated() {
-            let entry = HotlistEntry(path: .local(url.path))
-            changed = hotlist.insert(entry, at: index + offset) || changed
+            let entry = FavoriteEntry(path: .local(url.path))
+            changed = favorites.insert(entry, at: index + offset) || changed
         }
         guard changed else { return false }
-        HotlistStore.save(hotlist)
+        FavoritesStore.save(favorites)
         // A drop onto a folded Favorites section unfolds it. The pin is otherwise filed into rows
         // that are not on screen, which is indistinguishable from the drag having been refused.
         expandSection(.favorites)
@@ -119,7 +119,7 @@ extension SidebarViewController {
     }
 
     /// The directories among the dragged file URLs. Files are dropped silently rather than pinned:
-    /// a hotlist entry navigates a pane to a folder, so a pinned file would be a row that cannot do
+    /// a favorites entry navigates a pane to a folder, so a pinned file would be a row that cannot do
     /// the one thing a row does.
     private func droppedDirectories(from info: any NSDraggingInfo) -> [URL] {
         let options: [NSPasteboard.ReadingOptionKey: Any] = [.urlReadingFileURLsOnly: true]

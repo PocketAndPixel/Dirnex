@@ -67,9 +67,9 @@ extension PanelViewController: NSMenuItemValidation {
             // Like ⌃D, let ⌥↓ reach a field editor while a name/path field is being edited
             // instead of stealing it to open the history popup.
             return !(view.window?.firstResponder is NSText)
-        case #selector(showHotlist(_:)):
+        case #selector(showFavorites(_:)):
             // While a name/path field is being edited, let ⌃D fall through to the field
-            // editor's delete-forward instead of stealing it to open the hotlist.
+            // editor's delete-forward instead of stealing it to open the favorites.
             return !(view.window?.firstResponder is NSText)
         case #selector(openInTerminal(_:)):
             // Needs a real directory on disk (never an archive, an SFTP server, or a results tab)

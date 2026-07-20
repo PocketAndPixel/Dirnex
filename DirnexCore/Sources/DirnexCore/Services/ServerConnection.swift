@@ -126,7 +126,7 @@ public struct ServerConnections: Sendable, Equatable, Codable {
     }
 
     /// Reorder: pull the connection out of `source` and reinsert it so it lands at `destination` in
-    /// the *resulting* list (Array semantics, matching the saved-search/hotlist reorder).
+    /// the *resulting* list (Array semantics, matching the saved-search/favorites reorder).
     public mutating func move(from source: Int, to destination: Int) {
         guard connections.indices.contains(source) else { return }
         let connection = connections.remove(at: source)

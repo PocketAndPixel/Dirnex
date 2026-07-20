@@ -1,9 +1,9 @@
 import Foundation
 
-/// One pinned directory in the hotlist (PLAN.md §M3 "Directory hotlist (Ctrl+D): pin,
+/// One pinned directory in the favorites (PLAN.md §M3 "Directory favorites (Ctrl+D): pin,
 /// reorder, jump").
-public struct HotlistEntry: Sendable, Hashable, Identifiable, Codable {
-    /// The label shown in the hotlist menu and organizer. Defaults to the folder's own
+public struct FavoriteEntry: Sendable, Hashable, Identifiable, Codable {
+    /// The label shown in the favorites menu and organizer. Defaults to the folder's own
     /// name but is user-editable, so a short "Projects" can stand in for a deep path.
     public var name: String
     /// Where the entry jumps to — and the entry's identity: a path is pinned at most once.
@@ -23,15 +23,15 @@ public struct HotlistEntry: Sendable, Hashable, Identifiable, Codable {
 }
 
 /// An ordered, de-duplicated list of pinned directories — the model behind the Ctrl+D
-/// hotlist (PLAN.md §M3). A pure value type with no persistence or AppKit: the app owns the
+/// favorites (PLAN.md §M3). A pure value type with no persistence or AppKit: the app owns the
 /// `UserDefaults` store and the menu/organizer UI, this owns the ordering rules so they stay
 /// unit-testable headless (matching `Panel`, `SidebarLocations`, and the command registry).
-public struct Hotlist: Sendable, Equatable, Codable {
+public struct Favorites: Sendable, Equatable, Codable {
     /// The pinned entries in user order — the order the menu and organizer present, and the
     /// order the organizer's drag-reorder rewrites.
-    public private(set) var entries: [HotlistEntry]
+    public private(set) var entries: [FavoriteEntry]
 
-    public init(entries: [HotlistEntry] = []) {
+    public init(entries: [FavoriteEntry] = []) {
         // Collapse duplicate paths on the way in (a hand-edited or legacy store), keeping the
         // first occurrence so a path maps to a single position.
         var seen = Set<VFSPath>()
@@ -47,7 +47,7 @@ public struct Hotlist: Sendable, Equatable, Codable {
     /// (re-pinning never duplicates an entry or disturbs its position). Returns whether it was
     /// actually added.
     @discardableResult
-    public mutating func add(_ entry: HotlistEntry) -> Bool {
+    public mutating func add(_ entry: FavoriteEntry) -> Bool {
         guard !contains(entry.path) else { return false }
         entries.append(entry)
         return true
@@ -83,10 +83,10 @@ public struct Hotlist: Sendable, Equatable, Codable {
     ///
     /// Returns whether the list actually changed, so a caller can skip a needless write.
     @discardableResult
-    public mutating func insert(_ entry: HotlistEntry, at index: Int) -> Bool {
+    public mutating func insert(_ entry: FavoriteEntry, at index: Int) -> Bool {
         let before = entries
         var working = entries
-        var repositioned: HotlistEntry?
+        var repositioned: FavoriteEntry?
         if let existing = working.firstIndex(where: { $0.path == entry.path }) {
             repositioned = working.remove(at: existing)
         }
@@ -114,7 +114,7 @@ public struct Hotlist: Sendable, Equatable, Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         // Route decoding through the de-duplicating initializer so a legacy/corrupt store is
         // sanitized on the way back in.
-        self.init(entries: try container.decode([HotlistEntry].self, forKey: .entries))
+        self.init(entries: try container.decode([FavoriteEntry].self, forKey: .entries))
     }
 
     public func encode(to encoder: any Encoder) throws {

@@ -41,9 +41,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ArchiveWriter.purgeTemporaries()
 
         // Merge the standard places into the pin list before any window builds its sidebar
-        // (PLAN.md §M8) — the Favorites section reads the hotlist now, so an un-seeded store
+        // (PLAN.md §M8) — the Favorites section reads the favorites now, so an un-seeded store
         // would render an empty section for one launch.
-        HotlistStore.seedStandardPlacesIfNeeded()
+        FavoritesStore.seedStandardPlacesIfNeeded()
 
         // Rebuild the registry-driven menu whenever the user rebinds a shortcut, so the new
         // key equivalents take effect immediately (PLAN.md §M3 "rebindable shortcuts").

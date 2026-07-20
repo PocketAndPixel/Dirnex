@@ -69,7 +69,7 @@ extension CommandCatalog {
                 "largest", "what is taking up"
             ],
             // ⌃B for "bars", on the ⌃-letter layer the app's own panel modes already use (⌃Q quick
-            // view, ⌃T tags, ⌃D hotlist). No conflict with the terminal drawer's reasoning: that one
+            // view, ⌃T tags, ⌃D favorites). No conflict with the terminal drawer's reasoning: that one
             // fled to ⌃` precisely because its keystrokes belong to a shell, and this mode's do not.
             shortcut: CommandShortcut(key: "b", modifiers: .control)
         ),
@@ -115,7 +115,7 @@ extension CommandCatalog {
             title: "Terminal Drawer",
             category: .view,
             keywords: ["shell", "console", "command", "line", "zsh", "bash", "prompt", "drawer"],
-            // ⌃` rather than the ⌃-letter layer the app's own popups use (⌃T tags, ⌃D hotlist,
+            // ⌃` rather than the ⌃-letter layer the app's own popups use (⌃T tags, ⌃D favorites,
             // ⌃Q quick view): every one of those letters means something to a shell — ⌃D is EOF,
             // ⌃Q is XON — and the drawer is the one surface where the user's keystrokes are meant
             // to belong to somebody else. ⌃` is VS Code's gesture for exactly this drawer, and no
@@ -203,15 +203,27 @@ extension CommandCatalog {
             shortcut: CommandShortcut(key: "↓", modifiers: [.option, .function])
         ),
         Command(
+            // `id` keeps its legacy `hotlist` spelling: it's the key user keybindings persist
+            // under, and renaming it would silently drop any custom shortcut. Only the visible
+            // title now reads "Favorites"; "hotlist" survives as a search keyword for the
+            // Total Commander muscle memory that reaches for it.
             id: "go.hotlist",
-            title: "Directory Hotlist…",
+            title: "Favorites…",
             category: .navigation,
-            keywords: ["favorites", "bookmarks", "pinned", "jump", "ctrl d"],
+            keywords: [
+                "favorites",
+                "bookmarks",
+                "pinned",
+                "jump",
+                "ctrl d",
+                "hotlist",
+                "directory hotlist"
+            ],
             shortcut: CommandShortcut(key: "d", modifiers: .control)
         ),
         Command(
             id: "go.addToHotlist",
-            title: "Add to Hotlist",
+            title: "Add to Favorites",
             category: .navigation,
             keywords: ["pin", "bookmark", "favorite", "hotlist"]
         )

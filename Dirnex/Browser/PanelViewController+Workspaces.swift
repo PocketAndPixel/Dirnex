@@ -6,7 +6,7 @@ import DirnexCore
 /// tabs — so the capture/restore that spans the two panes lives on the window controller
 /// (`BrowserWindowController+Workspaces`); the pane owns the per-pane snapshot/restore and the
 /// menu/palette actions, dispatched to the focused pane via the responder chain like the
-/// hotlist. The shared list lives in `WorkspaceStore`; reorder/rename/delete happen in the
+/// favorites. The shared list lives in `WorkspaceStore`; reorder/rename/delete happen in the
 /// organizer sheet (`WorkspaceOrganizerController`).
 extension PanelViewController {
     // MARK: - Snapshot / restore (one pane)
@@ -99,7 +99,7 @@ extension PanelViewController {
 
     /// One switch item, carrying its workspace *name* so a mid-open store change can't restore
     /// the wrong (index-shifted) workspace. The first nine get a bare 1–9 accelerator, usable
-    /// while the menu is open (matching the hotlist popup).
+    /// while the menu is open (matching the favorites popup).
     private func workspaceItem(for workspace: Workspace, index: Int) -> NSMenuItem {
         let item = NSMenuItem(
             title: workspace.name,

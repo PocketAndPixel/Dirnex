@@ -2,7 +2,7 @@ import AppKit
 import DirnexCore
 
 /// The sidebar's Favorites section: rendering a pinned folder and managing it in place
-/// (PLAN.md §M8 "the hotlist *becomes* the sidebar's Favorites section"). Split out of
+/// (PLAN.md §M8 "the favorites *becomes* the sidebar's Favorites section"). Split out of
 /// `SidebarViewController` so that file stays under the length limit; `menuNeedsUpdate` and
 /// `tableView(_:viewFor:row:)` (in the main file) dispatch here for a favorite row.
 extension SidebarViewController {
@@ -15,7 +15,7 @@ extension SidebarViewController {
     /// eight, and eight always-visible trash buttons turn the top of the sidebar into a row of
     /// hazards over the folders the user reaches for most. Removal lives in the right-click menu,
     /// which is where Finder puts it too.
-    func favoriteCell(for entry: HotlistEntry) -> NSView {
+    func favoriteCell(for entry: FavoriteEntry) -> NSView {
         let cell = reuse(SidebarCellView.identifier) as? SidebarCellView ?? SidebarCellView()
         cell.configure(
             name: entry.name,
@@ -59,7 +59,7 @@ extension SidebarViewController {
     // MARK: - Right-click menu
 
     /// Populate `menu` with the Open / Rename / Remove items for `entry`.
-    func buildFavoriteMenu(_ menu: NSMenu, for entry: HotlistEntry) {
+    func buildFavoriteMenu(_ menu: NSMenu, for entry: FavoriteEntry) {
         menu.addItem(favoriteMenuItem("Open", #selector(openFavoriteItem(_:)), entry.path))
         menu.addItem(.separator())
         menu.addItem(favoriteMenuItem("Rename…", #selector(renameFavoriteItem(_:)), entry.path))
@@ -85,13 +85,13 @@ extension SidebarViewController {
 
     @objc private func renameFavoriteItem(_ sender: NSMenuItem) {
         guard let path = sender.representedObject as? VFSPath,
-              let current = HotlistStore.load().entries.first(where: { $0.path == path })?.name,
+              let current = FavoritesStore.load().entries.first(where: { $0.path == path })?.name,
               let newName = promptForFavoriteRename(current: current), newName != current else {
             return
         }
-        var hotlist = HotlistStore.load()
-        hotlist.rename(path: path, to: newName)
-        HotlistStore.save(hotlist)
+        var favorites = FavoritesStore.load()
+        favorites.rename(path: path, to: newName)
+        FavoritesStore.save(favorites)
     }
 
     /// Remove a pin. No confirmation: unlike deleting a saved search — which discards a query the
@@ -99,8 +99,8 @@ extension SidebarViewController {
     /// exactly where it was, and re-adding it is one drag. A sheet here would be theatre.
     @objc private func removeFavoriteItem(_ sender: NSMenuItem) {
         guard let path = sender.representedObject as? VFSPath else { return }
-        var hotlist = HotlistStore.load()
-        if hotlist.remove(path: path) { HotlistStore.save(hotlist) }
+        var favorites = FavoritesStore.load()
+        if favorites.remove(path: path) { FavoritesStore.save(favorites) }
     }
 
     /// Ask for a new label, prefilled with the current one; `nil` on cancel or an empty name.

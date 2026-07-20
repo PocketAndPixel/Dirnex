@@ -50,9 +50,9 @@ final class SidebarViewController: NSViewController {
         /// results panel (PLAN.md §M8). Carries nothing — like a saved search it dispatches a query,
         /// not a place, so it has no path and no stored model.
         case recents
-        /// A pinned folder in the user-owned Favorites section — the hotlist, which since M8 *is*
+        /// A pinned folder in the user-owned Favorites section — the favorites, which since M8 *is*
         /// this section rather than a separate popup (PLAN.md §M8).
-        case favorite(HotlistEntry)
+        case favorite(FavoriteEntry)
         /// The user's iCloud Drive: a fixed system row in its own section (PLAN.md §M8). Carries its
         /// path directly — it is one known location, not a stored model like a pin or a volume.
         case iCloud(VFSPath)
@@ -87,7 +87,7 @@ final class SidebarViewController: NSViewController {
             }
         }
 
-        var favorite: HotlistEntry? {
+        var favorite: FavoriteEntry? {
             if case let .favorite(entry) = self { return entry }
             return nil
         }
@@ -192,7 +192,7 @@ final class SidebarViewController: NSViewController {
         super.viewDidLoad()
         observeVolumeChanges()
         observeSectionCollapseChanges()
-        observeHotlistChanges()
+        observeFavoritesChanges()
         observeSavedSearchChanges()
         observeServerConnectionChanges()
         observeServerConnectionActivity()
@@ -230,7 +230,7 @@ final class SidebarViewController: NSViewController {
         // keeps its header when empty; `append` documents why.
         append(
             .favorites,
-            items: HotlistStore.load().entries.map(Row.favorite),
+            items: FavoritesStore.load().entries.map(Row.favorite),
             showsEmptyHeader: true,
             to: &rows
         )
@@ -277,16 +277,16 @@ final class SidebarViewController: NSViewController {
 
     /// Rebuild when the shared pin list changes — a pin from ⌃D, a rename or removal here, or the
     /// same in another window, shows up live in the Favorites section (PLAN.md §M8).
-    private func observeHotlistChanges() {
+    private func observeFavoritesChanges() {
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(hotlistChanged),
-            name: HotlistStore.didChangeNotification,
+            selector: #selector(favoritesChanged),
+            name: FavoritesStore.didChangeNotification,
             object: nil
         )
     }
 
-    @objc private func hotlistChanged() {
+    @objc private func favoritesChanged() {
         rebuild()
     }
 

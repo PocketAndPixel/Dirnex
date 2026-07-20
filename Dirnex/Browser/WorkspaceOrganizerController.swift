@@ -7,7 +7,7 @@ import DirnexCore
 /// which retains it for its on-screen lifetime. Every edit is saved to `WorkspaceStore`
 /// immediately, so closing — by Done or otherwise — always persists the current order.
 ///
-/// This was one of a pair with `HotlistOrganizerController`, which M8 retired once the sidebar's
+/// This was one of a pair with `FavoritesOrganizerController`, which M8 retired once the sidebar's
 /// Favorites section gained drag-reorder and an in-place right-click menu. Workspaces have no such
 /// section to move into, so this sheet stays. Its notable difference from the retired one is
 /// rename, which can be rejected (an empty or already-used name) because a workspace's name is its

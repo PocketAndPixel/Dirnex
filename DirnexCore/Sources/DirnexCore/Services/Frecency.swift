@@ -26,9 +26,9 @@ public struct FrecencyEntry: Sendable, Hashable, Codable {
 /// ('dl' → ~/Downloads)").
 ///
 /// A pure value type with no persistence or AppKit: the app owns the store (JSON in
-/// `UserDefaults`, like `TabPersistence`/`HotlistStore`; the plan pencils in SQLite for
+/// `UserDefaults`, like `TabPersistence`/`FavoritesStore`; the plan pencils in SQLite for
 /// when undo shares the DB) and the path-bar UI, this owns the scoring and matching rules
-/// so they stay unit-testable headless (matching `Panel`, `Hotlist`, `NavigationHistory`).
+/// so they stay unit-testable headless (matching `Panel`, `Favorites`, `NavigationHistory`).
 ///
 /// Scoring follows zoxide: each visit adds one to a directory's `rank`, and the score a
 /// query ranks by is that rank scaled by a recency multiplier (visited within the hour
@@ -56,7 +56,7 @@ public struct Frecency: Sendable, Equatable, Codable {
 
     /// Record a visit to `path`: bump its rank (or start it at 1 if new) and stamp
     /// `lastAccess`, then age the index if the rank budget is spent. Every successful
-    /// navigation calls this, so the index learns from crumb clicks, the sidebar, hotlist
+    /// navigation calls this, so the index learns from crumb clicks, the sidebar, favorites
     /// jumps, and back/forward alike — a visit is a visit.
     public mutating func visit(_ path: VFSPath, now: Date = Date()) {
         if let index = entries.firstIndex(where: { $0.path == path }) {

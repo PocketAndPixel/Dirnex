@@ -3,7 +3,7 @@ import Foundation
 
 /// App-wide persistence for saved searches (PLAN.md §M4 "Saved searches as virtual folders in
 /// the places strip"). One shared list across every window, stored as boring JSON in
-/// `UserDefaults` like `HotlistStore` / `WorkspaceStore` (PLAN.md §2 "JSON/plist for config").
+/// `UserDefaults` like `FavoritesStore` / `WorkspaceStore` (PLAN.md §2 "JSON/plist for config").
 ///
 /// Read fresh each time something needs it (the sidebar rebuild, the Save flow), and every
 /// mutation posts `didChangeNotification` so an open sidebar — in this window or another —
