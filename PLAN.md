@@ -183,6 +183,39 @@ anyway, since the core it links changed).
   table the classifier reads, with a test asserting every kind the enumerator emits is one the
   classifier maps back — the two drifting apart is the failure mode that would otherwise ship quiet.
 
+Progress (2026-07-20, M8 pass 2 — the Favorites section, VERIFIED LIVE): the sidebar's Favorites
+section now *is* the pin list. **Box stays `[ ]` for one reason only**: the modal organizer is
+deliberately still alive, because retiring it before the sidebar has drag-reorder would leave no way
+to reorder at all. It retires when the drag slice lands, not before.
+
+- **`HotlistStore`** — gained `didChangeNotification` (posted on save, matching `SavedSearchStore`)
+  and `seedStandardPlacesIfNeeded()`, called from `applicationDidFinishLaunching` before any window
+  builds a sidebar. The seeded flag is set **even when the merge changes nothing**, so the migration
+  is genuinely once: a fresh install whose `~` has no Desktop yet must not quietly re-seed on some
+  later launch.
+- **`SidebarViewController`** — `Row.place(FavoritePlace)` became `Row.favorite(HotlistEntry)`;
+  `rebuild()` reads `HotlistStore`. The Favorites header is now rendered **even when the section is
+  empty**, unlike every other section: it is the drop target for dragging a folder in, so hiding it
+  would hide the way back from having removed everything.
+- **`SidebarViewController+Favorites.swift`** (new) — cell rendering and the Open / Rename… /
+  Remove from Sidebar menu. Two deliberate departures from the sibling sections: **no trailing trash
+  button** (Searches and Servers hold a handful of rows, Favorites opens with eight, and eight
+  always-visible trash buttons put a row of hazards over the folders reached for most), and **no
+  confirmation sheet on remove** (deleting a saved search discards a composed query that cannot be
+  recovered; this discards a pointer to a folder that has not moved — a sheet would be theatre).
+- The main file was at 491 of its 500-line ceiling, so this pass had to *remove* as much as it
+  added: `itemCell`'s favorites branch collapsed into a volume-only `volumeCell`, and the per-kind
+  glyph table moved to the companion file. It sits at 494.
+
+Live verification (real store, real binary — the debug dylib was grepped first to prove the new code
+was actually in it): the migration ran against a hotlist that already held one pin, `Dev`, and
+produced exactly the decided shape — eight standard places, then `Dev`. Favorites rendered all nine
+with their per-kind symbols and `Dev` correctly falling back to a plain folder, which is the
+regression `standardKind` exists to prevent and which no test would have caught. ⌃D showed the same
+nine rows with its 1–9 accelerators intact, confirming the two surfaces are one list. A full round
+trip — pin `~/Dev/Common` via ⌃D, watch it appear in the sidebar with no relaunch, remove it via the
+new menu — left the store byte-identical to how it started.
+
 ## 5. Cross-cutting: testing strategy
 
 | Layer | Approach |

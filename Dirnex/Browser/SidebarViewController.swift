@@ -39,7 +39,9 @@ final class SidebarViewController: NSViewController {
     /// the clicked row.
     enum Row {
         case header(String)
-        case place(FavoritePlace)
+        /// A pinned folder in the user-owned Favorites section — the hotlist, which since M8 *is*
+        /// this section rather than a separate popup (PLAN.md §M8).
+        case favorite(HotlistEntry)
         case volume(MountedVolume)
         case savedSearch(SavedSearch)
         case server(ServerConnection)
@@ -59,9 +61,14 @@ final class SidebarViewController: NSViewController {
         var path: VFSPath? {
             switch self {
             case .header, .savedSearch, .server, .tag, .allTags: return nil
-            case let .place(place): return place.path
+            case let .favorite(entry): return entry.path
             case let .volume(volume): return volume.path
             }
+        }
+
+        var favorite: HotlistEntry? {
+            if case let .favorite(entry) = self { return entry }
+            return nil
         }
 
         var savedSearch: SavedSearch? {
@@ -153,6 +160,7 @@ final class SidebarViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         observeVolumeChanges()
+        observeHotlistChanges()
         observeSavedSearchChanges()
         observeServerConnectionChanges()
         observeServerConnectionActivity()
@@ -180,11 +188,12 @@ final class SidebarViewController: NSViewController {
             rows.append(.header("Searches"))
             rows.append(contentsOf: savedSearches.map(Row.savedSearch))
         }
-        let favorites = SidebarLocations.favorites()
-        if !favorites.isEmpty {
-            rows.append(.header("Favorites"))
-            rows.append(contentsOf: favorites.map(Row.place))
-        }
+        // Favorites is the user's own pin list (PLAN.md §M8) — seeded once from the standard
+        // places at launch, reordered and extended by the user from here on. An empty section is
+        // still rendered: it is the drop target for dragging a folder in, so hiding it would hide
+        // the way back from having removed everything.
+        rows.append(.header("Favorites"))
+        rows.append(contentsOf: HotlistStore.load().entries.map(Row.favorite))
         let volumes = SidebarLocations.volumes()
         if !volumes.isEmpty {
             rows.append(.header("Volumes"))
@@ -227,6 +236,21 @@ final class SidebarViewController: NSViewController {
     }
 
     @objc private func volumesChanged() {
+        rebuild()
+    }
+
+    /// Rebuild when the shared pin list changes — a pin from ⌃D, a rename or removal here, or the
+    /// same in another window, shows up live in the Favorites section (PLAN.md §M8).
+    private func observeHotlistChanges() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(hotlistChanged),
+            name: HotlistStore.didChangeNotification,
+            object: nil
+        )
+    }
+
+    @objc private func hotlistChanged() {
         rebuild()
     }
 
@@ -344,10 +368,10 @@ extension SidebarViewController: NSTableViewDelegate {
             let header = cell ?? SidebarHeaderView()
             header.configure(title: title)
             return header
-        case let .place(place):
-            return itemCell(name: place.name, path: place.path, kind: place.kind, volume: nil)
+        case let .favorite(entry):
+            return favoriteCell(for: entry)
         case let .volume(volume):
-            return itemCell(name: volume.name, path: volume.path, kind: nil, volume: volume)
+            return volumeCell(for: volume)
         case let .savedSearch(search):
             let cell = reuse(SidebarCellView.identifier) as? SidebarCellView ?? SidebarCellView()
             cell.configure(
@@ -396,7 +420,9 @@ extension SidebarViewController: NSTableViewDelegate {
 
     /// Every sidebar glyph is a template SF Symbol, so the source list tints it with the row's
     /// text color — and turns it white on the selected row — matching the label beside it.
-    private static func templateSymbol(
+    /// `internal`, not `private`: the favorites companion file renders its own glyphs through this,
+    /// and Swift `private` does not cross files.
+    static func templateSymbol(
         _ name: String,
         pointSize: CGFloat,
         describedAs description: String? = nil
@@ -414,50 +440,25 @@ extension SidebarViewController: NSTableViewDelegate {
         return "Search in “\(scope.lastComponent)”"
     }
 
-    /// Build (or reuse) an item cell. Favorites get a per-kind SF Symbol so Documents,
-    /// Downloads, Music, etc. read at a glance instead of all sharing the generic folder
-    /// icon; volumes get a drive symbol the same way. A `volume` that can eject also
-    /// gets the eject button wired.
-    private func itemCell(
-        name: String,
-        path: VFSPath,
-        kind: FavoritePlace.Kind?,
-        volume: MountedVolume?
-    ) -> NSView {
+    /// Build (or reuse) a volume cell: a drive symbol, a capacity tooltip, and — when the volume
+    /// can eject — the eject button wired. (The favorites half of this lives in
+    /// `SidebarViewController+Favorites`, where the pin list's own rendering rules are.)
+    private func volumeCell(for volume: MountedVolume) -> NSView {
         let cell = reuse(SidebarCellView.identifier) as? SidebarCellView ?? SidebarCellView()
-        let icon: NSImage
-        if let kind {
-            icon = Self.icon(for: kind)
-        } else if let volume {
-            icon = Self.templateSymbol(volume.symbolName, pointSize: 15, describedAs: volume.name)
-        } else {
-            icon = NSWorkspace.shared.icon(forFile: path.path)
-            icon.size = NSSize(width: 18, height: 18)
-        }
-        let canEject = volume?.canEject ?? false
-        cell.configure(name: name, image: icon, canEject: canEject, tooltip: capacityTooltip(volume))
-        cell.onEject = canEject ? { [weak self] in volume.map { self?.eject($0) } } : nil
-        cell.onDelete = nil // places/volumes aren't deletable (reset in case the cell was reused)
+        let icon = Self.templateSymbol(volume.symbolName, pointSize: 15, describedAs: volume.name)
+        let canEject = volume.canEject
+        cell.configure(
+            name: volume.name,
+            image: icon,
+            canEject: canEject,
+            tooltip: capacityTooltip(volume)
+        )
+        cell.onEject = canEject ? { [weak self] in self?.eject(volume) } : nil
+        cell.onDelete = nil // volumes aren't deletable (reset in case the cell was reused)
         return cell
     }
 
-    /// A monochrome SF Symbol standing in for each favorite folder.
-    private static func icon(for kind: FavoritePlace.Kind) -> NSImage {
-        let symbol: String
-        switch kind {
-        case .home: symbol = "house"
-        case .desktop: symbol = "menubar.dock.rectangle"
-        case .documents: symbol = "doc"
-        case .downloads: symbol = "arrow.down.circle"
-        case .pictures: symbol = "photo"
-        case .music: symbol = "music.note"
-        case .movies: symbol = "film"
-        case .applications: symbol = "square.grid.3x3.fill"
-        }
-        return templateSymbol(symbol, pointSize: 15)
-    }
-
-    private func reuse(_ identifier: NSUserInterfaceItemIdentifier) -> NSView? {
+    func reuse(_ identifier: NSUserInterfaceItemIdentifier) -> NSView? {
         tableView.makeView(withIdentifier: identifier, owner: self)
     }
 
@@ -480,7 +481,9 @@ extension SidebarViewController: NSMenuDelegate {
         menu.removeAllItems()
         let row = tableView.clickedRow
         guard rows.indices.contains(row) else { return }
-        if let search = rows[row].savedSearch {
+        if let entry = rows[row].favorite {
+            buildFavoriteMenu(menu, for: entry)
+        } else if let search = rows[row].savedSearch {
             buildSavedSearchMenu(menu, for: search)
         } else if let server = rows[row].server {
             buildServerMenu(menu, for: server)
