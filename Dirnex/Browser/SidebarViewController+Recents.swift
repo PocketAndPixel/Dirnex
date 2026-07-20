@@ -22,7 +22,6 @@ extension SidebarViewController {
             tooltip: "Recently used files"
         )
         cell.onEject = nil
-        cell.onDelete = nil // a system row is neither ejectable nor removable (reset for reuse)
         return cell
     }
 }

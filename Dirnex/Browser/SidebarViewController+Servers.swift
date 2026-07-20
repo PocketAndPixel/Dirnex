@@ -2,16 +2,16 @@ import AppKit
 import DirnexCore
 
 /// The sidebar's saved-server management surface: the right-click menu (Connect / Edit… / Remove)
-/// and the remove confirmation shared with the row's trailing delete button (PLAN.md §M5
-/// "right-click → Connect / Edit… / Remove"). Split out of `SidebarViewController` so that file
-/// stays under the length limit; `menuNeedsUpdate` (in the main file) dispatches here for a server
-/// row, and connecting/editing is handed to the delegate (the window → the active pane).
+/// and its remove confirmation (PLAN.md §M5 "right-click → Connect / Edit… / Remove"). Split out of
+/// `SidebarViewController` so that file stays under the length limit; `menuNeedsUpdate` (in the main
+/// file) dispatches here for a server row, and connecting/editing is handed to the delegate (the
+/// window → the active pane).
 extension SidebarViewController {
     // MARK: - Rendering
 
-    /// Build (or reuse) a saved-server cell: the protocol glyph, the address as a tooltip, a
-    /// spinner while this connection is being established, and the trailing delete button wired to
-    /// the same confirmation the context menu's Remove uses.
+    /// Build (or reuse) a saved-server cell: the protocol glyph, the address as a tooltip, and a
+    /// spinner while this connection is being established. Removal is a right-click-menu action, not
+    /// a per-row button.
     func serverCell(for connection: ServerConnection) -> NSView {
         let cell = reuse(SidebarCellView.identifier) as? SidebarCellView ?? SidebarCellView()
         cell.configure(
@@ -22,7 +22,6 @@ extension SidebarViewController {
             isBusy: ServerConnectionActivity.shared.isConnecting(connection.name)
         )
         cell.onEject = nil
-        cell.onDelete = { [weak self] in self?.confirmRemoveServer(named: connection.name) }
         return cell
     }
 
@@ -70,8 +69,8 @@ extension SidebarViewController {
         confirmRemoveServer(named: name)
     }
 
-    /// Confirm before removing a saved server — the shared path for both the row's trailing delete
-    /// button and the context-menu Remove. Removing also clears any Keychain secret filed for the
+    /// Confirm before removing a saved server — the context-menu Remove's path. Removing also clears
+    /// any Keychain secret filed for the
     /// connection, since nothing references it once the server is gone. No mount is disconnected —
     /// removing the bookmark shouldn't unmount a share the user is actively browsing.
     func confirmRemoveServer(named name: String) {

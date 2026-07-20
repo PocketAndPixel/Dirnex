@@ -2,14 +2,14 @@ import AppKit
 import DirnexCore
 
 /// The sidebar's saved-search management surface: the right-click menu (Run / Rename / Delete) and
-/// the delete confirmation shared with the row's trailing delete button. Split out of
-/// `SidebarViewController` so that file stays under the length limit once the Servers section joins
-/// it; `menuNeedsUpdate` (in the main file) dispatches here for a saved-search row.
+/// its delete confirmation. Split out of `SidebarViewController` so that file stays under the length
+/// limit once the Servers section joins it; `menuNeedsUpdate` (in the main file) dispatches here for
+/// a saved-search row.
 extension SidebarViewController {
     // MARK: - Rendering
 
-    /// Build (or reuse) a saved-search cell, with the trailing delete button wired to the same
-    /// confirmation the context menu's Delete uses.
+    /// Build (or reuse) a saved-search cell; removal is a right-click-menu action, not a per-row
+    /// button.
     func savedSearchCell(for search: SavedSearch) -> NSView {
         let cell = reuse(SidebarCellView.identifier) as? SidebarCellView ?? SidebarCellView()
         cell.configure(
@@ -19,7 +19,6 @@ extension SidebarViewController {
             tooltip: savedSearchTooltip(search)
         )
         cell.onEject = nil
-        cell.onDelete = { [weak self] in self?.confirmDeleteSavedSearch(named: search.name) }
         return cell
     }
 
@@ -84,8 +83,8 @@ extension SidebarViewController {
         confirmDeleteSavedSearch(named: name)
     }
 
-    /// Confirm before removing a saved search — the shared path for both the row's trailing delete
-    /// button and the context-menu Delete. Presented as a window sheet when possible.
+    /// Confirm before removing a saved search — the context-menu Delete's path. Presented as a
+    /// window sheet when possible.
     func confirmDeleteSavedSearch(named name: String) {
         let alert = NSAlert()
         alert.alertStyle = .warning

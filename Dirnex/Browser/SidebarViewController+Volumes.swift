@@ -20,7 +20,6 @@ extension SidebarViewController {
             tooltip: capacityTooltip(volume)
         )
         cell.onEject = canEject ? { [weak self] in self?.eject(volume) } : nil
-        cell.onDelete = nil // volumes aren't deletable (reset in case the cell was reused)
         return cell
     }
 

@@ -24,7 +24,6 @@ extension SidebarViewController {
             tooltip: entry.path.path
         )
         cell.onEject = nil
-        cell.onDelete = nil // removal is a context-menu action here, not a per-row button
         return cell
     }
 

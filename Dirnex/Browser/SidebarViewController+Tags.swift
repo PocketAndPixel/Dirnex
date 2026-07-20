@@ -89,7 +89,6 @@ extension SidebarViewController {
             owner: self
         ) as? SidebarCellView ?? SidebarCellView()
         cell.onEject = nil
-        cell.onDelete = nil
         return cell
     }
 
