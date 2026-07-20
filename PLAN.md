@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M7 shipped, M8 planned · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
+Status: M0–M7 shipped, M8 in progress, M9–M10 planned · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
 
 ---
 
@@ -379,6 +379,86 @@ it, → again stepped onto iCloud Drive, and Return navigated the pane and hande
 collapse key was deleted afterward, leaving the store byte-identical to how it started (originally
 absent); no errors in the run logs. **Two boxes remain** — Trash and Recents.
 
+#### M9 — iCloud Drive, for real (M)
+
+M8's iCloud row browses the on-disk `com~apple~CloudDocs` container faithfully — the loose files a
+user drops in iCloud Drive (Car, Downloads). But Finder's "iCloud Drive" is a *synthesized* surface,
+and the gap is visible the moment the two sit side by side: Finder merges that container with every
+iCloud-enabled app's **own** document container, and it presents dataless placeholders that download
+on open. M9 makes Dirnex's row the real thing. (Probed 2026-07-21: the app containers
+— `com~apple~Preview`, `com~apple~Pages`, `com~apple~Numbers`, `com~apple~TextEdit`,
+`iCloud~is~workflow~my~workflows`, third-party `iCloud~*` — live as **siblings** under
+`~/Library/Mobile Documents/`, not inside CloudDocs; their `Documents/` subfolders read back
+`Operation not permitted` without Full Disk Access, while CloudDocs itself is TCC-carved-out and reads
+free.)
+
+- [ ] **Dataless placeholder awareness** — an evicted file is a real on-disk stub `.<name>.icloud`
+      that `readdir` sees; the M8 backend lists it under that literal name with the stub's tiny size,
+      not the real name/size. Read the ubiquitous resource keys
+      (`.isUbiquitousItemKey`, `.ubiquitousItemDownloadingStatusKey`, `.ubiquitousItemIsDownloadingKey`)
+      to present the true name, size, and a download-state affordance. Probe how the keys read for a
+      genuinely evicted item first — the M8 machine had none (everything downloaded), which is exactly
+      why the stub-listing quirk never showed there.
+- [ ] **Download on open** — opening or previewing an evicted item fires
+      `FileManager.startDownloadingUbiquitousItem(at:)` and waits on the status key rather than handing
+      a byte-less stub to the viewer. Pure progress state machine in the core (evicted → downloading →
+      ready), the syscall and the wait in the app.
+- [ ] **The merged app-container view** — the piece that makes the row match Finder. Union the sibling
+      `~/Library/Mobile Documents/<container>/Documents` folders into the iCloud listing. Needs Full
+      Disk Access (those `Documents/` are TCC-gated — probed) wired into the **M7 FDA flow**, and it
+      cuts against §2's "a pane shows one real directory": decide the VFS shape — a `CompositeBackend`-
+      style union keyed off a synthetic path (the NOTES.md lesson for browsing a second backend), or a
+      virtual merged listing. Degrade to the M8 loose-files-only view when FDA is ungranted, never a
+      dead row.
+- [ ] **App-name / icon resolution** — Finder labels `com~apple~Pages` as "Pages" with the app's
+      icon; a raw container id is not a name a user recognises. Probe where macOS keeps that mapping
+      (LaunchServices, or the container's own `.com.apple.mobile_container_manager` metadata / a
+      `.<app>.plist`) before wiring — do not guess the format.
+
+Exit: the iCloud row shows what Finder's shows — loose files *and* the per-app document folders; an
+evicted file downloads on open instead of opening empty; and a machine without FDA degrades to the
+loose-files view M8 already ships, rather than an error.
+
+#### M10 — Google Drive and Docs (L)
+
+Reaching the user's Google Docs. Phased along the two depths that actually exist, cheap first
+(decided 2026-07-21): browse the local File Provider mount, then a real Drive API backend for accounts
+that aren't synced to this Mac.
+
+**Phase 1 — the Desktop mount (no API, no OAuth).**
+
+- [ ] **Browse the Google Drive for Desktop mount** — when the app is installed, Drive streams to
+      `~/Library/CloudStorage/GoogleDrive-<email>/`, a real path readable **without** FDA (probed
+      2026-07-21: the `CloudStorage` dir exists and lists free; the mount itself is absent here only
+      because Google's app isn't installed). Surface it like the iCloud row: a sidebar row present when
+      a `GoogleDrive-*` mount exists, browsed by the existing `LocalBackend` — no new backend.
+- [ ] **Open `.gdoc` / `.gsheet` / `.gslides` stubs** — a Google-native doc on the mount is a tiny
+      JSON file holding a `docs.google.com` URL, not bytes. Parse it (pure, core-tested) and open the
+      URL in the browser instead of handing the stub to a text viewer, the way M4 hands off to external
+      tools. Real (non-native) Drive files are dataless File-Provider items — the same download-on-open
+      story as M9's iCloud, so that machinery is shared, not rebuilt.
+
+**Phase 2 — a real Drive backend (for accounts not synced to this Mac).**
+
+- [ ] **A `GoogleDriveBackend` VFS backend** — OAuth2 (loopback/PKCE installed-app flow, refresh token
+      in the Keychain) + Drive API v3, mirroring the **M5 SFTP backend**: the non-hermetic HTTP
+      transport in the app, the pure JSON parsing in the core behind an injected transport tested
+      against a fake. `files.list` browses; `files.get?alt=media` downloads a binary file. Fits the
+      Servers section's connect-an-account flow.
+- [ ] **Native Docs export / import** — a Google Doc has no byte download; `files.export` converts on
+      the way out (Docs→docx/pdf/odt, Sheets→xlsx/csv, Slides→pptx) and an import converts on the way
+      in. Decide the default export format and whether to offer a picker.
+- [ ] **The scope / verification decision (gates Phase 2 shipping)** — browsing a whole Drive needs the
+      *restricted* `drive` (or `drive.readonly`) scope. Google grants it to file-manager-type UIs, but
+      only behind restricted-scope verification **plus a paid annual CASA security assessment**; the
+      narrow `drive.file` scope skips verification yet can't list pre-existing files, which is useless
+      for a manager. Decided **before** Phase 2 starts, not during — it is a cost/distribution
+      commitment, not a code choice. See Open questions.
+
+Exit (Phase 1): a Google Drive row browses the Desktop mount and a Google Doc opens in the browser.
+Exit (Phase 2): a Drive account connects from the Servers add-flow and its files browse, download, and
+export without the Desktop app installed.
+
 ## 5. Cross-cutting: testing strategy
 
 | Layer | Approach |
@@ -422,3 +502,14 @@ Opened and closed during M8:
   moves, but the sidebar's top rows change on update) and seeding fresh installs only (honest about
   ownership, but Home/Desktop/Documents visibly vanish on update). Still needs a one-shot "seeded"
   flag in `HotlistStore`, so it is a real migration and not a first-run branch.
+
+Open for M10 (Google Drive), still undecided:
+
+- **Google OAuth scope for the Phase-2 backend** — the fork is `drive`/`drive.readonly` (restricted:
+  browse the *whole* Drive, but Google requires restricted-scope verification **plus a paid annual
+  CASA third-party security assessment** before a distributed build may use it) versus `drive.file`
+  (unrestricted, no assessment, but limited to files the app itself created or the user explicitly
+  picked — which cannot list a pre-existing Drive and so is useless for a file manager). This is a
+  money-and-verification commitment, not a code choice, so it is decided before Phase 2 code starts.
+  Phase 1 (the Desktop-mount browse) needs none of this and is unblocked. Recorded here because
+  choosing `drive.file` to dodge the assessment would quietly gut the feature.
