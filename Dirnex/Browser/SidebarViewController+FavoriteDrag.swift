@@ -31,12 +31,11 @@ extension SidebarViewController {
     ///
     /// Empty-safe by construction — with nothing pinned this collapses to the single insertion
     /// point just below the header, which is exactly the drop target an empty section needs (and
-    /// why `rebuild()` renders that header even when the section holds nothing).
+    /// why `rebuild()` renders that header even when the section holds nothing). A **folded**
+    /// section collapses to that same single point, since it contributes no rows; `acceptDrop`
+    /// unfolds it so the pin lands somewhere the user can see.
     var favoriteDropRange: ClosedRange<Int> {
-        guard let header = rows.firstIndex(where: {
-            if case let .header(title) = $0 { return title == Self.favoritesHeaderTitle }
-            return false
-        }) else { return 0...0 }
+        guard let header = headerRow(of: .favorites) else { return 0...0 }
         let start = header + 1
         let pinned = rows[start...].prefix { $0.favorite != nil }.count
         return start...(start + pinned)
@@ -103,8 +102,12 @@ extension SidebarViewController {
             let entry = HotlistEntry(path: .local(url.path))
             changed = hotlist.insert(entry, at: index + offset) || changed
         }
-        if changed { HotlistStore.save(hotlist) }
-        return changed
+        guard changed else { return false }
+        HotlistStore.save(hotlist)
+        // A drop onto a folded Favorites section unfolds it. The pin is otherwise filed into rows
+        // that are not on screen, which is indistinguishable from the drag having been refused.
+        expandSection(.favorites)
+        return true
     }
 
     // MARK: - Helpers

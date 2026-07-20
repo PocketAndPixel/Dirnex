@@ -8,18 +8,28 @@ import AppKit
 ///
 /// So a click is let through only when it lands on a real, selectable destination row — which
 /// navigates the active pane and hands focus back to it anyway (`SidebarViewController`'s
-/// `rowClicked` → `focusTable`). Empty space and header clicks instead run `onEmptyClick`, which
-/// re-focuses the active pane. Right-click (the saved-search context menu) and the cells' own
-/// eject/delete buttons are unaffected — they never route through this `mouseDown`.
+/// `rowClicked` → `focusTable`). Empty space runs `onEmptyClick` and a header runs
+/// `onHeaderClick`, both of which re-focus the active pane. Right-click (the saved-search context
+/// menu) and the cells' own eject/delete buttons are unaffected — they never route through this
+/// `mouseDown`.
 final class SidebarTableView: NSTableView {
-    /// Invoked for a click on empty space or a header — re-focus the active file pane.
+    /// Invoked for a click on empty space — re-focus the active file pane.
     var onEmptyClick: (() -> Void)?
+    /// Invoked with the row index for a click anywhere on a section header — fold or unfold that
+    /// section (PLAN.md §M8). The whole header is the hit target, not just its triangle: a 9-point
+    /// chevron is a mean thing to ask anyone to hit, and the header has no other click behavior to
+    /// compete with.
+    var onHeaderClick: ((Int) -> Void)?
 
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
         let row = row(at: point)
         let isHeader = row >= 0 && (delegate?.tableView?(self, isGroupRow: row) ?? false)
-        guard row >= 0, !isHeader else {
+        if isHeader {
+            onHeaderClick?(row)
+            return
+        }
+        guard row >= 0 else {
             onEmptyClick?()
             return
         }

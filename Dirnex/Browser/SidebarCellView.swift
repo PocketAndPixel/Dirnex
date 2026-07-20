@@ -177,15 +177,28 @@ final class SidebarCellView: NSTableCellView {
 }
 
 /// A section header ("Favorites", "Volumes") in the sidebar. A source-list group row
-/// AppKit already renders with the right vibrancy; this just supplies the label.
+/// AppKit already renders with the right vibrancy; this supplies the label and the disclosure
+/// triangle that folds the section (PLAN.md §M8).
+///
+/// **The triangle is always visible, not revealed on hover** (which is what Finder does with its
+/// Show/Hide button). It is a state indicator before it is a control: with nothing drawn, a folded
+/// Volumes section and a Volumes section on a machine with no volumes look exactly alike — the
+/// sidebar would claim there is nothing there when the truth is that the user hid it. The click
+/// target is the whole header row, so the glyph only has to be legible, not hittable.
 final class SidebarHeaderView: NSTableCellView {
     static let identifier = NSUserInterfaceItemIdentifier("SidebarHeaderCell")
 
+    private let disclosure = NSImageView()
     private let label = NSTextField(labelWithString: "")
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         identifier = SidebarHeaderView.identifier
+
+        disclosure.translatesAutoresizingMaskIntoConstraints = false
+        disclosure.imageScaling = .scaleProportionallyDown
+        disclosure.contentTintColor = .tertiaryLabelColor
+        addSubview(disclosure)
 
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = .systemFont(ofSize: NSFont.smallSystemFontSize, weight: .semibold)
@@ -194,7 +207,11 @@ final class SidebarHeaderView: NSTableCellView {
         textField = label
 
         NSLayoutConstraint.activate([
-            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
+            disclosure.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
+            disclosure.firstBaselineAnchor.constraint(equalTo: label.firstBaselineAnchor),
+            disclosure.widthAnchor.constraint(equalToConstant: 9),
+
+            label.leadingAnchor.constraint(equalTo: disclosure.trailingAnchor, constant: 4),
             label.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -2),
             label.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -4)
         ])
@@ -205,7 +222,24 @@ final class SidebarHeaderView: NSTableCellView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func configure(title: String) {
+    func configure(title: String, isCollapsed: Bool) {
         label.stringValue = title
+        disclosure.image = Self.chevron(isCollapsed: isCollapsed)
+        // Says which way the click goes, and — unlike the glyph — states the current state in
+        // words, which is what VoiceOver and a hovering user each get nothing else from.
+        toolTip = isCollapsed ? "Show \(title)" : "Hide \(title)"
+    }
+
+    /// Down when open, right when folded — the direction every macOS source list points.
+    private static func chevron(isCollapsed: Bool) -> NSImage {
+        let name = isCollapsed ? "chevron.right" : "chevron.down"
+        let config = NSImage.SymbolConfiguration(pointSize: 9, weight: .bold)
+        let image = NSImage(
+            systemSymbolName: name,
+            accessibilityDescription: isCollapsed ? "Collapsed" : "Expanded"
+        )?
+            .withSymbolConfiguration(config)
+        image?.isTemplate = true
+        return image ?? NSImage()
     }
 }

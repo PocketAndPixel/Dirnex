@@ -19,7 +19,8 @@ import DirnexCore
 extension SidebarViewController {
     // MARK: - Rows
 
-    /// The Tags section, or nothing at all when the user has turned tags off.
+    /// The Tags section's rows — its header is `rebuild`'s to add, like every other section's — or
+    /// nothing at all when the user has turned tags off, which drops the header with them.
     ///
     /// The stock seven always show: they exist on every Mac, before anything has been scanned, so
     /// the section is never empty-and-useless the way one built purely from sightings would be.
@@ -32,8 +33,7 @@ extension SidebarViewController {
         let all = FinderTagProvider.shared.knownTags
         renderedTagNames = Set(all.map(\.name))
 
-        var rows: [Row] = [.header("Tags")]
-        rows.append(contentsOf: (showsAllTags ? all : FinderTag.systemTags).map(Row.tag))
+        var rows: [Row] = (showsAllTags ? all : FinderTag.systemTags).map(Row.tag)
         // "All Tags…" only when there is something behind it. Finder can always offer it because it
         // knows every tag you own; we know the ones we have seen, so offering to reveal nothing
         // would be a row that does nothing when clicked — worse than no row.

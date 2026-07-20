@@ -142,7 +142,7 @@ them into one, then earns the sections that follow.
 - [x] **Remove from the sidebar** — ~~reuse the `cell.onDelete` affordance the saved-search and
       server rows already carry~~ **a right-click item instead**; see the pass-2 note for why eight
       always-visible trash buttons was the wrong trade
-- [ ] **Collapsible sections** — group rows are inert today; with Searches/Favorites/iCloud/
+- [x] **Collapsible sections** — group rows are inert today; with Searches/Favorites/iCloud/
       Volumes/Servers/Tags the list outgrows a laptop pane. Disclosure triangles, per-section
       state persisted
 - [ ] **Keyboard access to the sidebar** — it is mouse-only, in a keyboard-first app. Focus it,
@@ -246,6 +246,43 @@ insertion line showed each time; `~/Public` dragged in from a pane and pinned; a
 over the sidebar drew no insertion line and pinned nothing. The store finished byte-identical to
 how it started. ⌃D still lists the same rows with 1–9 intact and no gap where "Organize Hotlist…"
 used to be.
+
+Progress (2026-07-20, M8 pass 4 — collapsible sections, VERIFIED LIVE): every header now folds its
+section, and the state persists. Core-first again — a pure, tested model file with the app
+untouched, then the wiring.
+
+- **`Services/SidebarSections.swift`** (core, tested) — `SidebarSection` (an enum whose `allCases`
+  *is* the render order) and `SidebarSectionCollapse`. The header row used to carry its title
+  *string*, which the drag code compared against `"Favorites"` to find the section — a user-visible
+  label was load-bearing. The `Row.header` case now carries a `SidebarSection`, so title text is a
+  presentation detail again and the drop range keys off `headerRow(of: .favorites)`. **Collapsed
+  sections persist as raw strings, not decoded cases:** a `Set<SidebarSection>` throws on the first
+  name it doesn't know, and a throwing decode resets *every* section — so a beta rolled back past
+  the iCloud/Trash/Recents rows still to come would silently unfold the whole sidebar. The unknown
+  name is carried through the round trip untouched instead; a test drives exactly that.
+- **`SidebarSectionCollapseStore`** — one shared state, not one per window, matching every other
+  sidebar store (the genuinely per-window `showsAllTags` stays unpersisted). Posts a change
+  notification so every open sidebar folds in step.
+- **`SidebarViewController+Sections.swift`** (new) — `append(_:items:showsEmptyHeader:)` assembles
+  each section, skipping a folded one's rows and skipping an empty section entirely *except*
+  Favorites, whose header is the drag-in drop target. This is what took `rebuild`'s five hand-rolled
+  section blocks down to five `append` calls and kept the main file (453 → 470) clear of its ceiling.
+  An `NSTableView`, not an `NSOutlineView`: every row is a leaf, so folding is a build-time filter,
+  not a view feature — and the drag code keeps one flat index space to map through.
+- **The whole header is the click target**, not just the 9-pt chevron (a mean thing to ask anyone
+  to hit), routed through `SidebarTableView.onHeaderClick` alongside the existing empty-click
+  focus-return. The triangle is always drawn, never hover-revealed: it is a state indicator first,
+  and without it a *folded* Volumes section and a machine with *no* volumes would look identical.
+- **A drop onto a folded Favorites header unfolds it** — otherwise the pin is filed into rows the
+  user cannot see, indistinguishable from a refused drag. `expandSection` returns whether it changed
+  anything so the drag path doesn't save-and-rebuild needlessly.
+
+Live verification (real store, real binary — dylib grepped first): folded Favorites, its eight pins
+vanished, the header and its now-rightward chevron remaining with a "Show Favorites" tooltip; the
+state persisted as `["favorites"]` and **survived a relaunch** folded. A folder dragged from a pane
+onto the *collapsed* header unfolded the section and pinned at the drop position in one gesture.
+Removing that pin and deleting the flag left the store byte-identical to how it started; no errors
+in the run log throughout.
 
 ## 5. Cross-cutting: testing strategy
 

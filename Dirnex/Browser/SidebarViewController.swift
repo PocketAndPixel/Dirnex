@@ -38,7 +38,10 @@ final class SidebarViewController: NSViewController {
     /// `private`) so the saved-search and server management extensions in companion files can read
     /// the clicked row.
     enum Row {
-        case header(String)
+        /// A section header. Carries the section's *identity*, not its title — the drag code used
+        /// to find Favorites by comparing header text, which made a user-visible string
+        /// load-bearing, and the fold state keys off the same case (PLAN.md §M8).
+        case header(SidebarSection)
         /// A pinned folder in the user-owned Favorites section — the hotlist, which since M8 *is*
         /// this section rather than a separate popup (PLAN.md §M8).
         case favorite(HotlistEntry)
@@ -50,8 +53,14 @@ final class SidebarViewController: NSViewController {
         case allTags
 
         var isHeader: Bool {
-            if case .header = self { return true }
-            return false
+            section != nil
+        }
+
+        /// The section this row heads, when it is a header. Item rows return `nil` — they belong to
+        /// a section but do not identify one, and the fold code only ever asks about headers.
+        var section: SidebarSection? {
+            if case let .header(section) = self { return section }
+            return nil
         }
 
         /// The path a click navigates to, when the row is a real location. `nil` for headers, saved
@@ -89,10 +98,10 @@ final class SidebarViewController: NSViewController {
 
     weak var delegate: SidebarViewControllerDelegate?
 
-    /// The Favorites section's header title. A named constant rather than a literal because the
-    /// drag code locates the section by it — `rebuild()` renders this header unconditionally, so
-    /// finding it is how the drop range is derived even when nothing is pinned.
-    static let favoritesHeaderTitle = "Favorites"
+    /// Which sections the user has folded shut (PLAN.md §M8). Re-read from the shared store on
+    /// every `rebuild`, and held here so the header cells can draw the matching triangle without
+    /// each one hitting `UserDefaults`.
+    var sectionCollapse = SidebarSectionCollapse()
 
     /// Whether the Tags section is listing every tag it knows of, or just the stock seven. Off until
     /// "All Tags…" is clicked; per window, and deliberately not persisted — it is a disclosure, not
@@ -145,6 +154,9 @@ final class SidebarViewController: NSViewController {
             delegate?.sidebarDidClickEmptyArea(self)
         }
         tableView.onEmptyClick = refocusActivePane
+        // A header click folds its section rather than doing nothing (PLAN.md §M8); it re-focuses
+        // the active pane too, which is why it doesn't simply reuse `refocusActivePane`.
+        tableView.onHeaderClick = { [weak self] row in self?.toggleSection(atRow: row) }
         let clipView = SidebarClipView()
         clipView.onBackgroundClick = refocusActivePane
         scrollView.contentView = clipView
@@ -166,6 +178,7 @@ final class SidebarViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         observeVolumeChanges()
+        observeSectionCollapseChanges()
         observeHotlistChanges()
         observeSavedSearchChanges()
         observeServerConnectionChanges()
@@ -186,34 +199,29 @@ final class SidebarViewController: NSViewController {
     /// `internal` so the Tags extension can rebuild after "All Tags…" expands the section.
     func rebuild() {
         let selectedPath = selectedRow()?.path
+        sectionCollapse = SidebarSectionCollapseStore.load()
 
+        // Section order is `SidebarSection.allCases`, and each section's header-and-items assembly
+        // — including whether a folded one contributes its rows — is `append`'s, in
+        // `SidebarViewController+Sections`.
         var rows: [Row] = []
         // Saved searches lead the sidebar, above the standard Favorites/Volumes sections.
-        let savedSearches = SavedSearchStore.load().searches
-        if !savedSearches.isEmpty {
-            rows.append(.header("Searches"))
-            rows.append(contentsOf: savedSearches.map(Row.savedSearch))
-        }
-        // Favorites is the user's own pin list (PLAN.md §M8) — seeded once from the standard
-        // places at launch, reordered and extended by the user from here on. An empty section is
-        // still rendered: it is the drop target for dragging a folder in, so hiding it would hide
-        // the way back from having removed everything.
-        rows.append(.header(Self.favoritesHeaderTitle))
-        rows.append(contentsOf: HotlistStore.load().entries.map(Row.favorite))
-        let volumes = SidebarLocations.volumes()
-        if !volumes.isEmpty {
-            rows.append(.header("Volumes"))
-            rows.append(contentsOf: volumes.map(Row.volume))
-        }
+        append(.searches, items: SavedSearchStore.load().searches.map(Row.savedSearch), to: &rows)
+        // Favorites is the user's own pin list (PLAN.md §M8) — seeded once from the standard places
+        // at launch, reordered and extended by the user from here on. Alone among the sections it
+        // keeps its header when empty; `append` documents why.
+        append(
+            .favorites,
+            items: HotlistStore.load().entries.map(Row.favorite),
+            showsEmptyHeader: true,
+            to: &rows
+        )
+        append(.volumes, items: SidebarLocations.volumes().map(Row.volume), to: &rows)
         // Saved servers close the sidebar, grouped with the local volumes as the "places you browse"
         // (PLAN.md §M5 "a Servers sidebar section mirroring Searches").
-        let servers = ServerConnectionStore.load().connections
-        if !servers.isEmpty {
-            rows.append(.header("Servers"))
-            rows.append(contentsOf: servers.map(Row.server))
-        }
-        // Tags close the sidebar, where Finder puts them, and only when View ▸ Show Tags is on.
-        rows.append(contentsOf: tagRows())
+        append(.servers, items: ServerConnectionStore.load().connections.map(Row.server), to: &rows)
+        // Tags come last, where Finder puts them, and only when View ▸ Show Tags is on.
+        append(.tags, items: tagRows(), to: &rows)
         self.rows = rows
         tableView.reloadData()
 
@@ -369,10 +377,13 @@ extension SidebarViewController: NSTableViewDelegate {
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         switch rows[row] {
-        case let .header(title):
+        case let .header(section):
             let cell = reuse(SidebarHeaderView.identifier) as? SidebarHeaderView
             let header = cell ?? SidebarHeaderView()
-            header.configure(title: title)
+            header.configure(
+                title: section.title,
+                isCollapsed: sectionCollapse.isCollapsed(section)
+            )
             return header
         case let .favorite(entry):
             return favoriteCell(for: entry)
