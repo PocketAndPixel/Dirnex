@@ -119,6 +119,29 @@ public enum SidebarLocations {
         return places
     }
 
+    /// The user's iCloud Drive container, when iCloud Drive is enabled and its folder exists on
+    /// disk: `~/Library/Mobile Documents/com~apple~CloudDocs` (PLAN.md §M8 "iCloud Drive row").
+    ///
+    /// Returns `nil` when the container is absent — a Mac with iCloud Drive turned off has none — so
+    /// the sidebar shows no dead row, the same "only what exists" rule `favorites()` follows. Note
+    /// that only the `com~apple~CloudDocs` leaf is reachable without Full Disk Access; its parent
+    /// `~/Library/Mobile Documents` is TCC-gated, so this must probe the leaf directly rather than
+    /// enumerate the parent (probed 2026-07-20).
+    ///
+    /// The path browses through the local backend like any other folder. Because that backend lists
+    /// via a pure `stat` and never opens a file, a dataless `.icloud` placeholder is **not**
+    /// downloaded merely by being listed — it surfaces as its on-disk stub instead (also probed).
+    public static func iCloudDrive(
+        home: String = NSHomeDirectory(),
+        fileManager: FileManager = .default
+    ) -> VFSPath? {
+        let path = VFSPath.local(home)
+            .appending("Library")
+            .appending("Mobile Documents")
+            .appending("com~apple~CloudDocs")
+        return isDirectory(path.path, fileManager) ? path : nil
+    }
+
     /// Mounted, browsable volumes, root filesystem first, then the rest by name.
     /// Non-browsable volumes (e.g. the hidden Recovery/VM partitions) are excluded.
     public static func volumes(fileManager: FileManager = .default) -> [MountedVolume] {

@@ -147,7 +147,7 @@ them into one, then earns the sections that follow.
       state persisted
 - [x] **Keyboard access to the sidebar** — it is mouse-only, in a keyboard-first app. Focus it,
       move by row, activate, all without reaching for the trackpad
-- [ ] **iCloud Drive row** — `~/Library/Mobile Documents/com~apple~CloudDocs`, a real directory
+- [x] **iCloud Drive row** — `~/Library/Mobile Documents/com~apple~CloudDocs`, a real directory
       (probed, present). Probe how dataless `.icloud` placeholder stubs list before wiring: size
       and download-on-access is the part that surprises
 - [ ] **Trash row** — cheaper-looking than it is. `~/.Trash` reads back `Operation not permitted`
@@ -338,6 +338,46 @@ live: focus sidebar → ⌃⌘S → the active pane took focus and Tab switched 
 sidebar while a *pane* was focused left that pane untouched; the menu title still flipped
 Show↔Hide. A clean launch-and-quit with nothing touched left the collapse store's key absent —
 confirming no code path writes it spuriously.
+
+Progress (2026-07-21, M8 pass 6 — the iCloud Drive row, VERIFIED LIVE): iCloud Drive is now its own
+sidebar section between the user's pins and the local volumes, mirroring Finder. Core-first: a pure,
+tested existence probe, then a thin app wiring.
+
+- **The probe settled the box's worry.** `com~apple~CloudDocs` is reachable *without* Full Disk
+  Access even though its parent `~/Library/Mobile Documents` is TCC-gated (an `ls` on the parent
+  returns `Operation not permitted`; the leaf lists fine) — so the enumerator probes the leaf
+  directly, never the parent. And the "download-on-access" surprise is a **non-issue for this row**:
+  `LocalBackend` lists via raw `readdir`/`fstatat` and takes each size from `st_size`, never opening
+  a file, so browsing iCloud Drive downloads nothing. A dataless `.icloud` placeholder would surface
+  as its literal on-disk `.<name>.icloud` stub (we `readdir` rather than route through
+  `NSMetadataQuery`), which is a pane-display detail, not a blocker — and moot on this machine, where
+  everything is already downloaded (zero `.icloud` stubs found).
+- **`SidebarLocations.iCloudDrive()`** (core, tested) — returns `VFSPath?`, the container path when it
+  exists on disk, else `nil`, so a Mac with iCloud Drive turned off shows no dead row: the same
+  "only what exists" rule `favorites()` follows. A pure path-plus-`isDirectory` probe, no AppKit.
+  Three tests (present / absent / a file where the dir should be) plus the render-order test updated
+  for the new `.icloud` case, which sits between `.favorites` and `.volumes` in `SidebarSection`.
+- **A section, not a Favorites row** — Finder groups iCloud under its own header, and the collapse
+  model was built expecting exactly this (the unknown-name round trip in `SidebarSectionCollapse`
+  names iCloud among the sections "still to add"). Deliberately a **system** location, not a
+  user-owned pin: `Row.iCloud(VFSPath)` carries its path directly rather than a stored model, and the
+  new **`SidebarViewController+iCloud.swift`** cell has no drag, no context menu, and no store — it is
+  present or absent purely on whether iCloud Drive is on. The row went to a companion file because the
+  main controller sits at 492 of its 500-line ceiling.
+- **Keyboard access came for free.** The row plugs into the existing M8 keyboard model through the
+  generic `.path` accessor — no keyboard code changed — so ←/→/Return and ⌥⌘S drive it like any other
+  destination.
+
+Live verification (real store, real binary — the debug dylib was grepped first to prove the new
+`iCloudCell` / `iCloudDrive` code was in it): the section rendered between Favorites and Volumes with
+the `icloud` glyph; clicking **iCloud Drive** navigated the left pane to
+`…/Library/Mobile Documents/com~apple~CloudDocs`, which listed its real two items (Car, Downloads;
+`.DS_Store` hidden as expected) with no download, hang, or error. Folding left the header alone with a
+rightward chevron and a "Show iCloud" tooltip; the flag persisted as `["icloud"]` and **survived a
+relaunch** folded. From the keyboard: ⌥⌘S focused the sidebar, ↓ walked to the iCloud header, → opened
+it, → again stepped onto iCloud Drive, and Return navigated the pane and handed focus back to it. The
+collapse key was deleted afterward, leaving the store byte-identical to how it started (originally
+absent); no errors in the run logs. **Two boxes remain** — Trash and Recents.
 
 ## 5. Cross-cutting: testing strategy
 

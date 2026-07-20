@@ -11,6 +11,7 @@ import Foundation
 public enum SidebarSection: String, CaseIterable, Sendable, Hashable {
     case searches
     case favorites
+    case icloud
     case volumes
     case servers
     case tags
@@ -20,6 +21,7 @@ public enum SidebarSection: String, CaseIterable, Sendable, Hashable {
         switch self {
         case .searches: "Searches"
         case .favorites: "Favorites"
+        case .icloud: "iCloud"
         case .volumes: "Volumes"
         case .servers: "Servers"
         case .tags: "Tags"

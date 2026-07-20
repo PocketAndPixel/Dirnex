@@ -49,6 +49,36 @@ struct PlacesTests {
         #expect(subset == [.desktop, .documents, .downloads])
     }
 
+    // MARK: - iCloud Drive
+
+    @Test("iCloud Drive surfaces its container path when the folder exists")
+    func iCloudDrivePresent() throws {
+        let temp = try TempTree()
+        defer { temp.cleanup() }
+        try temp.makeDir("Library/Mobile Documents/com~apple~CloudDocs")
+
+        let path = try #require(SidebarLocations.iCloudDrive(home: temp.root.path))
+        #expect(path == VFSPath.local(temp.path("Library/Mobile Documents/com~apple~CloudDocs")))
+    }
+
+    @Test("iCloud Drive is nil when the container is absent")
+    func iCloudDriveAbsent() throws {
+        let temp = try TempTree()
+        defer { temp.cleanup() }
+        // A home with no iCloud container — the shape of a Mac with iCloud Drive turned off.
+        #expect(SidebarLocations.iCloudDrive(home: temp.root.path) == nil)
+    }
+
+    @Test("iCloud Drive is nil when the container path is a file, not a directory")
+    func iCloudDriveRejectsAFile() throws {
+        let temp = try TempTree()
+        defer { temp.cleanup() }
+        try temp.makeDir("Library/Mobile Documents")
+        // A regular file where the container should be must not be surfaced as a browsable row.
+        try temp.writeFile("Library/Mobile Documents/com~apple~CloudDocs", bytes: 1)
+        #expect(SidebarLocations.iCloudDrive(home: temp.root.path) == nil)
+    }
+
     // MARK: - Volumes (against the real mount table)
 
     @Test("mounted volumes always include a browsable root filesystem")

@@ -45,6 +45,9 @@ final class SidebarViewController: NSViewController {
         /// A pinned folder in the user-owned Favorites section — the hotlist, which since M8 *is*
         /// this section rather than a separate popup (PLAN.md §M8).
         case favorite(HotlistEntry)
+        /// The user's iCloud Drive: a fixed system row in its own section (PLAN.md §M8). Carries its
+        /// path directly — it is one known location, not a stored model like a pin or a volume.
+        case iCloud(VFSPath)
         case volume(MountedVolume)
         case savedSearch(SavedSearch)
         case server(ServerConnection)
@@ -71,6 +74,7 @@ final class SidebarViewController: NSViewController {
             switch self {
             case .header, .savedSearch, .server, .tag, .allTags: return nil
             case let .favorite(entry): return entry.path
+            case let .iCloud(path): return path
             case let .volume(volume): return volume.path
             }
         }
@@ -217,6 +221,10 @@ final class SidebarViewController: NSViewController {
             showsEmptyHeader: true,
             to: &rows
         )
+        // iCloud Drive: its own section between the user's pins and the local volumes, mirroring
+        // Finder — one fixed row, present only when the container exists on disk (PLAN.md §M8).
+        let iCloudItems = SidebarLocations.iCloudDrive().map { [Row.iCloud($0)] } ?? []
+        append(.icloud, items: iCloudItems, to: &rows)
         append(.volumes, items: SidebarLocations.volumes().map(Row.volume), to: &rows)
         // Saved servers close the sidebar, grouped with the local volumes as the "places you browse"
         // (PLAN.md §M5 "a Servers sidebar section mirroring Searches").
@@ -399,6 +407,8 @@ extension SidebarViewController: NSTableViewDelegate {
             return header
         case let .favorite(entry):
             return favoriteCell(for: entry)
+        case let .iCloud(path):
+            return iCloudCell(for: path)
         case let .volume(volume):
             return volumeCell(for: volume)
         case let .savedSearch(search):

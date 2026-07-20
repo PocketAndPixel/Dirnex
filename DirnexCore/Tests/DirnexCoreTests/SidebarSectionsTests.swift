@@ -15,7 +15,9 @@ struct SidebarSectionsTests {
     func caseOrderIsRenderOrder() {
         // Not decoration: the app builds its rows in this order, and a case inserted alphabetically
         // would move a whole section on screen without anything else looking wrong.
-        #expect(SidebarSection.allCases == [.searches, .favorites, .volumes, .servers, .tags])
+        #expect(
+            SidebarSection.allCases == [.searches, .favorites, .icloud, .volumes, .servers, .tags]
+        )
     }
 
     @Test("every section has a distinct title and a distinct identifier")
