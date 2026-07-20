@@ -155,7 +155,7 @@ them into one, then earns the sections that follow.
       flow. Trash is also per-volume (`/Volumes/X/.Trashes/$uid`), so a single row is a lie on a
       multi-drive setup; "Put Back" has no public API; and delete-inside-Trash must invert the
       default move-to-Trash semantics or it is a no-op loop
-- [ ] **Recents row** — Finder's is a saved search, and saved searches already render into virtual
+- [x] **Recents row** — Finder's is a saved search, and saved searches already render into virtual
       result panels, so this reuses machinery instead of adding some
 
 Exit: a folder dragged from a pane lands in the sidebar, is dragged into position, survives a
@@ -378,6 +378,50 @@ relaunch** folded. From the keyboard: ⌥⌘S focused the sidebar, ↓ walked to
 it, → again stepped onto iCloud Drive, and Return navigated the pane and handed focus back to it. The
 collapse key was deleted afterward, leaving the store byte-identical to how it started (originally
 absent); no errors in the run logs. **Two boxes remain** — Trash and Recents.
+
+Progress (2026-07-21, M8 pass 7 — the Recents row, VERIFIED LIVE): Recents is now the sidebar's
+first section, where Finder puts it — one fixed row that runs the recently-used-files query into a
+virtual results panel, reusing the search machinery rather than adding any. Core-first: a pure,
+tested query plus the section case, then a thin app wiring. **One box remains — Trash.**
+
+- **`Services/RecentsQuery.swift`** (core, tested) — the pure query. Finder's Recents is
+  `kMDItemLastUsedDate`, the LaunchServices "last opened" stamp, *not* the modification date
+  `SpotlightQuery.modifiedWithin` filters on, and that distinction is the whole reason it is its own
+  type: a last-used filter keeps Recents to opened documents instead of a wall of `~/Library` churn
+  (a cache the system rewrites hourly is never *opened*). Probed 2026-07-21: the last-used filter
+  returned **181 clean items**, only two under `Library`. Application bundles are excluded — without
+  it the list led with Console.app / Terminal.app / Finder.app — but folders are *not*: a
+  recently-used folder is a real navigation target in a file manager, and excluding `public.folder`
+  also risks dropping document packages that conform to it. A 30-day window bounds the set, because
+  `mdfind` cannot sort (there is no sort flag — probed) and the runner keeps only its first N, so an
+  unbounded query would surface an arbitrary N rather than the newest.
+- **The sort is a documented proxy.** `mdfind` returns paths in no useful order and a statted
+  `FileEntry` carries no last-used date, so `RecentsQuery.resultSort` orders the panel by
+  modification date descending — the only recency signal the app can compute. For documents a person
+  is working on, used and modified move together; a watched-but-unedited video sorts by when it was
+  written. Bringing the true last-used date into the ordering is left to a later pass if it proves to
+  matter.
+- **`SidebarSection.recents`** leads `allCases` (Finder's placement), so it renders above Searches. A
+  single-row section like iCloud, not a Favorites row: it dispatches a query, not a place, so it
+  carries no path and no stored model — `Row.recents` and `SidebarViewController+Recents.swift`
+  mirror the iCloud row exactly (clock glyph, no drag, no menu, no store). Keyboard access, folding
+  and persistence came for free through the generic `.section` / `.path` model — no keyboard or fold
+  code changed.
+- **The app reuses the virtual-results installer.** `SpotlightSearchRunner.runRecents` shares `run`'s
+  cap-and-stat tail; `PanelViewController.showRecents` installs a "Recents" results tab through the
+  same `openResults` that saved searches use, generalized to take a sort and an optional (here `nil`,
+  so unsavable) query. Room for all this came from *removing* code, as every M8 pass has: the volume
+  cell moved to a new `SidebarViewController+Volumes.swift` and the sidebar delegate conformance to
+  `BrowserWindowController+Sidebar.swift`, taking both files back under their 500-line ceilings.
+
+Live verification (real store, real binary — the debug dylib was grepped first to prove the new
+`RecentsQuery` / "Recently used files" code was in it): the Recents section rendered first with the
+`clock` glyph; clicking it opened a virtual "Recents" tab ("Results for Recents") listing exactly
+**181** items, newest-modified first, folders and files interleaved, no `.app` among them — matching
+the probe count precisely. From the keyboard: ⌥⌘S focused the sidebar onto Recents, ← climbed to the
+header, ← again collapsed it *keeping the header selected across the rebuild*; the flag persisted as
+`["recents"]` and **survived a relaunch** folded, and a header click unfolded it. The collapse key
+was deleted afterward, leaving the store byte-identical to how it started; no errors in the run logs.
 
 #### M9 — iCloud Drive, for real (M)
 

@@ -9,6 +9,7 @@ import Foundation
 /// `allCases` is the display order, which is why the cases are declared in it rather than
 /// alphabetically.
 public enum SidebarSection: String, CaseIterable, Sendable, Hashable {
+    case recents
     case searches
     case favorites
     case icloud
@@ -19,6 +20,7 @@ public enum SidebarSection: String, CaseIterable, Sendable, Hashable {
     /// The section header's label.
     public var title: String {
         switch self {
+        case .recents: "Recents"
         case .searches: "Searches"
         case .favorites: "Favorites"
         case .icloud: "iCloud"
@@ -36,8 +38,8 @@ public enum SidebarSection: String, CaseIterable, Sendable, Hashable {
 /// **Collapsed sections are stored as raw strings, not as `SidebarSection` values.** Decoding a
 /// `Set<SidebarSection>` throws on the first name it doesn't recognise, and a throwing decode
 /// resets *every* section's state — so one unknown name would silently unfold the whole sidebar.
-/// Since M8 still has iCloud, Trash and Recents rows to add, and betas do get rolled back, the
-/// version that doesn't know a name has to carry it through untouched rather than lose it.
+/// Since M8 still has a Trash row to add, and betas do get rolled back, the version that doesn't
+/// know a name has to carry it through untouched rather than lose it.
 public struct SidebarSectionCollapse: Equatable, Sendable, Codable {
     /// Raw section identifiers, including any this build doesn't know about.
     private var collapsed: Set<String>

@@ -80,6 +80,33 @@ extension PanelViewController {
         }
     }
 
+    // MARK: - Recents
+
+    /// Show Finder's **Recents** — recently-used files, everywhere — in a virtual results tab
+    /// (PLAN.md §M8 "Recents row … reuses machinery instead of adding some"). Reached from the
+    /// sidebar's first row; runs off the main thread like a search and lands in the same virtual
+    /// results panel, sorted by `RecentsQuery.resultSort` (newest first) rather than the pane's sort.
+    ///
+    /// `searchQuery` is left `nil`, so "Save Search…" stays disabled: Recents is a fixed system
+    /// listing, not a query a user composed and might want to keep.
+    func showRecents() {
+        let backend = backend
+        Task {
+            let results = await SpotlightSearchRunner.runRecents(RecentsQuery(), backend: backend)
+            openResults(
+                results.entries,
+                truncated: results.truncated,
+                as: ResultsPresentation(
+                    pathSummary: "Recents",
+                    sort: RecentsQuery.resultSort,
+                    query: nil,
+                    scope: nil,
+                    title: "Recents"
+                )
+            )
+        }
+    }
+
     // MARK: - Virtual results tab
 
     /// Install the hits as a new virtual tab beside the current one and switch to it, so the
@@ -92,22 +119,57 @@ extension PanelViewController {
         truncated: Bool,
         title: String? = nil
     ) {
+        openResults(
+            entries,
+            truncated: truncated,
+            as: ResultsPresentation(
+                pathSummary: query.summary,
+                sort: panel.model.sort,
+                query: query,
+                scope: scope,
+                title: title
+            )
+        )
+    }
+
+    /// How a virtual results tab presents its hits — everything that differs between an ⌥F7/saved
+    /// search and Recents, bundled so `openResults` stays within its parameter budget.
+    private struct ResultsPresentation {
+        /// The synthetic `.search` path's last component and the path-bar crumb.
+        let pathSummary: String
+        /// The listing order — the pane's own sort for a search, recency for Recents.
+        let sort: FileSort
+        /// What "Save Search…" persists; `nil` for Recents, which isn't a savable query.
+        let query: SpotlightQuery?
+        let scope: VFSPath?
+        /// The chip label; `nil` on an ad-hoc search leaves the query-summary crumb.
+        let title: String?
+    }
+
+    /// Install a virtual `.search` results tab from already-run hits — shared by ⌥F7/saved searches
+    /// and by Recents.
+    private func openResults(
+        _ entries: [FileEntry],
+        truncated: Bool,
+        as presentation: ResultsPresentation
+    ) {
         captureColumnLayout()
         let listing = DirectoryListing(
-            path: VFSPath(backend: .search, path: "/" + query.summary),
+            path: VFSPath(backend: .search, path: "/" + presentation.pathSummary),
             entries: entries
         )
-        // Show every hit, dotfiles included — a search result the user explicitly matched
-        // shouldn't be hidden by the app-wide show-hidden toggle.
-        let model = DirectoryModel(listing: listing, sort: panel.model.sort, showHidden: true)
+        // Show every hit, dotfiles included — a result the user explicitly asked for (a matched
+        // search, or a recently-used file) shouldn't be hidden by the app-wide show-hidden toggle.
+        let model = DirectoryModel(listing: listing, sort: presentation.sort, showHidden: true)
         let tab = PanelTab(panel: Panel(model: model))
         tab.hasLoaded = true
         tab.columnLayout = tabs[activeTabIndex].columnLayout
-        // Retain what produced these results so "Save Search…" can persist it.
-        tab.searchQuery = query
-        tab.searchScope = scope
-        // A saved search names its results tab; an ad-hoc ⌥F7 search leaves the query-summary chip.
-        tab.customTitle = title
+        // Retain what produced these results so "Save Search…" can persist it (nil for Recents).
+        tab.searchQuery = presentation.query
+        tab.searchScope = presentation.scope
+        // A saved search / Recents names its results tab; an ad-hoc ⌥F7 search leaves the
+        // query-summary chip.
+        tab.customTitle = presentation.title
 
         tabs.insert(tab, at: activeTabIndex + 1)
         activeTabIndex += 1

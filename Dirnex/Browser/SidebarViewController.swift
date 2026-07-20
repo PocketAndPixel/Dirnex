@@ -8,6 +8,10 @@ protocol SidebarViewControllerDelegate: AnyObject {
     /// A saved-search row was picked — re-run its query in the active pane and show the hits in
     /// a virtual results panel (PLAN.md §M4 "Saved searches … in the places strip").
     func sidebar(_ sidebar: SidebarViewController, didActivateSavedSearch savedSearch: SavedSearch)
+    /// The Recents row was picked — show recently-used files in a virtual results panel, the way a
+    /// saved search does (PLAN.md §M8 "Recents row … Finder's is a saved search"). It carries no
+    /// model, so it is a bare callback rather than a `didActivate…(_:)` with a payload.
+    func sidebarDidActivateRecents(_ sidebar: SidebarViewController)
     /// A saved-server row was picked — connect (SFTP) or mount (SMB) it and browse it in the active
     /// pane (PLAN.md §M5 "click → connect/mount + navigate").
     func sidebar(_ sidebar: SidebarViewController, didActivateServer server: ServerConnection)
@@ -42,6 +46,10 @@ final class SidebarViewController: NSViewController {
         /// to find Favorites by comparing header text, which made a user-visible string
         /// load-bearing, and the fold state keys off the same case (PLAN.md §M8).
         case header(SidebarSection)
+        /// The Recents row: a fixed system row that runs the recently-used-files query into a virtual
+        /// results panel (PLAN.md §M8). Carries nothing — like a saved search it dispatches a query,
+        /// not a place, so it has no path and no stored model.
+        case recents
         /// A pinned folder in the user-owned Favorites section — the hotlist, which since M8 *is*
         /// this section rather than a separate popup (PLAN.md §M8).
         case favorite(HotlistEntry)
@@ -72,7 +80,7 @@ final class SidebarViewController: NSViewController {
         /// at a directory.
         var path: VFSPath? {
             switch self {
-            case .header, .savedSearch, .server, .tag, .allTags: return nil
+            case .header, .recents, .savedSearch, .server, .tag, .allTags: return nil
             case let .favorite(entry): return entry.path
             case let .iCloud(path): return path
             case let .volume(volume): return volume.path
@@ -210,7 +218,12 @@ final class SidebarViewController: NSViewController {
         // — including whether a folded one contributes its rows — is `append`'s, in
         // `SidebarViewController+Sections`.
         var rows: [Row] = []
-        // Saved searches lead the sidebar, above the standard Favorites/Volumes sections.
+        // Recents leads the sidebar, where Finder puts it — one fixed row that runs the
+        // recently-used-files query into a virtual results panel (PLAN.md §M8). Always present: it
+        // needs only Spotlight, which is effectively always on, so unlike iCloud it has no
+        // absent state.
+        append(.recents, items: [.recents], to: &rows)
+        // Saved searches follow, above the standard Favorites/Volumes sections.
         append(.searches, items: SavedSearchStore.load().searches.map(Row.savedSearch), to: &rows)
         // Favorites is the user's own pin list (PLAN.md §M8) — seeded once from the standard places
         // at launch, reordered and extended by the user from here on. Alone among the sections it
@@ -341,7 +354,9 @@ final class SidebarViewController: NSViewController {
     /// doesn't cross files.
     func activate(rowAt index: Int) {
         guard rows.indices.contains(index) else { return }
-        if let savedSearch = rows[index].savedSearch {
+        if case .recents = rows[index] {
+            delegate?.sidebarDidActivateRecents(self)
+        } else if let savedSearch = rows[index].savedSearch {
             delegate?.sidebar(self, didActivateSavedSearch: savedSearch)
         } else if let server = rows[index].server {
             delegate?.sidebar(self, didActivateServer: server)
@@ -351,24 +366,6 @@ final class SidebarViewController: NSViewController {
             expandAllTags()
         } else if let path = rows[index].path {
             delegate?.sidebar(self, didActivate: path)
-        }
-    }
-
-    /// Eject (or unmount) a removable volume via the workspace, surfacing any failure —
-    /// a drive that's busy or in use should say so, not fail silently.
-    private func eject(_ volume: MountedVolume) {
-        do {
-            try NSWorkspace.shared.unmountAndEjectDevice(at: volume.path.localURL)
-        } catch {
-            let alert = NSAlert()
-            alert.messageText = "Couldn’t eject “\(volume.name)”"
-            alert.informativeText = error.localizedDescription
-            alert.alertStyle = .warning
-            if let window = view.window {
-                alert.beginSheetModal(for: window)
-            } else {
-                alert.runModal()
-            }
         }
     }
 }
@@ -405,6 +402,8 @@ extension SidebarViewController: NSTableViewDelegate {
                 isCollapsed: sectionCollapse.isCollapsed(section)
             )
             return header
+        case .recents:
+            return recentsCell()
         case let .favorite(entry):
             return favoriteCell(for: entry)
         case let .iCloud(path):
@@ -438,34 +437,8 @@ extension SidebarViewController: NSTableViewDelegate {
         return image ?? NSImage()
     }
 
-    /// Build (or reuse) a volume cell: a drive symbol, a capacity tooltip, and — when the volume
-    /// can eject — the eject button wired. (The favorites half of this lives in
-    /// `SidebarViewController+Favorites`, where the pin list's own rendering rules are.)
-    private func volumeCell(for volume: MountedVolume) -> NSView {
-        let cell = reuse(SidebarCellView.identifier) as? SidebarCellView ?? SidebarCellView()
-        let icon = Self.templateSymbol(volume.symbolName, pointSize: 15, describedAs: volume.name)
-        let canEject = volume.canEject
-        cell.configure(
-            name: volume.name,
-            image: icon,
-            canEject: canEject,
-            tooltip: capacityTooltip(volume)
-        )
-        cell.onEject = canEject ? { [weak self] in self?.eject(volume) } : nil
-        cell.onDelete = nil // volumes aren't deletable (reset in case the cell was reused)
-        return cell
-    }
-
     func reuse(_ identifier: NSUserInterfaceItemIdentifier) -> NSView? {
         tableView.makeView(withIdentifier: identifier, owner: self)
-    }
-
-    /// A "123 GB available of 456 GB" tooltip for volumes that report capacity.
-    private func capacityTooltip(_ volume: MountedVolume?) -> String? {
-        guard let volume, let total = volume.totalCapacity, let available = volume.availableCapacity else {
-            return volume?.name
-        }
-        return "\(FileFormatting.byteString(available)) available of \(FileFormatting.byteString(total))"
     }
 }
 

@@ -1,4 +1,5 @@
 import AppKit
+import DirnexCore
 
 /// The window-level half of keyboard access to the sidebar (PLAN.md §M8). The catalog command
 /// `view.focusSidebar` (⌥⌘S) dispatches here through the responder chain — the same path
@@ -15,6 +16,60 @@ extension BrowserWindowController {
             sidebarSplitItem.isCollapsed = false
         }
         sidebar.focusFromKeyboard(preferring: focusedPanel.panel.path)
+    }
+}
+
+// MARK: - SidebarViewControllerDelegate
+
+extension BrowserWindowController: SidebarViewControllerDelegate {
+    /// A sidebar click points the active pane at the chosen place/volume, then hands
+    /// keyboard focus back to that pane so browsing continues without a mouse.
+    func sidebar(_ sidebar: SidebarViewController, didActivate path: VFSPath) {
+        let target = activePanel ?? leftPanel
+        target.navigate(to: path)
+        target.focusTable()
+    }
+
+    /// A saved search re-runs its query in the active pane, opening the hits in a virtual
+    /// results tab, then hands focus back so browsing the results continues without a mouse.
+    func sidebar(_ sidebar: SidebarViewController, didActivateSavedSearch savedSearch: SavedSearch) {
+        let target = activePanel ?? leftPanel
+        target.runSavedSearch(savedSearch)
+        target.focusTable()
+    }
+
+    /// Recents opens the recently-used files as a virtual results tab in the active pane, the way a
+    /// saved search does (PLAN.md §M8), then hands focus back for keyboard browsing of the results.
+    func sidebarDidActivateRecents(_ sidebar: SidebarViewController) {
+        let target = activePanel ?? leftPanel
+        target.showRecents()
+        target.focusTable()
+    }
+
+    /// A saved server connects (SFTP) or mounts (SMB) in the active pane and browses it. The
+    /// connect/mount is async and, on completion, both navigates *and* focuses the pane itself,
+    /// so grabbing focus here (before the connection resolves) would be premature.
+    func sidebar(_ sidebar: SidebarViewController, didActivateServer server: ServerConnection) {
+        (activePanel ?? leftPanel).connect(to: server)
+    }
+
+    /// A tag row searches for the files carrying it and shows them in the active pane, the way a
+    /// saved search does — a tag is a query, not a place.
+    func sidebar(_ sidebar: SidebarViewController, didActivateTag tag: FinderTag) {
+        let target = activePanel ?? leftPanel
+        target.runTagSearch(tag)
+        target.focusTable()
+    }
+
+    /// "Edit…" on a saved server re-opens the connect prompt prefilled from it, in the active pane.
+    func sidebar(_ sidebar: SidebarViewController, didEditServer server: ServerConnection) {
+        (activePanel ?? leftPanel).editServer(server)
+    }
+
+    /// An empty-space / header click in the sidebar re-focuses the active pane so its keyboard
+    /// focus — and the responder-chain file commands (F5/F6/F8) — survive the click.
+    func sidebarDidClickEmptyArea(_ sidebar: SidebarViewController) {
+        (activePanel ?? leftPanel).focusTable()
     }
 }
 

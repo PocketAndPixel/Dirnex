@@ -16,7 +16,8 @@ struct SidebarSectionsTests {
         // Not decoration: the app builds its rows in this order, and a case inserted alphabetically
         // would move a whole section on screen without anything else looking wrong.
         #expect(
-            SidebarSection.allCases == [.searches, .favorites, .icloud, .volumes, .servers, .tags]
+            SidebarSection.allCases
+                == [.recents, .searches, .favorites, .icloud, .volumes, .servers, .tags]
         )
     }
 
@@ -79,18 +80,18 @@ struct SidebarSectionsTests {
 
     @Test("an unknown section name is carried through instead of failing the decode")
     func unknownSectionSurvives() throws {
-        // The failure this prevents: a build that doesn't know "recents" decoding a file written by
-        // one that does. A `Set<SidebarSection>` would throw here, and a throwing decode resets
-        // every section — so one unknown name would unfold the user's whole sidebar.
-        let stored = Data(#"["recents","tags"]"#.utf8)
+        // The failure this prevents: a build that doesn't know "trash" (the one M8 row still to come)
+        // decoding a file written by one that does. A `Set<SidebarSection>` would throw here, and a
+        // throwing decode resets every section — so one unknown name would unfold the whole sidebar.
+        let stored = Data(#"["tags","trash"]"#.utf8)
         let decoded = try JSONDecoder().decode(SidebarSectionCollapse.self, from: stored)
 
         #expect(decoded.isCollapsed(.tags))
-        #expect(decoded.sections == [.tags]) // "recents" is unknown, so there is nothing to render
+        #expect(decoded.sections == [.tags]) // "trash" is unknown, so there is nothing to render
 
         // And it is still there after this build saves its own change.
         var mutated = decoded
         mutated.setCollapsed(true, for: .volumes)
-        #expect(try json(mutated) == #"["recents","tags","volumes"]"#)
+        #expect(try json(mutated) == #"["tags","trash","volumes"]"#)
     }
 }
