@@ -101,16 +101,7 @@ public enum SidebarLocations {
         let homePath = VFSPath.local(home)
         var places = [FavoritePlace(name: "Home", path: homePath, kind: .home)]
 
-        // Standard home subfolders, in the order Finder lists them.
-        let subfolders: [(String, FavoritePlace.Kind)] = [
-            ("Desktop", .desktop),
-            ("Documents", .documents),
-            ("Downloads", .downloads),
-            ("Pictures", .pictures),
-            ("Music", .music),
-            ("Movies", .movies)
-        ]
-        for (component, kind) in subfolders {
+        for (component, kind) in homeSubfolders {
             let path = homePath.appending(component)
             if isDirectory(path.path, fileManager) {
                 places.append(FavoritePlace(name: component, path: path, kind: kind))
@@ -168,6 +159,41 @@ public enum SidebarLocations {
             if lhs.isRoot != rhs.isRoot { return lhs.isRoot }
             return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
         }
+    }
+
+    /// The standard home subfolders, in the order Finder lists them. One table, read by both
+    /// `favorites()` and `standardKind(for:)`, so an entry can never be enumerated under a kind
+    /// the classifier then fails to recognize.
+    private static let homeSubfolders: [(String, FavoritePlace.Kind)] = [
+        ("Desktop", .desktop),
+        ("Documents", .documents),
+        ("Downloads", .downloads),
+        ("Pictures", .pictures),
+        ("Music", .music),
+        ("Movies", .movies)
+    ]
+
+    /// The standard-folder identity of `path`, or `nil` for anywhere else.
+    ///
+    /// Needed once the sidebar's Favorites section is a user-owned pin list (PLAN.md §M8): rows
+    /// then arrive as bare paths rather than pre-tagged `FavoritePlace`s, and without this every
+    /// one of them would fall back to the generic folder icon instead of its own symbol.
+    ///
+    /// Deliberately a pure path mapping that touches no disk, unlike `favorites()`. Two things
+    /// follow, both wanted: a pinned folder that has since been deleted still renders as
+    /// Documents rather than degrading the moment it goes missing, and a user who removes the
+    /// seeded Downloads row and later drags it back in gets its symbol back rather than being
+    /// permanently demoted to a plain folder.
+    public static func standardKind(
+        for path: VFSPath,
+        home: String = NSHomeDirectory()
+    ) -> FavoritePlace.Kind? {
+        guard path.backend == .local else { return nil }
+        let homePath = VFSPath.local(home)
+        if path == homePath { return .home }
+        if path == VFSPath.local("/Applications") { return .applications }
+        guard path.parent == homePath else { return nil }
+        return homeSubfolders.first { $0.0 == path.lastComponent }?.1
     }
 
     private static func isDirectory(_ path: String, _ fileManager: FileManager) -> Bool {

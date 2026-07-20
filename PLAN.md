@@ -159,6 +159,30 @@ them into one, then earns the sections that follow.
 Exit: a folder dragged from a pane lands in the sidebar, is dragged into position, survives a
 relaunch, and is reachable from the keyboard; iCloud Drive and Trash browse like any other location.
 
+Progress (2026-07-20, M8 pass 1 — the merge's ordering rules): the pure, tested half of the
+Favorites merge landed, the same core-first opener every M4/M5/M6 slice used. **Box stays `[ ]`** —
+no store flag, no sidebar section, no app wiring yet; this is only the model. One new core file
+plus two additive functions, so the app is untouched and needed no rebuild (its suite was run
+anyway, since the core it links changed).
+
+- **`Services/HotlistSeeding.swift`** — `Hotlist.prepend(_:)`, the seed-vs-pins ordering rule, and
+  `HotlistEntry(place:)`. `prepend` does **not** reimplement de-duplication: `init(entries:)`
+  already collapses duplicate paths keeping the *first* occurrence, so prepending and
+  re-initializing yields the decided semantic (seed wins, at the seeded position, under the seeded
+  name) out of the rule that already existed. It returns whether the list actually changed, so the
+  app can skip a needless write. `HotlistEntry(place:)` exists because the generic
+  `HotlistEntry(path:)` derives its label from the path's last component — which for `/Users/oleg`
+  is the account name, so seeding through it would put a row called "oleg" atop every sidebar.
+- **`VFS/Places.swift`** — `SidebarLocations.standardKind(for:home:)`, the icon lookup. Once
+  Favorites is a pin list its rows arrive as bare paths rather than pre-tagged `FavoritePlace`s, and
+  without this every row would silently degrade from its own SF Symbol to the generic folder icon.
+  Deliberately a **pure path mapping that touches no disk**, unlike `favorites()`: a pinned folder
+  that has since been deleted keeps its symbol instead of degrading the moment it goes missing, and
+  a user who removes the seeded Downloads row and later drags it back gets the symbol back rather
+  than being permanently demoted. `favorites()` was refactored to read the same `homeSubfolders`
+  table the classifier reads, with a test asserting every kind the enumerator emits is one the
+  classifier maps back — the two drifting apart is the failure mode that would otherwise ship quiet.
+
 ## 5. Cross-cutting: testing strategy
 
 | Layer | Approach |
@@ -193,10 +217,12 @@ change, not a free choice:
 - **Name/brand check for "Dirnex"** — resolved 2026-07-19: the name is free, cleared by the
   user, no conflicting prior marks. The `NOTICE` / `TRADEMARKS.md` carve-out stands as written.
 
-Open as M8 takes shape:
+Opened and closed during M8:
 
-- **Seeding an existing hotlist** — the Favorites merge seeds the pin list from the standard
-  places, but an existing user already has pins. Do the seeded places go above what they pinned
-  (familiar sidebar, their own entries pushed down) or below (their pins keep pride of place, the
-  sidebar reads unlike Finder's)? Needs a one-shot "seeded" flag either way, so it is a real
-  migration and not a first-run branch.
+- **Seeding an existing hotlist** — resolved 2026-07-20: **standard places lead, existing pins
+  follow.** The sidebar therefore looks unchanged on the launch after the merge, which matters more
+  than the one thing it costs: a path pinned under a custom label ("Dl" for Downloads) is reclaimed
+  as the standard row and loses that label. The alternatives were pins-first (nothing the user chose
+  moves, but the sidebar's top rows change on update) and seeding fresh installs only (honest about
+  ownership, but Home/Desktop/Documents visibly vanish on update). Still needs a one-shot "seeded"
+  flag in `HotlistStore`, so it is a real migration and not a first-run branch.
