@@ -7,6 +7,35 @@ import DirnexCore
 /// stays under the length limit; `menuNeedsUpdate` (in the main file) dispatches here for a server
 /// row, and connecting/editing is handed to the delegate (the window → the active pane).
 extension SidebarViewController {
+    // MARK: - Rendering
+
+    /// Build (or reuse) a saved-server cell: the protocol glyph, the address as a tooltip, a
+    /// spinner while this connection is being established, and the trailing delete button wired to
+    /// the same confirmation the context menu's Remove uses.
+    func serverCell(for connection: ServerConnection) -> NSView {
+        let cell = reuse(SidebarCellView.identifier) as? SidebarCellView ?? SidebarCellView()
+        cell.configure(
+            name: connection.name,
+            image: Self.serverIcon(for: connection.kind),
+            canEject: false,
+            tooltip: connection.address,
+            isBusy: ServerConnectionActivity.shared.isConnecting(connection.name)
+        )
+        cell.onEject = nil
+        cell.onDelete = { [weak self] in self?.confirmRemoveServer(named: connection.name) }
+        return cell
+    }
+
+    /// A per-protocol SF Symbol so a saved server reads as remote at a glance: a globe-ish network
+    /// glyph for SFTP, a connected-drive glyph for an SMB share. Template so the source list tints
+    /// it with the row's text color like the other sidebar glyphs.
+    private static func serverIcon(for kind: ServerKind) -> NSImage {
+        let symbol = kind == .smb ? "externaldrive.connected.to.line.below" : "network"
+        return templateSymbol(symbol, pointSize: 14, describedAs: "Server")
+    }
+
+    // MARK: - Right-click menu
+
     /// Populate `menu` with the Connect / Edit… / Remove items for `server`.
     func buildServerMenu(_ menu: NSMenu, for server: ServerConnection) {
         menu.addItem(serverMenuItem("Connect", #selector(connectServerItem(_:)), server.name))

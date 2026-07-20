@@ -104,6 +104,59 @@ struct HotlistSeedingTests {
         #expect(hotlist.entries.map(\.name) == ["Home", "Work"])
     }
 
+    // MARK: - Inserting at a position (the drop half of drag-and-drop)
+
+    @Test("insert places a new pin at the given index")
+    func insertAtIndex() {
+        var hotlist = Hotlist(entries: [
+            HotlistEntry(name: "A", path: path("/a")),
+            HotlistEntry(name: "C", path: path("/c"))
+        ])
+        let changed = hotlist.insert(HotlistEntry(name: "B", path: path("/b")), at: 1)
+
+        #expect(changed)
+        #expect(hotlist.entries.map(\.name) == ["A", "B", "C"])
+    }
+
+    @Test("insert clamps an out-of-range index to the ends")
+    func insertClamps() {
+        var high = Hotlist(entries: [HotlistEntry(name: "A", path: path("/a"))])
+        high.insert(HotlistEntry(name: "Z", path: path("/z")), at: 99)
+        #expect(high.entries.map(\.name) == ["A", "Z"])
+
+        var low = Hotlist(entries: [HotlistEntry(name: "A", path: path("/a"))])
+        low.insert(HotlistEntry(name: "Z", path: path("/z")), at: -5)
+        #expect(low.entries.map(\.name) == ["Z", "A"])
+    }
+
+    @Test("inserting an already-pinned path moves it and keeps its user-given name")
+    func insertRepositionsInsteadOfDuplicating() {
+        // Dragging in a folder that is already in the sidebar is a reposition — and a custom label
+        // on it has to survive the drag, so the dropped entry's own name must not overwrite it.
+        var hotlist = Hotlist(entries: [
+            HotlistEntry(name: "Work", path: path("/Users/me/Projects")),
+            HotlistEntry(name: "A", path: path("/a")),
+            HotlistEntry(name: "B", path: path("/b"))
+        ])
+        let changed = hotlist.insert(HotlistEntry(path: path("/Users/me/Projects")), at: 2)
+
+        #expect(changed)
+        #expect(hotlist.entries.map(\.name) == ["A", "B", "Work"])
+        #expect(hotlist.entries.count == 3)
+    }
+
+    @Test("insert reports no change when the entry is already at that position")
+    func insertReportsNoChange() {
+        var hotlist = Hotlist(entries: [
+            HotlistEntry(name: "A", path: path("/a")),
+            HotlistEntry(name: "B", path: path("/b"))
+        ])
+        let changed = hotlist.insert(HotlistEntry(name: "A", path: path("/a")), at: 0)
+
+        #expect(!changed)
+        #expect(hotlist.entries.map(\.name) == ["A", "B"])
+    }
+
     // MARK: - Classifying a path back to a standard kind
 
     @Test("standard home folders classify by path, with no disk access")

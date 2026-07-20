@@ -126,20 +126,22 @@ with add/remove/rename/reorder already tested in core — hides behind Ctrl+D an
 organizer. Two competing concepts, and the personalizable one is invisible. M8 collapses
 them into one, then earns the sections that follow.
 
-- [ ] **Merge the hotlist into the sidebar's Favorites section** — the pin list *becomes* the
+- [x] **Merge the hotlist into the sidebar's Favorites section** — the pin list *becomes* the
       section, seeded on first run from `SidebarLocations.favorites()`. That is Finder's own model:
       user-owned, seeded with the standard folders, any of them removable. Retires the modal
       organizer; keeps the Ctrl+D menu's bare 1–9 jumps, which are the keyboard half of the feature
-- [ ] **Drag to reorder** — `Hotlist.move(from:to:)` is already core-tested, and
+- [x] **Drag to reorder** — `Hotlist.move(from:to:)` is already core-tested, and
       `HotlistOrganizerController` already demonstrates the `NSTableView` reorder pattern to lift.
       Favorites only: Volumes is a mount-table snapshot re-sorted on every mount event, so a user
       order has nowhere to live
-- [ ] **Drag folders in from a pane** — panes already write `.fileURL` to the pasteboard, so
-      pane → sidebar is a `registerForDraggedTypes` plus `Hotlist.add`. Directories only. A remote
+- [x] **Drag folders in from a pane** — panes already write `.fileURL` to the pasteboard, so
+      pane → sidebar is a `registerForDraggedTypes` plus ~~`Hotlist.add`~~ **`Hotlist.insert(_:at:)`**
+      (a drop has a position; `add` only appends). Directories only. A remote
       (SFTP) folder cannot ride `.fileURL` and needs a private `VFSPath` pasteboard type, or stays
-      menu-only
-- [ ] **Remove from the sidebar** — reuse the `cell.onDelete` affordance the saved-search and
-      server rows already carry
+      menu-only — still true, still menu-only
+- [x] **Remove from the sidebar** — ~~reuse the `cell.onDelete` affordance the saved-search and
+      server rows already carry~~ **a right-click item instead**; see the pass-2 note for why eight
+      always-visible trash buttons was the wrong trade
 - [ ] **Collapsible sections** — group rows are inert today; with Searches/Favorites/iCloud/
       Volumes/Servers/Tags the list outgrows a laptop pane. Disclosure triangles, per-section
       state persisted
@@ -215,6 +217,35 @@ regression `standardKind` exists to prevent and which no test would have caught.
 nine rows with its 1–9 accelerators intact, confirming the two surfaces are one list. A full round
 trip — pin `~/Dev/Common` via ⌃D, watch it appear in the sidebar with no relaunch, remove it via the
 new menu — left the store byte-identical to how it started.
+
+Progress (2026-07-20, M8 pass 3 — drag-and-drop, VERIFIED LIVE): reorder and drag-to-pin landed,
+and with them the first four boxes close. **The modal organizer is now deleted** — it was kept
+alive through pass 2 precisely so that reorder never disappeared between the two passes, and the
+sidebar only earned its removal once dragging worked.
+
+- **`Hotlist.insert(_:at:)`** (core, tested) — the drop half, where `move` is the reorder half.
+  `add` could not serve: a drop has a *position*. A path already pinned **repositions and keeps its
+  existing entry** rather than duplicating, so a user-given name survives being dragged — the same
+  refusal-to-rename `add` already had on a duplicate.
+- **`SidebarViewController+FavoriteDrag.swift`** (new) — the row-index ↔ pin-index mapping, which
+  is the whole of what the app layer adds. `favoriteDropRange` locates the section from its header
+  rather than from its rows, which is what makes an **empty** Favorites section still a drop target;
+  that is the second reason the header renders unconditionally. A drop proposed anywhere else in the
+  sidebar is retargeted into Favorites rather than refused, so the insertion line always shows a
+  real answer. Files among the dragged URLs are filtered out: a pin navigates a pane to a folder, so
+  a pinned file would be a row that cannot do the one thing a row does.
+- **The off-by-one**: `NSTableView` reports a drop as an insertion index in *pre-removal*
+  coordinates while `Hotlist.move` takes a destination in the resulting list. Both directions were
+  driven live for exactly this reason — an upward move is unaffected by the adjustment and would
+  have passed either way.
+- Room for all this came from *removing* code: the saved-search and server cell rendering moved into
+  the companion files that already own those sections, taking the main file from 494 to 453.
+
+Live verification: `Dev` dragged from last position to second and back, landing exactly where the
+insertion line showed each time; `~/Public` dragged in from a pane and pinned; a **file** dragged
+over the sidebar drew no insertion line and pinned nothing. The store finished byte-identical to
+how it started. ⌃D still lists the same rows with 1–9 intact and no gap where "Organize Hotlist…"
+used to be.
 
 ## 5. Cross-cutting: testing strategy
 

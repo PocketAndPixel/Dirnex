@@ -73,6 +73,28 @@ public struct Hotlist: Sendable, Equatable, Codable {
         entries[index].name = name
     }
 
+    /// Insert `entry` so it lands at `index` in the resulting list — the drop half of the sidebar's
+    /// drag-and-drop (PLAN.md §M8), where `move` is the reorder half.
+    ///
+    /// A path that is **already pinned moves rather than duplicating**, and keeps its existing
+    /// entry: dragging in a folder that is already in the sidebar is a reposition, and a user-given
+    /// name on it ("Work" for `~/Dev/Projects`) has to survive being dragged. That mirrors `add`'s
+    /// refusal to rename on a duplicate. Out-of-range indices clamp to the ends.
+    ///
+    /// Returns whether the list actually changed, so a caller can skip a needless write.
+    @discardableResult
+    public mutating func insert(_ entry: HotlistEntry, at index: Int) -> Bool {
+        let before = entries
+        var working = entries
+        var repositioned: HotlistEntry?
+        if let existing = working.firstIndex(where: { $0.path == entry.path }) {
+            repositioned = working.remove(at: existing)
+        }
+        working.insert(repositioned ?? entry, at: min(max(index, 0), working.count))
+        entries = working
+        return entries != before
+    }
+
     /// Reorder: pull the entry out of `source` and reinsert it so it lands at `destination`
     /// in the *resulting* list (Array semantics, matching the tab reorder). The UI adjusts a
     /// raw `NSTableView` drop row into this convention before calling.

@@ -4,8 +4,12 @@ import DirnexCore
 /// The directory hotlist (PLAN.md §M3 "Directory hotlist (Ctrl+D): pin, reorder, jump") —
 /// Total Commander's Ctrl+D popup of pinned folders, also reachable from the Go menu and the
 /// Cmd+K palette. The pane owns the actions because they're pane-relative: a jump lands in
-/// *this* pane and Add pins *this* pane's folder. The shared list lives in `HotlistStore`;
-/// reorder/rename happen in the organizer sheet (`HotlistOrganizerController`).
+/// *this* pane and Add pins *this* pane's folder. The shared list lives in `HotlistStore`.
+///
+/// This popup is now the *keyboard* face of the pin list; its visible face is the sidebar's
+/// Favorites section, which since M8 renders the same `HotlistStore` (PLAN.md §M8). Reorder,
+/// rename and remove live there — dragging a row, or its right-click menu — which is why the
+/// organizer sheet this popup used to open no longer exists.
 extension PanelViewController {
     // MARK: - Commands (dispatched to the focused pane via the responder chain)
 
@@ -54,15 +58,6 @@ extension PanelViewController {
         toggle.target = self
         menu.addItem(toggle)
 
-        let organize = NSMenuItem(
-            title: "Organize Hotlist…",
-            action: #selector(organizeHotlist(_:)),
-            keyEquivalent: ""
-        )
-        organize.target = self
-        organize.isEnabled = !hotlist.entries.isEmpty
-        menu.addItem(organize)
-
         return menu
     }
 
@@ -107,12 +102,6 @@ extension PanelViewController {
             hotlist.add(HotlistEntry(path: panel.path))
         }
         HotlistStore.save(hotlist)
-    }
-
-    @objc private func organizeHotlist(_ sender: Any?) {
-        // `presentAsSheet` retains the organizer for its on-screen lifetime, so the pane
-        // doesn't need to hold it.
-        presentAsSheet(HotlistOrganizerController())
     }
 
     // MARK: - Helpers

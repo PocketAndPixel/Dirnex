@@ -6,6 +6,39 @@ import DirnexCore
 /// `SidebarViewController` so that file stays under the length limit once the Servers section joins
 /// it; `menuNeedsUpdate` (in the main file) dispatches here for a saved-search row.
 extension SidebarViewController {
+    // MARK: - Rendering
+
+    /// Build (or reuse) a saved-search cell, with the trailing delete button wired to the same
+    /// confirmation the context menu's Delete uses.
+    func savedSearchCell(for search: SavedSearch) -> NSView {
+        let cell = reuse(SidebarCellView.identifier) as? SidebarCellView ?? SidebarCellView()
+        cell.configure(
+            name: search.name,
+            image: Self.savedSearchIcon,
+            canEject: false,
+            tooltip: savedSearchTooltip(search)
+        )
+        cell.onEject = nil
+        cell.onDelete = { [weak self] in self?.confirmDeleteSavedSearch(named: search.name) }
+        return cell
+    }
+
+    /// A magnifying-glass SF Symbol so a saved search reads as a query, not a folder. Template
+    /// so the source list tints it with the row's text color like the favorite glyphs.
+    static let savedSearchIcon = templateSymbol(
+        "magnifyingglass",
+        pointSize: 14,
+        describedAs: "Saved search"
+    )
+
+    /// A tooltip describing where a saved search runs — the scope folder, or "Everywhere".
+    private func savedSearchTooltip(_ search: SavedSearch) -> String {
+        guard let scope = search.scope else { return "Search everywhere" }
+        return "Search in “\(scope.lastComponent)”"
+    }
+
+    // MARK: - Right-click menu
+
     /// Populate `menu` with the Run / Rename / Delete items for `search`.
     func buildSavedSearchMenu(_ menu: NSMenu, for search: SavedSearch) {
         menu.addItem(

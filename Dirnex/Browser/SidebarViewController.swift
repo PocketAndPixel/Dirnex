@@ -89,6 +89,11 @@ final class SidebarViewController: NSViewController {
 
     weak var delegate: SidebarViewControllerDelegate?
 
+    /// The Favorites section's header title. A named constant rather than a literal because the
+    /// drag code locates the section by it — `rebuild()` renders this header unconditionally, so
+    /// finding it is how the drop range is derived even when nothing is pinned.
+    static let favoritesHeaderTitle = "Favorites"
+
     /// Whether the Tags section is listing every tag it knows of, or just the stock seven. Off until
     /// "All Tags…" is clicked; per window, and deliberately not persisted — it is a disclosure, not
     /// a setting. Stored here because a Swift extension cannot hold state, and the section itself
@@ -124,6 +129,7 @@ final class SidebarViewController: NSViewController {
         tableView.delegate = self
         tableView.target = self
         tableView.action = #selector(rowClicked)
+        registerFavoriteDragTypes()
 
         // Right-click on a saved-search row offers Run / Rename / Delete; the menu builds its
         // items lazily from the clicked row, so it stays empty (and doesn't appear) elsewhere.
@@ -192,7 +198,7 @@ final class SidebarViewController: NSViewController {
         // places at launch, reordered and extended by the user from here on. An empty section is
         // still rendered: it is the drop target for dragging a folder in, so hiding it would hide
         // the way back from having removed everything.
-        rows.append(.header("Favorites"))
+        rows.append(.header(Self.favoritesHeaderTitle))
         rows.append(contentsOf: HotlistStore.load().entries.map(Row.favorite))
         let volumes = SidebarLocations.volumes()
         if !volumes.isEmpty {
@@ -373,50 +379,15 @@ extension SidebarViewController: NSTableViewDelegate {
         case let .volume(volume):
             return volumeCell(for: volume)
         case let .savedSearch(search):
-            let cell = reuse(SidebarCellView.identifier) as? SidebarCellView ?? SidebarCellView()
-            cell.configure(
-                name: search.name,
-                image: Self.savedSearchIcon,
-                canEject: false,
-                tooltip: savedSearchTooltip(search)
-            )
-            cell.onEject = nil
-            cell.onDelete = { [weak self] in self?.confirmDeleteSavedSearch(named: search.name) }
-            return cell
+            return savedSearchCell(for: search)
         case let .server(connection):
-            let cell = reuse(SidebarCellView.identifier) as? SidebarCellView ?? SidebarCellView()
-            cell.configure(
-                name: connection.name,
-                image: Self.serverIcon(for: connection.kind),
-                canEject: false,
-                tooltip: connection.address,
-                isBusy: ServerConnectionActivity.shared.isConnecting(connection.name)
-            )
-            cell.onEject = nil
-            cell.onDelete = { [weak self] in self?.confirmRemoveServer(named: connection.name) }
-            return cell
+            return serverCell(for: connection)
         case let .tag(tag):
             return tagCell(for: tag)
         case .allTags:
             return allTagsCell()
         }
     }
-
-    /// A per-protocol SF Symbol so a saved server reads as remote at a glance: a globe-ish network
-    /// glyph for SFTP, a connected-drive glyph for an SMB share. Template so the source list tints
-    /// it with the row's text color like the other sidebar glyphs.
-    private static func serverIcon(for kind: ServerKind) -> NSImage {
-        let symbol = kind == .smb ? "externaldrive.connected.to.line.below" : "network"
-        return templateSymbol(symbol, pointSize: 14, describedAs: "Server")
-    }
-
-    /// A magnifying-glass SF Symbol so a saved search reads as a query, not a folder. Template
-    /// so the source list tints it with the row's text color like the favorite glyphs.
-    private static let savedSearchIcon = templateSymbol(
-        "magnifyingglass",
-        pointSize: 14,
-        describedAs: "Saved search"
-    )
 
     /// Every sidebar glyph is a template SF Symbol, so the source list tints it with the row's
     /// text color — and turns it white on the selected row — matching the label beside it.
@@ -432,12 +403,6 @@ extension SidebarViewController: NSTableViewDelegate {
             .withSymbolConfiguration(config)
         image?.isTemplate = true
         return image ?? NSImage()
-    }
-
-    /// A tooltip describing where a saved search runs — the scope folder, or "Everywhere".
-    private func savedSearchTooltip(_ search: SavedSearch) -> String {
-        guard let scope = search.scope else { return "Search everywhere" }
-        return "Search in “\(scope.lastComponent)”"
     }
 
     /// Build (or reuse) a volume cell: a drive symbol, a capacity tooltip, and — when the volume
