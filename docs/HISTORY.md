@@ -4556,9 +4556,6 @@ the live registry in registry order with the category as each row's subtitle; an
 notarized v0.0.4 was backed up first and restored afterwards (Gatekeeper: accepted, Notarized
 Developer ID). 854 core (+9) + 94 app (+7) tests green; swiftformat + swiftlint --strict clean.
 
-~~Still open from M6, and still non-blocking: the .gitignore-aware folder sizes from pass 1.~~ →
-**Done 2026-07-19, see below. M6 has no leftovers.**
-
 ### .gitignore-aware folder sizes (2026-07-19, VERIFIED LIVE — the last M6 leftover, now closed)
 
 The one optional slice deferred since M6 pass 1. **Probed first**, and the probe decided the design:
