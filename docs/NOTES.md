@@ -1,7 +1,7 @@
 # Engineering notes
 
 Hard-won gotchas that cost real debugging time, distilled so they don't have to be
-rediscovered. Chronological progress lives in [PLAN.md](../PLAN.md); this file is the
+rediscovered. Chronological progress lives in [HISTORY.md](HISTORY.md); this file is the
 durable residue — facts that stay true after the pass that found them is forgotten.
 
 Keep it curated. A note earns its place by having burned an hour or by being invisible
