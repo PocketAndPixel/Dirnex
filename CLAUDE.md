@@ -10,9 +10,9 @@ for Settings and dialogs).
 - **[PLAN.md](PLAN.md) is the authoritative source of truth** — architecture rules (§2, locked
   unless proven wrong), the testing strategy, and the current milestone. Read the relevant
   section before starting work, and add a progress note when a slice lands.
-- **[docs/HISTORY.md](docs/HISTORY.md)** — the M0–M7 build log, archived when M7 closed. Source
-  comments citing `PLAN.md §M5` and the like point here. Read it for the reasoning behind a
-  shipped decision; it's archive, not instruction.
+- **[docs/HISTORY.md](docs/HISTORY.md)** — the M0–M8 build log; each milestone is archived here as
+  it closes. Source comments citing `PLAN.md §M5` and the like point here. Read it for the
+  reasoning behind a shipped decision; it's archive, not instruction.
 - **[docs/NOTES.md](docs/NOTES.md)** — durable engineering gotchas: Swift 6 traps, AppKit
   behaviors, external CLI quirks, release-pipeline pitfalls. Read it before debugging something
   that "should just work."

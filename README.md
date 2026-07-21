@@ -8,10 +8,12 @@ undo.
 See [PLAN.md](PLAN.md) for architecture decisions and what's planned next, and
 [docs/HISTORY.md](docs/HISTORY.md) for the milestone-by-milestone build log.
 
-**Status:** M0–M7 shipped — dual-pane browsing, the queued/undoable operation
+**Status:** M0–M8 shipped — dual-pane browsing, the queued/undoable operation
 engine, the ⌘K palette, archive and SFTP/SMB backends, the Mac-native layer
-(Finder tags, Git awareness, Quick Look, AppleScript + Shortcuts), and a
-notarized Developer ID release pipeline with Sparkle beta/stable channels.
+(Finder tags, Git awareness, Quick Look, AppleScript + Shortcuts), a notarized
+Developer ID release pipeline with Sparkle beta/stable channels, and a
+keyboard-drivable sidebar you can shape — pins, folds, iCloud Drive, Recents,
+and a merged Trash with Put Back.
 
 ## Requirements
 
