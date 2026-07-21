@@ -175,6 +175,12 @@ free.)
       container folder underneath. The FDA degrade is silent by default — the listing is simply the
       loose files — with a **one-shot** offer of the grant (`presentForICloud`, its own latch)
       explaining what is missing, since a short iCloud Drive is otherwise a quiet wrong answer.*
+      *Both merges also became **live** in the same pass: a merged listing had no watcher at all, so
+      a file trashed in Finder didn't appear in an open Trash tab until the row was clicked again.
+      `DirectoryWatcher` now takes an array — one FSEvents stream over whatever the gather actually
+      read (`PanelTab.mergedSources`) — and a merged tab re-gathers on activation, because the
+      pane's one watcher follows the active tab and cannot see what happened while it was away.
+      This closes the last gap M9 opened in M8's Trash, alongside the iCloud trash above.*
 - [x] **App-name / icon resolution** — *core landed 2026-07-21.* Probed rather than guessed, and both
       guesses in the bullet above were wrong: the mapping is not in the container, and
       `NSWorkspace.icon(forFile:)` returns the **generic folder icon** for these. Both live in

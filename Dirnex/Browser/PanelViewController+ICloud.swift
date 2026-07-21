@@ -45,8 +45,11 @@ extension PanelViewController {
     /// folders the listing stands in front of, which is what `selecting` is for: the cursor lands on
     /// the row just left, exactly as walking up out of any folder does.
     func showICloudDrive(selecting target: VFSPath? = nil) {
-        gatherICloudDrive { [weak self] entries in
+        gatherICloudDrive { [weak self] entries, sources in
             guard let self else { return }
+            // Recorded *before* the install, so the watcher `installResults` starts is the merged
+            // one — a file added to iCloud Drive elsewhere then shows up without re-clicking.
+            mergedSources = sources
             installResults(entries, as: iCloudPresentation())
             if let target, let index = panel.model.index(ofID: target) {
                 panel.moveCursor(to: index)
@@ -60,8 +63,11 @@ extension PanelViewController {
     /// has no FSEvents watcher of its own, so a New Folder or a paste into the root would otherwise
     /// leave the pane drawing the rows it had.
     func reloadICloudDrive(selecting target: VFSPath? = nil) {
-        gatherICloudDrive { [weak self] entries in
+        gatherICloudDrive { [weak self] entries, sources in
             guard let self, isICloudListing else { return }
+            // An app library that appeared or emptied out changes what there is to watch; an
+            // unchanged set leaves the running stream alone.
+            watchMergedListing(sources: sources)
             // The same install-then-render tail the real-directory refresh ends with:
             // `installSortedModel` only swaps the model, and without `reloadEverything` the pane
             // goes on drawing what it had (docs/NOTES.md).
@@ -97,7 +103,9 @@ extension PanelViewController {
     /// A container that can't be stat'ed contributes nothing rather than a row pointing at nothing —
     /// `appLibraries` already proved the folder exists and has content, so this only drops one that
     /// vanished between the scan and the stat.
-    private func gatherICloudDrive(then present: @escaping ([FileEntry]) -> Void) {
+    /// The directories are handed back alongside the entries because a pane showing the merge has to
+    /// *watch* them — it has no directory of its own to watch.
+    private func gatherICloudDrive(then present: @escaping ([FileEntry], [VFSPath]) -> Void) {
         let backend = backend
         let container = SidebarLocations.iCloudDrive()
         Task {
@@ -111,6 +119,9 @@ extension PanelViewController {
                 return ICloudGather(
                     entries: ICloudDrive.merge(looseFiles: loose, libraryRows: rows),
                     libraries: scan.libraries,
+                    // What this pass actually read: the loose-files container (when it exists) and
+                    // every library folder that contributed a row.
+                    sources: [container].compactMap { $0 } + rows.map(\.path),
                     isRestricted: scan.isRestricted
                 )
             }.value
@@ -118,7 +129,7 @@ extension PanelViewController {
             // The icons are decoded on the main actor, from the cache the scan just named, so the
             // rows can render an app's own icon rather than a generic folder.
             ICloudLibraryIcons.shared.record(gathered.libraries)
-            present(gathered.entries)
+            present(gathered.entries, gathered.sources)
             // Offered after the listing is on screen, and only once ever: the pane has just shown
             // the loose files, so this explains what is *missing* rather than standing in for it.
             if gathered.isRestricted {
@@ -132,6 +143,8 @@ extension PanelViewController {
     private struct ICloudGather: Sendable {
         let entries: [FileEntry]
         let libraries: [ICloudAppLibrary]
+        /// The real directories behind the listing, for the pane to watch.
+        let sources: [VFSPath]
         /// Whether a container's `Documents` refused to be read — the difference between "this Mac
         /// has no app libraries" and "I was not allowed to look", which must not render alike.
         let isRestricted: Bool

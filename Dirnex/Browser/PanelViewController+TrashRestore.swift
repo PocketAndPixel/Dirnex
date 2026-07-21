@@ -39,7 +39,7 @@ extension PanelViewController {
     /// not counted and not restored — a trash's dotfiles are Finder's own `.DS_Store` put-back
     /// databases, and restoring one would move the very record the rest of the restore reads from.
     func restoreAllFromTrash() {
-        gatherTrash { [weak self] entries in
+        gatherTrash { [weak self] entries, _ in
             guard let self else { return }
             let restorable = entries.filter { !$0.isHidden }
             guard !restorable.isEmpty else {

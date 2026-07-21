@@ -67,6 +67,16 @@ final class PanelTab {
     /// rather than the raw query (`"jmeter"`). `nil` for an ordinary tab. Session-scoped like
     /// `searchQuery` (search tabs aren't persisted).
     var customTitle: String?
+    /// The real directories a **merged** listing was assembled from — every trash for the Trash
+    /// (PLAN.md §M8), the CloudDocs container plus each app library for iCloud Drive (§M9). Empty
+    /// for every other kind of tab.
+    ///
+    /// Held because such a tab has no directory of its own to watch, and yet its contents change
+    /// behind the pane's back: trashing a file in Finder must show up in an open Trash tab without
+    /// re-clicking the row. The pane watches exactly these, through one FSEvents stream, and
+    /// re-gathers when any of them changes. Recorded by the gather that produced the listing, so it
+    /// always describes what is actually on screen. Session-scoped like the snapshots above.
+    var mergedSources: [VFSPath] = []
 
     /// Drop everything that describes *results* rather than a place: the chip label and the query
     /// behind "Save Search…". Called when the tab stops showing a results listing — navigating a
@@ -77,6 +87,7 @@ final class PanelTab {
         customTitle = nil
         searchQuery = nil
         searchScope = nil
+        mergedSources = []
     }
 
     init(panel: Panel) {

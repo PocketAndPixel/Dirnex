@@ -40,7 +40,14 @@ extension PanelViewController {
     /// the tab may have gone stale while inactive (nothing watches an inactive tab). A virtual
     /// results tab has no directory to re-list; its snapshot stands until the tab is closed.
     private func refreshActiveDirectory() {
-        guard panel.path.backend == .local else { return }
+        guard panel.path.backend == .local else {
+            // A *merged* listing is the exception: it is a live view of real directories, not a
+            // snapshot of a question, and the pane's single watcher followed whichever tab was
+            // active — so anything trashed (or added to iCloud Drive) while this tab sat in the
+            // background went unseen. Re-gather, which also re-establishes the watch.
+            if !mergedSources.isEmpty { refreshCurrentDirectory() }
+            return
+        }
         loadToken += 1
         let token = loadToken
         let path = panel.path

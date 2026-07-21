@@ -362,6 +362,13 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   the gate but to carry the fact **in the listing**: `FileEntry.isDataless` came in on the `stat` the
   listing already did, and backs the scan up wherever the scan cannot run. Same shape as carrying
   results *in* a notification instead of telling a cache to go re-read.
+- **A merged listing needs a watcher even though it has no directory** — and FSEvents gives it for
+  free: `FSEventStreamCreate` takes an *array* of paths, so one stream covers every trash (or every
+  iCloud container) the listing was gathered from. Two things are easy to get wrong. The pane's
+  single watcher follows the **active tab**, so a merged tab sitting in the background is watched by
+  nothing and must re-gather when it comes back — the watcher alone is not enough. And the re-gather
+  it triggers must not rebuild the stream, or every event tears down the thing that delivered it;
+  rebuild only when the *set of sources* actually changed.
 - **A virtual listing that names a *place* wants the opposite defaults from one that names a query.**
   The Trash and search results open a tab per click, refuse writes, and send an opened folder to the
   other pane — all correct for something you visited once. iCloud Drive is browsed repeatedly, so

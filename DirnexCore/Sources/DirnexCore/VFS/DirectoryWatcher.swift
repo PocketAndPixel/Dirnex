@@ -32,7 +32,30 @@ public final class DirectoryWatcher {
     ) {
         self.onChange = onChange
         self.queue = queue
-        start(path: path.path, latency: latency)
+        start(paths: [path.path], latency: latency)
+    }
+
+    /// Watch **several** directories through one stream, firing the same `onChange` for a change
+    /// under any of them — what a merged listing needs (PLAN.md §M8 Trash, §M9 iCloud Drive).
+    ///
+    /// The Trash is not a directory: it is `~/.Trash`, iCloud's own trash, and every mounted
+    /// volume's, presented as one place. A pane showing it therefore has nothing to watch by path,
+    /// and until now watched nothing at all — so a file trashed in Finder didn't appear until the
+    /// row was clicked again. FSEvents takes an array natively, so this costs one stream, not one
+    /// per source.
+    ///
+    /// An empty `paths` is a watcher that never fires rather than an error: a merge with no sources
+    /// (no trash exists yet, iCloud Drive is off) has nothing to notice.
+    public init(
+        paths: [VFSPath],
+        latency: TimeInterval = 0.15,
+        queue: DispatchQueue = DispatchQueue(label: "com.dirnex.fsevents", qos: .utility),
+        onChange: @escaping @Sendable () -> Void
+    ) {
+        self.onChange = onChange
+        self.queue = queue
+        guard !paths.isEmpty else { return }
+        start(paths: paths.map(\.path), latency: latency)
     }
 
     deinit {
@@ -48,7 +71,7 @@ public final class DirectoryWatcher {
         self.stream = nil
     }
 
-    private func start(path: String, latency: TimeInterval) {
+    private func start(paths: [String], latency: TimeInterval) {
         var context = FSEventStreamContext(
             version: 0,
             info: Unmanaged.passUnretained(self).toOpaque(),
@@ -67,7 +90,7 @@ public final class DirectoryWatcher {
             kCFAllocatorDefault,
             callback,
             &context,
-            [path] as CFArray,
+            paths as CFArray,
             FSEventStreamEventId(kFSEventStreamEventIdSinceNow),
             latency,
             flags

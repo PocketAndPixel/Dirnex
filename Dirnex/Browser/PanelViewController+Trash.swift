@@ -30,9 +30,12 @@ extension PanelViewController {
 
     /// Open the Trash in a new virtual results tab — the sidebar's Trash row.
     func showTrash() {
-        gatherTrash { [weak self] entries in
+        gatherTrash { [weak self] entries, sources in
             guard let self else { return }
             openResults(entries, truncated: false, as: trashPresentation())
+            // The tab that just opened is the active one; watching its sources is what makes a file
+            // trashed elsewhere (Finder, another app) appear here without re-clicking the row.
+            watchMergedListing(sources: sources, force: true)
         }
     }
 
@@ -41,8 +44,11 @@ extension PanelViewController {
     /// through; the cursor is re-anchored by identity by `installSortedModel`, so the row under it
     /// survives rows vanishing above it.
     func reloadTrash() {
-        gatherTrash { [weak self] entries in
+        gatherTrash { [weak self] entries, sources in
             guard let self, isTrashListing else { return }
+            // A volume mounted or unmounted since the last gather changes what there is to watch;
+            // an unchanged set leaves the running stream alone.
+            watchMergedListing(sources: sources)
             // The same install-then-render tail the real-directory refresh ends with.
             // `installSortedModel` only swaps the model — without `reloadEverything` the pane goes
             // on drawing the rows it had, which after an Empty Trash is a list of files that no
@@ -66,7 +72,7 @@ extension PanelViewController {
     /// An empty Trash says so instead of opening a confirmation for nothing — the same "never a
     /// no-op the user can't read" rule the Full Disk Access menu item follows.
     func emptyTrash() {
-        gatherTrash { [weak self] entries in
+        gatherTrash { [weak self] entries, _ in
             guard let self else { return }
             // Counted on what the Trash *shows*: a trash directory always holds a `.DS_Store` (it
             // is Finder's put-back database), so counting raw entries would offer to erase "1 item"
@@ -183,7 +189,10 @@ extension PanelViewController {
     /// would be an empty one wearing a plausible face.
     /// Internal, not private: `PanelViewController+TrashRestore` gathers the same merge for
     /// "Restore All", and Swift's `private` does not cross files (docs/NOTES.md).
-    func gatherTrash(then present: @escaping ([FileEntry]) -> Void) {
+    /// The directories are handed back alongside the entries because a pane showing the merge has to
+    /// *watch* them — it has no directory of its own — and they are what this pass actually read,
+    /// rather than what a second enumeration would find.
+    func gatherTrash(then present: @escaping ([FileEntry], [VFSPath]) -> Void) {
         let backend = backend
         let directories = SidebarLocations.trashDirectories(volumes: SidebarLocations.volumes())
         Task {
@@ -205,7 +214,7 @@ extension PanelViewController {
             }.value
 
             switch outcome {
-            case let .listed(entries): present(entries)
+            case let .listed(entries): present(entries, directories)
             case .denied: FullDiskAccessOnboarding.presentForTrash(over: view.window)
             }
         }
