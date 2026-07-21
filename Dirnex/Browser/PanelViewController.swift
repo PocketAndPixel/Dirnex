@@ -195,6 +195,11 @@ final class PanelViewController: NSViewController {
     /// without the `.watch` capability. Internal (like `gitWatcher` below) because the code that
     /// drives it lives in `PanelViewController+Watch`; a stored property cannot.
     var watcher: DirectoryWatcher?
+    /// What `watcher` is actually watching right now — the live stream's own paths, as opposed to
+    /// `mergedSources`, which is the *active tab's* record of what its listing was gathered from.
+    /// The two drift apart exactly when a pane's other tab takes the watcher over, which is why the
+    /// rebuild guard in `watchMergedListing` reads this and not the tab's copy (PLAN.md §M8).
+    var watchedSources: [VFSPath] = []
     /// FSEvents watcher for the *repository root* of the directory on screen, and the root it
     /// covers. Distinct from `watcher`, which re-lists this folder: what Git says about these rows
     /// also changes with the index and `HEAD` at the root — a `git add` in a terminal — and no
