@@ -151,4 +151,23 @@ struct ICloudDriveMergeTests {
         ))
         #expect(!ICloudDrive.isMergedRoot(.local(home + "/Documents"), home: home))
     }
+
+    @Test("a loose folder walks up to the merge, a folder inside an app library does not")
+    func walkingUpOutOfTheMerge() {
+        let home = "/Users/oleg"
+        let containers = ICloudDrive.mobileDocuments(home: home)
+        let documents = containers.appending("com~apple~Pages").appending("Documents")
+
+        // "Car" is shown loose in iCloud Drive, so iCloud Drive is what is above it — its real
+        // parent, the CloudDocs container, is never a place the user should land in.
+        #expect(ICloudDrive.walksUpToMerge(
+            from: ICloudDrive.cloudDocs(home: home).appending("Car"), home: home
+        ))
+        // Both roots keep walking up to the merge, as before.
+        #expect(ICloudDrive.walksUpToMerge(from: ICloudDrive.cloudDocs(home: home), home: home))
+        #expect(ICloudDrive.walksUpToMerge(from: documents, home: home))
+        // But a folder *inside* an app library walks up to that library's own folder: the "Pages"
+        // row opens it, so skipping to the merge would skip a level that is visibly there.
+        #expect(!ICloudDrive.walksUpToMerge(from: documents.appending("Drafts"), home: home))
+    }
 }

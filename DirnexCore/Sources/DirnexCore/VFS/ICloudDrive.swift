@@ -181,6 +181,27 @@ public enum ICloudDrive {
     /// iCloud Drive M8 could show.
     public static let cloudDocsContainerID = "com~apple~CloudDocs"
 
+    /// `~/Library/Mobile Documents/com~apple~CloudDocs`, the loose-files container itself.
+    public static func cloudDocs(home: String = NSHomeDirectory()) -> VFSPath {
+        mobileDocuments(home: home).appending(cloudDocsContainerID)
+    }
+
+    /// Whether walking up from `path` lands back in the merged listing rather than in `path`'s real
+    /// parent directory.
+    ///
+    /// Two cases, and the asymmetry between them is the whole point:
+    ///
+    /// - The folders the listing *stands in front of* (`isMergedRoot`) — up from either is the
+    ///   listing, since their real parents are container machinery.
+    /// - **The CloudDocs container's own children**, because those are shown *loose*: "Car" is a row
+    ///   in iCloud Drive, so iCloud Drive is what is above it. An app library's `Documents` is a row
+    ///   too, which is exactly why its children are *not* here — up from `Pages/Documents/Drafts` is
+    ///   the folder the "Pages" row itself opens, an ordinary directory, and short-circuiting that to
+    ///   the merge would skip a level the user can see in front of them.
+    public static func walksUpToMerge(from path: VFSPath, home: String = NSHomeDirectory()) -> Bool {
+        isMergedRoot(path, home: home) || path.parent == cloudDocs(home: home)
+    }
+
     /// The merged listing: CloudDocs' own children first, then the app libraries. The pane
     /// re-sorts by its own column, so this order only has to be deterministic.
     public static func merge(looseFiles: [FileEntry], libraryRows: [FileEntry]) -> [FileEntry] {

@@ -80,9 +80,11 @@ extension PanelViewController {
         guard panel.path.backend == .local else { return }
         let current = panel.path
         // Up out of iCloud Drive is the merged listing, not the container machinery that holds it:
-        // the real parent of an app library's `Documents` is a one-child folder nobody asked to see
-        // (PLAN.md §M9). The cursor lands on the row we came out of, as it does walking up anywhere.
-        if ICloudDrive.isMergedRoot(current) {
+        // the real parent of an app library's `Documents` is a one-child folder nobody asked to see,
+        // and the real parent of a loose folder like "Car" is the CloudDocs container, which *is*
+        // iCloud Drive as far as the listing is concerned (PLAN.md §M9). The cursor lands on the row
+        // we came out of, as it does walking up anywhere.
+        if ICloudDrive.walksUpToMerge(from: current) {
             showICloudDrive(selecting: current)
             return
         }
