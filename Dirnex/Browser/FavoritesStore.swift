@@ -2,20 +2,17 @@ import DirnexCore
 import Foundation
 
 /// App-wide persistence for the Favorites list — the pinned folders shown in the sidebar's
-/// Favorites section and the Ctrl+D popup (formerly called the "directory hotlist"; PLAN.md §M3
-/// "Directory hotlist … pin, reorder, jump"). One shared list across every window, stored as
-/// boring JSON in `UserDefaults` like `TabPersistence` and the command recents (PLAN.md §2
-/// "JSON/plist for config"). Read fresh each time the menu opens, so an edit — in this window or
-/// another — shows up on the next Ctrl+D without any live-observation plumbing.
+/// Favorites section and the Ctrl+D popup (PLAN.md §M3 "pin, reorder, jump"). One shared list
+/// across every window, stored as boring JSON in `UserDefaults` like `TabPersistence` and the
+/// command recents (PLAN.md §2 "JSON/plist for config"). Read fresh each time the menu opens, so
+/// an edit — in this window or another — shows up on the next Ctrl+D without any live-observation
+/// plumbing.
 enum FavoritesStore {
-    // The on-disk keys keep their original `hotlist` spelling on purpose: they name data already
-    // written to users' `UserDefaults`, and renaming them would orphan every existing pin behind
-    // a key nothing reads. The names are invisible; only the Swift symbols carry the new term.
-    private static let key = "Dirnex.hotlist"
+    private static let key = "Dirnex.favorites"
     /// Set once the standard places have been merged into the pin list. The seed is a one-time
     /// migration, never a per-launch top-up: a user who removes Documents from their sidebar must
     /// not find it back tomorrow morning.
-    private static let seededKey = "Dirnex.hotlistSeeded"
+    private static let seededKey = "Dirnex.favoritesSeeded"
 
     /// Posted after any `save` so sidebars rebuild their Favorites section — in this window or
     /// another (PLAN.md §M8). Delivered on the main thread (all mutations happen on the main

@@ -203,29 +203,17 @@ extension CommandCatalog {
             shortcut: CommandShortcut(key: "↓", modifiers: [.option, .function])
         ),
         Command(
-            // `id` keeps its legacy `hotlist` spelling: it's the key user keybindings persist
-            // under, and renaming it would silently drop any custom shortcut. Only the visible
-            // title now reads "Favorites"; "hotlist" survives as a search keyword for the
-            // Total Commander muscle memory that reaches for it.
-            id: "go.hotlist",
+            id: "go.favorites",
             title: "Favorites…",
             category: .navigation,
-            keywords: [
-                "favorites",
-                "bookmarks",
-                "pinned",
-                "jump",
-                "ctrl d",
-                "hotlist",
-                "directory hotlist"
-            ],
+            keywords: ["favorites", "bookmarks", "pinned", "jump", "ctrl d"],
             shortcut: CommandShortcut(key: "d", modifiers: .control)
         ),
         Command(
-            id: "go.addToHotlist",
+            id: "go.addToFavorites",
             title: "Add to Favorites",
             category: .navigation,
-            keywords: ["pin", "bookmark", "favorite", "hotlist"]
+            keywords: ["pin", "bookmark", "favorite"]
         )
     ]
 

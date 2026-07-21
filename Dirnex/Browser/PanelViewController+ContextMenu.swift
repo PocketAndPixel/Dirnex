@@ -106,7 +106,7 @@ extension PanelViewController {
         add(["file.newFolder", "edit.paste"], to: menu)
         menu.addItem(copyPathItem(for: [directory.path]))
         menu.addSeparator()
-        add(["go.addToHotlist", "file.syncDirectories"], to: menu)
+        add(["go.addToFavorites", "file.syncDirectories"], to: menu)
         menu.addItem(scriptsMenuItem())
         return menu
     }

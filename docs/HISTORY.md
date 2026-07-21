@@ -836,7 +836,7 @@ Goal: fix TC's adoption problem — nobody should need the manual.
 
 - [x] Cmd+K command palette: fuzzy search over every action, shows shortcuts,
       recents on top; palette actions and menu bar generated from one action registry ✅
-- [x] Directory hotlist (Ctrl+D): pin, reorder, jump ✅
+- [x] Directory favorites (Ctrl+D): pin, reorder, jump ✅
 - [x] Per-panel history (Alt+Down list; Cmd+[ / Cmd+] back/forward) ✅
 - [x] Frecency jump: visit tracking; path bar accepts fuzzy fragments
       ("dl" → ~/Downloads), zoxide-style scoring ✅ (JSON store; SQLite deferred like undo)
@@ -889,34 +889,34 @@ of truth; both the menu bar and the palette are generated from it, so they can't
   window dismisses it; the File menu is fully registry-generated (right separators + F-keys)
   and ⌘T/⌘W still fire. GOTCHA (unchanged from M1/M2): synthetic ⎋ is swallowed by the OS
   before reaching the app, so ⎋-to-close is correct-by-implementation but unverified-live —
-  the ⌘K-toggle and click-away dismissals cover it. NEXT M3: hotlist (Ctrl+D), per-panel
+  the ⌘K-toggle and click-away dismissals cover it. NEXT M3: favorites (Ctrl+D), per-panel
   history, frecency jump, workspaces, Settings, rebindable shortcuts (the registry's
   `CommandShortcut` is already the data those last two will edit).
 
-Progress (2026-07-08, M3 pass 2): the **directory hotlist (Ctrl+D)** landed — TC's pinned-
+Progress (2026-07-08, M3 pass 2): the **directory favorites (Ctrl+D)** landed — TC's pinned-
 folder popup, the second M3 item. Pin / jump / reorder all work, and the whole thing hangs
 off the same command registry as pass 1.
 
-- **Core** (`DirnexCore/…/Services/Hotlist.swift`, new). A pure value type: `HotlistEntry`
-  (user-editable `name` + `VFSPath`, `Codable`, identity = path) and `Hotlist` (ordered,
+- **Core** (`DirnexCore/…/Services/Favorites.swift`, new). A pure value type: `FavoriteEntry`
+  (user-editable `name` + `VFSPath`, `Codable`, identity = path) and `Favorites` (ordered,
   de-duplicated-by-path list) with `add` (append unless already pinned → no-op, returns
   whether added), `remove(path:)`/`remove(at:)`, `rename(path:to:)`, `move(from:to:)`
   (Array-semantics reorder), and `contains`. Decoding routes through the de-duping init so a
   legacy/corrupt store is sanitized on load. No AppKit, no persistence — the app owns those,
   matching `Panel`/`SidebarLocations`/the command registry. `CommandCatalog` gains two
-  navigation commands: `go.hotlist` ("Directory Hotlist…", ⌃D) and `go.addToHotlist` ("Add
-  to Hotlist", palette-only). New `HotlistTests` (+10 → **core suite 174**), all green;
+  navigation commands: `go.favorites` ("Favorites…", ⌃D) and `go.addToFavorites` ("Add
+  to Favorites", palette-only). New `FavoritesTests` (+10 → **core suite 174**), all green;
   swiftformat/swiftlint-strict clean. GOTCHA (recurring): a `mutating` call can't live inside
   `#expect(...)` — the macro captures the receiver as immutable — so `add`/`remove` results
   are hoisted into a `let` first ([[swift-testing-expect-optional-arithmetic]]-adjacent).
-- **App.** `HotlistStore` (UserDefaults JSON, one app-wide list, read fresh each menu open —
+- **App.** `FavoritesStore` (UserDefaults JSON, one app-wide list, read fresh each menu open —
   no live-observation plumbing, like `TabPersistence`/`CommandRecents`).
-  `PanelViewController+Hotlist` owns the pane-relative actions dispatched through the
-  responder chain: `showHotlist` pops an `NSMenu` from the path bar's bottom edge (one item
+  `PanelViewController+Favorites` owns the pane-relative actions dispatched through the
+  responder chain: `showFavorites` pops an `NSMenu` from the path bar's bottom edge (one item
   per pin with a Finder folder icon + a bare 1–9 accelerator, then Add/Remove-Current-Folder
-  toggle + Organize…); `addToHotlist` pins the current dir; a jump reads the target off the
+  toggle + Organize…); `addToFavorites` pins the current dir; a jump reads the target off the
   item's `representedObject` (index-shift-proof) and, for a vanished `.local` pin, offers to
-  unpin it instead of dropping onto a load-failure sheet. `HotlistOrganizerController` (new)
+  unpin it instead of dropping onto a load-failure sheet. `FavoritesOrganizerController` (new)
   is the reorder editor — an `NSViewController` sheet (`presentAsSheet`, self-retaining) with
   a drag-reorderable, inline-renameable, `−`-removable `NSTableView`; every edit saves to the
   store immediately. `CommandBinding`/`MainMenuBuilder` wire the two commands into the Go
@@ -926,8 +926,8 @@ off the same command registry as pass 1.
   strict failures in UNTOUCHED `UndoJournalTests`/`LocalBackend` flagged as a separate task,
   not this pass's).
 - **Verified live via computer-use** (no overlay this session — mouse + keyboard worked;
-  drove the Go menu since it's the registry surface): the Go menu shows "Directory Hotlist…
-  ⌃D" + "Add to Hotlist"; Add pinned `/Users/oleg` then `/Users/oleg/Downloads`; the ⌃D
+  drove the Go menu since it's the registry surface): the Go menu shows "Favorites…
+  ⌃D" + "Add to Favorites"; Add pinned `/Users/oleg` then `/Users/oleg/Downloads`; the ⌃D
   popup dropped under the path bar showing both with folder icons + 1/2 accelerators and the
   toggle correctly reading "Remove Current Folder" (current dir pinned); picking **oleg**
   jumped the active pane there; the organizer inline-renamed `oleg`→"Home Folder" (persisted,
@@ -963,7 +963,7 @@ the visited-directory list; all three hang off the same command registry as pass
   never pollutes the trail); back/forward/jump navigate with `recordHistory: false` so walking
   the trail doesn't rewrite it. New `PanelViewController+History` owns the pane-relative
   actions dispatched through the responder chain: `goBack`/`goForward` step the active tab's
-  trail, `showHistory` pops an `NSMenu` from the path-bar edge (matching the ⌃D hotlist popup)
+  trail, `showHistory` pops an `NSMenu` from the path-bar edge (matching the ⌃D favorites popup)
   listing the entries **newest-first, current check-marked, folder icon + tooltip path**, a
   pick → `jump`. `CommandBinding`/`MainMenuBuilder` wire all three into the Go menu (a new
   Back/Forward/History group above Go-to-Location); `validateMenuItem` disables Back/Forward
@@ -1010,7 +1010,7 @@ Cmd+L path bar the earlier passes built.
   shares the DB. `CommandCatalog` `go.editLocation` gained keywords (jump/frecency/fuzzy/
   recent) so the palette surfaces it.
 - **App.** New `FrecencyStore` (`@MainActor`, one app-wide `.shared` instance held in memory —
-  unlike `HotlistStore`'s read-per-open, because visits stream in continuously from every
+  unlike `FavoritesStore`'s read-per-open, because visits stream in continuously from every
   navigation and separate per-window copies would clobber each other): loads the index once,
   `recordVisit` bumps + persists (JSON in `UserDefaults` `Dirnex.frecency`), `rankedMatches`
   reads. Visit recording hooks the **one** place a load succeeds — `navigate`'s success path —
@@ -1018,7 +1018,7 @@ Cmd+L path bar the earlier passes built.
   (conditionally) *and* frecency (always: a back-button jump is still a visit); folded into the
   existing history line as a 1-for-1 replacement so `PanelViewController.swift` stays exactly at
   the 500-line `file_length` limit (its decomposition is still pending, just not forced here).
-  So the index learns from crumb clicks, the sidebar, hotlist jumps, and back/forward alike.
+  So the index learns from crumb clicks, the sidebar, favorites jumps, and back/forward alike.
   The path bar's Return now routes through a new `PathBarViewDelegate.didCommit(rawText:resolved:)`
   (crumb clicks still use `didActivate`); `PanelViewController+PathBar` resolves it: an explicit
   path that `stat`s to a real directory wins, else a **slash-free** fragment falls back to
@@ -1054,7 +1054,7 @@ JSON store, and wiring into the command registry.
   place* (keeping its position) else appends and reports which; `remove(name:)`/`remove(at:)`;
   `rename` that **rejects an empty or already-used name** so two entries never collapse into
   one; `move` (Array-semantics reorder); `contains`/`workspace(named:)`. Decoding routes
-  through the de-duping init (matching `Hotlist`). Made `FileSort` (+ its `Key`) `Codable` — a
+  through the de-duping init (matching `Favorites`). Made `FileSort` (+ its `Key`) `Codable` — a
   small, purely-additive core change so `WorkspaceTab` serializes cleanly (the app's
   `PersistedTab` still uses its own hand-rolled key/ascending encoding, untouched).
   `CommandCatalog` gains a new **`.workspace` category** ("Workspace" menu) with `workspace.list`
@@ -1063,7 +1063,7 @@ JSON store, and wiring into the command registry.
   yet again, per [[swift-testing-expect-optional-arithmetic]]-adjacent): a `mutating` call can't
   sit inside `#expect(...)` — `save`/`remove`/`rename` results were hoisted into a `let`.
 - **App.** New `WorkspaceStore` (UserDefaults JSON `Dirnex.workspaces`, read-fresh-per-open like
-  `HotlistStore` — no live-observation plumbing). A workspace spans both panes, which no single
+  `FavoritesStore` — no live-observation plumbing). A workspace spans both panes, which no single
   pane can see, so capture/restore lives on the **window controller**
   (`BrowserWindowController+Workspaces`: `captureWorkspace(named:)` snapshots both panes,
   `applyWorkspace` restores them + focuses left), reached through two new `PanelHost` methods —
@@ -1073,7 +1073,7 @@ JSON store, and wiring into the command registry.
   responder-chain actions: `showWorkspaces` pops an `NSMenu` from the path-bar edge (one switch
   item per workspace carrying its *name* + a 1–9 accelerator + a `square.split.2x1` glyph, then
   Save/Manage), `saveWorkspace` prompts for a name (NSAlert + field) and **confirms before
-  replacing** an existing one. `WorkspaceOrganizerController` (new) mirrors the hotlist organizer
+  replacing** an existing one. `WorkspaceOrganizerController` (new) mirrors the favorites organizer
   — a drag-reorder / inline-rename / `−`-remove sheet, every edit saved immediately; rename that's
   rejected snaps the field back. `CommandBinding`/`MainMenuBuilder` wire both commands into the
   new Workspace menu; the palette's category tag widened 62→72pt (+ truncation) to fit
@@ -1088,10 +1088,10 @@ JSON store, and wiring into the command registry.
   right=~/oleg; changed both panes (left→Documents, right→Movies); Workspaces… ▸ **Work** restored
   *both* panes at once (Downloads 31 / oleg 18). The persisted `Dirnex.workspaces` blob decoded
   to exactly that layout incl. the now-`Codable` `FileSort`. Saved a 2nd ("Browsing"), opened the
-  organizer: **drag-reorder landed first try** (the hotlist drag fix carried over), inline-rename
+  organizer: **drag-reorder landed first try** (the favorites drag fix carried over), inline-rename
   Work→"Projects" persisted, `−` deleted it leaving one; every edit survived a **quit+relaunch**
   (store read `['Browsing']` off disk, popup re-rendered it). Test workspaces deleted after so no
-  test state remains in the user's app. Noted UX quirk (shared with the hotlist organizer, not new):
+  test state remains in the user's app. Noted UX quirk (shared with the favorites organizer, not new):
   Return in a rename field also fires the Done button (its `\r` key-equivalent), committing +
   closing in one press. NEXT M3: Settings (SwiftUI) + rebindable shortcuts — best done together
   (Settings is the container, the rebind UI its "shortcuts" tab; both edit the registry's
@@ -1155,7 +1155,7 @@ UI is its Shortcuts tab). **M3 is now complete.** This is the app's first SwiftU
   (noted in pass 5); the recorder records a *shifted-punctuation* combo as its shifted glyph
   (letters/F-keys/⌘-combos/arrows record exactly) — documented in `CommandShortcut(event:)`.
 
-Exit: a new user can discover copy/move/hotlist through the palette alone; power user
+Exit: a new user can discover copy/move/favorites through the palette alone; power user
 can rebind everything. ✅ met — palette (pass 1) + a full rebind UI with conflict detection
 and two presets.
 
@@ -1754,7 +1754,7 @@ a saved search is just that query + a name + a scope, persisted.
   immutably, so a `mutating` call (`list.save`/`rename`/`remove`) must be hoisted into a `let` first
   — see [[swift-testing-expect-optional-arithmetic]]'s sibling gotcha.
 - **App (persistence + sidebar + save flow).** NEW `SavedSearchStore.swift` (UserDefaults JSON like
-  `HotlistStore`/`WorkspaceStore`, plus a `didChangeNotification` posted on every save so open
+  `FavoritesStore`/`WorkspaceStore`, plus a `didChangeNotification` posted on every save so open
   sidebars — even in another window — rebuild live). `PanelTab` gained `searchQuery`/`searchScope`
   (session-only, never encoded), set when `openSearchResults` installs a results tab, so
   `saveCurrentSearch` can recover exactly what produced them; `runSavedSearch` re-runs a stored query
@@ -2885,7 +2885,7 @@ field for an editor — none of which applies to a view that draws its own dots.
   `CommandCatalog` via `MainMenuBuilder.commandItem` (made internal), so a right-click item and its
   menu-bar twin cannot drift; nil targets mean `validateMenuItem` greys them out for free (Paste with
   an empty clipboard, everything mutating inside an archive). Two menus: one over an entry, one over
-  the empty space (folder-scoped: New Folder, Paste, Add to Hotlist, Synchronize). **Tags is a
+  the empty space (folder-scoped: New Folder, Paste, Add to Favorites, Synchronize). **Tags is a
   submenu**, rebuilt on open via `NSMenuDelegate` and sharing ⌃T's item builder (`tagMenuItems`) so
   there is one definition of what the tag menu contains. Right-click **takes focus first** — items
   dispatch through the responder chain, so without it a right-click in the inactive pane would run
@@ -3495,7 +3495,7 @@ palette dispatch (merge `UserScriptStore.load().paletteCommands` into `reload`, 
 `representedObject`-carrying sender), a `PanelViewController+UserScript.swift` that builds the context
 from `handoffTargets`/the two panes' dirs and resolves the shell, a right-click **Scripts ▸** submenu
 (dynamic, like the tags/servers submenus), and a management surface to *create* scripts (a Settings
-tab or an organizer sheet in the `HotlistOrganizerController` idiom) — then VERIFY LIVE that a
+tab or an organizer sheet in the `FavoritesOrganizerController` idiom) — then VERIFY LIVE that a
 user-defined script on a selection runs from the palette. After that: the **F-key bar** surface (a
 TC-style function-key button row, which does not exist in the app yet), and the **AppleScript/
 Shortcuts verbs** (reveal, copy, run-op — an AppKit scripting `sdef` / App Intents surface, the
@@ -3540,7 +3540,7 @@ used. No core change (pass 12's 724 tests stand; +1 catalog test for the new com
 - **Right-click Scripts ▸ submenu** (`+ContextMenu`): a third lazily-filled submenu (`menuNeedsUpdate`
   switched on the identifier, joining tags + Open With), listing each script then **Manage Scripts…**,
   in both the entry menu and the background menu (a `combined` script runs on the directory).
-- **`UserScriptsOrganizerController.swift`** — the *create* surface (the `HotlistOrganizer` idiom,
+- **`UserScriptsOrganizerController.swift`** — the *create* surface (the `FavoritesOrganizer` idiom,
   grown to a master–detail): a list on the left (+/−), a form on the right (Name, a When-run popup
   `combined`/`perFile`, comma-separated palette Keywords, and a monospaced Command text view with
   quote/dash substitution off so a shell body survives verbatim), each edit written straight to the
@@ -4240,7 +4240,7 @@ beside it — the two now run as one sequence on a fresh install.
   — the tour prints exactly what the menu/⌘K palette print and can never advertise a key the app no
   longer honours.** Five screens: Welcome (dual-pane, no chip) · the command palette (`view.
   commandPalette`) · file ops (`file.copy/move/newFolder/trash`) · navigation (`go.editLocation`,
-  `file.newTab`, `go.hotlist`) · You're-ready (`app.fullDiskAccess`). +7 tour tests pin length ≤ 5,
+  `file.newTab`, `go.favorites`) · You're-ready (`app.fullDiskAccess`). +7 tour tests pin length ≤ 5,
   well-formedness, unique ids, that **every highlighted id resolves to a real catalog command**, that
   the **palette is featured** (the load-bearing "palette-centric" claim), and that the tour opens on
   Welcome and closes on FDA. Plus a new `app.showTour` catalog command ("Welcome to Dirnex…",
