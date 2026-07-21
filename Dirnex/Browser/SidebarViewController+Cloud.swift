@@ -22,6 +22,25 @@ extension SidebarViewController {
         return iCloud + CloudStorageMounts.mounts().map(Row.cloudMount)
     }
 
+    /// Rebuild when a provider mount appears or disappears, so connecting a second Google account
+    /// (or signing one out) shows up live rather than on the next launch.
+    ///
+    /// Volumes get this from `NSWorkspace`'s mount notifications, but a File Provider mount is not
+    /// a volume and posts none — it is a directory appearing inside `~/Library/CloudStorage`, so
+    /// FSEvents is what notices. The watcher is created unconditionally: on a Mac with no sync
+    /// client that directory does not exist, and a stream over a missing path simply never fires,
+    /// which is the same "no rows" outcome by a cheaper route than branching.
+    ///
+    /// Deliberately watching the *parent* rather than each mount. The parent's own children are the
+    /// only thing this cares about, and watching the mounts would wake the sidebar on every file
+    /// the user's Drive syncs.
+    func observeCloudStorageChanges() {
+        let path = CloudStorageMounts.cloudStorage()
+        cloudStorageWatcher = DirectoryWatcher(path: path) { [weak self] in
+            Task { @MainActor in self?.rebuild() }
+        }
+    }
+
     /// Build (or reuse) the iCloud Drive cell: the `icloud` glyph and a fixed "iCloud Drive" label,
     /// with the real container path as its tooltip. No eject or delete affordance — a system row
     /// carries neither.

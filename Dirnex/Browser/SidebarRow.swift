@@ -31,7 +31,8 @@ extension SidebarViewController {
         ///
         /// Unlike `.iCloud`, which dispatches a merge, this navigates its path like a favorite or a
         /// volume does: the mount is an ordinary directory, which is the entire reason Phase 1
-        /// needs no backend.
+        /// needs no backend. The path it navigates to is the mount's `entryDirectory`, not its
+        /// root — for Google Drive that is `My Drive`, the folder the user actually wants.
         case cloudMount(CloudStorageMount)
         case volume(MountedVolume)
         case savedSearch(SavedSearch)
@@ -60,7 +61,7 @@ extension SidebarViewController {
             case .header, .recents, .trash, .savedSearch, .server, .tag, .allTags: return nil
             case let .favorite(entry): return entry.path
             case let .iCloud(path): return path
-            case let .cloudMount(mount): return mount.path
+            case let .cloudMount(mount): return mount.entryDirectory
             case let .volume(volume): return volume.path
             }
         }

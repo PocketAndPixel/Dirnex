@@ -66,6 +66,11 @@ final class SidebarViewController: NSViewController {
     /// difference between rebuilding on a real change and rebuilding constantly.
     var renderedTagNames: Set<String> = []
 
+    /// Watches `~/Library/CloudStorage` so a newly connected cloud account appears in the Cloud
+    /// section live (`SidebarViewController+Cloud`). A stored property because an extension cannot
+    /// hold one, like `renderedTagNames` above.
+    var cloudStorageWatcher: DirectoryWatcher?
+
     // A focus-preserving subclass: empty-space / header clicks don't steal keyboard focus from
     // the active file pane (which would disable the responder-chain file commands). `tableView` and
     // `rows` are `internal` (not `private`) so the companion management extensions can read the
@@ -138,6 +143,7 @@ final class SidebarViewController: NSViewController {
         observeServerConnectionChanges()
         observeServerConnectionActivity()
         observeTagChanges()
+        observeCloudStorageChanges()
         rebuild()
     }
 

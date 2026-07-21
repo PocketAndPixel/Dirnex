@@ -148,16 +148,31 @@ that aren't synced to this Mac.
       probed here, `fileproviderctl dump` said `child:3` while DriveFS's own metadata db held 83
       items, because the account's roots were never provisioned. An empty mount is a legitimate
       state, so nothing filters on content.
-- [ ] **Open `.gdoc` / `.gsheet` / `.gslides` stubs** — a Google-native doc on the mount is a tiny
-      JSON file holding a `docs.google.com` URL, not bytes. Parse it (pure, core-tested) and open the
-      URL in the browser instead of handing the stub to a text viewer, the way M4 hands off to external
-      tools. Real (non-native) Drive files are dataless File-Provider items — the same download-on-open
-      story as M9's iCloud, so that machinery is shared, not rebuilt.
 
-      **Blocked on real bytes** (2026-07-21): this Mac's Drive mount has no provisioned content, so
-      the stub format cannot be probed — and §2's rhythm is explicit that the one pass which assumed
-      a format (`SFTPListingParser`) had to be reworked against reality. Unblocks the moment a
-      `My Drive` appears under the mount.
+      Refined the same day, once a reconnected account made the mount real:
+      - **A row opens the mount's single visible child** (`My Drive`) rather than the mount root, so a
+        click reaches the files instead of one folder to step through. "Exactly one visible child" is
+        the condition under which descending hides nothing — an account with Shared drives has two and
+        opens at the root; Dropbox-style providers have many and stay put.
+      - **The path bar roots its trail at the mount**: `Google Drive › My Drive › Job`, not six crumbs
+        of `Macintosh HD › Users › oleg › Library › CloudStorage › GoogleDrive-…`. Still fully
+        clickable, unlike the merged iCloud label — every crumb is a real directory.
+      - **The section refreshes live when an account is connected or signed out.** A File Provider
+        mount is not a volume and posts no `NSWorkspace` notification, so this is an FSEvents watcher
+        on `~/Library/CloudStorage` — the parent, never the mounts, which would wake on every synced
+        file.
+- [ ] **Open `.gdoc` / `.gsheet` / `.gslides` stubs** — a Google-native doc on the mount is a tiny
+      JSON file, not bytes. Parse it (pure, core-tested) and open it in the browser instead of handing
+      the stub to a text viewer, the way M4 hands off to external tools. Real (non-native) Drive files
+      are dataless File-Provider items — the same download-on-open story as M9's iCloud, so that
+      machinery is shared, not rebuilt.
+
+      **Unblocked and re-specified 2026-07-21**, once the mount held real content. This bullet used to
+      say the stub "holds a `docs.google.com` URL" — **it does not**, and building against that would
+      have failed at the first file. The real bytes are
+      `{"":"WARNING! …","doc_id":"…","resource_key":"","email":"…"}`, so the URL has to be
+      *constructed* from `doc_id` and the extension. Exactly the failure mode §2's probe-first rule
+      exists to catch; NOTES.md carries the format.
 
 **Phase 2 — a real Drive backend (for accounts not synced to this Mac).**
 

@@ -28,19 +28,38 @@ public struct CloudStorageMount: Sendable, Hashable, Identifiable {
     /// What the sidebar row is called, already disambiguated against the other mounts.
     public let name: String
     public let path: VFSPath
+    /// Where clicking the row actually lands — see `CloudStorageMounts.entryDirectory(of:_:)`.
+    /// Defaults to the mount itself, which is also what it stays for a provider whose content sits
+    /// directly at the mount root.
+    public let entryDirectory: VFSPath
 
     public init(
         directoryName: String,
         providerID: String,
         accountLabel: String?,
         name: String,
-        path: VFSPath
+        path: VFSPath,
+        entryDirectory: VFSPath? = nil
     ) {
         self.directoryName = directoryName
         self.providerID = providerID
         self.accountLabel = accountLabel
         self.name = name
         self.path = path
+        self.entryDirectory = entryDirectory ?? path
+    }
+
+    /// A copy of this mount pointing at `entryDirectory` — how the scan fills the field in once it
+    /// has looked at what the mount holds.
+    func entering(_ entryDirectory: VFSPath) -> CloudStorageMount {
+        CloudStorageMount(
+            directoryName: directoryName,
+            providerID: providerID,
+            accountLabel: accountLabel,
+            name: name,
+            path: path,
+            entryDirectory: entryDirectory
+        )
     }
 
     public var id: VFSPath { path }
@@ -69,12 +88,67 @@ public enum CloudStorageMounts {
         VFSPath.local(home).appending("Library").appending("CloudStorage")
     }
 
-    /// Every provider mount that exists right now, ordered by display name.
+    /// Every provider mount that exists right now, ordered by display name, each pointing at the
+    /// directory a click should open (`entryDirectory`).
     ///
     /// Follows the same "only what exists" rule as `SidebarLocations.favorites()` and
     /// `iCloudDrive()`: a Mac with no sync client installed has no `CloudStorage` directory at
     /// all and gets no rows, rather than a dead one.
     public static func mounts(
+        home: String = NSHomeDirectory(),
+        fileManager: FileManager = .default
+    ) -> [CloudStorageMount] {
+        named(home: home, fileManager: fileManager).map {
+            $0.entering(entryDirectory(of: $0.path, fileManager))
+        }
+    }
+
+    /// The mount `path` lives in, or `nil` for anywhere else — what the path bar needs to render a
+    /// location inside a mount under the provider's name instead of the raw
+    /// `…/Library/CloudStorage/GoogleDrive-someone@gmail.com/…`.
+    ///
+    /// Cheap on the overwhelmingly common miss: a pure string test rejects any path outside
+    /// `~/Library/CloudStorage` before touching the disk, so an ordinary navigation pays nothing.
+    /// A hit costs one small local `readdir` — of `CloudStorage` itself, never of the mounts, which
+    /// is why this uses `named` rather than `mounts` (a File Provider mount's own `readdir` can
+    /// reach the network, and the path bar rebuilds on every navigation).
+    public static func mount(
+        containing path: VFSPath,
+        home: String = NSHomeDirectory(),
+        fileManager: FileManager = .default
+    ) -> CloudStorageMount? {
+        guard path.backend == .local, path.isSelfOrDescendant(of: cloudStorage(home: home))
+        else { return nil }
+        return named(home: home, fileManager: fileManager)
+            .first { path.isSelfOrDescendant(of: $0.path) }
+    }
+
+    /// Where clicking a mount's row should land: its **single visible child** when it has exactly
+    /// one, otherwise the mount itself.
+    ///
+    /// Google Drive mounts as a folder holding nothing but `My Drive` (plus dot-directories), so
+    /// opening the mount root shows the user one row they must then step through every time. The
+    /// rule is deliberately "exactly one" rather than "a child named `My Drive`", because that is
+    /// the condition under which descending hides nothing: an account that also has *Shared drives*
+    /// has two visible children and opens at the root where both are reachable, and a provider like
+    /// Dropbox that puts content directly at the mount root has many and stays put. It descends one
+    /// level only — recursing would tunnel arbitrarily deep into a thin tree.
+    ///
+    /// Note that `My Drive` is a **symlink** when Drive is in mirror mode (probed 2026-07-21: it
+    /// points out to `~/My Drive`), which is why this tests for a directory through
+    /// `fileExists` — that follows symlinks — rather than reading the file type.
+    static func entryDirectory(of mount: VFSPath, _ fileManager: FileManager) -> VFSPath {
+        guard let names = try? fileManager.contentsOfDirectory(atPath: mount.path) else {
+            return mount
+        }
+        let visible = names.filter { !$0.hasPrefix(".") }
+        guard visible.count == 1, let only = visible.first else { return mount }
+        let child = mount.appending(only)
+        return isDirectory(child.path, fileManager) ? child : mount
+    }
+
+    /// The mounts with their names resolved, but without looking inside any of them.
+    private static func named(
         home: String = NSHomeDirectory(),
         fileManager: FileManager = .default
     ) -> [CloudStorageMount] {

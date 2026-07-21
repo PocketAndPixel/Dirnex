@@ -11,7 +11,16 @@ extension PathBarView {
     /// non-clickable label for a search-results snapshot.
     func rebuildContents(for path: VFSPath, archiveAncestry: [VFSPath] = []) {
         if path.backend == .local {
-            rebuildCrumbs(for: path)
+            // A cloud provider's mount roots its own trail, so browsing Google Drive reads
+            // `Google Drive › My Drive › Job` instead of burying it six crumbs deep under
+            // `Macintosh HD › Users › oleg › Library › CloudStorage › GoogleDrive-someone@gmail.com`
+            // (PLAN.md §M10 Phase 1). The lookup costs nothing off a cloud path — see
+            // `CloudStorageMounts.mount(containing:)`.
+            if let mount = CloudStorageMounts.mount(containing: path) {
+                rebuildCrumbs(for: path, under: mount)
+            } else {
+                rebuildCrumbs(for: path)
+            }
         } else if path.backend.isArchive {
             rebuildArchiveLabel(for: path, ancestry: archiveAncestry)
         } else if let location = path.backend.sftpLocation {
@@ -22,6 +31,24 @@ extension PathBarView {
         } else {
             rebuildVirtualLabel(for: path)
         }
+    }
+
+    /// Render a location inside a cloud provider's mount, with the trail rooted at the mount under
+    /// the provider's name — `Google Drive › My Drive › Job`.
+    ///
+    /// Still fully clickable, unlike the merged iCloud Drive's dead-end label: every crumb here is a
+    /// real directory, so the breadcrumb affordance tells the truth. The trail simply *starts*
+    /// lower. Walking above the mount is what the pane's Go Up does, not something the path bar has
+    /// to keep a crumb for — the machinery under `~/Library/CloudStorage` is not a place the user
+    /// asked to see, the same judgement the merged iCloud listing makes about its containers.
+    func rebuildCrumbs(for path: VFSPath, under mount: CloudStorageMount) {
+        let trail = path.ancestorsFromRoot.filter { $0.isSelfOrDescendant(of: mount.path) }
+        installCrumbs(trail.map { ancestor in
+            Crumb(
+                title: ancestor == mount.path ? mount.name : ancestor.lastComponent,
+                target: ancestor
+            )
+        })
     }
 
     /// Render a virtual location (Spotlight results, Recents, the merged Trash) as a single,
