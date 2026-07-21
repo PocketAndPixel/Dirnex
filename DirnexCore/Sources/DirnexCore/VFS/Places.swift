@@ -176,6 +176,16 @@ public enum SidebarLocations {
         let iCloudTrash = TrashLocations.iCloudTrash(home: home)
         if isDirectory(iCloudTrash.path, fileManager) { directories.append(iCloudTrash) }
 
+        // Every `~/Library/CloudStorage` provider mount keeps its own trash too, one per *account*
+        // — deleting inside Google Drive lands there and nowhere else, so without these a Drive
+        // delete is a file the user can see in Finder's Trash and not in ours (probed 2026-07-22,
+        // the same report that turned up the iCloud trash). `named` rather than `mounts` on purpose:
+        // it does not look inside a mount, whose `readdir` can reach the network.
+        for mount in CloudStorageMounts.named(home: home, fileManager: fileManager) {
+            let trash = TrashLocations.cloudStorageTrash(inMountAt: mount.path)
+            if isDirectory(trash.path, fileManager) { directories.append(trash) }
+        }
+
         for volume in volumes where !volume.isRoot {
             let trash = TrashLocations.volumeTrash(onVolumeAt: volume.path, uid: uid)
             if isDirectory(trash.path, fileManager) { directories.append(trash) }

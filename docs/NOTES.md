@@ -210,6 +210,23 @@ against a fake.
   rather than discovered, like the volume trashes. **Put Back cannot work there**: it keeps no
   `.DS_Store`, and the origin rides on the item as `com.apple.clouddocs.private.trash-parent-bookmark`
   — an opaque `com.apple.CloudDocs/<UUID>/<hash>` provider reference with no path in it.
+- **Every `~/Library/CloudStorage` mount has a trash too, one per *account*.** Probed 2026-07-22 after
+  a file deleted from Google Drive appeared in Finder's Trash and not in Dirnex's — the identical
+  report that turned up the iCloud trash a day earlier, which is the tell that "how many trashes are
+  there" is answered per *file provider*, not once. It is `<mount>/.Trash`, the same shape as
+  iCloud's: at the mount root, with no `<uid>` level, because a mount is already per-account. Two
+  Google Drive accounts are two mounts and two trashes.
+  - **`com.apple.fileprovider.trash` is the marker**, carried by iCloud's trash and every mount's and
+    *not* by `~/.Trash`. Useful to confirm a candidate is the real thing; not needed to find one,
+    since the mounts are already enumerated for the sidebar and a path costs nothing.
+  - Unlike the iCloud trash this needs **no Full Disk Access** — `~/Library/CloudStorage` is not
+    TCC-gated — so a Drive delete shows up even on a Mac that never saw the onboarding sheet.
+  - **Put Back cannot work here either**, and for the same reason as iCloud: no `.DS_Store`, and the
+    origin rides on the item as `com.apple.fileprovider.trash-put-back#PN`, whose whole value is an
+    opaque `__fp/fs/fileID(<n>)` with no path in it.
+  - The `.Trash` must sit **exactly one level below** the CloudStorage root. A `.Trash` deeper inside
+    someone's Drive is ordinary content, and reading it as a trash turns F8 there into a permanent
+    delete — wrong in the expensive direction.
 - **`<volume>/.Trashes` is mode `d-wx--x--t` — unlistable even by its owner** — while
   `<container>/<uid>` inside it is a normal `drwx------`. A volume's trash must be *constructed* and
   opened directly; enumerating the parent to discover it always fails. (Same leaf-not-parent shape as

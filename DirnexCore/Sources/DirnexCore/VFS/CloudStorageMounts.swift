@@ -148,7 +148,12 @@ public enum CloudStorageMounts {
     }
 
     /// The mounts with their names resolved, but without looking inside any of them.
-    private static func named(
+    ///
+    /// Internal rather than private because `SidebarLocations.trashDirectories` needs the mount list
+    /// to construct each one's `.Trash`, and wants exactly this cheap form: a File Provider mount's
+    /// own `readdir` can reach the network, so the trash enumeration must not use `mounts()`, which
+    /// looks inside each one to find its entry directory.
+    static func named(
         home: String = NSHomeDirectory(),
         fileManager: FileManager = .default
     ) -> [CloudStorageMount] {
