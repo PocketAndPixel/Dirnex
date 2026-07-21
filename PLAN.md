@@ -525,6 +525,40 @@ Verified live on the real binary: Recents → Home and Trash → Home both relab
 both Trash menus render as designed with every item live; Empty Trash… from the pane's background
 opens the counted confirmation; New Folder is greyed in the File menu inside the Trash.
 
+**Restore pass (2026-07-21):** Put Back, per item and for the whole Trash.
+
+- **Probed before writing any of it, and the probe decided the design.** There is no API: a trashed
+  file's only xattr is `com.apple.provenance`, `mdls` knows nothing, and every plausible
+  `URLResourceKey` spelling returns empty. The origin lives in the trash folder's own `.DS_Store` as a
+  `ptbL`/`ptbN` pair — so restoring means **reading Finder's format**. `DSStoreReader` (core, tested)
+  walks the buddy-allocator B-tree; `TrashPutBack` (core, tested) interprets the pair. The app half is
+  the moving and the reporting.
+- **The probe also settled three things a guess would have got wrong.** `FileManager.trashItem` writes
+  the records too, so items Dirnex trashed restore like Finder's. The recorded folder is relative to
+  the trash's *own volume* and is spelled two ways (leading slash on a volume trash, none in
+  `~/.Trash`, and behind `System/Volumes/Data/` when Finder did the trashing). And `ptbN` is not the
+  name in the trash: a collision renamed `alpha.txt` to `alpha.txt 13-12-35-977.txt`, and only the
+  record knows what it was called.
+- **The fixture is real bytes.** A 20 MB scratch volume, four items trashed into it by the system, its
+  `.DS_Store` copied whole into the test bundle — including the collision. A fixture the tests
+  *construct* would only prove the reader agrees with the tests.
+- **Never overwrite; recreate; never abandon the rest.** The destination is stat'ed first, because
+  `rename(2)` under `moveItem` would silently replace a file recreated at the original path since —
+  destroying a newer copy to restore an older one. A folder deleted after the trashing is rebuilt
+  (`mkdir` chain, then one retry) rather than making the item unrestorable. An item with no record is
+  collected and named, like Empty Trash's failures.
+- `Put Back` is a catalog command (File menu, palette, context menu), enabled only in a Trash listing;
+  **Restore All** sits beside Empty Trash in the background menu, asks with a count, and skips hidden
+  entries — restoring a `.DS_Store` would move the very database the rest of the restore reads.
+
+Live verification, on a real mounted scratch volume plus the home trash: put-back returned a file to
+the volume root; a **decoy** at the original path produced "already back" with the decoy untouched and
+the item still in the Trash; deleting the origin folder entirely and retrying **recreated** it and
+restored the file under its *original* name (proving `ptbN`); a folder came back with its contents;
+and both home-trash items — one trashed by the API, one by Finder, i.e. both recorded path forms —
+returned to the same real folder. Restore All's sheet counted the listing exactly; Put Back greys out
+in an ordinary directory.
+
 #### M9 — iCloud Drive, for real (M)
 
 M8's iCloud row browses the on-disk `com~apple~CloudDocs` container faithfully — the loose files a

@@ -393,15 +393,36 @@ extension PathBarView {
         appendTrailingAccessories()
     }
 
-    /// Shared shell for a single non-clickable path-bar label (search results): swap the crumb
-    /// row for one bold, truncating label plus the trailing accessories. Lives here beside
-    /// `installCrumbs` — the other way to fill the row — because both reach into the private
-    /// `crumbStack`, which `PathBarView+Location` cannot see from its own file.
-    func installVirtualLabel(_ text: String) {
+    /// Shared shell for a single non-clickable path-bar label (search results, Recents, the Trash):
+    /// swap the crumb row for one SF Symbol plus a bold, truncating label, then the trailing
+    /// accessories. Lives here beside `installCrumbs` — the other way to fill the row — because both
+    /// reach into the private `crumbStack`, which `PathBarView+Location` cannot see from its own file.
+    ///
+    /// The glyph is the **same symbol the sidebar row that opens this location uses**, so the place
+    /// you clicked and the place you landed carry one mark. It rides in a nested stack rather than
+    /// going straight into `crumbStack`: that one is spaced at 1 pt for the `›` separators, which
+    /// would leave the icon touching its text.
+    func installVirtualLabel(_ text: String, symbolNamed symbolName: String) {
         clearCrumbStack()
+        let color: NSColor = isActive ? .labelColor : .secondaryLabelColor
+
+        let configuration = NSImage.SymbolConfiguration(
+            pointSize: NSFont.smallSystemFontSize,
+            weight: .regular
+        )
+        let symbol = NSImage(systemSymbolName: symbolName, accessibilityDescription: text)?
+            .withSymbolConfiguration(configuration)
+        symbol?.isTemplate = true
+        let glyph = NSImageView(image: symbol ?? NSImage())
+        glyph.contentTintColor = color
+        // The glyph is the one thing in the row that must never be squeezed — it is what names the
+        // kind of location, and a symbol compressed to nothing is worse than no symbol at all.
+        glyph.setContentCompressionResistancePriority(.required, for: .horizontal)
+        glyph.setContentHuggingPriority(.required, for: .horizontal)
+
         let label = NSTextField(labelWithString: text)
         label.font = .boldSystemFont(ofSize: NSFont.smallSystemFontSize)
-        label.textColor = isActive ? .labelColor : .secondaryLabelColor
+        label.textColor = color
         label.lineBreakMode = .byTruncatingTail
         // Like the crumb row, the label truncates within the pane rather than widening it
         // past the user's divider — resist below the split items' 250 holding priority.
@@ -409,7 +430,12 @@ extension PathBarView {
             NSLayoutConstraint.Priority(240),
             for: .horizontal
         )
-        crumbStack.addArrangedSubview(label)
+
+        let row = NSStackView(views: [glyph, label])
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.spacing = 5
+        crumbStack.addArrangedSubview(row)
         appendTrailingAccessories()
     }
 

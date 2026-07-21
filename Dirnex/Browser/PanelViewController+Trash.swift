@@ -145,7 +145,7 @@ extension PanelViewController {
     /// Re-list whichever panes are showing the Trash — this one and its counterpart. A pane left
     /// listing items that no longer exist is the one outcome an empty must not produce, and the
     /// merged listing has no FSEvents watcher to notice on its own.
-    private func refreshTrashPanes() {
+    func refreshTrashPanes() {
         for panel in [self, host?.panelCounterpart(of: self)].compactMap({ $0 })
             where panel.isTrashListing {
             panel.refreshCurrentDirectory()
@@ -161,7 +161,7 @@ extension PanelViewController {
 
     // MARK: - Gathering
 
-    private func trashPresentation() -> ResultsPresentation {
+    func trashPresentation() -> ResultsPresentation {
         ResultsPresentation(
             backend: .trash,
             pathSummary: "Trash",
@@ -181,7 +181,9 @@ extension PanelViewController {
     /// of delivering a partial answer: in practice the one directory that can be denied is
     /// `~/.Trash`, which is where all but a handful of trashed items live, so a "partial" Trash
     /// would be an empty one wearing a plausible face.
-    private func gatherTrash(then present: @escaping ([FileEntry]) -> Void) {
+    /// Internal, not private: `PanelViewController+TrashRestore` gathers the same merge for
+    /// "Restore All", and Swift's `private` does not cross files (docs/NOTES.md).
+    func gatherTrash(then present: @escaping ([FileEntry]) -> Void) {
         let backend = backend
         let directories = SidebarLocations.trashDirectories(volumes: SidebarLocations.volumes())
         Task {

@@ -112,6 +112,10 @@ extension PanelViewController {
     /// permanent delete, so the item may as well say so.
     private func trashEntryMenu() -> NSMenu {
         let menu = NSMenu()
+        // First, and alone above the rule: putting an item back is what the Trash is *for*, and it
+        // is the one item here that cannot be reached any other way.
+        add(["file.putBack"], to: menu)
+        menu.addSeparator()
         let open = NSMenuItem(
             title: "Open",
             action: #selector(openContextEntry(_:)),
@@ -134,19 +138,23 @@ extension PanelViewController {
 
     /// The menu over the Trash's empty space. The background menu is normally about the folder you
     /// are standing in, and the merged Trash is not a folder — it is several, on several volumes.
-    /// So the one thing it offers is the one thing that means "all of it": Empty Trash, which asks
-    /// first and names the count.
+    /// So what it offers is the two things that mean "all of it", in the order that puts the
+    /// recoverable one under the pointer first.
     private func trashBackgroundMenu() -> NSMenu {
         let menu = NSMenu()
+        menu.addItem(trashItem("Restore All", #selector(restoreAllFromContextMenu(_:))))
+        menu.addSeparator()
         // The ellipsis is a promise, as on the sidebar row: this asks before it destroys anything.
-        let item = NSMenuItem(
-            title: "Empty Trash…",
-            action: #selector(emptyTrashFromContextMenu(_:)),
-            keyEquivalent: ""
-        )
-        item.target = self
-        menu.addItem(item)
+        menu.addItem(trashItem("Empty Trash…", #selector(emptyTrashFromContextMenu(_:))))
         return menu
+    }
+
+    /// One whole-Trash item. Real targets rather than registry commands, like the sidebar row's
+    /// pair: neither acts on a selection, so there is nothing for the responder chain to aim at.
+    private func trashItem(_ title: String, _ action: Selector) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+        item.target = self
+        return item
     }
 
     /// The menu over the pane's empty space (or the `..` row): nothing selectable is under the
@@ -255,6 +263,12 @@ extension PanelViewController {
     /// A real target for the same reason "Open" is one: emptying isn't a registry command.
     @objc private func emptyTrashFromContextMenu(_ sender: NSMenuItem) {
         emptyTrash()
+    }
+
+    /// "Restore All" — put every trashed item back where it came from, after a counted
+    /// confirmation. The whole-Trash counterpart of the per-item `file.putBack` above it.
+    @objc private func restoreAllFromContextMenu(_ sender: NSMenuItem) {
+        restoreAllFromTrash()
     }
 
     @objc private func copyContextPath(_ sender: NSMenuItem) {

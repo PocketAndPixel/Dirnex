@@ -97,6 +97,10 @@ extension PanelViewController: NSMenuItemValidation {
             if isWritableArchive { return !selectionTargets().isEmpty }
             return backend.capabilities(for: panel.path).deleteStrategy != .unsupported
                 && !selectionTargets().isEmpty
+        case #selector(putBackSelection(_:)):
+            // Only in a Trash listing, and only on something selected: outside one there is no
+            // record of where anything came from, which is the whole operation.
+            return isTrashListing && !selectionTargets().isEmpty
         case #selector(paste(_:)):
             // ⌘V pastes into a real writable folder, or *adds into* a writable browsed archive
             // (PLAN.md §M4 — a nested archive is read-only, so it's excluded).

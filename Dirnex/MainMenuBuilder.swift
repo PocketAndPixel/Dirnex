@@ -54,7 +54,10 @@ enum MainMenuBuilder {
             .command("file.tags"), .command("file.manageScripts"), .separator,
             .command("file.rename"), .command("file.multiRename"), .separator,
             .command("file.newFolder"), .separator,
-            .command("file.trash"), .command("file.deletePermanently")
+            .command("file.trash"), .command("file.deletePermanently"),
+            // Put Back sits with the delete pair because it is the other end of them, and lights up
+            // only in a Trash listing — where those two are the operations it undoes.
+            .separator, .command("file.putBack")
         ]),
         MenuSpec(title: "Edit", items: [
             .command("edit.undo"), .command("edit.redo"), .separator,

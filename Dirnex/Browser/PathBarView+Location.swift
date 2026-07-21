@@ -30,11 +30,15 @@ extension PathBarView {
     ///
     /// The Trash names itself instead of borrowing the results phrasing: "Results for Trash" reads
     /// as a search someone ran, which is neither what it is nor how it behaves (it re-lists after a
-    /// delete, where a search snapshot doesn't).
+    /// delete, where a search snapshot doesn't). Each carries the SF Symbol of the sidebar row that
+    /// opens it — `trash` and `magnifyingglass` — rather than an emoji, which is a different type
+    /// vocabulary that neither tints with the pane's active state nor matches the sidebar.
     func rebuildVirtualLabel(for path: VFSPath) {
-        installVirtualLabel(
-            path.backend == .trash ? "🗑  Trash" : "🔍  Results for \(path.lastComponent)"
-        )
+        if path.backend == .trash {
+            installVirtualLabel("Trash", symbolNamed: "trash")
+        } else {
+            installVirtualLabel("Results for \(path.lastComponent)", symbolNamed: "magnifyingglass")
+        }
     }
 
     /// Render a browsed archive as a full, clickable breadcrumb trail — styled exactly like a

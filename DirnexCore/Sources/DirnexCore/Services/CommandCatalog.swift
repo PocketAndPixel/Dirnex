@@ -138,6 +138,15 @@ public enum CommandCatalog {
             category: .file,
             keywords: ["destroy", "remove", "erase"],
             shortcut: CommandShortcut(key: "F8", modifiers: [.function, .shift])
+        ),
+        Command(
+            id: "file.putBack",
+            title: "Put Back",
+            category: .file,
+            keywords: ["restore", "undelete", "trash", "recover", "original", "undo delete"]
+            // No shortcut: it applies in exactly one place — a Trash listing — and every key worth
+            // taking for it already means something everywhere else. Finder's ⌘⌫ is "move to
+            // Trash" on the rest of the Mac, which is the opposite of this.
         )
     ]
 

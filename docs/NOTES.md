@@ -211,17 +211,34 @@ against a fake.
   reads as "external volumes have no Trash," a wrong answer in the quiet direction. It resolves `/`,
   `/System/Volumes/Data` and the `/Volumes/<name>` root symlink all to `~/.Trash`, which is why the
   boot volume is skipped when merging (or the home trash is listed two or three times).
+- **Put Back has no API, and the data is in the trash folder's `.DS_Store`.** Probed: a trashed file's
+  only xattr is `com.apple.provenance`, `mdls` exposes nothing, and every plausible `URLResourceKey`
+  spelling (`NSURLTrashOriginalPathKey` and friends) returns an empty dictionary. The origin is a
+  `ptbL` (folder) / `ptbN` (name) pair of `ustr` records in the `.DS_Store` — read by `DSStoreReader`,
+  interpreted by `TrashPutBack`. Three things that bite:
+  - **`FileManager.trashItem` writes the records too**, so items Dirnex trashed are restorable, not
+    just Finder's.
+  - **The recorded folder is relative to the trash's own volume, and is spelled two ways.** A volume
+    trash writes a leading slash (`/deep/`); `~/.Trash` writes none (`Users/oleg/`), and when *Finder*
+    did the trashing it goes through the boot volume's data firmlink
+    (`System/Volumes/Data/private/tmp/…` for `/private/tmp/…`).
+  - **`ptbN` is not the name in the trash.** A collision renames the newcomer — `alpha.txt` landed as
+    `alpha.txt 13-12-35-977.txt` — and only `ptbN` still knows what to restore it as.
+  - Every block offset inside a `.DS_Store` is **4 bytes short** of a file position (the allocator
+    numbers from past the leading alignment word); that one detail is the difference between a
+    working parse and garbage.
 - **A virtual location that carries `.write` will light up every write command.** The merged Trash
   needs `.write` so `deleteStrategy` resolves to `.permanent` — and that alone enabled New Folder and
   Paste in a Trash tab, over flows that then bail out at their own `isVirtualDirectory` guard. A
   capability granted for *one* operation is read by all of them; gate the ones that need a real
   directory on the directory, not on the capability.
-- **Rebuilding revokes Full Disk Access.** The TCC grant is keyed to the binary, so the first Trash
-  click after an `xcodebuild` raises the onboarding sheet even though the toggle still looks on in
-  System Settings. Re-granting needs a *relaunch* to take effect (the running process keeps the old
-  denial), and `sqlite3 /Library/Application\ Support/com.apple.TCC/TCC.db "select auth_value from
-  access where service='kTCCServiceSystemPolicyAllFiles' and client='com.dirnex.Dirnex'"` reads the
-  live state — `2` is granted, `0` denied.
+- **Rebuilding can revoke Full Disk Access**, because the build is ad-hoc signed and the TCC grant is
+  keyed to the binary — so a Trash click after an `xcodebuild` raises the onboarding sheet even though
+  the toggle still looks on in System Settings. Re-granting needs a *relaunch* to take effect (the
+  running process keeps the old denial), and the **first** click after that relaunch can still fail
+  while TCC settles; try twice before concluding anything. Read the live state with
+  `sqlite3 /Library/Application\ Support/com.apple.TCC/TCC.db "select auth_value from access where
+  service='kTCCServiceSystemPolicyAllFiles' and client='com.dirnex.Dirnex'"` — `2` granted, `0` denied.
 - **`~/.Trash` needs Full Disk Access** (`NSCocoaErrorDomain` 257 without it), and **"Put Back" has
   no public API**: the original path lives in the trash folder's `.DS_Store`, not in an xattr — a
   trashed file carries only `com.apple.TextEncoding` / `com.apple.provenance`.
