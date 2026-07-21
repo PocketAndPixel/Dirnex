@@ -427,7 +427,7 @@ header, ← again collapsed it *keeping the header selected across the rebuild*;
 `["recents"]` and **survived a relaunch** folded, and a header click unfolded it. The collapse key
 was deleted afterward, leaving the store byte-identical to how it started; no errors in the run logs.
 
-Progress (2026-07-21, M8 pass 8 — the Trash row): the last box. Trash is the sidebar's final row,
+Progress (2026-07-21, M8 pass 8 — the Trash row, VERIFIED LIVE): the last box. Trash is the sidebar's final row,
 where the Dock puts it, and it opens **every volume's trash merged into one listing** — Finder's own
 answer, chosen over a single `~/.Trash` row (a lie the moment a drive is plugged in) and over one row
 per volume. Core-first: a pure, tested locator plus the section case, then the app wiring.
@@ -464,11 +464,35 @@ per volume. Core-first: a pure, tested locator plus the section case, then the a
   `isResultsListing` (`isSearchResults` now means specifically "Spotlight hits", which is all that
   "Save Search…" ever wanted). One deliberate difference from its siblings: **the Trash re-lists**
   rather than staying a snapshot, because what changes in it is what the user just did in that pane.
-- **No "Empty Trash" command**, and no dotfiles. Emptying is ⌘A then F8 *inside* the Trash — a
-  confirmed permanent delete of items the user can see listed — rather than a one-click irreversible
-  destroy of contents they cannot. And the results default of "show every hit, dotfiles included"
-  is overridden to follow the pane, because a trash's dotfiles are Finder's `.DS_Store` put-back
-  databases, not things anyone threw away.
+- **No dotfiles.** The results default of "show every hit, dotfiles included" is overridden to
+  follow the pane, because a trash's dotfiles are Finder's `.DS_Store` put-back databases, not
+  things anyone threw away.
+- **Empty Trash** (added the same day, on request — the pass shipped without it, arguing that ⌘A
+  then F8 *inside* the Trash was safer than a one-click destroy of items the user cannot see). It is
+  a right-click on the Trash row, where the Dock's own Trash puts it. The safety the in-pane route
+  gets for free is bought back by **naming the count in the confirmation** — and by counting what
+  the Trash *shows*, not what it holds: every trash directory carries a `.DS_Store`, so a raw count
+  would offer to erase "1 item" from a Trash the user sees as empty, and then a second Empty would
+  offer the same thing forever. Everything is erased, hidden files included; nothing hidden is ever
+  a reason to ask. An already-empty Trash says so rather than opening a confirmation for nothing.
+
+Live verification (real store, real binary, dylib grepped first): the Trash section rendered last in
+the sidebar with the `trash` glyph. **Ungranted first** — clicking it raised the Full Disk Access
+sheet rather than an empty Trash, which is the whole point of that path. **Then the inversion, which
+needs no grant**: a pane pointed at a scratch volume's real `.Trashes/501` answered F8 with "Delete
+"probe-file.txt" permanently? This can't be undone" — while F8 in an ordinary folder still moved to
+the Trash silently, so the capability change didn't leak. **Then, with the grant in place**, the row
+opened a "Trash" tab merging two volumes in one listing (`~/.Trash` and the scratch volume's trash,
+one item each, no `.DS_Store` shown); toggling hidden files revealed exactly the two databases and
+nothing else, and the Empty sheet's count of 2 matched the visible listing rather than the four
+entries on disk. Empty Trash erased both volumes (confirmed on disk) and the already-empty case
+reported "The Trash is empty". No errors in any of the three run logs.
+
+- **The bug live verification caught**, and the reason this pass had to run rather than compile:
+  after the first real Empty, the pane went on listing two files that no longer existed. `reloadTrash`
+  installed the new model but skipped `reloadEverything()` — the render call the real-directory
+  refresh ends with. Nothing failed, nothing logged; the model and the screen simply disagreed. Now
+  in docs/NOTES.md, since any future refresh path can make the same silent mistake.
 - **Ungranted degrades to the ask, never to an empty Trash.** `~/.Trash` needs Full Disk Access, and
   a permission error anywhere stops the gather and raises the M7 onboarding sheet in Trash-specific
   wording. Showing the merge minus the home trash would be worse than useless: "your Trash is empty"

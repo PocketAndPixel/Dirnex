@@ -43,8 +43,120 @@ extension PanelViewController {
     func reloadTrash() {
         gatherTrash { [weak self] entries in
             guard let self, isTrashListing else { return }
+            // The same install-then-render tail the real-directory refresh ends with.
+            // `installSortedModel` only swaps the model — without `reloadEverything` the pane goes
+            // on drawing the rows it had, which after an Empty Trash is a list of files that no
+            // longer exist. Caught only by running it.
+            _ = reconcileCursorFromTable()
             installSortedModel(resultsModel(entries, as: trashPresentation()))
+            reloadEverything()
         }
+    }
+
+    // MARK: - Emptying
+
+    /// "Empty Trash…" from the sidebar's Trash row — permanently erase every volume's trash.
+    ///
+    /// The confirmation names the **count**, which is what makes this safe enough to offer as a
+    /// one-click menu item: emptying from the sidebar destroys items the user cannot see listed, so
+    /// the sheet has to say how many there are rather than ask them to trust the word "Trash". The
+    /// gather that produces the count is the same one the row browses with, so the number in the
+    /// sheet is the number the pane would show.
+    ///
+    /// An empty Trash says so instead of opening a confirmation for nothing — the same "never a
+    /// no-op the user can't read" rule the Full Disk Access menu item follows.
+    func emptyTrash() {
+        gatherTrash { [weak self] entries in
+            guard let self else { return }
+            // Counted on what the Trash *shows*: a trash directory always holds a `.DS_Store` (it
+            // is Finder's put-back database), so counting raw entries would offer to erase "1 item"
+            // from a Trash the user sees as empty. Everything is erased, hidden files included —
+            // emptying means emptying — but nothing hidden is ever counted as a reason to ask.
+            let visible = entries.filter { !$0.isHidden }
+            guard !visible.isEmpty else {
+                presentOperationFailure(
+                    message: "The Trash is empty",
+                    detail: "There is nothing to erase."
+                )
+                return
+            }
+            confirmEmptyTrash(count: visible.count) { [weak self] in
+                self?.runEmptyTrash(entries)
+            }
+        }
+    }
+
+    /// Emptying is irreversible and reaches every volume, so it always asks — and says how much is
+    /// going, in the `.critical` style the permanent-delete confirmation uses.
+    private func confirmEmptyTrash(count: Int, proceed: @escaping () -> Void) {
+        let alert = NSAlert()
+        alert.alertStyle = .critical
+        alert.messageText = count == 1
+            ? "Permanently erase 1 item from the Trash?"
+            : "Permanently erase \(count) items from the Trash?"
+        alert.informativeText = "This can’t be undone."
+        alert.addButton(withTitle: "Empty Trash")
+        alert.addButton(withTitle: "Cancel")
+        alert.enableEscapeToCancel()
+
+        let handler: (NSApplication.ModalResponse) -> Void = { response in
+            if response == .alertFirstButtonReturn { proceed() }
+        }
+        if let window = view.window {
+            alert.beginSheetModal(for: window, completionHandler: handler)
+        } else {
+            handler(alert.runModal())
+        }
+    }
+
+    /// Remove every gathered entry, off the main thread, then re-list any pane showing the Trash.
+    /// Never journaled: a permanent delete has no undo, exactly like Shift+F8.
+    private func runEmptyTrash(_ entries: [FileEntry]) {
+        let paths = entries.map(\.path)
+        let backend = backend
+        Task {
+            let outcome = await Task.detached(priority: .userInitiated) { () -> EmptyTrashOutcome in
+                var outcome = EmptyTrashOutcome()
+                for path in paths {
+                    do {
+                        try backend.removeItem(at: path)
+                    } catch {
+                        // One unremovable item (a locked file, a volume gone read-only) must not
+                        // abandon the rest of the Trash — collect and carry on.
+                        outcome.failed.append(path)
+                        outcome.firstError = outcome.firstError ?? error
+                    }
+                }
+                return outcome
+            }.value
+
+            refreshTrashPanes()
+            if let error = outcome.firstError {
+                presentOperationFailure(
+                    message: outcome.failed.count == 1
+                        ? "Couldn’t erase “\(outcome.failed[0].lastComponent)”"
+                        : "Couldn’t erase \(outcome.failed.count) items",
+                    detail: describe(error)
+                )
+            }
+        }
+    }
+
+    /// Re-list whichever panes are showing the Trash — this one and its counterpart. A pane left
+    /// listing items that no longer exist is the one outcome an empty must not produce, and the
+    /// merged listing has no FSEvents watcher to notice on its own.
+    private func refreshTrashPanes() {
+        for panel in [self, host?.panelCounterpart(of: self)].compactMap({ $0 })
+            where panel.isTrashListing {
+            panel.refreshCurrentDirectory()
+        }
+    }
+
+    /// What one empty pass produced. A local carrier because `PanelViewController+FileOps`'
+    /// equivalent is `private` and Swift's `private` does not cross files (docs/NOTES.md).
+    private struct EmptyTrashOutcome: Sendable {
+        var failed: [VFSPath] = []
+        var firstError: (any Error)?
     }
 
     // MARK: - Gathering

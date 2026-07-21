@@ -127,6 +127,12 @@ at build time.
   drawn in the same colour at 0.25 alpha made an *empty* bar read as the heaviest row on screen,
   because the track owns the full column width where the ink may own a point. No test catches
   this; it was caught in a screenshot.
+- **`installSortedModel` swaps the model; `reloadEverything` is what puts it on screen.** A refresh
+  path that installs and returns leaves the pane drawing the rows it already had — no error, no log
+  line, just a model and a screen that disagree. Found live when an Empty Trash left the pane listing
+  two files that had just been erased. The real-directory refresh ends with
+  `reconcileCursorFromTable` → `installSortedModel` → `reloadEverything`; a new refresh path needs
+  the same tail.
 - **A filtered-out row must be omitted, not zeroed.** Rendering an excluded folder as its
   filtered total gives "Zero KB · 0.0 %", which reads as *"measured, and empty"* — a claim about
   the folder where the truth is a claim about the question. Drop such rows from the projection
@@ -187,6 +193,27 @@ against a fake.
   `keyboard-interactive` hangs ~60 s on a wrong password under askpass (macOS PAM).
 - **Drain both pipes concurrently** or a two-pipe deadlock wedges the process, and bound the wait
   — some appliances hold the SSH channel open after every command and never return.
+
+### The Trash
+
+- **`FileManager.trashItem` on an item already in a trash reports success and does nothing** — it
+  hands back the path it was given. So "move to Trash" inside the Trash is a silent no-op that looks
+  like it worked. Dirnex withdraws the `.trash` capability for any path inside a trash, which turns
+  F8 there into the confirmed permanent delete via the existing degradation, and `LocalBackend`
+  refuses such a call outright.
+- **`<volume>/.Trashes` is mode `d-wx--x--t` — unlistable even by its owner** — while
+  `<container>/<uid>` inside it is a normal `drwx------`. A volume's trash must be *constructed* and
+  opened directly; enumerating the parent to discover it always fails. (Same leaf-not-parent shape as
+  the iCloud container.)
+- **`FileManager.url(for: .trashDirectory, appropriateFor: <volume>)` cannot enumerate trashes.** It
+  throws `NSFeatureUnsupportedError` (3328, "the feature is not supported") for a volume that merely
+  has nothing trashed on it yet, and only starts answering once the directory exists — so trusting it
+  reads as "external volumes have no Trash," a wrong answer in the quiet direction. It resolves `/`,
+  `/System/Volumes/Data` and the `/Volumes/<name>` root symlink all to `~/.Trash`, which is why the
+  boot volume is skipped when merging (or the home trash is listed two or three times).
+- **`~/.Trash` needs Full Disk Access** (`NSCocoaErrorDomain` 257 without it), and **"Put Back" has
+  no public API**: the original path lives in the trash folder's `.DS_Store`, not in an xattr — a
+  trashed file carries only `com.apple.TextEncoding` / `com.apple.provenance`.
 
 ### git
 

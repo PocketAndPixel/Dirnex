@@ -54,6 +54,14 @@ extension BrowserWindowController: SidebarViewControllerDelegate {
         target.focusTable()
     }
 
+    /// "Empty Trash…" erases every volume's trash, after a confirmation naming the count. Run
+    /// through the active pane because that is what owns the backend, the progress reporting and
+    /// the re-list — a pane already showing the Trash must not be left displaying items that no
+    /// longer exist.
+    func sidebarDidRequestEmptyTrash(_ sidebar: SidebarViewController) {
+        (activePanel ?? leftPanel).emptyTrash()
+    }
+
     /// A saved server connects (SFTP) or mounts (SMB) in the active pane and browses it. The
     /// connect/mount is async and, on completion, both navigates *and* focuses the pane itself,
     /// so grabbing focus here (before the connection resolves) would be premature.

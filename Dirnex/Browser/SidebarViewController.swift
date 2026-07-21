@@ -15,6 +15,9 @@ protocol SidebarViewControllerDelegate: AnyObject {
     /// The Trash row was picked — show every volume's trash as one merged listing (PLAN.md §M8).
     /// Like Recents it carries no model: the Trash is not a single directory to navigate to.
     func sidebarDidActivateTrash(_ sidebar: SidebarViewController)
+    /// "Empty Trash…" was chosen on the Trash row — permanently erase every volume's trash, after
+    /// a confirmation naming what will go (PLAN.md §M8).
+    func sidebarDidRequestEmptyTrash(_ sidebar: SidebarViewController)
     /// A saved-server row was picked — connect (SFTP) or mount (SMB) it and browse it in the active
     /// pane (PLAN.md §M5 "click → connect/mount + navigate").
     func sidebar(_ sidebar: SidebarViewController, didActivateServer server: ServerConnection)
@@ -460,14 +463,16 @@ extension SidebarViewController: NSTableViewDelegate {
 // MARK: - Right-click context menu
 
 extension SidebarViewController: NSMenuDelegate {
-    /// Build the right-click menu lazily from the clicked row, dispatching to the saved-search,
-    /// server or tag management builder (in companion files). Any other row — a header, place, or
+    /// Build the right-click menu lazily from the clicked row, dispatching to the Trash,
+    /// saved-search, server or tag builder (in companion files). Any other row — a header, place, or
     /// volume — leaves the menu empty, so AppKit shows nothing.
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
         let row = tableView.clickedRow
         guard rows.indices.contains(row) else { return }
-        if let entry = rows[row].favorite {
+        if case .trash = rows[row] {
+            buildTrashMenu(menu)
+        } else if let entry = rows[row].favorite {
             buildFavoriteMenu(menu, for: entry)
         } else if let search = rows[row].savedSearch {
             buildSavedSearchMenu(menu, for: search)
