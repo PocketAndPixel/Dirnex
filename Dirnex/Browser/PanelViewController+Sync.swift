@@ -50,69 +50,6 @@ extension PanelViewController {
         presentAsSheet(controller)
     }
 
-    // MARK: - Compare by contents (external diff)
-
-    /// Compare the two panes' cursor files in an external diff tool (PLAN.md §M5 "Compare by
-    /// content" — the FileMerge/Kaleidoscope/BBEdit handoff). Dispatched to the focused pane, so
-    /// `self` is the source; the counterpart pane supplies the other file. Cursor-to-cursor keeps
-    /// the choice explicit and predictable — put the two files under the cursors and invoke it.
-    @objc func compareByContents(_ sender: Any?) {
-        guard let (left, right) = comparableCursorPair() else {
-            presentOperationFailure(
-                message: "Nothing to compare",
-                detail: "Put a file under the cursor in each panel, then compare them."
-            )
-            return
-        }
-        launchExternalDiff(comparing: left, with: right)
-    }
-
-    /// The two local, regular files to compare: this pane's cursor file and the counterpart pane's
-    /// cursor file, or `nil` when either side isn't a real file on disk. Comparing a path with
-    /// itself is refused (nothing to diff).
-    private func comparableCursorPair() -> (VFSPath, VFSPath)? {
-        guard let counterpart = host?.panelCounterpart(of: self),
-              let left = localFileUnderCursor(of: self),
-              let right = localFileUnderCursor(of: counterpart),
-              left != right else { return nil }
-        return (left, right)
-    }
-
-    private func localFileUnderCursor(of pane: PanelViewController) -> VFSPath? {
-        guard let entry = pane.panel.currentEntry,
-              entry.kind == .file,
-              entry.path.backend == .local else { return nil }
-        return entry.path
-    }
-
-    /// Whether Compare By Contents should be enabled: a real file under the cursor in each pane.
-    var canCompareByContents: Bool { comparableCursorPair() != nil }
-
-    /// Launch the external diff tool on two files, surfacing "no tool installed" or a launch error
-    /// through the standard operation-failure alert.
-    private func launchExternalDiff(comparing left: VFSPath, with right: VFSPath) {
-        ExternalDiffLauncher.compare(left.path, right.path) { [weak self] result in
-            guard case let .failure(failure) = result else { return }
-            self?.presentDiffFailure(failure)
-        }
-    }
-
-    private func presentDiffFailure(_ failure: ExternalDiffLauncher.Failure) {
-        switch failure {
-        case .noToolInstalled:
-            presentOperationFailure(
-                message: "No comparison tool found",
-                detail: "Install FileMerge (part of Xcode), Kaleidoscope, or BBEdit to compare "
-                    + "files side by side."
-            )
-        case let .launchFailed(tool):
-            presentOperationFailure(
-                message: "Couldn’t open \(tool.displayName)",
-                detail: "\(tool.displayName) is installed but couldn’t be launched."
-            )
-        }
-    }
-
     /// A pane can take part in a sync when it shows a real, readable on-disk folder — never a
     /// virtual search-results or archive listing.
     static func canSync(_ pane: PanelViewController) -> Bool {

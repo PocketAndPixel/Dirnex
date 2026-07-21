@@ -20,7 +20,8 @@ import Sparkle
 /// delegate protocol refines `NSObject`). Two things ride on that: `allowedChannels(for:)`, how the
 /// opt-in beta channel reaches Sparkle, and the found/not-found/user-choice callbacks that keep
 /// `availability` current for the titlebar indicator. Everything else is left to the standard
-/// controller.
+/// controller — except the scheduling, which Dirnex owns: see `startProbing()` for why Sparkle's own
+/// scheduler cannot be what keeps the indicator honest.
 ///
 /// Sparkle is still *compiled* in every configuration (the type is never `#if`-d out), so the Debug
 /// `xcodebuild test` job catches any misuse of the update API even though it never starts it.
@@ -41,6 +42,7 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
             updaterDelegate: self,
             userDriverDelegate: nil
         )
+        startProbing()
     }
 
     /// Whether a real updater came up. The menu item greys out when it did not.
@@ -53,7 +55,7 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
 
     /// Whether a newer build is waiting, and which one (`DirnexCore.UpdateAvailability`). Driven
     /// entirely by the Sparkle callbacks below; the titlebar button in `BrowserWindowController`
-    /// mirrors it. Starts empty — Sparkle's first scheduled check is what can raise it.
+    /// mirrors it. Starts empty — the launch probe below is what can raise it.
     private(set) var availability: UpdateAvailability = .none {
         didSet {
             guard availability != oldValue else { return }
@@ -64,6 +66,79 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
     /// Run a user-initiated update check (App menu ▸ Check for Updates…, or the ⌘K command).
     func checkForUpdates() {
         updaterController?.checkForUpdates(nil)
+    }
+
+    // MARK: - Background probe
+
+    /// The one-shot timer carrying the next probe. One-shot rather than repeating so each probe
+    /// re-derives its own successor from `schedule` — a repeating timer would drift and, worse,
+    /// could not be re-aimed when an activation probe lands early.
+    private var probeTimer: Timer?
+
+    /// When the last probe went out, for this process only. Deliberately not persisted: the launch
+    /// probe is unconditional, so the only consumer is the activation catch-up below, and a date on
+    /// disk would just be a second source of truth for a decision that can't outlive the process.
+    private var lastProbe: Date?
+
+    private let schedule = UpdateCheckSchedule()
+
+    /// Probe now, then keep probing on `schedule` (PLAN.md §M7).
+    ///
+    /// This exists because Sparkle's own scheduler cannot be relied on to keep the indicator honest:
+    /// its automatic checks sit behind the first-run permission prompt, and an install that answered
+    /// "no" has `SUEnableAutomaticChecks = 0` forever — no scheduled check, no `didFindValidUpdate`,
+    /// and an indicator that stays dark through every release. Observed on a real install: a build
+    /// three days stale with a beta waiting in the feed and nothing on screen.
+    ///
+    /// Only ever reached when a real updater came up, so the guards in `init` cover this too — no
+    /// timer is armed under `xcodebuild test` or in a build with no feed configured.
+    private func startProbing() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(applicationDidBecomeActive),
+            name: NSApplication.didBecomeActiveNotification,
+            object: nil
+        )
+        runProbe()
+    }
+
+    /// A timer does not fire while the machine is asleep, so a laptop opened after a night comes
+    /// back with an armed timer that is hours overdue and will not fire until its original fire date
+    /// passes. Re-asking on activation is what makes the first thing the user sees after waking a
+    /// current answer rather than yesterday's.
+    @objc private func applicationDidBecomeActive() {
+        guard schedule.isDue(lastCheck: lastProbe, now: Date()) else { return }
+        runProbe()
+    }
+
+    /// One silent check. `checkForUpdateInformation()` is Sparkle's *probing* check: it runs the real
+    /// appcast fetch through this same delegate — so `allowedChannels(for:)` still applies and a beta
+    /// opt-in is honoured — but it presents no UI whatsoever. All it does here is drive
+    /// `availability`, which lights the titlebar glyph; clicking that glyph is what opens Sparkle's
+    /// actual install flow. A check the user did not ask for must never put a window on their screen.
+    private func runProbe() {
+        guard let updater = updaterController?.updater else { return }
+        lastProbe = Date()
+        // Sparkle documents the probe as a no-op while another check or install is in flight. Count
+        // it as taken anyway: the user is already inside Sparkle's UI, which feeds `availability`
+        // through the very same callbacks, and rescheduling a zero-delay retry instead would spin.
+        if !updater.sessionInProgress {
+            updater.checkForUpdateInformation()
+        }
+        scheduleNextProbe()
+    }
+
+    private func scheduleNextProbe() {
+        probeTimer?.invalidate()
+        let delay = schedule.delayUntilNextCheck(lastCheck: lastProbe, now: Date())
+        let timer = Timer(timeInterval: delay, repeats: false) { [weak self] _ in
+            // A main-runloop timer fires on the main thread by construction, so the assumption holds.
+            MainActor.assumeIsolated { self?.runProbe() }
+        }
+        // `.common` rather than the default mode: a probe owed while a menu is open or a split view
+        // is being dragged should still go out, not wait for the tracking loop to end.
+        RunLoop.main.add(timer, forMode: .common)
+        probeTimer = timer
     }
 
     // MARK: - SPUUpdaterDelegate

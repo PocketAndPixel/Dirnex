@@ -23,7 +23,13 @@ extension PanelViewController {
         // would otherwise misread a marked row as the parent row.
         let onParentRow = isParentRow(row)
         retargetSelection(forClickedRow: row)
-        if row >= 0, !onParentRow { return entryMenu() }
+        let onEntry = row >= 0 && !onParentRow
+        // The Trash gets its own pair. Not a matter of greying the ordinary menu down: what a
+        // trashed file offers is a *different* list — there is no folder to make something in, no
+        // in-place rename (the merged container advertises no `.rename`), and the one delete that
+        // means anything here is the permanent one, which "Move to Trash" would have named wrong.
+        if isTrashListing { return onEntry ? trashEntryMenu() : trashBackgroundMenu() }
+        if onEntry { return entryMenu() }
         // The `..` row and the empty space below the list both get the folder menu. Its Copy Path
         // copies the folder the menu is *about*: the parent that `..` points at, or the pane's own
         // directory for the empty space.
@@ -98,6 +104,59 @@ extension PanelViewController {
         return menu
     }
 
+    /// The menu over a trashed file. Same spine as `entryMenu` — look at it, move it somewhere,
+    /// copy it, destroy it — minus everything that assumes a place you are working *in*: no
+    /// rename, no Pack, no Paste, no New Folder. "Copy to Other Panel" is what restoring by hand
+    /// looks like here, since Finder's Put Back has no public API (docs/NOTES.md), and the
+    /// destructive tail is `file.deletePermanently`: F8 in a trash already degrades to a confirmed
+    /// permanent delete, so the item may as well say so.
+    private func trashEntryMenu() -> NSMenu {
+        let menu = NSMenu()
+        // First, and alone above the rule: putting an item back is what the Trash is *for*, and it
+        // is the one item here that cannot be reached any other way.
+        add(["file.putBack"], to: menu)
+        menu.addSeparator()
+        let open = NSMenuItem(
+            title: "Open",
+            action: #selector(openContextEntry(_:)),
+            keyEquivalent: ""
+        )
+        open.target = self
+        menu.addItem(open)
+        menu.addItem(openWithMenuItem())
+        add(["view.quickLook"], to: menu)
+        menu.addSeparator()
+        addShareItem(to: menu)
+        add(["file.copy", "file.move"], to: menu)
+        menu.addSeparator()
+        add(["edit.copy"], to: menu)
+        menu.addItem(copyPathItem(for: selectionTargets().map(\.path.path)))
+        menu.addSeparator()
+        add(["file.deletePermanently"], to: menu)
+        return menu
+    }
+
+    /// The menu over the Trash's empty space. The background menu is normally about the folder you
+    /// are standing in, and the merged Trash is not a folder — it is several, on several volumes.
+    /// So what it offers is the two things that mean "all of it", in the order that puts the
+    /// recoverable one under the pointer first.
+    private func trashBackgroundMenu() -> NSMenu {
+        let menu = NSMenu()
+        menu.addItem(trashItem("Restore All", #selector(restoreAllFromContextMenu(_:))))
+        menu.addSeparator()
+        // The ellipsis is a promise, as on the sidebar row: this asks before it destroys anything.
+        menu.addItem(trashItem("Empty Trash…", #selector(emptyTrashFromContextMenu(_:))))
+        return menu
+    }
+
+    /// One whole-Trash item. Real targets rather than registry commands, like the sidebar row's
+    /// pair: neither acts on a selection, so there is nothing for the responder chain to aim at.
+    private func trashItem(_ title: String, _ action: Selector) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+        item.target = self
+        return item
+    }
+
     /// The menu over the pane's empty space (or the `..` row): nothing selectable is under the
     /// pointer, so this is about the *folder* `directory` — make something in it, paste into it, or
     /// copy its path.
@@ -106,7 +165,7 @@ extension PanelViewController {
         add(["file.newFolder", "edit.paste"], to: menu)
         menu.addItem(copyPathItem(for: [directory.path]))
         menu.addSeparator()
-        add(["go.addToHotlist", "file.syncDirectories"], to: menu)
+        add(["go.addToFavorites", "file.syncDirectories"], to: menu)
         menu.addItem(scriptsMenuItem())
         return menu
     }
@@ -199,6 +258,19 @@ extension PanelViewController {
     /// Put the paths captured by `copyPathItem` on the pasteboard. A real target rather than a
     /// responder-chain command because it acts on what the menu captured, not on the pane's live
     /// selection — the `..` row and the empty space have no selection to dispatch against.
+    /// "Empty Trash…" from the pane's own background menu — the same flow the sidebar row runs, so
+    /// the confirmation counts the merged set both of them browse rather than a second idea of it.
+    /// A real target for the same reason "Open" is one: emptying isn't a registry command.
+    @objc private func emptyTrashFromContextMenu(_ sender: NSMenuItem) {
+        emptyTrash()
+    }
+
+    /// "Restore All" — put every trashed item back where it came from, after a counted
+    /// confirmation. The whole-Trash counterpart of the per-item `file.putBack` above it.
+    @objc private func restoreAllFromContextMenu(_ sender: NSMenuItem) {
+        restoreAllFromTrash()
+    }
+
     @objc private func copyContextPath(_ sender: NSMenuItem) {
         guard let paths = sender.representedObject as? [String] else { return }
         PathClipboard.copy(paths)

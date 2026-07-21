@@ -98,9 +98,9 @@ public enum FirstRunTour {
             title: "Get anywhere fast",
             body: """
             Jump straight to a path, open a second tab, or pin the folders you live in. Location, \
-            tabs, and the hotlist keep even a deep folder tree a single keystroke away.
+            tabs, and Favorites keep even a deep folder tree a single keystroke away.
             """,
-            commandIDs: ["go.editLocation", "file.newTab", "go.hotlist"]
+            commandIDs: ["go.editLocation", "file.newTab", "go.favorites"]
         ),
         TourScreen(
             id: "tour.ready",

@@ -22,10 +22,22 @@ enum ExternalDiffLauncher {
         FileManager.default.isExecutableFile(atPath: path)
     }
 
-    /// The tool a Compare-with action would use, or `nil` when none is installed. Cheap (a few
-    /// file-existence checks), so callers use it to title and enable the menu item.
+    /// The tool a Compare-with action would use, or `nil` when none is installed — the user's
+    /// Settings choice when that tool is still installed, else the automatic install order. Cheap
+    /// (a few file-existence checks), so callers use it to title and enable the menu item.
+    @MainActor
     static func preferredTool() -> ExternalDiffTool? {
-        ExternalDiffTool.preferred(where: executableExists)
+        let chosen = AppPreferences.shared.diffToolIdentifier
+        return ExternalDiffTool.preferred(
+            identifier: chosen.isEmpty ? nil : chosen,
+            where: executableExists
+        )
+    }
+
+    /// Every known tool actually installed, in the automatic preference order — the list the
+    /// Settings picker offers. Empty when the user has none of them.
+    static func installedTools() -> [ExternalDiffTool] {
+        ExternalDiffTool.installed(where: executableExists)
     }
 
     /// Spawn the preferred installed diff tool on the two local files, off the main thread.

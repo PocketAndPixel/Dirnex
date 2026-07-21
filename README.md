@@ -5,13 +5,17 @@ Commander — built native in Swift, with macOS-only superpowers: Quick Look,
 Spotlight search, APFS clones, Finder tags, a command palette, and universal
 undo.
 
-See [PLAN.md](PLAN.md) for the full product plan, architecture decisions, and
-milestone breakdown.
+See [PLAN.md](PLAN.md) for architecture decisions and what's planned next, and
+[docs/HISTORY.md](docs/HISTORY.md) for the milestone-by-milestone build log.
 
-**Status:** M0 (scaffolding) complete. M1 (read-only dual-pane browser) in
-progress — the headless core is done and tested (`LocalBackend`, `DirectoryModel`,
-and the `Panel` cursor/selection state machine in `DirnexCore`); the AppKit panel
-UI is next.
+**Status:** M0–M9 shipped — dual-pane browsing, the queued/undoable operation
+engine, the ⌘K palette, archive and SFTP/SMB backends, the Mac-native layer
+(Finder tags, Git awareness, Quick Look, AppleScript + Shortcuts), a notarized
+Developer ID release pipeline with Sparkle beta/stable channels, a
+keyboard-drivable sidebar you can shape — pins, folds, Recents, and a merged
+Trash with Put Back — and an iCloud Drive that matches Finder's: the per-app
+document folders merged in, and evicted files that download on open instead of
+opening empty.
 
 ## Requirements
 
@@ -26,7 +30,8 @@ and uses file-system-synchronized groups, so new files under `Dirnex/` and
 
 ```
 Dirnex/
-├── PLAN.md                 Product plan and milestones
+├── PLAN.md                 Architecture decisions and what's next
+├── docs/                   Engineering notes, build history, release procedure
 ├── Dirnex.xcodeproj        App target (thin UI client)
 ├── Dirnex/                 AppKit/SwiftUI app sources
 ├── DirnexTests/            App-target smoke tests

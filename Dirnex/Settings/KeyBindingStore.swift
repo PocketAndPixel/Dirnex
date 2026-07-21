@@ -4,7 +4,7 @@ import Foundation
 
 /// App-wide persistence for the user's rebindable keyboard shortcuts (PLAN.md §M3
 /// "rebindable shortcuts"). Wraps the headless `KeyBindings` value type, persists it as boring
-/// JSON in `UserDefaults` (matching `HotlistStore`/`FrecencyStore`/`TabPersistence`), and
+/// JSON in `UserDefaults` (matching `FavoritesStore`/`FrecencyStore`/`TabPersistence`), and
 /// publishes changes so the menu bar and the Settings UI both refresh when a binding changes.
 ///
 /// One shared instance is the single writer: `MainMenuBuilder` reads it when building the menu,

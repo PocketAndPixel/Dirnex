@@ -3,7 +3,7 @@ import Foundation
 
 /// App-wide persistence for named workspaces (PLAN.md §M3 "Workspaces: save/restore both
 /// panels with all tabs, named, switchable from palette"). One shared collection across every
-/// window, stored as boring JSON in `UserDefaults` like `HotlistStore` and the command recents
+/// window, stored as boring JSON in `UserDefaults` like `FavoritesStore` and the command recents
 /// (PLAN.md §2 "JSON/plist for config"). Read fresh each time the menu opens or a save runs, so
 /// an edit in the organizer — or in another window — shows up on the next open without any
 /// live-observation plumbing.

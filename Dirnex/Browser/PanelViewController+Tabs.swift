@@ -40,7 +40,14 @@ extension PanelViewController {
     /// the tab may have gone stale while inactive (nothing watches an inactive tab). A virtual
     /// results tab has no directory to re-list; its snapshot stands until the tab is closed.
     private func refreshActiveDirectory() {
-        guard panel.path.backend == .local else { return }
+        guard panel.path.backend == .local else {
+            // A *merged* listing is the exception: it is a live view of real directories, not a
+            // snapshot of a question, and the pane's single watcher followed whichever tab was
+            // active — so anything trashed (or added to iCloud Drive) while this tab sat in the
+            // background went unseen. Re-gather, which also re-establishes the watch.
+            if !mergedSources.isEmpty { refreshCurrentDirectory() }
+            return
+        }
         loadToken += 1
         let token = loadToken
         let path = panel.path
@@ -85,7 +92,9 @@ extension PanelViewController {
         let tab = PanelTab(
             path: path,
             sort: panel.model.sort,
-            showHidden: panel.model.showHidden,
+            // The app-wide toggle, not this pane's model: the caller is typically a results tab,
+            // which forces hidden files on, and a real directory must not inherit that.
+            showHidden: AppPreferences.shared.showHidden,
             columns: tabs[activeTabIndex].columnLayout
         )
         tabs.insert(tab, at: activeTabIndex + 1)
@@ -119,7 +128,7 @@ extension PanelViewController {
     /// so instead duplicate the results snapshot (marked already-loaded, carrying the query) so
     /// `+` just opens another view of the same hits with no error.
     private func newTab(basedOn currentTab: PanelTab) -> PanelTab {
-        guard isSearchResults else {
+        guard isResultsListing else {
             return PanelTab(
                 path: panel.path,
                 sort: panel.model.sort,
@@ -179,14 +188,13 @@ extension PanelViewController {
         tab.panel = Panel(
             path: path,
             sort: tab.panel.model.sort,
-            showHidden: tab.panel.model.showHidden
+            // A results tab being reset forces hidden files on; Home takes the app-wide toggle.
+            showHidden: AppPreferences.shared.showHidden
         )
         tab.history = NavigationHistory(initialPath: path)
         tab.hasLoaded = false
         tab.cursorOnParentRow = false
-        tab.searchQuery = nil
-        tab.searchScope = nil
-        tab.customTitle = nil
+        tab.clearResultsIdentity()
     }
 
     func selectNextTab() {

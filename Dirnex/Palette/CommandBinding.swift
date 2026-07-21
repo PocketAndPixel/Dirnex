@@ -32,6 +32,7 @@ enum CommandBinding {
         "file.newFolder": #selector(PanelViewController.newFolder(_:)),
         "file.trash": #selector(PanelViewController.moveSelectionToTrash(_:)),
         "file.deletePermanently": #selector(PanelViewController.deleteSelectionPermanently(_:)),
+        "file.putBack": #selector(PanelViewController.putBackSelection(_:)),
         "edit.undo": #selector(PanelViewController.undoLastOperation(_:)),
         "edit.redo": #selector(PanelViewController.redoLastOperation(_:)),
         "edit.copy": #selector(PanelViewController.copy(_:)),
@@ -43,6 +44,9 @@ enum CommandBinding {
         "select.unselectByPattern": #selector(PanelViewController.unselectFilesByPattern(_:)),
         "view.commandPalette": #selector(AppDelegate.showCommandPalette(_:)),
         "view.toggleSidebar": #selector(NSSplitViewController.toggleSidebar(_:)),
+        // The window controller, not a pane: focusing the source list must reveal a collapsed
+        // sidebar and read the active pane's location, both window-level. Like `view.terminal`.
+        "view.focusSidebar": #selector(BrowserWindowController.focusSidebar(_:)),
         "view.toggleHidden": #selector(PanelViewController.toggleShowHidden(_:)),
         "view.toggleTags": #selector(PanelViewController.toggleShowTags(_:)),
         "view.toggleSyncStatus": #selector(PanelViewController.toggleShowSyncStatus(_:)),
@@ -66,8 +70,8 @@ enum CommandBinding {
         "go.back": #selector(PanelViewController.goBack(_:)),
         "go.forward": #selector(PanelViewController.goForward(_:)),
         "go.history": #selector(PanelViewController.showHistory(_:)),
-        "go.hotlist": #selector(PanelViewController.showHotlist(_:)),
-        "go.addToHotlist": #selector(PanelViewController.addToHotlist(_:)),
+        "go.favorites": #selector(PanelViewController.showFavorites(_:)),
+        "go.addToFavorites": #selector(PanelViewController.addToFavorites(_:)),
         "workspace.list": #selector(PanelViewController.showWorkspaces(_:)),
         "workspace.save": #selector(PanelViewController.saveWorkspace(_:)),
         "window.minimize": #selector(NSWindow.performMiniaturize(_:)),

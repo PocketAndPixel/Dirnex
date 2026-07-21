@@ -19,7 +19,11 @@ let package = Package(
         ),
         .testTarget(
             name: "DirnexCoreTests",
-            dependencies: ["DirnexCore"]
+            dependencies: ["DirnexCore"],
+            // Real bytes, not a hand-built imitation: a `.DS_Store` written by the system itself
+            // when files were trashed from a scratch volume. A fixture a test *constructs* would
+            // only prove the reader agrees with the test's own idea of the format.
+            resources: [.copy("Fixtures")]
         )
     ],
     swiftLanguageModes: [.v6]

@@ -54,7 +54,10 @@ enum MainMenuBuilder {
             .command("file.tags"), .command("file.manageScripts"), .separator,
             .command("file.rename"), .command("file.multiRename"), .separator,
             .command("file.newFolder"), .separator,
-            .command("file.trash"), .command("file.deletePermanently")
+            .command("file.trash"), .command("file.deletePermanently"),
+            // Put Back sits with the delete pair because it is the other end of them, and lights up
+            // only in a Trash listing — where those two are the operations it undoes.
+            .separator, .command("file.putBack")
         ]),
         MenuSpec(title: "Edit", items: [
             .command("edit.undo"), .command("edit.redo"), .separator,
@@ -66,7 +69,8 @@ enum MainMenuBuilder {
         ]),
         MenuSpec(title: "View", items: [
             .command("view.commandPalette"), .separator,
-            .command("view.toggleSidebar"), .command("view.toggleHidden"),
+            .command("view.toggleSidebar"), .command("view.focusSidebar"),
+            .command("view.toggleHidden"),
             .command("view.toggleTags"), .command("view.toggleSyncStatus"),
             .command("view.functionBar"),
             .command("view.sizeVisualization"), .subcommand("view.gitAwareSizes"), .separator,
@@ -77,7 +81,7 @@ enum MainMenuBuilder {
             .command("go.back"), .command("go.forward"), .command("go.history"), .separator,
             .command("go.editLocation"), .command("go.parent"), .command("go.search"),
             .command("go.saveSearch"), .separator,
-            .command("go.hotlist"), .command("go.addToHotlist"), .separator,
+            .command("go.favorites"), .command("go.addToFavorites"), .separator,
             .command("go.connectServer"), .command("go.openInTerminal")
         ]),
         MenuSpec(title: "Workspace", items: [

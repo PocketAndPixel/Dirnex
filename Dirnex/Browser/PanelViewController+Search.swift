@@ -80,11 +80,37 @@ extension PanelViewController {
         }
     }
 
+    // MARK: - Recents
+
+    /// Show Finder's **Recents** — recently-used files, everywhere — in a virtual results tab
+    /// (PLAN.md §M8 "Recents row … reuses machinery instead of adding some"). Reached from the
+    /// sidebar's first row; runs off the main thread like a search and lands in the same virtual
+    /// results panel, sorted by `RecentsQuery.resultSort` (newest first) rather than the pane's sort.
+    ///
+    /// `searchQuery` is left `nil`, so "Save Search…" stays disabled: Recents is a fixed system
+    /// listing, not a query a user composed and might want to keep.
+    func showRecents() {
+        let backend = backend
+        Task {
+            let results = await SpotlightSearchRunner.runRecents(RecentsQuery(), backend: backend)
+            openResults(
+                results.entries,
+                truncated: results.truncated,
+                as: ResultsPresentation(
+                    pathSummary: "Recents",
+                    sort: RecentsQuery.resultSort,
+                    query: nil,
+                    scope: nil,
+                    title: "Recents"
+                )
+            )
+        }
+    }
+
     // MARK: - Virtual results tab
 
-    /// Install the hits as a new virtual tab beside the current one and switch to it, so the
-    /// user's browsing tab is preserved (closing the results tab with ⌘W returns to it). Results
-    /// are a snapshot: the tab is marked loaded so nothing tries to re-list the synthetic path.
+    /// Install the hits as a virtual results tab (`PanelViewController+Results`), labelled by the
+    /// query that produced them and carrying it so "Save Search…" can persist it.
     private func openSearchResults(
         _ entries: [FileEntry],
         query: SpotlightQuery,
@@ -92,35 +118,17 @@ extension PanelViewController {
         truncated: Bool,
         title: String? = nil
     ) {
-        captureColumnLayout()
-        let listing = DirectoryListing(
-            path: VFSPath(backend: .search, path: "/" + query.summary),
-            entries: entries
-        )
-        // Show every hit, dotfiles included — a search result the user explicitly matched
-        // shouldn't be hidden by the app-wide show-hidden toggle.
-        let model = DirectoryModel(listing: listing, sort: panel.model.sort, showHidden: true)
-        let tab = PanelTab(panel: Panel(model: model))
-        tab.hasLoaded = true
-        tab.columnLayout = tabs[activeTabIndex].columnLayout
-        // Retain what produced these results so "Save Search…" can persist it.
-        tab.searchQuery = query
-        tab.searchScope = scope
-        // A saved search names its results tab; an ad-hoc ⌥F7 search leaves the query-summary chip.
-        tab.customTitle = title
-
-        tabs.insert(tab, at: activeTabIndex + 1)
-        activeTabIndex += 1
-        activateTab()
-        persistState()
-        focusTable()
-
-        if truncated {
-            presentOperationFailure(
-                message: "Showing the first \(SpotlightSearchRunner.resultLimit) results",
-                detail: "Your search matched more items. Narrow it to see the rest."
+        openResults(
+            entries,
+            truncated: truncated,
+            as: ResultsPresentation(
+                pathSummary: query.summary,
+                sort: panel.model.sort,
+                query: query,
+                scope: scope,
+                title: title
             )
-        }
+        )
     }
 
     // MARK: - Saving the current search

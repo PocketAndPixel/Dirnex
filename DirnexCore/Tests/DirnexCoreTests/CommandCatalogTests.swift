@@ -85,14 +85,21 @@ struct CommandCatalogTests {
         #expect(KeyBindings().conflicts(for: "file.syncDirectories").isEmpty)
     }
 
-    @Test("the M5 compare-by-contents tool is a shortcut-free File command")
+    /// ⌥F3 reads as the sibling of F3 "View" — F3 looks at the file under the cursor, ⌥F3 looks at
+    /// it against the other pane's — and has to stay clear of *both* presets, since the Total
+    /// Commander one claims bare F3 for Quick Look.
+    @Test("the M5 compare-by-contents tool is a conflict-free File command on ⌥F3")
     func coversCompareByContents() {
         let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })
         let compare = byID["file.compareByContents"]
         #expect(compare?.category == .file)
-        // No default shortcut (reached via menu/palette), so it can never collide.
-        #expect(compare?.shortcut == nil)
-        #expect(KeyBindings().conflicts(for: "file.compareByContents").isEmpty)
+        #expect(compare?.shortcut == CommandShortcut(key: "F3", modifiers: [.function, .option]))
+        for preset in KeyBindings.Preset.allCases {
+            #expect(
+                KeyBindings.preset(preset).conflicts(for: "file.compareByContents").isEmpty,
+                "⌥F3 collides under the \(preset) preset"
+            )
+        }
     }
 
     @Test("the M6 hand-off commands are shortcut-free File commands")
@@ -164,6 +171,19 @@ struct CommandCatalogTests {
         #expect(pack?.category == .file)
         #expect(pack?.shortcut == CommandShortcut(key: "F5", modifiers: [.function, .option]))
         #expect(KeyBindings().conflicts(for: "file.pack").isEmpty)
+    }
+
+    @Test("the M8 focus-sidebar command is a conflict-free View command on ⌥⌘S")
+    func coversFocusSidebar() {
+        let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })
+        let focus = byID["view.focusSidebar"]
+        #expect(focus?.category == .view)
+        #expect(focus?.shortcut == CommandShortcut(key: "s", modifiers: [.option, .command]))
+        // Distinct from the ⌃⌘S toggle it sits beside, and colliding with neither it nor anything
+        // else — the whole point of giving keyboard-sidebar its own chord.
+        let toggle = byID["view.toggleSidebar"]?.shortcut
+        #expect(toggle == CommandShortcut(key: "s", modifiers: [.control, .command]))
+        #expect(KeyBindings().conflicts(for: "view.focusSidebar").isEmpty)
     }
 
     @Test("the show-hidden toggle is a conflict-free View command on ⇧⌘.")

@@ -1,5 +1,19 @@
 import Foundation
 
+/// What a content comparison found — the answer `prescan` gives before two files are handed to an
+/// external diff tool, so the caller can skip a pointless launch or warn before an expensive one.
+public enum ContentComparison: Sendable, Equatable {
+    /// The two files hold identical bytes. There is nothing for a diff tool to show.
+    case identical
+    /// The bytes differ somewhere.
+    case different
+    /// At least one side is bigger than the pre-scan budget, so **nothing was read**. Settling
+    /// identical-or-not would mean reading both files end to end, and a file that large is also
+    /// the kind a visual diff tool struggles with — so the caller warns instead of guessing.
+    /// Carries the larger of the two sizes, for the message.
+    case tooLargeToScan(largestByteSize: Int64)
+}
+
 /// Byte-for-byte comparison of two on-disk files (PLAN.md §M5 "Compare by content: byte
 /// compare"). This is the exact-equality primitive behind the directory-synchronizer's
 /// `.content` mode and the standalone "compare files by content" command.
@@ -47,6 +61,46 @@ public enum ByteComparator {
             if lhsChunk != rhsChunk { return false }
             if lhsChunk.isEmpty { return true } // both reached EOF in lock-step
         }
+    }
+
+    /// The largest file `prescan` will read through. Past this, deciding identical-or-not costs a
+    /// full read of both sides — and the visual diff tool that would open next is the real problem
+    /// at that size anyway, so the caller asks rather than spending the I/O to find out.
+    public static let prescanByteLimit: Int64 = 64 * 1024 * 1024
+
+    /// Look before a diff tool leaps: are these two files worth opening side by side at all?
+    ///
+    /// The size check comes *first* and is deliberately independent of the answer — two 2 GB files
+    /// of different sizes are known-unequal for free, but that is not a reason to hand them to
+    /// FileMerge. Within the budget this is exactly `localFilesEqual`, so the same short-circuits
+    /// apply (a size mismatch reads no bytes; reading stops at the first differing chunk).
+    ///
+    /// Throws what `localFilesEqual` throws: `.unsupported` for a non-local or non-regular path,
+    /// `VFSError.io` for a read failure, `CancellationError` when `isCancelled` fires.
+    public static func prescan(
+        _ lhs: VFSPath,
+        _ rhs: VFSPath,
+        byteLimit: Int64 = prescanByteLimit,
+        chunkSize: Int = 128 * 1024,
+        isCancelled: () -> Bool = { false }
+    ) throws -> ContentComparison {
+        guard lhs.backend == .local, rhs.backend == .local else {
+            throw VFSError.unsupported("Content comparison is only available for local files.")
+        }
+        guard lhs != rhs else { return .identical }
+
+        let lhsSize = try regularFileSize(lhs)
+        let rhsSize = try regularFileSize(rhs)
+        let largest = max(lhsSize, rhsSize)
+        guard largest <= byteLimit else { return .tooLargeToScan(largestByteSize: largest) }
+
+        let equal = try localFilesEqual(
+            lhs,
+            rhs,
+            chunkSize: chunkSize,
+            isCancelled: isCancelled
+        )
+        return equal ? .identical : .different
     }
 
     // MARK: - Helpers

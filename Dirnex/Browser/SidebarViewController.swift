@@ -8,6 +8,21 @@ protocol SidebarViewControllerDelegate: AnyObject {
     /// A saved-search row was picked — re-run its query in the active pane and show the hits in
     /// a virtual results panel (PLAN.md §M4 "Saved searches … in the places strip").
     func sidebar(_ sidebar: SidebarViewController, didActivateSavedSearch savedSearch: SavedSearch)
+    /// The Recents row was picked — show recently-used files in a virtual results panel, the way a
+    /// saved search does (PLAN.md §M8 "Recents row … Finder's is a saved search"). It carries no
+    /// model, so it is a bare callback rather than a `didActivate…(_:)` with a payload.
+    func sidebarDidActivateRecents(_ sidebar: SidebarViewController)
+    /// The Trash row was picked — show every volume's trash as one merged listing (PLAN.md §M8).
+    /// Like Recents it carries no model: the Trash is not a single directory to navigate to.
+    func sidebarDidActivateTrash(_ sidebar: SidebarViewController)
+    /// The iCloud Drive row was picked — show the CloudDocs container merged with every iCloud
+    /// app's own document folder, the way Finder's iCloud Drive is assembled (PLAN.md §M9). It
+    /// carries no payload for the same reason the Trash doesn't: what it opens is a merge, not the
+    /// single directory the row's own path names.
+    func sidebarDidActivateICloud(_ sidebar: SidebarViewController)
+    /// "Empty Trash…" was chosen on the Trash row — permanently erase every volume's trash, after
+    /// a confirmation naming what will go (PLAN.md §M8).
+    func sidebarDidRequestEmptyTrash(_ sidebar: SidebarViewController)
     /// A saved-server row was picked — connect (SFTP) or mount (SMB) it and browse it in the active
     /// pane (PLAN.md §M5 "click → connect/mount + navigate").
     func sidebar(_ sidebar: SidebarViewController, didActivateServer server: ServerConnection)
@@ -38,8 +53,24 @@ final class SidebarViewController: NSViewController {
     /// `private`) so the saved-search and server management extensions in companion files can read
     /// the clicked row.
     enum Row {
-        case header(String)
-        case place(FavoritePlace)
+        /// The Trash row: a fixed system row that opens every volume's trash as one merged listing
+        /// (PLAN.md §M8). Like `.recents` it carries nothing — the Trash is not one directory, so
+        /// there is no path to hold.
+        case trash
+        /// A section header. Carries the section's *identity*, not its title — the drag code used
+        /// to find Favorites by comparing header text, which made a user-visible string
+        /// load-bearing, and the fold state keys off the same case (PLAN.md §M8).
+        case header(SidebarSection)
+        /// The Recents row: a fixed system row that runs the recently-used-files query into a virtual
+        /// results panel (PLAN.md §M8). Carries nothing — like a saved search it dispatches a query,
+        /// not a place, so it has no path and no stored model.
+        case recents
+        /// A pinned folder in the user-owned Favorites section — the favorites, which since M8 *is*
+        /// this section rather than a separate popup (PLAN.md §M8).
+        case favorite(FavoriteEntry)
+        /// The user's iCloud Drive: a fixed system row in its own section (PLAN.md §M8). Carries its
+        /// path directly — it is one known location, not a stored model like a pin or a volume.
+        case iCloud(VFSPath)
         case volume(MountedVolume)
         case savedSearch(SavedSearch)
         case server(ServerConnection)
@@ -48,8 +79,14 @@ final class SidebarViewController: NSViewController {
         case allTags
 
         var isHeader: Bool {
-            if case .header = self { return true }
-            return false
+            section != nil
+        }
+
+        /// The section this row heads, when it is a header. Item rows return `nil` — they belong to
+        /// a section but do not identify one, and the fold code only ever asks about headers.
+        var section: SidebarSection? {
+            if case let .header(section) = self { return section }
+            return nil
         }
 
         /// The path a click navigates to, when the row is a real location. `nil` for headers, saved
@@ -58,10 +95,16 @@ final class SidebarViewController: NSViewController {
         /// at a directory.
         var path: VFSPath? {
             switch self {
-            case .header, .savedSearch, .server, .tag, .allTags: return nil
-            case let .place(place): return place.path
+            case .header, .recents, .trash, .savedSearch, .server, .tag, .allTags: return nil
+            case let .favorite(entry): return entry.path
+            case let .iCloud(path): return path
             case let .volume(volume): return volume.path
             }
+        }
+
+        var favorite: FavoriteEntry? {
+            if case let .favorite(entry) = self { return entry }
+            return nil
         }
 
         var savedSearch: SavedSearch? {
@@ -81,6 +124,11 @@ final class SidebarViewController: NSViewController {
     }
 
     weak var delegate: SidebarViewControllerDelegate?
+
+    /// Which sections the user has folded shut (PLAN.md §M8). Re-read from the shared store on
+    /// every `rebuild`, and held here so the header cells can draw the matching triangle without
+    /// each one hitting `UserDefaults`.
+    var sectionCollapse = SidebarSectionCollapse()
 
     /// Whether the Tags section is listing every tag it knows of, or just the stock seven. Off until
     /// "All Tags…" is clicked; per window, and deliberately not persisted — it is a disclosure, not
@@ -117,6 +165,7 @@ final class SidebarViewController: NSViewController {
         tableView.delegate = self
         tableView.target = self
         tableView.action = #selector(rowClicked)
+        registerFavoriteDragTypes()
 
         // Right-click on a saved-search row offers Run / Rename / Delete; the menu builds its
         // items lazily from the clicked row, so it stays empty (and doesn't appear) elsewhere.
@@ -132,6 +181,10 @@ final class SidebarViewController: NSViewController {
             delegate?.sidebarDidClickEmptyArea(self)
         }
         tableView.onEmptyClick = refocusActivePane
+        // A header click folds its section rather than doing nothing (PLAN.md §M8); it re-focuses
+        // the active pane too, which is why it doesn't simply reuse `refocusActivePane`.
+        tableView.onHeaderClick = { [weak self] row in self?.toggleSection(atRow: row) }
+        registerKeyboardHandlers()
         let clipView = SidebarClipView()
         clipView.onBackgroundClick = refocusActivePane
         scrollView.contentView = clipView
@@ -153,6 +206,8 @@ final class SidebarViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         observeVolumeChanges()
+        observeSectionCollapseChanges()
+        observeFavoritesChanges()
         observeSavedSearchChanges()
         observeServerConnectionChanges()
         observeServerConnectionActivity()
@@ -172,33 +227,42 @@ final class SidebarViewController: NSViewController {
     /// `internal` so the Tags extension can rebuild after "All Tags…" expands the section.
     func rebuild() {
         let selectedPath = selectedRow()?.path
+        sectionCollapse = SidebarSectionCollapseStore.load()
 
+        // Section order is `SidebarSection.allCases`, and each section's header-and-items assembly
+        // — including whether a folded one contributes its rows — is `append`'s, in
+        // `SidebarViewController+Sections`.
         var rows: [Row] = []
-        // Saved searches lead the sidebar, above the standard Favorites/Volumes sections.
-        let savedSearches = SavedSearchStore.load().searches
-        if !savedSearches.isEmpty {
-            rows.append(.header("Searches"))
-            rows.append(contentsOf: savedSearches.map(Row.savedSearch))
-        }
-        let favorites = SidebarLocations.favorites()
-        if !favorites.isEmpty {
-            rows.append(.header("Favorites"))
-            rows.append(contentsOf: favorites.map(Row.place))
-        }
-        let volumes = SidebarLocations.volumes()
-        if !volumes.isEmpty {
-            rows.append(.header("Volumes"))
-            rows.append(contentsOf: volumes.map(Row.volume))
-        }
+        // Recents leads the sidebar, where Finder puts it — one fixed row that runs the
+        // recently-used-files query into a virtual results panel (PLAN.md §M8). Always present: it
+        // needs only Spotlight, which is effectively always on, so unlike iCloud it has no
+        // absent state.
+        append(.recents, items: [.recents], to: &rows)
+        // Saved searches follow, above the standard Favorites/Volumes sections.
+        append(.searches, items: SavedSearchStore.load().searches.map(Row.savedSearch), to: &rows)
+        // Favorites is the user's own pin list (PLAN.md §M8) — seeded once from the standard places
+        // at launch, reordered and extended by the user from here on. Alone among the sections it
+        // keeps its header when empty; `append` documents why.
+        append(
+            .favorites,
+            items: FavoritesStore.load().entries.map(Row.favorite),
+            showsEmptyHeader: true,
+            to: &rows
+        )
+        // iCloud Drive: its own section between the user's pins and the local volumes, mirroring
+        // Finder — one fixed row, present only when the container exists on disk (PLAN.md §M8).
+        let iCloudItems = SidebarLocations.iCloudDrive().map { [Row.iCloud($0)] } ?? []
+        append(.icloud, items: iCloudItems, to: &rows)
+        append(.volumes, items: SidebarLocations.volumes().map(Row.volume), to: &rows)
         // Saved servers close the sidebar, grouped with the local volumes as the "places you browse"
         // (PLAN.md §M5 "a Servers sidebar section mirroring Searches").
-        let servers = ServerConnectionStore.load().connections
-        if !servers.isEmpty {
-            rows.append(.header("Servers"))
-            rows.append(contentsOf: servers.map(Row.server))
-        }
-        // Tags close the sidebar, where Finder puts them, and only when View ▸ Show Tags is on.
-        rows.append(contentsOf: tagRows())
+        append(.servers, items: ServerConnectionStore.load().connections.map(Row.server), to: &rows)
+        // Tags come last, where Finder puts them, and only when View ▸ Show Tags is on.
+        append(.tags, items: tagRows(), to: &rows)
+        // The Trash closes the sidebar, where the Dock puts it (PLAN.md §M8). Always present: every
+        // Mac has one, and whether it can be read is the pane's answer to give, not a reason to
+        // hide the row.
+        append(.trash, items: [.trash], to: &rows)
         self.rows = rows
         tableView.reloadData()
 
@@ -227,6 +291,21 @@ final class SidebarViewController: NSViewController {
     }
 
     @objc private func volumesChanged() {
+        rebuild()
+    }
+
+    /// Rebuild when the shared pin list changes — a pin from ⌃D, a rename or removal here, or the
+    /// same in another window, shows up live in the Favorites section (PLAN.md §M8).
+    private func observeFavoritesChanges() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(favoritesChanged),
+            name: FavoritesStore.didChangeNotification,
+            object: nil
+        )
+    }
+
+    @objc private func favoritesChanged() {
         rebuild()
     }
 
@@ -284,9 +363,21 @@ final class SidebarViewController: NSViewController {
     // MARK: - Actions
 
     @objc private func rowClicked() {
-        let index = tableView.clickedRow
+        activate(rowAt: tableView.clickedRow)
+    }
+
+    /// Run the row's action — navigate to a place/volume, run a saved search or tag query, connect a
+    /// server, or expand the Tags section. Shared by a mouse click (`rowClicked`) and a keyboard
+    /// Return/Space (`SidebarViewController+Keyboard`), so both surfaces dispatch a row exactly one
+    /// way. `internal`, not `private`: the keyboard companion file calls it, and Swift `private`
+    /// doesn't cross files.
+    func activate(rowAt index: Int) {
         guard rows.indices.contains(index) else { return }
-        if let savedSearch = rows[index].savedSearch {
+        if case .recents = rows[index] {
+            delegate?.sidebarDidActivateRecents(self)
+        } else if case .trash = rows[index] {
+            delegate?.sidebarDidActivateTrash(self)
+        } else if let savedSearch = rows[index].savedSearch {
             delegate?.sidebar(self, didActivateSavedSearch: savedSearch)
         } else if let server = rows[index].server {
             delegate?.sidebar(self, didActivateServer: server)
@@ -294,26 +385,13 @@ final class SidebarViewController: NSViewController {
             delegate?.sidebar(self, didActivateTag: tag)
         } else if case .allTags = rows[index] {
             expandAllTags()
+        } else if case .iCloud = rows[index] {
+            // Dispatched rather than navigated even though the row *has* a path: what it opens is
+            // the merge of that container with the app libraries beside it, which is a listing to
+            // assemble rather than a directory to list (PLAN.md §M9).
+            delegate?.sidebarDidActivateICloud(self)
         } else if let path = rows[index].path {
             delegate?.sidebar(self, didActivate: path)
-        }
-    }
-
-    /// Eject (or unmount) a removable volume via the workspace, surfacing any failure —
-    /// a drive that's busy or in use should say so, not fail silently.
-    private func eject(_ volume: MountedVolume) {
-        do {
-            try NSWorkspace.shared.unmountAndEjectDevice(at: volume.path.localURL)
-        } catch {
-            let alert = NSAlert()
-            alert.messageText = "Couldn’t eject “\(volume.name)”"
-            alert.informativeText = error.localizedDescription
-            alert.alertStyle = .warning
-            if let window = view.window {
-                alert.beginSheetModal(for: window)
-            } else {
-                alert.runModal()
-            }
         }
     }
 }
@@ -334,43 +412,36 @@ extension SidebarViewController: NSTableViewDelegate {
     }
 
     func tableView(_ tableView: NSTableView, shouldSelectRow row: Int) -> Bool {
-        !rows[row].isHeader
+        // Headers are keyboard-selectable so arrow navigation can land on one and ←/→/Return fold it
+        // (PLAN.md §M8). The mouse never selects a header: `SidebarTableView.mouseDown` intercepts a
+        // header click and returns before `super`, so a click still folds rather than selects.
+        true
     }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         switch rows[row] {
-        case let .header(title):
+        case let .header(section):
             let cell = reuse(SidebarHeaderView.identifier) as? SidebarHeaderView
             let header = cell ?? SidebarHeaderView()
-            header.configure(title: title)
+            header.configure(
+                title: section.title,
+                isCollapsed: sectionCollapse.isCollapsed(section)
+            )
             return header
-        case let .place(place):
-            return itemCell(name: place.name, path: place.path, kind: place.kind, volume: nil)
+        case .recents:
+            return recentsCell()
+        case .trash:
+            return trashCell()
+        case let .favorite(entry):
+            return favoriteCell(for: entry)
+        case let .iCloud(path):
+            return iCloudCell(for: path)
         case let .volume(volume):
-            return itemCell(name: volume.name, path: volume.path, kind: nil, volume: volume)
+            return volumeCell(for: volume)
         case let .savedSearch(search):
-            let cell = reuse(SidebarCellView.identifier) as? SidebarCellView ?? SidebarCellView()
-            cell.configure(
-                name: search.name,
-                image: Self.savedSearchIcon,
-                canEject: false,
-                tooltip: savedSearchTooltip(search)
-            )
-            cell.onEject = nil
-            cell.onDelete = { [weak self] in self?.confirmDeleteSavedSearch(named: search.name) }
-            return cell
+            return savedSearchCell(for: search)
         case let .server(connection):
-            let cell = reuse(SidebarCellView.identifier) as? SidebarCellView ?? SidebarCellView()
-            cell.configure(
-                name: connection.name,
-                image: Self.serverIcon(for: connection.kind),
-                canEject: false,
-                tooltip: connection.address,
-                isBusy: ServerConnectionActivity.shared.isConnecting(connection.name)
-            )
-            cell.onEject = nil
-            cell.onDelete = { [weak self] in self?.confirmRemoveServer(named: connection.name) }
-            return cell
+            return serverCell(for: connection)
         case let .tag(tag):
             return tagCell(for: tag)
         case .allTags:
@@ -378,25 +449,11 @@ extension SidebarViewController: NSTableViewDelegate {
         }
     }
 
-    /// A per-protocol SF Symbol so a saved server reads as remote at a glance: a globe-ish network
-    /// glyph for SFTP, a connected-drive glyph for an SMB share. Template so the source list tints
-    /// it with the row's text color like the other sidebar glyphs.
-    private static func serverIcon(for kind: ServerKind) -> NSImage {
-        let symbol = kind == .smb ? "externaldrive.connected.to.line.below" : "network"
-        return templateSymbol(symbol, pointSize: 14, describedAs: "Server")
-    }
-
-    /// A magnifying-glass SF Symbol so a saved search reads as a query, not a folder. Template
-    /// so the source list tints it with the row's text color like the favorite glyphs.
-    private static let savedSearchIcon = templateSymbol(
-        "magnifyingglass",
-        pointSize: 14,
-        describedAs: "Saved search"
-    )
-
     /// Every sidebar glyph is a template SF Symbol, so the source list tints it with the row's
     /// text color — and turns it white on the selected row — matching the label beside it.
-    private static func templateSymbol(
+    /// `internal`, not `private`: the favorites companion file renders its own glyphs through this,
+    /// and Swift `private` does not cross files.
+    static func templateSymbol(
         _ name: String,
         pointSize: CGFloat,
         describedAs description: String? = nil
@@ -408,79 +465,26 @@ extension SidebarViewController: NSTableViewDelegate {
         return image ?? NSImage()
     }
 
-    /// A tooltip describing where a saved search runs — the scope folder, or "Everywhere".
-    private func savedSearchTooltip(_ search: SavedSearch) -> String {
-        guard let scope = search.scope else { return "Search everywhere" }
-        return "Search in “\(scope.lastComponent)”"
-    }
-
-    /// Build (or reuse) an item cell. Favorites get a per-kind SF Symbol so Documents,
-    /// Downloads, Music, etc. read at a glance instead of all sharing the generic folder
-    /// icon; volumes get a drive symbol the same way. A `volume` that can eject also
-    /// gets the eject button wired.
-    private func itemCell(
-        name: String,
-        path: VFSPath,
-        kind: FavoritePlace.Kind?,
-        volume: MountedVolume?
-    ) -> NSView {
-        let cell = reuse(SidebarCellView.identifier) as? SidebarCellView ?? SidebarCellView()
-        let icon: NSImage
-        if let kind {
-            icon = Self.icon(for: kind)
-        } else if let volume {
-            icon = Self.templateSymbol(volume.symbolName, pointSize: 15, describedAs: volume.name)
-        } else {
-            icon = NSWorkspace.shared.icon(forFile: path.path)
-            icon.size = NSSize(width: 18, height: 18)
-        }
-        let canEject = volume?.canEject ?? false
-        cell.configure(name: name, image: icon, canEject: canEject, tooltip: capacityTooltip(volume))
-        cell.onEject = canEject ? { [weak self] in volume.map { self?.eject($0) } } : nil
-        cell.onDelete = nil // places/volumes aren't deletable (reset in case the cell was reused)
-        return cell
-    }
-
-    /// A monochrome SF Symbol standing in for each favorite folder.
-    private static func icon(for kind: FavoritePlace.Kind) -> NSImage {
-        let symbol: String
-        switch kind {
-        case .home: symbol = "house"
-        case .desktop: symbol = "menubar.dock.rectangle"
-        case .documents: symbol = "doc"
-        case .downloads: symbol = "arrow.down.circle"
-        case .pictures: symbol = "photo"
-        case .music: symbol = "music.note"
-        case .movies: symbol = "film"
-        case .applications: symbol = "square.grid.3x3.fill"
-        }
-        return templateSymbol(symbol, pointSize: 15)
-    }
-
-    private func reuse(_ identifier: NSUserInterfaceItemIdentifier) -> NSView? {
+    func reuse(_ identifier: NSUserInterfaceItemIdentifier) -> NSView? {
         tableView.makeView(withIdentifier: identifier, owner: self)
-    }
-
-    /// A "123 GB available of 456 GB" tooltip for volumes that report capacity.
-    private func capacityTooltip(_ volume: MountedVolume?) -> String? {
-        guard let volume, let total = volume.totalCapacity, let available = volume.availableCapacity else {
-            return volume?.name
-        }
-        return "\(FileFormatting.byteString(available)) available of \(FileFormatting.byteString(total))"
     }
 }
 
 // MARK: - Right-click context menu
 
 extension SidebarViewController: NSMenuDelegate {
-    /// Build the right-click menu lazily from the clicked row, dispatching to the saved-search,
-    /// server or tag management builder (in companion files). Any other row — a header, place, or
+    /// Build the right-click menu lazily from the clicked row, dispatching to the Trash,
+    /// saved-search, server or tag builder (in companion files). Any other row — a header, place, or
     /// volume — leaves the menu empty, so AppKit shows nothing.
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
         let row = tableView.clickedRow
         guard rows.indices.contains(row) else { return }
-        if let search = rows[row].savedSearch {
+        if case .trash = rows[row] {
+            buildTrashMenu(menu)
+        } else if let entry = rows[row].favorite {
+            buildFavoriteMenu(menu, for: entry)
+        } else if let search = rows[row].savedSearch {
             buildSavedSearchMenu(menu, for: search)
         } else if let server = rows[row].server {
             buildServerMenu(menu, for: server)

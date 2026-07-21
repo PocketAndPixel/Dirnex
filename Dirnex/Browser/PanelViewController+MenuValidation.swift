@@ -67,9 +67,9 @@ extension PanelViewController: NSMenuItemValidation {
             // Like ⌃D, let ⌥↓ reach a field editor while a name/path field is being edited
             // instead of stealing it to open the history popup.
             return !(view.window?.firstResponder is NSText)
-        case #selector(showHotlist(_:)):
+        case #selector(showFavorites(_:)):
             // While a name/path field is being edited, let ⌃D fall through to the field
-            // editor's delete-forward instead of stealing it to open the hotlist.
+            // editor's delete-forward instead of stealing it to open the favorites.
             return !(view.window?.firstResponder is NSText)
         case #selector(openInTerminal(_:)):
             // Needs a real directory on disk (never an archive, an SFTP server, or a results tab)
@@ -82,7 +82,7 @@ extension PanelViewController: NSMenuItemValidation {
     }
 
     /// Validate the directory-mutating operations — the ones that need a real, writable
-    /// directory and so are all disabled on a virtual search-results pane (`isSearchResults`).
+    /// directory and so are all disabled on a virtual search-results pane (`isResultsListing`).
     /// Returns `nil` for any other selector so the main switch handles it. Split out to keep
     /// `validateMenuItem` under SwiftLint's cyclomatic-complexity limit (a recurring gotcha).
     private func validateMutatingItem(_ menuItem: NSMenuItem) -> Bool? {
@@ -97,6 +97,10 @@ extension PanelViewController: NSMenuItemValidation {
             if isWritableArchive { return !selectionTargets().isEmpty }
             return backend.capabilities(for: panel.path).deleteStrategy != .unsupported
                 && !selectionTargets().isEmpty
+        case #selector(putBackSelection(_:)):
+            // Only in a Trash listing, and only on something selected: outside one there is no
+            // record of where anything came from, which is the whole operation.
+            return isTrashListing && !selectionTargets().isEmpty
         case #selector(paste(_:)):
             // ⌘V pastes into a real writable folder, or *adds into* a writable browsed archive
             // (PLAN.md §M4 — a nested archive is read-only, so it's excluded).
@@ -115,6 +119,13 @@ extension PanelViewController: NSMenuItemValidation {
             // Compares the two panes' folders — needs two distinct real local directories.
             return canSynchronize
         case #selector(compareByContents(_:)):
+            // Name the tool that would open, as the Synchronize sheet's row menu already does:
+            // "Compare By Contents…" gives no hint what is about to launch, and with two tools
+            // installed the answer depends on a setting. `validateMenuItem` is AppKit's only hook
+            // for a title that tracks live state. The palette keeps the generic catalog title —
+            // that one is what its fuzzy search matches against, so it must not move.
+            menuItem.title = ExternalDiffLauncher.preferredTool()
+                .map { "Compare with \($0.displayName)…" } ?? "Compare By Contents…"
             // Diffs the two panes' cursor files — needs a real file under each cursor.
             return canCompareByContents
         default:
@@ -141,8 +152,15 @@ extension PanelViewController: NSMenuItemValidation {
     /// capabilities (PLAN.md §M5): a virtual pane (search results or a browsed archive) reports
     /// `.read`, so `.write` is absent and the op greys out; a real disk (and a future writable
     /// SFTP mount) reports `.write`.
+    ///
+    /// `writeDirectory` is the second half because the merged Trash is a virtual location that *does*
+    /// carry `.write` — it holds real files that can be deleted — while having no directory to create
+    /// or paste into. Without it, New Folder lit up in a Trash tab and the flow behind it bailed out
+    /// silently at its own guard. The merged iCloud listing is the mirror image: also virtual, also
+    /// writable, but it *does* have a directory underneath (CloudDocs), so it enables rather than
+    /// greys — which is exactly why both ask the same question the flows themselves ask.
     private var canWriteHere: Bool {
-        backend.capabilities(for: panel.path).contains(.write)
+        backend.capabilities(for: panel.path).contains(.write) && writeDirectory != nil
     }
 
     /// This pane can rename an item in place — the owning backend advertises `.rename`.
@@ -182,7 +200,7 @@ extension PanelViewController: NSMenuItemValidation {
             menuItem.state = isSizeVisualizationEnabled ? .on : .off
             // Disabled where it cannot apply, so the greying explains the suppression that the
             // checkmark alone would leave looking like a bug.
-            return panel.path.backend == .local && !isSearchResults
+            return panel.path.backend == .local && !isResultsListing
         case #selector(toggleGitAwareSizes(_:)):
             // The tab's flag again, not `areGitAwareSizesActive` — browsing out of a repository
             // suppresses the filtering, and unchecking the box would blame the user's setting.

@@ -4,11 +4,11 @@ import Foundation
 /// App-wide persistence for the frecency index (PLAN.md §M3 "Frecency jump: … visit
 /// tracking … zoxide-style scoring"). One shared index across every window and pane, so a
 /// directory visited on the left learns the same as one visited on the right. Stored as
-/// boring JSON in `UserDefaults` like `TabPersistence`/`HotlistStore`/the command recents
+/// boring JSON in `UserDefaults` like `TabPersistence`/`FavoritesStore`/the command recents
 /// (PLAN.md §2 "JSON/plist for config"); the plan pencils in SQLite for when the undo
 /// journal shares this DB, deferred for the same reason it was for undo.
 ///
-/// Held in memory and mutated in place (unlike `HotlistStore`, which reads fresh per menu
+/// Held in memory and mutated in place (unlike `FavoritesStore`, which reads fresh per menu
 /// open) because visits stream in continuously from every navigation — reloading the whole
 /// index on each one, and racing separate copies between windows, would both be wrong. The
 /// single shared instance is the one writer.
@@ -32,7 +32,7 @@ final class FrecencyStore {
 
     /// Record a successful navigation to `path`, bumping its frecency and persisting the
     /// index. Called from every pane's `navigate`, so it learns from crumb clicks, the
-    /// sidebar, hotlist jumps, and back/forward alike.
+    /// sidebar, favorites jumps, and back/forward alike.
     func recordVisit(_ path: VFSPath) {
         // Only local directories belong in the fuzzy-jump index: it navigates by typing a path
         // fragment and picks the first candidate that still exists on disk, which a remote SFTP

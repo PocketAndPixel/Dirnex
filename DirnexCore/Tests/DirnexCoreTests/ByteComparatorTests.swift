@@ -118,4 +118,97 @@ struct ByteComparatorTests {
             try ByteComparator.localFilesEqual(tree.vfsPath("a"), tree.vfsPath("b")) { true }
         }
     }
+
+    // MARK: - prescan (the "is this worth opening a diff tool for?" pre-flight)
+
+    @Test("prescan reports identical files, so the caller can skip the launch")
+    func prescanIdentical() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        try tree.writeFile("a", contents: "hello world")
+        try tree.writeFile("b", contents: "hello world")
+
+        #expect(try ByteComparator.prescan(tree.vfsPath("a"), tree.vfsPath("b")) == .identical)
+    }
+
+    @Test("prescan reports differing files")
+    func prescanDifferent() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        try tree.writeFile("a", contents: "aaaa")
+        try tree.writeFile("b", contents: "aaba")
+
+        #expect(try ByteComparator.prescan(tree.vfsPath("a"), tree.vfsPath("b")) == .different)
+    }
+
+    @Test("a path prescanned against itself is identical without a read")
+    func prescanSamePath() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        try tree.writeFile("a", contents: "hello")
+
+        #expect(try ByteComparator.prescan(tree.vfsPath("a"), tree.vfsPath("a")) == .identical)
+    }
+
+    @Test("a file past the byte limit is reported unscanned, carrying the larger size")
+    func prescanTooLarge() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        try tree.writeFile("a", bytes: 100)
+        try tree.writeFile("b", bytes: 100)
+
+        let outcome = try ByteComparator.prescan(
+            tree.vfsPath("a"),
+            tree.vfsPath("b"),
+            byteLimit: 64
+        )
+        #expect(outcome == .tooLargeToScan(largestByteSize: 100))
+    }
+
+    /// The size gate deliberately outranks the free answer: two differently-sized 2 GB files are
+    /// known-unequal without reading a byte, but that is not a reason to hand them to FileMerge.
+    @Test("the size gate wins over the size-mismatch short-circuit")
+    func prescanTooLargeBeatsSizeMismatch() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        try tree.writeFile("a", bytes: 100)
+        try tree.writeFile("b", bytes: 250)
+
+        let outcome = try ByteComparator.prescan(
+            tree.vfsPath("a"),
+            tree.vfsPath("b"),
+            byteLimit: 64
+        )
+        #expect(outcome == .tooLargeToScan(largestByteSize: 250))
+    }
+
+    @Test("a file exactly at the byte limit is still scanned")
+    func prescanAtLimit() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        try tree.writeFile("a", bytes: 64)
+        try tree.writeFile("b", bytes: 64)
+
+        let outcome = try ByteComparator.prescan(
+            tree.vfsPath("a"),
+            tree.vfsPath("b"),
+            byteLimit: 64
+        )
+        #expect(outcome == .identical)
+    }
+
+    @Test("prescanning a non-local path throws unsupported")
+    func prescanNonLocalThrows() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        try tree.writeFile("a", contents: "hello")
+        let remote = VFSPath(backend: VFSBackendID("sftp"), path: "/a")
+
+        #expect {
+            try ByteComparator.prescan(tree.vfsPath("a"), remote)
+        } throws: { error in
+            if case .unsupported = error as? VFSError { return true }
+            return false
+        }
+    }
 }

@@ -1,3 +1,4 @@
+import DirnexCore
 import SwiftUI
 
 /// The General / Panels / Operations tabs of the Settings window (PLAN.md §M3). Each edits an
@@ -107,6 +108,10 @@ struct PanelsSettingsView: View {
 struct OperationsSettingsView: View {
     @ObservedObject var preferences: AppPreferences
 
+    /// Probed once per appearance of the tab, not per redraw: it stats a handful of paths, and the
+    /// set of installed apps does not change while a settings pane is open.
+    @State private var installedDiffTools: [ExternalDiffTool] = []
+
     var body: some View {
         Form {
             Section {
@@ -116,7 +121,37 @@ struct OperationsSettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            Section {
+                Picker("Compare files with", selection: $preferences.diffToolIdentifier) {
+                    Text("Automatic").tag("")
+                    if !installedDiffTools.isEmpty {
+                        Divider()
+                        ForEach(installedDiffTools) { tool in
+                            Text(tool.displayName).tag(tool.identifier)
+                        }
+                    }
+                }
+                .disabled(installedDiffTools.isEmpty)
+            } footer: {
+                Text(diffToolFooter)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
+        .task { installedDiffTools = ExternalDiffLauncher.installedTools() }
+    }
+
+    /// Says which tool Compare By Contents will actually open — including the case that needs it
+    /// most, where the user has installed none and the command is greyed out with no explanation.
+    private var diffToolFooter: String {
+        guard !installedDiffTools.isEmpty else {
+            return "Compare By Contents (⌥F3) needs a diff tool. Install FileMerge (part of "
+                + "Xcode), Kaleidoscope, or BBEdit, then reopen Settings."
+        }
+        let names = installedDiffTools.map(\.displayName).joined(separator: ", ")
+        return "The tool Compare By Contents (⌥F3) opens the two files in. Installed: \(names). "
+            + "Automatic picks the first of those still installed."
     }
 }

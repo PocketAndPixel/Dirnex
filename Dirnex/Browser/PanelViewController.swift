@@ -182,6 +182,14 @@ final class PanelViewController: NSViewController {
     /// already moved on is discarded instead of clobbering the current directory.
     /// Internal so `PanelViewController+Tabs` can discard a stale load on tab switch.
     var loadToken = 0
+    /// A short-lived message that outranks the computed item count in the status line — how a
+    /// detached background action (an external diff launch) reports itself without stealing focus
+    /// with an alert. `nil` when the line is showing its normal contents. Driven entirely by
+    /// `PanelViewController+Chrome`; a stored property cannot live in that extension.
+    var transientStatus: String?
+    /// Bumped by each `showTransientStatus`, so a later message's expiry can't clear an earlier
+    /// one's — the same stale-callback guard as `loadToken`.
+    var transientStatusToken = 0
     /// FSEvents watcher for the directory on screen — live-refreshes the pane when the
     /// folder changes underneath us. Replaced on every navigation; `nil` for backends
     /// without the `.watch` capability. Internal (like `gitWatcher` below) because the code that
@@ -360,6 +368,11 @@ final class PanelViewController: NSViewController {
         // from a history trail, so leaving one starts fresh. An SFTP location *is* re-listable, so
         // it keeps a normal back/forward trail like a local directory.
         let wasVirtual = panel.path.backend != .local && !panel.path.backend.isSFTP
+        // Captured alongside it: was this tab showing a *results* listing? Its chip label and the
+        // query behind "Save Search…" describe the results, not a place, so arriving at a real
+        // directory has to drop them — otherwise clicking Home out of the Trash lands in the home
+        // folder with the tab still chipped "Trash".
+        let wasResults = isResultsListing
         // Captured before the load (`setListing` makes `panel.path` the destination): the departed
         // directory and its marks, so leaving a folder with marks records the loss against *that*
         // folder — undo restores them on return; a same-directory reload keeps marks, so it no-ops.
@@ -372,8 +385,14 @@ final class PanelViewController: NSViewController {
                 // Built with an empty filter, so entering a directory starts fresh — a quick-filter
                 // from the folder we just left shouldn't silently hide the new folder's contents —
                 // and with no computed sizes, since a directory we're arriving at has none yet.
+                // Hidden files come from the app-wide toggle rather than the departed model: a
+                // results listing forces them *on* (see `ResultsPresentation.showsHidden`), and
+                // carrying that into a real directory would show dotfiles with the eye toggled off.
                 let model = try await DirectoryLoader.model(
-                    backend, at: path, sort: panel.model.sort, showHidden: panel.model.showHidden
+                    backend,
+                    at: path,
+                    sort: panel.model.sort,
+                    showHidden: AppPreferences.shared.showHidden
                 )
                 guard token == loadToken else { return }
                 panel.setModel(model)
@@ -385,6 +404,7 @@ final class PanelViewController: NSViewController {
                 // Land on a real entry; only an empty directory parks the cursor on `..`.
                 cursorOnParentRow = panel.isEmpty && panel.parentPath != nil
                 tabs[tabIndex].hasLoaded = true
+                if wasResults { tabs[tabIndex].clearResultsIdentity() }
                 if wasVirtual {
                     // Leaving a virtual results pane for a real directory starts a fresh trail —
                     // the synthetic `.search` path can't be re-listed, so it must never enter the

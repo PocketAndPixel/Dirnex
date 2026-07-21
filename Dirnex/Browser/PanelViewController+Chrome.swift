@@ -14,10 +14,47 @@ extension PanelViewController {
         host?.panelCursorDidChange(self)
     }
 
-    /// The status line: a selection summary when anything is marked, otherwise the item
-    /// count, prefixed with the active type-to-filter. The synthetic `..` row is never
-    /// counted — it isn't part of `panel`.
+    // MARK: - Transient status
+
+    /// Show `message` in the status line for a few seconds, in place of the item count, then let
+    /// the line fall back to its normal contents. For work that happens *outside* the pane and
+    /// would otherwise be invisible — a detached diff-tool launch takes seconds to draw its first
+    /// window, and without a word here the app looks like it swallowed the keystroke.
+    ///
+    /// Deliberately not an alert: nothing here needs a decision, and a modal for "opening…" costs
+    /// more than the information is worth. The message survives an intervening `updateChrome`
+    /// (a background refresh must not eat it) and expires on time rather than on navigation —
+    /// a few seconds of a stale note is a smaller wrong than a message the user never sees.
+    func showTransientStatus(_ message: String) {
+        transientStatus = message
+        transientStatusToken += 1
+        let token = transientStatusToken
+        updateChrome()
+        let expiry = DispatchTime.now() + Self.transientStatusDuration
+        DispatchQueue.main.asyncAfter(deadline: expiry) { [weak self] in
+            // A newer message has since taken the line; its own expiry owns the clearing.
+            guard let self, transientStatusToken == token else { return }
+            clearTransientStatus()
+        }
+    }
+
+    /// Drop any transient message and restore the computed status line. Called on expiry, and
+    /// directly when an alert is about to say the same thing better.
+    func clearTransientStatus() {
+        guard transientStatus != nil else { return }
+        transientStatus = nil
+        updateChrome()
+    }
+
+    /// How long a transient message holds the status line — long enough to read a short sentence,
+    /// short enough that it never reads as the pane's permanent state.
+    private static let transientStatusDuration: TimeInterval = 4
+
+    /// The status line: a transient message when one is showing, else a selection summary when
+    /// anything is marked, otherwise the item count, prefixed with the active type-to-filter. The
+    /// synthetic `..` row is never counted — it isn't part of `panel`.
     private func statusText() -> String {
+        if let transientStatus { return transientStatus }
         let total = panel.count
         let marked = panel.selectionCount
         let counts: String

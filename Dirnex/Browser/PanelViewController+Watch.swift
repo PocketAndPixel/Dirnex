@@ -17,14 +17,57 @@ extension PanelViewController {
     /// runs on a background queue, so it hops to the main actor before touching the pane.
     /// Internal so a tab switch can re-establish the watcher for the newly active tab.
     func startWatching(_ path: VFSPath) {
-        // A virtual results listing has no directory on disk to watch — its `.search` path isn't
-        // a real location, and the results are a static snapshot.
+        // A **merged** listing has no directory of its own, but it does have real ones underneath —
+        // every trash, or iCloud's containers — and those change behind the pane's back (PLAN.md
+        // §M8, §M9). One stream over all of them, re-gathering when any fires.
+        if !mergedSources.isEmpty, backend.capabilities.contains(.watch) {
+            watchMergedSources(for: path)
+            return
+        }
+        // Any other virtual listing has nothing to watch: a `.search` path isn't a real location,
+        // and its hits are a snapshot of a question that was asked once.
         guard path.backend == .local, backend.capabilities.contains(.watch) else {
             watcher = nil
             return
         }
         watcher = DirectoryWatcher(path: path) { [weak self] in
             Task { @MainActor in self?.directoryDidChange(path) }
+        }
+    }
+
+    /// The directories the active tab's merged listing was gathered from, or empty for every other
+    /// kind of tab (see `PanelTab.mergedSources`).
+    var mergedSources: [VFSPath] {
+        get { tabs[activeTabIndex].mergedSources }
+        set { tabs[activeTabIndex].mergedSources = newValue }
+    }
+
+    /// Record what a merged listing was gathered from, and watch it.
+    ///
+    /// The stream is rebuilt only when the set of sources actually changed (a volume mounted, an app
+    /// library appeared) — `force` covers the one case where it must be built regardless, a listing
+    /// arriving in a tab that was watching something else. Without that guard a re-gather triggered
+    /// *by* this stream would tear it down and build another on every single event.
+    func watchMergedListing(sources: [VFSPath], force: Bool = false) {
+        guard force || sources != mergedSources else { return }
+        mergedSources = sources
+        startWatching(panel.path)
+    }
+
+    /// Watch a merged listing's sources, keyed to the synthetic path on screen so a late event from
+    /// a listing the pane has since left is ignored — the same guard the directory watcher keeps.
+    ///
+    /// The latency is deliberately longer than a directory's: emptying a Trash of 500 items is one
+    /// burst of hundreds of events, and every one of them would otherwise re-list several
+    /// directories to draw the same shrinking list.
+    private func watchMergedSources(for path: VFSPath) {
+        watcher = DirectoryWatcher(paths: mergedSources, latency: 0.4) { [weak self] in
+            Task { @MainActor in
+                guard let self, self.panel.path == path else { return }
+                // Funnels to `reloadTrash` / `reloadICloudDrive`, which re-gather and re-render in
+                // place, keeping the cursor by identity.
+                self.refreshCurrentDirectory()
+            }
         }
     }
 

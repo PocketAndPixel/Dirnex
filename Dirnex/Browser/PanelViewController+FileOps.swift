@@ -43,9 +43,13 @@ extension PanelViewController {
     // MARK: - New Folder (F7)
 
     private func promptForNewFolder() {
-        guard !isVirtualDirectory else { return } // no real directory to create into here
+        // `writeDirectory` is `nil` wherever there is no real directory to create into — and, for
+        // the merged iCloud listing, the CloudDocs container the merge is built on (PLAN.md §M9).
+        guard let target = writeDirectory else { return }
         let alert = NSAlert()
         alert.messageText = "New Folder"
+        // Named for what the pane shows, not for the directory underneath: "iCloud Drive", not
+        // "com~apple~CloudDocs", which is a folder the user has never heard of.
         alert.informativeText = "Create a folder in “\(panel.path.lastComponent)”."
         alert.addButton(withTitle: "Create")
         alert.addButton(withTitle: "Cancel")
@@ -59,7 +63,7 @@ extension PanelViewController {
         let apply: (NSApplication.ModalResponse) -> Void = { [weak self] response in
             guard response == .alertFirstButtonReturn else { return }
             let name = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            self?.createFolder(named: name)
+            self?.createFolder(named: name, in: target)
         }
         if let window = view.window {
             alert.beginSheetModal(for: window, completionHandler: apply)
@@ -69,7 +73,7 @@ extension PanelViewController {
         }
     }
 
-    private func createFolder(named name: String) {
+    private func createFolder(named name: String, in directory: VFSPath) {
         guard !name.isEmpty else { return } // an empty name is a silent cancel
         guard !name.contains("/") else {
             presentOperationFailure(
@@ -79,7 +83,7 @@ extension PanelViewController {
             return
         }
 
-        let target = panel.path.appending(name)
+        let target = directory.appending(name)
         let backend = backend
         Task {
             do {
@@ -243,6 +247,19 @@ extension PanelViewController {
     /// the cursor/marks by identity, so this survives the new entry appearing mid-list.
     /// Internal so `PanelViewController+Copy` can refresh both panes after a transfer.
     func refreshCurrentDirectory(selecting target: VFSPath? = nil) {
+        // The merged Trash is virtual but not a snapshot: what changes in it is what the user just
+        // did in this very pane (the only delete it offers is permanent), so it re-gathers rather
+        // than going stale (PLAN.md §M8).
+        if isTrashListing {
+            reloadTrash()
+            return
+        }
+        // The merged iCloud listing is the same case, and more so: its root is writable through
+        // `writeDirectory`, so a New Folder or a paste lands *in* it and must show up (PLAN.md §M9).
+        if isICloudListing {
+            reloadICloudDrive(selecting: target)
+            return
+        }
         // Re-list a real directory — on disk or on a connected SFTP account (an SFTP path is
         // re-listable, so it must refresh after an upload/delete/mkdir even without FSEvents). A
         // virtual pane (search results, a browsed archive) has no directory to re-list, so a

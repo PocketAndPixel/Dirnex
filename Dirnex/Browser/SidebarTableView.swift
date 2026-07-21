@@ -8,22 +8,69 @@ import AppKit
 ///
 /// So a click is let through only when it lands on a real, selectable destination row — which
 /// navigates the active pane and hands focus back to it anyway (`SidebarViewController`'s
-/// `rowClicked` → `focusTable`). Empty space and header clicks instead run `onEmptyClick`, which
-/// re-focuses the active pane. Right-click (the saved-search context menu) and the cells' own
-/// eject/delete buttons are unaffected — they never route through this `mouseDown`.
+/// `rowClicked` → `focusTable`). Empty space runs `onEmptyClick` and a header runs
+/// `onHeaderClick`, both of which re-focus the active pane. Right-click (the saved-search context
+/// menu) and the cells' own eject/delete buttons are unaffected — they never route through this
+/// `mouseDown`.
 final class SidebarTableView: NSTableView {
-    /// Invoked for a click on empty space or a header — re-focus the active file pane.
+    /// Invoked for a click on empty space — re-focus the active file pane.
     var onEmptyClick: (() -> Void)?
+    /// Invoked with the row index for a click anywhere on a section header — fold or unfold that
+    /// section (PLAN.md §M8). The whole header is the hit target, not just its triangle: a 9-point
+    /// chevron is a mean thing to ask anyone to hit, and the header has no other click behavior to
+    /// compete with.
+    var onHeaderClick: ((Int) -> Void)?
+
+    // Keyboard commands the focused sidebar forwards to its controller (PLAN.md §M8 "Keyboard
+    // access to the sidebar"). Row movement (↑/↓) and type-select are left to `NSTableView`; only
+    // the file-manager-specific keys are intercepted. All are `nil` until the controller wires them.
+    /// Return / Enter — activate the selected row (navigate a place, run a search, fold a header).
+    var onActivateSelection: (() -> Void)?
+    /// Left arrow — collapse the selected row's section, or step out to its header.
+    var onMoveLeft: (() -> Void)?
+    /// Right arrow — expand the selected header, or step into its first row.
+    var onMoveRight: (() -> Void)?
+    /// Tab or Escape — hand keyboard focus back to the active file pane without activating anything.
+    var onReturnToPane: (() -> Void)?
 
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
         let row = row(at: point)
         let isHeader = row >= 0 && (delegate?.tableView?(self, isGroupRow: row) ?? false)
-        guard row >= 0, !isHeader else {
+        if isHeader {
+            onHeaderClick?(row)
+            return
+        }
+        guard row >= 0 else {
             onEmptyClick?()
             return
         }
         super.mouseDown(with: event)
+    }
+
+    /// The file-manager keys the focused source list claims; everything else (arrows, type-select)
+    /// falls through to `NSTableView`. Left/Right are no-ops for a single-column table by default,
+    /// so claiming them for fold/step costs nothing.
+    override func keyDown(with event: NSEvent) {
+        switch event.keyCode {
+        case 36, 76: // Return, keypad Enter
+            onActivateSelection?()
+        case 48: // Tab — back to the pane, not the next key view
+            onReturnToPane?()
+        case 123: // Left
+            onMoveLeft?()
+        case 124: // Right
+            onMoveRight?()
+        default:
+            super.keyDown(with: event)
+        }
+    }
+
+    /// Escape reaches AppKit as `cancelOperation:`, not a `keyDown` we can switch on — it leaves the
+    /// sidebar for the active pane, the same exit Tab makes. (Synthetic Escape isn't delivered under
+    /// computer-use, so this path is verified with a physical key press — see docs/NOTES.md.)
+    override func cancelOperation(_ sender: Any?) {
+        onReturnToPane?()
     }
 }
 

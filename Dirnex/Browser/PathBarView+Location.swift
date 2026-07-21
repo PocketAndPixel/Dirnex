@@ -24,10 +24,25 @@ extension PathBarView {
         }
     }
 
-    /// Render a virtual location (Spotlight results) as a single, non-clickable label — there is
-    /// no ancestor chain to walk into, so the breadcrumb affordance would only mislead.
+    /// Render a virtual location (Spotlight results, Recents, the merged Trash) as a single,
+    /// non-clickable label — there is no ancestor chain to walk into, so the breadcrumb affordance
+    /// would only mislead.
+    ///
+    /// The Trash names itself instead of borrowing the results phrasing: "Results for Trash" reads
+    /// as a search someone ran, which is neither what it is nor how it behaves (it re-lists after a
+    /// delete, where a search snapshot doesn't). Each carries the SF Symbol of the sidebar row that
+    /// opens it — `trash` and `magnifyingglass` — rather than an emoji, which is a different type
+    /// vocabulary that neither tints with the pane's active state nor matches the sidebar.
     func rebuildVirtualLabel(for path: VFSPath) {
-        installVirtualLabel("🔍  Results for \(path.lastComponent)")
+        if path.backend == .trash {
+            installVirtualLabel("Trash", symbolNamed: "trash")
+        } else if path.backend == .icloud {
+            // Same reasoning as the Trash, and the same symbol its sidebar row carries: iCloud Drive
+            // is a place the user opened, not a query someone ran (PLAN.md §M9).
+            installVirtualLabel("iCloud Drive", symbolNamed: "icloud")
+        } else {
+            installVirtualLabel("Results for \(path.lastComponent)", symbolNamed: "magnifyingglass")
+        }
     }
 
     /// Render a browsed archive as a full, clickable breadcrumb trail — styled exactly like a

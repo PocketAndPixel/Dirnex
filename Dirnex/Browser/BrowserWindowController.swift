@@ -8,10 +8,11 @@ import DirnexCore
 final class BrowserWindowController: NSWindowController, PanelHost {
     let leftPanel: PanelViewController
     let rightPanel: PanelViewController
-    private let sidebar = SidebarViewController()
-    /// Outer split: `[sidebar, panes]`. Collapsing/expanding the sidebar only ever resizes
-    /// the panes group as a whole.
-    private let splitViewController = NSSplitViewController()
+    // Internal for `BrowserWindowController+Sidebar` (⌥⌘S focus reveals then focuses); both set in `loadView`.
+    let sidebar = SidebarViewController()
+    var sidebarSplitItem: NSSplitViewItem!
+    /// Outer split `[sidebar, panes]`; subclassed so hiding the focused sidebar returns focus to a pane (§M8).
+    private let splitViewController = SidebarFocusSplitViewController()
     /// Inner split: `[leftPanel, rightPanel]`. Kept separate so the sidebar toggle can't
     /// steal width from just the adjacent pane — the two panes redistribute proportionally in
     /// both directions here, holding their ratio across any number of sidebar toggles.
@@ -202,6 +203,8 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         sidebarItem.maximumThickness = 320
         sidebarItem.canCollapse = true
         splitViewController.addSplitViewItem(sidebarItem)
+        sidebarSplitItem = sidebarItem
+        splitViewController.onFocusedCollapse = { [weak self] in self?.focusedPanel.focusTable() }
 
         installTerminalDrawer()
         // The pane stack and the function-key bar share one column so the bar aligns with the
@@ -447,51 +450,5 @@ private extension BrowserWindowController {
             functionBarHeight
         ])
         return column
-    }
-}
-
-// MARK: - SidebarViewControllerDelegate
-
-extension BrowserWindowController: SidebarViewControllerDelegate {
-    /// A sidebar click points the active pane at the chosen place/volume, then hands
-    /// keyboard focus back to that pane so browsing continues without a mouse.
-    func sidebar(_ sidebar: SidebarViewController, didActivate path: VFSPath) {
-        let target = activePanel ?? leftPanel
-        target.navigate(to: path)
-        target.focusTable()
-    }
-
-    /// A saved search re-runs its query in the active pane, opening the hits in a virtual
-    /// results tab, then hands focus back so browsing the results continues without a mouse.
-    func sidebar(_ sidebar: SidebarViewController, didActivateSavedSearch savedSearch: SavedSearch) {
-        let target = activePanel ?? leftPanel
-        target.runSavedSearch(savedSearch)
-        target.focusTable()
-    }
-
-    /// A saved server connects (SFTP) or mounts (SMB) in the active pane and browses it. The
-    /// connect/mount is async and, on completion, both navigates *and* focuses the pane itself,
-    /// so grabbing focus here (before the connection resolves) would be premature.
-    func sidebar(_ sidebar: SidebarViewController, didActivateServer server: ServerConnection) {
-        (activePanel ?? leftPanel).connect(to: server)
-    }
-
-    /// A tag row searches for the files carrying it and shows them in the active pane, the way a
-    /// saved search does — a tag is a query, not a place.
-    func sidebar(_ sidebar: SidebarViewController, didActivateTag tag: FinderTag) {
-        let target = activePanel ?? leftPanel
-        target.runTagSearch(tag)
-        target.focusTable()
-    }
-
-    /// "Edit…" on a saved server re-opens the connect prompt prefilled from it, in the active pane.
-    func sidebar(_ sidebar: SidebarViewController, didEditServer server: ServerConnection) {
-        (activePanel ?? leftPanel).editServer(server)
-    }
-
-    /// An empty-space / header click in the sidebar re-focuses the active pane so its keyboard
-    /// focus — and the responder-chain file commands (F5/F6/F8) — survive the click.
-    func sidebarDidClickEmptyArea(_ sidebar: SidebarViewController) {
-        (activePanel ?? leftPanel).focusTable()
     }
 }

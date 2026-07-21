@@ -87,6 +87,37 @@ struct DirectoryWatcherTests {
         #expect(await pulse.wait(timeout: timeout), "expected an event for the removal")
     }
 
+    @Test("one watcher over several directories fires for a change in any of them")
+    func watchesSeveralDirectories() async throws {
+        // What a merged listing needs: the Trash is several real directories shown as one place,
+        // so a change in *any* of them has to wake the pane (PLAN.md §M8, §M9).
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        try tree.makeDir("first")
+        try tree.makeDir("second")
+
+        let pulse = Pulse()
+        let watcher = DirectoryWatcher(
+            paths: [.local(tree.path("first")), .local(tree.path("second"))],
+            latency: 0.05
+        ) { pulse.fire() }
+        defer { watcher.stop() }
+
+        try tree.writeFile("first/a.txt", contents: "a")
+        #expect(await pulse.wait(timeout: timeout), "expected an event from the first directory")
+
+        try tree.writeFile("second/b.txt", contents: "b")
+        #expect(await pulse.wait(timeout: timeout), "expected an event from the second directory")
+    }
+
+    @Test("watching nothing is a watcher that never fires, not a failure")
+    func watchingNoDirectories() {
+        // A merge with no sources — no trash exists yet, iCloud Drive is off — has nothing to
+        // notice, and must not be an error the caller has to handle.
+        let watcher = DirectoryWatcher(paths: []) {}
+        watcher.stop()
+    }
+
     @Test("stop() is idempotent and safe to double-call")
     func stopIsIdempotent() async throws {
         let tree = try TempTree()

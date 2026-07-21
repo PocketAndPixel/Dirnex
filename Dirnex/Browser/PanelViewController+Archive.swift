@@ -7,7 +7,7 @@ import DirnexCore
 /// that contains the archive.
 ///
 /// A browsed archive is read-only this pass, so the pane recognizes it via `isArchive` and —
-/// like the search-results pane (`isSearchResults`) — suppresses every directory-bound
+/// like the search-results pane (`isResultsListing`) — suppresses every directory-bound
 /// mutation. `isVirtualDirectory` is the union both share: anything that needs a real,
 /// writable, on-disk directory checks it.
 extension PanelViewController {
@@ -22,7 +22,7 @@ extension PanelViewController {
     /// (just over the network), so those flows run against it through the SFTP backend's write
     /// primitives; whether an individual op is offered is decided by `capabilities(for:)`.
     var isVirtualDirectory: Bool {
-        isArchive || isSearchResults
+        isArchive || isResultsListing
     }
 
     /// The archive-root location for a local archive file — the target Enter navigates to.

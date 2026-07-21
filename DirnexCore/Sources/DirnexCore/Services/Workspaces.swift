@@ -74,7 +74,7 @@ public struct Workspace: Sendable, Equatable, Identifiable, Codable {
 /// An ordered, name-de-duplicated collection of saved workspaces — the model behind the
 /// Workspace menu's switch list and the organizer. A pure value type with no persistence or
 /// AppKit: the app owns the `UserDefaults` store and the menu/organizer UI, this owns the
-/// ordering and naming rules so they stay unit-testable headless (matching `Hotlist`,
+/// ordering and naming rules so they stay unit-testable headless (matching `Favorites`,
 /// `NavigationHistory`, and the command registry).
 public struct Workspaces: Sendable, Equatable, Codable {
     /// The saved workspaces in user order — the order the switch menu and organizer present,
@@ -142,7 +142,7 @@ public struct Workspaces: Sendable, Equatable, Codable {
     }
 
     /// Reorder: pull the workspace out of `source` and reinsert it so it lands at `destination`
-    /// in the *resulting* list (Array semantics, matching the hotlist reorder). The UI adjusts a
+    /// in the *resulting* list (Array semantics, matching the favorites reorder). The UI adjusts a
     /// raw `NSTableView` drop row into this convention before calling.
     public mutating func move(from source: Int, to destination: Int) {
         guard workspaces.indices.contains(source) else { return }

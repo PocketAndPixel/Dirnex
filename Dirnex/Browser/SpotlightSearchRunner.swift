@@ -26,7 +26,26 @@ enum SpotlightSearchRunner {
         scope: VFSPath?,
         backend: any VFSBackend
     ) async -> Results {
-        let paths = await paths(query, scope: scope)
+        await results(forPaths: await paths(query, scope: scope), backend: backend)
+    }
+
+    /// Run Finder's **Recents** (PLAN.md §M8) — recently-used files everywhere — the same way a
+    /// search runs, but from `RecentsQuery`'s own predicate rather than a user's `SpotlightQuery`.
+    /// The hits are all `.local`, so the caller's backend stats them exactly as it does search hits.
+    static func runRecents(
+        _ query: RecentsQuery,
+        backend: any VFSBackend
+    ) async -> Results {
+        await results(forPaths: await paths(arguments: query.mdfindArguments()), backend: backend)
+    }
+
+    /// Cap `paths` to the rendering budget and stat the survivors into entries, off the main thread —
+    /// the shared tail of every `mdfind`-backed listing (search and Recents alike). Anything that
+    /// vanished between the index and now is silently skipped.
+    private static func results(
+        forPaths paths: [String],
+        backend: any VFSBackend
+    ) async -> Results {
         let kept = paths.prefix(resultLimit)
         guard !kept.isEmpty else { return Results(entries: [], truncated: false) }
 
@@ -54,7 +73,12 @@ enum SpotlightSearchRunner {
     /// "no matches" from "the search didn't run", so this must not be the last word before something
     /// destructive. It isn't: nothing is deleted from a file that doesn't come back as a match.
     static func paths(_ query: SpotlightQuery, scope: VFSPath? = nil) async -> [String] {
-        let arguments = query.mdfindArguments(scopePath: scope?.path)
+        await paths(arguments: query.mdfindArguments(scopePath: scope?.path))
+    }
+
+    /// The paths `mdfind` reports for a ready-made argument vector — the seam Recents runs through,
+    /// where a `SpotlightQuery` isn't the source. Empty for an empty vector or any `mdfind` failure.
+    private static func paths(arguments: [String]) async -> [String] {
         guard !arguments.isEmpty else { return [] }
         return await Task.detached(priority: .userInitiated) {
             runMdfind(arguments: arguments)

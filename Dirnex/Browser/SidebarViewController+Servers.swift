@@ -2,11 +2,39 @@ import AppKit
 import DirnexCore
 
 /// The sidebar's saved-server management surface: the right-click menu (Connect / Edit… / Remove)
-/// and the remove confirmation shared with the row's trailing delete button (PLAN.md §M5
-/// "right-click → Connect / Edit… / Remove"). Split out of `SidebarViewController` so that file
-/// stays under the length limit; `menuNeedsUpdate` (in the main file) dispatches here for a server
-/// row, and connecting/editing is handed to the delegate (the window → the active pane).
+/// and its remove confirmation (PLAN.md §M5 "right-click → Connect / Edit… / Remove"). Split out of
+/// `SidebarViewController` so that file stays under the length limit; `menuNeedsUpdate` (in the main
+/// file) dispatches here for a server row, and connecting/editing is handed to the delegate (the
+/// window → the active pane).
 extension SidebarViewController {
+    // MARK: - Rendering
+
+    /// Build (or reuse) a saved-server cell: the protocol glyph, the address as a tooltip, and a
+    /// spinner while this connection is being established. Removal is a right-click-menu action, not
+    /// a per-row button.
+    func serverCell(for connection: ServerConnection) -> NSView {
+        let cell = reuse(SidebarCellView.identifier) as? SidebarCellView ?? SidebarCellView()
+        cell.configure(
+            name: connection.name,
+            image: Self.serverIcon(for: connection.kind),
+            canEject: false,
+            tooltip: connection.address,
+            isBusy: ServerConnectionActivity.shared.isConnecting(connection.name)
+        )
+        cell.onEject = nil
+        return cell
+    }
+
+    /// A per-protocol SF Symbol so a saved server reads as remote at a glance: a globe-ish network
+    /// glyph for SFTP, a connected-drive glyph for an SMB share. Template so the source list tints
+    /// it with the row's text color like the other sidebar glyphs.
+    private static func serverIcon(for kind: ServerKind) -> NSImage {
+        let symbol = kind == .smb ? "externaldrive.connected.to.line.below" : "network"
+        return templateSymbol(symbol, pointSize: 14, describedAs: "Server")
+    }
+
+    // MARK: - Right-click menu
+
     /// Populate `menu` with the Connect / Edit… / Remove items for `server`.
     func buildServerMenu(_ menu: NSMenu, for server: ServerConnection) {
         menu.addItem(serverMenuItem("Connect", #selector(connectServerItem(_:)), server.name))
@@ -41,8 +69,8 @@ extension SidebarViewController {
         confirmRemoveServer(named: name)
     }
 
-    /// Confirm before removing a saved server — the shared path for both the row's trailing delete
-    /// button and the context-menu Remove. Removing also clears any Keychain secret filed for the
+    /// Confirm before removing a saved server — the context-menu Remove's path. Removing also clears
+    /// any Keychain secret filed for the
     /// connection, since nothing references it once the server is gone. No mount is disconnected —
     /// removing the bookmark shouldn't unmount a share the user is actively browsing.
     func confirmRemoveServer(named name: String) {

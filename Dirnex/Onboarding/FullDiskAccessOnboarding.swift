@@ -48,6 +48,62 @@ enum FullDiskAccessOnboarding {
         }
     }
 
+    /// The Trash's version of the ask (PLAN.md §M8). `~/.Trash` is TCC-protected, so without the
+    /// grant the sidebar's Trash row can list nothing — and an *empty* Trash is the one answer it
+    /// must never give, since that reads as "you have nothing thrown away" rather than "I can't
+    /// look." Leads with the Trash instead of the general explanation because that is the thing the
+    /// user just clicked; the switch it sends them to is the same one.
+    static func presentForTrash(over window: NSWindow?) {
+        AppPreferences.shared.hasSeenFullDiskAccessOnboarding = true
+        let alert = NSAlert()
+        alert.messageText = "Dirnex needs Full Disk Access to show the Trash"
+        alert.informativeText = """
+        macOS keeps the Trash private, so Dirnex can't list it until you allow it to. Everything \
+        else keeps working as it does now.
+
+        Click Open System Settings, then switch on Dirnex under Full Disk Access. macOS will ask \
+        Dirnex to relaunch so the new access takes effect.
+        """
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Open System Settings")
+        alert.addButton(withTitle: "Not Now")
+        alert.enableEscapeToCancel() // ⎋ → Not Now; there is no work to lose by declining.
+
+        present(alert, over: window) { response in
+            if response == .alertFirstButtonReturn { openSystemSettings() }
+        }
+    }
+
+    /// iCloud Drive's version of the ask (PLAN.md §M9), and the quietest of the three: the merged
+    /// listing *works* without the grant — it shows the loose files M8 already shipped — it is
+    /// simply missing the per-app document folders, because `~/Library/Mobile Documents` is
+    /// TCC-gated while the CloudDocs leaf inside it is carved out.
+    ///
+    /// So this is offered **once** and then never again, on its own latch: a silently short iCloud
+    /// Drive is the same quiet-wrong-answer shape the Trash avoids by asking, but here there is
+    /// something real on screen, which makes repeating the ask a nag rather than a rescue.
+    static func presentForICloud(over window: NSWindow?) {
+        guard !AppPreferences.shared.hasOfferedFullDiskAccessForICloud else { return }
+        AppPreferences.shared.hasOfferedFullDiskAccessForICloud = true
+        let alert = NSAlert()
+        alert.messageText = "Some of iCloud Drive needs Full Disk Access"
+        alert.informativeText = """
+        Your files in iCloud Drive are listed above. The folders apps keep there — Pages, \
+        Preview, Shortcuts — are private to macOS until you allow Dirnex to read them.
+
+        Click Open System Settings, then switch on Dirnex under Full Disk Access. macOS will ask \
+        Dirnex to relaunch so the new access takes effect.
+        """
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Open System Settings")
+        alert.addButton(withTitle: "Not Now")
+        alert.enableEscapeToCancel() // ⎋ → Not Now; the listing keeps working either way.
+
+        present(alert, over: window) { response in
+            if response == .alertFirstButtonReturn { openSystemSettings() }
+        }
+    }
+
     // MARK: - The sheets
 
     private static func showPrompt(over window: NSWindow?) {

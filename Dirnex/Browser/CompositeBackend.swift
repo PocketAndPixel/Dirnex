@@ -76,8 +76,26 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
     /// `.read` so the pane greys writes rather than offering ones it can't perform. Cheap by design
     /// (no archive mount, no network), like `volumeIdentifier(for:)`.
     func capabilities(for path: VFSPath) -> VFSCapabilities {
-        if path.backend == .local { return local.capabilities }
+        if path.backend == .local {
+            // Standing in a Trash, "move to Trash" is not a weaker delete — it is *no* delete:
+            // `FileManager.trashItem` on an already-trashed item reports success and does nothing
+            // (probed 2026-07-21). Withdrawing the capability is the whole of the inversion the
+            // Trash needs — the M5 degradation then turns F8 into a confirmed permanent delete,
+            // with no branch in the delete path and no way for a caller to forget to ask.
+            return TrashLocations.isInsideTrash(path)
+                ? local.capabilities.subtracting(.trash)
+                : local.capabilities
+        }
         if path.backend.isSFTP { return sftpBackend(for: path.backend)?.capabilities ?? .read }
+        // The merged Trash listing is writable-but-Trash-less for the same reason, one level up:
+        // its entries are real files that can only be deleted for good. Everything else virtual (an
+        // archive browse, a search-results listing) is read-only.
+        if path.backend == .trash { return [.read, .write] }
+        // The merged iCloud listing's entries are ordinary local files and folders, so everything a
+        // local location can do to them applies — including the Trash, which is where deleting one
+        // should send it. Only the container is virtual, and the flows that need a real directory
+        // under them ask `writeDirectory`, which points them at the CloudDocs container.
+        if path.backend == .icloud { return local.capabilities }
         return .read
     }
 

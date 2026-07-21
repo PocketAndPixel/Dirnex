@@ -33,7 +33,7 @@ extension PanelViewController {
     /// top with the current directory check-marked; picking one jumps straight to it.
     @objc func showHistory(_ sender: Any?) {
         let menu = buildHistoryMenu()
-        // Drop the menu from the path bar's bottom edge, matching the hotlist popup.
+        // Drop the menu from the path bar's bottom edge, matching the favorites popup.
         let origin = NSPoint(x: 8, y: pathBar.isFlipped ? pathBar.bounds.maxY : 0)
         menu.popUp(positioning: nil, at: origin, in: pathBar)
     }

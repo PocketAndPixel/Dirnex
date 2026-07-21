@@ -42,3 +42,8 @@ ExportOptions.plist
 # Editor
 .idea/
 *.swp
+
+# Claude Code: .claude/settings.json is the shared, checked-in set. The .local. files are
+# per-machine approvals (they accumulate absolute paths and session scratch dirs) — keep them out.
+.claude/settings.local.json
+.claude/*.local.json
