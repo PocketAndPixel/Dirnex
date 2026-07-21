@@ -123,7 +123,9 @@ merged listing, not a location** — macOS keeps one trash per volume, so the on
 that cannot be a directory browses like a *results* pane rather than like a folder. M9 closed
 with a second: **"what Finder's iCloud Drive shows" is matched approximately, on purpose** —
 which app containers Finder lists is not derivable from anything public, so Dirnex's rule is
-public scope and a non-empty folder. Both are argued in HISTORY.md.
+declared public scope and a folder that exists. Both are argued in HISTORY.md. The *direction* of
+that approximation was reversed on 2026-07-21 (see M10 Phase 1): it used to also require a
+non-empty folder, which hid three folders Finder shows.
 
 ### Next
 
@@ -171,6 +173,15 @@ that aren't synced to this Mac.
         - **The merged root is now editable too** (double-click, Cmd+L), based at the CloudDocs
           container its writes already resolve to (`writeDirectory`), rather than being the one stop
           on the way in and out of iCloud Drive where the path goes dead.
+        - **Every public container is a row now, empty or not** — decided 2026-07-21 after the
+          path-bar work put the merge side by side with Finder's. The old rule also demanded a
+          non-empty `Documents`, and **three of the seven folders Finder shows here are empty**
+          (Amadine, Numbers, TextEdit), so they were missing. Between two wrong sets, showing a
+          folder Finder hides is recoverable and hiding one the user can see in Finder is not — it
+          reads as Dirnex having lost them. The ten Finder hides (GarageBand, iMovie, Keynote,
+          QuickTime Player, Automator, Script Editor…) come along, which is the accepted cost.
+          Probed against the real machine with a throwaway harness on the real core: 17 rows, the
+          seven Finder shows among them.
         - **The app name has a second source.** The cached plist `ICloudDrive.appLibraries()` reads
           is refused without Full Disk Access *while the container itself still lists* — observed
           live, where the crumb came out as `com.apple.Pages`. So the OS's own

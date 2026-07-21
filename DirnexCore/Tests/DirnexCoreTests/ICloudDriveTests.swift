@@ -60,8 +60,11 @@ struct ICloudDriveTests {
         #expect(ICloudDrive.appLibraries(home: temp.root.path, languageCode: nil).libraries.isEmpty)
     }
 
-    @Test("an empty public container is skipped")
-    func emptyContainerIsSkipped() throws {
+    @Test("an empty public container is a row too")
+    func emptyContainerStillQualifies() throws {
+        // Reversed 2026-07-21: three of the seven folders Finder shows here are empty (Amadine,
+        // Numbers, TextEdit), so "not empty" hid folders the user could see in Finder — which
+        // reads as Dirnex having lost them.
         let temp = try TempTree()
         defer { temp.cleanup() }
         try ICloudFixture.makeContainer(
@@ -72,30 +75,30 @@ struct ICloudDriveTests {
             contents: []
         )
 
-        #expect(ICloudDrive.appLibraries(home: temp.root.path, languageCode: nil).libraries.isEmpty)
+        let scan = ICloudDrive.appLibraries(home: temp.root.path, languageCode: nil)
+        #expect(scan.libraries.map(\.name) == ["Keynote"])
     }
 
-    @Test("a .DS_Store does not count as content")
-    func dsStoreIsNotContent() throws {
-        // Finder's own bookkeeping appears in containers the user has never touched; counting
-        // it would put every empty app folder in iCloud Drive.
+    @Test("a container declared in the cache but with no folder here is not a row")
+    func containerWithoutAFolderIsSkipped() throws {
+        // The one thing emptiness never covered: metadata for an app whose container has never
+        // been created on this Mac. A row for it would open nothing.
         let temp = try TempTree()
         defer { temp.cleanup() }
-        try ICloudFixture.makeContainer(
+        try ICloudFixture.writeMetadata(
             temp,
-            bundleID: "com.apple.TextEdit",
-            name: "TextEdit",
-            public: true,
-            contents: [".DS_Store"]
+            bundleID: "com.apple.Pages",
+            name: "Pages",
+            public: true
         )
 
         #expect(ICloudDrive.appLibraries(home: temp.root.path, languageCode: nil).libraries.isEmpty)
     }
 
-    @Test("any other dotfile does count as content")
-    func markerDotfileIsContent() throws {
-        // Shortcuts holds only `.WorkflowHiddenFile` and Curve only `.keep-default`, and
-        // Finder lists both — so "hidden" is not the test, "is it Finder's own file" is.
+    @Test("a container holding nothing but a marker file is a row")
+    func markerDotfileContainerQualifies() throws {
+        // Shortcuts holds only `.WorkflowHiddenFile` and Curve only `.keep-default`, and Finder
+        // lists both.
         let temp = try TempTree()
         defer { temp.cleanup() }
         try ICloudFixture.makeContainer(

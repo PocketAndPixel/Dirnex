@@ -285,10 +285,17 @@ against a fake.
   be unit-tested (it only answers for a real iCloud item), which is why it is injected into
   `ICloudLocation.trail` rather than called from the core.
 - **Which containers Finder lists is not derivable.** 17 declare public scope here; Finder shows 7.
-  Nothing separates the sets: not mtimes, not emptiness (two of the seven are empty), not install
-  state, not `bird`'s `client.db` (`app_libraries`, per-zone item counts, tombstones). Don't spend an
-  afternoon on it a second time — Dirnex approximates with "public scope and not empty" and PLAN.md
-  §M9 records why.
+  Nothing separates the sets: not mtimes, not emptiness (three of the seven are empty), not install
+  state, not `bird`'s `client.db` (`app_libraries`, per-zone item counts, tombstones), and
+  `fileproviderctl dump` — the authority for Google Drive — enumerates nothing here, because the
+  iCloud extension is not running (`not dumping extension`). Don't spend an afternoon on it a third
+  time. Dirnex shows **all 17**: between two wrong sets, a folder Finder hides is recoverable noise
+  and a folder Finder shows but Dirnex hides reads as lost files.
+  - One correlation *is* perfect on this Mac and is still not worth using: a `.DS_Store` in the
+    **container** directory (not in `Documents`) is present for exactly the 7 Finder shows and
+    absent for the 10 it hides. It is Finder's own bookkeeping, so keying on it means "show what
+    Finder has already shown" — a rule that answers nothing on a Mac where Finder never opened
+    iCloud Drive.
 
 ### Google Drive (and every other `CloudStorage` provider)
 
