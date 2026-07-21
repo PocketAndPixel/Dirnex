@@ -316,3 +316,9 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
 - **To browse a second VFS backend without touching every `self.backend` site**, wrap them in a
   `CompositeBackend` that dispatches on `path.backend`. A per-tab backend field is a much larger
   refactor.
+- **A view state that one listing *overrides* leaks the moment the next listing inherits it.** A
+  results tab forces `showHidden` on (`ResultsPresentation.showsHidden`), and every "carry the
+  current pane's settings over" site read it back out of the model — so clicking Home out of a
+  search tab listed the whole dot-file wall with the eye toggled off. Sort inherits correctly
+  because nothing overrides it. Re-derive an overridden setting from its source of truth
+  (`AppPreferences.showHidden`) rather than from the model that overrode it.

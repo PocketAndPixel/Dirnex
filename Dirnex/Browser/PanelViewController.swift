@@ -385,8 +385,14 @@ final class PanelViewController: NSViewController {
                 // Built with an empty filter, so entering a directory starts fresh — a quick-filter
                 // from the folder we just left shouldn't silently hide the new folder's contents —
                 // and with no computed sizes, since a directory we're arriving at has none yet.
+                // Hidden files come from the app-wide toggle rather than the departed model: a
+                // results listing forces them *on* (see `ResultsPresentation.showsHidden`), and
+                // carrying that into a real directory would show dotfiles with the eye toggled off.
                 let model = try await DirectoryLoader.model(
-                    backend, at: path, sort: panel.model.sort, showHidden: panel.model.showHidden
+                    backend,
+                    at: path,
+                    sort: panel.model.sort,
+                    showHidden: AppPreferences.shared.showHidden
                 )
                 guard token == loadToken else { return }
                 panel.setModel(model)

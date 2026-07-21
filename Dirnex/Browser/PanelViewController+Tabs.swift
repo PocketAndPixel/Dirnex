@@ -85,7 +85,9 @@ extension PanelViewController {
         let tab = PanelTab(
             path: path,
             sort: panel.model.sort,
-            showHidden: panel.model.showHidden,
+            // The app-wide toggle, not this pane's model: the caller is typically a results tab,
+            // which forces hidden files on, and a real directory must not inherit that.
+            showHidden: AppPreferences.shared.showHidden,
             columns: tabs[activeTabIndex].columnLayout
         )
         tabs.insert(tab, at: activeTabIndex + 1)
@@ -179,7 +181,8 @@ extension PanelViewController {
         tab.panel = Panel(
             path: path,
             sort: tab.panel.model.sort,
-            showHidden: tab.panel.model.showHidden
+            // A results tab being reset forces hidden files on; Home takes the app-wide toggle.
+            showHidden: AppPreferences.shared.showHidden
         )
         tab.history = NavigationHistory(initialPath: path)
         tab.hasLoaded = false
