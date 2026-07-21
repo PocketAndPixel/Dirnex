@@ -28,6 +28,23 @@ public enum TrashLocations {
         VFSPath.local(home).appending(".Trash")
     }
 
+    /// iCloud Drive's own trash: `~/Library/Mobile Documents/.Trash`.
+    ///
+    /// **A third shape, and it is neither of the other two** (probed 2026-07-21, after a folder
+    /// deleted from iCloud Drive showed up in Finder's Trash and not in Dirnex's). Deleting inside
+    /// iCloud Drive does not land in `~/.Trash`: the file provider keeps its own trash beside the
+    /// containers — a *sibling* of `com~apple~CloudDocs`, not a child of it — with no `<uid>`
+    /// subdirectory, since the container is already per-user (`drwx------`). Finder merges it into
+    /// the one Trash it shows, so Dirnex's merged listing has to as well, or a delete from iCloud
+    /// Drive vanishes into a Trash that reports itself empty.
+    ///
+    /// Reading it needs Full Disk Access — the enclosing `~/Library/Mobile Documents` is TCC-gated,
+    /// and only the CloudDocs leaf inside it is carved out (docs/NOTES.md). Like the volume trashes
+    /// it is *constructed* rather than discovered by enumerating that parent.
+    public static func iCloudTrash(home: String = NSHomeDirectory()) -> VFSPath {
+        VFSPath.local(home).appending("Library").appending("Mobile Documents").appending(".Trash")
+    }
+
     /// A non-boot volume's trash for one user: `<volume>/.Trashes/<uid>`.
     ///
     /// Spelled out by hand rather than asked of `FileManager.url(for: .trashDirectory,
@@ -61,6 +78,9 @@ public enum TrashLocations {
     public static func isInsideTrash(_ path: VFSPath, home: String = NSHomeDirectory()) -> Bool {
         guard path.backend == .local else { return false }
         if path.isSelfOrDescendant(of: homeTrash(home: home)) { return true }
+        // iCloud's own trash counts for the same reason the others do: `trashItem` on something
+        // already in a trash succeeds and does nothing, so F8 here has to become a real delete.
+        if path.isSelfOrDescendant(of: iCloudTrash(home: home)) { return true }
         return isInsideVolumeTrash(path)
     }
 

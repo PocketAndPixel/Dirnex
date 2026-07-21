@@ -24,6 +24,16 @@ struct TrashLocationsTests {
         #expect(trash == VFSPath.local("/Volumes/Backup/.Trashes/501"))
     }
 
+    @Test("iCloud Drive's trash sits beside the containers, with no numbered directory")
+    func iCloudTrashPath() {
+        // Probed 2026-07-21: a folder deleted from iCloud Drive lands here, *not* in `~/.Trash` —
+        // and it is a sibling of `com~apple~CloudDocs`, not a child of it.
+        #expect(
+            TrashLocations.iCloudTrash(home: "/Users/me")
+                == VFSPath.local("/Users/me/Library/Mobile Documents/.Trash")
+        )
+    }
+
     // MARK: - Standing in the Trash
 
     @Test("the home trash and everything under it reads as inside the Trash")
@@ -47,6 +57,18 @@ struct TrashLocationsTests {
         // Another account's trash is not this one's home trash, but see below: it is still *a*
         // trash by the volume rule only when it is numbered under `.Trashes`.
         #expect(!TrashLocations.isInsideTrash(.local("/Users/other/.Trash"), home: home))
+    }
+
+    @Test("iCloud Drive's trash and everything under it reads as inside the Trash")
+    func iCloudTrashIsInside() {
+        let home = "/Users/me"
+        let trash = "/Users/me/Library/Mobile Documents/.Trash"
+        #expect(TrashLocations.isInsideTrash(.local(trash), home: home))
+        #expect(TrashLocations.isInsideTrash(.local(trash + "/temp/scan.pdf"), home: home))
+        // The containers beside it are ordinary browsable folders, trash-adjacent or not.
+        #expect(!TrashLocations.isInsideTrash(
+            .local("/Users/me/Library/Mobile Documents/com~apple~CloudDocs"), home: home
+        ))
     }
 
     @Test("a volume trash counts at any depth, for any user's numbered directory")
@@ -87,6 +109,7 @@ struct TrashLocationsTests {
         let temp = try TempTree()
         defer { temp.cleanup() }
         try temp.makeDir(".Trash")
+        try temp.makeDir("Library/Mobile Documents/.Trash")
         try temp.makeDir("Volumes/Backup/.Trashes/501")
         // A volume that exists but has had nothing trashed on it: no `.Trashes/<uid>`, so it
         // contributes nothing rather than a dead row.
@@ -104,6 +127,7 @@ struct TrashLocationsTests {
         #expect(
             directories == [
                 VFSPath.local(temp.path(".Trash")),
+                VFSPath.local(temp.path("Library/Mobile Documents/.Trash")),
                 VFSPath.local(temp.path("Volumes/Backup/.Trashes/501"))
             ]
         )

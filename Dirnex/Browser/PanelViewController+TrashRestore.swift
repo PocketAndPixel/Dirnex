@@ -19,6 +19,12 @@ import DirnexCore
 ///   ordinary, and "this can never be restored" is a dead end where one `mkdir` chain isn't.
 /// - **One failure never abandons the rest**, exactly like Empty Trash: an item with no record is
 ///   collected and reported by name at the end.
+///
+/// **Items trashed out of iCloud Drive are that last case, always.** Their trash keeps no
+/// `.DS_Store`; the origin rides on the item as `com.apple.clouddocs.private.trash-parent-bookmark`,
+/// an opaque `com.apple.CloudDocs/<UUID>/<hash>` provider reference with no path in it (probed
+/// 2026-07-21). So they list, they delete, and Put Back says it doesn't know where they came from —
+/// which is the truth, and better than a guess at a folder.
 extension PanelViewController {
     /// "Put Back" — return the marked items (or the one under the cursor) to where they came from.
     @objc func putBackSelection(_ sender: Any?) {

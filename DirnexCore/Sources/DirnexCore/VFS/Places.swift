@@ -171,6 +171,11 @@ public enum SidebarLocations {
         let homeTrash = TrashLocations.homeTrash(home: home)
         if isDirectory(homeTrash.path, fileManager) { directories.append(homeTrash) }
 
+        // iCloud Drive's own trash, which is neither the home one nor a volume's — deleting inside
+        // iCloud Drive lands here, and only here (PLAN.md §M9, probed).
+        let iCloudTrash = TrashLocations.iCloudTrash(home: home)
+        if isDirectory(iCloudTrash.path, fileManager) { directories.append(iCloudTrash) }
+
         for volume in volumes where !volume.isRoot {
             let trash = TrashLocations.volumeTrash(onVolumeAt: volume.path, uid: uid)
             if isDirectory(trash.path, fileManager) { directories.append(trash) }

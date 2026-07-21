@@ -201,6 +201,15 @@ against a fake.
   like it worked. Dirnex withdraws the `.trash` capability for any path inside a trash, which turns
   F8 there into the confirmed permanent delete via the existing degradation, and `LocalBackend`
   refuses such a call outright.
+- **iCloud Drive has a *third* trash, and deletes from it go nowhere else.**
+  `~/Library/Mobile Documents/.Trash` — a **sibling** of the containers, not a child of
+  `com~apple~CloudDocs`, and with no `<uid>` subdirectory (the container is already per-user).
+  Finder merges it into the one Trash it shows, so a merged listing that only knows about `~/.Trash`
+  and `<volume>/.Trashes/<uid>` reports an **empty Trash** for a folder the user just deleted and can
+  see in Finder. Reading it needs Full Disk Access (its parent is TCC-gated), and it is constructed
+  rather than discovered, like the volume trashes. **Put Back cannot work there**: it keeps no
+  `.DS_Store`, and the origin rides on the item as `com.apple.clouddocs.private.trash-parent-bookmark`
+  — an opaque `com.apple.CloudDocs/<UUID>/<hash>` provider reference with no path in it.
 - **`<volume>/.Trashes` is mode `d-wx--x--t` — unlistable even by its owner** — while
   `<container>/<uid>` inside it is a normal `drwx------`. A volume's trash must be *constructed* and
   opened directly; enumerating the parent to discover it always fails. (Same leaf-not-parent shape as
