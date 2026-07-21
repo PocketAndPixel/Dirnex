@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M9 shipped, M10 planned · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
+Status: M0–M9 shipped, M10 Phase 1 in progress · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
 
 ---
 
@@ -135,16 +135,29 @@ that aren't synced to this Mac.
 
 **Phase 1 — the Desktop mount (no API, no OAuth).**
 
-- [ ] **Browse the Google Drive for Desktop mount** — when the app is installed, Drive streams to
-      `~/Library/CloudStorage/GoogleDrive-<email>/`, a real path readable **without** FDA (probed
-      2026-07-21: the `CloudStorage` dir exists and lists free; the mount itself is absent here only
-      because Google's app isn't installed). Surface it like the iCloud row: a sidebar row present when
-      a `GoogleDrive-*` mount exists, browsed by the existing `LocalBackend` — no new backend.
+- [x] **Browse the Google Drive for Desktop mount** — landed 2026-07-21, and **generalized to every
+      provider** rather than matching `GoogleDrive-*`: the scan reads `~/Library/CloudStorage` and
+      takes whatever is mounted there (`<Provider>-<account>`), so Dropbox, OneDrive and Box come
+      free at no extra code. `CloudStorageMounts` (core, 18 tests) discovers and names them; the
+      sidebar's **iCloud section is now "Cloud"** and holds iCloud Drive plus a row per mount, each
+      browsed by the existing `LocalBackend` — no new backend. The section keeps its `icloud` case
+      so persisted collapse state survives the rename.
+
+      Two things worth carrying forward, both in NOTES.md: `~/Library/CloudStorage` lists **without**
+      FDA (unlike `~/Library/Mobile Documents`), and a signed-in Drive account can mount **empty** —
+      probed here, `fileproviderctl dump` said `child:3` while DriveFS's own metadata db held 83
+      items, because the account's roots were never provisioned. An empty mount is a legitimate
+      state, so nothing filters on content.
 - [ ] **Open `.gdoc` / `.gsheet` / `.gslides` stubs** — a Google-native doc on the mount is a tiny
       JSON file holding a `docs.google.com` URL, not bytes. Parse it (pure, core-tested) and open the
       URL in the browser instead of handing the stub to a text viewer, the way M4 hands off to external
       tools. Real (non-native) Drive files are dataless File-Provider items — the same download-on-open
       story as M9's iCloud, so that machinery is shared, not rebuilt.
+
+      **Blocked on real bytes** (2026-07-21): this Mac's Drive mount has no provisioned content, so
+      the stub format cannot be probed — and §2's rhythm is explicit that the one pass which assumed
+      a format (`SFTPListingParser`) had to be reworked against reality. Unblocks the moment a
+      `My Drive` appears under the mount.
 
 **Phase 2 — a real Drive backend (for accounts not synced to this Mac).**
 

@@ -282,6 +282,27 @@ against a fake.
   afternoon on it a second time — Dirnex approximates with "public scope and not empty" and PLAN.md
   §M9 records why.
 
+### Google Drive (and every other `CloudStorage` provider)
+
+- **`~/Library/CloudStorage` lists without Full Disk Access**, unlike `~/Library/Mobile Documents`.
+  Every File Provider sync client macOS 12+ hosts puts its mount there as
+  `<Provider>-<account>` — `GoogleDrive-someone@gmail.com` — so one provider-agnostic scan covers
+  Google Drive, Dropbox, OneDrive and Box, browsed by the ordinary `LocalBackend`. **Split the name
+  at the *first* hyphen**: an account label is an email address and those contain hyphens, so
+  splitting at the last one hands back a truncated address and a provider that doesn't exist.
+- **A signed-in Drive account can mount completely empty, and that is not a bug in your scan.**
+  Probed 2026-07-21: both accounts on this Mac mounted with only `.Trash`,
+  `.shortcut-targets-by-id` and `.tmp` — no `My Drive` — while DriveFS's own
+  `~/Library/Application Support/Google/DriveFS/<id>/metadata_sqlite_db` listed 83 real items
+  (`items` table: `id`, `local_title`, `is_folder`). The roots had not been provisioned; Google's
+  setup dialog was still sitting on its `ROOTS_PANE`. The authority is **`fileproviderctl dump`**,
+  whose `<s:root … child:N>` line is the OS's own count — it read `child:3` for Drive against
+  `child:53` for iCloud, which is how you tell "not provisioned" from "readdir didn't materialize".
+  Neither a Finder `open` nor an `ls` populates it.
+- **The `<account> - Google Drive` folders in the home directory are symlinks to the same mounts**,
+  not separate content. Worth knowing before chasing them as a second source — and their naming is
+  Google's own precedent for putting the account *before* the product name.
+
 ### git
 
 - **`git status --ignored=traditional` already collapses every ignored directory to one row**,
@@ -401,3 +422,9 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   search tab listed the whole dot-file wall with the eye toggled off. Sort inherits correctly
   because nothing overrides it. Re-derive an overridden setting from its source of truth
   (`AppPreferences.showHidden`) rather than from the model that overrode it.
+- **A disambiguator placed at the end of a label does not disambiguate.** Two Google Drive accounts
+  rendered as `Google Drive (someone@gmail.com)` came out of the real sidebar as the *identical*
+  string — "Google Drive (ol…" — because the pane tail-truncates at its actual width. The unit test
+  passed: the two strings genuinely differ, just not in any pixel the user sees. Front-load the
+  varying part (`someone@gmail.com — Google Drive`) and assert on a *prefix* rather than on
+  inequality, so the test fails for the same reason the screenshot did. Only a screenshot caught it.

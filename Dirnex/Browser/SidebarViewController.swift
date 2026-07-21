@@ -49,80 +49,6 @@ protocol SidebarViewControllerDelegate: AnyObject {
 /// actual navigation is delegated to the window controller, keeping this a thin view.
 @MainActor
 final class SidebarViewController: NSViewController {
-    /// A rendered sidebar row: a section header or a navigable destination. `internal` (not
-    /// `private`) so the saved-search and server management extensions in companion files can read
-    /// the clicked row.
-    enum Row {
-        /// The Trash row: a fixed system row that opens every volume's trash as one merged listing
-        /// (PLAN.md §M8). Like `.recents` it carries nothing — the Trash is not one directory, so
-        /// there is no path to hold.
-        case trash
-        /// A section header. Carries the section's *identity*, not its title — the drag code used
-        /// to find Favorites by comparing header text, which made a user-visible string
-        /// load-bearing, and the fold state keys off the same case (PLAN.md §M8).
-        case header(SidebarSection)
-        /// The Recents row: a fixed system row that runs the recently-used-files query into a virtual
-        /// results panel (PLAN.md §M8). Carries nothing — like a saved search it dispatches a query,
-        /// not a place, so it has no path and no stored model.
-        case recents
-        /// A pinned folder in the user-owned Favorites section — the favorites, which since M8 *is*
-        /// this section rather than a separate popup (PLAN.md §M8).
-        case favorite(FavoriteEntry)
-        /// The user's iCloud Drive: a fixed system row in its own section (PLAN.md §M8). Carries its
-        /// path directly — it is one known location, not a stored model like a pin or a volume.
-        case iCloud(VFSPath)
-        case volume(MountedVolume)
-        case savedSearch(SavedSearch)
-        case server(ServerConnection)
-        case tag(FinderTag)
-        /// The "All Tags…" row: reveals the tags found by browsing, past the stock seven.
-        case allTags
-
-        var isHeader: Bool {
-            section != nil
-        }
-
-        /// The section this row heads, when it is a header. Item rows return `nil` — they belong to
-        /// a section but do not identify one, and the fold code only ever asks about headers.
-        var section: SidebarSection? {
-            if case let .header(section) = self { return section }
-            return nil
-        }
-
-        /// The path a click navigates to, when the row is a real location. `nil` for headers, saved
-        /// searches, servers, and tags — a saved search runs a query, a server connects/mounts, and
-        /// a tag searches, so each is dispatched through its own delegate call instead of pointing
-        /// at a directory.
-        var path: VFSPath? {
-            switch self {
-            case .header, .recents, .trash, .savedSearch, .server, .tag, .allTags: return nil
-            case let .favorite(entry): return entry.path
-            case let .iCloud(path): return path
-            case let .volume(volume): return volume.path
-            }
-        }
-
-        var favorite: FavoriteEntry? {
-            if case let .favorite(entry) = self { return entry }
-            return nil
-        }
-
-        var savedSearch: SavedSearch? {
-            if case let .savedSearch(search) = self { return search }
-            return nil
-        }
-
-        var server: ServerConnection? {
-            if case let .server(connection) = self { return connection }
-            return nil
-        }
-
-        var tag: FinderTag? {
-            if case let .tag(tag) = self { return tag }
-            return nil
-        }
-    }
-
     weak var delegate: SidebarViewControllerDelegate?
 
     /// Which sections the user has folded shut (PLAN.md §M8). Re-read from the shared store on
@@ -249,10 +175,10 @@ final class SidebarViewController: NSViewController {
             showsEmptyHeader: true,
             to: &rows
         )
-        // iCloud Drive: its own section between the user's pins and the local volumes, mirroring
-        // Finder — one fixed row, present only when the container exists on disk (PLAN.md §M8).
-        let iCloudItems = SidebarLocations.iCloudDrive().map { [Row.iCloud($0)] } ?? []
-        append(.icloud, items: iCloudItems, to: &rows)
+        // The Cloud section, between the user's pins and the local volumes where Finder puts these:
+        // iCloud Drive plus every provider mount under `~/Library/CloudStorage` (PLAN.md §M8, §M10).
+        // Assembled in `SidebarViewController+Cloud`.
+        append(.icloud, items: cloudRows(), to: &rows)
         append(.volumes, items: SidebarLocations.volumes().map(Row.volume), to: &rows)
         // Saved servers close the sidebar, grouped with the local volumes as the "places you browse"
         // (PLAN.md §M5 "a Servers sidebar section mirroring Searches").
@@ -436,6 +362,8 @@ extension SidebarViewController: NSTableViewDelegate {
             return favoriteCell(for: entry)
         case let .iCloud(path):
             return iCloudCell(for: path)
+        case let .cloudMount(mount):
+            return cloudMountCell(for: mount)
         case let .volume(volume):
             return volumeCell(for: volume)
         case let .savedSearch(search):
