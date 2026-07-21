@@ -34,6 +34,18 @@ struct TrashLocationsTests {
         )
     }
 
+    @Test("a provider mount's trash sits at its root, with no numbered directory")
+    func cloudStorageTrashPath() {
+        // Probed 2026-07-22: a file deleted from Google Drive lands here, not in `~/.Trash`. Same
+        // shape as iCloud's — and all three carry the `com.apple.fileprovider.trash` marker xattr
+        // that `~/.Trash` does not.
+        let mount = VFSPath.local("/Users/me/Library/CloudStorage/GoogleDrive-me@gmail.com")
+        #expect(
+            TrashLocations.cloudStorageTrash(inMountAt: mount)
+                == VFSPath.local("/Users/me/Library/CloudStorage/GoogleDrive-me@gmail.com/.Trash")
+        )
+    }
+
     // MARK: - Standing in the Trash
 
     @Test("the home trash and everything under it reads as inside the Trash")
@@ -68,6 +80,35 @@ struct TrashLocationsTests {
         // The containers beside it are ordinary browsable folders, trash-adjacent or not.
         #expect(!TrashLocations.isInsideTrash(
             .local("/Users/me/Library/Mobile Documents/com~apple~CloudDocs"), home: home
+        ))
+    }
+
+    @Test("a provider mount's trash and everything under it reads as inside the Trash")
+    func cloudStorageTrashIsInside() {
+        let home = "/Users/me"
+        let mount = "/Users/me/Library/CloudStorage/GoogleDrive-me@gmail.com"
+        #expect(TrashLocations.isInsideTrash(.local(mount + "/.Trash"), home: home))
+        #expect(TrashLocations.isInsideTrash(.local(mount + "/.Trash/jmeter.log"), home: home))
+        #expect(TrashLocations.isInsideTrash(.local(mount + "/.Trash/deep/folder/x"), home: home))
+        // A second account is a second mount with a trash of its own.
+        let other = "/Users/me/Library/CloudStorage/GoogleDrive-other@gmail.com"
+        #expect(TrashLocations.isInsideTrash(.local(other + "/.Trash/notes.txt"), home: home))
+        // The synced content beside it is an ordinary browsable folder.
+        #expect(!TrashLocations.isInsideTrash(.local(mount + "/My Drive"), home: home))
+    }
+
+    @Test("a .Trash the user made inside their own Drive folder is not a trash")
+    func nestedCloudStorageTrashIsNotInside() {
+        // The mount's trash is exactly one level below the CloudStorage root. A folder the user
+        // named `.Trash` deeper in their Drive is ordinary content, and reading it as a trash would
+        // silently turn F8 there into a permanent delete — the expensive direction to be wrong in.
+        let home = "/Users/me"
+        let mount = "/Users/me/Library/CloudStorage/GoogleDrive-me@gmail.com"
+        #expect(!TrashLocations.isInsideTrash(.local(mount + "/My Drive/.Trash"), home: home))
+        #expect(!TrashLocations.isInsideTrash(.local(mount + "/My Drive/.Trash/x.txt"), home: home))
+        // And the CloudStorage root itself has no trash — a `.Trash` there belongs to no mount.
+        #expect(!TrashLocations.isInsideTrash(
+            .local("/Users/me/Library/CloudStorage/.Trash"), home: home
         ))
     }
 
@@ -131,6 +172,47 @@ struct TrashLocationsTests {
                 VFSPath.local(temp.path("Volumes/Backup/.Trashes/501"))
             ]
         )
+    }
+
+    @Test("every provider mount contributes its own trash, one per account")
+    func enumeratesCloudStorageTrashes() throws {
+        let temp = try TempTree()
+        defer { temp.cleanup() }
+        try temp.makeDir(".Trash")
+        let cloud = "Library/CloudStorage"
+        try temp.makeDir("\(cloud)/GoogleDrive-a@gmail.com/.Trash")
+        try temp.makeDir("\(cloud)/GoogleDrive-b@gmail.com/.Trash")
+        // A mount that has had nothing deleted on it yet has no `.Trash` and contributes nothing —
+        // the same "only what exists" rule the volumes follow. Probed: a freshly connected Drive
+        // account mounts without one.
+        try temp.makeDir("\(cloud)/Dropbox")
+
+        let directories = SidebarLocations.trashDirectories(
+            home: temp.root.path,
+            volumes: [],
+            uid: 501
+        )
+        #expect(
+            directories == [
+                VFSPath.local(temp.path(".Trash")),
+                VFSPath.local(temp.path("\(cloud)/GoogleDrive-a@gmail.com/.Trash")),
+                VFSPath.local(temp.path("\(cloud)/GoogleDrive-b@gmail.com/.Trash"))
+            ]
+        )
+    }
+
+    @Test("a Mac with no sync client contributes no provider trashes")
+    func noCloudStorageDirectoryIsNotAnError() throws {
+        let temp = try TempTree()
+        defer { temp.cleanup() }
+        try temp.makeDir(".Trash")
+        // `~/Library/CloudStorage` does not exist at all until some provider creates it.
+        let directories = SidebarLocations.trashDirectories(
+            home: temp.root.path,
+            volumes: [],
+            uid: 501
+        )
+        #expect(directories == [VFSPath.local(temp.path(".Trash"))])
     }
 
     @Test("the boot volume is skipped so the home trash is never listed twice")

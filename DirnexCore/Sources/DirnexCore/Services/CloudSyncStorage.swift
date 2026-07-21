@@ -5,10 +5,17 @@ import Foundation
 ///
 /// It touches the filesystem, so per §2 it lives in `DirnexCore` beside `FinderTagStorage` — the
 /// other core service that reaches past `VFSBackend` to a local path. Every entry point is
-/// synchronous and blocking, and the panel drives it off the main thread: one read was **measured at
-/// ~24 µs** — over twice a tag's `getxattr` — which is ~2.5 s across a 100k-row directory, against
-/// M1's 150 ms budget for opening one. So the badge is filled from a cache afterwards and never
-/// folded into `LocalBackend.listDirectory`, exactly as the tags column is not.
+/// synchronous and blocking, and the panel drives it off the main thread. So the badge is filled from
+/// a cache afterwards and never folded into `LocalBackend.listDirectory`, exactly as the tags column
+/// is not.
+///
+/// **The cost is two orders of magnitude apart depending on the file, and only the expensive case
+/// matters.** Re-measured 2026-07-22 against live iCloud Drive and a streaming-mode Google Drive: a
+/// read on an ordinary local file is ~29 µs, but a read on an item *inside* a File Provider domain is
+/// **650–1000 µs warm** — it is a round trip to the provider, not a `stat`. The original ~24 µs
+/// figure was measured on a non-cloud file and so described the one case the directory gate below
+/// skips entirely. Budget on the real number: a 5000-row cloud folder is ~3–5 s of background
+/// scanning, not 120 ms.
 ///
 /// **A fresh `URL` per read, always, and this is not a style preference.** `NSURL` caches resource
 /// values on the instance: probing a live download by polling one `URL` object reported
@@ -48,17 +55,27 @@ public enum CloudSyncStorage {
     /// Whether this directory belongs to a cloud provider at all — **the gate that keeps this
     /// feature free for everyone who isn't looking at a cloud folder.**
     ///
-    /// One read (~24 µs) answers for the whole directory, so an ordinary folder of 100k rows skips
-    /// 100k reads (~2.5 s) rather than performing them all to conclude nothing. This works because a
-    /// cloud folder *is itself* a cloud item: probed, `~/Library/Mobile Documents` and every
-    /// directory under it report `isUbiquitousItem == true`.
+    /// One read answers for the whole directory, so an ordinary folder of 100k rows skips 100k reads
+    /// rather than performing them all to conclude nothing — and since the per-row read inside a
+    /// provider costs ~700 µs rather than the ~29 µs a local file does, this gate is worth far more
+    /// than the original measurement suggested. It works because a cloud folder *is itself* a cloud
+    /// item: probed, `~/Library/Mobile Documents` and every directory under it report
+    /// `isUbiquitousItem == true`.
     ///
-    /// The `~/Library/CloudStorage` clause is deliberate insurance and is **not** verified: that is
-    /// where third-party providers (Dropbox, Google Drive, OneDrive) mount, none was installed to
-    /// probe against, and the plan's own wording is "where available". If such a provider answers
-    /// the per-file attributes but does not mark its directories ubiquitous, this keeps the badge
-    /// working; if it marks neither, the scan runs once per folder visit and finds nothing, which
-    /// costs a folder-sized read and no correctness.
+    /// **The `~/Library/CloudStorage` clause is now verified** (2026-07-22, against Google Drive —
+    /// the first third-party provider installed here). It turns out to be belt-and-braces rather than
+    /// load-bearing: a File Provider mount reports `isUbiquitousItem == true` on its own, so the
+    /// attribute check above already opens the gate. The prefix stays as insurance for a provider
+    /// that answers per-file attributes without marking its directories.
+    ///
+    /// **What the same probe found that no gate can fix: Google Drive in *mirror* mode has no sync
+    /// status at all.** `My Drive` is then a symlink out to `~/My Drive`, whose files are ordinary
+    /// local files outside any provider domain — every ubiquity key `nil`, no `SF_DATALESS`, no
+    /// xattrs. Finder still badges them, via Google's own `FinderSync` extension, which only Finder
+    /// hosts. So a mirror-mode user correctly sees no badges, and that is the honest answer rather
+    /// than a gap: streaming mode is where the OS has something to report. Note the gate *does* open
+    /// there (the symlink itself reports ubiquitous), so the scan runs and finds nothing — cheap,
+    /// because those reads take the ~29 µs local-file path, not the provider round trip.
     public static func isCloudDirectory(_ path: VFSPath) -> Bool {
         guard path.backend == .local else { return false }
         if attributes(forPOSIXPath: path.path).isUbiquitous { return true }

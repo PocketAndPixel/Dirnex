@@ -1,6 +1,6 @@
-# Dirnex — build history (M0 → M9)
+# Dirnex — build history (M0 → M10)
 
-The shipped record of Dirnex's first nine milestones, 2026-07-05 → 2026-07-21: the
+The shipped record of Dirnex's first ten milestones, 2026-07-05 → 2026-07-22: the
 milestone checklists as they were completed, plus the per-pass progress log — what was
 probed, what was decided, what was rejected and why.
 
@@ -5289,3 +5289,140 @@ its tooltip read *"Dirnex 0.0.5-beta.1 is available — click to install"* — t
 channel opt-in survived the probing path. `SULastCheckTime` moved to the launch minute while
 `SUEnableAutomaticChecks` stayed `0`, which is the shape of the fix: the user's answer untouched, the
 badge honest anyway.
+
+
+### M10 — Google Drive and Docs (L)
+
+Reaching the user's Google Docs. Phased along the two depths that actually exist, cheap first
+(decided 2026-07-21). Phase 1 shipped; Phase 2 was **cut** rather than deferred — argued at the
+bottom of this entry.
+
+**Phase 1 — the Desktop mount (no API, no OAuth).**
+
+- [x] **Browse the Google Drive for Desktop mount** — landed 2026-07-21, and **generalized to every
+      provider** rather than matching `GoogleDrive-*`: the scan reads `~/Library/CloudStorage` and
+      takes whatever is mounted there (`<Provider>-<account>`), so Dropbox, OneDrive and Box come
+      free at no extra code. `CloudStorageMounts` (core, 18 tests) discovers and names them; the
+      sidebar's **iCloud section is now "Cloud"** and holds iCloud Drive plus a row per mount, each
+      browsed by the existing `LocalBackend` — no new backend. The section keeps its `icloud` case
+      so persisted collapse state survives the rename.
+
+      Two things worth carrying forward, both in NOTES.md: `~/Library/CloudStorage` lists **without**
+      FDA (unlike `~/Library/Mobile Documents`), and a signed-in Drive account can mount **empty** —
+      probed here, `fileproviderctl dump` said `child:3` while DriveFS's own metadata db held 83
+      items, because the account's roots were never provisioned. An empty mount is a legitimate
+      state, so nothing filters on content.
+
+      Refined the same day, once a reconnected account made the mount real:
+      - **A row opens the mount's single visible child** (`My Drive`) rather than the mount root, so a
+        click reaches the files instead of one folder to step through. "Exactly one visible child" is
+        the condition under which descending hides nothing — an account with Shared drives has two and
+        opens at the root; Dropbox-style providers have many and stay put.
+      - **The path bar roots its trail at the mount**, behind the same `cloud` glyph the sidebar row
+        carries: `☁ Google Drive › My Drive › Job`, not six crumbs of
+        `Macintosh HD › Users › oleg › Library › CloudStorage › GoogleDrive-…`. Every crumb is a
+        real directory, so the trail stays fully clickable. The glyph is the one
+        `installVirtualLabel` already put in front of the Trash, factored out so both spellings of
+        "what kind of place is this" share it.
+      - **iCloud Drive got the same treatment** (`ICloudLocation`, core, 14 tests), because the
+        complaint was identical one level over: a folder opened from the merged listing is a real
+        local directory whose real path runs through container machinery — the "Pages" row's folder
+        is `~/Library/Mobile Documents/com~apple~Pages/Documents`. It now reads
+        `☁ iCloud Drive › Pages › Drafts`, and the **root crumb is clickable**, re-gathering the
+        merge exactly as walking up out of one of its rows does (with the cursor landing on the row
+        the pane came out of). That retires the dead-end label the merge used to get — it earned one
+        as a *results* listing and never behaved like one. Two details:
+        - **The merged root is now editable too** (double-click, Cmd+L), based at the CloudDocs
+          container its writes already resolve to (`writeDirectory`), rather than being the one stop
+          on the way in and out of iCloud Drive where the path goes dead.
+        - **Every public container is a row now, empty or not** — decided 2026-07-21 after the
+          path-bar work put the merge side by side with Finder's. The old rule also demanded a
+          non-empty `Documents`, and **three of the seven folders Finder shows here are empty**
+          (Amadine, Numbers, TextEdit), so they were missing. Between two wrong sets, showing a
+          folder Finder hides is recoverable and hiding one the user can see in Finder is not — it
+          reads as Dirnex having lost them. The ten Finder hides (GarageBand, iMovie, Keynote,
+          QuickTime Player, Automator, Script Editor…) come along, which is the accepted cost.
+          Probed against the real machine with a throwaway harness on the real core: 17 rows, the
+          seven Finder shows among them.
+        - **The app name has a second source.** The cached plist `ICloudDrive.appLibraries()` reads
+          is refused without Full Disk Access *while the container itself still lists* — observed
+          live, where the crumb came out as `com.apple.Pages`. So the OS's own
+          `URLResourceValues.localizedName` is injected as a fallback: non-hermetic, hence in the
+          app, hence a closure the core is handed rather than one it calls (§2).
+      - **The section refreshes live when an account is connected or signed out.** A File Provider
+        mount is not a volume and posts no `NSWorkspace` notification, so this is an FSEvents watcher
+        on `~/Library/CloudStorage` — the parent, never the mounts, which would wake on every synced
+        file.
+- [x] **Open `.gdoc` / `.gsheet` / `.gslides` stubs** — landed 2026-07-21. A Google-native doc on the
+      mount is a tiny JSON file, not bytes. `GoogleDocStub` (core, 16 tests) parses it and builds the
+      editor URL; `GoogleDocLauncher` (app) opens it, the same core-decides-where / app-performs-the-
+      launch split M4 uses for external tools. Real (non-native) Drive files are dataless File-Provider
+      items — the same download-on-open story as M9's iCloud, so the stub read sits *inside* the
+      existing `CloudDownloadPrompt.materialize` wrapper rather than beside it: a stub can itself be
+      unmaterialized, and there is nothing to parse until it is here.
+
+      Three decisions the shape rests on:
+      - **The kind comes from the extension, because the payload cannot say.** The JSON is byte-for-byte
+        the same shape for a Doc and a Sheet, so `.gdoc` → `document`, `.gsheet` → `spreadsheets`,
+        `.gslides` → `presentation` (plus `.gdraw`, `.gform`) is the only signal. The five that live
+        under `docs.google.com/<segment>/d/<id>` are handled and no more: `.gmap`, `.gscript` and
+        friends sit on other hosts with other shapes, and an unhandled suffix falls back to the
+        ordinary open — a working outcome, where a guessed URL is a broken one.
+      - **A failed parse falls through to the default app, it does not raise.** A `.gdoc` whose bytes
+        are not a stub is a real file the user should get to see, so `nil` means "not mine".
+      - **`doc_id` is charset-guarded before it reaches a URL.** The value comes out of a *file's
+        contents* and decides where the app then navigates, so an unconstrained one would let a
+        hostile file choose the host. Real identifiers are `[A-Za-z0-9_-]`; anything else is refused.
+
+      Verified live end to end: 44/44 real stubs across both accounts parse (throwaway harness on the
+      real core), and double-clicking one in the pane opened that exact document in Chrome. The one
+      thing the live pass could **not** settle: a doc belonging to an account the browser is not signed
+      into lands on Google's "You need access" page. `?authuser=<email>` from the stub is carried for
+      that reason and is proven harmless (the successful open accepted it and rewrote to `?tab=t.0`),
+      but this Mac's Chrome profile holds only one of the two accounts, so it is unproven as a *fix*.
+
+      **Unblocked and re-specified 2026-07-21**, once the mount held real content. This bullet used to
+      say the stub "holds a `docs.google.com` URL" — **it does not**, and building against that would
+      have failed at the first file. The real bytes are
+      `{"":"WARNING! …","doc_id":"…","resource_key":"","email":"…"}`, so the URL has to be
+      *constructed* from `doc_id` and the extension. Exactly the failure mode §2's probe-first rule
+      exists to catch; NOTES.md carries the format.
+- [x] **The mount's trash, and its sync badges** — landed 2026-07-22, both from the same report: a file
+      deleted from Google Drive sat in Finder's Trash and not in Dirnex's. Every `~/Library/CloudStorage`
+      mount carries **its own trash**, `<mount>/.Trash`, one per account and the same shape as the
+      iCloud one M9 found a day earlier — which is the lesson: "how many trashes are there" is answered
+      per *file provider*, not once. It needs no FDA, it must sit exactly one level below the
+      CloudStorage root (a `.Trash` deeper inside someone's Drive is ordinary content, and reading it
+      as a trash would turn F8 there into a permanent delete), and Put Back cannot work there for the
+      same reason it cannot in iCloud's — the origin is an opaque provider reference with no path in
+      it. Sync **status** then turned out to need no Drive-specific code at all: a *streaming* mount is
+      a real File Provider domain, so every row answers the standard `ubiquitousItem*` keys and carries
+      `SF_DATALESS`, and `CloudItemAttributes.status` classified it unchanged — Drive even reproduces
+      iCloud's `isDownloading`-while-`NotDownloaded` quirk, which the reordered precedence already
+      handled. Verified with one mount of each kind side by side.
+
+Exit: a Google Drive row browses the Desktop mount, a Google Doc opens in the browser, deletes land in
+a trash Dirnex can show, and synced files badge themselves. ✅ met.
+
+**One deliberate cut, decided 2026-07-22: there is no Drive API backend, and Phase 2 is dropped, not
+deferred.** The plan had a second phase — a `GoogleDriveBackend` (OAuth2 loopback/PKCE, refresh token
+in the Keychain, Drive API v3 mirroring the M5 SFTP split), plus `files.export` for native Docs, for
+accounts *not* synced to this Mac. Three reasons it went away:
+
+- **It buys a second, worse path to the same files.** Any Drive account the user actually works in is
+  mounted by Drive for Desktop, and Phase 1 browses that through `LocalBackend` — with the OS doing
+  the syncing, the caching and the conflict handling. An API backend would re-implement all of it over
+  HTTP and be slower and less correct at it.
+- **The price was never code.** Browsing a whole Drive needs the *restricted* `drive` /
+  `drive.readonly` scope, which Google grants only behind restricted-scope verification **plus a paid
+  annual CASA security assessment**; the unrestricted `drive.file` scope skips that and cannot list a
+  pre-existing Drive, so it is useless for a file manager. That is a recurring money-and-compliance
+  commitment attached to a feature whose users already have the mount.
+- **It contradicts a standing non-goal.** PLAN.md §1 has said since day one: cloud folders work as
+  folders, no proprietary APIs. Phase 1 honored that and got Dropbox, OneDrive and Box for free by
+  reading the mount directory instead of any vendor's API. Phase 2 was the one place the plan argued
+  against itself.
+
+Native Docs export/import goes with it: `files.export` is an API call, and a user who wants a `.docx`
+has File → Download in the editor the stub already opens. The open question this gated —
+which OAuth scope to buy — is closed by not asking it.

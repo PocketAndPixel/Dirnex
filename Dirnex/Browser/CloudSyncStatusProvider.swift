@@ -6,9 +6,11 @@ import Foundation
 /// "iCloud/provider sync status").
 ///
 /// Deliberately shaped like `FinderTagProvider` — off-main, per-directory, cached, rate-limited,
-/// published by notification — because the problem is the same one, only more so: the core
-/// *measured* one attribute read at ~24 µs, over twice a tag's `getxattr`, so a 100k-row directory
-/// is ~2.5 s of pure reads against M1's 150 ms budget for opening one.
+/// published by notification — because the problem is the same one, only much more so. A read inside
+/// a File Provider domain was **re-measured at 650–1000 µs warm** (2026-07-22, live iCloud Drive and
+/// streaming Google Drive alike): it is a round trip to the provider, so a 5000-row cloud folder is
+/// ~3–5 s of pure reads against M1's 150 ms budget for opening one. `CloudSyncStorage` carries the
+/// numbers and why the ~24 µs this used to quote described the wrong case.
 ///
 /// **What differs from the tags provider, and why it matters more here: the directory gate.** Tags
 /// can be on any file anywhere, so that scan has to look at every row to find out. Cloud items
@@ -17,6 +19,13 @@ import Foundation
 /// which is nearly every folder, on nearly every Mac — skips the per-row scan entirely instead of
 /// performing 100k reads to conclude nothing. That gate is why this feature costs a non-iCloud user
 /// exactly one resource read per folder visit.
+///
+/// **The provider being scanned need not be iCloud, and that is not a hope — it is measured.**
+/// Verified 2026-07-22 against a streaming-mode Google Drive: every row reported the standard
+/// ubiquity attributes, so `CloudItemAttributes.status` classified them with no Drive-specific code,
+/// and the badges matched the filesystem row for row. Even the awkward part transfers — Drive reports
+/// `isDownloading == true` while its downloading *status* still reads `NotDownloaded`, the same lie
+/// iCloud tells and the reason `status` consults the flag before the status.
 @MainActor
 final class CloudSyncStatusProvider {
     static let shared = CloudSyncStatusProvider()
