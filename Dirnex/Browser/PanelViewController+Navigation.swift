@@ -35,7 +35,15 @@ extension PanelViewController {
             // straight to `NSWorkspace` doesn't fail — it blocks whichever app opens it, silently,
             // for as long as the download takes (PLAN.md §M9). Fetch it first, visibly.
             CloudDownloadPrompt.materialize(entry, using: backend, over: view.window) { [weak self] in
-                NSWorkspace.shared.open(entry.path.localURL)
+                // A Google-native document on the Drive mount is a JSON pointer, not bytes
+                // (PLAN.md §M10 Phase 1) — it opens in the browser, and only a file that turns out
+                // not to be one falls through to its default app. The download-first wrapper is
+                // the same one iCloud needs and comes first for the same reason: a stub can itself
+                // be an unmaterialized File Provider item, and there is nothing to parse until it
+                // is here.
+                if !GoogleDocLauncher.open(entry) {
+                    NSWorkspace.shared.open(entry.path.localURL)
+                }
                 // The badge that said "not downloaded" is now wrong. A real directory hears about
                 // the materialization from its watcher; the merged iCloud listing has none, so it
                 // re-gathers here or the arrow stays on a file that is fully local.

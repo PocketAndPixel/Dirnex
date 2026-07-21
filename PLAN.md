@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M9 shipped, M10 Phase 1 in progress · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
+Status: M0–M9 shipped, M10 Phase 1 complete · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
 
 ---
 
@@ -191,11 +191,33 @@ that aren't synced to this Mac.
         mount is not a volume and posts no `NSWorkspace` notification, so this is an FSEvents watcher
         on `~/Library/CloudStorage` — the parent, never the mounts, which would wake on every synced
         file.
-- [ ] **Open `.gdoc` / `.gsheet` / `.gslides` stubs** — a Google-native doc on the mount is a tiny
-      JSON file, not bytes. Parse it (pure, core-tested) and open it in the browser instead of handing
-      the stub to a text viewer, the way M4 hands off to external tools. Real (non-native) Drive files
-      are dataless File-Provider items — the same download-on-open story as M9's iCloud, so that
-      machinery is shared, not rebuilt.
+- [x] **Open `.gdoc` / `.gsheet` / `.gslides` stubs** — landed 2026-07-21. A Google-native doc on the
+      mount is a tiny JSON file, not bytes. `GoogleDocStub` (core, 16 tests) parses it and builds the
+      editor URL; `GoogleDocLauncher` (app) opens it, the same core-decides-where / app-performs-the-
+      launch split M4 uses for external tools. Real (non-native) Drive files are dataless File-Provider
+      items — the same download-on-open story as M9's iCloud, so the stub read sits *inside* the
+      existing `CloudDownloadPrompt.materialize` wrapper rather than beside it: a stub can itself be
+      unmaterialized, and there is nothing to parse until it is here.
+
+      Three decisions the shape rests on:
+      - **The kind comes from the extension, because the payload cannot say.** The JSON is byte-for-byte
+        the same shape for a Doc and a Sheet, so `.gdoc` → `document`, `.gsheet` → `spreadsheets`,
+        `.gslides` → `presentation` (plus `.gdraw`, `.gform`) is the only signal. The five that live
+        under `docs.google.com/<segment>/d/<id>` are handled and no more: `.gmap`, `.gscript` and
+        friends sit on other hosts with other shapes, and an unhandled suffix falls back to the
+        ordinary open — a working outcome, where a guessed URL is a broken one.
+      - **A failed parse falls through to the default app, it does not raise.** A `.gdoc` whose bytes
+        are not a stub is a real file the user should get to see, so `nil` means "not mine".
+      - **`doc_id` is charset-guarded before it reaches a URL.** The value comes out of a *file's
+        contents* and decides where the app then navigates, so an unconstrained one would let a
+        hostile file choose the host. Real identifiers are `[A-Za-z0-9_-]`; anything else is refused.
+
+      Verified live end to end: 44/44 real stubs across both accounts parse (throwaway harness on the
+      real core), and double-clicking one in the pane opened that exact document in Chrome. The one
+      thing the live pass could **not** settle: a doc belonging to an account the browser is not signed
+      into lands on Google's "You need access" page. `?authuser=<email>` from the stub is carried for
+      that reason and is proven harmless (the successful open accepted it and rewrote to `?tab=t.0`),
+      but this Mac's Chrome profile holds only one of the two accounts, so it is unproven as a *fix*.
 
       **Unblocked and re-specified 2026-07-21**, once the mount held real content. This bullet used to
       say the stub "holds a `docs.google.com` URL" — **it does not**, and building against that would

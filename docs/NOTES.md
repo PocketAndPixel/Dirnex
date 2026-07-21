@@ -336,6 +336,24 @@ against a fake.
   note the warning sits under an **empty-string key**. Opening one means *constructing* the URL from
   `doc_id` plus the type implied by the extension (`.gdoc` → `document`, `.gsheet` → `spreadsheets`,
   `.gslides` → `presentation`), not reading a `url` field that isn't there.
+  - **Google's own URL segments are inconsistent, and deriving them costs a broken link.** Three of
+    the five are plural and two are singular: `document`, `spreadsheets`, `presentation`, `drawings`,
+    `forms`. There is no rule; they are a lookup table.
+  - **The stub's JSON is identical across kinds**, so the *extension* is the only thing that says
+    which editor owns the file. That also means the parse must be handed the file name, not just the
+    bytes.
+  - **`doc_id` comes out of a file's contents and goes into a URL the app then opens**, which makes
+    it an injection surface, not a formatting concern — a `doc_id` of `../../…` or one carrying a
+    `?`/`#` re-points the link at somewhere the user never asked for. Real identifiers and resource
+    keys are `[A-Za-z0-9_-]`; anything else is refused outright and the file falls back to opening
+    in its default app.
+  - **A doc opens into whichever Google session the browser already has**, so on a Mac with two
+    Drive accounts mounted, a second-account document lands on "You need access" — for a file the
+    user owns. Observed live 2026-07-21. `?authuser=<email>` (the stub carries the address) is the
+    documented lever and is verified *harmless* — Google accepted it and rewrote the URL to
+    `?tab=t.0` on a successful open — but it could not be verified as a *fix* here, because only one
+    of the two accounts is signed into this Chrome profile. Nothing on the Dirnex side can do better:
+    the handoff is a URL, and which session receives it is the browser's to decide.
 
 ### git
 
