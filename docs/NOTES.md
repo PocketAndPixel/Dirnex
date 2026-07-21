@@ -243,6 +243,36 @@ against a fake.
   no public API**: the original path lives in the trash folder's `.DS_Store`, not in an xattr — a
   trashed file carries only `com.apple.TextEncoding` / `com.apple.provenance`.
 
+### iCloud Drive
+
+- **There is no `.<name>.icloud` stub any more.** Probed 2026-07-21 with `brctl evict`: an evicted
+  file keeps its **real name and real `st_size`** with `st_blocks == 0` and `SF_DATALESS` (0x40000000)
+  in `st_flags`. The `.icloud` stub is the pre-Catalina/iOS shape, and assuming it would have sent a
+  slice chasing a name-rewriting bug that does not exist. The flag rides along in the `stat` a listing
+  already does, so knowing costs nothing — but **reading one byte materializes the file and blocks**
+  (measured 1.1 s for 200 KB), so every byte-touching sweep (recursive sizer, content grep,
+  byte-compare) has to check it or it silently downloads the user's whole cloud drive.
+- **Finder's iCloud Drive is two directories, not one.** `com~apple~CloudDocs` holds the loose files;
+  every iCloud-enabled app's `Documents` folder is a **sibling** under `~/Library/Mobile Documents`,
+  not a child. Only the CloudDocs leaf is TCC-carved-out — the parent and the app containers need
+  Full Disk Access, which is why the M8 row could browse without the grant and the merge cannot.
+- **The app name and icon live in `bird`'s cache, not in the container and not in LaunchServices.**
+  `~/Library/Application Support/CloudDocs/session/containers/<bundle-id>.plist` carries
+  `BRContainerName`, `BRContainerLocalizedNames` and `BRContainerIsDocumentScopePublic` (the cached
+  form of the app's `NSUbiquitousContainers` declaration); the sibling `<bundle-id>/` directory holds
+  the icon PNGs. Three traps: `NSWorkspace.icon(forFile:)` on such a folder returns the **generic
+  folder icon** (byte-identical to `~/Documents`'), so it looks like it works; the public-scope flag
+  appears as both `1` and `true`, in the same file; and the container directory name is the bundle id
+  with **dots replaced by tildes**, so the plist's own inner keys (`com.apple.iWork.Pages`) are not
+  it. LaunchServices is the wrong source regardless — half these apps are iOS-only and not installed.
+  `URLResourceValues.localizedName` on the `Documents` folder *does* return the app name, but it needs
+  the real iCloud item, so it can't be unit-tested and the plist is used instead.
+- **Which containers Finder lists is not derivable.** 17 declare public scope here; Finder shows 7.
+  Nothing separates the sets: not mtimes, not emptiness (two of the seven are empty), not install
+  state, not `bird`'s `client.db` (`app_libraries`, per-zone item counts, tombstones). Don't spend an
+  afternoon on it a second time — Dirnex approximates with "public scope and not empty" and PLAN.md
+  §M9 records why.
+
 ### git
 
 - **`git status --ignored=traditional` already collapses every ignored directory to one row**,

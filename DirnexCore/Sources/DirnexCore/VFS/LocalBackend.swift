@@ -303,7 +303,10 @@ public struct LocalBackend: VFSBackend {
             permissions: UInt16(st.st_mode & 0o777),
             inode: UInt64(st.st_ino),
             symlinkDestination: dest,
-            symlinkTargetKind: targetKind
+            symlinkTargetKind: targetKind,
+            // Free here — the flag rides along in the `stat` the listing already did, so
+            // knowing a file is an evicted cloud placeholder costs no extra syscall.
+            isDataless: (st.st_flags & UInt32(SF_DATALESS)) != 0
         )
     }
 

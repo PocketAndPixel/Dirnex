@@ -129,8 +129,13 @@ public enum SidebarLocations {
     /// enumerate the parent (probed 2026-07-20).
     ///
     /// The path browses through the local backend like any other folder. Because that backend lists
-    /// via a pure `stat` and never opens a file, a dataless `.icloud` placeholder is **not**
-    /// downloaded merely by being listed — it surfaces as its on-disk stub instead (also probed).
+    /// via a pure `stat` and never opens a file, an evicted item is **not** downloaded merely by
+    /// being listed. It is also not a `.<name>.icloud` stub: re-probed 2026-07-21 with `brctl
+    /// evict`, a modern macOS placeholder keeps its real name and size and is marked `SF_DATALESS`,
+    /// which the listing carries as `FileEntry.isDataless` (PLAN.md §M9).
+    ///
+    /// This is only *half* of iCloud Drive. Finder merges this container with every iCloud-enabled
+    /// app's own document folder, which live beside it rather than inside it — see `ICloudDrive`.
     public static func iCloudDrive(
         home: String = NSHomeDirectory(),
         fileManager: FileManager = .default

@@ -136,32 +136,48 @@ on open. M9 makes Dirnex's row the real thing. (Probed 2026-07-21: the app conta
 `Operation not permitted` without Full Disk Access, while CloudDocs itself is TCC-carved-out and reads
 free.)
 
-- [ ] **Dataless placeholder awareness** — an evicted file is a real on-disk stub `.<name>.icloud`
-      that `readdir` sees; the M8 backend lists it under that literal name with the stub's tiny size,
-      not the real name/size. Read the ubiquitous resource keys
-      (`.isUbiquitousItemKey`, `.ubiquitousItemDownloadingStatusKey`, `.ubiquitousItemIsDownloadingKey`)
-      to present the true name, size, and a download-state affordance. Probe how the keys read for a
-      genuinely evicted item first — the M8 machine had none (everything downloaded), which is exactly
-      why the stub-listing quirk never showed there.
+- [x] **Dataless placeholder awareness** — *core landed 2026-07-21.* The premise above was wrong and
+      the probe caught it: there is **no `.<name>.icloud` stub** on this macOS. `brctl evict` leaves
+      the file under its real name with its real `st_size`, `st_blocks == 0` and `SF_DATALESS` set —
+      the `.icloud` stub is the pre-Catalina/iOS shape. So name and size were already right, and the
+      slice is `FileEntry.isDataless`, read for free out of the `stat` the listing already does. The
+      hazard the plan missed is the other direction: a transparent read *materializes* (measured
+      1.1 s for 200 KB of blocked thread), so the recursive sizer, content search and byte-compare
+      must consult the flag before opening anything or they silently pull the whole drive down.
+      *App pass still owed: the row badge.*
 - [ ] **Download on open** — opening or previewing an evicted item fires
       `FileManager.startDownloadingUbiquitousItem(at:)` and waits on the status key rather than handing
       a byte-less stub to the viewer. Pure progress state machine in the core (evicted → downloading →
-      ready), the syscall and the wait in the app.
+      ready), the syscall and the wait in the app. *Core landed 2026-07-21 (`CloudDownloadTracker`);
+      the syscall, the poll and the open path are the app pass.*
 - [ ] **The merged app-container view** — the piece that makes the row match Finder. Union the sibling
       `~/Library/Mobile Documents/<container>/Documents` folders into the iCloud listing. Needs Full
-      Disk Access (those `Documents/` are TCC-gated — probed) wired into the **M7 FDA flow**, and it
-      cuts against §2's "a pane shows one real directory": decide the VFS shape — a `CompositeBackend`-
-      style union keyed off a synthetic path (the NOTES.md lesson for browsing a second backend), or a
-      virtual merged listing. Degrade to the M8 loose-files-only view when FDA is ungranted, never a
-      dead row.
-- [ ] **App-name / icon resolution** — Finder labels `com~apple~Pages` as "Pages" with the app's
-      icon; a raw container id is not a name a user recognises. Probe where macOS keeps that mapping
-      (LaunchServices, or the container's own `.com.apple.mobile_container_manager` metadata / a
-      `.<app>.plist`) before wiring — do not guess the format.
+      Disk Access (those `Documents/` are TCC-gated — probed) wired into the **M7 FDA flow**.
+      *VFS shape decided 2026-07-21: a **virtual merged listing**, exactly the M8 Trash's shape — a
+      results tab whose entries carry real on-disk paths, so stepping into "Pages" lands in an
+      ordinary local folder and no operation needs a synthetic path space. Core landed
+      (`ICloudDrive`); the tab, the sidebar row and the FDA degrade are the app pass.*
+- [x] **App-name / icon resolution** — *core landed 2026-07-21.* Probed rather than guessed, and both
+      guesses in the bullet above were wrong: the mapping is not in the container, and
+      `NSWorkspace.icon(forFile:)` returns the **generic folder icon** for these. Both live in
+      `~/Library/Application Support/CloudDocs/session/containers/` — `<bundle-id>.plist` carries
+      `BRContainerName`, `BRContainerLocalizedNames` and `BRContainerIsDocumentScopePublic`, and the
+      sibling `<bundle-id>/` directory caches the icon PNGs. The cache beats LaunchServices because
+      half these apps are iOS-only and not installed on this Mac.
 
 Exit: the iCloud row shows what Finder's shows — loose files *and* the per-app document folders; an
 evicted file downloads on open instead of opening empty; and a machine without FDA degrades to the
 loose-files view M8 already ships, rather than an error.
+
+**One deviation, decided 2026-07-21: "what Finder's shows" is matched approximately, on purpose.**
+Which app containers Finder lists is not derivable from anything public. This Mac declares 17
+containers `BRContainerIsDocumentScopePublic` and Finder shows 7 of them, and nothing separates the
+two sets — not directory mtimes, not emptiness, not whether the app is installed, not `bird`'s own
+`client.db` (`app_libraries`, per-zone item counts). Dirnex's rule is **public scope, and the folder
+is not empty** (`.DS_Store` not counting, the same reason the M8 Empty Trash confirmation ignores it).
+Verified live against the screenshotted Finder listing: that yields Curve, Pages, Preview, Shortcuts —
+Finder's set minus TextEdit, Amadine and Numbers, all three of which are *empty folders*. Missing an
+empty folder is a smaller lie than showing the ten empty app folders Finder deliberately hides.
 
 #### M10 — Google Drive and Docs (L)
 
