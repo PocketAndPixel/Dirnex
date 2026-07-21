@@ -8,14 +8,16 @@ undo.
 See [PLAN.md](PLAN.md) for architecture decisions and what's planned next, and
 [docs/HISTORY.md](docs/HISTORY.md) for the milestone-by-milestone build log.
 
-**Status:** M0–M9 shipped — dual-pane browsing, the queued/undoable operation
+**Status:** M0–M10 shipped — dual-pane browsing, the queued/undoable operation
 engine, the ⌘K palette, archive and SFTP/SMB backends, the Mac-native layer
 (Finder tags, Git awareness, Quick Look, AppleScript + Shortcuts), a notarized
 Developer ID release pipeline with Sparkle beta/stable channels, a
 keyboard-drivable sidebar you can shape — pins, folds, Recents, and a merged
-Trash with Put Back — and an iCloud Drive that matches Finder's: the per-app
+Trash with Put Back — an iCloud Drive that matches Finder's: the per-app
 document folders merged in, and evicted files that download on open instead of
-opening empty.
+opening empty — and every cloud mount under `~/Library/CloudStorage` (Google
+Drive, Dropbox, OneDrive, Box) browsed as a folder, with its own trash, sync
+badges, and Google Docs that open in the browser.
 
 ## Requirements
 
