@@ -68,6 +68,17 @@ final class PanelTab {
     /// `searchQuery` (search tabs aren't persisted).
     var customTitle: String?
 
+    /// Drop everything that describes *results* rather than a place: the chip label and the query
+    /// behind "Save Search…". Called when the tab stops showing a results listing — navigating a
+    /// Trash or search tab to a real folder — because those three outlive the listing otherwise,
+    /// and a tab sitting in Home still chipped "Trash" is a lie about where the pane is (found
+    /// live). Also what a tab reset to Home reaches for when its directory vanishes.
+    func clearResultsIdentity() {
+        customTitle = nil
+        searchQuery = nil
+        searchScope = nil
+    }
+
     init(panel: Panel) {
         self.panel = panel
         history = NavigationHistory(initialPath: panel.path)

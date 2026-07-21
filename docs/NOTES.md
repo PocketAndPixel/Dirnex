@@ -211,6 +211,17 @@ against a fake.
   reads as "external volumes have no Trash," a wrong answer in the quiet direction. It resolves `/`,
   `/System/Volumes/Data` and the `/Volumes/<name>` root symlink all to `~/.Trash`, which is why the
   boot volume is skipped when merging (or the home trash is listed two or three times).
+- **A virtual location that carries `.write` will light up every write command.** The merged Trash
+  needs `.write` so `deleteStrategy` resolves to `.permanent` — and that alone enabled New Folder and
+  Paste in a Trash tab, over flows that then bail out at their own `isVirtualDirectory` guard. A
+  capability granted for *one* operation is read by all of them; gate the ones that need a real
+  directory on the directory, not on the capability.
+- **Rebuilding revokes Full Disk Access.** The TCC grant is keyed to the binary, so the first Trash
+  click after an `xcodebuild` raises the onboarding sheet even though the toggle still looks on in
+  System Settings. Re-granting needs a *relaunch* to take effect (the running process keeps the old
+  denial), and `sqlite3 /Library/Application\ Support/com.apple.TCC/TCC.db "select auth_value from
+  access where service='kTCCServiceSystemPolicyAllFiles' and client='com.dirnex.Dirnex'"` reads the
+  live state — `2` is granted, `0` denied.
 - **`~/.Trash` needs Full Disk Access** (`NSCocoaErrorDomain` 257 without it), and **"Put Back" has
   no public API**: the original path lives in the trash folder's `.DS_Store`, not in an xattr — a
   trashed file carries only `com.apple.TextEncoding` / `com.apple.provenance`.

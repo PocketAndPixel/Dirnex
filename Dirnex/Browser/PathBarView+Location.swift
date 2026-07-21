@@ -24,10 +24,17 @@ extension PathBarView {
         }
     }
 
-    /// Render a virtual location (Spotlight results) as a single, non-clickable label — there is
-    /// no ancestor chain to walk into, so the breadcrumb affordance would only mislead.
+    /// Render a virtual location (Spotlight results, Recents, the merged Trash) as a single,
+    /// non-clickable label — there is no ancestor chain to walk into, so the breadcrumb affordance
+    /// would only mislead.
+    ///
+    /// The Trash names itself instead of borrowing the results phrasing: "Results for Trash" reads
+    /// as a search someone ran, which is neither what it is nor how it behaves (it re-lists after a
+    /// delete, where a search snapshot doesn't).
     func rebuildVirtualLabel(for path: VFSPath) {
-        installVirtualLabel("🔍  Results for \(path.lastComponent)")
+        installVirtualLabel(
+            path.backend == .trash ? "🗑  Trash" : "🔍  Results for \(path.lastComponent)"
+        )
     }
 
     /// Render a browsed archive as a full, clickable breadcrumb trail — styled exactly like a

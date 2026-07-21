@@ -148,8 +148,13 @@ extension PanelViewController: NSMenuItemValidation {
     /// capabilities (PLAN.md §M5): a virtual pane (search results or a browsed archive) reports
     /// `.read`, so `.write` is absent and the op greys out; a real disk (and a future writable
     /// SFTP mount) reports `.write`.
+    ///
+    /// `isVirtualDirectory` is the second half because the merged Trash is the one virtual location
+    /// that *does* carry `.write` — it holds real files that can be deleted — while having no
+    /// directory to create or paste into. Without this, New Folder lit up in a Trash tab and the
+    /// flow behind it bailed out silently at its own `isVirtualDirectory` guard.
     private var canWriteHere: Bool {
-        backend.capabilities(for: panel.path).contains(.write)
+        backend.capabilities(for: panel.path).contains(.write) && !isVirtualDirectory
     }
 
     /// This pane can rename an item in place — the owning backend advertises `.rename`.

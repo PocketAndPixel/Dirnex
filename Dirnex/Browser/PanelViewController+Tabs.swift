@@ -184,9 +184,7 @@ extension PanelViewController {
         tab.history = NavigationHistory(initialPath: path)
         tab.hasLoaded = false
         tab.cursorOnParentRow = false
-        tab.searchQuery = nil
-        tab.searchScope = nil
-        tab.customTitle = nil
+        tab.clearResultsIdentity()
     }
 
     func selectNextTab() {

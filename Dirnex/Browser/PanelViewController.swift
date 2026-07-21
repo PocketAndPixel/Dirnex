@@ -368,6 +368,11 @@ final class PanelViewController: NSViewController {
         // from a history trail, so leaving one starts fresh. An SFTP location *is* re-listable, so
         // it keeps a normal back/forward trail like a local directory.
         let wasVirtual = panel.path.backend != .local && !panel.path.backend.isSFTP
+        // Captured alongside it: was this tab showing a *results* listing? Its chip label and the
+        // query behind "Save Search…" describe the results, not a place, so arriving at a real
+        // directory has to drop them — otherwise clicking Home out of the Trash lands in the home
+        // folder with the tab still chipped "Trash".
+        let wasResults = isResultsListing
         // Captured before the load (`setListing` makes `panel.path` the destination): the departed
         // directory and its marks, so leaving a folder with marks records the loss against *that*
         // folder — undo restores them on return; a same-directory reload keeps marks, so it no-ops.
@@ -393,6 +398,7 @@ final class PanelViewController: NSViewController {
                 // Land on a real entry; only an empty directory parks the cursor on `..`.
                 cursorOnParentRow = panel.isEmpty && panel.parentPath != nil
                 tabs[tabIndex].hasLoaded = true
+                if wasResults { tabs[tabIndex].clearResultsIdentity() }
                 if wasVirtual {
                     // Leaving a virtual results pane for a real directory starts a fresh trail —
                     // the synthetic `.search` path can't be re-listed, so it must never enter the

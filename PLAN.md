@@ -499,6 +499,32 @@ reported "The Trash is empty". No errors in any of the three run logs.
   is a claim about the Trash where the truth is a claim about permission — the same failure shape as
   the filtered-out size row in docs/NOTES.md.
 
+**Follow-up pass (2026-07-21), from using it:** three places where the Trash tab was still wearing
+the results tab's clothes.
+
+- **A results tab's chip outlived its listing.** `customTitle` (and the query behind "Save Search…")
+  was set when the tab opened and cleared only when a vanished directory reset the tab — so clicking
+  Home out of the Trash landed in the home folder with the tab still labelled "Trash". `navigate`
+  now drops the whole results identity on arrival, captured *before* the load like `wasVirtual`
+  beside it. Search and Recents tabs had the same bug; it is only glaring on the Trash, whose label
+  is a place name rather than a query.
+- **The Trash gets its own two context menus** rather than the folder ones greyed down. What a
+  trashed file offers is a different list, not a subset: no rename (the container advertises no
+  `.rename`), no Pack or Paste, and a destructive tail that says `Delete Immediately…` — F8 in a
+  trash already degrades to a confirmed permanent delete, so "Move to Trash" was naming the wrong
+  operation. The background menu is **Empty Trash…** alone: the ordinary background menu is about
+  the folder you are standing in, and the merged Trash is several folders on several volumes.
+- **`canWriteHere` now also requires a real directory.** The merged listing is the one virtual
+  location carrying `.write` (it holds real files that can really be deleted), which lit New Folder
+  and Paste up in a Trash tab over flows that bail out at their own `isVirtualDirectory` guard —
+  offering an operation that silently does nothing.
+- **The path bar says `🗑 Trash`**, not "🔍 Results for Trash": the Trash is not a search someone
+  ran, and it does not behave like one (it re-lists after a delete, where a snapshot does not).
+
+Verified live on the real binary: Recents → Home and Trash → Home both relabel the chip to `oleg`;
+both Trash menus render as designed with every item live; Empty Trash… from the pane's background
+opens the counted confirmation; New Folder is greyed in the File menu inside the Trash.
+
 #### M9 — iCloud Drive, for real (M)
 
 M8's iCloud row browses the on-disk `com~apple~CloudDocs` container faithfully — the loose files a
