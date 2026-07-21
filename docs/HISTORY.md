@@ -5239,3 +5239,53 @@ Verified live against the screenshotted Finder listing: that yields Curve, Pages
 Finder's set minus TextEdit, Amadine and Numbers, all three of which are *empty folders*. Missing an
 empty folder is a smaller lie than showing the ten empty app folders Finder deliberately hides.
 
+
+### The update indicator that could never light (2026-07-21, VERIFIED LIVE)
+
+A defect in shipped M7, reported from the outside: `0.0.5-beta.1` had been published two days
+earlier, the installed app was `0.0.4` (build 3), "receive beta updates" was on — and the titlebar
+carried no badge.
+
+**Everything the feature owns was correct.** The appcast had the beta item at `sparkle:version` 4
+on `<sparkle:channel>beta</sparkle:channel>`, above the installed build 3;
+`Dirnex.pref.receiveBetaUpdates` was `1`, so `allowedChannels(for:)` would have returned `["beta"]`;
+`UpdateAvailability` and the indicator button were doing exactly what they were written to do. The
+answer was one line of the *installed app's* defaults:
+
+```
+SUEnableAutomaticChecks = 0
+```
+
+Sparkle's first-run permission prompt had been answered "no" once, months of releases ago. It never
+asks again. With automatic checks off no scheduled check runs, so `didFindValidUpdate` had never
+fired since launch, and `availability` — whose only writers are those callbacks — had never left
+`.none`. An indicator faithfully rendering state that nothing updates.
+
+Reading the installed binary's defaults rather than reasoning about the code is what found it in one
+step; it is now the first move in NOTES.md when an update fails to surface.
+
+**The fix: stop depending on Sparkle's scheduler.** Turning `SUEnableAutomaticChecks` back on was
+rejected — it overrides a user's explicit answer, and Sparkle's scheduled check raises its full
+update dialog on its own, which is a window the user did not ask for. `SPUUpdater` has exactly the
+right tool instead: `checkForUpdateInformation()`, the *probing* check. It fetches the real appcast
+through the same delegate — so the beta opt-in still applies — and presents no UI at all; all it does
+is drive `didFindValidUpdate` / `updaterDidNotFindUpdate`, which is precisely what the indicator
+reads. Clicking the badge still opens Sparkle's normal install flow. So: a silent probe at launch and
+every 8 hours lights the badge, and the only window that ever appears is one the user opened.
+
+Core: `UpdateCheckSchedule` (`isDue(lastCheck:now:)`, `delayUntilNextCheck(lastCheck:now:)`), 8 tests.
+The arithmetic is the part that can be wrong in the quiet direction — a `lastCheck` in the future
+from clock skew must count as *due* rather than hold the schedule shut for the length of the skew,
+and the delay must clamp into `0...interval` so an overdue probe cannot ask a `Timer` for a negative
+interval. App: `AppUpdater.startProbing()` and a one-shot `Timer` in `.common` mode that re-derives
+its own successor, plus a `didBecomeActive` catch-up — a timer does not fire while the machine is
+asleep, so a laptop opened after a night comes back with an armed timer that is hours overdue and
+still waiting. The last-probe date is deliberately **not** persisted: the launch probe is
+unconditional, so nothing outside the process ever reads it.
+
+Verified live: a Debug build (`CFBundleVersion` 1) launched from a shell with
+`SUEnableAutomaticChecks` still `0` raised the accented badge with no dialog anywhere on screen, and
+its tooltip read *"Dirnex 0.0.5-beta.1 is available — click to install"* — the beta item, so the
+channel opt-in survived the probing path. `SULastCheckTime` moved to the launch minute while
+`SUEnableAutomaticChecks` stayed `0`, which is the shape of the fix: the user's answer untouched, the
+badge honest anyway.

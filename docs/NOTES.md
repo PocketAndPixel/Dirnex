@@ -306,6 +306,25 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   `github.event_name` reads as the caller's under `workflow_call`; use **`github.ref_type`**.
 - **Sparkle ranks by `CFBundleVersion`**, which must stay globally monotonic *across* channels or
   an old beta outranks a new stable.
+- **One "no" to Sparkle's first-run prompt disables update checking forever, silently.** The prompt
+  writes `SUEnableAutomaticChecks = 0` and never asks again, so no scheduled check ever runs, no
+  `didFindValidUpdate` ever fires, and the titlebar indicator stays dark through every release —
+  while the feed, the channel opt-in and the indicator code are all provably correct. Found by
+  reading the *installed* app's defaults
+  (`defaults read com.dirnex.Dirnex | command grep '^ *SU'`), which is the first thing to check
+  when an update does not surface; `SULastCheckTime` there is the proof a check actually ran.
+  Dirnex therefore does not depend on Sparkle's scheduler at all: `AppUpdater` runs its own
+  `checkForUpdateInformation()` — the *probing* check, which fetches the real appcast through the
+  same delegate (so `allowedChannels` still applies) but presents **no UI whatsoever** — at launch
+  and every 8 h, and only lights the indicator. That leaves the user's answer to the prompt intact
+  (nothing pops up uninvited) while making the badge honest. Two Sparkle constraints the probe has
+  to respect: it is a no-op while `sessionInProgress`, so a probe landing during a user-initiated
+  check must still count as taken or a zero-delay retry spins; and skipped versions are not found,
+  which is what keeps `UpdateAvailability.afterUserChoice(.skip)` from being re-raised on the next
+  probe.
+- **A timer does not fire while the Mac sleeps**, so an 8 h probe armed before a lid close is hours
+  overdue on wake and still waiting for its original fire date. The catch-up is
+  `NSApplication.didBecomeActiveNotification` re-asking the schedule, not a shorter interval.
 - **A `GITHUB_TOKEN`-pushed tag does not re-trigger `on: push`** — which is exactly why the beta
   workflow calls `release.yml` as a reusable workflow instead of pushing a tag and hoping the tag
   trigger fires.
