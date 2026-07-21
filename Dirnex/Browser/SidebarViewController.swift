@@ -12,6 +12,9 @@ protocol SidebarViewControllerDelegate: AnyObject {
     /// saved search does (PLAN.md §M8 "Recents row … Finder's is a saved search"). It carries no
     /// model, so it is a bare callback rather than a `didActivate…(_:)` with a payload.
     func sidebarDidActivateRecents(_ sidebar: SidebarViewController)
+    /// The Trash row was picked — show every volume's trash as one merged listing (PLAN.md §M8).
+    /// Like Recents it carries no model: the Trash is not a single directory to navigate to.
+    func sidebarDidActivateTrash(_ sidebar: SidebarViewController)
     /// A saved-server row was picked — connect (SFTP) or mount (SMB) it and browse it in the active
     /// pane (PLAN.md §M5 "click → connect/mount + navigate").
     func sidebar(_ sidebar: SidebarViewController, didActivateServer server: ServerConnection)
@@ -42,6 +45,10 @@ final class SidebarViewController: NSViewController {
     /// `private`) so the saved-search and server management extensions in companion files can read
     /// the clicked row.
     enum Row {
+        /// The Trash row: a fixed system row that opens every volume's trash as one merged listing
+        /// (PLAN.md §M8). Like `.recents` it carries nothing — the Trash is not one directory, so
+        /// there is no path to hold.
+        case trash
         /// A section header. Carries the section's *identity*, not its title — the drag code used
         /// to find Favorites by comparing header text, which made a user-visible string
         /// load-bearing, and the fold state keys off the same case (PLAN.md §M8).
@@ -80,7 +87,7 @@ final class SidebarViewController: NSViewController {
         /// at a directory.
         var path: VFSPath? {
             switch self {
-            case .header, .recents, .savedSearch, .server, .tag, .allTags: return nil
+            case .header, .recents, .trash, .savedSearch, .server, .tag, .allTags: return nil
             case let .favorite(entry): return entry.path
             case let .iCloud(path): return path
             case let .volume(volume): return volume.path
@@ -244,6 +251,10 @@ final class SidebarViewController: NSViewController {
         append(.servers, items: ServerConnectionStore.load().connections.map(Row.server), to: &rows)
         // Tags come last, where Finder puts them, and only when View ▸ Show Tags is on.
         append(.tags, items: tagRows(), to: &rows)
+        // The Trash closes the sidebar, where the Dock puts it (PLAN.md §M8). Always present: every
+        // Mac has one, and whether it can be read is the pane's answer to give, not a reason to
+        // hide the row.
+        append(.trash, items: [.trash], to: &rows)
         self.rows = rows
         tableView.reloadData()
 
@@ -356,6 +367,8 @@ final class SidebarViewController: NSViewController {
         guard rows.indices.contains(index) else { return }
         if case .recents = rows[index] {
             delegate?.sidebarDidActivateRecents(self)
+        } else if case .trash = rows[index] {
+            delegate?.sidebarDidActivateTrash(self)
         } else if let savedSearch = rows[index].savedSearch {
             delegate?.sidebar(self, didActivateSavedSearch: savedSearch)
         } else if let server = rows[index].server {
@@ -404,6 +417,8 @@ extension SidebarViewController: NSTableViewDelegate {
             return header
         case .recents:
             return recentsCell()
+        case .trash:
+            return trashCell()
         case let .favorite(entry):
             return favoriteCell(for: entry)
         case let .iCloud(path):

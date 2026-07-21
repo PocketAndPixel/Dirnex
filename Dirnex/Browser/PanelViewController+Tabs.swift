@@ -119,7 +119,7 @@ extension PanelViewController {
     /// so instead duplicate the results snapshot (marked already-loaded, carrying the query) so
     /// `+` just opens another view of the same hits with no error.
     private func newTab(basedOn currentTab: PanelTab) -> PanelTab {
-        guard isSearchResults else {
+        guard isResultsListing else {
             return PanelTab(
                 path: panel.path,
                 sort: panel.model.sort,

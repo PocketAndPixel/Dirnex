@@ -76,8 +76,21 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
     /// `.read` so the pane greys writes rather than offering ones it can't perform. Cheap by design
     /// (no archive mount, no network), like `volumeIdentifier(for:)`.
     func capabilities(for path: VFSPath) -> VFSCapabilities {
-        if path.backend == .local { return local.capabilities }
+        if path.backend == .local {
+            // Standing in a Trash, "move to Trash" is not a weaker delete — it is *no* delete:
+            // `FileManager.trashItem` on an already-trashed item reports success and does nothing
+            // (probed 2026-07-21). Withdrawing the capability is the whole of the inversion the
+            // Trash needs — the M5 degradation then turns F8 into a confirmed permanent delete,
+            // with no branch in the delete path and no way for a caller to forget to ask.
+            return TrashLocations.isInsideTrash(path)
+                ? local.capabilities.subtracting(.trash)
+                : local.capabilities
+        }
         if path.backend.isSFTP { return sftpBackend(for: path.backend)?.capabilities ?? .read }
+        // The merged Trash listing is writable-but-Trash-less for the same reason, one level up:
+        // its entries are real files that can only be deleted for good. Everything else virtual (an
+        // archive browse, a search-results listing) is read-only.
+        if path.backend == .trash { return [.read, .write] }
         return .read
     }
 

@@ -11,10 +11,10 @@ extension PanelViewController {
     func openCurrentEntry() {
         guard let entry = panel.currentEntry else { return }
         if let target = panel.openTarget(for: entry) {
-            // A folder opened from a search-results tab must not replace the results in place —
-            // route it elsewhere so the hits survive (PLAN.md §M4 search).
-            if isSearchResults {
-                openSearchResultDirectory(target)
+            // A folder opened from a results tab must not replace the results in place — route it
+            // elsewhere so the listing survives (PLAN.md §M4 search, §M8 Recents and Trash).
+            if isResultsListing {
+                openResultDirectory(target)
             } else {
                 navigate(to: target)
             }
@@ -31,14 +31,14 @@ extension PanelViewController {
         // in place, so it's a no-op rather than opening a meaningless local URL.
     }
 
-    /// Open a directory picked from a search-results tab. The results are a snapshot the user is
-    /// browsing, so opening one of the found folders never overwrites this tab: it lands in the
-    /// **other** pane as a new tab (the natural "found it here, go look at it there" flow), or —
+    /// Open a directory picked from a results tab (search hits, Recents, or the Trash). The listing
+    /// is what the user is browsing, so opening one of its folders never overwrites this tab: it
+    /// lands in the **other** pane as a new tab (the "found it here, go look at it there" flow), or —
     /// when the window has no counterpart pane — as a new tab beside the results in this one.
     ///
     /// The `focusOpenedSearchDirectory` preference (default off) decides whether focus follows the
     /// opened folder or stays on the results so more hits can be opened in turn.
-    private func openSearchResultDirectory(_ target: VFSPath) {
+    private func openResultDirectory(_ target: VFSPath) {
         let focusFollows = AppPreferences.shared.focusOpenedSearchDirectory
         if let destination = host?.panelCounterpart(of: self) {
             // Always show the folder in the other pane; only move window focus there on request.

@@ -147,6 +147,21 @@ struct LocalBackendWriteTests {
         try? FileManager.default.removeItem(atPath: landed.path)
     }
 
+    @Test("trashing an item that is already in the Trash is refused, not silently ignored")
+    func trashInsideTrashThrows() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        try tree.makeDir(".Trashes/501")
+        try tree.writeFile(".Trashes/501/junk.txt", contents: "x")
+
+        // The real `FileManager.trashItem` reports *success* here and does nothing (probed
+        // 2026-07-21) — it hands back the path it was given. Left alone, an F8 in the Trash would
+        // look like it worked while the file stayed put, so the backend refuses instead.
+        let alreadyTrashed = tree.vfsPath(".Trashes/501/junk.txt")
+        #expect(throws: VFSError.self) { try backend.trashItem(at: alreadyTrashed) }
+        #expect(FileManager.default.fileExists(atPath: alreadyTrashed.path))
+    }
+
     @Test("trashing a nonexistent path throws")
     func trashMissingThrows() throws {
         let tree = try TempTree()

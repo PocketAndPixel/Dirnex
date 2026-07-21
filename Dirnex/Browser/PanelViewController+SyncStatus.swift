@@ -35,7 +35,7 @@ extension PanelViewController {
     /// its badges are as real as any folder's.
     var isSyncStatusVisible: Bool {
         guard AppPreferences.shared.showSyncStatus else { return false }
-        return panel.path.backend == .local || isSearchResults
+        return panel.path.backend == .local || isResultsListing
     }
 
     // MARK: - Command (dispatched to the focused pane via the responder chain)

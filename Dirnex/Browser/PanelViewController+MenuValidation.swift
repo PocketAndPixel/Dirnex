@@ -82,7 +82,7 @@ extension PanelViewController: NSMenuItemValidation {
     }
 
     /// Validate the directory-mutating operations — the ones that need a real, writable
-    /// directory and so are all disabled on a virtual search-results pane (`isSearchResults`).
+    /// directory and so are all disabled on a virtual search-results pane (`isResultsListing`).
     /// Returns `nil` for any other selector so the main switch handles it. Split out to keep
     /// `validateMenuItem` under SwiftLint's cyclomatic-complexity limit (a recurring gotcha).
     private func validateMutatingItem(_ menuItem: NSMenuItem) -> Bool? {
@@ -189,7 +189,7 @@ extension PanelViewController: NSMenuItemValidation {
             menuItem.state = isSizeVisualizationEnabled ? .on : .off
             // Disabled where it cannot apply, so the greying explains the suppression that the
             // checkmark alone would leave looking like a bug.
-            return panel.path.backend == .local && !isSearchResults
+            return panel.path.backend == .local && !isResultsListing
         case #selector(toggleGitAwareSizes(_:)):
             // The tab's flag again, not `areGitAwareSizesActive` — browsing out of a repository
             // suppresses the filtering, and unchecking the box would blame the user's setting.

@@ -48,6 +48,32 @@ enum FullDiskAccessOnboarding {
         }
     }
 
+    /// The Trash's version of the ask (PLAN.md §M8). `~/.Trash` is TCC-protected, so without the
+    /// grant the sidebar's Trash row can list nothing — and an *empty* Trash is the one answer it
+    /// must never give, since that reads as "you have nothing thrown away" rather than "I can't
+    /// look." Leads with the Trash instead of the general explanation because that is the thing the
+    /// user just clicked; the switch it sends them to is the same one.
+    static func presentForTrash(over window: NSWindow?) {
+        AppPreferences.shared.hasSeenFullDiskAccessOnboarding = true
+        let alert = NSAlert()
+        alert.messageText = "Dirnex needs Full Disk Access to show the Trash"
+        alert.informativeText = """
+        macOS keeps the Trash private, so Dirnex can't list it until you allow it to. Everything \
+        else keeps working as it does now.
+
+        Click Open System Settings, then switch on Dirnex under Full Disk Access. macOS will ask \
+        Dirnex to relaunch so the new access takes effect.
+        """
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Open System Settings")
+        alert.addButton(withTitle: "Not Now")
+        alert.enableEscapeToCancel() // ⎋ → Not Now; there is no work to lose by declining.
+
+        present(alert, over: window) { response in
+            if response == .alertFirstButtonReturn { openSystemSettings() }
+        }
+    }
+
     // MARK: - The sheets
 
     private static func showPrompt(over window: NSWindow?) {

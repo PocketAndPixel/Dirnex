@@ -150,16 +150,20 @@ them into one, then earns the sections that follow.
 - [x] **iCloud Drive row** — `~/Library/Mobile Documents/com~apple~CloudDocs`, a real directory
       (probed, present). Probe how dataless `.icloud` placeholder stubs list before wiring: size
       and download-on-access is the part that surprises
-- [ ] **Trash row** — cheaper-looking than it is. `~/.Trash` reads back `Operation not permitted`
+- [x] **Trash row** — cheaper-looking than it is. `~/.Trash` reads back `Operation not permitted`
       without Full Disk Access (probed), so it needs a graceful un-granted state tied to the M7 FDA
       flow. Trash is also per-volume (`/Volumes/X/.Trashes/$uid`), so a single row is a lie on a
-      multi-drive setup; "Put Back" has no public API; and delete-inside-Trash must invert the
-      default move-to-Trash semantics or it is a no-op loop
+      multi-drive setup — ~~resolved by~~ **one row over a merged listing, Finder's own answer**;
+      "Put Back" has no public API (confirmed: the data is in the trash folder's `.DS_Store`); and
+      delete-inside-Trash must invert the default move-to-Trash semantics or it is a no-op loop
 - [x] **Recents row** — Finder's is a saved search, and saved searches already render into virtual
       result panels, so this reuses machinery instead of adding some
 
 Exit: a folder dragged from a pane lands in the sidebar, is dragged into position, survives a
 relaunch, and is reachable from the keyboard; iCloud Drive and Trash browse like any other location.
+(Met, with one deliberate deviation: **the Trash is a merged listing, not a location.** It is the one
+sidebar row that cannot be a directory — macOS keeps one trash per volume — so it browses like a
+*results* pane rather than like a folder. See pass 8.)
 
 Progress (2026-07-20, M8 pass 1 — the merge's ordering rules): the pure, tested half of the
 Favorites merge landed, the same core-first opener every M4/M5/M6 slice used. **Box stays `[ ]`** —
@@ -422,6 +426,54 @@ the probe count precisely. From the keyboard: ⌥⌘S focused the sidebar onto R
 header, ← again collapsed it *keeping the header selected across the rebuild*; the flag persisted as
 `["recents"]` and **survived a relaunch** folded, and a header click unfolded it. The collapse key
 was deleted afterward, leaving the store byte-identical to how it started; no errors in the run logs.
+
+Progress (2026-07-21, M8 pass 8 — the Trash row): the last box. Trash is the sidebar's final row,
+where the Dock puts it, and it opens **every volume's trash merged into one listing** — Finder's own
+answer, chosen over a single `~/.Trash` row (a lie the moment a drive is plugged in) and over one row
+per volume. Core-first: a pure, tested locator plus the section case, then the app wiring.
+
+- **Four probes, three of which changed the design.** (1) `FileManager.trashItem` on an item
+  *already in the trash* returns **success** and hands back the path it was given — the "no-op loop"
+  the box predicted is real and silent. (2) `<volume>/.Trashes` is mode `d-wx--x--t`, **unlistable
+  even by its owner**, while `<container>/<uid>` inside it is a normal `drwx------` — the same
+  leaf-not-parent shape the iCloud container had in pass 6. (3) `FileManager.url(for:
+  .trashDirectory, appropriateFor:)` **throws `NSFeatureUnsupportedError`** for a volume that merely
+  has nothing trashed on it yet, and only starts answering once the directory exists — trusting it
+  would have read as "external volumes have no Trash" and quietly shipped a row that never merges
+  anything. (4) Put-back data lives in the trash folder's `.DS_Store`, not an xattr (`xattr -l` on a
+  trashed file shows only `TextEncoding` and `provenance`), confirming there is no public API for it
+  and nothing to build against.
+- **`VFS/TrashLocations.swift`** (core, tested) — pure path construction plus `isInsideTrash`, with
+  the existence-filtered `SidebarLocations.trashDirectories` beside the other "only what exists"
+  enumerators: the same pure-vs-touches-disk split `standardKind(for:)` draws against `favorites()`.
+  `isInsideTrash` is lexical because it must answer for a path that was *just deleted* and must not
+  cost a `stat` on every menu validation. It is deliberately **generous** — any user's numbered
+  trash counts — since a false positive costs one confirmation dialog while a false negative is
+  probe (1).
+- **The delete inversion is one line in the capability lookup, not a branch in the delete path.**
+  `capabilities(for:)` withdraws `.trash` from any path inside a trash, and the M5 capability
+  degradation (written for SFTP, which has no Trash either) already turns F8 into a confirmed
+  permanent delete. The merged listing itself is `[.read, .write]` for the same reason — writable,
+  Trash-less. `LocalBackend.trashItem` also refuses an already-trashed item outright: the UI can
+  no longer reach that call, but the invariant belongs at the layer that touches the bytes rather
+  than resting on every future caller remembering to ask.
+- **A results tab, not a backend.** The merge is a listing, not a filesystem, so it reuses the
+  virtual-results machinery that search and Recents already ride — entries carry their real
+  `.local` paths, only the container is synthetic. That made `openResults` its third caller, so it
+  moved out of `PanelViewController+Search` into a new `+Results` file along with a shared
+  `isResultsListing` (`isSearchResults` now means specifically "Spotlight hits", which is all that
+  "Save Search…" ever wanted). One deliberate difference from its siblings: **the Trash re-lists**
+  rather than staying a snapshot, because what changes in it is what the user just did in that pane.
+- **No "Empty Trash" command**, and no dotfiles. Emptying is ⌘A then F8 *inside* the Trash — a
+  confirmed permanent delete of items the user can see listed — rather than a one-click irreversible
+  destroy of contents they cannot. And the results default of "show every hit, dotfiles included"
+  is overridden to follow the pane, because a trash's dotfiles are Finder's `.DS_Store` put-back
+  databases, not things anyone threw away.
+- **Ungranted degrades to the ask, never to an empty Trash.** `~/.Trash` needs Full Disk Access, and
+  a permission error anywhere stops the gather and raises the M7 onboarding sheet in Trash-specific
+  wording. Showing the merge minus the home trash would be worse than useless: "your Trash is empty"
+  is a claim about the Trash where the truth is a claim about permission — the same failure shape as
+  the filtered-out size row in docs/NOTES.md.
 
 #### M9 — iCloud Drive, for real (M)
 

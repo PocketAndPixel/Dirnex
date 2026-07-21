@@ -243,6 +243,13 @@ extension PanelViewController {
     /// the cursor/marks by identity, so this survives the new entry appearing mid-list.
     /// Internal so `PanelViewController+Copy` can refresh both panes after a transfer.
     func refreshCurrentDirectory(selecting target: VFSPath? = nil) {
+        // The merged Trash is virtual but not a snapshot: what changes in it is what the user just
+        // did in this very pane (the only delete it offers is permanent), so it re-gathers rather
+        // than going stale (PLAN.md §M8).
+        if isTrashListing {
+            reloadTrash()
+            return
+        }
         // Re-list a real directory — on disk or on a connected SFTP account (an SFTP path is
         // re-listable, so it must refresh after an upload/delete/mkdir even without FSEvents). A
         // virtual pane (search results, a browsed archive) has no directory to re-list, so a

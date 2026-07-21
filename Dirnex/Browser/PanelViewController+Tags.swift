@@ -39,7 +39,7 @@ extension PanelViewController {
     /// its dots are as real as any folder's.
     var areTagsVisible: Bool {
         guard AppPreferences.shared.showTags else { return false }
-        return panel.path.backend == .local || isSearchResults
+        return panel.path.backend == .local || isResultsListing
     }
 
     // MARK: - Command (dispatched to the focused pane via the responder chain)

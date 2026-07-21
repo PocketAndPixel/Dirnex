@@ -46,6 +46,14 @@ extension BrowserWindowController: SidebarViewControllerDelegate {
         target.focusTable()
     }
 
+    /// The Trash opens as a merged listing of every volume's trash in the active pane (PLAN.md §M8),
+    /// then hands focus back so it can be walked — and emptied — from the keyboard.
+    func sidebarDidActivateTrash(_ sidebar: SidebarViewController) {
+        let target = activePanel ?? leftPanel
+        target.showTrash()
+        target.focusTable()
+    }
+
     /// A saved server connects (SFTP) or mounts (SMB) in the active pane and browses it. The
     /// connect/mount is async and, on completion, both navigates *and* focuses the pane itself,
     /// so grabbing focus here (before the connection resolves) would be premature.

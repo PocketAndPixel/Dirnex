@@ -109,9 +109,8 @@ extension PanelViewController {
 
     // MARK: - Virtual results tab
 
-    /// Install the hits as a new virtual tab beside the current one and switch to it, so the
-    /// user's browsing tab is preserved (closing the results tab with ⌘W returns to it). Results
-    /// are a snapshot: the tab is marked loaded so nothing tries to re-list the synthetic path.
+    /// Install the hits as a virtual results tab (`PanelViewController+Results`), labelled by the
+    /// query that produced them and carrying it so "Save Search…" can persist it.
     private func openSearchResults(
         _ entries: [FileEntry],
         query: SpotlightQuery,
@@ -130,59 +129,6 @@ extension PanelViewController {
                 title: title
             )
         )
-    }
-
-    /// How a virtual results tab presents its hits — everything that differs between an ⌥F7/saved
-    /// search and Recents, bundled so `openResults` stays within its parameter budget.
-    private struct ResultsPresentation {
-        /// The synthetic `.search` path's last component and the path-bar crumb.
-        let pathSummary: String
-        /// The listing order — the pane's own sort for a search, recency for Recents.
-        let sort: FileSort
-        /// What "Save Search…" persists; `nil` for Recents, which isn't a savable query.
-        let query: SpotlightQuery?
-        let scope: VFSPath?
-        /// The chip label; `nil` on an ad-hoc search leaves the query-summary crumb.
-        let title: String?
-    }
-
-    /// Install a virtual `.search` results tab from already-run hits — shared by ⌥F7/saved searches
-    /// and by Recents.
-    private func openResults(
-        _ entries: [FileEntry],
-        truncated: Bool,
-        as presentation: ResultsPresentation
-    ) {
-        captureColumnLayout()
-        let listing = DirectoryListing(
-            path: VFSPath(backend: .search, path: "/" + presentation.pathSummary),
-            entries: entries
-        )
-        // Show every hit, dotfiles included — a result the user explicitly asked for (a matched
-        // search, or a recently-used file) shouldn't be hidden by the app-wide show-hidden toggle.
-        let model = DirectoryModel(listing: listing, sort: presentation.sort, showHidden: true)
-        let tab = PanelTab(panel: Panel(model: model))
-        tab.hasLoaded = true
-        tab.columnLayout = tabs[activeTabIndex].columnLayout
-        // Retain what produced these results so "Save Search…" can persist it (nil for Recents).
-        tab.searchQuery = presentation.query
-        tab.searchScope = presentation.scope
-        // A saved search / Recents names its results tab; an ad-hoc ⌥F7 search leaves the
-        // query-summary chip.
-        tab.customTitle = presentation.title
-
-        tabs.insert(tab, at: activeTabIndex + 1)
-        activeTabIndex += 1
-        activateTab()
-        persistState()
-        focusTable()
-
-        if truncated {
-            presentOperationFailure(
-                message: "Showing the first \(SpotlightSearchRunner.resultLimit) results",
-                detail: "Your search matched more items. Narrow it to see the rest."
-            )
-        }
     }
 
     // MARK: - Saving the current search

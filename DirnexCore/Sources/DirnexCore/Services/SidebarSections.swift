@@ -16,6 +16,7 @@ public enum SidebarSection: String, CaseIterable, Sendable, Hashable {
     case volumes
     case servers
     case tags
+    case trash
 
     /// The section header's label.
     public var title: String {
@@ -27,6 +28,7 @@ public enum SidebarSection: String, CaseIterable, Sendable, Hashable {
         case .volumes: "Volumes"
         case .servers: "Servers"
         case .tags: "Tags"
+        case .trash: "Trash"
         }
     }
 }
@@ -38,8 +40,9 @@ public enum SidebarSection: String, CaseIterable, Sendable, Hashable {
 /// **Collapsed sections are stored as raw strings, not as `SidebarSection` values.** Decoding a
 /// `Set<SidebarSection>` throws on the first name it doesn't recognise, and a throwing decode
 /// resets *every* section's state — so one unknown name would silently unfold the whole sidebar.
-/// Since M8 still has a Trash row to add, and betas do get rolled back, the version that doesn't
-/// know a name has to carry it through untouched rather than lose it.
+/// Sections keep arriving (Recents and Trash both landed after this was written) and betas do get
+/// rolled back, so the version that doesn't know a name has to carry it through untouched rather
+/// than lose it.
 public struct SidebarSectionCollapse: Equatable, Sendable, Codable {
     /// Raw section identifiers, including any this build doesn't know about.
     private var collapsed: Set<String>

@@ -27,6 +27,18 @@ public struct VFSBackendID: RawRepresentable, Sendable, Hashable, CustomStringCo
     /// re-listing, the `..` row, in-place mutations).
     public static let search = VFSBackendID("search")
 
+    /// A virtual listing of the Trash, merged across every volume that has one (PLAN.md §M8
+    /// "Trash row"). macOS keeps a separate trash per volume — `~/.Trash` plus each mount's
+    /// `.Trashes/<uid>` — and Finder presents them as one place; this is the identity of that
+    /// synthetic container.
+    ///
+    /// Like `.search`, its entries carry their real `.local` paths, so deleting, previewing or
+    /// copying one reaches the actual file wherever it is trashed; only the container is synthetic.
+    /// Unlike `.search` it is **not read-only**: the app grants a trash path `[.read, .write]`, and
+    /// because that set has no `.trash` in it, the existing capability degradation turns F8 into a
+    /// confirmed permanent delete — which is the only delete that means anything in here.
+    public static let trash = VFSBackendID("trash")
+
     /// A virtual, read-only browse of a specific on-disk archive as a folder tree
     /// (PLAN.md §M4 "browse zip/tar/tgz as folders"). The archive's real path is encoded
     /// in the id (`archive:/Users/me/pkg.zip`), so a `VFSPath` identifies both *which*

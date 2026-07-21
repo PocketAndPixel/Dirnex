@@ -17,7 +17,7 @@ struct SidebarSectionsTests {
         // would move a whole section on screen without anything else looking wrong.
         #expect(
             SidebarSection.allCases
-                == [.recents, .searches, .favorites, .icloud, .volumes, .servers, .tags]
+                == [.recents, .searches, .favorites, .icloud, .volumes, .servers, .tags, .trash]
         )
     }
 
@@ -80,18 +80,22 @@ struct SidebarSectionsTests {
 
     @Test("an unknown section name is carried through instead of failing the decode")
     func unknownSectionSurvives() throws {
-        // The failure this prevents: a build that doesn't know "trash" (the one M8 row still to come)
-        // decoding a file written by one that does. A `Set<SidebarSection>` would throw here, and a
-        // throwing decode resets every section — so one unknown name would unfold the whole sidebar.
-        let stored = Data(#"["tags","trash"]"#.utf8)
+        // The failure this prevents: a build that doesn't know a section name decoding a file
+        // written by one that does. A `Set<SidebarSection>` would throw here, and a throwing decode
+        // resets every section — so one unknown name would unfold the whole sidebar.
+        //
+        // The stand-in used to be "trash", which M8 has since made a real case — hence a name from
+        // no build at all. Whatever section lands next, this test must keep failing the *decode*
+        // and not the rename.
+        let stored = Data(#"["tags","networks"]"#.utf8)
         let decoded = try JSONDecoder().decode(SidebarSectionCollapse.self, from: stored)
 
         #expect(decoded.isCollapsed(.tags))
-        #expect(decoded.sections == [.tags]) // "trash" is unknown, so there is nothing to render
+        #expect(decoded.sections == [.tags]) // "networks" is unknown, so there is nothing to render
 
         // And it is still there after this build saves its own change.
         var mutated = decoded
         mutated.setCollapsed(true, for: .volumes)
-        #expect(try json(mutated) == #"["tags","trash","volumes"]"#)
+        #expect(try json(mutated) == #"["networks","tags","volumes"]"#)
     }
 }

@@ -142,6 +142,37 @@ public enum SidebarLocations {
         return isDirectory(path.path, fileManager) ? path : nil
     }
 
+    /// Every trash directory that exists right now, home first, then one per non-boot volume that
+    /// has one (PLAN.md §M8 "Trash is also per-volume … so a single row is a lie on a multi-drive
+    /// setup"). The sidebar's one Trash row merges these into a single listing.
+    ///
+    /// The boot volume is skipped deliberately rather than overlooked: its user trash *is*
+    /// `~/.Trash`, already first in the list, and its `/.Trashes/<uid>` is either absent or somebody
+    /// else's. Probed 2026-07-21 — `FileManager` resolves the trash "appropriate for" `/`, for
+    /// `/System/Volumes/Data` and for the `/Volumes/Macintosh HD` symlink all to `~/.Trash`, so
+    /// treating the root volume like the others would list the home trash two or three times over.
+    ///
+    /// A volume with nothing trashed on it has no `.Trashes/<uid>` yet and contributes nothing,
+    /// which is the same "only what exists" rule `favorites()` and `iCloudDrive()` follow. Note that
+    /// existence is all this checks: `~/.Trash` exists on every Mac but reads back a permission
+    /// error without Full Disk Access, so a caller still has to handle a denied listing.
+    public static func trashDirectories(
+        home: String = NSHomeDirectory(),
+        volumes: [MountedVolume],
+        uid: uid_t = getuid(),
+        fileManager: FileManager = .default
+    ) -> [VFSPath] {
+        var directories: [VFSPath] = []
+        let homeTrash = TrashLocations.homeTrash(home: home)
+        if isDirectory(homeTrash.path, fileManager) { directories.append(homeTrash) }
+
+        for volume in volumes where !volume.isRoot {
+            let trash = TrashLocations.volumeTrash(onVolumeAt: volume.path, uid: uid)
+            if isDirectory(trash.path, fileManager) { directories.append(trash) }
+        }
+        return directories
+    }
+
     /// Mounted, browsable volumes, root filesystem first, then the rest by name.
     /// Non-browsable volumes (e.g. the hidden Recovery/VM partitions) are excluded.
     public static func volumes(fileManager: FileManager = .default) -> [MountedVolume] {

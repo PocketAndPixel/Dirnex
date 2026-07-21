@@ -43,7 +43,7 @@ extension PanelViewController {
     /// synthetic listing whose rows live in a dozen different folders, so "share of this directory"
     /// has no referent, and an archive's or SFTP's tree costs a network round trip per level.
     var areSizeBarsVisible: Bool {
-        isSizeVisualizationEnabled && panel.path.backend == .local && !isSearchResults
+        isSizeVisualizationEnabled && panel.path.backend == .local && !isResultsListing
     }
 
     // MARK: - .gitignore-aware totals

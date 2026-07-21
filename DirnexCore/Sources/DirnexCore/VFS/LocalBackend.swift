@@ -98,8 +98,20 @@ public struct LocalBackend: VFSBackend {
         }
     }
 
+    /// Move `path` to the Trash it belongs to (its own volume's), returning where it landed.
+    ///
+    /// **Refuses an item that is already in a trash.** Probed 2026-07-21: `FileManager.trashItem`
+    /// on such an item reports success and returns the path it was handed, having done nothing — so
+    /// without this guard a "move to Trash" inside the Trash is a silent no-op that looks like it
+    /// worked (PLAN.md §M8). The UI never reaches this, because a trash location advertises no
+    /// `.trash` capability and F8 there is already a permanent delete; the guard is here so the
+    /// invariant is enforced (and tested) at the layer that touches the bytes rather than resting
+    /// on a caller remembering to ask.
     @discardableResult
     public func trashItem(at path: VFSPath) throws -> VFSPath? {
+        guard !TrashLocations.isInsideTrash(path) else {
+            throw VFSError.unsupported("“\(path.lastComponent)” is already in the Trash.")
+        }
         var resultingURL: NSURL?
         let url = URL(fileURLWithPath: path.path)
         do {
