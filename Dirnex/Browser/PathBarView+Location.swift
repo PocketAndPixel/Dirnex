@@ -18,9 +18,19 @@ extension PathBarView {
             // `CloudStorageMounts.mount(containing:)`.
             if let mount = CloudStorageMounts.mount(containing: path) {
                 rebuildCrumbs(for: path, under: mount)
+            } else if let trail = ICloudLocation.trail(for: path, fallbackName: Self.localizedName) {
+                // Same judgement one level over: a folder opened from the merged iCloud listing is
+                // a real local directory, but its real path runs through container machinery
+                // (`com~apple~Pages/Documents`) the user never asked to see (PLAN.md §M9).
+                rebuildICloudCrumbs(trail)
             } else {
                 rebuildCrumbs(for: path)
             }
+        } else if path.backend == .icloud {
+            // The merged listing itself — the same trail as a folder inside it, with nothing below
+            // the root. A crumb rather than the dead-end label the Trash gets, because unlike the
+            // Trash this is one end of a chain the user walks up and down.
+            rebuildICloudCrumbs([])
         } else if path.backend.isArchive {
             rebuildArchiveLabel(for: path, ancestry: archiveAncestry)
         } else if let location = path.backend.sftpLocation {
@@ -33,6 +43,19 @@ extension PathBarView {
         }
     }
 
+    /// The real directory text editing (double-click, Cmd+L) starts from, or `nil` where the
+    /// location has none — a search snapshot is not a path the user can retype.
+    ///
+    /// The merged iCloud listing has no directory of its own but has an obvious real home: the
+    /// CloudDocs container its New Folder and paste already land in (`writeDirectory`). So editing
+    /// works there exactly as it does one folder deeper, rather than iCloud Drive being the one
+    /// stop on the way in and out where the path goes dead.
+    static func editBase(for path: VFSPath) -> VFSPath? {
+        if path.backend == .local { return path }
+        if path.backend == .icloud { return ICloudDrive.cloudDocs() }
+        return nil
+    }
+
     /// Render a location inside a cloud provider's mount, with the trail rooted at the mount under
     /// the provider's name — `Google Drive › My Drive › Job`.
     ///
@@ -43,12 +66,73 @@ extension PathBarView {
     /// asked to see, the same judgement the merged iCloud listing makes about its containers.
     func rebuildCrumbs(for path: VFSPath, under mount: CloudStorageMount) {
         let trail = path.ancestorsFromRoot.filter { $0.isSelfOrDescendant(of: mount.path) }
-        installCrumbs(trail.map { ancestor in
-            Crumb(
-                title: ancestor == mount.path ? mount.name : ancestor.lastComponent,
-                target: ancestor
-            )
-        })
+        installCrumbs(
+            trail.map { ancestor in
+                Crumb(
+                    title: ancestor == mount.path ? mount.name : ancestor.lastComponent,
+                    target: ancestor
+                )
+            },
+            // The mount's own glyph, so browsing a cloud location is marked as one at a glance —
+            // the same `cloud` symbol its sidebar row carries.
+            leadingSymbol: mount.symbolName
+        )
+    }
+
+    /// What the OS calls a directory — "Pages" for an app library's `Documents` folder, which is
+    /// the name Finder shows for it.
+    ///
+    /// The non-hermetic half of the library-name lookup, which is why it lives here and is handed
+    /// to the core rather than called by it: it only answers for a real iCloud item, so no test can
+    /// synthesize it. Asked only when `bird`'s cached plist could not be read, which on a build
+    /// without Full Disk Access is exactly when the container itself is still listable.
+    static func localizedName(of directory: VFSPath) -> String? {
+        try? URL(fileURLWithPath: directory.path)
+            .resourceValues(forKeys: [.localizedNameKey]).localizedName
+    }
+
+    /// Render a location inside iCloud Drive, rooted at the merged listing — `iCloud Drive ›
+    /// Pages › Drafts`.
+    ///
+    /// Every crumb navigates, including the root one: it targets the synthetic `.icloud` location,
+    /// which the pane re-gathers rather than lists (`PanelViewController+PathBar`), the same thing
+    /// walking up out of one of these folders does. That is what makes the merge a place in a chain
+    /// instead of somewhere you can only arrive from the sidebar.
+    func rebuildICloudCrumbs(_ trail: [ICloudLocation.Step]) {
+        let root = Crumb(title: ICloudLocation.mergedName, target: ICloudLocation.mergedPath)
+        installCrumbs(
+            [root] + trail.map { Crumb(title: $0.title, target: $0.directory) },
+            leadingSymbol: "icloud"
+        )
+    }
+
+    /// The SF Symbol that names a *kind* of location in the path bar — `trash`, `icloud`, `cloud`,
+    /// `magnifyingglass`. Always the same symbol the sidebar row that opens the location carries, so
+    /// the place you clicked and the place you landed wear one mark.
+    ///
+    /// Shared by the non-clickable virtual label and the clickable cloud-mount trail, which is why
+    /// it takes its tint rather than reading `isActive`: the label owns the whole row and follows the
+    /// pane's active state, while the trail's glyph sits beside secondary-colored crumbs and matches
+    /// those instead.
+    func makeLocationGlyph(
+        named symbolName: String,
+        describedAs description: String,
+        tint: NSColor
+    ) -> NSImageView {
+        let configuration = NSImage.SymbolConfiguration(
+            pointSize: NSFont.smallSystemFontSize,
+            weight: .regular
+        )
+        let symbol = NSImage(systemSymbolName: symbolName, accessibilityDescription: description)?
+            .withSymbolConfiguration(configuration)
+        symbol?.isTemplate = true
+        let glyph = NSImageView(image: symbol ?? NSImage())
+        glyph.contentTintColor = tint
+        // The glyph is the one thing in the row that must never be squeezed — it is what names the
+        // kind of location, and a symbol compressed to nothing is worse than no symbol at all.
+        glyph.setContentCompressionResistancePriority(.required, for: .horizontal)
+        glyph.setContentHuggingPriority(.required, for: .horizontal)
+        return glyph
     }
 
     /// Render a virtual location (Spotlight results, Recents, the merged Trash) as a single,
@@ -60,13 +144,12 @@ extension PathBarView {
     /// delete, where a search snapshot doesn't). Each carries the SF Symbol of the sidebar row that
     /// opens it — `trash` and `magnifyingglass` — rather than an emoji, which is a different type
     /// vocabulary that neither tints with the pane's active state nor matches the sidebar.
+    ///
+    /// iCloud Drive is the merged listing that is *not* here: you walk into and out of its rows, so
+    /// it gets a crumb trail (`rebuildICloudCrumbs`) rather than a dead end.
     func rebuildVirtualLabel(for path: VFSPath) {
         if path.backend == .trash {
             installVirtualLabel("Trash", symbolNamed: "trash")
-        } else if path.backend == .icloud {
-            // Same reasoning as the Trash, and the same symbol its sidebar row carries: iCloud Drive
-            // is a place the user opened, not a query someone ran (PLAN.md §M9).
-            installVirtualLabel("iCloud Drive", symbolNamed: "icloud")
         } else {
             installVirtualLabel("Results for \(path.lastComponent)", symbolNamed: "magnifyingglass")
         }

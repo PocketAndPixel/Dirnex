@@ -82,13 +82,13 @@ final class PathBarView: NSView, NSTextFieldDelegate {
     /// the button (single-click navigates), so only the gap propagates here; single clicks
     /// still fall through so nothing changes for an ordinary tap.
     override func mouseDown(with event: NSEvent) {
-        // A double-click enters text-edit mode, but only for a real (local) location — a virtual
-        // results path isn't a directory the user can retype.
-        guard !isEditing, event.clickCount == 2, let path, path.backend == .local else {
+        // A double-click enters text-edit mode, but only where the location has a real directory
+        // behind it — a search snapshot isn't a path the user can retype.
+        guard !isEditing, event.clickCount == 2, let path, let base = Self.editBase(for: path) else {
             super.mouseDown(with: event)
             return
         }
-        beginEditing(base: path)
+        beginEditing(base: base)
     }
 
     private func configure() {
@@ -365,9 +365,26 @@ extension PathBarView {
     /// Shared by the local path (`rebuildCrumbs`) and the archive trail (`archiveCrumbs`) so both
     /// render identically — same font, `›` separators, accent-on-current, and truncation. In the
     /// extension so the class body stays under SwiftLint's `type_body_length`.
-    func installCrumbs(_ crumbs: [Crumb]) {
+    ///
+    /// `leadingSymbol` marks the *kind* of location the trail is rooted in — the cloud glyph for a
+    /// provider mount — carrying the sidebar row's own symbol onto the path bar exactly as
+    /// `installVirtualLabel` does for the Trash and iCloud Drive. It is tinted like the leading
+    /// crumbs it sits beside rather than like the current one, so it reads as part of the root
+    /// rather than competing with the directory the pane is actually in.
+    func installCrumbs(_ crumbs: [Crumb], leadingSymbol: String? = nil) {
         clearCrumbStack()
         crumbTargets = crumbs.map(\.target)
+        if let leadingSymbol {
+            let glyph = makeLocationGlyph(
+                named: leadingSymbol,
+                describedAs: crumbs.first?.title ?? "",
+                tint: .secondaryLabelColor
+            )
+            crumbStack.addArrangedSubview(glyph)
+            // `crumbStack` is spaced at 1 pt for the `›` separators, which would leave the glyph
+            // touching the first crumb — the same reason the virtual label nests its own row.
+            crumbStack.setCustomSpacing(5, after: glyph)
+        }
         for (index, crumb) in crumbs.enumerated() {
             if index > 0 {
                 crumbStack.addArrangedSubview(makeSeparator())
@@ -406,19 +423,7 @@ extension PathBarView {
         clearCrumbStack()
         let color: NSColor = isActive ? .labelColor : .secondaryLabelColor
 
-        let configuration = NSImage.SymbolConfiguration(
-            pointSize: NSFont.smallSystemFontSize,
-            weight: .regular
-        )
-        let symbol = NSImage(systemSymbolName: symbolName, accessibilityDescription: text)?
-            .withSymbolConfiguration(configuration)
-        symbol?.isTemplate = true
-        let glyph = NSImageView(image: symbol ?? NSImage())
-        glyph.contentTintColor = color
-        // The glyph is the one thing in the row that must never be squeezed — it is what names the
-        // kind of location, and a symbol compressed to nothing is worse than no symbol at all.
-        glyph.setContentCompressionResistancePriority(.required, for: .horizontal)
-        glyph.setContentHuggingPriority(.required, for: .horizontal)
+        let glyph = makeLocationGlyph(named: symbolName, describedAs: text, tint: color)
 
         let label = NSTextField(labelWithString: text)
         label.font = .boldSystemFont(ofSize: NSFont.smallSystemFontSize)

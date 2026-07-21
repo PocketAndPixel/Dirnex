@@ -7,6 +7,15 @@ import DirnexCore
 /// on the cursor/selection plumbing.
 extension PanelViewController: PathBarViewDelegate {
     func pathBar(_ bar: PathBarView, didActivate path: VFSPath) {
+        // The iCloud Drive crumb names the merged listing, which has no directory to navigate to —
+        // it is re-gathered, exactly as walking up out of one of its folders does (PLAN.md §M9).
+        // The cursor lands on the row the current folder sits under, so the jump feels like the
+        // several walks up it stands in for.
+        if path.backend == .icloud {
+            showICloudDrive(selecting: ICloudLocation.mergeRow(towards: panel.path))
+            focusTable()
+            return
+        }
         // Landing on the branch we came from (when the path is an ancestor of the
         // current directory) makes a multi-level crumb jump feel like walking up.
         let focus = path.child(towards: panel.path)

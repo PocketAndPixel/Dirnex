@@ -154,9 +154,28 @@ that aren't synced to this Mac.
         click reaches the files instead of one folder to step through. "Exactly one visible child" is
         the condition under which descending hides nothing — an account with Shared drives has two and
         opens at the root; Dropbox-style providers have many and stay put.
-      - **The path bar roots its trail at the mount**: `Google Drive › My Drive › Job`, not six crumbs
-        of `Macintosh HD › Users › oleg › Library › CloudStorage › GoogleDrive-…`. Still fully
-        clickable, unlike the merged iCloud label — every crumb is a real directory.
+      - **The path bar roots its trail at the mount**, behind the same `cloud` glyph the sidebar row
+        carries: `☁ Google Drive › My Drive › Job`, not six crumbs of
+        `Macintosh HD › Users › oleg › Library › CloudStorage › GoogleDrive-…`. Every crumb is a
+        real directory, so the trail stays fully clickable. The glyph is the one
+        `installVirtualLabel` already put in front of the Trash, factored out so both spellings of
+        "what kind of place is this" share it.
+      - **iCloud Drive got the same treatment** (`ICloudLocation`, core, 14 tests), because the
+        complaint was identical one level over: a folder opened from the merged listing is a real
+        local directory whose real path runs through container machinery — the "Pages" row's folder
+        is `~/Library/Mobile Documents/com~apple~Pages/Documents`. It now reads
+        `☁ iCloud Drive › Pages › Drafts`, and the **root crumb is clickable**, re-gathering the
+        merge exactly as walking up out of one of its rows does (with the cursor landing on the row
+        the pane came out of). That retires the dead-end label the merge used to get — it earned one
+        as a *results* listing and never behaved like one. Two details:
+        - **The merged root is now editable too** (double-click, Cmd+L), based at the CloudDocs
+          container its writes already resolve to (`writeDirectory`), rather than being the one stop
+          on the way in and out of iCloud Drive where the path goes dead.
+        - **The app name has a second source.** The cached plist `ICloudDrive.appLibraries()` reads
+          is refused without Full Disk Access *while the container itself still lists* — observed
+          live, where the crumb came out as `com.apple.Pages`. So the OS's own
+          `URLResourceValues.localizedName` is injected as a fallback: non-hermetic, hence in the
+          app, hence a closure the core is handed rather than one it calls (§2).
       - **The section refreshes live when an account is connected or signed out.** A File Provider
         mount is not a volume and posts no `NSWorkspace` notification, so this is an FSEvents watcher
         on `~/Library/CloudStorage` — the parent, never the mounts, which would wake on every synced

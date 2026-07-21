@@ -276,6 +276,14 @@ against a fake.
   it. LaunchServices is the wrong source regardless — half these apps are iOS-only and not installed.
   `URLResourceValues.localizedName` on the `Documents` folder *does* return the app name, but it needs
   the real iCloud item, so it can't be unit-tested and the plist is used instead.
+- **The name cache and the container it names are gated separately.** Without Full Disk Access,
+  `~/Library/Application Support/CloudDocs/session/containers` is refused while
+  `~/Library/Mobile Documents/com~apple~Pages/Documents` still *lists* perfectly — observed live on a
+  freshly rebuilt (hence TCC-revoked) binary, where a path bar reading the plist for the app's name
+  fell back to `com.apple.Pages` in front of a folder it had just enumerated. `URLResourceValues
+  .localizedName` on that folder answers "Pages" and needs no grant, so it is the fallback; it can't
+  be unit-tested (it only answers for a real iCloud item), which is why it is injected into
+  `ICloudLocation.trail` rather than called from the core.
 - **Which containers Finder lists is not derivable.** 17 declare public scope here; Finder shows 7.
   Nothing separates the sets: not mtimes, not emptiness (two of the seven are empty), not install
   state, not `bird`'s `client.db` (`app_libraries`, per-zone item counts, tombstones). Don't spend an
