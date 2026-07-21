@@ -28,11 +28,13 @@ extension PanelViewController {
         // and its hits are a snapshot of a question that was asked once.
         guard path.backend == .local, backend.capabilities.contains(.watch) else {
             watcher = nil
+            watchedSources = []
             return
         }
         watcher = DirectoryWatcher(path: path) { [weak self] in
             Task { @MainActor in self?.directoryDidChange(path) }
         }
+        watchedSources = [path]
     }
 
     /// The directories the active tab's merged listing was gathered from, or empty for every other
@@ -44,13 +46,21 @@ extension PanelViewController {
 
     /// Record what a merged listing was gathered from, and watch it.
     ///
-    /// The stream is rebuilt only when the set of sources actually changed (a volume mounted, an app
-    /// library appeared) — `force` covers the one case where it must be built regardless, a listing
-    /// arriving in a tab that was watching something else. Without that guard a re-gather triggered
-    /// *by* this stream would tear it down and build another on every single event.
+    /// The stream is rebuilt only when it is not already covering exactly these directories — so a
+    /// re-gather triggered *by* this stream does not tear it down and build another on every event,
+    /// while anything that cost the pane its stream re-arms. `force` covers a listing arriving in a
+    /// tab that was watching something else.
+    ///
+    /// The comparison is against `watchedSources` — what the live stream covers — rather than
+    /// `mergedSources`, the active tab's record of its own listing. Comparing the tab's copy left a
+    /// Trash tab permanently dead after the pane's *other* tab was visited: switching away pointed
+    /// the pane's single watcher at that tab's directory, and switching back re-gathered with an
+    /// unchanged source set, so the guard short-circuited and the stream was never rebuilt. Nothing
+    /// trashed afterwards ever appeared (verified live — an FSEvents-armed log line that fired
+    /// before the tab round-trip and never again after it).
     func watchMergedListing(sources: [VFSPath], force: Bool = false) {
-        guard force || sources != mergedSources else { return }
         mergedSources = sources
+        guard force || sources != watchedSources else { return }
         startWatching(panel.path)
     }
 
@@ -69,6 +79,7 @@ extension PanelViewController {
                 self.refreshCurrentDirectory()
             }
         }
+        watchedSources = mergedSources
     }
 
     /// A watched directory changed on disk. Re-list it and hand the fresh snapshot to
