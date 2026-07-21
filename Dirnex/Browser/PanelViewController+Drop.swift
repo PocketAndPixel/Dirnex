@@ -77,12 +77,17 @@ extension PanelViewController {
         row: Int,
         dropOperation: NSTableView.DropOperation
     ) -> DropPlan? {
-        // Only a real, writable on-disk directory can receive a drop — never a virtual pane
-        // (search results, or a read-only archive whose write support lands in a later M4 pass).
-        guard panel.path.backend == .local, backend.capabilities.contains(.write) else { return nil }
+        // A drop needs a real, writable on-disk directory to land in — never a virtual pane (search
+        // results, the Trash, or a read-only archive whose write support lands in a later M4 pass).
+        // `writeDirectory` is that directory, and it is what makes the merged iCloud listing a drop
+        // target: its root is the CloudDocs container underneath (PLAN.md §M9).
+        guard let base = writeDirectory, base.backend == .local,
+              backend.capabilities.contains(.write) else { return nil }
         guard let urls = droppedFileURLs(info), !urls.isEmpty else { return nil }
 
-        let (destination, highlightRow) = dropDestination(row: row, dropOperation: dropOperation)
+        let (destination, highlightRow) = dropDestination(
+            row: row, dropOperation: dropOperation, base: base
+        )
         let sources = urls.map { VFSPath.local($0.path) }
 
         // No-op: every dropped item already lives in the destination (e.g. dragging a
@@ -114,7 +119,8 @@ extension PanelViewController {
     /// the `..` parent, for a move up a level), else into the pane's current directory.
     private func dropDestination(
         row: Int,
-        dropOperation: NSTableView.DropOperation
+        dropOperation: NSTableView.DropOperation,
+        base: VFSPath
     ) -> (destination: VFSPath, highlightRow: Int?) {
         if dropOperation == .on {
             if isParentRow(row), let parent = panel.parentPath {
@@ -127,7 +133,7 @@ extension PanelViewController {
                 }
             }
         }
-        return (panel.path, nil)
+        return (base, nil)
     }
 
     /// Copy or move, following Finder's conventions: an explicit Option forces copy and

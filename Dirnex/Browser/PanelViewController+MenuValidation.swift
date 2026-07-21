@@ -153,12 +153,14 @@ extension PanelViewController: NSMenuItemValidation {
     /// `.read`, so `.write` is absent and the op greys out; a real disk (and a future writable
     /// SFTP mount) reports `.write`.
     ///
-    /// `isVirtualDirectory` is the second half because the merged Trash is the one virtual location
-    /// that *does* carry `.write` — it holds real files that can be deleted — while having no
-    /// directory to create or paste into. Without this, New Folder lit up in a Trash tab and the
-    /// flow behind it bailed out silently at its own `isVirtualDirectory` guard.
+    /// `writeDirectory` is the second half because the merged Trash is a virtual location that *does*
+    /// carry `.write` — it holds real files that can be deleted — while having no directory to create
+    /// or paste into. Without it, New Folder lit up in a Trash tab and the flow behind it bailed out
+    /// silently at its own guard. The merged iCloud listing is the mirror image: also virtual, also
+    /// writable, but it *does* have a directory underneath (CloudDocs), so it enables rather than
+    /// greys — which is exactly why both ask the same question the flows themselves ask.
     private var canWriteHere: Bool {
-        backend.capabilities(for: panel.path).contains(.write) && !isVirtualDirectory
+        backend.capabilities(for: panel.path).contains(.write) && writeDirectory != nil
     }
 
     /// This pane can rename an item in place — the owning backend advertises `.rename`.

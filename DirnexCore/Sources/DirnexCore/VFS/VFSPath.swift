@@ -39,6 +39,19 @@ public struct VFSBackendID: RawRepresentable, Sendable, Hashable, CustomStringCo
     /// confirmed permanent delete — which is the only delete that means anything in here.
     public static let trash = VFSBackendID("trash")
 
+    /// A virtual listing of iCloud Drive as Finder assembles it (PLAN.md §M9 "the merged
+    /// app-container view"): the `com~apple~CloudDocs` container's loose files merged with every
+    /// iCloud-enabled app's public `Documents` folder, which live as *siblings* of CloudDocs under
+    /// `~/Library/Mobile Documents` rather than inside it.
+    ///
+    /// Shaped exactly like `.trash`: every entry carries its real `.local` path, so stepping into
+    /// "Pages" lands in an ordinary local folder and no operation needs a synthetic path space —
+    /// only the container is virtual. It carries `[.read, .write]` for the same reason the Trash
+    /// does, and one thing more: the merged root has an obvious real home underneath it
+    /// (`SidebarLocations.iCloudDrive()`), so creating, pasting and dropping *into* iCloud Drive
+    /// land in the CloudDocs container instead of being refused (`PanelViewController.writeDirectory`).
+    public static let icloud = VFSBackendID("icloud")
+
     /// A virtual, read-only browse of a specific on-disk archive as a folder tree
     /// (PLAN.md §M4 "browse zip/tar/tgz as folders"). The archive's real path is encoded
     /// in the id (`archive:/Users/me/pkg.zip`), so a `VFSPath` identifies both *which*

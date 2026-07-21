@@ -126,8 +126,16 @@ extension PanelViewController {
     /// yet, or when the pane isn't showing status at all. That last case is what makes the
     /// preference work with no column to install: the cells simply render no badge, and the names
     /// take back the width.
+    ///
+    /// **The listing's own `isDataless` backs the scan up** (PLAN.md §M9). It is `SF_DATALESS`, which
+    /// rode in on the `stat` the listing already did, so it costs nothing and it is the ground truth
+    /// for "these bytes are not here" — the attribute scan can lag it, and in the merged iCloud
+    /// listing it does not run at all, because that pane's *directory* is synthetic and the scan
+    /// gates on a real cloud folder. Consulted second, so a download actually in flight still paints
+    /// as downloading rather than as evicted.
     func syncStatus(for entry: FileEntry) -> CloudSyncStatus? {
         guard isSyncStatusVisible else { return nil }
-        return syncSnapshot?.status(for: entry.path)
+        if let status = syncSnapshot?.status(for: entry.path) { return status }
+        return entry.isDataless ? .notDownloaded : nil
     }
 }

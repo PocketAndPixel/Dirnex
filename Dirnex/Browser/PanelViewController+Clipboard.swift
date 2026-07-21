@@ -68,14 +68,15 @@ extension PanelViewController {
             if kind == .copy { pasteIntoArchive() }
             return
         }
-        guard !isVirtualDirectory else { return } // no real destination directory here
+        // `nil` where there is no real destination directory; the CloudDocs container when the pane
+        // is showing the merged iCloud listing, whose root is a place files can be put (§M9).
+        guard let destination = writeDirectory else { return }
         guard backend.capabilities.contains(.write) else { return }
         let options: [NSPasteboard.ReadingOptionKey: Any] = [.urlReadingFileURLsOnly: true]
         guard let urls = NSPasteboard.general.readObjects(
             forClasses: [NSURL.self], options: options
         ) as? [URL], !urls.isEmpty else { return }
 
-        let destination = panel.path
         let backend = backend
         Task {
             // Stat the pasted items off-main into the entries the engine copies, dropping any

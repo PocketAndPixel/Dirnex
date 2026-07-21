@@ -74,6 +74,36 @@ enum FullDiskAccessOnboarding {
         }
     }
 
+    /// iCloud Drive's version of the ask (PLAN.md §M9), and the quietest of the three: the merged
+    /// listing *works* without the grant — it shows the loose files M8 already shipped — it is
+    /// simply missing the per-app document folders, because `~/Library/Mobile Documents` is
+    /// TCC-gated while the CloudDocs leaf inside it is carved out.
+    ///
+    /// So this is offered **once** and then never again, on its own latch: a silently short iCloud
+    /// Drive is the same quiet-wrong-answer shape the Trash avoids by asking, but here there is
+    /// something real on screen, which makes repeating the ask a nag rather than a rescue.
+    static func presentForICloud(over window: NSWindow?) {
+        guard !AppPreferences.shared.hasOfferedFullDiskAccessForICloud else { return }
+        AppPreferences.shared.hasOfferedFullDiskAccessForICloud = true
+        let alert = NSAlert()
+        alert.messageText = "Some of iCloud Drive needs Full Disk Access"
+        alert.informativeText = """
+        Your files in iCloud Drive are listed above. The folders apps keep there — Pages, \
+        Preview, Shortcuts — are private to macOS until you allow Dirnex to read them.
+
+        Click Open System Settings, then switch on Dirnex under Full Disk Access. macOS will ask \
+        Dirnex to relaunch so the new access takes effect.
+        """
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Open System Settings")
+        alert.addButton(withTitle: "Not Now")
+        alert.enableEscapeToCancel() // ⎋ → Not Now; the listing keeps working either way.
+
+        present(alert, over: window) { response in
+            if response == .alertFirstButtonReturn { openSystemSettings() }
+        }
+    }
+
     // MARK: - The sheets
 
     private static func showPrompt(over window: NSWindow?) {

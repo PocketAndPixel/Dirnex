@@ -36,6 +36,10 @@ extension PathBarView {
     func rebuildVirtualLabel(for path: VFSPath) {
         if path.backend == .trash {
             installVirtualLabel("Trash", symbolNamed: "trash")
+        } else if path.backend == .icloud {
+            // Same reasoning as the Trash, and the same symbol its sidebar row carries: iCloud Drive
+            // is a place the user opened, not a query someone ran (PLAN.md §M9).
+            installVirtualLabel("iCloud Drive", symbolNamed: "icloud")
         } else {
             installVirtualLabel("Results for \(path.lastComponent)", symbolNamed: "magnifyingglass")
         }

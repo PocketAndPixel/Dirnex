@@ -144,19 +144,37 @@ free.)
       hazard the plan missed is the other direction: a transparent read *materializes* (measured
       1.1 s for 200 KB of blocked thread), so the recursive sizer, content search and byte-compare
       must consult the flag before opening anything or they silently pull the whole drive down.
-      *App pass still owed: the row badge.*
-- [ ] **Download on open** — opening or previewing an evicted item fires
+      *App pass landed 2026-07-21: the badge is the M6 cloud badge, with `isDataless` as its second
+      source — the attribute scan can lag the flag, and in the merged listing it does not run at all
+      (it gates on a real cloud directory, and that pane's directory is synthetic). Consulted after
+      the snapshot, so a download in flight still paints as downloading rather than as evicted.*
+- [x] **Download on open** — opening or previewing an evicted item fires
       `FileManager.startDownloadingUbiquitousItem(at:)` and waits on the status key rather than handing
       a byte-less stub to the viewer. Pure progress state machine in the core (evicted → downloading →
       ready), the syscall and the wait in the app. *Core landed 2026-07-21 (`CloudDownloadTracker`);
-      the syscall, the poll and the open path are the app pass.*
-- [ ] **The merged app-container view** — the piece that makes the row match Finder. Union the sibling
+      app pass the same day (`CloudDownloadPrompt`), verified live on a `brctl evict`-ed 290 KB PDF:
+      sheet, download, open in Preview, `SF_DATALESS` cleared, badge gone. Three calls worth knowing:
+      the sheet waits 400 ms before appearing, so a fast fetch never flashes a modal; the bar is
+      **indeterminate** because macOS exposes no per-item percentage through the URL resource keys
+      (`NSMetadataQuery` has one — `CloudDownloadTracker.observe(percentDownloaded:)` is ready for it,
+      and it is deliberately not wired for a single-item wait); and a `.serverUnavailable` provider
+      error is ignored rather than treated as failure, since it rides along with healthy transfers.*
+- [x] **The merged app-container view** — the piece that makes the row match Finder. Union the sibling
       `~/Library/Mobile Documents/<container>/Documents` folders into the iCloud listing. Needs Full
       Disk Access (those `Documents/` are TCC-gated — probed) wired into the **M7 FDA flow**.
       *VFS shape decided 2026-07-21: a **virtual merged listing**, exactly the M8 Trash's shape — a
       results tab whose entries carry real on-disk paths, so stepping into "Pages" lands in an
       ordinary local folder and no operation needs a synthetic path space. Core landed
-      (`ICloudDrive`); the tab, the sidebar row and the FDA degrade are the app pass.*
+      (`ICloudDrive`); app pass the same day. Three places it deliberately behaves **unlike** the
+      Trash, because iCloud Drive is a place people browse and put things in rather than a bin:
+      the sidebar row **navigates in place** instead of opening a tab per click; the root is
+      **writable** — New Folder, paste and drop resolve through `PanelViewController.writeDirectory`
+      to the CloudDocs container underneath, and `canWriteHere` asks the same question so nothing
+      lights up over a flow that would bail; and stepping into a library navigates *this* pane, with
+      **up** (`ICloudDrive.isMergedRoot`) returning to the merge rather than to the one-child
+      container folder underneath. The FDA degrade is silent by default — the listing is simply the
+      loose files — with a **one-shot** offer of the grant (`presentForICloud`, its own latch)
+      explaining what is missing, since a short iCloud Drive is otherwise a quiet wrong answer.*
 - [x] **App-name / icon resolution** — *core landed 2026-07-21.* Probed rather than guessed, and both
       guesses in the bullet above were wrong: the mapping is not in the container, and
       `NSWorkspace.icon(forFile:)` returns the **generic folder icon** for these. Both live in

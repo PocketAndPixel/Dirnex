@@ -37,7 +37,10 @@ extension PanelViewController: NSTableViewDelegate {
         cell.accentColor = nil
         switch column {
         case .name:
-            cell.imageView?.image = FileIconProvider.icon(for: entry)
+            // An app-library row in the merged iCloud listing wears the app's own icon; everything
+            // else takes the workspace icon for its type (PLAN.md §M9).
+            let icon = iCloudLibraryIcon(for: entry) ?? FileIconProvider.icon(for: entry)
+            cell.imageView?.image = icon
             cell.textField?.stringValue = entry.name
             cell.textField?.alignment = .natural
             // Finder tags and the cloud badge ride at the name's right edge (PLAN.md §M6) — no

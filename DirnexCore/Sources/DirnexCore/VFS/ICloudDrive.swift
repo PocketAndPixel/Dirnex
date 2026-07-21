@@ -158,6 +158,29 @@ public enum ICloudDrive {
         )
     }
 
+    /// Whether `path` is a directory the merged listing stands in front of: the CloudDocs
+    /// container whose children it shows loose, or any app library's `Documents` folder.
+    ///
+    /// This is what "up" means from inside iCloud Drive. The real parent of
+    /// `com~apple~Pages/Documents` is `com~apple~Pages`, a one-child folder the user never asked
+    /// to see, and the real parent of CloudDocs is `~/Library/Mobile Documents` itself — so a
+    /// pane walking up out of either should land back in the merged listing, the way Finder's
+    /// does, rather than in the machinery underneath it.
+    ///
+    /// Deliberately a shape test rather than a record of where the user came from: arriving at
+    /// one of these folders by typing its path is the same situation, and a remembered entry
+    /// point would be wrong the moment a tab is restored.
+    public static func isMergedRoot(_ path: VFSPath, home: String = NSHomeDirectory()) -> Bool {
+        guard path.backend == .local else { return false }
+        let containers = mobileDocuments(home: home)
+        if path == containers.appending(cloudDocsContainerID) { return true }
+        return path.lastComponent == "Documents" && path.parent?.parent == containers
+    }
+
+    /// The container holding the loose files — the one leaf TCC carves out, and the only part of
+    /// iCloud Drive M8 could show.
+    public static let cloudDocsContainerID = "com~apple~CloudDocs"
+
     /// The merged listing: CloudDocs' own children first, then the app libraries. The pane
     /// re-sorts by its own column, so this order only has to be deterministic.
     public static func merge(looseFiles: [FileEntry], libraryRows: [FileEntry]) -> [FileEntry] {

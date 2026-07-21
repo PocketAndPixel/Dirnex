@@ -346,6 +346,20 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
 - **To browse a second VFS backend without touching every `self.backend` site**, wrap them in a
   `CompositeBackend` that dispatches on `path.backend`. A per-tab backend field is a much larger
   refactor.
+- **A per-directory scan silently produces nothing for a virtual listing.** The cloud-badge scan
+  gates on `isCloudDirectory(directory)` — a real read on a real path — which is exactly right for a
+  folder and answers `false` for a synthetic `icloud:`/`trash:` container, so the merged iCloud
+  listing rendered no badges at all while every row in it was a cloud item. The fix is not to widen
+  the gate but to carry the fact **in the listing**: `FileEntry.isDataless` came in on the `stat` the
+  listing already did, and backs the scan up wherever the scan cannot run. Same shape as carrying
+  results *in* a notification instead of telling a cache to go re-read.
+- **A virtual listing that names a *place* wants the opposite defaults from one that names a query.**
+  The Trash and search results open a tab per click, refuse writes, and send an opened folder to the
+  other pane — all correct for something you visited once. iCloud Drive is browsed repeatedly, so
+  the same machinery had to be told, three times over, to behave like a folder instead: navigate in
+  place, resolve writes to the real directory underneath (`writeDirectory`), and walk *into* and
+  *out of* its rows within the same pane. Each of those was a one-line exception at a site that was
+  never written as a policy — which is the tell that "results" was two concepts wearing one flag.
 - **A view state that one listing *overrides* leaks the moment the next listing inherits it.** A
   results tab forces `showHidden` on (`ResultsPresentation.showsHidden`), and every "carry the
   current pane's settings over" site read it back out of the model — so clicking Home out of a

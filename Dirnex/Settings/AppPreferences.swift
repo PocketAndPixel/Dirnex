@@ -131,6 +131,21 @@ final class AppPreferences: ObservableObject {
         }
     }
 
+    /// Whether iCloud Drive has already offered the Full Disk Access grant (PLAN.md §M9). A latch of
+    /// its own rather than the one above, because that one is set at first launch and would swallow
+    /// this offer entirely — and the two answer different questions: "has this Mac been told what
+    /// the grant is for" versus "has it been told what it costs *here*", which is the per-app
+    /// document folders quietly missing from iCloud Drive. Offered once, then never again; the
+    /// listing goes on working without the grant, one section short.
+    @Published var hasOfferedFullDiskAccessForICloud: Bool {
+        didSet {
+            defaults.set(
+                hasOfferedFullDiskAccessForICloud,
+                forKey: Keys.hasOfferedFullDiskAccessForICloud
+            )
+        }
+    }
+
     /// Whether the first-run tour has been shown once already (PLAN.md §M7 "First-run tour"). Not a
     /// user-facing setting — a one-shot latch, the twin of `hasSeenFullDiskAccessOnboarding`, so a
     /// fresh install is walked through the tour at first launch but never again. Set the moment the
@@ -197,6 +212,9 @@ final class AppPreferences: ObservableObject {
         // Defaults off — a fresh install rides the stable channel until the user opts in.
         receiveBetaUpdates = defaults.bool(forKey: Keys.receiveBetaUpdates)
         hasSeenFullDiskAccessOnboarding = defaults.bool(forKey: Keys.hasSeenFullDiskAccessOnboarding)
+        hasOfferedFullDiskAccessForICloud = defaults.bool(
+            forKey: Keys.hasOfferedFullDiskAccessForICloud
+        )
         hasSeenFirstRunTour = defaults.bool(forKey: Keys.hasSeenFirstRunTour)
     }
 
@@ -211,6 +229,7 @@ final class AppPreferences: ObservableObject {
         static let focusOpenedSearchDirectory = "Dirnex.pref.focusOpenedSearchDirectory"
         static let receiveBetaUpdates = "Dirnex.pref.receiveBetaUpdates"
         static let hasSeenFullDiskAccessOnboarding = "Dirnex.pref.hasSeenFullDiskAccessOnboarding"
+        static let hasOfferedFullDiskAccessForICloud = "Dirnex.pref.hasOfferedFullDiskAccessForICloud"
         static let hasSeenFirstRunTour = "Dirnex.pref.hasSeenFirstRunTour"
     }
 }

@@ -118,4 +118,37 @@ struct ICloudDriveMergeTests {
         #expect(scan.libraries.isEmpty)
         #expect(scan.isRestricted)
     }
+
+    // MARK: - What "up" means from inside the merge
+
+    @Test("the folders the merged listing stands in front of are recognized as its roots")
+    func mergedRoots() {
+        let home = "/Users/oleg"
+        let containers = ICloudDrive.mobileDocuments(home: home)
+
+        // The two shapes a merged row points at: the loose-files container, and any app
+        // library's Documents. Walking up out of either lands back in the merged listing.
+        #expect(ICloudDrive.isMergedRoot(containers.appending("com~apple~CloudDocs"), home: home))
+        #expect(ICloudDrive.isMergedRoot(
+            containers.appending("com~apple~Pages").appending("Documents"), home: home
+        ))
+    }
+
+    @Test("neither the containers folder itself nor anything deeper is a merged root")
+    func nonMergedRoots() {
+        let home = "/Users/oleg"
+        let containers = ICloudDrive.mobileDocuments(home: home)
+
+        // `~/Library/Mobile Documents` is the machinery *under* the listing, not a row in it.
+        #expect(!ICloudDrive.isMergedRoot(containers, home: home))
+        // A container's own folder is not a row either — only its `Documents` is.
+        #expect(!ICloudDrive.isMergedRoot(containers.appending("com~apple~Pages"), home: home))
+        // A subfolder inside a library walks up normally, and so does a "Documents" that
+        // merely shares the name from somewhere else entirely.
+        #expect(!ICloudDrive.isMergedRoot(
+            containers.appending("com~apple~Pages").appending("Documents").appending("Drafts"),
+            home: home
+        ))
+        #expect(!ICloudDrive.isMergedRoot(.local(home + "/Documents"), home: home))
+    }
 }

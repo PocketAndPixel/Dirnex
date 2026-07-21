@@ -54,6 +54,16 @@ extension BrowserWindowController: SidebarViewControllerDelegate {
         target.focusTable()
     }
 
+    /// iCloud Drive opens in the active pane as the merge Finder shows — the CloudDocs container's
+    /// loose files plus each app's own document folder (PLAN.md §M9) — then hands focus back for
+    /// keyboard browsing. Unlike the Trash it replaces the pane's listing rather than opening a tab
+    /// beside it: it is a place people browse repeatedly, and a tab per click would stack up.
+    func sidebarDidActivateICloud(_ sidebar: SidebarViewController) {
+        let target = activePanel ?? leftPanel
+        target.showICloudDrive()
+        target.focusTable()
+    }
+
     /// "Empty Trash…" erases every volume's trash, after a confirmation naming the count. Run
     /// through the active pane because that is what owns the backend, the progress reporting and
     /// the re-list — a pane already showing the Trash must not be left displaying items that no

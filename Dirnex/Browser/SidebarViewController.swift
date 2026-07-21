@@ -15,6 +15,11 @@ protocol SidebarViewControllerDelegate: AnyObject {
     /// The Trash row was picked — show every volume's trash as one merged listing (PLAN.md §M8).
     /// Like Recents it carries no model: the Trash is not a single directory to navigate to.
     func sidebarDidActivateTrash(_ sidebar: SidebarViewController)
+    /// The iCloud Drive row was picked — show the CloudDocs container merged with every iCloud
+    /// app's own document folder, the way Finder's iCloud Drive is assembled (PLAN.md §M9). It
+    /// carries no payload for the same reason the Trash doesn't: what it opens is a merge, not the
+    /// single directory the row's own path names.
+    func sidebarDidActivateICloud(_ sidebar: SidebarViewController)
     /// "Empty Trash…" was chosen on the Trash row — permanently erase every volume's trash, after
     /// a confirmation naming what will go (PLAN.md §M8).
     func sidebarDidRequestEmptyTrash(_ sidebar: SidebarViewController)
@@ -380,6 +385,11 @@ final class SidebarViewController: NSViewController {
             delegate?.sidebar(self, didActivateTag: tag)
         } else if case .allTags = rows[index] {
             expandAllTags()
+        } else if case .iCloud = rows[index] {
+            // Dispatched rather than navigated even though the row *has* a path: what it opens is
+            // the merge of that container with the app libraries beside it, which is a listing to
+            // assemble rather than a directory to list (PLAN.md §M9).
+            delegate?.sidebarDidActivateICloud(self)
         } else if let path = rows[index].path {
             delegate?.sidebar(self, didActivate: path)
         }

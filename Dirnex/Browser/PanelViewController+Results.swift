@@ -20,7 +20,7 @@ extension PanelViewController {
     /// `isSearchResults` means specifically "these are Spotlight hits" and gates search-only things
     /// like "Save Search…".
     var isResultsListing: Bool {
-        panel.path.backend == .search || panel.path.backend == .trash
+        panel.path.backend == .search || panel.path.backend == .trash || panel.path.backend == .icloud
     }
 
     /// How a virtual results tab presents its hits — everything that differs between an ⌥F7/saved
@@ -75,6 +75,44 @@ extension PanelViewController {
                 detail: "Your search matched more items. Narrow it to see the rest."
             )
         }
+    }
+
+    /// Install gathered entries into the tab **already active**, the way navigating to a directory
+    /// replaces its listing — for a virtual listing that names a place rather than a query.
+    ///
+    /// iCloud Drive is the caller: a user clicks it repeatedly while browsing, and `openResults`'
+    /// tab-per-click is right for a search or the Trash but stacks up for a destination. Everything
+    /// a `navigate` does for the pane's chrome happens here too, minus the parts that only mean
+    /// something for a real directory — the load is already done, the synthetic path is not
+    /// watchable, and it never enters the back/forward trail (it can't be re-listed by path, so
+    /// Back returns to wherever the tab was before, which is what the user came from).
+    func installResults(_ entries: [FileEntry], as presentation: ResultsPresentation) {
+        // Any directory load still in flight would land after this and overwrite the merge.
+        loadToken += 1
+        let departed = panel.path
+        panel.setModel(resultsModel(entries, as: presentation))
+        resetMouseSelectionAnchor()
+        // A results listing has no `..` row to park on, however empty it is.
+        cursorOnParentRow = false
+
+        let tab = tabs[activeTabIndex]
+        tab.hasLoaded = true
+        tab.searchQuery = presentation.query
+        tab.searchScope = presentation.scope
+        tab.customTitle = presentation.title
+
+        // Drops the FSEvents watcher: the synthetic path is not a directory, and a watcher left on
+        // the folder we came from would re-list *that* into this pane.
+        startWatching(panel.path)
+        DirectorySizeProvider.shared.cancelScan(for: departed)
+        reloadEverything()
+        refreshTabBar()
+        updateGitStatus()
+        updateTagStatus()
+        updateSyncStatus()
+        updateSizeVisualization()
+        persistState()
+        host?.panelDidNavigate(self)
     }
 
     /// The model behind a results tab — shared by opening one and by re-gathering an open one

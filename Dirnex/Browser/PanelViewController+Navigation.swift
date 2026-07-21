@@ -13,7 +13,13 @@ extension PanelViewController {
         if let target = panel.openTarget(for: entry) {
             // A folder opened from a results tab must not replace the results in place — route it
             // elsewhere so the listing survives (PLAN.md §M4 search, §M8 Recents and Trash).
-            if isResultsListing {
+            //
+            // The merged iCloud listing is the exception, and it is the same one that makes it
+            // navigate in place to begin with (PLAN.md §M9): it is a *place*, not a set of hits, so
+            // stepping into "Pages" should walk this pane into that folder the way stepping into any
+            // folder does. Sending it to the other pane — which is right for a search you want to
+            // keep — reads as the click going to the wrong window.
+            if isResultsListing, !isICloudListing {
                 openResultDirectory(target)
             } else {
                 navigate(to: target)
@@ -25,7 +31,18 @@ extension PanelViewController {
             // A nested archive — extract this member to disk and browse into it (PLAN.md §M4).
             beginNestedArchiveEntry(for: entry)
         } else if entry.path.backend == .local {
-            NSWorkspace.shared.open(entry.path.localURL)
+            // An evicted iCloud item has a real name and a real size and no bytes, so handing it
+            // straight to `NSWorkspace` doesn't fail — it blocks whichever app opens it, silently,
+            // for as long as the download takes (PLAN.md §M9). Fetch it first, visibly.
+            CloudDownloadPrompt.materialize(entry, using: backend, over: view.window) { [weak self] in
+                NSWorkspace.shared.open(entry.path.localURL)
+                // The badge that said "not downloaded" is now wrong. A real directory hears about
+                // the materialization from its watcher; the merged iCloud listing has none, so it
+                // re-gathers here or the arrow stays on a file that is fully local.
+                if entry.isDataless, self?.isICloudListing == true {
+                    self?.refreshCurrentDirectory(selecting: entry.path)
+                }
+            }
         }
         // Any other non-directory entry inside an archive (a plain file member) can't be launched
         // in place, so it's a no-op rather than opening a meaningless local URL.
@@ -62,6 +79,13 @@ extension PanelViewController {
         }
         guard panel.path.backend == .local else { return }
         let current = panel.path
+        // Up out of iCloud Drive is the merged listing, not the container machinery that holds it:
+        // the real parent of an app library's `Documents` is a one-child folder nobody asked to see
+        // (PLAN.md §M9). The cursor lands on the row we came out of, as it does walking up anywhere.
+        if ICloudDrive.isMergedRoot(current) {
+            showICloudDrive(selecting: current)
+            return
+        }
         guard let parent = panel.parentPath else { return }
         navigate(to: parent, focus: current)
     }
