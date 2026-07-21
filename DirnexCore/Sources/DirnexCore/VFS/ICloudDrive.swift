@@ -68,21 +68,22 @@ public enum ICloudDrive {
 
     /// Every app container whose `Documents` folder belongs in iCloud Drive right now.
     ///
-    /// The rule is **declared public scope, and not empty**. The first half is Apple's own
-    /// (`BRContainerIsDocumentScopePublic`, the cached form of the app's
-    /// `NSUbiquitousContainers` declaration); the second half is ours, and it is an
-    /// approximation of Finder's — deliberately, because Finder's exact rule is not derivable
-    /// from anything public. Probed 2026-07-21: this Mac declares 17 public containers and
-    /// Finder shows 7 of them, and nothing separates the two sets — not directory mtimes, not
-    /// emptiness, not install state, not `bird`'s own `client.db` item counts. Two of the
-    /// seven are empty folders, so "not empty" misses those; the alternative, showing all 17,
-    /// puts ten app folders in iCloud Drive that Finder deliberately hides. Missing an empty
-    /// folder is the smaller lie.
+    /// The rule is **declared public scope, and the folder is there**. The first half is Apple's
+    /// own (`BRContainerIsDocumentScopePublic`, the cached form of the app's
+    /// `NSUbiquitousContainers` declaration); the second is only "this Mac actually has the
+    /// directory", the same "only what exists" rule the sidebar's other sections follow.
     ///
-    /// `.DS_Store` does not count as content — it is Finder's bookkeeping and appears in
-    /// containers the user has never touched, the same reason the M8 Empty Trash confirmation
-    /// doesn't count it. Any other dotfile does count: `Shortcuts` and `Curve` hold nothing
-    /// but a marker file, and Finder lists them both.
+    /// Emptiness deliberately does **not** disqualify a container, and that is a reversal
+    /// (decided 2026-07-21, second pass). Finder's exact rule is not derivable from anything
+    /// public — this Mac declares 17 public containers and Finder shows 7, and nothing available
+    /// separates them: not mtimes, not install state, not `bird`'s `client.db` item counts, and
+    /// not emptiness, since three of the seven Finder shows are empty (Amadine, Numbers,
+    /// TextEdit). Given a choice between two wrong sets, showing a folder Finder hides is the
+    /// recoverable error and hiding a folder the user can see in Finder is not: the second reads
+    /// as "Dirnex lost my files".
+    ///
+    /// So an empty `Documents` gets a row, and the ten containers Finder hides (GarageBand,
+    /// iMovie, Keynote, QuickTime Player, Automator, Script Editor…) come along with them.
     public static func appLibraries(
         home: String = NSHomeDirectory(),
         languageCode: String? = Locale.current.language.languageCode?.identifier,
@@ -110,12 +111,12 @@ public enum ICloudDrive {
             let documents = mobileDocuments(home: home)
                 .appending(metadata.containerID)
                 .appending("Documents")
-            switch hasContent(at: documents, fileManager) {
-            case .empty: continue
+            switch reachability(of: documents, fileManager) {
+            case .missing: continue
             case .denied:
                 restricted = true
                 continue
-            case .hasContent:
+            case .readable:
                 libraries.append(
                     ICloudAppLibrary(
                         containerID: metadata.containerID,
@@ -208,21 +209,23 @@ public enum ICloudDrive {
         looseFiles + libraryRows
     }
 
-    /// Whether a container's `Documents` holds anything worth showing a row for.
-    private static func hasContent(at path: VFSPath, _ fileManager: FileManager) -> Content {
+    /// Whether a container's `Documents` folder is there to open — read through an actual
+    /// directory read rather than `fileExists`, because the *refusal* is the outcome that has to
+    /// be told apart from the absence: a container the metadata cache knows about but that has no
+    /// folder on this Mac is simply not here, while one we were not allowed to look at is a Full
+    /// Disk Access problem the pane offers to fix.
+    private static func reachability(of path: VFSPath, _ fileManager: FileManager) -> Reachability {
         do {
-            let names = try fileManager.contentsOfDirectory(atPath: path.path)
-            return names.contains { $0 != ".DS_Store" } ? .hasContent : .empty
+            _ = try fileManager.contentsOfDirectory(atPath: path.path)
+            return .readable
         } catch {
-            // A container that exists in the metadata cache but has no folder on this Mac is
-            // simply empty; only a refusal is worth reporting as a restriction.
-            return isDenial(error) ? .denied : .empty
+            return isDenial(error) ? .denied : .missing
         }
     }
 
-    private enum Content {
-        case hasContent
-        case empty
+    private enum Reachability {
+        case readable
+        case missing
         case denied
     }
 

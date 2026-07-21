@@ -12,6 +12,10 @@ public enum SidebarSection: String, CaseIterable, Sendable, Hashable {
     case recents
     case searches
     case favorites
+    /// iCloud Drive **and** every other cloud provider's mount (PLAN.md §M10). The case is still
+    /// named `icloud` on purpose: the raw value is what the persisted collapse state keys off, so
+    /// renaming it would silently unfold the section for everyone who had it shut. Only the
+    /// user-visible title widened.
     case icloud
     case volumes
     case servers
@@ -24,7 +28,7 @@ public enum SidebarSection: String, CaseIterable, Sendable, Hashable {
         case .recents: "Recents"
         case .searches: "Searches"
         case .favorites: "Favorites"
-        case .icloud: "iCloud"
+        case .icloud: "Cloud"
         case .volumes: "Volumes"
         case .servers: "Servers"
         case .tags: "Tags"

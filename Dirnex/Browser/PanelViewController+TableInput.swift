@@ -113,8 +113,9 @@ extension PanelViewController: FileTableViewInput {
 
     func fileTableEditPath(_ tableView: FileTableView) {
         // Editing a virtual results path as text makes no sense — base the field at Home so a
-        // typed path navigates out of the results into a real directory.
-        let base = panel.path.backend == .local ? panel.path : VFSPath.local(NSHomeDirectory())
+        // typed path navigates out of the results into a real directory. Same rule the bar's own
+        // double-click uses, so the two ways in agree (iCloud Drive bases at its real container).
+        let base = PathBarView.editBase(for: panel.path) ?? VFSPath.local(NSHomeDirectory())
         pathBar.beginEditing(base: base)
     }
 

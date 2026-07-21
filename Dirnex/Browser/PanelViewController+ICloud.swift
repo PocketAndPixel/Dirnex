@@ -83,11 +83,14 @@ extension PanelViewController {
     func iCloudPresentation() -> ResultsPresentation {
         ResultsPresentation(
             backend: .icloud,
-            pathSummary: "iCloud Drive",
+            // The synthetic path the presentation builds from these two is `ICloudLocation
+            // .mergedPath`, which is what the path bar's root crumb targets — they have to be the
+            // same location or clicking the crumb would install a *second* iCloud tab identity.
+            pathSummary: ICloudLocation.mergedName,
             sort: panel.model.sort,
             query: nil,
             scope: nil,
-            title: "iCloud Drive",
+            title: ICloudLocation.mergedName,
             // The pane's own setting, not the results default: this is a place being browsed, and
             // its dotfiles are ordinary dotfiles — a forced-on `.DS_Store` would be the first row of
             // the user's iCloud Drive.

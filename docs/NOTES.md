@@ -276,11 +276,84 @@ against a fake.
   it. LaunchServices is the wrong source regardless — half these apps are iOS-only and not installed.
   `URLResourceValues.localizedName` on the `Documents` folder *does* return the app name, but it needs
   the real iCloud item, so it can't be unit-tested and the plist is used instead.
+- **The name cache and the container it names are gated separately.** Without Full Disk Access,
+  `~/Library/Application Support/CloudDocs/session/containers` is refused while
+  `~/Library/Mobile Documents/com~apple~Pages/Documents` still *lists* perfectly — observed live on a
+  freshly rebuilt (hence TCC-revoked) binary, where a path bar reading the plist for the app's name
+  fell back to `com.apple.Pages` in front of a folder it had just enumerated. `URLResourceValues
+  .localizedName` on that folder answers "Pages" and needs no grant, so it is the fallback; it can't
+  be unit-tested (it only answers for a real iCloud item), which is why it is injected into
+  `ICloudLocation.trail` rather than called from the core.
 - **Which containers Finder lists is not derivable.** 17 declare public scope here; Finder shows 7.
-  Nothing separates the sets: not mtimes, not emptiness (two of the seven are empty), not install
-  state, not `bird`'s `client.db` (`app_libraries`, per-zone item counts, tombstones). Don't spend an
-  afternoon on it a second time — Dirnex approximates with "public scope and not empty" and PLAN.md
-  §M9 records why.
+  Nothing separates the sets: not mtimes, not emptiness (three of the seven are empty), not install
+  state, not `bird`'s `client.db` (`app_libraries`, per-zone item counts, tombstones), and
+  `fileproviderctl dump` — the authority for Google Drive — enumerates nothing here, because the
+  iCloud extension is not running (`not dumping extension`). Don't spend an afternoon on it a third
+  time. Dirnex shows **all 17**: between two wrong sets, a folder Finder hides is recoverable noise
+  and a folder Finder shows but Dirnex hides reads as lost files.
+  - One correlation *is* perfect on this Mac and is still not worth using: a `.DS_Store` in the
+    **container** directory (not in `Documents`) is present for exactly the 7 Finder shows and
+    absent for the 10 it hides. It is Finder's own bookkeeping, so keying on it means "show what
+    Finder has already shown" — a rule that answers nothing on a Mac where Finder never opened
+    iCloud Drive.
+
+### Google Drive (and every other `CloudStorage` provider)
+
+- **`~/Library/CloudStorage` lists without Full Disk Access**, unlike `~/Library/Mobile Documents`.
+  Every File Provider sync client macOS 12+ hosts puts its mount there as
+  `<Provider>-<account>` — `GoogleDrive-someone@gmail.com` — so one provider-agnostic scan covers
+  Google Drive, Dropbox, OneDrive and Box, browsed by the ordinary `LocalBackend`. **Split the name
+  at the *first* hyphen**: an account label is an email address and those contain hyphens, so
+  splitting at the last one hands back a truncated address and a provider that doesn't exist.
+- **A signed-in Drive account can mount completely empty, and that is not a bug in your scan.**
+  Probed 2026-07-21: both accounts on this Mac mounted with only `.Trash`,
+  `.shortcut-targets-by-id` and `.tmp` — no `My Drive` — while DriveFS's own
+  `~/Library/Application Support/Google/DriveFS/<id>/metadata_sqlite_db` listed 83 real items
+  (`items` table: `id`, `local_title`, `is_folder`). The roots had not been provisioned; Google's
+  setup dialog was still sitting on its `ROOTS_PANE`. The authority is **`fileproviderctl dump`**,
+  whose `<s:root … child:N>` line is the OS's own count — it read `child:3` for Drive against
+  `child:53` for iCloud, which is how you tell "not provisioned" from "readdir didn't materialize".
+  Neither a Finder `open` nor an `ls` populates it.
+- **The `<account> - Google Drive` folders in the home directory are symlinks to the same mounts**,
+  not separate content. Worth knowing before chasing them as a second source — and their naming is
+  Google's own precedent for putting the account *before* the product name.
+- **The mount root is not the content root**: it holds `My Drive` and nothing else visible (plus
+  `.Trash` / `.shortcut-targets-by-id` / `.tmp`). An account with Shared drives gets a second child,
+  so "descend into the mount's single visible child" is the rule that reaches the files without ever
+  hiding one — not "look for `My Drive`", and not a fixed depth.
+- **In *mirror* mode `My Drive` is a symlink**, not a directory: it points out to `~/My Drive`
+  (or `~/My Drive (<account>)` for the second account), which is where the real bytes live. Streaming
+  mode has no such indirection. Anything classifying that entry must follow the link —
+  `FileManager.fileExists` does, reading the file type does not — or mirror-mode users get a mount
+  that appears to hold nothing but a dead link.
+- **A File Provider mount is not a volume and posts no `NSWorkspace` mount notification.** Connecting
+  a second account is a *directory appearing inside* `~/Library/CloudStorage`, so FSEvents on that
+  parent is what notices it; the volume notifications that refresh the Volumes section never fire.
+  Watch the parent, not the mounts — watching the mounts wakes the watcher on every file Drive syncs.
+- **A `.gdoc` stub contains no URL**, despite every description (including this repo's own plan)
+  saying it holds one. Probed 2026-07-21, the whole file is
+  `{"":"WARNING! DO NOT EDIT THIS FILE! …","doc_id":"1aOaGA2IB…","resource_key":"","email":"…"}` —
+  note the warning sits under an **empty-string key**. Opening one means *constructing* the URL from
+  `doc_id` plus the type implied by the extension (`.gdoc` → `document`, `.gsheet` → `spreadsheets`,
+  `.gslides` → `presentation`), not reading a `url` field that isn't there.
+  - **Google's own URL segments are inconsistent, and deriving them costs a broken link.** Three of
+    the five are plural and two are singular: `document`, `spreadsheets`, `presentation`, `drawings`,
+    `forms`. There is no rule; they are a lookup table.
+  - **The stub's JSON is identical across kinds**, so the *extension* is the only thing that says
+    which editor owns the file. That also means the parse must be handed the file name, not just the
+    bytes.
+  - **`doc_id` comes out of a file's contents and goes into a URL the app then opens**, which makes
+    it an injection surface, not a formatting concern — a `doc_id` of `../../…` or one carrying a
+    `?`/`#` re-points the link at somewhere the user never asked for. Real identifiers and resource
+    keys are `[A-Za-z0-9_-]`; anything else is refused outright and the file falls back to opening
+    in its default app.
+  - **A doc opens into whichever Google session the browser already has**, so on a Mac with two
+    Drive accounts mounted, a second-account document lands on "You need access" — for a file the
+    user owns. Observed live 2026-07-21. `?authuser=<email>` (the stub carries the address) is the
+    documented lever and is verified *harmless* — Google accepted it and rewrote the URL to
+    `?tab=t.0` on a successful open — but it could not be verified as a *fix* here, because only one
+    of the two accounts is signed into this Chrome profile. Nothing on the Dirnex side can do better:
+    the handoff is a URL, and which session receives it is the browser's to decide.
 
 ### git
 
@@ -401,3 +474,9 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   search tab listed the whole dot-file wall with the eye toggled off. Sort inherits correctly
   because nothing overrides it. Re-derive an overridden setting from its source of truth
   (`AppPreferences.showHidden`) rather than from the model that overrode it.
+- **A disambiguator placed at the end of a label does not disambiguate.** Two Google Drive accounts
+  rendered as `Google Drive (someone@gmail.com)` came out of the real sidebar as the *identical*
+  string — "Google Drive (ol…" — because the pane tail-truncates at its actual width. The unit test
+  passed: the two strings genuinely differ, just not in any pixel the user sees. Front-load the
+  varying part (`someone@gmail.com — Google Drive`) and assert on a *prefix* rather than on
+  inequality, so the test fails for the same reason the screenshot did. Only a screenshot caught it.
