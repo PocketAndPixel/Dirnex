@@ -217,6 +217,12 @@ file with its contents intact. Four decisions the checklist didn't pre-answer:
   the resolution runs live on every validation with no cache to go stale.
 - **⇧F4's create is deliberately not undoable**, unlike New Folder's. The file is handed to an
   external editor in the same breath, so ⌘Z would delete something another app has open.
+- **The name field always starts out holding something**, selected: the cursor's own name
+  *whatever it is* — a folder's included, since ⇧F4 beside a folder is usually "something like
+  that, but a file" — and, where there is no cursor at all (`..`, an empty directory), the pane's
+  own folder name. An empty field asks the user to type from nothing; a selected one is a
+  starting point either way. The dialog does **not** name the folder in its text (2026-07-22):
+  the path bar right above it already does, and the prefill is drawn from it.
 
 `LocalBackend` was split (`LocalBackend+Copy.swift`) to stay under `type_body_length`.
 

@@ -34,8 +34,8 @@ extension PanelViewController {
         edit(entry)
     }
 
-    /// ⇧F4 — name the file first. Prefilled with the cursor's file name and selected, so Enter is
-    /// "edit this one" and typing over it is "make a new one".
+    /// ⇧F4 — name the file first. Prefilled with the cursor's name and selected, so Enter is "edit
+    /// this one" and typing over it is "make a new one".
     @objc func editNewFile(_ sender: Any?) {
         promptForFileToEdit()
     }
@@ -139,15 +139,14 @@ extension PanelViewController {
         guard let target = writeDirectory, canCreateFileHere else { return }
         let alert = NSAlert()
         alert.messageText = "Edit File"
-        // Named for what the pane shows, not for the directory underneath: "iCloud Drive", not
-        // "com~apple~CloudDocs", which is a folder the user has never heard of.
-        alert.informativeText = "Open a file in “\(panel.path.lastComponent)”, "
-            + "or type a new name to create one."
+        // The folder isn't named here: the path bar above the dialog already says which one this
+        // is, and the field below is prefilled out of it.
+        alert.informativeText = "Open a file, or type a new name to create one."
         alert.addButton(withTitle: "Edit")
         alert.addButton(withTitle: "Cancel")
 
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
-        field.stringValue = cursorEntryToEdit()?.name ?? ""
+        field.stringValue = prefilledName()
         field.placeholderString = "File name"
         alert.accessoryView = field
         alert.window.initialFirstResponder = field
@@ -159,12 +158,24 @@ extension PanelViewController {
         }
         if let window = view.window {
             alert.beginSheetModal(for: window, completionHandler: apply)
-            // Selected, not just prefilled: Enter edits the cursor file, and the first keystroke
-            // replaces the name outright to make a new one.
+            // Selected, not just prefilled: Enter edits the name that's already there, and the
+            // first keystroke replaces it outright to make a new one.
             field.selectText(nil)
         } else {
             apply(alert.runModal())
         }
+    }
+
+    /// What the name field starts out holding — always something, and always selected, so the
+    /// field is a *starting point to type over* rather than a blank the user has to fill from
+    /// nothing. The cursor's own name whatever it is (a folder's included: ⇧F4 beside a folder is
+    /// usually "something like that, but a file"), and where there is no cursor at all — the `..`
+    /// row, an empty directory — the pane's own folder name.
+    private func prefilledName() -> String {
+        guard !cursorOnParentRow, let entry = panel.currentEntry else {
+            return panel.path.lastComponent
+        }
+        return entry.name
     }
 
     /// Open `name` in `directory`, creating it first when nothing is there yet.
