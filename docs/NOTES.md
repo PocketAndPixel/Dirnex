@@ -132,13 +132,27 @@ at build time.
   into the document and every menu command whose selector lives on `PanelViewController` finds no
   target and goes quietly dead, checkmarks and all. Window-wide modes belong on the window
   controller (`view.terminal` was already there for the identical reason with the terminal drawer).
+- **Winning the hit test is not the same as consuming the event, and an out-of-process view proves
+  it.** `QLPreviewView`'s `QLLayerBasedPreviewContainerView` *answers* `hitTest(_:)` and then declines
+  the click, and AppKit re-dispatches to whatever is behind — so a full-window preview let clicks and
+  drags through to the file tables it was covering: the covered pane's cursor jumped to the row under
+  the photograph, and a drag copied a file to the other pane, both invisibly. The probe is what
+  settled it: the hit-test log named the Quick Look view while the cursor still moved, which rules
+  out z-order and frames and points straight at the remote view. An overlay that must block the UI
+  underneath has to return **`self`** from `hitTest` and override the mouse handlers to *swallow*
+  rather than forward — `NSResponder`'s default hands an unhandled click to the next responder, which
+  defeats the point. Exempt only the in-process backends that genuinely need the mouse (`PDFView`
+  scrolls and zooms; verified separately, since a single-page PDF fitted to the view scrolls nowhere
+  and looks like a regression).
 - **An overlay does not disable the `NSSplitView` divider it covers.** The split view keeps its drag
   region *and* its resize cursor whatever is drawn on top, so a full-window preview showed a `< | >`
   cursor over a photograph and a drag there resized two panes nobody could see — the divider was
   found 250 pt away once the preview was dismissed. Return `.zero` from
   `splitView(_:effectiveRect:forDrawnRect:ofDividerAt:)` while the cover is up: it is the one lever
   that withdraws the cursor along with the drag, and it needs
-  `invalidateCursorRects(for:)` or the old cursor lingers until the pointer leaves the region.
+  `invalidateCursorRects(for:)` or the old cursor lingers until the pointer leaves the region. Still
+  worth doing even once the overlay swallows the mouse (above): cursor rects are a separate
+  mechanism from hit testing, so the `< | >` would otherwise still appear over a photograph.
 - **`layer.presentation()` still shows the *previous* position for a frame after you set a
   transform**, so reading it as an animation's `fromValue` right after moving the layer animates from
   where it used to be. A page flip that placed the incoming file at the opposite edge and then read

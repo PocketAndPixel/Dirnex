@@ -156,6 +156,37 @@ final class QuickViewPreviewView: NSView {
         dirtyRect.intersection(bounds).fill()
     }
 
+    /// Take the mouse for the whole surface, so nothing underneath can be clicked or dragged
+    /// through it.
+    ///
+    /// Winning the hit test is *not* enough on its own, which is the trap here. `QLPreviewView`
+    /// renders out of process, and its `QLLayerBasedPreviewContainerView` answers `hitTest` and then
+    /// declines the event — AppKit re-dispatches to what is behind, so a click under a full-window
+    /// preview moved the covered pane's cursor to the row beneath it and a drag copied a file to the
+    /// other pane. Both are invisible while they happen. Returning `self` puts a view that *does*
+    /// consume the event in front of the covered panes.
+    ///
+    /// `PDFView` is the deliberate exception: scrolling and pinch-zooming a document is the entire
+    /// reason PDFs route there instead of to Quick Look, it is in-process, and it consumes what it
+    /// handles. The header keeps the mouse for the same reason — it is this surface's own chrome.
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        guard !isHidden, frame.contains(point) else { return nil }
+        if let hit = super.hitTest(point), hit.isInteractiveQuickViewBackend(
+            pdf: pdfView,
+            header: headerView
+        ) {
+            return hit
+        }
+        return self
+    }
+
+    // Swallow rather than forward: `NSResponder`'s default hands an unhandled click to the next
+    // responder, and the point of taking it was that nobody else should act on it.
+    override func mouseDown(with event: NSEvent) {}
+    override func mouseDragged(with event: NSEvent) {}
+    override func mouseUp(with event: NSEvent) {}
+    override func rightMouseDown(with event: NSEvent) {}
+
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
         needsDisplay = true
@@ -376,5 +407,15 @@ final class QuickViewPreviewView: NSView {
             guard let self, headerFadeGeneration == generation else { return }
             headerView.animator().alphaValue = 0
         }
+    }
+}
+
+private extension NSView {
+    /// Whether this hit belongs to a Quick View backend that should keep the mouse — the PDF
+    /// document, or the surface's own header.
+    func isInteractiveQuickViewBackend(pdf: NSView?, header: NSView?) -> Bool {
+        if let pdf, !pdf.isHidden, isDescendant(of: pdf) { return true }
+        if let header, !header.isHidden, isDescendant(of: header) { return true }
+        return false
     }
 }

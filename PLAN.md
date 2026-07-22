@@ -351,6 +351,12 @@ Two things had to change with it, both found live:
 - **Images bypass Quick Look now.** `QLPreviewView` renders out of process, so translating the layer
   hosting it costs a round trip per frame — a visible judder ("like 30 fps") on exactly the content
   people swipe through. An in-process `NSImageView` sits beside the existing `PDFView` for that.
+- **The covered panes stayed interactive under the preview**, which the divider was only the visible
+  symptom of. `QLPreviewView` renders out of process: its container answers `hitTest` and then
+  declines the event, so AppKit re-dispatched clicks and drags to the file tables underneath — the
+  covered pane's cursor followed clicks on the photograph, and a drag copied a file across panes.
+  The surface now returns `self` from `hitTest` and swallows the mouse handlers, exempting `PDFView`
+  so a document still scrolls and zooms.
 - **The pane divider stayed live under the preview.** `NSSplitView` keeps its drag region and its
   resize cursor whatever covers it, so the `< | >` cursor appeared over a photograph and dragging
   there resized panes nobody could see. `LockableDividerSplitViewController` empties the divider's
