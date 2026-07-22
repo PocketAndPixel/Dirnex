@@ -17,7 +17,7 @@ final class SettingsWindowController: NSWindowController {
             )
         )
         let window = NSWindow(contentViewController: hosting)
-        window.title = "Settings"
+        window.title = String(localized: "Settings")
         window.styleMask = [.titled, .closable, .miniaturizable]
         window.isReleasedWhenClosed = false
         window.center()

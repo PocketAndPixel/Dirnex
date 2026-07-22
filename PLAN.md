@@ -169,11 +169,29 @@ override, and every string the *registry* owns translated end to end.
   silently bypasses localization, and a catalog entry left blank for English compiles to its own
   key. All in NOTES.md.
 
-**Pass 2 — the extraction sweep (next).** ~500–700 remaining AppKit and SwiftUI literals wrapped
-file by file so Xcode extracts them, then Russian filled in. Mechanical; the lever that makes it
-verifiable is Xcode's **pseudolanguages** — accented catches literals that were never wrapped,
+**Pass 2 — the extraction sweep (in progress).** ~500–700 remaining AppKit and SwiftUI literals
+wrapped file by file so Xcode extracts them, then Russian filled in. Mechanical; the lever that makes
+it verifiable is Xcode's **pseudolanguages** — accented catches literals that were never wrapped,
 double-length catches truncation in the function bar and column headers before a translator is
 involved. Worth a lint rule keeping bare literals out of UI files afterwards.
+
+- **Slice 1 landed (2026-07-23): everything outside `Dirnex/Browser/`.** Settings (Panels /
+  Operations / Shortcuts tabs, the window title, the shortcut recorder), the Conflict and Error
+  dialogs, the shared `VFSErrorText` and load-failure sheet, the Full Disk Access onboarding sheets,
+  the first-run tour chrome, and the palette placeholder — 79 app literals wrapped and translated.
+  The tour's *screen copy* is `DirnexCore` data, so it got the command-registry treatment rather than
+  `String(localized:)`: `LocalizationKey.tourTitle/tourBody` key it by `TourScreen.id`,
+  `LocalizedCatalog.title/body(for:)` join it, and `LocalizationCoverageTests` now fails if a screen
+  is untranslated (10 symbolic keys). Two traps from NOTES.md recurred and were fixed at the source:
+  `Text(someStringVar)` / `"a" + "b"` (the `diffToolFooter` and editor-label computed properties),
+  and verb-splicing (`"Couldn’t \(verb)…"` → two whole sentences). **`xcodebuild` does not write
+  discovered strings back into the source `.xcstrings`** — only the Xcode IDE does — so the catalog
+  entries were added from the compiler-emitted `.stringsdata` (exact keys) by hand.
+- **Deferred within this slice:** the App Intents strings (`AutomationIntents.swift`,
+  `DirnexOperationEntity.swift`) now *extract* but stay untranslated — they are their own pass (see
+  below), and leaving them out changes nothing at runtime (the English key is the fallback).
+- **Remaining:** the `Dirnex/Browser/` controllers — the bulk of the sweep (menu items, column
+  headers, empty-state and progress strings, tooltips, the sidebar, the queue, the path bar).
 
 **Pass 3 — the remaining six languages.** Adding one is a line in `AppLanguages.all` plus its
 column in the catalog; `LocalizationCoverageTests` fails until the column is complete.

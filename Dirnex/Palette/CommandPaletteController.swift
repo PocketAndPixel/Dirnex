@@ -158,7 +158,7 @@ final class CommandPaletteController: NSObject {
     }
 
     private func makeContentView() -> NSView {
-        searchField.placeholderString = "Run a command…"
+        searchField.placeholderString = String(localized: "Run a command…")
         searchField.font = .systemFont(ofSize: 20, weight: .regular)
         searchField.usesSingleLineMode = true
         searchField.isBezeled = false

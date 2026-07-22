@@ -23,7 +23,7 @@ enum FirstRunTourPresenter {
             return
         }
         AppPreferences.shared.hasSeenFirstRunTour = true
-        show(over: window, finalButtonTitle: "Get Started", onPrimary: nil) {
+        show(over: window, finalButtonTitle: String(localized: "Get Started"), onPrimary: nil) {
             // Whatever button ended the tour, hand off to the FDA check — the important next step on
             // a fresh install, and the one the exit criterion measures.
             FullDiskAccessOnboarding.presentIfNeeded(over: window)
@@ -36,7 +36,7 @@ enum FirstRunTourPresenter {
     /// instead, the payoff the tour's copy promises.
     static func present(over window: NSWindow?) {
         AppPreferences.shared.hasSeenFirstRunTour = true
-        show(over: window, finalButtonTitle: "Open Command Palette", onPrimary: {
+        show(over: window, finalButtonTitle: String(localized: "Open Command Palette"), onPrimary: {
             // Dispatched through the responder chain — `AppDelegate` is its final link — after the
             // sheet has closed, so the palette floats over the browser window, not the tour.
             NSApp.sendAction(#selector(AppDelegate.showCommandPalette(_:)), to: nil, from: nil)

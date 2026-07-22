@@ -40,6 +40,18 @@ public enum LocalizationKey {
         "functionBar.\(commandID).label"
     }
 
+    /// A first-run tour screen's headline, e.g. `tour.welcome.title`. `TourScreen.id` already carries
+    /// the `tour.` prefix, so the key forms directly from it — the same "id is the translation key"
+    /// contract the command registry rests on.
+    public static func tourTitle(_ screenID: String) -> String {
+        "\(screenID).title"
+    }
+
+    /// A first-run tour screen's body copy, e.g. `tour.welcome.body`.
+    public static func tourBody(_ screenID: String) -> String {
+        "\(screenID).body"
+    }
+
     /// Split a translated comma-separated keyword value into terms, dropping empties and
     /// surrounding whitespace. Tolerant on purpose — the value is typed by a translator, and a
     /// stray trailing comma should cost nothing.

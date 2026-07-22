@@ -54,6 +54,18 @@ enum LocalizedCatalog {
         )
     }
 
+    /// A first-run tour screen's headline, translated — the tour's twin of `localized(_:)`. The
+    /// screen is `DirnexCore` data (English `title`/`body`, stable id), so the app translates it here
+    /// by the screen's id and falls back to the core's English, exactly as commands do.
+    static func title(for screen: TourScreen) -> String {
+        L10n.string(LocalizationKey.tourTitle(screen.id), fallback: screen.title)
+    }
+
+    /// A first-run tour screen's body copy, translated.
+    static func body(for screen: TourScreen) -> String {
+        L10n.string(LocalizationKey.tourBody(screen.id), fallback: screen.body)
+    }
+
     /// English keywords plus the translated ones, English first and duplicates dropped.
     ///
     /// Additive rather than replacing on purpose: a Russian-speaking user who has read the English

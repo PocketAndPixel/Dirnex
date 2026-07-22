@@ -17,19 +17,23 @@ enum ErrorDialog {
         _ context: OperationErrorContext,
         in window: NSWindow?
     ) async -> (resolution: ErrorResolution, applyToAll: Bool) {
-        let verb = context.kind == .copy ? "copy" : "move"
+        let name = context.path.lastComponent
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "Couldn’t \(verb) “\(context.path.lastComponent)”"
+        // Two whole sentences rather than a "Couldn’t \(verb)…" with the verb inserted: many
+        // languages inflect the object or reorder around the verb, which a spliced-in word can't.
+        alert.messageText = context.kind == .copy
+            ? String(localized: "Couldn’t copy “\(name)”")
+            : String(localized: "Couldn’t move “\(name)”")
         alert.informativeText = VFSErrorText.sentence(for: context.error)
         alert.showsSuppressionButton = true
-        alert.suppressionButton?.title = "Apply to all remaining errors"
+        alert.suppressionButton?.title = String(localized: "Apply to all remaining errors")
 
         // Retry is the default (leftmost / return-key) so a transient hiccup is one keystroke
         // to shrug off; Abort is last, like Cancel.
-        alert.addButton(withTitle: "Retry")
-        alert.addButton(withTitle: "Skip")
-        alert.addButton(withTitle: "Abort")
+        alert.addButton(withTitle: String(localized: "Retry"))
+        alert.addButton(withTitle: String(localized: "Skip"))
+        alert.addButton(withTitle: String(localized: "Abort"))
         alert.enableEscapeToCancel() // ⎋ → Abort (there is no "Cancel" button here)
 
         let response = await runAlert(alert, in: window)

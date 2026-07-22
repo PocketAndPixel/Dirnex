@@ -1,6 +1,23 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "%@ · newer": {
+      "comment": "Conflict card date, flagged as the newer of the two. %@ is a date.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · newer"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · новее"
+          }
+        }
+      }
+    },
     "%lld items couldn’t be put back: %@": {
       "comment": "Undo failure line. First argument is a count, second the underlying error.",
       "localizations": {
@@ -200,6 +217,108 @@
         }
       }
     },
+    "A row of F-key buttons along the window bottom — Rename, View, Copy, Move, New Folder, Delete — the Total Commander function bar. Also in the View menu; the keys work whether or not the bar is shown.": {
+      "comment": "Panels footer: function key bar.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A row of F-key buttons along the window bottom — Rename, View, Copy, Move, New Folder, Delete — the Total Commander function bar. Also in the View menu; the keys work whether or not the bar is shown."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ряд кнопок с F-клавишами вдоль нижнего края окна — Переименовать, Просмотр, Копировать, Переместить, Новая папка, Удалить — панель функций Total Commander. Также доступно в меню «Вид»; клавиши работают независимо от того, показана панель или нет."
+          }
+        }
+      }
+    },
+    "Abort": {
+      "comment": "Error resolution button: stop the whole operation.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abort"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прервать"
+          }
+        }
+      }
+    },
+    "Add Shortcut": {
+      "comment": "Shortcut recorder placeholder when no shortcut is set.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add Shortcut"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавить сочетание"
+          }
+        }
+      }
+    },
+    "All your shortcut customizations will be removed and the macOS defaults restored. All your changes will be lost.": {
+      "comment": "Shortcuts: restore-defaults confirmation body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All your shortcut customizations will be removed and the macOS defaults restored. All your changes will be lost."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Все ваши изменения сочетаний будут удалены и восстановлены стандартные значения macOS. Все изменения будут потеряны."
+          }
+        }
+      }
+    },
+    "Already here": {
+      "comment": "Conflict card header for the existing item.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Already here"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Уже здесь"
+          }
+        }
+      }
+    },
+    "Also assigned to %@": {
+      "comment": "Shortcuts conflict tooltip. %@ is a comma-separated list of command titles.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Also assigned to %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Также назначено: %@"
+          }
+        }
+      }
+    },
     "Also offers pre-release builds when Dirnex checks for updates. Betas are newer but less tested; you're moved back onto a stable release automatically once one catches up.": {
       "localizations": {
         "en": {
@@ -212,6 +331,329 @@
           "stringUnit": {
             "state": "translated",
             "value": "При проверке обновлений будут предлагаться и предварительные сборки. Бета-версии новее, но менее протестированы; как только выйдет стабильная версия того же уровня, вы автоматически вернётесь на неё."
+          }
+        }
+      }
+    },
+    "An item with that name already exists here.": {
+      "comment": "Error sentence: already exists.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An item with that name already exists here."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Объект с таким именем уже есть здесь."
+          }
+        }
+      }
+    },
+    "An item with the same name is already here. Choose how to resolve it.": {
+      "comment": "Conflict sheet body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An item with the same name is already here. Choose how to resolve it."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Объект с таким именем уже есть здесь. Выберите, как поступить."
+          }
+        }
+      }
+    },
+    "Apply to all remaining conflicts": {
+      "comment": "Conflict sheet: suppression checkbox.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apply to all remaining conflicts"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Применить ко всем остальным конфликтам"
+          }
+        }
+      }
+    },
+    "Apply to all remaining errors": {
+      "comment": "Error sheet: suppression checkbox.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apply to all remaining errors"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Применить ко всем остальным ошибкам"
+          }
+        }
+      }
+    },
+    "Ask before moving items to the Trash": {
+      "comment": "Operations toggle.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ask before moving items to the Trash"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Спрашивать перед перемещением в Корзину"
+          }
+        }
+      }
+    },
+    "Automatic": {
+      "comment": "Picker option: choose the tool/editor automatically.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Автоматически"
+          }
+        }
+      }
+    },
+    "Automatic (%@)": {
+      "comment": "Editor picker option naming the automatic choice. %@ is an app name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic (%@)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Автоматически (%@)"
+          }
+        }
+      }
+    },
+    "Back": {
+      "comment": "Tour: previous-screen button.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Назад"
+          }
+        }
+      }
+    },
+    "Badges a file whose bytes are still in iCloud (or another provider), on their way up or down, or in conflict — at the right edge of its name, as Finder does. Folders outside a cloud provider are never scanned, and fully synced files show nothing. Also in the View menu.": {
+      "comment": "Panels footer: sync status.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Badges a file whose bytes are still in iCloud (or another provider), on their way up or down, or in conflict — at the right edge of its name, as Finder does. Folders outside a cloud provider are never scanned, and fully synced files show nothing. Also in the View menu."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отмечает значком файл, данные которого ещё в iCloud (или у другого провайдера), загружаются или выгружаются либо в состоянии конфликта — у правого края имени, как в Finder. Папки вне облачного провайдера не сканируются, а полностью синхронизированные файлы ничем не отмечаются. Также доступно в меню «Вид»."
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "comment": "Conflict dialog cancel button.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отмена"
+          }
+        }
+      }
+    },
+    "Can’t open “%@”": {
+      "comment": "Directory-load failure sheet title. %@ is a name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can’t open “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось открыть «%@»"
+          }
+        }
+      }
+    },
+    "Compare By Contents (⌥F3) needs a diff tool. Install FileMerge (part of Xcode), Kaleidoscope, or BBEdit, then reopen Settings.": {
+      "comment": "Operations footer: no diff tool installed.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compare By Contents (⌥F3) needs a diff tool. Install FileMerge (part of Xcode), Kaleidoscope, or BBEdit, then reopen Settings."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Для «Сравнить по содержимому» (⌥F3) нужен инструмент сравнения. Установите FileMerge (входит в Xcode), Kaleidoscope или BBEdit, затем откройте настройки заново."
+          }
+        }
+      }
+    },
+    "Compare files with": {
+      "comment": "Operations picker label: diff tool.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compare files with"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сравнивать файлы с помощью"
+          }
+        }
+      }
+    },
+    "Couldn’t copy “%@”": {
+      "comment": "Per-file error sheet title. %@ is a name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t copy “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось скопировать «%@»"
+          }
+        }
+      }
+    },
+    "Couldn’t move “%@”": {
+      "comment": "Per-file error sheet title. %@ is a name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t move “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось переместить «%@»"
+          }
+        }
+      }
+    },
+    "Custom": {
+      "comment": "Shortcuts preset picker: hand-edited state.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Custom"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пользовательский"
+          }
+        }
+      }
+    },
+    "Dirnex already has Full Disk Access": {
+      "comment": "FDA already-granted sheet title.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex already has Full Disk Access"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У Dirnex уже есть полный доступ к диску"
+          }
+        }
+      }
+    },
+    "Dirnex can browse everywhere, but macOS keeps some folders private — other users' home folders, Mail and Messages, Time Machine backups, and anywhere it considers sensitive. Without Full Disk Access, opening one of those shows a permission wall; everywhere else works normally.\n\nClick Open System Settings, then switch on Dirnex under Full Disk Access. macOS will ask Dirnex to relaunch so the new access takes effect.": {
+      "comment": "FDA (general) sheet body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex can browse everywhere, but macOS keeps some folders private — other users' home folders, Mail and Messages, Time Machine backups, and anywhere it considers sensitive. Without Full Disk Access, opening one of those shows a permission wall; everywhere else works normally.\n\nClick Open System Settings, then switch on Dirnex under Full Disk Access. macOS will ask Dirnex to relaunch so the new access takes effect."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex может просматривать всё, но macOS держит некоторые папки закрытыми — домашние папки других пользователей, Почту и Сообщения, резервные копии Time Machine и всё, что считается конфиденциальным. Без полного доступа к диску открытие одной из них покажет запрет доступа; всё остальное работает нормально.\n\nНажмите «Открыть Системные настройки», затем включите Dirnex в разделе «Полный доступ к диску». macOS попросит Dirnex перезапуститься, чтобы новый доступ вступил в силу."
+          }
+        }
+      }
+    },
+    "Dirnex needs Full Disk Access to show the Trash": {
+      "comment": "FDA (Trash) sheet title.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex needs Full Disk Access to show the Trash"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex нужен полный доступ к диску, чтобы показать Корзину"
           }
         }
       }
@@ -233,6 +675,125 @@
       },
       "comment": "%@ is a language name written in that language, e.g. “Русский”."
     },
+    "Edit files with": {
+      "comment": "Operations picker label: text editor.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit files with"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Редактировать файлы в"
+          }
+        }
+      }
+    },
+    "Filter": {
+      "comment": "Shortcuts: filter text field placeholder.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filter"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Фильтр"
+          }
+        }
+      }
+    },
+    "Folder": {
+      "comment": "Conflict card: shown in place of a size when the item is a folder.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folder"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Папка"
+          }
+        }
+      }
+    },
+    "General": {
+      "comment": "Settings tab.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "General"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Основные"
+          }
+        }
+      }
+    },
+    "Get Started": {
+      "comment": "Tour: last-screen primary button on first run.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get Started"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Начать"
+          }
+        }
+      }
+    },
+    "Give Dirnex Full Disk Access": {
+      "comment": "FDA (general) sheet title.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Give Dirnex Full Disk Access"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Предоставьте Dirnex полный доступ к диску"
+          }
+        }
+      }
+    },
+    "Keep Both": {
+      "comment": "Conflict resolution button.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep Both"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оставить оба"
+          }
+        }
+      }
+    },
     "Language": {
       "localizations": {
         "en": {
@@ -245,6 +806,193 @@
           "stringUnit": {
             "state": "translated",
             "value": "Язык"
+          }
+        }
+      }
+    },
+    "New (copying in)": {
+      "comment": "Conflict card header for the incoming, copied item.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New (copying in)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Новый (копируется)"
+          }
+        }
+      }
+    },
+    "New (moving in)": {
+      "comment": "Conflict card header for the incoming, moved item.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New (moving in)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Новый (перемещается)"
+          }
+        }
+      }
+    },
+    "Next": {
+      "comment": "Tour: next-screen button.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Далее"
+          }
+        }
+      }
+    },
+    "Not Now": {
+      "comment": "FDA / tour sheet: decline button.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not Now"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не сейчас"
+          }
+        }
+      }
+    },
+    "OK": {
+      "comment": "Dismiss button.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        }
+      }
+    },
+    "Open Command Palette": {
+      "comment": "Tour: last-screen primary button when reopened on demand.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Command Palette"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть палитру команд"
+          }
+        }
+      }
+    },
+    "Open System Settings": {
+      "comment": "FDA sheet: opens System Settings.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open System Settings"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть Системные настройки"
+          }
+        }
+      }
+    },
+    "Opening a folder from a search tab leaves the results in place and opens it in the other pane. When off, focus stays on the results so you can keep opening more.": {
+      "comment": "Panels footer: focus opened search directory.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opening a folder from a search tab leaves the results in place and opens it in the other pane. When off, focus stays on the results so you can keep opening more."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открытие папки из вкладки поиска оставляет результаты на месте и открывает её в другой панели. Когда выключено, фокус остаётся на результатах, чтобы можно было открывать дальше."
+          }
+        }
+      }
+    },
+    "Operations": {
+      "comment": "Settings tab.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Operations"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Операции"
+          }
+        }
+      }
+    },
+    "Panels": {
+      "comment": "Settings tab.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Panels"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Панели"
+          }
+        }
+      }
+    },
+    "Permanent delete always asks for confirmation, regardless of this setting.": {
+      "comment": "Operations footer: confirm trash.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permanent delete always asks for confirmation, regardless of this setting."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Безвозвратное удаление всегда запрашивает подтверждение, независимо от этой настройки."
           }
         }
       }
@@ -298,6 +1046,23 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "Preset": {
+      "comment": "Shortcuts: preset picker label.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preset"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Набор"
           }
         }
       }
@@ -404,6 +1169,142 @@
         }
       }
     },
+    "Replace": {
+      "comment": "Conflict resolution button.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replace"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Заменить"
+          }
+        }
+      }
+    },
+    "Replace If Newer": {
+      "comment": "Conflict resolution button.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replace If Newer"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Заменить, если новее"
+          }
+        }
+      }
+    },
+    "Reset to default": {
+      "comment": "Shortcuts row: reset one command's shortcut.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reset to default"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сбросить к стандартному"
+          }
+        }
+      }
+    },
+    "Restore Defaults": {
+      "comment": "Shortcuts: reset-all button.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore Defaults"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Восстановить стандартные"
+          }
+        }
+      }
+    },
+    "Restore default shortcuts?": {
+      "comment": "Shortcuts: restore-defaults confirmation title.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore default shortcuts?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Восстановить стандартные сочетания?"
+          }
+        }
+      }
+    },
+    "Retry": {
+      "comment": "Error resolution button.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retry"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повторить"
+          }
+        }
+      }
+    },
+    "Reveals dotfiles like .git and .env in every pane. Also on the toolbar and ⇧⌘.": {
+      "comment": "Panels footer: hidden files.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reveals dotfiles like .git and .env in every pane. Also on the toolbar and ⇧⌘."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показывает скрытые файлы вроде .git и .env во всех панелях. Также доступно на панели инструментов и по ⇧⌘."
+          }
+        }
+      }
+    },
+    "Run a command…": {
+      "comment": "Command palette search-field placeholder.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Run a command…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выполнить команду…"
+          }
+        }
+      }
+    },
     "Same as System": {
       "localizations": {
         "en": {
@@ -421,6 +1322,346 @@
       },
       "comment": "Language picker entry meaning “follow the macOS language”."
     },
+    "Settings": {
+      "comment": "Settings window title.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Settings"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Настройки"
+          }
+        }
+      }
+    },
+    "Shortcuts": {
+      "comment": "Settings tab.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shortcuts"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сочетания клавиш"
+          }
+        }
+      }
+    },
+    "Show Finder tags": {
+      "comment": "Panels toggle.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show Finder tags"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показывать теги Finder"
+          }
+        }
+      }
+    },
+    "Show cloud sync status": {
+      "comment": "Panels toggle.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show cloud sync status"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показывать статус облачной синхронизации"
+          }
+        }
+      }
+    },
+    "Show function key bar": {
+      "comment": "Panels toggle.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show function key bar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показывать панель функциональных клавиш"
+          }
+        }
+      }
+    },
+    "Show hidden files": {
+      "comment": "Panels toggle.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show hidden files"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показывать скрытые файлы"
+          }
+        }
+      }
+    },
+    "Shows each file's tag colours at the right edge of its name, as Finder does. Also in the View menu. Archives and remote volumes have no tags, so nothing is drawn there.": {
+      "comment": "Panels footer: Finder tags.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shows each file's tag colours at the right edge of its name, as Finder does. Also in the View menu. Archives and remote volumes have no tags, so nothing is drawn there."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показывает цвета тегов у правого края имени каждого файла, как в Finder. Также доступно в меню «Вид». У архивов и удалённых томов тегов нет, поэтому для них ничего не отображается."
+          }
+        }
+      }
+    },
+    "Skip": {
+      "comment": "Conflict / error resolution button.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skip"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пропустить"
+          }
+        }
+      }
+    },
+    "Skip Tour": {
+      "comment": "Tour: skip button.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skip Tour"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пропустить обзор"
+          }
+        }
+      }
+    },
+    "Some of iCloud Drive needs Full Disk Access": {
+      "comment": "FDA (iCloud) sheet title.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Some of iCloud Drive needs Full Disk Access"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Части iCloud Drive нужен полный доступ к диску"
+          }
+        }
+      }
+    },
+    "Some shortcuts are assigned to more than one command.": {
+      "comment": "Shortcuts: conflict warning tooltip.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Some shortcuts are assigned to more than one command."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Некоторые сочетания назначены более чем одной команде."
+          }
+        }
+      }
+    },
+    "Switch": {
+      "comment": "Shortcuts: confirm preset switch.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switch"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сменить"
+          }
+        }
+      }
+    },
+    "Switch focus to folders opened from search results": {
+      "comment": "Panels toggle.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switch focus to folders opened from search results"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переключать фокус на папки, открытые из результатов поиска"
+          }
+        }
+      }
+    },
+    "Switch preset?": {
+      "comment": "Shortcuts: preset-switch confirmation title.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switch preset?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сменить набор?"
+          }
+        }
+      }
+    },
+    "That item isn’t a folder.": {
+      "comment": "Error sentence: not a directory.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That item isn’t a folder."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Это не папка."
+          }
+        }
+      }
+    },
+    "The editor F4 opens the file under the cursor in. ⇧F4 names a new file first, creating it if it doesn’t exist yet.": {
+      "comment": "Operations footer: text editor.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The editor F4 opens the file under the cursor in. ⇧F4 names a new file first, creating it if it doesn’t exist yet."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Редактор, в котором F4 открывает файл под курсором. ⇧F4 сначала запрашивает имя нового файла и создаёт его, если он ещё не существует."
+          }
+        }
+      }
+    },
+    "The item no longer exists.": {
+      "comment": "Error sentence: not found.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The item no longer exists."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Объект больше не существует."
+          }
+        }
+      }
+    },
+    "The system reported an error (code %d).": {
+      "comment": "Error sentence: generic I/O. %d is an error code.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The system reported an error (code %d)."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Система сообщила об ошибке (код %d)."
+          }
+        }
+      }
+    },
+    "The tool Compare By Contents (⌥F3) opens the two files in. Installed: %@. Automatic picks the first of those still installed.": {
+      "comment": "Operations footer: diff tools installed. %@ is a comma-separated list.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The tool Compare By Contents (⌥F3) opens the two files in. Installed: %@. Automatic picks the first of those still installed."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Инструмент, в котором «Сравнить по содержимому» (⌥F3) открывает два файла. Установлены: %@. «Автоматически» выбирает первый из ещё установленных."
+          }
+        }
+      }
+    },
+    "Type shortcut…": {
+      "comment": "Shortcut recorder while capturing keys.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Type shortcut…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Введите сочетание…"
+          }
+        }
+      }
+    },
     "When off, each new window starts at your Home folder.": {
       "localizations": {
         "en": {
@@ -433,6 +1674,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "Если выключено, каждое новое окно открывается в домашней папке."
+          }
+        }
+      }
+    },
+    "You can browse every folder on this Mac. To change this, open Full Disk Access in System Settings.": {
+      "comment": "FDA already-granted sheet body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can browse every folder on this Mac. To change this, open Full Disk Access in System Settings."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вы можете просматривать любую папку на этом Mac. Чтобы изменить это, откройте «Полный доступ к диску» в Системных настройках."
+          }
+        }
+      }
+    },
+    "You don’t have permission. Dirnex may need Full Disk Access in System Settings.": {
+      "comment": "Error sentence: permission denied.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You don’t have permission. Dirnex may need Full Disk Access in System Settings."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Недостаточно прав. Возможно, Dirnex нужен полный доступ к диску в Системных настройках."
+          }
+        }
+      }
+    },
+    "Your customized shortcuts will be replaced by the %@ preset. All your changes will be lost.": {
+      "comment": "Shortcuts: preset-switch confirmation body. %@ is a preset name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your customized shortcuts will be replaced by the %@ preset. All your changes will be lost."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваши настроенные сочетания будут заменены набором «%@». Все изменения будут потеряны."
+          }
+        }
+      }
+    },
+    "Your files in iCloud Drive are listed above. The folders apps keep there — Pages, Preview, Shortcuts — are private to macOS until you allow Dirnex to read them.\n\nClick Open System Settings, then switch on Dirnex under Full Disk Access. macOS will ask Dirnex to relaunch so the new access takes effect.": {
+      "comment": "FDA (iCloud) sheet body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your files in iCloud Drive are listed above. The folders apps keep there — Pages, Preview, Shortcuts — are private to macOS until you allow Dirnex to read them.\n\nClick Open System Settings, then switch on Dirnex under Full Disk Access. macOS will ask Dirnex to relaunch so the new access takes effect."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваши файлы в iCloud Drive показаны выше. Папки, которые там хранят приложения — Pages, «Просмотр», «Быстрые команды» — закрыты macOS, пока вы не разрешите Dirnex их читать.\n\nНажмите «Открыть Системные настройки», затем включите Dirnex в разделе «Полный доступ к диску». macOS попросит Dirnex перезапуститься, чтобы новый доступ вступил в силу."
           }
         }
       }
@@ -3007,6 +4316,220 @@
           "stringUnit": {
             "state": "translated",
             "value": "Просмотр"
+          }
+        }
+      }
+    },
+    "macOS keeps the Trash private, so Dirnex can't list it until you allow it to. Everything else keeps working as it does now.\n\nClick Open System Settings, then switch on Dirnex under Full Disk Access. macOS will ask Dirnex to relaunch so the new access takes effect.": {
+      "comment": "FDA (Trash) sheet body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS keeps the Trash private, so Dirnex can't list it until you allow it to. Everything else keeps working as it does now.\n\nClick Open System Settings, then switch on Dirnex under Full Disk Access. macOS will ask Dirnex to relaunch so the new access takes effect."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS держит Корзину закрытой, поэтому Dirnex не может показать её содержимое, пока вы не разрешите. Всё остальное продолжает работать как прежде.\n\nНажмите «Открыть Системные настройки», затем включите Dirnex в разделе «Полный доступ к диску». macOS попросит Dirnex перезапуститься, чтобы новый доступ вступил в силу."
+          }
+        }
+      }
+    },
+    "tour.files.body": {
+      "comment": "First-run tour screen 'tour.files': body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The active panel is the source, the other the destination. Copy or move what's selected across, make a folder, or send files to the Trash — from the buttons along the bottom, the function keys, or the palette."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Активная панель — источник, другая — назначение. Копируйте или перемещайте выбранное между ними, создавайте папку или отправляйте файлы в Корзину — кнопками внизу, функциональными клавишами или через палитру."
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "tour.files.title": {
+      "comment": "First-run tour screen 'tour.files': title.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move files between panels"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перемещайте файлы между панелями"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "tour.navigate.body": {
+      "comment": "First-run tour screen 'tour.navigate': body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jump straight to a path, open a second tab, or pin the folders you live in. Location, tabs, and Favorites keep even a deep folder tree a single keystroke away."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переходите сразу к пути, открывайте вторую вкладку или закрепляйте папки, в которых живёте. Переход к пути, вкладки и Избранное держат даже глубокое дерево папок в одном нажатии клавиши."
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "tour.navigate.title": {
+      "comment": "First-run tour screen 'tour.navigate': title.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get anywhere fast"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Быстрый переход куда угодно"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "tour.palette.body": {
+      "comment": "First-run tour screen 'tour.palette': body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open the command palette and start typing what you want to do — copy, pack, connect to a server, tag. It fuzzy-matches every action, so there's nothing to memorize and no menu to hunt through."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Откройте палитру команд и начните вводить, что хотите сделать — копировать, упаковать, подключиться к серверу, поставить тег. Она находит любое действие по нечёткому совпадению, так что ничего не нужно запоминать и не нужно искать по меню."
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "tour.palette.title": {
+      "comment": "First-run tour screen 'tour.palette': title.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Everything is one search away"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Всё в одном поиске"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "tour.ready.body": {
+      "comment": "First-run tour screen 'tour.ready': body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS keeps a few folders private — other users' homes, Mail, Time Machine backups. Grant Full Disk Access when you first need one. You can reopen this tour anytime from the command palette."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS держит несколько папок закрытыми — домашние папки других пользователей, Почту, резервные копии Time Machine. Предоставьте полный доступ к диску, когда он впервые понадобится. Этот обзор можно снова открыть в любой момент из палитры команд."
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "tour.ready.title": {
+      "comment": "First-run tour screen 'tour.ready': title.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You're ready"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вы готовы"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "tour.welcome.body": {
+      "comment": "First-run tour screen 'tour.welcome': body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Two panels, side by side, driven from the keyboard. One holds the files you're working with, the other where they're going — and you reach for the mouse only when you want to."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Две панели рядом, управляемые с клавиатуры. В одной — файлы, с которыми вы работаете, в другой — куда они отправляются, а к мыши вы тянетесь, только когда сами захотите."
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "tour.welcome.title": {
+      "comment": "First-run tour screen 'tour.welcome': title.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Welcome to Dirnex"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добро пожаловать в Dirnex"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "“%@” already exists in “%@”": {
+      "comment": "Conflict sheet title. Both %@ are names (the item, then the folder).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” already exists in “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» уже существует в «%@»"
           }
         }
       }

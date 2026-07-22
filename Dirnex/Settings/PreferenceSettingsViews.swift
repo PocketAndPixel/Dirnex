@@ -186,18 +186,23 @@ struct OperationsSettingsView: View {
     /// "Automatic (TextEdit)" — the system's plain-text handler, named. Without the name the
     /// default choice is the one thing in the picker that doesn't say what it does.
     private var automaticEditorLabel: String {
-        automaticEditorName.map { "Automatic (\($0))" } ?? "Automatic"
+        guard let name = automaticEditorName else { return String(localized: "Automatic") }
+        return String(localized: "Automatic (\(name))")
     }
 
     /// Says which tool Compare By Contents will actually open — including the case that needs it
     /// most, where the user has installed none and the command is greyed out with no explanation.
     private var diffToolFooter: String {
         guard !installedDiffTools.isEmpty else {
-            return "Compare By Contents (⌥F3) needs a diff tool. Install FileMerge (part of "
-                + "Xcode), Kaleidoscope, or BBEdit, then reopen Settings."
+            return String(localized: """
+            Compare By Contents (⌥F3) needs a diff tool. Install FileMerge (part of Xcode), \
+            Kaleidoscope, or BBEdit, then reopen Settings.
+            """)
         }
         let names = installedDiffTools.map(\.displayName).joined(separator: ", ")
-        return "The tool Compare By Contents (⌥F3) opens the two files in. Installed: \(names). "
-            + "Automatic picks the first of those still installed."
+        return String(localized: """
+        The tool Compare By Contents (⌥F3) opens the two files in. Installed: \(names). \
+        Automatic picks the first of those still installed.
+        """)
     }
 }

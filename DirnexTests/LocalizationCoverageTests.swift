@@ -80,6 +80,19 @@ struct LocalizationCoverageTests {
         }
     }
 
+    @Test("every first-run tour screen has a translated title and body in every shipped language")
+    func everyTourScreenIsTranslated() throws {
+        for language in translatedLanguages {
+            let bundle = try bundle(for: language)
+            for screen in FirstRunTour.screens {
+                let titleKey = LocalizationKey.tourTitle(screen.id)
+                let bodyKey = LocalizationKey.tourBody(screen.id)
+                #expect(translation(titleKey, in: bundle) != nil, "\(language.code): no \(titleKey)")
+                #expect(translation(bodyKey, in: bundle) != nil, "\(language.code): no \(bodyKey)")
+            }
+        }
+    }
+
     @Test("a translated command keeps its English keywords searchable alongside the new ones")
     func keywordsAreAdditive() {
         // The palette is the one place a translation could *remove* a user's ability to find
