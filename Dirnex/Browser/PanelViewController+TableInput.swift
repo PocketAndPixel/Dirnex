@@ -113,6 +113,10 @@ extension PanelViewController: FileTableViewInput {
         }
     }
 
+    func fileTableMinimumCursorRow(_ tableView: FileTableView) -> Int {
+        host?.quickViewMode.isFullSize == true ? parentRowCount : 0
+    }
+
     func fileTable(_ tableView: FileTableView, stepQuickViewCursorBy delta: Int) -> Bool {
         guard host?.quickViewMode.isFullSize == true else { return false }
         // Through the window, not `stepCursor` directly: the preview it owns turns the page for the
