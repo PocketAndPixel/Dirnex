@@ -250,8 +250,15 @@ final class QuickViewPreviewView: NSView {
         standDownQuickLook()
         standDownImage()
         pdfView.isHidden = false
-        pdfView.document = PDFDocument(url: url)
+        let document = PDFDocument(url: url)
+        pdfView.document = document
         pdfView.autoScales = true
+        // Rasterize page one *now* rather than letting PDFKit do it lazily. Parsing a PDF is
+        // nearly free (measured 0.2 ms) but the first page render is not, and lazily it landed
+        // ~30 ms into the swipe's flip animation and cost four frames of it — the judder was
+        // reproducible on every flip into a PDF. Paid here it costs the same 3–8 ms while nothing
+        // is moving. The thumbnail itself is discarded; warming the page cache is the point.
+        _ = document?.page(at: 0)?.thumbnail(of: bounds.size, for: .mediaBox)
     }
 
     /// Whether `url` is a PDF, so it routes to `PDFView`. Prefers the file's real content type

@@ -186,6 +186,28 @@ at build time.
   `QLPreviewView` renders in another process, so animating it judders visibly ("like 30 fps") — on
   exactly the content a preview swipe is used for. Route images to an in-process `NSImageView`
   (beside the `PDFView` that was already there) and the same animation runs at full rate.
+- **Measure a dropped frame against the *layer's own motion*, not a wall-clock window.** A
+  `CADisplayLink` sampling `layer.presentation()` every frame is what turns "it lags a bit" into a
+  number, and logging the offset alongside the timestamp is what makes the number mean anything: a
+  fixed 175 ms window scored the same build as 8 drops or 29 depending on when the slide happened to
+  start, because **a ProMotion display idles down the moment nothing moves** and those gaps counted
+  as judder. Window on the samples whose offset is non-zero and the metric stops arguing with
+  itself. Pair it with a `CFRunLoopObserver` timing each main-thread iteration: for the Quick View
+  flip that observer never fired once — **the main thread was never blocked, so the residual judder
+  on a big photograph is render-server work and no amount of app-side threading moves it.** Knowing
+  which side of that line a stall sits on is worth more than any fix attempted without it.
+  - **PDFKit rasterizes page one lazily, and it lands mid-animation.** Parsing is nearly free
+    (0.2 ms); the first page render is ~3–8 ms and arrives ~30 ms into the flip, costing four frames
+    of it on every flip into a PDF. `document.page(at: 0)?.thumbnail(of:for:)` right after installing
+    the document pays it while nothing is moving. This was the one app-side cause that measured.
+  - **Three plausible fixes measured worse or identical, and all three are reverted.** Decoding
+    images off-main via `CGImageSourceCreateThumbnailAtIndex` (so `NSImage(data:)`'s draw-time decode
+    can't stall the slide) was *worse* — 36 dropped frames against 19 — because it re-pays a full
+    decode per visit where `NSImage`'s own caching did not; adding an LRU store and neighbour
+    prefetching on top brought it back to exactly par (13/13 against the plain path's 11/15), not
+    better; and deferring the animation one run-loop turn so the texture lands first was worse again.
+    A/B them in one binary behind an env var and alternate the runs — run-to-run variance is large
+    enough that a single pair of runs will happily "prove" either direction.
 - **`NSImageView` defends its image's size at priority 750, so a big image resizes the *window*.**
   An 8629 px panorama pushed the constraint chain outward until the window ran past the edge of the
   display and the function bar was cut off — while every frame *inside* the preview was provably
