@@ -51,6 +51,11 @@ extension PanelViewController {
         switch menuItem.action {
         case #selector(showOpenWithMenu(_:)), #selector(shareSelection(_:)):
             return canHandOff && !(view.window?.firstResponder is NSText)
+        case #selector(editCursorFile(_:)), #selector(editNewFile(_:)):
+            // F4/⇧F4 are handoffs too — to a text editor rather than to a chosen app — and they
+            // ride this helper rather than the main switch, which sits at SwiftLint's
+            // cyclomatic-complexity ceiling. The answer itself lives in `+Edit`.
+            return validateEditItem(menuItem)
         default:
             return nil
         }

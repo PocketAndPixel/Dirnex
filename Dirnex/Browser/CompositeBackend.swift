@@ -111,6 +111,10 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         try backend(for: path).createDirectory(at: path)
     }
 
+    func createFile(at path: VFSPath) throws {
+        try backend(for: path).createFile(at: path)
+    }
+
     func moveItem(at source: VFSPath, to destination: VFSPath) throws {
         // A move whose ends live on different backends (local ⇄ SFTP) is not an in-place rename —
         // signal EXDEV so `CopyEngine` falls back to copy-then-delete, exactly as it does for a

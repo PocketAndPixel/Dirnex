@@ -173,6 +173,15 @@ final class AppPreferences: ObservableObject {
         didSet { defaults.set(diffToolIdentifier, forKey: Keys.diffToolIdentifier) }
     }
 
+    /// Operations ▸ which editor F4 "Edit" hands the cursor file to, as an
+    /// `ExternalTextEditor.identifier`. The empty string means **automatic** — the default — which
+    /// resolves to the system's own handler for plain text, so a user who never opens Settings gets
+    /// what double-clicking a `.txt` already gives them. A named editor wins whenever it is still
+    /// installed; uninstall it and automatic quietly takes over again rather than F4 breaking.
+    @Published var textEditorIdentifier: String {
+        didSet { defaults.set(textEditorIdentifier, forKey: Keys.textEditorIdentifier) }
+    }
+
     /// General ▸ also offer pre-release (beta) builds when checking for updates (PLAN.md §M7
     /// "Beta + stable update channels"). Default **off**: a normal install only ever sees stable
     /// releases. When on, Sparkle's `allowedChannels(for:)` — implemented on `AppUpdater` — adds
@@ -208,6 +217,8 @@ final class AppPreferences: ObservableObject {
         confirmTrash = defaults.bool(forKey: Keys.confirmTrash)
         // Empty (never written) = automatic, so a fresh install keeps the install-order default.
         diffToolIdentifier = defaults.string(forKey: Keys.diffToolIdentifier) ?? ""
+        // Empty (never written) = automatic, i.e. the system's own plain-text handler.
+        textEditorIdentifier = defaults.string(forKey: Keys.textEditorIdentifier) ?? ""
         focusOpenedSearchDirectory = defaults.bool(forKey: Keys.focusOpenedSearchDirectory)
         // Defaults off — a fresh install rides the stable channel until the user opts in.
         receiveBetaUpdates = defaults.bool(forKey: Keys.receiveBetaUpdates)
@@ -226,6 +237,7 @@ final class AppPreferences: ObservableObject {
         static let showFunctionBar = "Dirnex.pref.showFunctionBar"
         static let confirmTrash = "Dirnex.pref.confirmTrash"
         static let diffToolIdentifier = "Dirnex.pref.diffToolIdentifier"
+        static let textEditorIdentifier = "Dirnex.pref.textEditorIdentifier"
         static let focusOpenedSearchDirectory = "Dirnex.pref.focusOpenedSearchDirectory"
         static let receiveBetaUpdates = "Dirnex.pref.receiveBetaUpdates"
         static let hasSeenFullDiskAccessOnboarding = "Dirnex.pref.hasSeenFullDiskAccessOnboarding"

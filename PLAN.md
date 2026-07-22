@@ -150,7 +150,7 @@ F4 hands the file over, exactly the way ⌥F3 hands two files to FileMerge. Same
 M5's compare-by-content: a pure tested descriptor in the core, a thin launcher in the app,
 a Settings picker between them.
 
-- [ ] **`ExternalTextEditor` (core)** — the descriptor and the resolution order, mirroring
+- [x] **`ExternalTextEditor` (core)** — the descriptor and the resolution order, mirroring
       `ExternalDiffTool`: BBEdit, VS Code, Sublime Text, Zed, Nova, TextMate, CotEditor,
       Xcode, TextEdit. One deliberate deviation — resolve by **bundle identifier through an
       injected probe, not by CLI executable path**. `ExternalDiffTool` looks for `bbdiff` /
@@ -160,30 +160,30 @@ a Settings picker between them.
       already opens by bundle URL and is the model. **Automatic** = the system's own default
       handler for plain text, so a user who never opens Settings gets what double-clicking a
       `.txt` already gives them.
-- [ ] **F4 opens the file under the cursor** — directly, no dialog (decided 2026-07-22; TC's
+- [x] **F4 opens the file under the cursor** — directly, no dialog (decided 2026-07-22; TC's
       own split). Cursor item only, marks ignored: this is "edit the thing I'm pointing at",
       and a dozen editor windows is not what a marked set means. A directory under the cursor
       is not editable, so F4 there is inert — no error, the same way ⌥F3 declines a folder.
-- [ ] **⇧F4 opens the name dialog** — prefilled with the cursor's file name and selected, so
+- [x] **⇧F4 opens the name dialog** — prefilled with the cursor's file name and selected, so
       Enter is "edit this" and typing over it is "make a new one". Existing name → open it;
       new name → create the empty file, then open it. F4 with nothing editable under the
       cursor (the `..` row, an empty directory) falls through to this dialog rather than doing
       nothing, which is where TC's Shift+F4 and plain F4 usefully converge.
-- [ ] **Gate the create path on a real directory, not on `.write`** — `writeDirectory`, the
+- [x] **Gate the create path on a real directory, not on `.write`** — `writeDirectory`, the
       guard `promptForNewFolder` already uses. NOTES.md's standing trap: the merged Trash
       carries `.write` so `deleteStrategy` resolves to `.permanent`, and that alone lit up New
       Folder and Paste inside a Trash tab. ⇧F4 must not become the third. Reuse New Folder's
       shape wholesale — `NSAlert` + accessory field, `/` refused with a real message, then
       `refreshCurrentDirectory(selecting:)` so the new file lands under the cursor.
-- [ ] **Local files only** — `.local` backend filter, the same one Open With, Quick Look and
+- [x] **Local files only** — `.local` backend filter, the same one Open With, Quick Look and
       Compare all apply. An archive member or an SFTP file would edit an extracted temp copy
       whose saves go nowhere (already noted at `PanelViewController+NestedArchive`), and a
       silent no-op that looks like it worked is the expensive kind of wrong.
-- [ ] **Route through `CloudDownload`, never `String(contentsOf:)`** — an evicted iCloud or
+- [x] **Route through `CloudDownload`, never `String(contentsOf:)`** — an evicted iCloud or
       streaming-Drive file is `SF_DATALESS`, and touching one byte blocks while it materializes
       (measured 1.1 s for 200 KB). The listing already carries `isDataless`; F4 reads it and
       shows the existing download prompt instead of beachballing.
-- [ ] **Absorb the fallout of binding F4** — it joins `FunctionBar.defaultSlots` as "Edit" and
+- [x] **Absorb the fallout of binding F4** — it joins `FunctionBar.defaultSlots` as "Edit" and
       therefore leaves `assignableFunctionKeys`, whose stock answer becomes F1, F9, F10, F12.
       A user script already bound to F4 keeps its button and **silently stops firing from the
       key**, because a bar slot is dispatched before the pane's handler ever sees the press.
@@ -199,6 +199,26 @@ opens that; the editor is switchable in Settings and defaults to something sane 
 there. Explicitly **not** in scope: a built-in editor (argued above — revisit only if leaving
 the app proves to break the keyboard-first flow, which is a claim to test by living with this
 first), and write-back for archive/SFTP files (edit-temp-watch-repack is its own slice).
+
+**Landed 2026-07-22.** Verified live: F4 opened `notes.txt` in TextEdit; ⇧F4 created `fresh.md`,
+landed the cursor on it and opened it; ⇧F4 + Enter over the prefilled name reopened the existing
+file with its contents intact. Four decisions the checklist didn't pre-answer:
+
+- **`createFile(at:)` is a new `VFSBackend` primitive**, `O_EXCL` in `LocalBackend` and
+  `.unsupported` by default. Creating an empty file touches bytes, so §2 puts it in the core with
+  tests; `O_EXCL` is what makes ⇧F4 safe on a name the user typed — the stat-then-create race
+  would otherwise truncate a document on the way to opening it.
+- **"Inert on a folder" is a *greyed* menu item, not a swallowed keystroke.** The first cut left
+  F4 enabled with a folder under the cursor and doing nothing — caught in the built app, not by a
+  test. Enabled now means exactly "the key does something": a local file, or nothing under the
+  cursor at all (where F4 becomes ⇧F4's dialog).
+- **The menu items name the editor** — "Edit with TextEdit" — the way Compare By Contents names
+  its tool. Measured first: the plain-text handler costs ~20 µs and a bundle lookup ~2 µs warm, so
+  the resolution runs live on every validation with no cache to go stale.
+- **⇧F4's create is deliberately not undoable**, unlike New Folder's. The file is handed to an
+  external editor in the same breath, so ⌘Z would delete something another app has open.
+
+`LocalBackend` was split (`LocalBackend+Copy.swift`) to stay under `type_body_length`.
 
 ##### Quick View at full size
 

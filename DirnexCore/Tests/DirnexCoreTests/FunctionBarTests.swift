@@ -45,13 +45,16 @@ struct FunctionBarTests {
         let slots = FunctionBar.defaultSlots
         #expect(FunctionBar.slot(forFunctionKey: 5, in: slots)?.commandID == "file.copy")
         #expect(FunctionBar.slot(forFunctionKey: 3, in: slots)?.commandID == "view.quickLook")
-        // F4 is deliberately unbound (Dirnex has no "edit" command), so a press falls through.
-        #expect(FunctionBar.slot(forFunctionKey: 4, in: slots) == nil)
+        // F4 is Edit since §M11 — the last key on the Total Commander row to be bound.
+        #expect(FunctionBar.slot(forFunctionKey: 4, in: slots)?.commandID == "file.edit")
+        // F9 carries nothing on a stock bar, so a press falls through untouched.
+        #expect(FunctionBar.slot(forFunctionKey: 9, in: slots) == nil)
     }
 
     @Test("F5–F8 map to their canonical operations in Total Commander's order")
     func canonicalKeyMapping() {
         let slots = FunctionBar.defaultSlots
+        #expect(FunctionBar.slot(forFunctionKey: 4, in: slots)?.label == "Edit")
         #expect(FunctionBar.slot(forFunctionKey: 5, in: slots)?.label == "Copy")
         #expect(FunctionBar.slot(forFunctionKey: 6, in: slots)?.label == "Move")
         #expect(FunctionBar.slot(forFunctionKey: 7, in: slots)?.commandID == "file.newFolder")
@@ -74,7 +77,7 @@ struct FunctionBarTests {
         // A menu key-equivalent is dispatched before keyDown ever reaches the pane, so a script
         // on one of these would run from its button and stay dead on the key — the asymmetry the
         // whole reserved set exists to prevent.
-        for expected in [2, 5, 6, 7, 8] {
+        for expected in [2, 4, 5, 6, 7, 8] {
             #expect(reserved.contains(expected), "F\(expected) has a menu equivalent")
         }
     }
@@ -104,7 +107,8 @@ struct FunctionBarTests {
     @Test("the assignable keys are the free ones, and exclude macOS's own F11")
     func assignableKeys() {
         let assignable = FunctionBar.assignableFunctionKeys()
-        #expect(assignable == [1, 4, 9, 10, 12])
+        // F4 left this set in §M11, when it became Edit.
+        #expect(assignable == [1, 9, 10, 12])
         // F11 is Show Desktop system-wide — the WindowServer eats it before Dirnex is asked.
         #expect(!assignable.contains(11))
     }
@@ -127,13 +131,13 @@ struct FunctionBarTests {
         let scripts = [
             UserScript(name: "To PNG", command: "sips", functionKey: 9),
             UserScript(name: "Notes", command: "cat"), // unbound — palette only
-            UserScript(name: "Tidy", command: "tidy", functionKey: 4)
+            UserScript(name: "Tidy", command: "tidy", functionKey: 10)
         ]
         let slots = FunctionBar.slots(userScripts: scripts)
-        #expect(slots.map(\.functionKey) == [2, 3, 4, 5, 6, 7, 8, 9])
+        #expect(slots.map(\.functionKey) == [2, 3, 4, 5, 6, 7, 8, 9, 10])
         #expect(FunctionBar.slot(forFunctionKey: 9, in: slots)?.commandID == "userScript.To PNG")
         #expect(FunctionBar.slot(forFunctionKey: 9, in: slots)?.label == "To PNG")
-        #expect(FunctionBar.slot(forFunctionKey: 4, in: slots)?.label == "Tidy")
+        #expect(FunctionBar.slot(forFunctionKey: 10, in: slots)?.label == "Tidy")
         // The unbound script contributes no button.
         #expect(!slots.contains { $0.commandID == "userScript.Notes" })
     }
@@ -155,9 +159,9 @@ struct FunctionBarTests {
     func skippedScriptKeepsItsKey() {
         // The point of skipping at merge rather than validating at save: the reserved set is user
         // state that moves, so a binding must not be destroyed by a preset switch.
-        let script = UserScript(name: "Preview", command: "qlmanage", functionKey: 4)
+        let script = UserScript(name: "Preview", command: "qlmanage", functionKey: 10)
         var bindings = KeyBindings()
-        bindings.setShortcut(CommandShortcut(key: "F4", modifiers: .function), for: "file.copy")
+        bindings.setShortcut(CommandShortcut(key: "F10", modifiers: .function), for: "file.copy")
         #expect(!FunctionBar.slots(userScripts: [script], bindings: bindings).contains {
             $0.commandID == script.commandID
         })
@@ -165,5 +169,28 @@ struct FunctionBarTests {
         #expect(
             FunctionBar.slots(userScripts: [script]).contains { $0.commandID == script.commandID }
         )
+    }
+
+    @Test("a script left on a key a command has since taken is reported as displaced")
+    func displacedScriptsAreNamed() {
+        // The F4 case §M11 creates: a key that was assignable in the previous build and is Edit's
+        // in this one. The script still runs from the palette — it is only the *key* that is gone.
+        let scripts = [
+            UserScript(name: "Tidy", command: "tidy", functionKey: 4),
+            UserScript(name: "To PNG", command: "sips", functionKey: 9),
+            UserScript(name: "Notes", command: "cat"),
+            UserScript(name: "Desktop", command: "y", functionKey: 11)
+        ]
+        let displaced = FunctionBar.displacedScripts(scripts)
+        #expect(displaced.map(\.name) == ["Tidy", "Desktop"])
+    }
+
+    @Test("nothing is displaced when every bound script holds an assignable key")
+    func nothingDisplacedOnAHealthyStore() {
+        let scripts = [
+            UserScript(name: "To PNG", command: "sips", functionKey: 9),
+            UserScript(name: "Notes", command: "cat")
+        ]
+        #expect(FunctionBar.displacedScripts(scripts).isEmpty)
     }
 }
