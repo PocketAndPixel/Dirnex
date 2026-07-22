@@ -204,6 +204,25 @@ struct CommandCatalogTests {
         #expect(KeyBindings().conflicts(for: "view.quickView").isEmpty)
     }
 
+    @Test("the M11 full-size quick views are conflict-free View commands on ⌃⇧Q and ⌃⌥Q")
+    func coversFullSizeQuickView() {
+        let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })
+        let fullWindow = byID["view.quickViewFullWindow"]
+        #expect(fullWindow?.category == .view)
+        #expect(fullWindow?.shortcut == CommandShortcut(key: "q", modifiers: [.control, .shift]))
+        #expect(KeyBindings().conflicts(for: "view.quickViewFullWindow").isEmpty)
+
+        let fullScreen = byID["view.quickViewFullScreen"]
+        #expect(fullScreen?.category == .view)
+        #expect(fullScreen?.shortcut == CommandShortcut(key: "q", modifiers: [.control, .option]))
+        #expect(KeyBindings().conflicts(for: "view.quickViewFullScreen").isEmpty)
+
+        // The three sizes are one exclusive set in the menu, so they must stay three *distinct*
+        // key-equivalents — a collision here would show as two checkmarks fighting, not as an error.
+        #expect(fullWindow?.shortcut != fullScreen?.shortcut)
+        #expect(fullWindow?.shortcut != byID["view.quickView"]?.shortcut)
+    }
+
     @Test("the M6 terminal drawer is a conflict-free View command on ⌃`")
     func coversTerminalDrawer() {
         let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })

@@ -111,6 +111,24 @@ extension CommandCatalog {
             shortcut: CommandShortcut(key: "q", modifiers: .control)
         ),
         Command(
+            id: "view.quickViewFullWindow",
+            title: "Quick View Full Window",
+            category: .view,
+            keywords: ["preview", "peek", "full", "window", "large", "read", "big", "ctrl shift q"],
+            // ⌃⇧Q beside ⌃Q: the same preview, sized for reading rather than glancing. A flat
+            // toggle, not the second rung of a ladder — pressing it again puts the lists back.
+            shortcut: CommandShortcut(key: "q", modifiers: [.control, .shift])
+        ),
+        Command(
+            id: "view.quickViewFullScreen",
+            title: "Quick View Full Screen",
+            category: .view,
+            keywords: [
+                "preview", "peek", "full", "screen", "photo", "image", "present", "ctrl option q"
+            ],
+            shortcut: CommandShortcut(key: "q", modifiers: [.control, .option])
+        ),
+        Command(
             id: "view.terminal",
             title: "Terminal Drawer",
             category: .view,

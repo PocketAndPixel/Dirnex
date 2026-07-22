@@ -109,7 +109,7 @@ extension BrowserWindowController: SidebarViewControllerDelegate {
 /// touching the command binding, the button, or AppKit's automatic "Show/Hide Sidebar" menu title.
 /// The focus source is captured *before* `super` collapses the item — deterministic, with none of
 /// the first-responder-timing guesswork a post-hoc KVO observer would need.
-final class SidebarFocusSplitViewController: NSSplitViewController {
+final class SidebarFocusSplitViewController: LockableDividerSplitViewController {
     /// Invoked after a toggle that collapsed the sidebar *while it held keyboard focus* — the
     /// condition the name encodes. The host hands focus to the active pane so keyboard control
     /// survives the collapse.

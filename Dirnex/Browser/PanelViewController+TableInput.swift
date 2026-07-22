@@ -37,8 +37,10 @@ extension PanelViewController: FileTableViewInput {
             setFilter("")
         } else if host?.isQuickViewEnabled == true {
             // Esc backs out of Quick View before touching the marks — it's a distinct mode the
-            // user stepped into, and the inactive pane's preview is the obvious thing to dismiss.
-            host?.toggleQuickView()
+            // user stepped into, and the preview is the obvious thing to dismiss. It closes
+            // straight out to the file list from any of the three sizes rather than stepping down
+            // to a smaller one, which would make Esc a mode changer instead of an exit.
+            host?.closeQuickView()
         } else if panel.selectionCount > 0 {
             let previousMarks = panel.selection
             panel.clearSelection()
@@ -109,6 +111,20 @@ extension PanelViewController: FileTableViewInput {
             // and reload the panel once it lands. A no-op for a local file or empty selection.
             prepareArchivePreview { [weak self] in self?.refreshQuickLookIfVisible() }
         }
+    }
+
+    func fileTableMinimumCursorRow(_ tableView: FileTableView) -> Int {
+        host?.quickViewMode.isFullSize == true ? parentRowCount : 0
+    }
+
+    func fileTable(_ tableView: FileTableView, stepQuickViewCursorBy delta: Int) -> Bool {
+        guard host?.quickViewMode.isFullSize == true else { return false }
+        // Through the window, not `stepCursor` directly: the preview it owns turns the page for the
+        // step, so the keys flip like the gesture instead of swapping the file in place.
+        // Consumed either way — a ← on the first file is the end of the list, not an arrow key the
+        // table should get a second go at.
+        host?.flipQuickView(steps: delta)
+        return true
     }
 
     func fileTableEditPath(_ tableView: FileTableView) {

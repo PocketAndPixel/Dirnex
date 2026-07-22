@@ -11,20 +11,22 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     // Internal for `BrowserWindowController+Sidebar` (⌥⌘S focus reveals then focuses); both set in `loadView`.
     let sidebar = SidebarViewController()
     var sidebarSplitItem: NSSplitViewItem!
-    /// Outer split `[sidebar, panes]`; subclassed so hiding the focused sidebar returns focus to a pane (§M8).
-    private let splitViewController = SidebarFocusSplitViewController()
+    /// Outer split `[sidebar, panes]`; subclassed so hiding the focused sidebar returns focus to a
+    /// pane (§M8). Internal, not private: `BrowserWindowController+QuickView` locks its divider
+    /// while a full-screen preview covers it, and Swift's `private` is per-file.
+    let splitViewController = SidebarFocusSplitViewController()
     /// Inner split: `[leftPanel, rightPanel]`. Kept separate so the sidebar toggle can't
     /// steal width from just the adjacent pane — the two panes redistribute proportionally in
     /// both directions here, holding their ratio across any number of sidebar toggles.
     /// Internal (not private) so `BrowserWindowController+Terminal` can stack it over the
     /// drawer — Swift's `private` is per-file.
-    let panesSplitViewController = NSSplitViewController()
+    let panesSplitViewController = LockableDividerSplitViewController()
     /// Middle split: `[panes, terminal drawer]`, stacked vertically. Sits between the outer
     /// sidebar split and the panes split so the drawer spans the two panes and *not* the
     /// sidebar — Xcode's debug area, not a full-width strip — and so the sidebar stays full
     /// height beside it. Internal for `BrowserWindowController+Terminal` (Swift's `private` is
     /// per-file).
-    let paneStackSplitViewController = NSSplitViewController()
+    let paneStackSplitViewController = LockableDividerSplitViewController()
     /// The shell drawer under the panes (PLAN.md §M6), and its split item so ⌃` can collapse
     /// and expand it. The view controller is built with the window but its shell isn't spawned
     /// until the drawer is first opened — see `TerminalDrawerViewController`.
@@ -42,11 +44,26 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     /// back to the left pane before either has taken focus.
     var focusedPanel: PanelViewController { activePanel ?? leftPanel }
 
-    /// Quick View (⌃Q) on/off for this window. When on, the inactive pane shows a live Quick
-    /// Look preview of the file under the active pane's cursor (PLAN.md §M4). Owned here
-    /// because the mode spans both panes and follows whichever is active; driven from
+    /// What size Quick View is showing at in this window — off, the inactive pane (⌃Q, PLAN.md
+    /// §M4), across both panes (⌃⇧Q) or filling the screen (⌃⌥Q, both §M11). Owned here because
+    /// the mode spans both panes and follows whichever is active; driven from
     /// `BrowserWindowController+QuickView`.
-    var isQuickViewOn = false
+    var quickViewMode: QuickViewMode = .off
+
+    /// The two full-size preview surfaces, built on first use and then kept (hidden) for the life
+    /// of the window: one pinned over the panes split, one over the window's whole content view.
+    /// Internal for `BrowserWindowController+QuickViewFullSize`, which builds and places them.
+    var fullWindowPreview: QuickViewPreviewView?
+    var fullScreenPreview: QuickViewPreviewView?
+    /// Whether *this window was put* into the native full-screen space by ⌃⌥Q, and so should come
+    /// back out when the mode closes. Without it, closing the preview evicts a user who was
+    /// already full-screen before they ever pressed the key.
+    var didEnterFullScreenForQuickView = false
+
+    /// How far a two-finger swipe had travelled when the fingers left the trackpad, held only for
+    /// the frame or two it takes to read which way the system then moves — see
+    /// `trackQuickViewSwipe`. `nil` whenever no gesture is being finished.
+    var quickViewSwipeAmountAtLift: CGFloat?
 
     /// Archive members extracted for preview (Quick Look ⌘Y / Quick View ⌃Q inside a browsed
     /// archive), shared across both panes and both surfaces (PLAN.md §M4 "Quick Look inside").
@@ -66,6 +83,14 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     /// of the Quick View machinery it serves (`BrowserWindowController+QuickView`) — hence internal
     /// rather than private.
     nonisolated(unsafe) var escapeMonitor: Any?
+
+    /// Local scroll monitor for the two-finger swipe that flips files while a full-size Quick View
+    /// is up (PLAN.md §M11); the gesture itself is the system's `NSEvent.trackSwipeEvent`. A
+    /// raw-event monitor for the same reason as `escapeMonitor`: the preview's backends (`PDFView`,
+    /// and `QLPreviewView` out of process) sit under the pointer and eat scroll before it bubbles.
+    /// `nonisolated(unsafe)` so the nonisolated `deinit` can hand the token back — it is only ever
+    /// touched on the main actor. Installed by `installQuickViewSwipeMonitor()`.
+    nonisolated(unsafe) var quickViewSwipeMonitor: Any?
 
     /// The shared background operation engine both panes route F5/F6 through, so copies and
     /// moves queue and run without blocking browsing (PLAN.md §M2). Volume-aware scheduling
@@ -238,6 +263,8 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         queueBar.onPreferredHeightChanged = { [weak self] in self?.updateQueueBarHeight() }
         startObservingQueue()
         installEscapeMonitor()
+        installQuickViewSwipeMonitor()
+        observeQuickViewFullScreen()
         observeVolumeUnmount()
         installFunctionBar()
     }
@@ -298,6 +325,7 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         NotificationCenter.default.removeObserver(self)
         NSWorkspace.shared.notificationCenter.removeObserver(self)
         if let escapeMonitor { NSEvent.removeMonitor(escapeMonitor) }
+        if let quickViewSwipeMonitor { NSEvent.removeMonitor(quickViewSwipeMonitor) }
     }
 
     @available(*, unavailable)
@@ -382,7 +410,7 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         syncTerminalToActivePanel()
         // The preview always sits opposite the active pane, so a focus switch swaps which pane
         // shows its list and which shows the preview.
-        if isQuickViewOn { updateQuickView() }
+        if isQuickViewEnabled { updateQuickView() }
     }
 }
 

@@ -1,6 +1,5 @@
 import AppKit
 import DirnexCore
-import Quartz
 
 /// The pane's owner (the window controller) — receives focus changes so it can track
 /// which of the two panes is active and route Tab between them.
@@ -63,12 +62,25 @@ protocol PanelHost: AnyObject {
     /// left pane. Directories that have since vanished are dropped as the panes rebuild.
     func applyWorkspace(_ workspace: Workspace)
 
-    /// Quick View (⌃Q): flip the window-wide mode where the *inactive* pane shows a live
-    /// preview of the file under the *active* pane's cursor. The window owns the state
-    /// because the mode spans both panes, which a single pane can't coordinate.
-    func toggleQuickView()
+    /// Quick View (⌃Q / ⌃⇧Q / ⌃⌥Q): switch to `mode`, or back to `.off` when it is already the
+    /// current one — each key is a flat toggle that turns its own size off and switches from any
+    /// other. The window owns the state because the mode spans both panes, which a single pane
+    /// can't coordinate.
+    func toggleQuickView(_ mode: QuickViewMode)
 
-    /// Whether Quick View is currently on — drives the View ▸ Quick View Panel checkmark.
+    /// Close Quick View outright, whatever size it is showing at — Esc's exit, which must land on
+    /// the file list rather than stepping down to a smaller preview.
+    func closeQuickView()
+
+    /// Move a full-size Quick View on by `steps` files, animated like the two-finger swipe (← / →).
+    /// The window owns it because the preview surface being turned is the window's, not the pane's.
+    func flipQuickView(steps: Int)
+
+    /// The size Quick View is currently showing at. Drives the three View-menu checkmarks, and
+    /// tells the pane whether its file list is covered (see `QuickViewMode.isFullSize`).
+    var quickViewMode: QuickViewMode { get }
+
+    /// Whether Quick View is currently on at any size.
     var isQuickViewEnabled: Bool { get }
 
     /// The active pane reports its cursor (or directory) changed so the window can re-drive
@@ -126,23 +138,12 @@ final class PanelViewController: NSViewController {
     // Internal so the Quick View extension can pin its preview overlay over the file list.
     let scrollView = NSScrollView()
 
-    /// The opaque overlay that covers the file list while this pane is the *inactive* pane and
-    /// Quick View (⌃Q) is on. It hosts `quickViewPreview` and supplies the solid background —
-    /// a Quick Look preview that doesn't fill the view (a tiny image, a failed preview) would
-    /// otherwise let the table show through. Lazily built on first use; `nil` until then.
-    /// Managed by `PanelViewController+QuickView`.
-    var quickViewContainer: NSView?
-    /// The embedded Quick Look preview inside `quickViewContainer` — a live preview of the file
-    /// under the *other* pane's cursor. Used for everything except PDFs.
-    var quickViewPreview: QLPreviewView?
-    /// A PDFKit preview, used for PDFs instead of `quickViewPreview`: `QLPreviewView` only wires
-    /// up magnify-to-zoom for single-page PDFs, so multi-page documents can't be zoomed. `PDFView`
-    /// zooms and scrolls every PDF. Lives inside `quickViewContainer` alongside the Quick Look
-    /// view; whichever backend fits the current file is unhidden. Managed by `+QuickView`.
-    var quickViewPDFView: PDFView?
-    /// The URL currently loaded into the active preview backend, so an unrelated refresh that
-    /// re-drives the same file is skipped instead of flickering the preview.
-    var quickViewLoadedURL: URL?
+    /// The opaque preview surface that covers this pane's file list while it is the *inactive*
+    /// pane and Quick View (⌃Q) is on — a live preview of the file under the *other* pane's
+    /// cursor. Lazily built on first use; `nil` until then. The two full-size modes (§M11) host
+    /// their own instances of the same view at their own anchors, owned by the window. Managed by
+    /// `PanelViewController+QuickView`.
+    var quickViewPreview: QuickViewPreviewView?
     // Internal so `PanelViewController+Chrome` can update them from its own file.
     let pathBar = PathBarView()
     let statusLabel = NSTextField(labelWithString: "")

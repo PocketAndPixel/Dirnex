@@ -46,6 +46,58 @@ struct LocalBackendWriteTests {
         }
     }
 
+    // MARK: - createFile
+
+    @Test("creates an empty regular file")
+    func createsFile() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+
+        let file = tree.vfsPath("notes.txt")
+        try backend.createFile(at: file)
+        let entry = try backend.stat(at: file)
+        #expect(entry.kind == .file)
+        #expect(entry.byteSize == 0)
+    }
+
+    @Test("creating over an existing file throws alreadyExists and leaves it intact")
+    func createFileOverExistingThrows() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        try tree.writeFile("notes.txt", contents: "keep me")
+
+        let file = tree.vfsPath("notes.txt")
+        #expect(throws: VFSError.alreadyExists(file)) {
+            try backend.createFile(at: file)
+        }
+        // The `O_EXCL` guarantee, and the reason ⇧F4 can call this on a name the user typed:
+        // an existing document is never truncated on the way to being opened.
+        #expect(try String(contentsOfFile: file.path, encoding: .utf8) == "keep me")
+    }
+
+    @Test("creating over an existing directory throws alreadyExists")
+    func createFileOverDirectoryThrows() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        try tree.makeDir("dir")
+
+        let path = tree.vfsPath("dir")
+        #expect(throws: VFSError.alreadyExists(path)) {
+            try backend.createFile(at: path)
+        }
+    }
+
+    @Test("creating inside a missing parent throws notFound")
+    func createFileInMissingParentThrows() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+
+        let nested = tree.vfsPath("missing/notes.txt")
+        #expect(throws: VFSError.notFound(nested)) {
+            try backend.createFile(at: nested)
+        }
+    }
+
     // MARK: - moveItem
 
     @Test("renames a file in place")

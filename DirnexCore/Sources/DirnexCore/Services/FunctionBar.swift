@@ -35,9 +35,9 @@ public struct FunctionBarSlot: Sendable, Equatable, Hashable, Codable {
 /// buttons in the view) is what lets the bar grow a user-configurable layout and a user
 /// script's optional F-key binding without touching AppKit.
 public enum FunctionBar {
-    /// The built-in bar: Rename and View plus the four core file operations, in Total
+    /// The built-in bar: Rename, View and Edit plus the four core file operations, in Total
     /// Commander's key order. Every slot names a real `CommandCatalog` command (a test pins
-    /// that). F2/F5–F8 already carry a bare-function-key menu shortcut, so pressing those keys
+    /// that). F2/F4–F8 already carry a bare-function-key menu shortcut, so pressing those keys
     /// fires the command through the menu before it ever reaches the pane; F3 (Quick Look) has
     /// no menu equivalent — it fires through the pane's key handler, which is why the bar is the
     /// natural home for *any* function key that isn't otherwise bound (a user script's F-key
@@ -45,6 +45,7 @@ public enum FunctionBar {
     public static let defaultSlots: [FunctionBarSlot] = [
         FunctionBarSlot(functionKey: 2, label: "Rename", commandID: "file.rename"),
         FunctionBarSlot(functionKey: 3, label: "View", commandID: "view.quickLook"),
+        FunctionBarSlot(functionKey: 4, label: "Edit", commandID: "file.edit"),
         FunctionBarSlot(functionKey: 5, label: "Copy", commandID: "file.copy"),
         FunctionBarSlot(functionKey: 6, label: "Move", commandID: "file.move"),
         FunctionBarSlot(functionKey: 7, label: "NewFolder", commandID: "file.newFolder"),
@@ -53,7 +54,7 @@ public enum FunctionBar {
 
     /// The slot bound to function key `number` within `slots`, or `nil` when nothing is — the
     /// pane's key handler uses this to turn an unhandled F-key press into its command. Returns
-    /// `nil` for an unmapped key (e.g. F4) so the press falls through untouched.
+    /// `nil` for an unmapped key (e.g. F9 on a stock bar) so the press falls through untouched.
     ///
     /// `slots` is explicit rather than defaulting to `defaultSlots` on purpose: the caller that
     /// forgot to pass the merged bar would silently never fire a user script's key, which is a
@@ -101,11 +102,32 @@ public enum FunctionBar {
     }
 
     /// The keys a script can actually be bound to, in ascending order — what an editor offers.
-    /// On a stock build: F1, F4, F9, F10 and F12.
+    /// On a stock build: F1, F9, F10 and F12. (F4 left this set when it became "Edit" in §M11.)
     public static func assignableFunctionKeys(bindings: KeyBindings = KeyBindings()) -> [Int] {
         let reserved = reservedFunctionKeys(bindings: bindings)
         return functionKeyRange.filter {
             !reserved.contains($0) && !systemReservedFunctionKeys.contains($0)
+        }
+    }
+
+    /// The scripts holding a function key that is no longer theirs to fire — what the app warns
+    /// about on load, rather than letting the binding degrade quietly.
+    ///
+    /// The case this exists for is F4 (PLAN.md §M11): a key that was assignable in a shipped build
+    /// and is "Edit" in the next one. Such a script keeps everything else and still runs from the
+    /// palette, but its key now belongs to a command dispatched *before* the pane's key handler is
+    /// ever asked — so pressing it silently does something else, which is exactly the failure a
+    /// user cannot diagnose from where they are standing.
+    ///
+    /// Ordering follows `userScripts`, so a message lists them the way the organizer does.
+    public static func displacedScripts(
+        _ userScripts: [UserScript],
+        bindings: KeyBindings = KeyBindings()
+    ) -> [UserScript] {
+        let assignable = Set(assignableFunctionKeys(bindings: bindings))
+        return userScripts.filter { script in
+            guard let key = script.functionKey else { return false }
+            return !assignable.contains(key)
         }
     }
 

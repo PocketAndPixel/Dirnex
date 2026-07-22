@@ -25,6 +25,8 @@ enum CommandBinding {
         "file.pack": #selector(PanelViewController.packSelection(_:)),
         "file.syncDirectories": #selector(PanelViewController.synchronizeDirectories(_:)),
         "file.compareByContents": #selector(PanelViewController.compareByContents(_:)),
+        "file.edit": #selector(PanelViewController.editCursorFile(_:)),
+        "file.editNew": #selector(PanelViewController.editNewFile(_:)),
         "file.manageScripts": #selector(PanelViewController.manageUserScripts(_:)),
         "file.tags": #selector(PanelViewController.showTagsMenu(_:)),
         "file.rename": #selector(PanelViewController.renameSelection(_:)),
@@ -56,7 +58,15 @@ enum CommandBinding {
         "view.sizeVisualization": #selector(PanelViewController.toggleSizeVisualization(_:)),
         "view.gitAwareSizes": #selector(PanelViewController.toggleGitAwareSizes(_:)),
         "view.quickLook": #selector(PanelViewController.toggleQuickLookPreview(_:)),
-        "view.quickView": #selector(PanelViewController.toggleQuickViewPanel(_:)),
+        // The window controller, not a pane — the same reason `view.terminal` lives there. The
+        // mode is window-wide, and at the two full sizes the preview is a *sibling* of the panes:
+        // click into the document and no `PanelViewController` is left in the responder chain, so
+        // a pane-hosted selector would find no target and the keys would go quietly dead.
+        "view.quickView": #selector(BrowserWindowController.toggleQuickViewPanel(_:)),
+        "view.quickViewFullWindow":
+            #selector(BrowserWindowController.toggleQuickViewFullWindow(_:)),
+        "view.quickViewFullScreen":
+            #selector(BrowserWindowController.toggleQuickViewFullScreen(_:)),
         // The window controller, not a pane: the drawer spans both panes, and this is the one
         // command that must also fire while the *terminal* holds focus — where no pane is in the
         // responder chain, but the window controller still is.

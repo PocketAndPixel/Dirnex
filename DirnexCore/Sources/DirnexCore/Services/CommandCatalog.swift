@@ -83,9 +83,28 @@ public enum CommandCatalog {
             category: .file,
             keywords: ["compare", "diff", "contents", "filemerge", "kaleidoscope", "bbedit"],
             // ⌥F3 as the sibling of F3 "View": F3 looks at the file under the cursor, ⌥F3 looks at
-            // it *against* the other pane's. Free on both presets (stock leaves F3/F4 unbound;
-            // the Total Commander preset takes bare F3 for Quick Look, not ⌥F3).
+            // it *against* the other pane's. Free on both presets — F4 "Edit" is the *bare* key,
+            // and the Total Commander preset takes bare F3 for Quick Look, not ⌥F3; a bare key and
+            // a modified one are different key-equivalents.
             shortcut: CommandShortcut(key: "F3", modifiers: [.function, .option])
+        ),
+        Command(
+            id: "file.edit",
+            title: "Edit",
+            category: .file,
+            keywords: ["f4", "editor", "text", "open", "modify", "bbedit", "vs code", "textedit"],
+            // F4, the last free key on the Total Commander row (PLAN.md §M11). Dirnex ships no
+            // editor of its own — the key hands the cursor file to the one the user already has.
+            shortcut: CommandShortcut(key: "F4", modifiers: .function)
+        ),
+        Command(
+            id: "file.editNew",
+            title: "Edit File…",
+            category: .file,
+            keywords: ["f4", "new", "create", "editor", "text", "touch", "empty", "file"],
+            // ⇧F4 names the file first: Enter over the prefilled cursor name edits that one, and
+            // typing over it creates a new empty file and edits *that* — Total Commander's split.
+            shortcut: CommandShortcut(key: "F4", modifiers: [.function, .shift])
         ),
         Command(
             id: "file.manageScripts",

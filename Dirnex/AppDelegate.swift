@@ -65,6 +65,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // welcome comes before the permission wall. On later launches the tour is skipped and the
         // FDA check runs directly; both are one-shots the user can re-open from the app menu/palette.
         FirstRunTourPresenter.presentIfNeeded(over: controller.window)
+
+        // A user script left on a function key that a built-in command has since claimed — F4,
+        // which became "Edit" in §M11 — still runs from the palette but no longer from its key.
+        // Said once, out loud, rather than left to degrade quietly. Mutually exclusive with the
+        // tour above: a fresh install has no scripts to displace.
+        DisplacedScriptKeysNotice.presentIfNeeded(over: controller.window)
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

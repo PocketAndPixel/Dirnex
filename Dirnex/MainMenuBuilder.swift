@@ -51,6 +51,7 @@ enum MainMenuBuilder {
             .command("file.openWith"), .command("file.share"), .separator,
             .command("file.copy"), .command("file.move"), .command("file.pack"),
             .command("file.syncDirectories"), .command("file.compareByContents"), .separator,
+            .command("file.edit"), .command("file.editNew"), .separator,
             .command("file.tags"), .command("file.manageScripts"), .separator,
             .command("file.rename"), .command("file.multiRename"), .separator,
             .command("file.newFolder"), .separator,
@@ -74,7 +75,9 @@ enum MainMenuBuilder {
             .command("view.toggleTags"), .command("view.toggleSyncStatus"),
             .command("view.functionBar"),
             .command("view.sizeVisualization"), .subcommand("view.gitAwareSizes"), .separator,
-            .command("view.quickLook"), .command("view.quickView"), .separator,
+            .command("view.quickLook"), .command("view.quickView"),
+            .subcommand("view.quickViewFullWindow"), .subcommand("view.quickViewFullScreen"),
+            .separator,
             .command("view.terminal")
         ]),
         MenuSpec(title: "Go", items: [

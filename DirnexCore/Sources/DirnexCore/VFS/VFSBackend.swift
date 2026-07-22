@@ -103,6 +103,12 @@ public protocol VFSBackend: Sendable {
     /// directories are created — mirrors `mkdir(2)`).
     func createDirectory(at path: VFSPath) throws
 
+    /// Create an empty regular file at `path`. Throws `.alreadyExists` if anything is already
+    /// there — deliberately never truncating, because the one caller is ⇧F4 "Edit File…", where
+    /// an existing name means *open that file* and silently emptying it would destroy the very
+    /// document the user was reaching for (PLAN.md §M11).
+    func createFile(at path: VFSPath) throws
+
     /// Move or rename `source` to `destination` within this backend. Same-volume moves
     /// are an atomic rename; a cross-volume move throws (the operation engine falls back
     /// to copy-then-delete). Throws `.alreadyExists` if `destination` is occupied.
@@ -177,6 +183,10 @@ public extension VFSBackend {
 
     func createDirectory(at path: VFSPath) throws {
         throw VFSError.unsupported("This location doesn’t support creating folders.")
+    }
+
+    func createFile(at path: VFSPath) throws {
+        throw VFSError.unsupported("This location doesn’t support creating files.")
     }
 
     func moveItem(at source: VFSPath, to destination: VFSPath) throws {

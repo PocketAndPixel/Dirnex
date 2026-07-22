@@ -120,6 +120,139 @@ at build time.
   not the table. `QLPreviewView` is not opaque and `init(frame:style:)` is failable — an
   embedded preview needs an opaque backing or the covered view bleeds through. It also only
   wires magnify-to-zoom for single-page PDFs, so multi-page PDFs route to a PDFKit `PDFView`.
+- **`NSView.clipsToBounds` is `false` by default, and `draw(_:)`'s `dirtyRect` can be larger than
+  the view's bounds.** A backing fill of `dirtyRect` therefore paints over the view's *siblings*:
+  the full-window Quick View overlay blacked out the sidebar and the function-key bar while its own
+  frame was provably correct. The frame is what a screenshot shows, so eyeballing one points at the
+  wrong culprit — an `NSLog` of `convert(bounds, to: nil)` settled it in one run. `NSBox` (what the
+  M4 overlay used) clips, which is why nothing like this appeared until the container became a
+  plain `NSView`. Set `clipsToBounds = true` *and* fill `dirtyRect.intersection(bounds)`.
+- **An overlay pinned over a *sibling* subtree drops that subtree's controller out of the responder
+  chain.** A preview covering the panes is a child of the content view, not of a pane — so one click
+  into the document and every menu command whose selector lives on `PanelViewController` finds no
+  target and goes quietly dead, checkmarks and all. Window-wide modes belong on the window
+  controller (`view.terminal` was already there for the identical reason with the terminal drawer).
+- **Winning the hit test is not the same as consuming the event, and an out-of-process view proves
+  it.** `QLPreviewView`'s `QLLayerBasedPreviewContainerView` *answers* `hitTest(_:)` and then declines
+  the click, and AppKit re-dispatches to whatever is behind — so a full-window preview let clicks and
+  drags through to the file tables it was covering: the covered pane's cursor jumped to the row under
+  the photograph, and a drag copied a file to the other pane, both invisibly. The probe is what
+  settled it: the hit-test log named the Quick Look view while the cursor still moved, which rules
+  out z-order and frames and points straight at the remote view. An overlay that must block the UI
+  underneath has to return **`self`** from `hitTest` and override the mouse handlers to *swallow*
+  rather than forward — `NSResponder`'s default hands an unhandled click to the next responder, which
+  defeats the point. Exempt only the in-process backends that genuinely need the mouse (`PDFView`
+  scrolls and zooms; verified separately, since a single-page PDF fitted to the view scrolls nowhere
+  and looks like a regression).
+- **An overlay does not disable the `NSSplitView` divider it covers.** The split view keeps its drag
+  region *and* its resize cursor whatever is drawn on top, so a full-window preview showed a `< | >`
+  cursor over a photograph and a drag there resized two panes nobody could see — the divider was
+  found 250 pt away once the preview was dismissed. Return `.zero` from
+  `splitView(_:effectiveRect:forDrawnRect:ofDividerAt:)` while the cover is up: it is the one lever
+  that withdraws the cursor along with the drag, and it needs
+  `invalidateCursorRects(for:)` or the old cursor lingers until the pointer leaves the region. Still
+  worth doing even once the overlay swallows the mouse (above): cursor rects are a separate
+  mechanism from hit testing, so the `< | >` would otherwise still appear over a photograph.
+- **`layer.presentation()` still shows the *previous* position for a frame after you set a
+  transform**, so reading it as an animation's `fromValue` right after moving the layer animates from
+  where it used to be. A page flip that placed the incoming file at the opposite edge and then read
+  the presentation layer brought every new file in from the side it had just left — a bug that reads
+  as inverted direction, not as a timing problem. State `fromValue` explicitly whenever the caller
+  already knows where it just put the layer; read the presentation layer only when *interrupting* an
+  animation in flight, which is the case it exists for.
+- **A synthetic scroll event is not a trackpad**, so a two-finger gesture cannot be verified by
+  computer-use — the same class of hole as synthetic Escape. `mcp__computer-use__scroll` arrives
+  with `hasPreciseScrollingDeltas == false`, `phase == []` and one coarse delta, so any code gated
+  on precise deltas (the right gate — a notched wheel's horizontal tilt is not a swipe) is skipped
+  entirely. What does work: log the event shape to confirm the monitor is reached, then temporarily
+  drop *that one gate* to prove the rest of the chain, and say plainly that the feel is unverified.
+- **A two-finger swipe is `NSEvent.trackSwipeEvent`'s job, not yours.** Two hand-rolled versions and
+  five rounds of tuning failed to converge, because every quantity the gesture needs is one the OS
+  already owns. Measured, in order of how expensive each was to learn: travel a hand intends
+  *identically* ranges over 82…611 pt (median 206), so mapping distance to a **count** deals 0–5 rows
+  for the same flick; a threshold crossed mid-gesture (median 58 % in) fires while the fingers are
+  still down, so the user cannot change their mind; and `scrollingDeltaX` is **acceleration-scaled**
+  — 1.00× for a slow swipe against **5.18×** for a fast one over the same glass — so any threshold
+  expressed in it silently demands more distance the slower you move, which reads as "I have to flick
+  it to make it work". `trackSwipeEvent` answers all of that and gives the feel every other app on the
+  machine has. Honour `NSEvent.isSwipeTrackingFromScrollEventsEnabled` rather than substituting your
+  own gesture: a user who turned "Swipe between pages" off has already said what they want.
+  - **But its *post-lift animation* is not yours to want.** Measured over 17 real swipes: the fingers
+    are down **41–123 ms** (median 82) and the animation the OS then runs takes **177–745 ms**
+    (median ~600) — five to eight times the gesture that asked for it — delivered as one callback
+    every **~18 ms (57 Hz)** on a 120 Hz display, decelerating into a tail that crawls from 0.99 to
+    1.0. Hand-driven transform sets at 57 Hz with a long asymptote is exactly what "laggy, and the
+    image sticks" describes. Split the gesture at the lift: the system keeps everything before it
+    (direction lock, acceleration, the rubber band at the ends, and the velocity-aware *verdict* —
+    one measured swipe lifted at **0.07** of a width and still committed, so no distance threshold of
+    your own can stand in for it), and you take the travel that is left as an ordinary Core Animation.
+    Read the verdict rather than re-deriving it: one callback after the lift the amount is either
+    growing towards ±1 or shrinking towards 0.
+  - **`.ended` arrives exactly once, at the lift; every callback the OS's own animation makes after
+    it carries `phase == 0`.** A take-over guarded on `phase == .ended` therefore sits out the whole
+    animation and fires at `isComplete` — after the ~600 ms it existed to pre-empt. It looks correct,
+    compiles, runs, and changes nothing, which is the worst shape a bug can have. Record the lift,
+    then treat *every* later callback as post-lift whatever its phase.
+  - **Finish by swapping outright, not by carrying the old file off first.** The two-segment version
+    (run the remainder out, then flip in) needs a hand-off timed to the exit's end, and a second
+    swipe arriving mid-flight lands inside it — leaving the surface showing bare backing with the
+    header naming a file that is off-screen. One synchronous path has nothing pending to collide
+    with, and the incoming slide covers the discontinuity.
+  - **This one could only be answered by the user's hands.** A synthetic scroll has
+    `hasPreciseScrollingDeltas == false` and never opens a real gesture, so two rounds of plausible
+    reasoning about it were both wrong; one instrumented run by the person with the trackpad settled
+    it in a minute. Prove the log path works with a synthetic event *first* (it reaches the monitor
+    even though it fails the gate), then ask.
+  - The corollary is the expensive one: **tested, headless code is not automatically the right place
+    for a decision.** `SwipeStepper` was pure, and had 23 passing tests pinning behaviour that should
+    never have been Dirnex's to define. Tests keep a decision from drifting; they cannot tell you it
+    was yours to make.
+- **Transforming a layer that hosts an out-of-process view costs a round trip per frame.** A
+  `QLPreviewView` renders in another process, so animating it judders visibly ("like 30 fps") — on
+  exactly the content a preview swipe is used for. Route images to an in-process `NSImageView`
+  (beside the `PDFView` that was already there) and the same animation runs at full rate.
+- **Measure a dropped frame against the *layer's own motion*, not a wall-clock window.** A
+  `CADisplayLink` sampling `layer.presentation()` every frame is what turns "it lags a bit" into a
+  number, and logging the offset alongside the timestamp is what makes the number mean anything: a
+  fixed 175 ms window scored the same build as 8 drops or 29 depending on when the slide happened to
+  start, because **a ProMotion display idles down the moment nothing moves** and those gaps counted
+  as judder. Window on the samples whose offset is non-zero and the metric stops arguing with
+  itself. Pair it with a `CFRunLoopObserver` timing each main-thread iteration: for the Quick View
+  flip that observer never fired once — **the main thread was never blocked, so the residual judder
+  on a big photograph is render-server work and no amount of app-side threading moves it.** Knowing
+  which side of that line a stall sits on is worth more than any fix attempted without it.
+  - **PDFKit rasterizes page one lazily, and it lands mid-animation.** Parsing is nearly free
+    (0.2 ms); the first page render is ~3–8 ms and arrives ~30 ms into the flip, costing four frames
+    of it on every flip into a PDF. `document.page(at: 0)?.thumbnail(of:for:)` right after installing
+    the document pays it while nothing is moving. This was the one app-side cause that measured.
+  - **Three plausible fixes measured worse or identical, and all three are reverted.** Decoding
+    images off-main via `CGImageSourceCreateThumbnailAtIndex` (so `NSImage(data:)`'s draw-time decode
+    can't stall the slide) was *worse* — 36 dropped frames against 19 — because it re-pays a full
+    decode per visit where `NSImage`'s own caching did not; adding an LRU store and neighbour
+    prefetching on top brought it back to exactly par (13/13 against the plain path's 11/15), not
+    better; and deferring the animation one run-loop turn so the texture lands first was worse again.
+    A/B them in one binary behind an env var and alternate the runs — run-to-run variance is large
+    enough that a single pair of runs will happily "prove" either direction.
+- **`NSImageView` defends its image's size at priority 750, so a big image resizes the *window*.**
+  An 8629 px panorama pushed the constraint chain outward until the window ran past the edge of the
+  display and the function bar was cut off — while every frame *inside* the preview was provably
+  correct, which sends you looking in the wrong place. Pin its compression resistance and hugging to
+  the floor whenever it is a passenger in a layout rather than the thing being sized.
+- **Verify a probe before spending someone else's time on it.** `NSEvent.touches(matching:in:)`
+  raises on a scroll event and silently unwound the event monitor it was added to — so the feature
+  under measurement stopped working, the document panned instead, and three rounds of a user's
+  hands-on testing measured the instrumentation rather than the code. Nothing was logged, no
+  exception surfaced, and the app kept running. A probe that cannot be exercised by the author needs
+  a path that can: dropping one gate so a synthetic event reaches it proved the logging in one run.
+- **A window posts no mouse-moved events unless `acceptsMouseMovedEvents` is set** — an
+  `NSTrackingArea` carrying `.mouseMoved` is not enough on its own. A header meant to fade in on
+  pointer movement simply never appears, with no error anywhere.
+- **Constraining a content-view subview to a view *inside* an `NSSplitView` works and is the way to
+  overlay panes.** An `NSSplitView` treats a plain subview as a pane, so the overlay cannot be added
+  to it; anchoring across the hierarchy to its edges tracks the divider, the sidebar and the drawer
+  for free. Anchor the *top* to `safeAreaLayoutGuide`, though — a window with `.fullSizeContentView`
+  runs its content under the transparent title bar, and anything pinned to the bare top edge draws
+  through the titlebar accessories living up there.
 - **Right-click menu items must capture their paths at build time** into `representedObject`,
   and entry-vs-`..` must be decided from the clicked row, not a cursor flag — a right-click on a
   marked row leaves that flag stale.

@@ -30,6 +30,16 @@ protocol FileTableViewInput: AnyObject {
     func fileTableDeselectByPattern(_ tableView: FileTableView)
     /// Cmd+Y — toggle the Quick Look preview panel.
     func fileTableToggleQuickLook(_ tableView: FileTableView)
+    /// An arrow key — step the cursor one file while a full-size Quick View covers the list
+    /// (PLAN.md §M11). Returns `true` when the arrows belong to Quick View, whether or not the
+    /// cursor could move: at the ends of the list they stop rather than falling through to the
+    /// table, and they never reach `..`.
+    func fileTable(_ tableView: FileTableView, stepQuickViewCursorBy delta: Int) -> Bool
+
+    /// The lowest row the cursor may land on. `..` is off limits while a full-size Quick View
+    /// covers the list — it is not a file to preview, so Home and Page Up stop at the first real
+    /// row instead of parking on it and showing an empty surface.
+    func fileTableMinimumCursorRow(_ tableView: FileTableView) -> Int
     /// A bare function key (F1–F12) reached the table unclaimed by a menu key-equivalent — the
     /// function bar dispatches its slot's command, if any. Returns `true` when a slot handled it.
     func fileTable(_ tableView: FileTableView, functionKey number: Int) -> Bool
@@ -229,6 +239,12 @@ final class FileTableView: NSTableView {
         case 121: // Page Down
             moveCursor(by: visibleRowCount())
             return true
+        // Any arrow — previous/next *file* while a full-size Quick View covers the list. ↑/↓ are
+        // included because with the list hidden they mean exactly what ←/→ do, and left to
+        // `NSTableView` they walk onto the `..` row and preview nothing.
+        case 123, 124, 125, 126:
+            let backwards = event.keyCode == 123 || event.keyCode == 126
+            return inputDelegate?.fileTable(self, stepQuickViewCursorBy: backwards ? -1 : 1) == true
         case 69: // Keypad + — select by wildcard (TC's gray-plus)
             inputDelegate?.fileTableSelectByPattern(self)
             return true
@@ -271,13 +287,19 @@ final class FileTableView: NSTableView {
 
     // MARK: - Cursor movement
 
-    private func moveCursor(by delta: Int) {
+    /// Move the cursor `delta` rows, clamped at the ends. Internal because the two-finger swipe
+    /// (PLAN.md §M11) arrives as a raw scroll event at the window rather than as a key here, and
+    /// must land on the same movement ← / → make rather than a second copy of it.
+    func moveCursor(by delta: Int) {
         moveCursor(to: selectedRow + delta)
     }
 
     private func moveCursor(to row: Int) {
         guard numberOfRows > 0 else { return }
-        let clamped = min(max(row, 0), numberOfRows - 1)
+        // Floored rather than clamped at 0: Home and Page Up would otherwise land on `..` under a
+        // full-size Quick View, which previews nothing.
+        let floor = inputDelegate?.fileTableMinimumCursorRow(self) ?? 0
+        let clamped = min(max(row, floor), numberOfRows - 1)
         selectRowIndexes(IndexSet(integer: clamped), byExtendingSelection: false)
         scrollRowToVisible(clamped)
     }
