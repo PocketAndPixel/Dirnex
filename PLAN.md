@@ -327,6 +327,44 @@ that one gate — and `SwipeStepper.threshold` (120 pt, about a third of a track
 Preview asks for) is a number picked from what those apps feel like, not measured. It is the one
 value here that wants a real hand.
 
+**Rebuilt on the system's own gesture, 2026-07-22, after five rounds of hand-tuning failed to
+converge.** The first version counted distance; the second was an interactive, commit-on-lift state
+machine in the core (`SwipeStepper`). Both were wrong in the same way, and the measurements are the
+record of it: 187 logged gestures showed travel a hand intends identically ranging over 82…611 pt,
+so a threshold-per-row dealt 0–5 rows for the same flick; a later probe showed `scrollingDeltaX` is
+**acceleration-scaled**, measured at 1.00× for a slow swipe against **5.18×** for a fast one over
+the same glass, so any threshold expressed in it silently demands more distance the slower you move.
+Every fix landed a new complaint — too long, too fast, too much effort, sticking, juddering.
+
+The lesson is that none of those quantities were ours to own. `NSEvent.trackSwipeEvent` — the fluid
+swipe tracking Safari and Preview turn pages with — answers all of them: how far is far enough, what
+counts as horizontal, how to compensate for acceleration, when the user has changed their mind, and
+how to animate the remaining travel after the fingers lift. The handler now decides *which file* and
+nothing else, so the feel is the platform's and matches every other app on the machine. `SwipeStepper`
+and its 23 tests were **deleted**: not because the tests were wrong, but because the thing they
+pinned should never have been ours to decide. Dirnex honours
+`NSEvent.isSwipeTrackingFromScrollEventsEnabled` rather than substituting its own gesture — a user
+who has turned "Swipe between pages" off has said what they want, and ← / → still walk the list.
+
+Two things had to change with it, both found live:
+
+- **Images bypass Quick Look now.** `QLPreviewView` renders out of process, so translating the layer
+  hosting it costs a round trip per frame — a visible judder ("like 30 fps") on exactly the content
+  people swipe through. An in-process `NSImageView` sits beside the existing `PDFView` for that.
+- **The pane divider stayed live under the preview.** `NSSplitView` keeps its drag region and its
+  resize cursor whatever covers it, so the `< | >` cursor appeared over a photograph and dragging
+  there resized panes nobody could see. `LockableDividerSplitViewController` empties the divider's
+  effective rect while a preview covers it — the panes' divider for ⌃⇧Q, all three for ⌃⌥Q, which
+  covers the whole content view.
+- **The next file arrived from the side it had just left.** `completeSwipe` placed the incoming file
+  at the opposite edge and then read `layer.presentation()` for the animation's start — but the
+  presentation layer still showed the *exit* position, so every flip animated in from the wrong
+  edge. Reads as inverted direction; is actually a one-frame lag. The start is now stated, not read.
+- **…and an `NSImageView` defends its image's size at priority 750**, so an 8629 px panorama pushed
+  the constraint chain outward and resized the *window* past the edge of the display, cutting off the
+  function bar — while every frame inside the preview was provably correct. Its compression
+  resistance and hugging are pinned to the floor; the surface is sized by its anchors alone.
+
 ## 5. Cross-cutting: testing strategy
 
 | Layer | Approach |

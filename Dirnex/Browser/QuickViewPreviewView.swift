@@ -1,6 +1,7 @@
 import AppKit
 import PDFKit
 import Quartz
+import UniformTypeIdentifiers
 
 /// How large the Quick View preview is, and therefore what it is anchored over (PLAN.md §M11).
 /// Owned by `BrowserWindowController` — the mode spans both panes and follows the active one, so
@@ -54,10 +55,13 @@ final class QuickViewPreviewView: NSView {
 
     /// Where both backends are pinned. A separate view so a `.pinned` header can take a strip of
     /// its own above it while a `.floating` one overlaps it.
-    private let content = NSView()
+    /// Internal, not private: `QuickViewPreviewView+Swipe` slides this and Swift's `private`
+    /// does not cross files.
+    let content = NSView()
 
     private var previewView: QLPreviewView?
     private var pdfView: PDFView?
+    private var imageView: NSImageView?
     /// The URL currently loaded, so an unrelated refresh that re-drives the same file is skipped
     /// instead of flickering the preview.
     private var loadedURL: URL?
@@ -70,6 +74,10 @@ final class QuickViewPreviewView: NSView {
     /// `Timer` because the timer's block is `@Sendable` and this view is not.
     private var headerFadeGeneration = 0
     private static let headerFadeDelay: TimeInterval = 2.5
+
+    /// Bumped by every image load, so a slow one landing after the cursor moved on is discarded
+    /// rather than replacing the file now on screen.
+    private var imageToken = 0
 
     init(backingColor: NSColor, header: Header) {
         self.backingColor = backingColor
@@ -104,6 +112,8 @@ final class QuickViewPreviewView: NSView {
         hasLoaded = true
         if let url, Self.isPDF(url) {
             showPDF(url)
+        } else if let url, Self.isImage(url) {
+            showImage(url)
         } else {
             showQuickLook(url)
         }
@@ -119,6 +129,10 @@ final class QuickViewPreviewView: NSView {
         // Retire any pending fade-out: the surface is going away, and a stray one landing on the
         // next file would blank the header the moment it was shown.
         headerFadeGeneration += 1
+        // A surface put away mid-swipe must not come back still shifted, or the next file opens
+        // hanging off its edge with no gesture to bring it home.
+        resetSwipe()
+        imageView?.image = nil
     }
 
     /// The file the header names. Ignored when this surface has no header.
@@ -149,21 +163,61 @@ final class QuickViewPreviewView: NSView {
 
     // MARK: - Backends
 
-    /// Show `url` in the Quick Look backend, standing down the PDF one.
+    /// Show `url` in the Quick Look backend, standing the others down.
     private func showQuickLook(_ url: URL?) {
         guard let preview = ensureQuickLookPreview() else { return }
-        pdfView?.isHidden = true
-        pdfView?.document = nil
+        standDownPDF()
+        standDownImage()
         preview.isHidden = false
         preview.previewItem = url as NSURL?
+    }
+
+    /// Show `url` in the plain `NSImageView` backend, standing the others down.
+    ///
+    /// Images bypass Quick Look deliberately (PLAN.md §M11). `QLPreviewView` renders in *another
+    /// process*, so translating the layer that hosts it costs a round trip per frame — measured as
+    /// a visibly juddering two-finger swipe, on exactly the content people swipe through most.
+    /// An `NSImageView` is in-process, like the `PDFView` beside it, and the swipe runs at full rate.
+    ///
+    /// The bytes are read off the main actor so a large photo does not stall the flip; `Data` is
+    /// `Sendable` where `NSImage` is not, which is why the image itself is built back here.
+    private func showImage(_ url: URL) {
+        let view = ensureImageView()
+        standDownPDF()
+        standDownQuickLook()
+        view.isHidden = false
+        imageToken += 1
+        let token = imageToken
+        Task { [weak self] in
+            let data = await Task.detached(priority: .userInitiated) {
+                try? Data(contentsOf: url, options: .mappedIfSafe)
+            }.value
+            guard let self, token == imageToken else { return }
+            view.image = data.flatMap(NSImage.init(data:))
+        }
+    }
+
+    private func standDownQuickLook() {
+        previewView?.isHidden = true
+        previewView?.previewItem = nil
+    }
+
+    private func standDownPDF() {
+        pdfView?.isHidden = true
+        pdfView?.document = nil
+    }
+
+    private func standDownImage() {
+        imageView?.isHidden = true
+        imageView?.image = nil
     }
 
     /// Show `url` in the PDFKit backend, standing down the Quick Look one. `autoScales` refits the
     /// page to the surface for each new document; the user can then pinch to zoom in or out.
     private func showPDF(_ url: URL) {
         let pdfView = ensurePDFView()
-        previewView?.isHidden = true
-        previewView?.previewItem = nil
+        standDownQuickLook()
+        standDownImage()
         pdfView.isHidden = false
         pdfView.document = PDFDocument(url: url)
         pdfView.autoScales = true
@@ -176,6 +230,36 @@ final class QuickViewPreviewView: NSView {
             return type.conforms(to: .pdf)
         }
         return url.pathExtension.caseInsensitiveCompare("pdf") == .orderedSame
+    }
+
+    /// Whether `url` is an image, so it routes to the in-process `NSImageView`. Content type first
+    /// (an odd extension still classifies), extension as the fallback.
+    private static func isImage(_ url: URL) -> Bool {
+        if let type = try? url.resourceValues(forKeys: [.contentTypeKey]).contentType {
+            return type.conforms(to: .image)
+        }
+        return UTType(filenameExtension: url.pathExtension)?.conforms(to: .image) ?? false
+    }
+
+    /// Build the image backend on first use. `scaleProportionallyDown` matches Quick Look: fit a
+    /// large photo to the surface, but never blow a small one up past its own size.
+    private func ensureImageView() -> NSImageView {
+        if let imageView { return imageView }
+        let view = NSImageView()
+        view.imageScaling = .scaleProportionallyDown
+        view.animates = true
+        // An `NSImageView`'s intrinsic content size is its *image*, and it defends that size at
+        // priority 750 — so a wide photo pushes the whole constraint chain outwards and resizes the
+        // **window**. A 8629 px panorama grew it past the edge of the display, cutting off the
+        // function bar, with every frame in the preview itself still provably correct. The surface
+        // is sized by its anchors alone; the image inside is a passenger.
+        for axis in [NSLayoutConstraint.Orientation.horizontal, .vertical] {
+            view.setContentCompressionResistancePriority(.init(1), for: axis)
+            view.setContentHuggingPriority(.init(1), for: axis)
+        }
+        pin(view, inside: content)
+        imageView = view
+        return view
     }
 
     /// Build the Quick Look backend on first use. `.compact` style drops Quick Look's
@@ -212,6 +296,8 @@ final class QuickViewPreviewView: NSView {
 
     private func buildSubviews() {
         content.translatesAutoresizingMaskIntoConstraints = false
+        // Layer-backed so the swipe can slide it by a transform, which autolayout leaves alone.
+        content.wantsLayer = true
         addSubview(content)
         guard let headerView else {
             pin(content, inside: self)

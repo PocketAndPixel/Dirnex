@@ -47,10 +47,21 @@ extension BrowserWindowController {
         // Before the surfaces are reconciled, so the window is already resizing into (or out of)
         // the full-screen space while the preview lays itself out at the size it will land at.
         syncFullScreenSpace(for: mode)
+        lockCoveredDividers(for: mode)
         updateQuickView()
         // Keep focus on a real pane. Matters most when closing: Esc may arrive while the preview
         // (a `PDFView` the user clicked into) is first responder, and that view is about to hide.
         focusedPanel.focusTable()
+    }
+
+    /// Take the dividers a preview is covering out of service, so a drag across the photograph
+    /// cannot silently resize panes behind it (see `LockableDividerSplitViewController`). ⌃⇧Q covers
+    /// the panes only — the sidebar and the terminal drawer stay usable, which is what separates it
+    /// from full screen; ⌃⌥Q covers the whole content view, so all three are locked.
+    private func lockCoveredDividers(for mode: QuickViewMode) {
+        panesSplitViewController.isDividerLocked = mode.isFullSize
+        paneStackSplitViewController.isDividerLocked = mode == .fullScreen
+        splitViewController.isDividerLocked = mode == .fullScreen
     }
 
     func panelCursorDidChange(_ panel: PanelViewController) {

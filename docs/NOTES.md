@@ -132,18 +132,57 @@ at build time.
   into the document and every menu command whose selector lives on `PanelViewController` finds no
   target and goes quietly dead, checkmarks and all. Window-wide modes belong on the window
   controller (`view.terminal` was already there for the identical reason with the terminal drawer).
+- **An overlay does not disable the `NSSplitView` divider it covers.** The split view keeps its drag
+  region *and* its resize cursor whatever is drawn on top, so a full-window preview showed a `< | >`
+  cursor over a photograph and a drag there resized two panes nobody could see — the divider was
+  found 250 pt away once the preview was dismissed. Return `.zero` from
+  `splitView(_:effectiveRect:forDrawnRect:ofDividerAt:)` while the cover is up: it is the one lever
+  that withdraws the cursor along with the drag, and it needs
+  `invalidateCursorRects(for:)` or the old cursor lingers until the pointer leaves the region.
+- **`layer.presentation()` still shows the *previous* position for a frame after you set a
+  transform**, so reading it as an animation's `fromValue` right after moving the layer animates from
+  where it used to be. A page flip that placed the incoming file at the opposite edge and then read
+  the presentation layer brought every new file in from the side it had just left — a bug that reads
+  as inverted direction, not as a timing problem. State `fromValue` explicitly whenever the caller
+  already knows where it just put the layer; read the presentation layer only when *interrupting* an
+  animation in flight, which is the case it exists for.
 - **A synthetic scroll event is not a trackpad**, so a two-finger gesture cannot be verified by
   computer-use — the same class of hole as synthetic Escape. `mcp__computer-use__scroll` arrives
   with `hasPreciseScrollingDeltas == false`, `phase == []` and one coarse delta, so any code gated
   on precise deltas (the right gate — a notched wheel's horizontal tilt is not a swipe) is skipped
   entirely. What does work: log the event shape to confirm the monitor is reached, then temporarily
   drop *that one gate* to prove the rest of the chain, and say plainly that the feel is unverified.
-- **A trackpad swipe handler has two ways to run away, and both are silent.** Honouring
-  **momentum** spends one flick walking a whole folder after the fingers have lifted
-  (`event.momentumPhase != []` is the guard), and accepting a scroll that merely *drifts*
-  horizontally flips items while the user is reading a long document (`abs(dx) > abs(dy)`). Both are
-  pure decisions about a delta stream, so they belong in a headless value type with tests
-  (`SwipeStepper`) rather than in a view where only a real hand can check them.
+- **A two-finger swipe is `NSEvent.trackSwipeEvent`'s job, not yours.** Two hand-rolled versions and
+  five rounds of tuning failed to converge, because every quantity the gesture needs is one the OS
+  already owns. Measured, in order of how expensive each was to learn: travel a hand intends
+  *identically* ranges over 82…611 pt (median 206), so mapping distance to a **count** deals 0–5 rows
+  for the same flick; a threshold crossed mid-gesture (median 58 % in) fires while the fingers are
+  still down, so the user cannot change their mind; and `scrollingDeltaX` is **acceleration-scaled**
+  — 1.00× for a slow swipe against **5.18×** for a fast one over the same glass — so any threshold
+  expressed in it silently demands more distance the slower you move, which reads as "I have to flick
+  it to make it work". `trackSwipeEvent` answers all of that plus the animation after the lift, and
+  gives the feel every other app on the machine has. Honour
+  `NSEvent.isSwipeTrackingFromScrollEventsEnabled` rather than substituting your own gesture: a user
+  who turned "Swipe between pages" off has already said what they want.
+  - The corollary is the expensive one: **tested, headless code is not automatically the right place
+    for a decision.** `SwipeStepper` was pure, and had 23 passing tests pinning behaviour that should
+    never have been Dirnex's to define. Tests keep a decision from drifting; they cannot tell you it
+    was yours to make.
+- **Transforming a layer that hosts an out-of-process view costs a round trip per frame.** A
+  `QLPreviewView` renders in another process, so animating it judders visibly ("like 30 fps") — on
+  exactly the content a preview swipe is used for. Route images to an in-process `NSImageView`
+  (beside the `PDFView` that was already there) and the same animation runs at full rate.
+- **`NSImageView` defends its image's size at priority 750, so a big image resizes the *window*.**
+  An 8629 px panorama pushed the constraint chain outward until the window ran past the edge of the
+  display and the function bar was cut off — while every frame *inside* the preview was provably
+  correct, which sends you looking in the wrong place. Pin its compression resistance and hugging to
+  the floor whenever it is a passenger in a layout rather than the thing being sized.
+- **Verify a probe before spending someone else's time on it.** `NSEvent.touches(matching:in:)`
+  raises on a scroll event and silently unwound the event monitor it was added to — so the feature
+  under measurement stopped working, the document panned instead, and three rounds of a user's
+  hands-on testing measured the instrumentation rather than the code. Nothing was logged, no
+  exception surfaced, and the app kept running. A probe that cannot be exercised by the author needs
+  a path that can: dropping one gate so a synthetic event reaches it proved the logging in one run.
 - **A window posts no mouse-moved events unless `acceptsMouseMovedEvents` is set** — an
   `NSTrackingArea` carrying `.mouseMoved` is not enough on its own. A header meant to fade in on
   pointer movement simply never appears, with no error anywhere.

@@ -11,20 +11,22 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     // Internal for `BrowserWindowController+Sidebar` (⌥⌘S focus reveals then focuses); both set in `loadView`.
     let sidebar = SidebarViewController()
     var sidebarSplitItem: NSSplitViewItem!
-    /// Outer split `[sidebar, panes]`; subclassed so hiding the focused sidebar returns focus to a pane (§M8).
-    private let splitViewController = SidebarFocusSplitViewController()
+    /// Outer split `[sidebar, panes]`; subclassed so hiding the focused sidebar returns focus to a
+    /// pane (§M8). Internal, not private: `BrowserWindowController+QuickView` locks its divider
+    /// while a full-screen preview covers it, and Swift's `private` is per-file.
+    let splitViewController = SidebarFocusSplitViewController()
     /// Inner split: `[leftPanel, rightPanel]`. Kept separate so the sidebar toggle can't
     /// steal width from just the adjacent pane — the two panes redistribute proportionally in
     /// both directions here, holding their ratio across any number of sidebar toggles.
     /// Internal (not private) so `BrowserWindowController+Terminal` can stack it over the
     /// drawer — Swift's `private` is per-file.
-    let panesSplitViewController = NSSplitViewController()
+    let panesSplitViewController = LockableDividerSplitViewController()
     /// Middle split: `[panes, terminal drawer]`, stacked vertically. Sits between the outer
     /// sidebar split and the panes split so the drawer spans the two panes and *not* the
     /// sidebar — Xcode's debug area, not a full-width strip — and so the sidebar stays full
     /// height beside it. Internal for `BrowserWindowController+Terminal` (Swift's `private` is
     /// per-file).
-    let paneStackSplitViewController = NSSplitViewController()
+    let paneStackSplitViewController = LockableDividerSplitViewController()
     /// The shell drawer under the panes (PLAN.md §M6), and its split item so ⌃` can collapse
     /// and expand it. The view controller is built with the window but its shell isn't spawned
     /// until the drawer is first opened — see `TerminalDrawerViewController`.
@@ -78,13 +80,12 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     nonisolated(unsafe) var escapeMonitor: Any?
 
     /// Local scroll monitor for the two-finger swipe that flips files while a full-size Quick View
-    /// is up (PLAN.md §M11), and the gesture state it folds events into. A raw-event monitor for
-    /// the same reason as `escapeMonitor`: the preview's backends (`PDFView`, and `QLPreviewView`
-    /// out of process) sit under the pointer and consume scroll before it could ever bubble.
+    /// is up (PLAN.md §M11); the gesture itself is the system's `NSEvent.trackSwipeEvent`. A
+    /// raw-event monitor for the same reason as `escapeMonitor`: the preview's backends (`PDFView`,
+    /// and `QLPreviewView` out of process) sit under the pointer and eat scroll before it bubbles.
     /// `nonisolated(unsafe)` so the nonisolated `deinit` can hand the token back — it is only ever
     /// touched on the main actor. Installed by `installQuickViewSwipeMonitor()`.
     nonisolated(unsafe) var quickViewSwipeMonitor: Any?
-    var quickViewSwipe = SwipeStepper()
 
     /// The shared background operation engine both panes route F5/F6 through, so copies and
     /// moves queue and run without blocking browsing (PLAN.md §M2). Volume-aware scheduling
