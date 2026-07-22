@@ -281,7 +281,10 @@ final class FileTableView: NSTableView {
 
     // MARK: - Cursor movement
 
-    private func moveCursor(by delta: Int) {
+    /// Move the cursor `delta` rows, clamped at the ends. Internal because the two-finger swipe
+    /// (PLAN.md §M11) arrives as a raw scroll event at the window rather than as a key here, and
+    /// must land on the same movement ← / → make rather than a second copy of it.
+    func moveCursor(by delta: Int) {
         moveCursor(to: selectedRow + delta)
     }
 

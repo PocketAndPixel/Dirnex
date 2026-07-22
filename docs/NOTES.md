@@ -132,6 +132,18 @@ at build time.
   into the document and every menu command whose selector lives on `PanelViewController` finds no
   target and goes quietly dead, checkmarks and all. Window-wide modes belong on the window
   controller (`view.terminal` was already there for the identical reason with the terminal drawer).
+- **A synthetic scroll event is not a trackpad**, so a two-finger gesture cannot be verified by
+  computer-use — the same class of hole as synthetic Escape. `mcp__computer-use__scroll` arrives
+  with `hasPreciseScrollingDeltas == false`, `phase == []` and one coarse delta, so any code gated
+  on precise deltas (the right gate — a notched wheel's horizontal tilt is not a swipe) is skipped
+  entirely. What does work: log the event shape to confirm the monitor is reached, then temporarily
+  drop *that one gate* to prove the rest of the chain, and say plainly that the feel is unverified.
+- **A trackpad swipe handler has two ways to run away, and both are silent.** Honouring
+  **momentum** spends one flick walking a whole folder after the fingers have lifted
+  (`event.momentumPhase != []` is the guard), and accepting a scroll that merely *drifts*
+  horizontally flips items while the user is reading a long document (`abs(dx) > abs(dy)`). Both are
+  pure decisions about a delta stream, so they belong in a headless value type with tests
+  (`SwipeStepper`) rather than in a view where only a real hand can check them.
 - **A window posts no mouse-moved events unless `acceptsMouseMovedEvents` is set** — an
   `NSTrackingArea` carrying `.mouseMoved` is not enough on its own. A header meant to fade in on
   pointer movement simply never appears, with no error anywhere.

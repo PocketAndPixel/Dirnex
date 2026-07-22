@@ -77,6 +77,15 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     /// rather than private.
     nonisolated(unsafe) var escapeMonitor: Any?
 
+    /// Local scroll monitor for the two-finger swipe that flips files while a full-size Quick View
+    /// is up (PLAN.md §M11), and the gesture state it folds events into. A raw-event monitor for
+    /// the same reason as `escapeMonitor`: the preview's backends (`PDFView`, and `QLPreviewView`
+    /// out of process) sit under the pointer and consume scroll before it could ever bubble.
+    /// `nonisolated(unsafe)` so the nonisolated `deinit` can hand the token back — it is only ever
+    /// touched on the main actor. Installed by `installQuickViewSwipeMonitor()`.
+    nonisolated(unsafe) var quickViewSwipeMonitor: Any?
+    var quickViewSwipe = SwipeStepper()
+
     /// The shared background operation engine both panes route F5/F6 through, so copies and
     /// moves queue and run without blocking browsing (PLAN.md §M2). Volume-aware scheduling
     /// keys off the same `backend` the panes use.
@@ -248,6 +257,7 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         queueBar.onPreferredHeightChanged = { [weak self] in self?.updateQueueBarHeight() }
         startObservingQueue()
         installEscapeMonitor()
+        installQuickViewSwipeMonitor()
         observeQuickViewFullScreen()
         observeVolumeUnmount()
         installFunctionBar()
@@ -309,6 +319,7 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         NotificationCenter.default.removeObserver(self)
         NSWorkspace.shared.notificationCenter.removeObserver(self)
         if let escapeMonitor { NSEvent.removeMonitor(escapeMonitor) }
+        if let quickViewSwipeMonitor { NSEvent.removeMonitor(quickViewSwipeMonitor) }
     }
 
     @available(*, unavailable)

@@ -278,6 +278,10 @@ the native full-screen space, black backing, nothing on screen but the photo.
 - [x] **← / → step the cursor while a full mode is up.** Both keycodes fall straight through
       `FileTableView.handleTypingKey` today, so they are free — and nobody flips through a
       vacation folder with ↑/↓.
+- [x] **A two-finger swipe does the same thing** (added 2026-07-22, on request): the same gesture
+      Preview and Photos flip pages with, at the same two sizes and through the same cursor
+      movement. The decision — how far is a swipe, which way, and the two ways it could run away —
+      is a tested `SwipeStepper` in the core; the app only maps `NSEvent` onto it.
 - [x] **Two catalog commands** — `view.quickViewFullWindow` (⌃⇧Q) and `view.quickViewFullScreen`
       (⌃⌥Q), with menu items beside Quick View Panel, `CommandBinding` selectors and
       `validateMenuItem` checkmarks. `KeyBindings().conflicts(for:)` is what proves both are
@@ -309,6 +313,19 @@ of them caught only by driving the real app:
   through the Back/Forward chevrons in the transparent title bar.
 - **A window posts no mouse-moved events by default**, so the fading full-screen header never
   appeared until `acceptsMouseMovedEvents` was set — the tracking area is not enough on its own.
+
+The **two-finger swipe** landed the same day, on request. It rides the same scroll-event monitor
+shape as Esc and for the same reason — `PDFView` and the out-of-process `QLPreviewView` are what
+the pointer is over, and both eat scroll before it could bubble. Two guards are the whole design,
+and both are in `SwipeStepperTests` rather than in a finger: **momentum is ignored**, or one flick's
+coast walks the cursor through the entire folder after the fingers have left the glass; and a swipe
+must be **mostly horizontal**, or scrolling a long document sideways-drifts through files. Vertical
+scroll is handed straight back, so a PDF still scrolls exactly as it did. Two things it is worth
+knowing were *not* verified here: a synthetic scroll event is not a trackpad
+(`hasPreciseScrollingDeltas == false`, no phase), so the wiring was proven by temporarily dropping
+that one gate — and `SwipeStepper.threshold` (120 pt, about a third of a trackpad, the distance
+Preview asks for) is a number picked from what those apps feel like, not measured. It is the one
+value here that wants a real hand.
 
 ## 5. Cross-cutting: testing strategy
 

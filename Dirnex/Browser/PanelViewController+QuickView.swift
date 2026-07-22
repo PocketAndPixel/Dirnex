@@ -36,6 +36,13 @@ extension PanelViewController {
         return host?.archivePreviewCache.cachedURL(for: member)
     }
 
+    /// Move the cursor `delta` rows — what ← / → and the two-finger swipe both do while a
+    /// full-size Quick View covers the list (PLAN.md §M11). Routed through the table so the
+    /// selection mirror, the chrome and the preview all update by the one existing path.
+    func stepCursor(by delta: Int) {
+        tableView.moveCursor(by: delta)
+    }
+
     /// What a full-size preview's header says about this pane's cursor (PLAN.md §M11). Counts
     /// *table rows* rather than entries, `..` included, so the position matches the list the
     /// preview is covering. `nil` in an empty directory, where there is nothing to name.

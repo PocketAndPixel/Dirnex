@@ -1,4 +1,5 @@
 import AppKit
+import DirnexCore
 
 /// Where Quick View's two full-size surfaces sit, and how the full-screen one coordinates with the
 /// native full-screen space (PLAN.md §M11). Split out of `BrowserWindowController+QuickView`, which
@@ -51,6 +52,69 @@ extension BrowserWindowController {
             preview.topAnchor.constraint(equalTo: anchor.topAnchor),
             preview.bottomAnchor.constraint(equalTo: anchor.bottomAnchor)
         ])
+    }
+
+    /// The surface the current mode is showing on, or `nil` at the two sizes that have none.
+    var activeFullSizePreview: QuickViewPreviewView? {
+        switch quickViewMode {
+        case .fullWindow: fullWindowPreview
+        case .fullScreen: fullScreenPreview
+        case .off, .pane: nil
+        }
+    }
+
+    // MARK: - The two-finger swipe
+
+    /// Flip between files by swiping two fingers across the trackpad while a full-size Quick View
+    /// is up (PLAN.md §M11) — the pointing-device twin of ← / →, and available at exactly the same
+    /// two sizes, because those are the ones where the file list is behind the preview.
+    ///
+    /// A window-scoped monitor rather than a `scrollWheel(with:)` override, for the same reason Esc
+    /// needs one: the pointer sits over `PDFView` or the out-of-process `QLPreviewView`, both of
+    /// which consume scroll, so an event would never reach the surface underneath them. Installed
+    /// once from `init`; torn down in `deinit`. When it takes an event it returns `nil`, so a
+    /// horizontal swipe flips files *instead of* scrolling the document sideways; vertical scroll
+    /// is handed straight back, and a PDF still scrolls as it always did.
+    func installQuickViewSwipeMonitor() {
+        quickViewSwipeMonitor = NSEvent
+            .addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
+                guard let self, handleQuickViewSwipe(event) else { return event }
+                return nil
+            }
+    }
+
+    /// Fold `event` into the gesture and step the cursor if it has gone far enough. Returns whether
+    /// the event belonged to this gesture and should be swallowed.
+    private func handleQuickViewSwipe(_ event: NSEvent) -> Bool {
+        guard window?.isKeyWindow == true,
+              quickViewMode.isFullSize,
+              // A trackpad (or Magic Mouse) only. A notched wheel's horizontal tilt is a coarse
+              // click, not a swipe, and flipping a file per tick is not what that gesture means.
+              event.hasPreciseScrollingDeltas,
+              let preview = activeFullSizePreview,
+              // Over the preview itself: in full-window mode the sidebar is still there beside it,
+              // and scrolling *it* is the sidebar's business.
+              preview.bounds.contains(preview.convert(event.locationInWindow, from: nil))
+        else { return false }
+
+        let steps = quickViewSwipe.step(
+            deltaX: event.scrollingDeltaX,
+            deltaY: event.scrollingDeltaY,
+            phase: Self.swipePhase(of: event),
+            isMomentum: event.momentumPhase != []
+        )
+        if steps != 0 { focusedPanel.stepCursor(by: steps) }
+        // Swallow the whole horizontal gesture, not just the events that stepped: letting the
+        // in-between ones through would scroll the document sideways under the flip.
+        return abs(event.scrollingDeltaX) > abs(event.scrollingDeltaY)
+    }
+
+    /// Where `event` sits in its gesture. AppKit reports a scroll with no phase at all for devices
+    /// that don't track fingers; those are treated as mid-gesture, which is what they behave like.
+    private static func swipePhase(of event: NSEvent) -> SwipeStepper.Phase {
+        if event.phase.contains(.began) { return .began }
+        if event.phase.contains(.ended) || event.phase.contains(.cancelled) { return .ended }
+        return .changed
     }
 
     // MARK: - The native full-screen space
