@@ -121,11 +121,20 @@ extension BrowserWindowController {
     /// progresses and keeps running after the fingers lift, as the OS animates it either home to 0
     /// (the user pulled back) or out to ±1 (the flip is happening) — so the file's whole travel,
     /// including the part after release, is the system's animation and not ours.
+    ///
+    /// The two dampen thresholds are how the *ends of the list* are expressed, and they are the
+    /// reason there is no bounds check drawn by hand here: a direction with no file left is pinned
+    /// at 0, so the OS rubber-bands the fingers and springs the file back — Safari's feel at the end
+    /// of its history, for free and in the one place that can produce it while the fingers are still
+    /// down. A clamp inside the handler could only refuse *after* the flip had already been animated.
     private func trackQuickViewSwipe(_ event: NSEvent, on preview: QuickViewPreviewView) {
+        let panel = focusedPanel
         event.trackSwipeEvent(
             options: .lockDirection,
-            dampenAmountThresholdMin: -1,
-            max: 1
+            // Negative amounts flip forward (see the sign note below), so each end pins the side
+            // that would walk off it.
+            dampenAmountThresholdMin: panel.canStepCursor(by: 1) ? -1 : 0,
+            max: panel.canStepCursor(by: -1) ? 1 : 0
         ) { [weak self, weak preview] amount, _, isComplete, stop in
             guard let preview, preview.window != nil else {
                 stop.pointee = true
@@ -139,6 +148,13 @@ extension BrowserWindowController {
             // and with it the gesture follows the user's "natural scrolling" setting, exactly as
             // every other scroll on their Mac does.
             let steps = amount < 0 ? 1 : -1
+            // Belt to the dampening's braces: a dampened amount is pulled back towards the
+            // threshold rather than clamped at it, so the end of the list is checked again here
+            // before anything is dealt. Nothing to flip to means the file goes back to centre.
+            guard self?.focusedPanel.canStepCursor(by: steps) == true else {
+                preview.resetSwipe()
+                return
+            }
             preview.completeSwipe(steps: steps) { self?.focusedPanel.stepCursor(by: steps) }
         }
     }

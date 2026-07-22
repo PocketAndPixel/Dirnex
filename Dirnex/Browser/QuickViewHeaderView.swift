@@ -6,8 +6,9 @@ import AppKit
 /// blind — this is the readout that replaces the row you would otherwise be looking at.
 struct QuickViewCaption: Equatable {
     let name: String
-    /// The cursor's 1-based position among the pane's visible rows, and how many there are.
-    /// Counts *rows*, `..` included, so it matches what the list underneath would show.
+    /// The cursor's 1-based position among the pane's visible *entries*, and how many there are.
+    /// `..` is not counted: it is not a file the preview flips through, so counting it would
+    /// promise one more than ← / → can reach.
     let position: Int
     let count: Int
 

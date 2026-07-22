@@ -86,6 +86,10 @@ extension BrowserWindowController {
         // In pane mode the active pane shows its list and the *other* one previews; in the full
         // modes the preview covers everything, so no pane needs uncovering beyond the above.
         if quickViewMode == .pane { active.hideQuickViewPreview() }
+        // A full-size surface flips through *files*: opening one on `..` would show a blank preview
+        // with no list beside it to say why, so start on the first file instead. Here rather than in
+        // `setQuickViewMode` because switching panes with the preview up arrives the same way.
+        if quickViewMode.isFullSize { active.stepOffParentRowForQuickView() }
         showActivePreview(from: active)
     }
 

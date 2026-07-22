@@ -39,23 +39,40 @@ extension PanelViewController {
     /// Move the cursor `delta` rows — what ← / → and the two-finger swipe both do while a
     /// full-size Quick View covers the list (PLAN.md §M11). Routed through the table so the
     /// selection mirror, the chrome and the preview all update by the one existing path.
-    func stepCursor(by delta: Int) {
+    /// Does nothing, and says so, when there is no file that way — see `canStepCursor(by:)`.
+    @discardableResult
+    func stepCursor(by delta: Int) -> Bool {
+        guard canStepCursor(by: delta) else { return false }
         tableView.moveCursor(by: delta)
+        return true
+    }
+
+    /// Whether a `delta`-row step lands on a file. The list a full-size Quick View walks is the
+    /// *files* — `..` is a way out, not something to preview, and previewing it is a blank surface
+    /// with no list beside it to explain why. So the parent row is not a stop, and the two ends of
+    /// the list are hard: `moveCursor`'s clamp would otherwise let a swipe past the last file
+    /// re-deal the file already on screen, which reads as a list that never ends.
+    func canStepCursor(by delta: Int) -> Bool {
+        let target = tableView.selectedRow + delta
+        return target >= parentRowCount && target < tableView.numberOfRows
+    }
+
+    /// Step off the `..` row onto the first file, for a mode that is about to cover the list
+    /// (PLAN.md §M11). Only the way in needs it: arriving in a directory already lands on an entry,
+    /// and neither ← / → nor the swipe will go back to `..`.
+    func stepOffParentRowForQuickView() {
+        guard cursorOnParentRow, !panel.isEmpty else { return }
+        tableView.selectRowIndexes(IndexSet(integer: parentRowCount), byExtendingSelection: false)
+        tableView.scrollRowToVisible(parentRowCount)
     }
 
     /// What a full-size preview's header says about this pane's cursor (PLAN.md §M11). Counts
-    /// *table rows* rather than entries, `..` included, so the position matches the list the
-    /// preview is covering. `nil` in an empty directory, where there is nothing to name.
+    /// entries, not table rows: `..` is not one of the files being flipped through, so counting it
+    /// would put the last file at "7 of 8" with no eighth to reach. `nil` when there is nothing to
+    /// name — an empty directory, or the `..` row of one.
     var quickViewCaption: QuickViewCaption? {
-        let rows = tableView.numberOfRows
-        guard rows > 0 else { return nil }
-        if cursorOnParentRow { return QuickViewCaption(name: "..", position: 1, count: rows) }
-        guard let entry = panel.currentEntry else { return nil }
-        return QuickViewCaption(
-            name: entry.name,
-            position: row(forEntryIndex: panel.cursor) + 1,
-            count: rows
-        )
+        guard !cursorOnParentRow, let entry = panel.currentEntry else { return nil }
+        return QuickViewCaption(name: entry.name, position: panel.cursor + 1, count: panel.count)
     }
 
     /// Build this pane's preview surface on first use and pin it over the scroll view. The list

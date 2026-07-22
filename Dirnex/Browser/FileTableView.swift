@@ -30,10 +30,11 @@ protocol FileTableViewInput: AnyObject {
     func fileTableDeselectByPattern(_ tableView: FileTableView)
     /// Cmd+Y — toggle the Quick Look preview panel.
     func fileTableToggleQuickLook(_ tableView: FileTableView)
-    /// Whether ← / → should step the cursor rather than falling through. True only while a
-    /// full-size Quick View covers the list (PLAN.md §M11): the rows can't be seen, and nobody
-    /// flips through a folder of photographs with ↑/↓.
-    func fileTableUsesHorizontalArrowsForCursor(_ tableView: FileTableView) -> Bool
+    /// ← / → — step the cursor one file while a full-size Quick View covers the list (PLAN.md
+    /// §M11): the rows can't be seen, and nobody flips through a folder of photographs with ↑/↓.
+    /// Returns `true` when the keys belong to Quick View, whether or not the cursor could move —
+    /// at the ends of the list they stop rather than falling through to the table.
+    func fileTable(_ tableView: FileTableView, stepQuickViewCursorBy delta: Int) -> Bool
     /// A bare function key (F1–F12) reached the table unclaimed by a menu key-equivalent — the
     /// function bar dispatches its slot's command, if any. Returns `true` when a slot handled it.
     func fileTable(_ tableView: FileTableView, functionKey number: Int) -> Bool
@@ -234,11 +235,10 @@ final class FileTableView: NSTableView {
             moveCursor(by: visibleRowCount())
             return true
         case 123, 124: // Left, Right — previous/next file while a full-size Quick View is up
-            guard inputDelegate?.fileTableUsesHorizontalArrowsForCursor(self) == true else {
-                return false
-            }
-            moveCursor(by: event.keyCode == 123 ? -1 : 1)
-            return true
+            return inputDelegate?.fileTable(
+                self,
+                stepQuickViewCursorBy: event.keyCode == 123 ? -1 : 1
+            ) == true
         case 69: // Keypad + — select by wildcard (TC's gray-plus)
             inputDelegate?.fileTableSelectByPattern(self)
             return true
