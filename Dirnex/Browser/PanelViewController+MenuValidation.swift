@@ -209,10 +209,6 @@ extension PanelViewController: NSMenuItemValidation {
             // rather than the snapshot: a repository whose first `git status` is still in flight is
             // one you are in, and the item must not flicker enabled a moment after the folder opens.
             return isInGitRepository
-        case #selector(toggleQuickViewPanel(_:)):
-            // "Quick View Panel" checkmark tracks the window-wide Quick View state.
-            menuItem.state = (host?.isQuickViewEnabled ?? false) ? .on : .off
-            return true
         default:
             return nil
         }

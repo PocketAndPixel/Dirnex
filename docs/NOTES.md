@@ -120,6 +120,27 @@ at build time.
   not the table. `QLPreviewView` is not opaque and `init(frame:style:)` is failable — an
   embedded preview needs an opaque backing or the covered view bleeds through. It also only
   wires magnify-to-zoom for single-page PDFs, so multi-page PDFs route to a PDFKit `PDFView`.
+- **`NSView.clipsToBounds` is `false` by default, and `draw(_:)`'s `dirtyRect` can be larger than
+  the view's bounds.** A backing fill of `dirtyRect` therefore paints over the view's *siblings*:
+  the full-window Quick View overlay blacked out the sidebar and the function-key bar while its own
+  frame was provably correct. The frame is what a screenshot shows, so eyeballing one points at the
+  wrong culprit — an `NSLog` of `convert(bounds, to: nil)` settled it in one run. `NSBox` (what the
+  M4 overlay used) clips, which is why nothing like this appeared until the container became a
+  plain `NSView`. Set `clipsToBounds = true` *and* fill `dirtyRect.intersection(bounds)`.
+- **An overlay pinned over a *sibling* subtree drops that subtree's controller out of the responder
+  chain.** A preview covering the panes is a child of the content view, not of a pane — so one click
+  into the document and every menu command whose selector lives on `PanelViewController` finds no
+  target and goes quietly dead, checkmarks and all. Window-wide modes belong on the window
+  controller (`view.terminal` was already there for the identical reason with the terminal drawer).
+- **A window posts no mouse-moved events unless `acceptsMouseMovedEvents` is set** — an
+  `NSTrackingArea` carrying `.mouseMoved` is not enough on its own. A header meant to fade in on
+  pointer movement simply never appears, with no error anywhere.
+- **Constraining a content-view subview to a view *inside* an `NSSplitView` works and is the way to
+  overlay panes.** An `NSSplitView` treats a plain subview as a pane, so the overlay cannot be added
+  to it; anchoring across the hierarchy to its edges tracks the divider, the sidebar and the drawer
+  for free. Anchor the *top* to `safeAreaLayoutGuide`, though — a window with `.fullSizeContentView`
+  runs its content under the transparent title bar, and anything pinned to the bare top edge draws
+  through the titlebar accessories living up there.
 - **Right-click menu items must capture their paths at build time** into `representedObject`,
   and entry-vs-`..` must be decided from the clicked row, not a cursor flag — a right-click on a
   marked row leaves that flag stale.

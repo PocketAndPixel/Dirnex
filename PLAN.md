@@ -241,44 +241,44 @@ mode: the document spans both panes while the sidebar, terminal drawer and funct
 where they were, and you are still in the file manager. **Full screen** is a viewing mode:
 the native full-screen space, black backing, nothing on screen but the photo.
 
-- [ ] **`QuickViewPreviewView` — extract before extending.** The overlay and its two backends
+- [x] **`QuickViewPreviewView` — extract before extending.** The overlay and its two backends
       (the `NSBox` backing, the lazy `QLPreviewView(.compact)`, the lazy `PDFView`, the
       content-type routing between them) come out of `PanelViewController+QuickView` into a
       standalone view. The pane keeps one pinned over its scroll view; each new mode hosts an
       identical one at a different anchor. A pure refactor with no behaviour change, and the
       thing that keeps this slice from being three copies of one preview.
-- [ ] **A mode, not a Bool** — `isQuickViewOn` becomes
+- [x] **A mode, not a Bool** — `isQuickViewOn` becomes
       `QuickViewMode { off, pane, fullWindow, fullScreen }` on the window controller, which
       already owns the state because the mode spans both panes. `isQuickViewEnabled` stays as
       `mode != .off`, so `fileTableCancel`'s progressive Esc and `validateMenuItem` need no
       rethink.
-- [ ] **Re-assert table focus after every show.** The new risk the pane version never had: in
+- [x] **Re-assert table focus after every show.** The new risk the pane version never had: in
       the full modes the preview sits over the *focused* table, so a backend that takes first
       responder turns ↑/↓ into document scrolling and the cursor stops moving — the mode's whole
       point, lost silently. `focusedPanel.focusTable()` after each show, and a subclass refusing
       first responder if that isn't enough. Verify live; first-responder questions are exactly
       what a screenshot cannot answer.
-- [ ] **⌃⇧Q full window, ⌃⌥Q full screen — flat toggles.** Each key turns its own mode off and
+- [x] **⌃⇧Q full window, ⌃⌥Q full screen — flat toggles.** Each key turns its own mode off and
       switches from any other; Esc closes straight out to the file list from any of the three.
       Deliberately *not* an escalation ladder where repeat presses of ⌃⇧Q climb — that is a key
       that never turns off what it turned on.
-- [ ] **Full window anchors on `panesSplitViewController.view`** — both panes and the divider,
+- [x] **Full window anchors on `panesSplitViewController.view`** — both panes and the divider,
       and nothing else. The sidebar, the drawer and the function bar stay usable, which is what
       separates this mode from the next one rather than making it a smaller version of it.
-- [ ] **Full screen anchors on the window's `contentView` and enters the native space** —
+- [x] **Full screen anchors on the window's `contentView` and enters the native space** —
       black backing instead of `textBackgroundColor`, no chrome. The fiddly part is state sync,
       not rendering: `toggleFullScreen(nil)` needs a *did we enter it* flag or closing the
       preview evicts a user who was already full-screen, and `willEnterFullScreen` /
       `willExitFullScreen` observers or leaving by ⌃⌘F or the green button leaves the mode
       claiming something untrue.
-- [ ] **A name-and-position header, in both full modes.** In pane mode the list sits beside the
+- [x] **A name-and-position header, in both full modes.** In pane mode the list sits beside the
       preview; in the full modes it does not, and arrowing through files you cannot see is
       flying blind. Pinned in full window (a working surface), fading in and back out on mouse
       movement in full screen (a viewing one).
-- [ ] **← / → step the cursor while a full mode is up.** Both keycodes fall straight through
+- [x] **← / → step the cursor while a full mode is up.** Both keycodes fall straight through
       `FileTableView.handleTypingKey` today, so they are free — and nobody flips through a
       vacation folder with ↑/↓.
-- [ ] **Two catalog commands** — `view.quickViewFullWindow` (⌃⇧Q) and `view.quickViewFullScreen`
+- [x] **Two catalog commands** — `view.quickViewFullWindow` (⌃⇧Q) and `view.quickViewFullScreen`
       (⌃⌥Q), with menu items beside Quick View Panel, `CommandBinding` selectors and
       `validateMenuItem` checkmarks. `KeyBindings().conflicts(for:)` is what proves both are
       free, and the catalog test is the only test this slice can carry — the rest is AppKit and
@@ -288,6 +288,27 @@ Exit: ⌃⇧Q reads a PDF across both panes with the sidebar still in place; ⌃
 with a photo and nothing else; arrows walk the file list underneath in both, and Esc returns to
 it. Explicitly **not** in scope: a slideshow timer or a thumbnail filmstrip — that is an image
 viewer, and the point here is that the *file list* remains the navigation.
+
+**Landed 2026-07-22.** Verified live against the built app: ⌃⇧Q read a 7-page PDF across both
+panes with the sidebar, drawer split and function bar untouched; ⌃⌥Q filled the display with a
+photo on black; ←/→/↑/↓ walked the list underneath in both, re-driving the preview and the header
+each step; the green button out of full screen closed the mode and restored the panes; ⌃Q's M4
+pane preview is unchanged by the extraction. Four things the checklist didn't pre-answer, three
+of them caught only by driving the real app:
+
+- **The three commands live on `BrowserWindowController`, not on the pane** — the change the
+  checklist got wrong. At the two full sizes the preview is a *sibling* of the panes, so one click
+  into the document leaves no `PanelViewController` in the responder chain and every Quick View
+  key goes silently dead. `view.terminal` already lives on the window for exactly this reason.
+  ⌃Q moved with them: it is the same mode, and a mode is not a pane's to own.
+- **`NSView.clipsToBounds` is `false` by default, and `draw(_:)`'s `dirtyRect` is not promised to
+  be inside the view.** Filling it blacked out the sidebar and the function bar while the overlay's
+  own frame was provably correct — the frame is what a screenshot shows, so the diagnosis came from
+  a probe, not from looking. The `NSBox` the M4 overlay used had been clipping all along.
+- **The header pins to the *safe area*, not the top edge**, or it draws its "2 of 7" straight
+  through the Back/Forward chevrons in the transparent title bar.
+- **A window posts no mouse-moved events by default**, so the fading full-screen header never
+  appeared until `acceptsMouseMovedEvents` was set — the tracking area is not enough on its own.
 
 ## 5. Cross-cutting: testing strategy
 

@@ -75,7 +75,9 @@ enum MainMenuBuilder {
             .command("view.toggleTags"), .command("view.toggleSyncStatus"),
             .command("view.functionBar"),
             .command("view.sizeVisualization"), .subcommand("view.gitAwareSizes"), .separator,
-            .command("view.quickLook"), .command("view.quickView"), .separator,
+            .command("view.quickLook"), .command("view.quickView"),
+            .subcommand("view.quickViewFullWindow"), .subcommand("view.quickViewFullScreen"),
+            .separator,
             .command("view.terminal")
         ]),
         MenuSpec(title: "Go", items: [

@@ -42,11 +42,21 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     /// back to the left pane before either has taken focus.
     var focusedPanel: PanelViewController { activePanel ?? leftPanel }
 
-    /// Quick View (⌃Q) on/off for this window. When on, the inactive pane shows a live Quick
-    /// Look preview of the file under the active pane's cursor (PLAN.md §M4). Owned here
-    /// because the mode spans both panes and follows whichever is active; driven from
+    /// What size Quick View is showing at in this window — off, the inactive pane (⌃Q, PLAN.md
+    /// §M4), across both panes (⌃⇧Q) or filling the screen (⌃⌥Q, both §M11). Owned here because
+    /// the mode spans both panes and follows whichever is active; driven from
     /// `BrowserWindowController+QuickView`.
-    var isQuickViewOn = false
+    var quickViewMode: QuickViewMode = .off
+
+    /// The two full-size preview surfaces, built on first use and then kept (hidden) for the life
+    /// of the window: one pinned over the panes split, one over the window's whole content view.
+    /// Internal for `BrowserWindowController+QuickViewFullSize`, which builds and places them.
+    var fullWindowPreview: QuickViewPreviewView?
+    var fullScreenPreview: QuickViewPreviewView?
+    /// Whether *this window was put* into the native full-screen space by ⌃⌥Q, and so should come
+    /// back out when the mode closes. Without it, closing the preview evicts a user who was
+    /// already full-screen before they ever pressed the key.
+    var didEnterFullScreenForQuickView = false
 
     /// Archive members extracted for preview (Quick Look ⌘Y / Quick View ⌃Q inside a browsed
     /// archive), shared across both panes and both surfaces (PLAN.md §M4 "Quick Look inside").
@@ -238,6 +248,7 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         queueBar.onPreferredHeightChanged = { [weak self] in self?.updateQueueBarHeight() }
         startObservingQueue()
         installEscapeMonitor()
+        observeQuickViewFullScreen()
         observeVolumeUnmount()
         installFunctionBar()
     }
@@ -382,7 +393,7 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         syncTerminalToActivePanel()
         // The preview always sits opposite the active pane, so a focus switch swaps which pane
         // shows its list and which shows the preview.
-        if isQuickViewOn { updateQuickView() }
+        if isQuickViewEnabled { updateQuickView() }
     }
 }
 

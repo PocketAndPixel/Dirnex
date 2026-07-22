@@ -37,8 +37,10 @@ extension PanelViewController: FileTableViewInput {
             setFilter("")
         } else if host?.isQuickViewEnabled == true {
             // Esc backs out of Quick View before touching the marks — it's a distinct mode the
-            // user stepped into, and the inactive pane's preview is the obvious thing to dismiss.
-            host?.toggleQuickView()
+            // user stepped into, and the preview is the obvious thing to dismiss. It closes
+            // straight out to the file list from any of the three sizes rather than stepping down
+            // to a smaller one, which would make Esc a mode changer instead of an exit.
+            host?.closeQuickView()
         } else if panel.selectionCount > 0 {
             let previousMarks = panel.selection
             panel.clearSelection()
@@ -109,6 +111,10 @@ extension PanelViewController: FileTableViewInput {
             // and reload the panel once it lands. A no-op for a local file or empty selection.
             prepareArchivePreview { [weak self] in self?.refreshQuickLookIfVisible() }
         }
+    }
+
+    func fileTableUsesHorizontalArrowsForCursor(_ tableView: FileTableView) -> Bool {
+        host?.quickViewMode.isFullSize == true
     }
 
     func fileTableEditPath(_ tableView: FileTableView) {
