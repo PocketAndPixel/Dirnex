@@ -174,10 +174,35 @@ at build time.
   still down, so the user cannot change their mind; and `scrollingDeltaX` is **acceleration-scaled**
   — 1.00× for a slow swipe against **5.18×** for a fast one over the same glass — so any threshold
   expressed in it silently demands more distance the slower you move, which reads as "I have to flick
-  it to make it work". `trackSwipeEvent` answers all of that plus the animation after the lift, and
-  gives the feel every other app on the machine has. Honour
-  `NSEvent.isSwipeTrackingFromScrollEventsEnabled` rather than substituting your own gesture: a user
-  who turned "Swipe between pages" off has already said what they want.
+  it to make it work". `trackSwipeEvent` answers all of that and gives the feel every other app on the
+  machine has. Honour `NSEvent.isSwipeTrackingFromScrollEventsEnabled` rather than substituting your
+  own gesture: a user who turned "Swipe between pages" off has already said what they want.
+  - **But its *post-lift animation* is not yours to want.** Measured over 17 real swipes: the fingers
+    are down **41–123 ms** (median 82) and the animation the OS then runs takes **177–745 ms**
+    (median ~600) — five to eight times the gesture that asked for it — delivered as one callback
+    every **~18 ms (57 Hz)** on a 120 Hz display, decelerating into a tail that crawls from 0.99 to
+    1.0. Hand-driven transform sets at 57 Hz with a long asymptote is exactly what "laggy, and the
+    image sticks" describes. Split the gesture at the lift: the system keeps everything before it
+    (direction lock, acceleration, the rubber band at the ends, and the velocity-aware *verdict* —
+    one measured swipe lifted at **0.07** of a width and still committed, so no distance threshold of
+    your own can stand in for it), and you take the travel that is left as an ordinary Core Animation.
+    Read the verdict rather than re-deriving it: one callback after the lift the amount is either
+    growing towards ±1 or shrinking towards 0.
+  - **`.ended` arrives exactly once, at the lift; every callback the OS's own animation makes after
+    it carries `phase == 0`.** A take-over guarded on `phase == .ended` therefore sits out the whole
+    animation and fires at `isComplete` — after the ~600 ms it existed to pre-empt. It looks correct,
+    compiles, runs, and changes nothing, which is the worst shape a bug can have. Record the lift,
+    then treat *every* later callback as post-lift whatever its phase.
+  - **Finish by swapping outright, not by carrying the old file off first.** The two-segment version
+    (run the remainder out, then flip in) needs a hand-off timed to the exit's end, and a second
+    swipe arriving mid-flight lands inside it — leaving the surface showing bare backing with the
+    header naming a file that is off-screen. One synchronous path has nothing pending to collide
+    with, and the incoming slide covers the discontinuity.
+  - **This one could only be answered by the user's hands.** A synthetic scroll has
+    `hasPreciseScrollingDeltas == false` and never opens a real gesture, so two rounds of plausible
+    reasoning about it were both wrong; one instrumented run by the person with the trackpad settled
+    it in a minute. Prove the log path works with a synthetic event *first* (it reaches the monitor
+    even though it fails the gate), then ask.
   - The corollary is the expensive one: **tested, headless code is not automatically the right place
     for a decision.** `SwipeStepper` was pure, and had 23 passing tests pinning behaviour that should
     never have been Dirnex's to define. Tests keep a decision from drifting; they cannot tell you it

@@ -60,6 +60,11 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     /// already full-screen before they ever pressed the key.
     var didEnterFullScreenForQuickView = false
 
+    /// How far a two-finger swipe had travelled when the fingers left the trackpad, held only for
+    /// the frame or two it takes to read which way the system then moves — see
+    /// `trackQuickViewSwipe`. `nil` whenever no gesture is being finished.
+    var quickViewSwipeAmountAtLift: CGFloat?
+
     /// Archive members extracted for preview (Quick Look ⌘Y / Quick View ⌃Q inside a browsed
     /// archive), shared across both panes and both surfaces (PLAN.md §M4 "Quick Look inside").
     let archivePreviewCache = ArchivePreviewCache()

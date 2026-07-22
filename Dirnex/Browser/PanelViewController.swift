@@ -72,6 +72,10 @@ protocol PanelHost: AnyObject {
     /// the file list rather than stepping down to a smaller preview.
     func closeQuickView()
 
+    /// Move a full-size Quick View on by `steps` files, animated like the two-finger swipe (← / →).
+    /// The window owns it because the preview surface being turned is the window's, not the pane's.
+    func flipQuickView(steps: Int)
+
     /// The size Quick View is currently showing at. Drives the three View-menu checkmarks, and
     /// tells the pane whether its file list is covered (see `QuickViewMode.isFullSize`).
     var quickViewMode: QuickViewMode { get }

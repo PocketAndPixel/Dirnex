@@ -28,15 +28,21 @@ extension QuickViewPreviewView {
         CATransaction.commit()
     }
 
-    /// The system has finished carrying the old file off the surface: put the new one in behind the
-    /// empty view and bring it on from the opposite edge.
+    /// Turn the page: put the next file in behind the surface and bring it on from the edge.
+    ///
+    /// Both ways of changing file end here. After a swipe, `trackSwipeEvent` has already carried the
+    /// old one off, so this is only the arrival; from ← / → nothing has moved yet, so the swap is
+    /// instantaneous and the new file slides in over it. That difference is the whole feel of the
+    /// keyboard flip — fast, because there is no drag phase in front of it, and smooth, because the
+    /// arrival is the same eased slide either way.
     ///
     /// `steps` is the cursor move, and its sign is the side the new file arrives from — fingers left
     /// flip forward, so the old file left to the left and the next one comes in from the right.
-    /// There is no exit animation here: `trackSwipeEvent` already animated the progress to ±1, which
-    /// *is* the exit, and duplicating it was what made the flip feel like two separate movements.
-    func completeSwipe(steps: Int, flip: () -> Void) {
-        flip()
+    /// There is no exit animation here: after a gesture `trackSwipeEvent` already animated the
+    /// progress to ±1, which *is* the exit, and duplicating it was what made the flip feel like two
+    /// separate movements.
+    func flip(steps: Int, advance: @escaping () -> Void) {
+        advance()
         let entry = CGFloat(steps) * bounds.width
         setSwipeOffset(entry)
         // `from:` is stated rather than read off the layer, and that is the whole fix for a flip
@@ -44,6 +50,22 @@ extension QuickViewPreviewView {
         // still shows the *exit* position for a frame after the transform above is set, so reading
         // it here animated from the wrong edge every time.
         animateContent(from: entry, to: 0, duration: Self.flipInDuration, timing: .easeOut)
+    }
+
+    /// The user pulled back: run the file home from wherever the fingers left it, at the same speed
+    /// a flip travels, so changing your mind costs the same as going through with it.
+    func returnSwipe(from offset: CGFloat) {
+        let width = bounds.width
+        guard width > 0, abs(offset) > 1 else {
+            resetSwipe()
+            return
+        }
+        animateContent(
+            from: offset,
+            to: 0,
+            duration: Self.flipInDuration * TimeInterval(abs(offset) / width),
+            timing: .easeOut
+        )
     }
 
     /// Put the file back at centre with no animation. The belt to `trackSwipeEvent`'s braces: its

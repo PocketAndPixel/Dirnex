@@ -115,9 +115,11 @@ extension PanelViewController: FileTableViewInput {
 
     func fileTable(_ tableView: FileTableView, stepQuickViewCursorBy delta: Int) -> Bool {
         guard host?.quickViewMode.isFullSize == true else { return false }
-        // Consumed either way: a ← on the first file is the end of the list, not an arrow key the
+        // Through the window, not `stepCursor` directly: the preview it owns turns the page for the
+        // step, so the keys flip like the gesture instead of swapping the file in place.
+        // Consumed either way — a ← on the first file is the end of the list, not an arrow key the
         // table should get a second go at.
-        stepCursor(by: delta)
+        host?.flipQuickView(steps: delta)
         return true
     }
 
