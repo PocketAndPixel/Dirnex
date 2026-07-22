@@ -26,10 +26,22 @@ enum L10n {
     /// with nothing to fall back on would put `command.file.copy.title` in front of a user.
     private static let sentinel = "\u{0}dirnex.untranslated"
 
-    /// The translation for `key`, or `nil` when the catalog has no entry for it.
+    /// The translation for `key`, or `nil` when the catalog has no usable entry for it.
+    ///
+    /// Two shapes of "no entry" have to be caught, and only the first is obvious:
+    ///
+    /// - the key is absent from the bundle, which the sentinel detects; and
+    /// - the key is *present* but has no value for this language, which `xcstringstool` compiles to
+    ///   **the key itself**. That one is silent and ships — an entry translated for `ru` and left
+    ///   empty for `en` compiled to `functionBar.<id>.<field>` in `en.lproj`, one narrow window away
+    ///   from being printed on a button. Since every key this function serves is symbolic (see
+    ///   above), a value equal to its key is never a legitimate translation; the English-text keys,
+    ///   where value *does* equal key by design, go through `String(localized:)` and never
+    ///   come here.
     static func translation(_ key: String) -> String? {
         let value = Bundle.main.localizedString(forKey: key, value: sentinel, table: nil)
-        return value == sentinel ? nil : value
+        guard value != sentinel, value != key else { return nil }
+        return value
     }
 
     /// The translation for `key`, or `fallback` when the catalog has no entry — where `fallback` is

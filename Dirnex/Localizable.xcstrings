@@ -2886,7 +2886,7 @@
       }
     },
     "functionBar.file.copy.label": {
-      "comment": "Caption on the function-key bar button for “file.copy”. Deliberately terser than the menu title — the buttons are narrow and truncate.",
+      "comment": "FUNCTION BAR — these seven are the app's primary buttons and are always on screen, so they carry the whole app's first impression. Rules for every language: use a WHOLE VERB in the imperative or infinitive, whichever that language uses for menu commands — never a clipped or abbreviated form (write “Копировать”, not “Копир.” or “Копия”), and never a truncation with a period. A noun phrase is acceptable only where the command genuinely names a thing rather than an action (F7 “Новая папка”). Match the wording of the command's own menu title where the verb is the same, so the button and the menu item read as the same command. Prefer the shorter of two correct verbs — the cell is narrow — but never buy width by cutting a word. This button copies the selection to the other panel.",
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -2898,13 +2898,13 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Копия"
+            "value": "Копировать"
           }
         }
       }
     },
     "functionBar.file.edit.label": {
-      "comment": "Caption on the function-key bar button for “file.edit”. Deliberately terser than the menu title — the buttons are narrow and truncate.",
+      "comment": "FUNCTION BAR — these seven are the app's primary buttons and are always on screen, so they carry the whole app's first impression. Rules for every language: use a WHOLE VERB in the imperative or infinitive, whichever that language uses for menu commands — never a clipped or abbreviated form (write “Копировать”, not “Копир.” or “Копия”), and never a truncation with a period. A noun phrase is acceptable only where the command genuinely names a thing rather than an action (F7 “Новая папка”). Match the wording of the command's own menu title where the verb is the same, so the button and the menu item read as the same command. Prefer the shorter of two correct verbs — the cell is narrow — but never buy width by cutting a word. This button opens the file in the user's text editor.",
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -2916,13 +2916,13 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Правка"
+            "value": "Править"
           }
         }
       }
     },
     "functionBar.file.move.label": {
-      "comment": "Caption on the function-key bar button for “file.move”. Deliberately terser than the menu title — the buttons are narrow and truncate.",
+      "comment": "FUNCTION BAR — these seven are the app's primary buttons and are always on screen, so they carry the whole app's first impression. Rules for every language: use a WHOLE VERB in the imperative or infinitive, whichever that language uses for menu commands — never a clipped or abbreviated form (write “Копировать”, not “Копир.” or “Копия”), and never a truncation with a period. A noun phrase is acceptable only where the command genuinely names a thing rather than an action (F7 “Новая папка”). Match the wording of the command's own menu title where the verb is the same, so the button and the menu item read as the same command. Prefer the shorter of two correct verbs — the cell is narrow — but never buy width by cutting a word. This button moves the selection to the other panel.",
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -2934,13 +2934,13 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Перемещ."
+            "value": "Переместить"
           }
         }
       }
     },
     "functionBar.file.newFolder.label": {
-      "comment": "Caption on the function-key bar button for “file.newFolder”. Deliberately terser than the menu title — the buttons are narrow and truncate.",
+      "comment": "FUNCTION BAR — these seven are the app's primary buttons and are always on screen, so they carry the whole app's first impression. Rules for every language: use a WHOLE VERB in the imperative or infinitive, whichever that language uses for menu commands — never a clipped or abbreviated form (write “Копировать”, not “Копир.” or “Копия”), and never a truncation with a period. A noun phrase is acceptable only where the command genuinely names a thing rather than an action (F7 “Новая папка”). Match the wording of the command's own menu title where the verb is the same, so the button and the menu item read as the same command. Prefer the shorter of two correct verbs — the cell is narrow — but never buy width by cutting a word. This button creates a new folder.",
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -2952,13 +2952,13 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Папка"
+            "value": "Новая папка"
           }
         }
       }
     },
     "functionBar.file.rename.label": {
-      "comment": "Caption on the function-key bar button for “file.rename”. Deliberately terser than the menu title — the buttons are narrow and truncate.",
+      "comment": "FUNCTION BAR — these seven are the app's primary buttons and are always on screen, so they carry the whole app's first impression. Rules for every language: use a WHOLE VERB in the imperative or infinitive, whichever that language uses for menu commands — never a clipped or abbreviated form (write “Копировать”, not “Копир.” or “Копия”), and never a truncation with a period. A noun phrase is acceptable only where the command genuinely names a thing rather than an action (F7 “Новая папка”). Match the wording of the command's own menu title where the verb is the same, so the button and the menu item read as the same command. Prefer the shorter of two correct verbs — the cell is narrow — but never buy width by cutting a word. This button renames the file under the cursor.",
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -2970,13 +2970,13 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Переим."
+            "value": "Переименовать"
           }
         }
       }
     },
     "functionBar.file.trash.label": {
-      "comment": "Caption on the function-key bar button for “file.trash”. Deliberately terser than the menu title — the buttons are narrow and truncate.",
+      "comment": "FUNCTION BAR — these seven are the app's primary buttons and are always on screen, so they carry the whole app's first impression. Rules for every language: use a WHOLE VERB in the imperative or infinitive, whichever that language uses for menu commands — never a clipped or abbreviated form (write “Копировать”, not “Копир.” or “Копия”), and never a truncation with a period. A noun phrase is acceptable only where the command genuinely names a thing rather than an action (F7 “Новая папка”). Match the wording of the command's own menu title where the verb is the same, so the button and the menu item read as the same command. Prefer the shorter of two correct verbs — the cell is narrow — but never buy width by cutting a word. This button moves the selection to the Trash.",
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -2994,7 +2994,7 @@
       }
     },
     "functionBar.view.quickLook.label": {
-      "comment": "Caption on the function-key bar button for “view.quickLook”. Deliberately terser than the menu title — the buttons are narrow and truncate.",
+      "comment": "FUNCTION BAR — these seven are the app's primary buttons and are always on screen, so they carry the whole app's first impression. Rules for every language: use a WHOLE VERB in the imperative or infinitive, whichever that language uses for menu commands — never a clipped or abbreviated form (write “Копировать”, not “Копир.” or “Копия”), and never a truncation with a period. A noun phrase is acceptable only where the command genuinely names a thing rather than an action (F7 “Новая папка”). Match the wording of the command's own menu title where the verb is the same, so the button and the menu item read as the same command. Prefer the shorter of two correct verbs — the cell is narrow — but never buy width by cutting a word. This button opens Quick Look on the file under the cursor.",
       "extractionState": "manual",
       "localizations": {
         "en": {

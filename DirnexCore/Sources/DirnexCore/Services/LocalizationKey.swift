@@ -32,7 +32,7 @@ public enum LocalizationKey {
         "commandCategory.\(category.rawValue).title"
     }
 
-    /// The short caption printed on a function-bar button, e.g. `functionBar.file.copy.label`.
+    /// The caption printed on a function-bar button, e.g. `functionBar.file.copy.label`.
     ///
     /// Keyed by the slot's *command id*, not its function key: a user who moves Copy from F5 to F9
     /// should carry its caption with it, and a user script's slot has no catalog entry to inherit.

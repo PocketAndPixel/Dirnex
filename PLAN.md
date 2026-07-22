@@ -159,10 +159,15 @@ override, and every string the *registry* owns translated end to end.
   the picker and a "Relaunch" button; `.system` is the absence of a pin, so auto-selection is free.
 - Hand-rolled `count == 1 ? … : …` plurals became catalog plural variants, two of them through
   `substitutions` (Russian needs one/few/many, and needs to reorder the sentence).
+- The function bar carries full Russian verbs ("F5 Копировать", not "F5 Копия"): measured, they fit
+  at the 640 pt window minimum, because `fillEqually` never squeezes a cell below its caption. A
+  shortening fallback for narrow windows was built and then deleted as unreachable — the
+  measurement should have come first.
 - Verified live: menu bar, palette, function bar, Settings and the relaunch round trip, all in
-  Russian, with the session restored intact across the restart. Two bugs only the live run found —
-  the menu bar's titles were a second hardcoded copy of the category names, and `Text("a" + "b")`
-  silently bypasses localization. Both in NOTES.md.
+  Russian, with the session restored intact across the restart. Three bugs only the live run found —
+  the menu bar's titles were a second hardcoded copy of the category names, `Text("a" + "b")`
+  silently bypasses localization, and a catalog entry left blank for English compiles to its own
+  key. All in NOTES.md.
 
 **Pass 2 — the extraction sweep (next).** ~500–700 remaining AppKit and SwiftUI literals wrapped
 file by file so Xcode extracts them, then Russian filled in. Mechanical; the lever that makes it
@@ -172,6 +177,16 @@ involved. Worth a lint rule keeping bare literals out of UI files afterwards.
 
 **Pass 3 — the remaining six languages.** Adding one is a line in `AppLanguages.all` plus its
 column in the catalog; `LocalizationCoverageTests` fails until the column is complete.
+
+**Standing rule for the function bar, in every language.** The seven F-key captions are the app's
+primary buttons and are on screen permanently, so they carry the first impression of the whole app:
+each is a **whole verb** — imperative or infinitive, whichever that language uses for menu commands
+— and never a clipped or abbreviated form. "Копировать", not "Копир." or "Копия"; "Переместить",
+not "Перемещ.". A noun phrase is right only where the command names a thing rather than an action
+(F7 "Новая папка"). Where the verb matches the command's own menu title, use the same word, so the
+button and the menu item read as one command. Prefer the shorter of two correct verbs — the cells
+are narrow — but never buy width by cutting a word. The rule is repeated in the `comment` of every
+`functionBar.*.label` entry, which is where a translator actually reads it.
 
 Deliberately excluded: the AppleScript `.sdef` terminology, since scripting vocabulary is
 conventionally English and translating it breaks users' scripts. App Intents phrases are localizable

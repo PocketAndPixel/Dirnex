@@ -323,6 +323,46 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   the front — "Не удалось вернуть %#@items@" — which a fixed word order could not express.
   `xcstringstool` validates it at build time, so a malformed entry fails the build rather than the
   user.
+- **The function-bar captions are whole verbs in every language — never abbreviations.** They are
+  the app's primary buttons and are permanently on screen, so an abbreviation ("Копир.", "Перемещ.")
+  reads as a cramped app rather than as a considered one, and a trailing period reads as a
+  truncation bug. The rule, with its rationale, lives in the `comment` of every
+  `functionBar.*.label` entry — a translator reads the catalog, not this file — and is restated in
+  PLAN.md §M12. Russian is the worked example: `Переименовать · Просмотр · Править · Копировать ·
+  Переместить · Новая папка · Удалить`.
+- **A String Catalog key with no value for the *source* language compiles to the key itself.**
+  Not to "absent" — `xcstringstool` writes `functionBar.file.copy.shortLabel` as its own value into
+  `en.lproj`, so a lookup succeeds and puts a dotted key on screen. An entry translated for `ru` and
+  left blank for `en` is the natural way to write "this language needs no override", and it is a
+  trap. `L10n.translation` therefore treats *value == key* as missing, which is safe precisely
+  because the keys it serves are symbolic; the English-text keys, where value equals key by design,
+  never go through it.
+- **`NSStackView.fillEqually` equalizes the surplus, not the views** — it never squeezes an arranged
+  view below its intrinsic content width. Measured on the function bar at the 640 pt window minimum:
+  cells came out **108 / 94 / 89 / 87.5 / 87.5 / 87**, each sized to its own caption, and every full
+  Russian verb ("Переименовать", "Переместить") fitted with room to spare; only above ~1400 pt do the
+  cells become equal, because that is when there is surplus to share. So a caption-shortening
+  fallback for narrow windows was **unreachable code**, and was written, measured, and deleted in
+  the same pass. Two lessons: don't reason about a stack's widths from its distribution constant,
+  and a "does it fit" mechanism needs the measurement *before* it is built, not after.
+- **Don't derive point geometry from a computer-use screenshot — including for text fitting.** The
+  capture is downsampled (1372 px for a 1728 pt display), so a caption that looked comfortably
+  inside its cell and one that looked flush against the divider were both unresolvable, and two
+  rounds of reasoning off the image contradicted each other. What settled it in one run: an `NSLog`
+  in `layout()` dumping `bounds.width` beside the measured title widths, with the binary run from a
+  shell. Also: `NSButtonCell.titleRect(forBounds:)` is not a usable measure for a borderless button
+  — it returns the bounds unchanged (no reserved padding) and returns **zero width** on an early
+  layout pass.
+- **Resizing a window for a probe: `defaults write "NSWindow Frame <autosave>"` then relaunch.**
+  `System Events` needs assistive access that `osascript` does not have (`-1719`), Dirnex's `.sdef`
+  exposes no windows (`-1728`), and a synthetic corner drag misses the resize edge. The frame
+  autosave key is deterministic and gives exact point widths.
+- **The app test target inherits the developer's own `AppleLanguages` pin.** `xcodebuild test` runs
+  the tests *in the app*, so pinning Dirnex to Russian to check a translation makes any test
+  asserting English display text fail — `AutomationIntentsTests` was asserting `"Copy to Other
+  Panel"` when what it meant was "the Shortcuts entity draws its name from the registry". Assert
+  against `LocalizedCatalog`, not against literals, and the suite passes in either language (both
+  were run to prove it).
 - **Endonyms are data, not strings.** The language picker lists each language in its own language
   ("Русский", not "Russian"), because a user stranded in a UI they cannot read has to be able to
   find the way back. They live in `AppLanguages` beside the codes and are never translated.
