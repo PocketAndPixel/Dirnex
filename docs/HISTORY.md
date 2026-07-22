@@ -1,6 +1,6 @@
-# Dirnex — build history (M0 → M10)
+# Dirnex — build history (M0 → M11)
 
-The shipped record of Dirnex's first ten milestones, 2026-07-05 → 2026-07-22: the
+The shipped record of Dirnex's first eleven milestones, 2026-07-05 → 2026-07-22: the
 milestone checklists as they were completed, plus the per-pass progress log — what was
 probed, what was decided, what was rejected and why.
 
@@ -5426,3 +5426,243 @@ accounts *not* synced to this Mac. Three reasons it went away:
 Native Docs export/import goes with it: `files.export` is an API call, and a user who wants a `.docx`
 has File → Download in the editor the stub already opens. The open question this gated —
 which OAuth scope to buy — is closed by not asking it.
+
+
+### M11 — F4 Edit, and Quick View at full size (S)
+
+Two independent slices, neither of which needs the other: F4 binds the last free key on the
+Total Commander row, and ⌃Q's preview grows two larger sizes. Both are app-side by
+construction — one hands a file to another app, the other is AppKit geometry — so the core's
+share of this milestone is a handful of catalog entries.
+
+**Slice 1 — F4 Edit.**
+
+The last unbound key on the Total Commander row. F4 has been deliberately free since M6
+(`FunctionBar.slot(forFunctionKey:)` names it as the example of an unmapped key) because
+Dirnex has no edit command; this gives it one **without writing a text editor**. A real
+editor is encoding detection, line-ending preservation, a binary gate, undo grouping and
+find/replace — a whole app, and every Mac already has one the user has already chosen. So
+F4 hands the file over, exactly the way ⌥F3 hands two files to FileMerge. Same split as
+M5's compare-by-content: a pure tested descriptor in the core, a thin launcher in the app,
+a Settings picker between them.
+
+- [x] **`ExternalTextEditor` (core)** — the descriptor and the resolution order, mirroring
+      `ExternalDiffTool`: BBEdit, VS Code, Sublime Text, Zed, Nova, TextMate, CotEditor,
+      Xcode, TextEdit. One deliberate deviation — resolve by **bundle identifier through an
+      injected probe, not by CLI executable path**. `ExternalDiffTool` looks for `bbdiff` /
+      `opendiff` because a diff tool *is* invoked as a command; an editor's shim (`code`,
+      `subl`) is an optional install most users never perform, so probing for it would report
+      "VS Code isn't installed" to someone staring at its icon in the Dock. `OpenWithLauncher`
+      already opens by bundle URL and is the model. **Automatic** = the system's own default
+      handler for plain text, so a user who never opens Settings gets what double-clicking a
+      `.txt` already gives them.
+- [x] **F4 opens the file under the cursor** — directly, no dialog (decided 2026-07-22; TC's
+      own split). Cursor item only, marks ignored: this is "edit the thing I'm pointing at",
+      and a dozen editor windows is not what a marked set means. A directory under the cursor
+      is not editable, so F4 there is inert — no error, the same way ⌥F3 declines a folder.
+- [x] **⇧F4 opens the name dialog** — prefilled with the cursor's file name and selected, so
+      Enter is "edit this" and typing over it is "make a new one". Existing name → open it;
+      new name → create the empty file, then open it. F4 with nothing editable under the
+      cursor (the `..` row, an empty directory) falls through to this dialog rather than doing
+      nothing, which is where TC's Shift+F4 and plain F4 usefully converge.
+- [x] **Gate the create path on a real directory, not on `.write`** — `writeDirectory`, the
+      guard `promptForNewFolder` already uses. NOTES.md's standing trap: the merged Trash
+      carries `.write` so `deleteStrategy` resolves to `.permanent`, and that alone lit up New
+      Folder and Paste inside a Trash tab. ⇧F4 must not become the third. Reuse New Folder's
+      shape wholesale — `NSAlert` + accessory field, `/` refused with a real message, then
+      `refreshCurrentDirectory(selecting:)` so the new file lands under the cursor.
+- [x] **Local files only** — `.local` backend filter, the same one Open With, Quick Look and
+      Compare all apply. An archive member or an SFTP file would edit an extracted temp copy
+      whose saves go nowhere (already noted at `PanelViewController+NestedArchive`), and a
+      silent no-op that looks like it worked is the expensive kind of wrong.
+- [x] **Route through `CloudDownload`, never `String(contentsOf:)`** — an evicted iCloud or
+      streaming-Drive file is `SF_DATALESS`, and touching one byte blocks while it materializes
+      (measured 1.1 s for 200 KB). The listing already carries `isDataless`; F4 reads it and
+      shows the existing download prompt instead of beachballing.
+- [x] **Absorb the fallout of binding F4** — it joins `FunctionBar.defaultSlots` as "Edit" and
+      therefore leaves `assignableFunctionKeys`, whose stock answer becomes F1, F9, F10, F12.
+      A user script already bound to F4 keeps its button and **silently stops firing from the
+      key**, because a bar slot is dispatched before the pane's handler ever sees the press.
+      Detect that collision on load and say so, rather than letting it degrade quietly. Two
+      `FunctionBarTests` assertions pin today's state and are part of the change, not
+      casualties of it: "F4 is deliberately unbound", and `assignableKeys`' exact
+      `[1, 4, 9, 10, 12]`. `CommandCatalog`'s ⌥F3 comment ("stock leaves F3/F4 unbound") goes
+      stale in the same move — ⌥F3 itself is unaffected, since a bare key and a modified one
+      are different key-equivalents.
+
+Exit: F4 on a text file opens it in the user's editor; ⇧F4 names a new one into existence and
+opens that; the editor is switchable in Settings and defaults to something sane with no visit
+there. Explicitly **not** in scope: a built-in editor (argued above — revisit only if leaving
+the app proves to break the keyboard-first flow, which is a claim to test by living with this
+first), and write-back for archive/SFTP files (edit-temp-watch-repack is its own slice).
+
+**Landed 2026-07-22.** Verified live: F4 opened `notes.txt` in TextEdit; ⇧F4 created `fresh.md`,
+landed the cursor on it and opened it; ⇧F4 + Enter over the prefilled name reopened the existing
+file with its contents intact. Four decisions the checklist didn't pre-answer:
+
+- **`createFile(at:)` is a new `VFSBackend` primitive**, `O_EXCL` in `LocalBackend` and
+  `.unsupported` by default. Creating an empty file touches bytes, so §2 puts it in the core with
+  tests; `O_EXCL` is what makes ⇧F4 safe on a name the user typed — the stat-then-create race
+  would otherwise truncate a document on the way to opening it.
+- **"Inert on a folder" is a *greyed* menu item, not a swallowed keystroke.** The first cut left
+  F4 enabled with a folder under the cursor and doing nothing — caught in the built app, not by a
+  test. Enabled now means exactly "the key does something": a local file, or nothing under the
+  cursor at all (where F4 becomes ⇧F4's dialog).
+- **The menu items name the editor** — "Edit with TextEdit" — the way Compare By Contents names
+  its tool. Measured first: the plain-text handler costs ~20 µs and a bundle lookup ~2 µs warm, so
+  the resolution runs live on every validation with no cache to go stale.
+- **⇧F4's create is deliberately not undoable**, unlike New Folder's. The file is handed to an
+  external editor in the same breath, so ⌘Z would delete something another app has open.
+- **The name field always starts out holding something**, selected: the cursor's own name
+  *whatever it is* — a folder's included, since ⇧F4 beside a folder is usually "something like
+  that, but a file" — and, where there is no cursor at all (`..`, an empty directory), the pane's
+  own folder name. An empty field asks the user to type from nothing; a selected one is a
+  starting point either way. The dialog does **not** name the folder in its text (2026-07-22):
+  the path bar right above it already does, and the prefill is drawn from it.
+
+`LocalBackend` was split (`LocalBackend+Copy.swift`) to stay under `type_body_length`.
+
+**Slice 2 — Quick View at full size.**
+
+⌃Q's preview (§M4) occupies the inactive pane, which is the right size for glancing and the
+wrong one for reading a contract or looking at a photograph. This gives it two larger sizes
+without giving it a second implementation: the existing overlay already *covers* the file
+list rather than hiding it, so the active pane's table keeps first responder and the cursor
+keeps driving the preview at any size. Every behaviour the panel has — cursor tracking, Tab
+to swap which pane is the source, on-demand archive-member extraction, the `PDFView` route
+for multi-page PDFs, Esc — transfers for free because none of it knows how big the preview is.
+
+Two sizes rather than one because they are different activities. **Full window** is a working
+mode: the document spans both panes while the sidebar, terminal drawer and function bar stay
+where they were, and you are still in the file manager. **Full screen** is a viewing mode:
+the native full-screen space, black backing, nothing on screen but the photo.
+
+- [x] **`QuickViewPreviewView` — extract before extending.** The overlay and its two backends
+      (the `NSBox` backing, the lazy `QLPreviewView(.compact)`, the lazy `PDFView`, the
+      content-type routing between them) come out of `PanelViewController+QuickView` into a
+      standalone view. The pane keeps one pinned over its scroll view; each new mode hosts an
+      identical one at a different anchor. A pure refactor with no behaviour change, and the
+      thing that keeps this slice from being three copies of one preview.
+- [x] **A mode, not a Bool** — `isQuickViewOn` becomes
+      `QuickViewMode { off, pane, fullWindow, fullScreen }` on the window controller, which
+      already owns the state because the mode spans both panes. `isQuickViewEnabled` stays as
+      `mode != .off`, so `fileTableCancel`'s progressive Esc and `validateMenuItem` need no
+      rethink.
+- [x] **Re-assert table focus after every show.** The new risk the pane version never had: in
+      the full modes the preview sits over the *focused* table, so a backend that takes first
+      responder turns ↑/↓ into document scrolling and the cursor stops moving — the mode's whole
+      point, lost silently. `focusedPanel.focusTable()` after each show, and a subclass refusing
+      first responder if that isn't enough. Verify live; first-responder questions are exactly
+      what a screenshot cannot answer.
+- [x] **⌃⇧Q full window, ⌃⌥Q full screen — flat toggles.** Each key turns its own mode off and
+      switches from any other; Esc closes straight out to the file list from any of the three.
+      Deliberately *not* an escalation ladder where repeat presses of ⌃⇧Q climb — that is a key
+      that never turns off what it turned on.
+- [x] **Full window anchors on `panesSplitViewController.view`** — both panes and the divider,
+      and nothing else. The sidebar, the drawer and the function bar stay usable, which is what
+      separates this mode from the next one rather than making it a smaller version of it.
+- [x] **Full screen anchors on the window's `contentView` and enters the native space** —
+      black backing instead of `textBackgroundColor`, no chrome. The fiddly part is state sync,
+      not rendering: `toggleFullScreen(nil)` needs a *did we enter it* flag or closing the
+      preview evicts a user who was already full-screen, and `willEnterFullScreen` /
+      `willExitFullScreen` observers or leaving by ⌃⌘F or the green button leaves the mode
+      claiming something untrue.
+- [x] **A name-and-position header, in both full modes.** In pane mode the list sits beside the
+      preview; in the full modes it does not, and arrowing through files you cannot see is
+      flying blind. Pinned in full window (a working surface), fading in and back out on mouse
+      movement in full screen (a viewing one).
+- [x] **← / → step the cursor while a full mode is up.** Both keycodes fall straight through
+      `FileTableView.handleTypingKey` today, so they are free — and nobody flips through a
+      vacation folder with ↑/↓.
+- [x] **A two-finger swipe does the same thing** (added 2026-07-22, on request): the same gesture
+      Preview and Photos flip pages with, at the same two sizes and through the same cursor
+      movement. The decision — how far is a swipe, which way, and the two ways it could run away —
+      is a tested `SwipeStepper` in the core; the app only maps `NSEvent` onto it.
+- [x] **Two catalog commands** — `view.quickViewFullWindow` (⌃⇧Q) and `view.quickViewFullScreen`
+      (⌃⌥Q), with menu items beside Quick View Panel, `CommandBinding` selectors and
+      `validateMenuItem` checkmarks. `KeyBindings().conflicts(for:)` is what proves both are
+      free, and the catalog test is the only test this slice can carry — the rest is AppKit and
+      is verified by driving the built app.
+
+Exit: ⌃⇧Q reads a PDF across both panes with the sidebar still in place; ⌃⌥Q fills the display
+with a photo and nothing else; arrows walk the file list underneath in both, and Esc returns to
+it. Explicitly **not** in scope: a slideshow timer or a thumbnail filmstrip — that is an image
+viewer, and the point here is that the *file list* remains the navigation.
+
+**Landed 2026-07-22.** Verified live against the built app: ⌃⇧Q read a 7-page PDF across both
+panes with the sidebar, drawer split and function bar untouched; ⌃⌥Q filled the display with a
+photo on black; ←/→/↑/↓ walked the list underneath in both, re-driving the preview and the header
+each step; the green button out of full screen closed the mode and restored the panes; ⌃Q's M4
+pane preview is unchanged by the extraction. Four things the checklist didn't pre-answer, three
+of them caught only by driving the real app:
+
+- **The three commands live on `BrowserWindowController`, not on the pane** — the change the
+  checklist got wrong. At the two full sizes the preview is a *sibling* of the panes, so one click
+  into the document leaves no `PanelViewController` in the responder chain and every Quick View
+  key goes silently dead. `view.terminal` already lives on the window for exactly this reason.
+  ⌃Q moved with them: it is the same mode, and a mode is not a pane's to own.
+- **`NSView.clipsToBounds` is `false` by default, and `draw(_:)`'s `dirtyRect` is not promised to
+  be inside the view.** Filling it blacked out the sidebar and the function bar while the overlay's
+  own frame was provably correct — the frame is what a screenshot shows, so the diagnosis came from
+  a probe, not from looking. The `NSBox` the M4 overlay used had been clipping all along.
+- **The header pins to the *safe area*, not the top edge**, or it draws its "2 of 7" straight
+  through the Back/Forward chevrons in the transparent title bar.
+- **A window posts no mouse-moved events by default**, so the fading full-screen header never
+  appeared until `acceptsMouseMovedEvents` was set — the tracking area is not enough on its own.
+
+The **two-finger swipe** landed the same day, on request. It rides the same scroll-event monitor
+shape as Esc and for the same reason — `PDFView` and the out-of-process `QLPreviewView` are what
+the pointer is over, and both eat scroll before it could bubble. Two guards are the whole design,
+and both are in `SwipeStepperTests` rather than in a finger: **momentum is ignored**, or one flick's
+coast walks the cursor through the entire folder after the fingers have left the glass; and a swipe
+must be **mostly horizontal**, or scrolling a long document sideways-drifts through files. Vertical
+scroll is handed straight back, so a PDF still scrolls exactly as it did. Two things it is worth
+knowing were *not* verified here: a synthetic scroll event is not a trackpad
+(`hasPreciseScrollingDeltas == false`, no phase), so the wiring was proven by temporarily dropping
+that one gate — and `SwipeStepper.threshold` (120 pt, about a third of a trackpad, the distance
+Preview asks for) is a number picked from what those apps feel like, not measured. It is the one
+value here that wants a real hand.
+
+**Rebuilt on the system's own gesture, 2026-07-22, after five rounds of hand-tuning failed to
+converge.** The first version counted distance; the second was an interactive, commit-on-lift state
+machine in the core (`SwipeStepper`). Both were wrong in the same way, and the measurements are the
+record of it: 187 logged gestures showed travel a hand intends identically ranging over 82…611 pt,
+so a threshold-per-row dealt 0–5 rows for the same flick; a later probe showed `scrollingDeltaX` is
+**acceleration-scaled**, measured at 1.00× for a slow swipe against **5.18×** for a fast one over
+the same glass, so any threshold expressed in it silently demands more distance the slower you move.
+Every fix landed a new complaint — too long, too fast, too much effort, sticking, juddering.
+
+The lesson is that none of those quantities were ours to own. `NSEvent.trackSwipeEvent` — the fluid
+swipe tracking Safari and Preview turn pages with — answers all of them: how far is far enough, what
+counts as horizontal, how to compensate for acceleration, when the user has changed their mind, and
+how to animate the remaining travel after the fingers lift. The handler now decides *which file* and
+nothing else, so the feel is the platform's and matches every other app on the machine. `SwipeStepper`
+and its 23 tests were **deleted**: not because the tests were wrong, but because the thing they
+pinned should never have been ours to decide. Dirnex honours
+`NSEvent.isSwipeTrackingFromScrollEventsEnabled` rather than substituting its own gesture — a user
+who has turned "Swipe between pages" off has said what they want, and ← / → still walk the list.
+
+Two things had to change with it, both found live:
+
+- **Images bypass Quick Look now.** `QLPreviewView` renders out of process, so translating the layer
+  hosting it costs a round trip per frame — a visible judder ("like 30 fps") on exactly the content
+  people swipe through. An in-process `NSImageView` sits beside the existing `PDFView` for that.
+- **The covered panes stayed interactive under the preview**, which the divider was only the visible
+  symptom of. `QLPreviewView` renders out of process: its container answers `hitTest` and then
+  declines the event, so AppKit re-dispatched clicks and drags to the file tables underneath — the
+  covered pane's cursor followed clicks on the photograph, and a drag copied a file across panes.
+  The surface now returns `self` from `hitTest` and swallows the mouse handlers, exempting `PDFView`
+  so a document still scrolls and zooms.
+- **The pane divider stayed live under the preview.** `NSSplitView` keeps its drag region and its
+  resize cursor whatever covers it, so the `< | >` cursor appeared over a photograph and dragging
+  there resized panes nobody could see. `LockableDividerSplitViewController` empties the divider's
+  effective rect while a preview covers it — the panes' divider for ⌃⇧Q, all three for ⌃⌥Q, which
+  covers the whole content view.
+- **The next file arrived from the side it had just left.** `completeSwipe` placed the incoming file
+  at the opposite edge and then read `layer.presentation()` for the animation's start — but the
+  presentation layer still showed the *exit* position, so every flip animated in from the wrong
+  edge. Reads as inverted direction; is actually a one-frame lag. The start is now stated, not read.
+- **…and an `NSImageView` defends its image's size at priority 750**, so an 8629 px panorama pushed
+  the constraint chain outward and resized the *window* past the edge of the display, cutting off the
+  function bar — while every frame inside the preview was provably correct. Its compression
+  resistance and hugging are pinned to the floor; the surface is sized by its anchors alone.
