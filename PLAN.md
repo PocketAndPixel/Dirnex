@@ -132,7 +132,14 @@ non-empty folder, which hid three folders Finder shows.
 
 ### Next
 
-#### M11 — F4 Edit (S)
+#### M11 — F4 Edit, and Quick View at full size (S)
+
+Two independent slices, neither of which needs the other: F4 binds the last free key on the
+Total Commander row, and ⌃Q's preview grows two larger sizes. Both are app-side by
+construction — one hands a file to another app, the other is AppKit geometry — so the core's
+share of this milestone is a handful of catalog entries.
+
+##### F4 Edit
 
 The last unbound key on the Total Commander row. F4 has been deliberately free since M6
 (`FunctionBar.slot(forFunctionKey:)` names it as the example of an unmapped key) because
@@ -192,6 +199,69 @@ opens that; the editor is switchable in Settings and defaults to something sane 
 there. Explicitly **not** in scope: a built-in editor (argued above — revisit only if leaving
 the app proves to break the keyboard-first flow, which is a claim to test by living with this
 first), and write-back for archive/SFTP files (edit-temp-watch-repack is its own slice).
+
+##### Quick View at full size
+
+⌃Q's preview (§M4) occupies the inactive pane, which is the right size for glancing and the
+wrong one for reading a contract or looking at a photograph. This gives it two larger sizes
+without giving it a second implementation: the existing overlay already *covers* the file
+list rather than hiding it, so the active pane's table keeps first responder and the cursor
+keeps driving the preview at any size. Every behaviour the panel has — cursor tracking, Tab
+to swap which pane is the source, on-demand archive-member extraction, the `PDFView` route
+for multi-page PDFs, Esc — transfers for free because none of it knows how big the preview is.
+
+Two sizes rather than one because they are different activities. **Full window** is a working
+mode: the document spans both panes while the sidebar, terminal drawer and function bar stay
+where they were, and you are still in the file manager. **Full screen** is a viewing mode:
+the native full-screen space, black backing, nothing on screen but the photo.
+
+- [ ] **`QuickViewPreviewView` — extract before extending.** The overlay and its two backends
+      (the `NSBox` backing, the lazy `QLPreviewView(.compact)`, the lazy `PDFView`, the
+      content-type routing between them) come out of `PanelViewController+QuickView` into a
+      standalone view. The pane keeps one pinned over its scroll view; each new mode hosts an
+      identical one at a different anchor. A pure refactor with no behaviour change, and the
+      thing that keeps this slice from being three copies of one preview.
+- [ ] **A mode, not a Bool** — `isQuickViewOn` becomes
+      `QuickViewMode { off, pane, fullWindow, fullScreen }` on the window controller, which
+      already owns the state because the mode spans both panes. `isQuickViewEnabled` stays as
+      `mode != .off`, so `fileTableCancel`'s progressive Esc and `validateMenuItem` need no
+      rethink.
+- [ ] **Re-assert table focus after every show.** The new risk the pane version never had: in
+      the full modes the preview sits over the *focused* table, so a backend that takes first
+      responder turns ↑/↓ into document scrolling and the cursor stops moving — the mode's whole
+      point, lost silently. `focusedPanel.focusTable()` after each show, and a subclass refusing
+      first responder if that isn't enough. Verify live; first-responder questions are exactly
+      what a screenshot cannot answer.
+- [ ] **⌃⇧Q full window, ⌃⌥Q full screen — flat toggles.** Each key turns its own mode off and
+      switches from any other; Esc closes straight out to the file list from any of the three.
+      Deliberately *not* an escalation ladder where repeat presses of ⌃⇧Q climb — that is a key
+      that never turns off what it turned on.
+- [ ] **Full window anchors on `panesSplitViewController.view`** — both panes and the divider,
+      and nothing else. The sidebar, the drawer and the function bar stay usable, which is what
+      separates this mode from the next one rather than making it a smaller version of it.
+- [ ] **Full screen anchors on the window's `contentView` and enters the native space** —
+      black backing instead of `textBackgroundColor`, no chrome. The fiddly part is state sync,
+      not rendering: `toggleFullScreen(nil)` needs a *did we enter it* flag or closing the
+      preview evicts a user who was already full-screen, and `willEnterFullScreen` /
+      `willExitFullScreen` observers or leaving by ⌃⌘F or the green button leaves the mode
+      claiming something untrue.
+- [ ] **A name-and-position header, in both full modes.** In pane mode the list sits beside the
+      preview; in the full modes it does not, and arrowing through files you cannot see is
+      flying blind. Pinned in full window (a working surface), fading in and back out on mouse
+      movement in full screen (a viewing one).
+- [ ] **← / → step the cursor while a full mode is up.** Both keycodes fall straight through
+      `FileTableView.handleTypingKey` today, so they are free — and nobody flips through a
+      vacation folder with ↑/↓.
+- [ ] **Two catalog commands** — `view.quickViewFullWindow` (⌃⇧Q) and `view.quickViewFullScreen`
+      (⌃⌥Q), with menu items beside Quick View Panel, `CommandBinding` selectors and
+      `validateMenuItem` checkmarks. `KeyBindings().conflicts(for:)` is what proves both are
+      free, and the catalog test is the only test this slice can carry — the rest is AppKit and
+      is verified by driving the built app.
+
+Exit: ⌃⇧Q reads a PDF across both panes with the sidebar still in place; ⌃⌥Q fills the display
+with a photo and nothing else; arrows walk the file list underneath in both, and Esc returns to
+it. Explicitly **not** in scope: a slideshow timer or a thumbnail filmstrip — that is an image
+viewer, and the point here is that the *file list* remains the navigation.
 
 ## 5. Cross-cutting: testing strategy
 
