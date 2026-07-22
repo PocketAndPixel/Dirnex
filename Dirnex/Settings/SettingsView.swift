@@ -6,10 +6,11 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var keyBindings: KeyBindingStore
     @ObservedObject var preferences: AppPreferences
+    @ObservedObject var language: LanguageSettings = .shared
 
     var body: some View {
         TabView {
-            GeneralSettingsView(preferences: preferences)
+            GeneralSettingsView(preferences: preferences, language: language)
                 .tabItem { Label("General", systemImage: "gearshape") }
 
             PanelsSettingsView(preferences: preferences)

@@ -82,7 +82,7 @@ final class FunctionBarButton: NSButton {
             ]
         )
         result.append(NSAttributedString(
-            string: slot.label,
+            string: LocalizedCatalog.label(for: slot),
             attributes: [
                 .font: NSFont.systemFont(ofSize: 11),
                 .foregroundColor: NSColor.labelColor
@@ -103,7 +103,8 @@ final class FunctionBarButton: NSButton {
     /// narrow to print. A user script isn't in the catalog and its label already *is* its full
     /// name, so it falls back to that rather than going tooltip-less.
     private static func tooltip(for slot: FunctionBarSlot) -> String? {
-        let title = CommandCatalog.command(for: slot.commandID)?.title ?? slot.label
+        let title = LocalizedCatalog.command(for: slot.commandID)?.title
+            ?? LocalizedCatalog.label(for: slot)
         return "\(title) (\(slot.keyName))"
     }
 }

@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M11 shipped · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
+Status: M0–M11 shipped · M12 (localization) in progress · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
 
 ---
 
@@ -136,11 +136,46 @@ declared public scope and a folder that exists. Both are argued in HISTORY.md. T
 that approximation was reversed on 2026-07-21 (see M10): it used to also require a
 non-empty folder, which hid three folders Finder shows.
 
-### Next
+### In progress: M12 — Localization (started 2026-07-22)
 
-Nothing queued. M11 closed the last milestone on the roadmap, and the next one is
-undecided — it gets written here before any code starts, the same way every milestone
-since M0 has.
+Eight languages eventually; English is the source and Russian is the first translation, added
+alongside the machinery so the machinery is proven by a real language rather than by a
+pseudolanguage. No RTL in the planned set — CJK is, so input-method behaviour in the inline rename
+field and the palette needs a live check when those land.
+
+**Pass 1 — plumbing (2026-07-22, landed).** Auto-selection from the system language, an in-app
+override, and every string the *registry* owns translated end to end.
+
+- `DirnexCore` gains `AppLanguage`/`AppLanguages` (shipped languages, endonyms, and the pure
+  system-preference matching) and `LocalizationKey` (the key scheme). **The core still ships no
+  resources**: its English `title`/`label`/`keywords` stay data and act as the fallback, so
+  `swift test` remains hermetic and no catalog test asserts against translated output.
+  `Command.id` is the translation key — which is what its doc comment already promised.
+- The app owns `Localizable.xcstrings`. `LocalizedCatalog` joins the registry to it and is the only
+  entry point the app uses, so every downstream `command.title` is translated without each display
+  site having to remember. Translated palette keywords are **added** to the English ones.
+- Language switching writes `AppleLanguages` into Dirnex's own defaults domain and relaunches —
+  which carries AppKit's own strings and Sparkle's dialogs along with ours. Settings ▸ General has
+  the picker and a "Relaunch" button; `.system` is the absence of a pin, so auto-selection is free.
+- Hand-rolled `count == 1 ? … : …` plurals became catalog plural variants, two of them through
+  `substitutions` (Russian needs one/few/many, and needs to reorder the sentence).
+- Verified live: menu bar, palette, function bar, Settings and the relaunch round trip, all in
+  Russian, with the session restored intact across the restart. Two bugs only the live run found —
+  the menu bar's titles were a second hardcoded copy of the category names, and `Text("a" + "b")`
+  silently bypasses localization. Both in NOTES.md.
+
+**Pass 2 — the extraction sweep (next).** ~500–700 remaining AppKit and SwiftUI literals wrapped
+file by file so Xcode extracts them, then Russian filled in. Mechanical; the lever that makes it
+verifiable is Xcode's **pseudolanguages** — accented catches literals that were never wrapped,
+double-length catches truncation in the function bar and column headers before a translator is
+involved. Worth a lint rule keeping bare literals out of UI files afterwards.
+
+**Pass 3 — the remaining six languages.** Adding one is a line in `AppLanguages.all` plus its
+column in the catalog; `LocalizationCoverageTests` fails until the column is complete.
+
+Deliberately excluded: the AppleScript `.sdef` terminology, since scripting vocabulary is
+conventionally English and translating it breaks users' scripts. App Intents phrases are localizable
+but are their own pass.
 
 ## 5. Cross-cutting: testing strategy
 

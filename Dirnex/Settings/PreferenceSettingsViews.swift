@@ -7,9 +7,12 @@ import SwiftUI
 
 struct GeneralSettingsView: View {
     @ObservedObject var preferences: AppPreferences
+    @ObservedObject var language: LanguageSettings
 
     var body: some View {
         Form {
+            LanguageSettingsSection(settings: language)
+
             Section {
                 Toggle("Reopen tabs from the previous session", isOn: $preferences.restoreSession)
             } footer: {
@@ -22,9 +25,10 @@ struct GeneralSettingsView: View {
                 Toggle("Receive beta updates", isOn: $preferences.receiveBetaUpdates)
             } footer: {
                 Text(
-                    "Also offers pre-release builds when Dirnex checks for updates. Betas are newer "
-                        + "but less tested; you're moved back onto a stable release automatically "
-                        + "once one catches up."
+                    """
+                    Also offers pre-release builds when Dirnex checks for updates. Betas are newer but less \
+                    tested; you're moved back onto a stable release automatically once one catches up.
+                    """
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -53,9 +57,10 @@ struct PanelsSettingsView: View {
                 Toggle("Show Finder tags", isOn: $preferences.showTags)
             } footer: {
                 Text(
-                    "Shows each file's tag colours at the right edge of its name, as Finder does. "
-                        + "Also in the View menu. Archives and remote volumes have no tags, so "
-                        + "nothing is drawn there."
+                    """
+                    Shows each file's tag colours at the right edge of its name, as Finder does. Also in the \
+                    View menu. Archives and remote volumes have no tags, so nothing is drawn there.
+                    """
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -65,10 +70,12 @@ struct PanelsSettingsView: View {
                 Toggle("Show cloud sync status", isOn: $preferences.showSyncStatus)
             } footer: {
                 Text(
-                    "Badges a file whose bytes are still in iCloud (or another provider), on their "
-                        + "way up or down, or in conflict — at the right edge of its name, as "
-                        + "Finder does. Folders outside a cloud provider are never scanned, and "
-                        + "fully synced files show nothing. Also in the View menu."
+                    """
+                    Badges a file whose bytes are still in iCloud (or another provider), on their way up or \
+                    down, or in conflict — at the right edge of its name, as Finder does. Folders outside a \
+                    cloud provider are never scanned, and fully synced files show nothing. Also in the View \
+                    menu.
+                    """
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -78,9 +85,11 @@ struct PanelsSettingsView: View {
                 Toggle("Show function key bar", isOn: $preferences.showFunctionBar)
             } footer: {
                 Text(
-                    "A row of F-key buttons along the window bottom — Rename, View, Copy, Move, "
-                        + "New Folder, Delete — the Total Commander function bar. Also in the View "
-                        + "menu; the keys work whether or not the bar is shown."
+                    """
+                    A row of F-key buttons along the window bottom — Rename, View, Copy, Move, New Folder, \
+                    Delete — the Total Commander function bar. Also in the View menu; the keys work whether or \
+                    not the bar is shown.
+                    """
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -93,9 +102,10 @@ struct PanelsSettingsView: View {
                 )
             } footer: {
                 Text(
-                    "Opening a folder from a search tab leaves the results in place and opens it in "
-                        + "the other pane. When off, focus stays on the results so you can keep "
-                        + "opening more."
+                    """
+                    Opening a folder from a search tab leaves the results in place and opens it in the other \
+                    pane. When off, focus stays on the results so you can keep opening more.
+                    """
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -155,10 +165,14 @@ struct OperationsSettingsView: View {
                     }
                 }
             } footer: {
-                Text("The editor F4 opens the file under the cursor in. ⇧F4 names a new file "
-                    + "first, creating it if it doesn’t exist yet.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(
+                    """
+                    The editor F4 opens the file under the cursor in. ⇧F4 names a new file first, creating it if \
+                    it doesn’t exist yet.
+                    """
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)

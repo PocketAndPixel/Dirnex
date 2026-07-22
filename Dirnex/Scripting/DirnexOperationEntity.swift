@@ -21,8 +21,9 @@ struct DirnexOperation: AppEntity {
 
     init(_ command: Command) {
         id = command.id
-        name = command.title
-        category = command.category.title
+        let localized = LocalizedCatalog.localized(command)
+        name = localized.title
+        category = command.category.localizedTitle
     }
 
     static var typeDisplayRepresentation: TypeDisplayRepresentation {

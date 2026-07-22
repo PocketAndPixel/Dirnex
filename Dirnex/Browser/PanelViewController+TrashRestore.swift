@@ -60,9 +60,7 @@ extension PanelViewController {
     private func confirmRestoreAll(count: Int, proceed: @escaping () -> Void) {
         let alert = NSAlert()
         alert.alertStyle = .informational
-        alert.messageText = count == 1
-            ? "Put 1 item back?"
-            : "Put \(count) items back?"
+        alert.messageText = String(localized: "Put \(count) items back?")
         alert.informativeText = "Each item returns to the folder it was deleted from."
         alert.addButton(withTitle: "Put Back")
         alert.addButton(withTitle: "Cancel")

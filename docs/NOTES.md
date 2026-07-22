@@ -272,6 +272,65 @@ at build time.
   entirely, including from any pending-work set, or a row with no total is pending forever and
   gets re-queued on every render.
 
+## Localization
+
+Two styles, deliberately: the app's own literals are keyed by their **English text**
+(`String(localized: "Relaunch")`, and every SwiftUI literal automatically), so Xcode extracts them
+and a missing translation falls back to readable English; `DirnexCore`'s registry strings are keyed
+**symbolically by their stable id** (`command.file.copy.title`), because the core ships no resources
+and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its one primitive.
+
+- **`Text("a " + "b")` silently does not localize.** The concatenation resolves to a `String`, which
+  picks SwiftUI's *verbatim* `Text(_: String)` overload rather than the `LocalizedStringKey` one —
+  so the string is never looked up, never extracted, and renders in English with a fully translated
+  catalog sitting right there. It compiles, it lints, and it looks identical in an English
+  screenshot; eight of these were hiding in the Settings panes and only a Russian run found them.
+  Merge into one literal, using `\` line continuations inside a `"""` literal to keep it readable —
+  the *literal* has to be single, the source line does not.
+- **The menu bar's titles were a second copy of the category names.** `MenuSpec(title: "File")`
+  duplicated `CommandCategory.file.title`, so translating the registry left the whole menu bar in
+  English while every menu's *contents* switched — visible only by launching. `MenuSpec` now carries
+  the `CommandCategory` and derives its title, which is the general lesson: a display string that
+  exists twice will be localized once.
+- **Switch languages via `AppleLanguages` in the app's own defaults domain, not a private lookup.**
+  It is the lever System Settings ▸ Language & Region ▸ Applications pulls, so AppKit's stock menu
+  items, the open/save panels and Sparkle's dialogs follow along. A homegrown "resolve strings
+  against a chosen bundle" scheme switches only *our* strings and leaves the rest in the system
+  language — permanently half-translated. The price is that it lands at launch, not live.
+- **Read the system's languages from the *global* domain.** `Locale.preferredLanguages` and
+  `UserDefaults.standard.stringArray(forKey: "AppleLanguages")` both already reflect our own
+  override, so asking either what the *system* prefers hands back our own answer — and "Same as
+  System" resolves to whatever was last pinned. Same asymmetry on the way in: reading the pin needs
+  `persistentDomain(forName: <bundle id>)`, because the standard search falls through to the global
+  domain and would read the system list back as a pin the user never set.
+- **A relaunch must wait for the old process to exit, not run alongside it.** Dirnex writes its tabs
+  and workspaces on the way down, so an instance launched *before* the terminating one has finished
+  restores the previous session and then has it overwritten. A detached
+  `while kill -0 <pid>; do sleep 0.1; done; open <bundle>` is the whole fix, and the session came
+  back intact across a live language switch because of it.
+- **`Command.id` is now a translation key**, as its own doc comment always claimed it would be
+  ("never localized, never changes"). Renaming one orphans its translations in every language, and
+  nothing in the compiler notices — the English fallback renders, so an untranslated command looks
+  *fine* in an English screenshot. `LocalizationCoverageTests` reads the real compiled `.lproj` and
+  fails when a command, category or function-bar caption has no entry.
+- **Translated palette keywords are added to the English ones, never substituted.** A Russian user
+  who reaches for "copy" out of habit, or who followed English docs, must still find the command;
+  verified live by typing `duplicate` and getting «Копировать на другую панель».
+- **String Catalogs handle multi-argument plurals, but only through `substitutions`.** A plain
+  plural variation covers `"Put %lld items back?"`; a sentence with a count *and* another argument
+  needs the count declared as a named substitution (`%#@items@` plus `argNum`/`formatSpecifier`) and
+  the remaining arguments made positional (`%2$@`). That is also what lets Russian move the verb to
+  the front — "Не удалось вернуть %#@items@" — which a fixed word order could not express.
+  `xcstringstool` validates it at build time, so a malformed entry fails the build rather than the
+  user.
+- **Endonyms are data, not strings.** The language picker lists each language in its own language
+  ("Русский", not "Russian"), because a user stranded in a UI they cannot read has to be able to
+  find the way back. They live in `AppLanguages` beside the codes and are never translated.
+- **Locale-dependent formatting came free and region stays put.** `ByteCountFormatter` and
+  `DateFormatter` already follow the current locale, so sizes and dates localized with no code
+  change — and because `AppleLanguages` sets the *language* only, a Russian UI on a European region
+  keeps that region's separators.
+
 ## Lint ceilings and file splitting
 
 SwiftLint enforces `file_length` 500 and `type_body_length` 250, and the big AppKit controllers

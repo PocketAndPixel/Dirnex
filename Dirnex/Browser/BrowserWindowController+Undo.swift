@@ -87,15 +87,17 @@ extension BrowserWindowController {
 
         var lines: [String] = []
         if record.nonReversibleCount > 0 {
-            let items = record.nonReversibleCount == 1 ? "1 item" : "\(record.nonReversibleCount) items"
-            lines.append("\(items) overwrote existing files and can’t be restored.")
+            let overwrote = record.nonReversibleCount
+            lines.append(
+                String(
+                    localized: "\(overwrote) items overwrote existing files and can’t be restored."
+                )
+            )
         }
         if !report.succeeded {
             let count = report.failures.count
-            let items = count == 1 ? "1 item" : "\(count) items"
-            lines.append(
-                "\(items) couldn’t be put back: \(leftPanel.describe(report.failures[0].error))"
-            )
+            let reason = leftPanel.describe(report.failures[0].error)
+            lines.append(String(localized: "\(count) items couldn’t be put back: \(reason)"))
         }
         presentIssues(title: "Undo \(record.label) finished with issues", lines: lines)
     }
@@ -106,8 +108,8 @@ extension BrowserWindowController {
     private func presentRedoOutcome(record: UndoRecord, report: UndoReport) {
         guard !report.succeeded else { return }
         let count = report.failures.count
-        let items = count == 1 ? "1 item" : "\(count) items"
-        let line = "\(items) couldn’t be re-applied: \(leftPanel.describe(report.failures[0].error))"
+        let reason = leftPanel.describe(report.failures[0].error)
+        let line = String(localized: "\(count) items couldn’t be re-applied: \(reason)")
         presentIssues(title: "Redo \(record.label) finished with issues", lines: [line])
     }
 

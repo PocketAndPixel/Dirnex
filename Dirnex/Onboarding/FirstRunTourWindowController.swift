@@ -150,7 +150,7 @@ final class FirstRunTourWindowController: NSWindowController, NSWindowDelegate {
         }
         commandsStack.isHidden = ids.isEmpty
         for id in ids {
-            guard let command = CommandCatalog.command(for: id) else { continue }
+            guard let command = LocalizedCatalog.command(for: id) else { continue }
             let shortcut = KeyBindingStore.shared.shortcut(for: id)?.display
             commandsStack.addArrangedSubview(commandRow(title: command.title, shortcut: shortcut))
         }

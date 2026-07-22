@@ -97,9 +97,7 @@ extension PanelViewController {
     private func confirmEmptyTrash(count: Int, proceed: @escaping () -> Void) {
         let alert = NSAlert()
         alert.alertStyle = .critical
-        alert.messageText = count == 1
-            ? "Permanently erase 1 item from the Trash?"
-            : "Permanently erase \(count) items from the Trash?"
+        alert.messageText = String(localized: "Permanently erase \(count) items from the Trash?")
         alert.informativeText = "This can’t be undone."
         alert.addButton(withTitle: "Empty Trash")
         alert.addButton(withTitle: "Cancel")

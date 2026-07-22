@@ -75,7 +75,7 @@ enum DisplacedScriptKeysNotice {
         }
         let slot = FunctionBar.slot(forFunctionKey: functionKey, in: FunctionBar.defaultSlots)
         guard let commandID = slot?.commandID,
-              let command = CommandCatalog.command(for: commandID) else {
+              let command = LocalizedCatalog.command(for: commandID) else {
             return "a Dirnex command"
         }
         return "“\(command.title)”"
