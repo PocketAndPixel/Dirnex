@@ -132,9 +132,66 @@ non-empty folder, which hid three folders Finder shows.
 
 ### Next
 
-Nothing queued. M10 closed the last milestone on the roadmap, and the next one is
-undecided — it gets written here before any code starts, the same way every milestone
-since M0 has.
+#### M11 — F4 Edit (S)
+
+The last unbound key on the Total Commander row. F4 has been deliberately free since M6
+(`FunctionBar.slot(forFunctionKey:)` names it as the example of an unmapped key) because
+Dirnex has no edit command; this gives it one **without writing a text editor**. A real
+editor is encoding detection, line-ending preservation, a binary gate, undo grouping and
+find/replace — a whole app, and every Mac already has one the user has already chosen. So
+F4 hands the file over, exactly the way ⌥F3 hands two files to FileMerge. Same split as
+M5's compare-by-content: a pure tested descriptor in the core, a thin launcher in the app,
+a Settings picker between them.
+
+- [ ] **`ExternalTextEditor` (core)** — the descriptor and the resolution order, mirroring
+      `ExternalDiffTool`: BBEdit, VS Code, Sublime Text, Zed, Nova, TextMate, CotEditor,
+      Xcode, TextEdit. One deliberate deviation — resolve by **bundle identifier through an
+      injected probe, not by CLI executable path**. `ExternalDiffTool` looks for `bbdiff` /
+      `opendiff` because a diff tool *is* invoked as a command; an editor's shim (`code`,
+      `subl`) is an optional install most users never perform, so probing for it would report
+      "VS Code isn't installed" to someone staring at its icon in the Dock. `OpenWithLauncher`
+      already opens by bundle URL and is the model. **Automatic** = the system's own default
+      handler for plain text, so a user who never opens Settings gets what double-clicking a
+      `.txt` already gives them.
+- [ ] **F4 opens the file under the cursor** — directly, no dialog (decided 2026-07-22; TC's
+      own split). Cursor item only, marks ignored: this is "edit the thing I'm pointing at",
+      and a dozen editor windows is not what a marked set means. A directory under the cursor
+      is not editable, so F4 there is inert — no error, the same way ⌥F3 declines a folder.
+- [ ] **⇧F4 opens the name dialog** — prefilled with the cursor's file name and selected, so
+      Enter is "edit this" and typing over it is "make a new one". Existing name → open it;
+      new name → create the empty file, then open it. F4 with nothing editable under the
+      cursor (the `..` row, an empty directory) falls through to this dialog rather than doing
+      nothing, which is where TC's Shift+F4 and plain F4 usefully converge.
+- [ ] **Gate the create path on a real directory, not on `.write`** — `writeDirectory`, the
+      guard `promptForNewFolder` already uses. NOTES.md's standing trap: the merged Trash
+      carries `.write` so `deleteStrategy` resolves to `.permanent`, and that alone lit up New
+      Folder and Paste inside a Trash tab. ⇧F4 must not become the third. Reuse New Folder's
+      shape wholesale — `NSAlert` + accessory field, `/` refused with a real message, then
+      `refreshCurrentDirectory(selecting:)` so the new file lands under the cursor.
+- [ ] **Local files only** — `.local` backend filter, the same one Open With, Quick Look and
+      Compare all apply. An archive member or an SFTP file would edit an extracted temp copy
+      whose saves go nowhere (already noted at `PanelViewController+NestedArchive`), and a
+      silent no-op that looks like it worked is the expensive kind of wrong.
+- [ ] **Route through `CloudDownload`, never `String(contentsOf:)`** — an evicted iCloud or
+      streaming-Drive file is `SF_DATALESS`, and touching one byte blocks while it materializes
+      (measured 1.1 s for 200 KB). The listing already carries `isDataless`; F4 reads it and
+      shows the existing download prompt instead of beachballing.
+- [ ] **Absorb the fallout of binding F4** — it joins `FunctionBar.defaultSlots` as "Edit" and
+      therefore leaves `assignableFunctionKeys`, whose stock answer becomes F1, F9, F10, F12.
+      A user script already bound to F4 keeps its button and **silently stops firing from the
+      key**, because a bar slot is dispatched before the pane's handler ever sees the press.
+      Detect that collision on load and say so, rather than letting it degrade quietly. Two
+      `FunctionBarTests` assertions pin today's state and are part of the change, not
+      casualties of it: "F4 is deliberately unbound", and `assignableKeys`' exact
+      `[1, 4, 9, 10, 12]`. `CommandCatalog`'s ⌥F3 comment ("stock leaves F3/F4 unbound") goes
+      stale in the same move — ⌥F3 itself is unaffected, since a bare key and a modified one
+      are different key-equivalents.
+
+Exit: F4 on a text file opens it in the user's editor; ⇧F4 names a new one into existence and
+opens that; the editor is switchable in Settings and defaults to something sane with no visit
+there. Explicitly **not** in scope: a built-in editor (argued above — revisit only if leaving
+the app proves to break the keyboard-first flow, which is a claim to test by living with this
+first), and write-back for archive/SFTP files (edit-temp-watch-repack is its own slice).
 
 ## 5. Cross-cutting: testing strategy
 
