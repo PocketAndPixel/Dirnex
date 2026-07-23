@@ -66,6 +66,14 @@ enum LocalizedCatalog {
         L10n.string(LocalizationKey.tourBody(screen.id), fallback: screen.body)
     }
 
+    /// A sidebar section header's label, translated. Like the tour screens, `SidebarSection.title`
+    /// is `DirnexCore` data (English label, stable id), so the app joins it here by the section's id
+    /// and falls back to the core's English — never `String(localized: section.title)`, which reads
+    /// a variable and so extracts nothing.
+    static func title(for section: SidebarSection) -> String {
+        L10n.string(LocalizationKey.sidebarSection(section), fallback: section.title)
+    }
+
     /// English keywords plus the translated ones, English first and duplicates dropped.
     ///
     /// Additive rather than replacing on purpose: a Russian-speaking user who has read the English

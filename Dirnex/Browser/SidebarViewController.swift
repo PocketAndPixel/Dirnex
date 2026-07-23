@@ -356,7 +356,7 @@ extension SidebarViewController: NSTableViewDelegate {
             let cell = reuse(SidebarHeaderView.identifier) as? SidebarHeaderView
             let header = cell ?? SidebarHeaderView()
             header.configure(
-                title: section.title,
+                title: LocalizedCatalog.title(for: section),
                 isCollapsed: sectionCollapse.isCollapsed(section)
             )
             return header

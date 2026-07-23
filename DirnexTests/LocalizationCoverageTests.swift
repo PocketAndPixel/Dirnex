@@ -93,6 +93,21 @@ struct LocalizationCoverageTests {
         }
     }
 
+    @Test("every sidebar section header is translated in every shipped language")
+    func everySidebarSectionIsTranslated() throws {
+        for language in translatedLanguages {
+            let bundle = try bundle(for: language)
+            for section in SidebarSection.allCases {
+                let key = LocalizationKey.sidebarSection(section)
+                let value = translation(key, in: bundle)
+                #expect(value != nil, "\(language.code): no \(key)")
+                if let value {
+                    #expect(value != section.title, "\(language.code): \(key) is still English")
+                }
+            }
+        }
+    }
+
     @Test("a translated command keeps its English keywords searchable alongside the new ones")
     func keywordsAreAdditive() {
         // The palette is the one place a translation could *remove* a user's ability to find

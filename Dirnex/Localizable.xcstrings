@@ -18,6 +18,23 @@
         }
       }
     },
+    "%@ available of %@": {
+      "comment": "Volume capacity tooltip; %1$@ is free space, %2$@ is total capacity.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ available of %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Свободно %@ из %@"
+          }
+        }
+      }
+    },
     "%@ is installed but couldn’t be launched.": {
       "comment": "Compare failure detail; %@ is the diff tool name.",
       "localizations": {
@@ -372,6 +389,40 @@
         }
       }
     },
+    "All Tags…": {
+      "comment": "Sidebar row that reveals every custom tag found while browsing.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All Tags…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Все метки…"
+          }
+        }
+      }
+    },
+    "All tags": {
+      "comment": "Accessibility label for the sidebar's “All Tags…” row glyph.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All tags"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Все метки"
+          }
+        }
+      }
+    },
     "All your shortcut customizations will be removed and the macOS defaults restored. All your changes will be lost.": {
       "comment": "Shortcuts: restore-defaults confirmation body.",
       "localizations": {
@@ -469,6 +520,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Объект с таким именем уже есть здесь. Выберите, как поступить."
+          }
+        }
+      }
+    },
+    "Another saved search already uses that name. Pick a different one.": {
+      "comment": "Body of the saved-search rename-collision alert.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Another saved search already uses that name. Pick a different one."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Это имя уже занято другим сохранённым поиском. Выберите другое."
           }
         }
       }
@@ -779,6 +847,23 @@
         }
       }
     },
+    "Collapsed": {
+      "comment": "Accessibility state of a folded sidebar section's disclosure triangle.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collapsed"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Свёрнуто"
+          }
+        }
+      }
+    },
     "Compare Anyway": {
       "comment": "Proceed button on the oversized-compare warning.",
       "localizations": {
@@ -843,6 +928,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Сравнение %@…"
+          }
+        }
+      }
+    },
+    "Connect": {
+      "comment": "Saved-server context-menu item: open the connection.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connect"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подключиться"
           }
         }
       }
@@ -968,6 +1070,23 @@
         }
       }
     },
+    "Couldn’t eject “%@”": {
+      "comment": "Eject-failure alert title; %@ is the volume's name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t eject “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось извлечь «%@»"
+          }
+        }
+      }
+    },
     "Couldn’t erase %lld items": {
       "comment": "Empty-Trash failure for several items; %lld is the count.",
       "localizations": {
@@ -1034,6 +1153,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не удалось удалить «%@»"
+          }
+        }
+      }
+    },
+    "Couldn’t fully delete “%@”": {
+      "comment": "Partial tag-deletion failure title; %@ is the tag's name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t fully delete “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось полностью удалить «%@»"
           }
         }
       }
@@ -1367,6 +1503,40 @@
         }
       }
     },
+    "Delete Tag": {
+      "comment": "Tag context-menu item: delete a custom tag.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete Tag"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить метку"
+          }
+        }
+      }
+    },
+    "Delete the tag “%@”?": {
+      "comment": "Delete-tag confirmation title; %@ is the tag's name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete the tag “%@”?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить метку «%@»?"
+          }
+        }
+      }
+    },
     "Delete “%@” permanently?": {
       "comment": "Permanent-delete confirmation for a single item; %@ is its name.",
       "localizations": {
@@ -1380,6 +1550,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Удалить «%@» безвозвратно?"
+          }
+        }
+      }
+    },
+    "Delete “%@”?": {
+      "comment": "Saved-search delete confirmation title; %@ is the search's name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete “%@”?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить «%@»?"
+          }
+        }
+      }
+    },
+    "Deleted items, from every volume": {
+      "comment": "Tooltip on the sidebar's Trash row.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deleted items, from every volume"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалённые объекты со всех томов"
           }
         }
       }
@@ -1641,6 +1845,40 @@
         }
       }
     },
+    "Edit…": {
+      "comment": "Saved-server context-menu item: edit the connection.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Изменить…"
+          }
+        }
+      }
+    },
+    "Eject": {
+      "comment": "Accessibility label and tooltip for a volume row's eject button.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eject"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Извлечь"
+          }
+        }
+      }
+    },
     "Empty Trash": {
       "comment": "Confirm button on the Empty Trash confirmation.",
       "localizations": {
@@ -1688,6 +1926,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Введите шаблон с подстановкой (например, «*.jpg»)."
+          }
+        }
+      }
+    },
+    "Expanded": {
+      "comment": "Accessibility state of an open sidebar section's disclosure triangle.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expanded"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Развёрнуто"
           }
         }
       }
@@ -1756,6 +2011,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Фильтр"
+          }
+        }
+      }
+    },
+    "Find Tagged Files": {
+      "comment": "Tag context-menu item: search for files carrying the tag.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Find Tagged Files"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Найти файлы с меткой"
+          }
+        }
+      }
+    },
+    "Find files tagged “%@”": {
+      "comment": "Tooltip on a tag sidebar row; %@ is the tag's name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Find files tagged “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Найти файлы с меткой «%@»"
           }
         }
       }
@@ -1879,6 +2168,23 @@
         }
       }
     },
+    "Hide %@": {
+      "comment": "Tooltip on an open sidebar section header; %@ is the section name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скрыть %@"
+          }
+        }
+      }
+    },
     "Install FileMerge (part of Xcode), Kaleidoscope, or BBEdit to compare files side by side.": {
       "comment": "Compare failure detail suggesting diff tools to install.",
       "localizations": {
@@ -1892,6 +2198,59 @@
           "stringUnit": {
             "state": "translated",
             "value": "Установите FileMerge (входит в Xcode), Kaleidoscope или BBEdit, чтобы сравнивать файлы бок о бок."
+          }
+        }
+      }
+    },
+    "It will be removed from %lld files, everywhere Spotlight has indexed. The files themselves aren’t deleted.": {
+      "comment": "Body of the delete-tag confirmation; %lld is how many files carry the tag.",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "It will be removed from %lld file, everywhere Spotlight has indexed. The files themselves aren’t deleted."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "It will be removed from %lld files, everywhere Spotlight has indexed. The files themselves aren’t deleted."
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Метка будет снята с %lld файла во всех местах, проиндексированных Spotlight. Сами файлы не удаляются."
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Метка будет снята с %lld файлов во всех местах, проиндексированных Spotlight. Сами файлы не удаляются."
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Метка будет снята с %lld файлов во всех местах, проиндексированных Spotlight. Сами файлы не удаляются."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Метка будет снята с %lld файлов во всех местах, проиндексированных Spotlight. Сами файлы не удаляются."
+                }
+              }
+            }
           }
         }
       }
@@ -2597,6 +2956,40 @@
         }
       }
     },
+    "Recently used files": {
+      "comment": "Tooltip on the sidebar's Recents row.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recently used files"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Недавно использованные файлы"
+          }
+        }
+      }
+    },
+    "Recents": {
+      "comment": "Sidebar row: recently used files.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recents"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Недавние"
+          }
+        }
+      }
+    },
     "Relaunch": {
       "localizations": {
         "en": {
@@ -2613,6 +3006,142 @@
         }
       },
       "comment": "Button that restarts Dirnex to apply a new language."
+    },
+    "Remove": {
+      "comment": "Saved-server context-menu item: remove the bookmark.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить"
+          }
+        }
+      }
+    },
+    "Remove from Sidebar": {
+      "comment": "Sidebar favorite context-menu item: unpin the folder.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove from Sidebar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Убрать из боковой панели"
+          }
+        }
+      }
+    },
+    "Remove “%@”?": {
+      "comment": "Saved-server remove confirmation title; %@ is the server's name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove “%@”?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить «%@»?"
+          }
+        }
+      }
+    },
+    "Removed from %lld of %lld files. %@\nThe tag stays in the sidebar because files still carry it.": {
+      "comment": "Body of the partial tag-deletion failure; %1$lld removed of %2$lld, %3$@ is the error.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Removed from %lld of %lld files. %@\nThe tag stays in the sidebar because files still carry it."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Снято с %lld из %lld файлов. %@\nМетка остаётся в боковой панели, потому что файлы всё ещё её несут."
+          }
+        }
+      }
+    },
+    "Rename": {
+      "comment": "Confirm button of a rename dialog.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rename"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переименовать"
+          }
+        }
+      }
+    },
+    "Rename Favorite": {
+      "comment": "Title of the dialog that renames a pinned sidebar favorite.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rename Favorite"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переименовать избранное"
+          }
+        }
+      }
+    },
+    "Rename Saved Search": {
+      "comment": "Title of the dialog that renames a saved search.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rename Saved Search"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переименовать сохранённый поиск"
+          }
+        }
+      }
+    },
+    "Rename…": {
+      "comment": "Sidebar favorite context-menu item: rename the row.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rename…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переименовать…"
+          }
+        }
+      }
     },
     "Reopen tabs from the previous session": {
       "localizations": {
@@ -2766,6 +3295,23 @@
         }
       }
     },
+    "Run Search": {
+      "comment": "Saved-search context-menu item: run the query.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Run Search"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выполнить поиск"
+          }
+        }
+      }
+    },
     "Run a command…": {
       "comment": "Command palette search-field placeholder.",
       "localizations": {
@@ -2800,6 +3346,23 @@
       },
       "comment": "Language picker entry meaning “follow the macOS language”."
     },
+    "Saved search": {
+      "comment": "Accessibility label for a saved-search sidebar row's glyph.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved search"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранённый поиск"
+          }
+        }
+      }
+    },
     "Scripts": {
       "comment": "Context-menu submenu: user scripts to run on the file.",
       "localizations": {
@@ -2813,6 +3376,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Скрипты"
+          }
+        }
+      }
+    },
+    "Search everywhere": {
+      "comment": "Tooltip on a saved search with no scope folder — it searches the whole Mac.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search everywhere"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Искать везде"
+          }
+        }
+      }
+    },
+    "Search in “%@”": {
+      "comment": "Tooltip on a scoped saved search; %@ is the scope folder's name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search in “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Искать в «%@»"
           }
         }
       }
@@ -2851,6 +3448,23 @@
         }
       }
     },
+    "Server": {
+      "comment": "Accessibility label for a saved-server sidebar row's glyph.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер"
+          }
+        }
+      }
+    },
     "Settings": {
       "comment": "Settings window title.",
       "localizations": {
@@ -2885,6 +3499,23 @@
         }
       }
     },
+    "Show %@": {
+      "comment": "Tooltip on a folded sidebar section header; %@ is the section name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показать %@"
+          }
+        }
+      }
+    },
     "Show Finder tags": {
       "comment": "Panels toggle.",
       "localizations": {
@@ -2915,6 +3546,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Показывать статус облачной синхронизации"
+          }
+        }
+      }
+    },
+    "Show every tag found while browsing": {
+      "comment": "Tooltip on the sidebar's “All Tags…” row.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show every tag found while browsing"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показать все метки, найденные при просмотре"
           }
         }
       }
@@ -3323,6 +3971,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "Это действие нельзя отменить."
+          }
+        }
+      }
+    },
+    "This removes the saved search from the sidebar. No files are deleted.": {
+      "comment": "Body of the delete-saved-search confirmation.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This removes the saved search from the sidebar. No files are deleted."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранённый поиск будет убран из боковой панели. Файлы не удаляются."
+          }
+        }
+      }
+    },
+    "This removes the saved server from the sidebar. No files are deleted.": {
+      "comment": "Body of the remove-saved-server confirmation.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This removes the saved server from the sidebar. No files are deleted."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранённый сервер будет убран из боковой панели. Файлы не удаляются."
+          }
+        }
+      }
+    },
+    "This renames the sidebar row. The folder itself is not renamed.": {
+      "comment": "Body of the rename-favorite dialog, clarifying the folder is untouched.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This renames the sidebar row. The folder itself is not renamed."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переименуется строка в боковой панели. Сама папка не переименовывается."
           }
         }
       }
@@ -6070,6 +6769,23 @@
         }
       }
     },
+    "iCloud Drive": {
+      "comment": "Sidebar row for Apple's iCloud Drive.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud Drive"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud Drive"
+          }
+        }
+      }
+    },
     "macOS keeps the Trash private, so Dirnex can't list it until you allow it to. Everything else keeps working as it does now.\n\nClick Open System Settings, then switch on Dirnex under Full Disk Access. macOS will ask Dirnex to relaunch so the new access takes effect.": {
       "comment": "FDA (Trash) sheet body.",
       "localizations": {
@@ -6117,6 +6833,142 @@
           "stringUnit": {
             "state": "translated",
             "value": "macOS не сообщает о программе для простого текста. Выберите её в разделе «Настройки ▸ Операции»."
+          }
+        }
+      }
+    },
+    "sidebar.section.favorites.title": {
+      "comment": "Sidebar section header; DirnexCore data, keyed by SidebarSection.rawValue.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Favorites"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Избранное"
+          }
+        }
+      }
+    },
+    "sidebar.section.icloud.title": {
+      "comment": "Sidebar section header; DirnexCore data, keyed by SidebarSection.rawValue.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cloud"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Облако"
+          }
+        }
+      }
+    },
+    "sidebar.section.recents.title": {
+      "comment": "Sidebar section header; DirnexCore data, keyed by SidebarSection.rawValue.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recents"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Недавние"
+          }
+        }
+      }
+    },
+    "sidebar.section.searches.title": {
+      "comment": "Sidebar section header; DirnexCore data, keyed by SidebarSection.rawValue.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Searches"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поиски"
+          }
+        }
+      }
+    },
+    "sidebar.section.servers.title": {
+      "comment": "Sidebar section header; DirnexCore data, keyed by SidebarSection.rawValue.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Servers"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Серверы"
+          }
+        }
+      }
+    },
+    "sidebar.section.tags.title": {
+      "comment": "Sidebar section header; DirnexCore data, keyed by SidebarSection.rawValue.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tags"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Метки"
+          }
+        }
+      }
+    },
+    "sidebar.section.trash.title": {
+      "comment": "Sidebar section header; DirnexCore data, keyed by SidebarSection.rawValue.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trash"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Корзина"
+          }
+        }
+      }
+    },
+    "sidebar.section.volumes.title": {
+      "comment": "Sidebar section header; DirnexCore data, keyed by SidebarSection.rawValue.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volumes"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тома"
           }
         }
       }
@@ -6348,6 +7200,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Объект «%@» уже возвращён"
+          }
+        }
+      }
+    },
+    "“%@” is already taken": {
+      "comment": "Rename-collision title; %@ is the name the user typed.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is already taken"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» уже занято"
           }
         }
       }

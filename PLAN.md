@@ -204,6 +204,24 @@ involved. Worth a lint rule keeping bare literals out of UI files afterwards.
   verified additive-only against the catalog with the multiline `\`-continuation strings checked
   verbatim against the emitted keys (swiftformat leaves the space before `\` intact — confirmed, not
   assumed).
+- **Slice 3 landed (2026-07-23): the sidebar.** Every section, row, tooltip, context menu and alert
+  in the source-list — Favorites, Searches, Servers, Tags, the Recents / iCloud / Trash system rows,
+  the eject button and the disclosure triangles: 49 new catalog keys across 12 files, all
+  Russian-filled. The one architectural piece: **the section header titles are `DirnexCore` data**
+  (`SidebarSection.title`), so they got the tour-screen treatment rather than an app
+  `String(localized:)` — `LocalizationKey.sidebarSection(_:)` keys them by the section's stable raw
+  value (the same value the persisted collapse state keys off), `LocalizedCatalog.title(for:)` joins
+  them, and `LocalizationCoverageTests` now fails on an untranslated section (8 symbolic keys).
+  Wrapping `String(localized: section.title)` at the display site would have extracted *nothing* —
+  the argument is a variable — which is the whole reason the registry treatment exists. Tooltips and
+  the SF-Symbol `describedAs:`/`accessibilityDescription:` labels were localized too, so a Russian
+  VoiceOver user doesn't hear "Eject" in an otherwise-translated UI. Two count strings in the tag
+  surface were the only subtlety: the delete-tag confirmation's hand-rolled `count == 1 ? … : …`
+  became a catalog plural variant (single `%lld`, Russian one/few/many), and the partial-failure
+  sentence is a plain three-argument string (`%lld of %lld files. %@…`, no plural — "files" never
+  varies there). Keys taken from the compiler-emitted `.stringsdata`, added by script, verified
+  additive-only. Verified live in Russian: all eight section headers (Недавние · Поиски · Избранное ·
+  Облако · Тома · Серверы · Корзина), the system rows, and the Trash and server context menus.
 - **Deferred as its own slice: the undo/redo action *labels*.** The "Undo Move" / "Redo Clear
   Selection" menu titles compose `"Undo \(label)"` from a label that is *data*, not an app literal:
   the file-op names ("Move", "Copy", "Rename", "Move to Trash", "New Folder") originate in
@@ -213,10 +231,9 @@ involved. Worth a lint rule keeping bare literals out of UI files afterwards.
   localizing the `"Undo %@"` / `"Redo %@"` frames — a core-touching change. Doing only the app half
   would leave the menu mixing a Russian frame with English labels, which is worse than uniform
   English, so the whole concern waits for one slice.
-- **Remaining:** the rest of the `Dirnex/Browser/` controllers — the sidebar, the tabs/queue/path
-  bar chrome, column headers, connect-server and archive prompts, multi-rename, user-script and
-  workspace organizers, sync, and the assorted status/tooltip strings; then the undo-label slice
-  above.
+- **Remaining:** the rest of the `Dirnex/Browser/` controllers — the tabs/queue/path bar chrome,
+  column headers, connect-server and archive prompts, multi-rename, user-script and workspace
+  organizers, sync, and the assorted status/tooltip strings; then the undo-label slice above.
 
 **Pass 3 — the remaining six languages.** Adding one is a line in `AppLanguages.all` plus its
 column in the catalog; `LocalizationCoverageTests` fails until the column is complete.

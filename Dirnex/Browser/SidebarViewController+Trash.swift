@@ -22,11 +22,15 @@ extension SidebarViewController {
     /// label. No eject or delete affordance — a system row carries neither.
     func trashCell() -> NSView {
         let cell = reuse(SidebarCellView.identifier) as? SidebarCellView ?? SidebarCellView()
+        let trash = String(localized: "Trash", comment: "Sidebar row and section for deleted items.")
         cell.configure(
-            name: "Trash",
-            image: Self.templateSymbol("trash", pointSize: 15, describedAs: "Trash"),
+            name: trash,
+            image: Self.templateSymbol("trash", pointSize: 15, describedAs: trash),
             canEject: false,
-            tooltip: "Deleted items, from every volume"
+            tooltip: String(
+                localized: "Deleted items, from every volume",
+                comment: "Tooltip on the sidebar's Trash row."
+            )
         )
         cell.onEject = nil
         return cell
@@ -36,10 +40,19 @@ extension SidebarViewController {
     /// controller like a row click, so emptying runs against the same merged set of trash
     /// directories the row browses rather than a second idea of where the Trash is.
     func buildTrashMenu(_ menu: NSMenu) {
-        menu.addItem(trashMenuItem("Open", #selector(openTrashItem(_:))))
+        menu.addItem(trashMenuItem(
+            String(localized: "Open", comment: "Trash context-menu item: browse the Trash."),
+            #selector(openTrashItem(_:))
+        ))
         menu.addItem(.separator())
         // The ellipsis is a promise: this asks before it destroys anything.
-        menu.addItem(trashMenuItem("Empty Trash…", #selector(emptyTrashItem(_:))))
+        menu.addItem(trashMenuItem(
+            String(
+                localized: "Empty Trash…",
+                comment: "Trash context-menu item: permanently erase everything."
+            ),
+            #selector(emptyTrashItem(_:))
+        ))
     }
 
     /// One menu item. Unlike the favorites menu's, these carry no `representedObject` — there is

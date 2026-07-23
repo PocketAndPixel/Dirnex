@@ -60,12 +60,31 @@ extension SidebarViewController {
 
     /// Populate `menu` with the Open / Rename / Remove items for `entry`.
     func buildFavoriteMenu(_ menu: NSMenu, for entry: FavoriteEntry) {
-        menu.addItem(favoriteMenuItem("Open", #selector(openFavoriteItem(_:)), entry.path))
+        menu.addItem(favoriteMenuItem(
+            String(
+                localized: "Open",
+                comment: "Sidebar favorite context-menu item: open the folder."
+            ),
+            #selector(openFavoriteItem(_:)),
+            entry.path
+        ))
         menu.addItem(.separator())
-        menu.addItem(favoriteMenuItem("Rename…", #selector(renameFavoriteItem(_:)), entry.path))
-        menu.addItem(
-            favoriteMenuItem("Remove from Sidebar", #selector(removeFavoriteItem(_:)), entry.path)
-        )
+        menu.addItem(favoriteMenuItem(
+            String(
+                localized: "Rename…",
+                comment: "Sidebar favorite context-menu item: rename the row."
+            ),
+            #selector(renameFavoriteItem(_:)),
+            entry.path
+        ))
+        menu.addItem(favoriteMenuItem(
+            String(
+                localized: "Remove from Sidebar",
+                comment: "Sidebar favorite context-menu item: unpin the folder."
+            ),
+            #selector(removeFavoriteItem(_:)),
+            entry.path
+        ))
     }
 
     /// One management item, carrying the entry's *path* — its identity in the pin list — so a
@@ -106,10 +125,19 @@ extension SidebarViewController {
     /// Ask for a new label, prefilled with the current one; `nil` on cancel or an empty name.
     private func promptForFavoriteRename(current: String) -> String? {
         let alert = NSAlert()
-        alert.messageText = "Rename Favorite"
-        alert.informativeText = "This renames the sidebar row. The folder itself is not renamed."
-        alert.addButton(withTitle: "Rename")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(
+            localized: "Rename Favorite",
+            comment: "Title of the dialog that renames a pinned sidebar favorite."
+        )
+        alert.informativeText = String(
+            localized: "This renames the sidebar row. The folder itself is not renamed.",
+            comment: "Body of the rename-favorite dialog, clarifying the folder is untouched."
+        )
+        alert.addButton(withTitle: String(
+            localized: "Rename",
+            comment: "Confirm button of a rename dialog."
+        ))
+        alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
 
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
         field.stringValue = current

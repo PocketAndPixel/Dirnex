@@ -49,12 +49,18 @@ final class SidebarCellView: NSTableCellView {
         ejectButton.imagePosition = .imageOnly
         ejectButton.image = NSImage(
             systemSymbolName: "eject.fill",
-            accessibilityDescription: "Eject"
+            accessibilityDescription: String(
+                localized: "Eject",
+                comment: "Accessibility label and tooltip for a volume row's eject button."
+            )
         )
         ejectButton.contentTintColor = .secondaryLabelColor
         ejectButton.target = self
         ejectButton.action = #selector(eject)
-        ejectButton.toolTip = "Eject"
+        ejectButton.toolTip = String(
+            localized: "Eject",
+            comment: "Accessibility label and tooltip for a volume row's eject button."
+        )
         addSubview(ejectButton)
 
         spinner.translatesAutoresizingMaskIntoConstraints = false
@@ -190,7 +196,15 @@ final class SidebarHeaderView: NSTableCellView {
         disclosure.image = Self.chevron(isCollapsed: isCollapsed)
         // Says which way the click goes, and — unlike the glyph — states the current state in
         // words, which is what VoiceOver and a hovering user each get nothing else from.
-        toolTip = isCollapsed ? "Show \(title)" : "Hide \(title)"
+        toolTip = isCollapsed
+            ? String(
+                localized: "Show \(title)",
+                comment: "Tooltip on a folded sidebar section header; %@ is the section name."
+            )
+            : String(
+                localized: "Hide \(title)",
+                comment: "Tooltip on an open sidebar section header; %@ is the section name."
+            )
     }
 
     /// Down when open, right when folded — the direction every macOS source list points.
@@ -199,7 +213,15 @@ final class SidebarHeaderView: NSTableCellView {
         let config = NSImage.SymbolConfiguration(pointSize: 9, weight: .bold)
         let image = NSImage(
             systemSymbolName: name,
-            accessibilityDescription: isCollapsed ? "Collapsed" : "Expanded"
+            accessibilityDescription: isCollapsed
+                ? String(
+                    localized: "Collapsed",
+                    comment: "Accessibility state of a folded sidebar section's disclosure triangle."
+                )
+                : String(
+                    localized: "Expanded",
+                    comment: "Accessibility state of an open sidebar section's disclosure triangle."
+                )
         )?
             .withSymbolConfiguration(config)
         image?.isTemplate = true

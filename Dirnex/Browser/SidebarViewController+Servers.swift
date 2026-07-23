@@ -30,17 +30,41 @@ extension SidebarViewController {
     /// it with the row's text color like the other sidebar glyphs.
     private static func serverIcon(for kind: ServerKind) -> NSImage {
         let symbol = kind == .smb ? "externaldrive.connected.to.line.below" : "network"
-        return templateSymbol(symbol, pointSize: 14, describedAs: "Server")
+        return templateSymbol(symbol, pointSize: 14, describedAs: String(
+            localized: "Server",
+            comment: "Accessibility label for a saved-server sidebar row's glyph."
+        ))
     }
 
     // MARK: - Right-click menu
 
     /// Populate `menu` with the Connect / Edit… / Remove items for `server`.
     func buildServerMenu(_ menu: NSMenu, for server: ServerConnection) {
-        menu.addItem(serverMenuItem("Connect", #selector(connectServerItem(_:)), server.name))
+        menu.addItem(serverMenuItem(
+            String(
+                localized: "Connect",
+                comment: "Saved-server context-menu item: open the connection."
+            ),
+            #selector(connectServerItem(_:)),
+            server.name
+        ))
         menu.addItem(.separator())
-        menu.addItem(serverMenuItem("Edit…", #selector(editServerItem(_:)), server.name))
-        menu.addItem(serverMenuItem("Remove", #selector(removeServerItem(_:)), server.name))
+        menu.addItem(serverMenuItem(
+            String(
+                localized: "Edit…",
+                comment: "Saved-server context-menu item: edit the connection."
+            ),
+            #selector(editServerItem(_:)),
+            server.name
+        ))
+        menu.addItem(serverMenuItem(
+            String(
+                localized: "Remove",
+                comment: "Saved-server context-menu item: remove the bookmark."
+            ),
+            #selector(removeServerItem(_:)),
+            server.name
+        ))
     }
 
     /// One management item, carrying the server's *name* so a mid-open store change can't act on the
@@ -76,10 +100,19 @@ extension SidebarViewController {
     func confirmRemoveServer(named name: String) {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "Remove “\(name)”?"
-        alert.informativeText = "This removes the saved server from the sidebar. No files are deleted."
-        alert.addButton(withTitle: "Remove")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(
+            localized: "Remove “\(name)”?",
+            comment: "Saved-server remove confirmation title; %@ is the server's name."
+        )
+        alert.informativeText = String(
+            localized: "This removes the saved server from the sidebar. No files are deleted.",
+            comment: "Body of the remove-saved-server confirmation."
+        )
+        alert.addButton(withTitle: String(
+            localized: "Remove",
+            comment: "Confirm button that removes a saved server."
+        ))
+        alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
 
         let commit = { [weak self] (response: NSApplication.ModalResponse) in
             guard response == .alertFirstButtonReturn else { return }

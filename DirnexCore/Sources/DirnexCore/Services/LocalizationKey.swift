@@ -52,6 +52,17 @@ public enum LocalizationKey {
         "\(screenID).body"
     }
 
+    /// A sidebar section header's label, e.g. `sidebar.section.favorites.title`. Keyed by the
+    /// section's stable raw value — the same "the case is the key" contract the command registry
+    /// rests on, and the very raw value the persisted collapse state keys off, so a rename that
+    /// would silently unfold the section for everyone also orphans its translations, which is loud.
+    /// `SidebarSection.title` is `DirnexCore` data (English label, stable id), so it gets the
+    /// registry treatment the tour screens do rather than an app `String(localized:)` at a variable
+    /// display site, which would never extract.
+    public static func sidebarSection(_ section: SidebarSection) -> String {
+        "sidebar.section.\(section.rawValue).title"
+    }
+
     /// Split a translated comma-separated keyword value into terms, dropping empties and
     /// surrounding whitespace. Tolerant on purpose — the value is typed by a translator, and a
     /// stray trailing comma should cost nothing.
