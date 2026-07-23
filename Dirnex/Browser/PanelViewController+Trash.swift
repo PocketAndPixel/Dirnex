@@ -81,8 +81,14 @@ extension PanelViewController {
             let visible = entries.filter { !$0.isHidden }
             guard !visible.isEmpty else {
                 presentOperationFailure(
-                    message: "The Trash is empty",
-                    detail: "There is nothing to erase."
+                    message: String(
+                        localized: "The Trash is empty",
+                        comment: "Shown when Empty Trash is invoked but nothing is there."
+                    ),
+                    detail: String(
+                        localized: "There is nothing to erase.",
+                        comment: "Empty-Trash detail when the Trash is already empty."
+                    )
                 )
                 return
             }
@@ -98,9 +104,17 @@ extension PanelViewController {
         let alert = NSAlert()
         alert.alertStyle = .critical
         alert.messageText = String(localized: "Permanently erase \(count) items from the Trash?")
-        alert.informativeText = "This can’t be undone."
-        alert.addButton(withTitle: "Empty Trash")
-        alert.addButton(withTitle: "Cancel")
+        alert.informativeText = String(
+            localized: "This can’t be undone.",
+            comment: "Warning that an action is irreversible."
+        )
+        alert.addButton(
+            withTitle: String(
+                localized: "Empty Trash",
+                comment: "Confirm button on the Empty Trash confirmation."
+            )
+        )
+        alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
         alert.enableEscapeToCancel()
 
         let handler: (NSApplication.ModalResponse) -> Void = { response in
@@ -138,8 +152,14 @@ extension PanelViewController {
             if let error = outcome.firstError {
                 presentOperationFailure(
                     message: outcome.failed.count == 1
-                        ? "Couldn’t erase “\(outcome.failed[0].lastComponent)”"
-                        : "Couldn’t erase \(outcome.failed.count) items",
+                        ? String(
+                            localized: "Couldn’t erase “\(outcome.failed[0].lastComponent)”",
+                            comment: "Empty-Trash failure for one item; %@ is its name."
+                        )
+                        : String(
+                            localized: "Couldn’t erase \(outcome.failed.count) items",
+                            comment: "Empty-Trash failure for several items; %lld is the count."
+                        ),
                     detail: describe(error)
                 )
             }
@@ -168,11 +188,18 @@ extension PanelViewController {
     func trashPresentation() -> ResultsPresentation {
         ResultsPresentation(
             backend: .trash,
+            // Stable English identity, not display: this becomes the synthetic `trash:/Trash`
+            // VFSPath, and the path bar draws its own localized label off `backend == .trash`
+            // (`installVirtualLabel`) rather than reading this — the same reason iCloud's
+            // `mergedName` stays English. The *tab title* below is what's shown, and it localizes.
             pathSummary: "Trash",
             sort: panel.model.sort,
             query: nil,
             scope: nil,
-            title: "Trash",
+            title: String(
+                localized: "Trash",
+                comment: "Tab title for the merged Trash listing."
+            ),
             // The pane's own setting, not the results default: the dotfiles in a trash directory
             // are Finder's `.DS_Store` put-back databases, not files the user threw away.
             showsHidden: panel.model.showHidden

@@ -1,6 +1,57 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "%@ (default)": {
+      "comment": "Open With menu item for the app a double-click would use; %@ is the app name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (default)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (по умолчанию)"
+          }
+        }
+      }
+    },
+    "%@ is installed but couldn’t be launched.": {
+      "comment": "Compare failure detail; %@ is the diff tool name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ is installed but couldn’t be launched."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Программа %@ установлена, но её не удалось запустить."
+          }
+        }
+      }
+    },
+    "%@ may take a long time to compare them, or become unresponsive.": {
+      "comment": "Oversized-compare warning body; %@ is the diff tool name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ may take a long time to compare them, or become unresponsive."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Программа %@ может долго их сравнивать или перестать отвечать."
+          }
+        }
+      }
+    },
     "%@ · newer": {
       "comment": "Conflict card date, flagged as the newer of the two. %@ is a date.",
       "localizations": {
@@ -14,6 +65,59 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ · новее"
+          }
+        }
+      }
+    },
+    "%lld items are already back": {
+      "comment": "Put-Back result for several blocked items; %lld is the count.",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld item is already back"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld items are already back"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld объект уже возвращён"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld объекта уже возвращены"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld объектов уже возвращены"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld объектов уже возвращены"
+                }
+              }
+            }
           }
         }
       }
@@ -505,6 +609,142 @@
         }
       }
     },
+    "Can’t copy here": {
+      "comment": "Copy failure title: destination can't receive files.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can’t copy here"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сюда нельзя копировать"
+          }
+        }
+      }
+    },
+    "Can’t copy into the same folder": {
+      "comment": "Copy failure title: source and destination are the same folder.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can’t copy into the same folder"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нельзя копировать в ту же папку"
+          }
+        }
+      }
+    },
+    "Can’t create the file": {
+      "comment": "Create-file failure title for an invalid name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can’t create the file"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось создать файл"
+          }
+        }
+      }
+    },
+    "Can’t create the folder": {
+      "comment": "New Folder failure title for an invalid name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can’t create the folder"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось создать папку"
+          }
+        }
+      }
+    },
+    "Can’t create “%@”": {
+      "comment": "New Folder failure title; %@ is the folder name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can’t create “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось создать «%@»"
+          }
+        }
+      }
+    },
+    "Can’t edit “%@”": {
+      "comment": "Edit-file failure title; %@ is the name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can’t edit “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нельзя изменить «%@»"
+          }
+        }
+      }
+    },
+    "Can’t move here": {
+      "comment": "Move failure title: destination can't receive files.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can’t move here"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сюда нельзя переместить"
+          }
+        }
+      }
+    },
+    "Can’t move into the same folder": {
+      "comment": "Move failure title: source and destination are the same folder.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can’t move into the same folder"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нельзя переместить в ту же папку"
+          }
+        }
+      }
+    },
     "Can’t open “%@”": {
       "comment": "Directory-load failure sheet title. %@ is a name.",
       "localizations": {
@@ -518,6 +758,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не удалось открыть «%@»"
+          }
+        }
+      }
+    },
+    "Choose an Application": {
+      "comment": "Open panel title for picking an app in Open With ▸ Other…",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose an Application"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите программу"
+          }
+        }
+      }
+    },
+    "Compare Anyway": {
+      "comment": "Proceed button on the oversized-compare warning.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compare Anyway"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Всё равно сравнить"
           }
         }
       }
@@ -556,6 +830,57 @@
         }
       }
     },
+    "Comparing %@…": {
+      "comment": "In-progress status while comparing; %@ is a file name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comparing %@…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сравнение %@…"
+          }
+        }
+      }
+    },
+    "Copy Path": {
+      "comment": "Context-menu item: copy the file path to the clipboard.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy Path"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скопировать путь"
+          }
+        }
+      }
+    },
+    "Copy Paths": {
+      "comment": "Context-menu item: copy several file paths to the clipboard.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy Paths"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скопировать пути"
+          }
+        }
+      }
+    },
     "Couldn’t copy “%@”": {
       "comment": "Per-file error sheet title. %@ is a name.",
       "localizations": {
@@ -569,6 +894,199 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не удалось скопировать «%@»"
+          }
+        }
+      }
+    },
+    "Couldn’t delete %lld items": {
+      "comment": "Permanent-delete failure for several items; %lld is the count.",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Couldn’t delete %lld item"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Couldn’t delete %lld items"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось удалить %lld объект"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось удалить %lld объекта"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось удалить %lld объектов"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось удалить %lld объектов"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Couldn’t delete “%@”": {
+      "comment": "Permanent-delete failure for one item; %@ is its name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t delete “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось удалить «%@»"
+          }
+        }
+      }
+    },
+    "Couldn’t erase %lld items": {
+      "comment": "Empty-Trash failure for several items; %lld is the count.",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Couldn’t erase %lld item"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Couldn’t erase %lld items"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось удалить %lld объект"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось удалить %lld объекта"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось удалить %lld объектов"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось удалить %lld объектов"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Couldn’t erase “%@”": {
+      "comment": "Empty-Trash failure for one item; %@ is its name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t erase “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось удалить «%@»"
+          }
+        }
+      }
+    },
+    "Couldn’t move %lld items to the Trash": {
+      "comment": "Move-to-Trash failure for several items; %lld is the count.",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Couldn’t move %lld item to the Trash"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Couldn’t move %lld items to the Trash"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось переместить %lld объект в Корзину"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось переместить %lld объекта в Корзину"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось переместить %lld объектов в Корзину"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось переместить %lld объектов в Корзину"
+                }
+              }
+            }
           }
         }
       }
@@ -590,6 +1108,178 @@
         }
       }
     },
+    "Couldn’t move “%@” to the Trash": {
+      "comment": "Move-to-Trash failure for one item; %@ is its name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t move “%@” to the Trash"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось переместить «%@» в Корзину"
+          }
+        }
+      }
+    },
+    "Couldn’t open %@": {
+      "comment": "Compare failure when the diff tool won't launch; %@ is the tool name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t open %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось запустить %@"
+          }
+        }
+      }
+    },
+    "Couldn’t open with “%@”.": {
+      "comment": "Open With failure; %@ is the app name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t open with “%@”."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось открыть в «%@»."
+          }
+        }
+      }
+    },
+    "Couldn’t open “%@”": {
+      "comment": "F4 failure title; %@ is the file name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t open “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось открыть «%@»"
+          }
+        }
+      }
+    },
+    "Couldn’t put %lld items back": {
+      "comment": "Put-Back failure for several items; %lld is the count.",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Couldn’t put %lld item back"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Couldn’t put %lld items back"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось вернуть %lld объект на место"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось вернуть %lld объекта на место"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось вернуть %lld объектов на место"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось вернуть %lld объектов на место"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Couldn’t put “%@” back": {
+      "comment": "Put-Back failure for one item; %@ is the item name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t put “%@” back"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось вернуть «%@» на место"
+          }
+        }
+      }
+    },
+    "Create": {
+      "comment": "Confirm button of the New Folder dialog.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Создать"
+          }
+        }
+      }
+    },
+    "Create a folder in “%@”.": {
+      "comment": "New Folder dialog body; %@ is the containing folder name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create a folder in “%@”."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Создать папку в «%@»."
+          }
+        }
+      }
+    },
     "Custom": {
       "comment": "Shortcuts preset picker: hand-edited state.",
       "localizations": {
@@ -603,6 +1293,93 @@
           "stringUnit": {
             "state": "translated",
             "value": "Пользовательский"
+          }
+        }
+      }
+    },
+    "Delete": {
+      "comment": "Confirm button on the permanent-delete confirmation.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить"
+          }
+        }
+      }
+    },
+    "Delete %lld items permanently?": {
+      "comment": "Permanent-delete confirmation for several items; %lld is the count.",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Delete %lld item permanently?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Delete %lld items permanently?"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Удалить %lld объект безвозвратно?"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Удалить %lld объекта безвозвратно?"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Удалить %lld объектов безвозвратно?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Удалить %lld объектов безвозвратно?"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Delete “%@” permanently?": {
+      "comment": "Permanent-delete confirmation for a single item; %@ is its name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete “%@” permanently?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить «%@» безвозвратно?"
           }
         }
       }
@@ -675,6 +1452,161 @@
       },
       "comment": "%@ is a language name written in that language, e.g. “Русский”."
     },
+    "Don’t know where %lld items came from": {
+      "comment": "Put-Back result for several items with no recorded origin; %lld is the count.",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Don’t know where %lld item came from"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Don’t know where %lld items came from"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Неизвестно, откуда взялся %lld объект"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Неизвестно, откуда взялись %lld объекта"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Неизвестно, откуда взялись %lld объектов"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Неизвестно, откуда взялись %lld объектов"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Don’t know where “%@” came from": {
+      "comment": "Put-Back result for one item with no recorded origin; %@ is the item name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Don’t know where “%@” came from"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Неизвестно, откуда взялся объект «%@»"
+          }
+        }
+      }
+    },
+    "Each item returns to the folder it was deleted from.": {
+      "comment": "Restore-All confirmation body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Each item returns to the folder it was deleted from."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Каждый объект вернётся в папку, из которой был удалён."
+          }
+        }
+      }
+    },
+    "Edit": {
+      "comment": "F4 menu title when no specific editor is chosen.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Править"
+          }
+        }
+      }
+    },
+    "Edit File": {
+      "comment": "Title of the ⇧F4 edit/create-file dialog.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit File"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Править файл"
+          }
+        }
+      }
+    },
+    "Edit File with %@…": {
+      "comment": "⇧F4 menu title naming the chosen text editor; %@ is the app name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit File with %@…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Править файл в %@…"
+          }
+        }
+      }
+    },
+    "Edit File…": {
+      "comment": "⇧F4 menu title when no specific editor is chosen.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit File…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Править файл…"
+          }
+        }
+      }
+    },
     "Edit files with": {
       "comment": "Operations picker label: text editor.",
       "localizations": {
@@ -688,6 +1620,125 @@
           "stringUnit": {
             "state": "translated",
             "value": "Редактировать файлы в"
+          }
+        }
+      }
+    },
+    "Edit with %@": {
+      "comment": "F4 menu title naming the chosen text editor; %@ is the app name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit with %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Править в %@"
+          }
+        }
+      }
+    },
+    "Empty Trash": {
+      "comment": "Confirm button on the Empty Trash confirmation.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empty Trash"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Очистить Корзину"
+          }
+        }
+      }
+    },
+    "Empty Trash…": {
+      "comment": "Trash context-menu item: permanently erase everything, after a prompt.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empty Trash…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Очистить Корзину…"
+          }
+        }
+      }
+    },
+    "Enter a wildcard pattern (for example “*.jpg”).": {
+      "comment": "Wildcard-selection dialog body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter a wildcard pattern (for example “*.jpg”)."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Введите шаблон с подстановкой (например, «*.jpg»)."
+          }
+        }
+      }
+    },
+    "File name": {
+      "comment": "Placeholder in the ⇧F4 file-name field.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "File name"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Имя файла"
+          }
+        }
+      }
+    },
+    "File names can’t contain the “/” character.": {
+      "comment": "Create-file failure detail: slash in name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "File names can’t contain the “/” character."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В именах файлов нельзя использовать символ «/»."
+          }
+        }
+      }
+    },
+    "Files are identical — nothing to compare.": {
+      "comment": "Compare result when the two files match byte for byte.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Files are identical — nothing to compare."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файлы идентичны — сравнивать нечего."
           }
         }
       }
@@ -722,6 +1773,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "Папка"
+          }
+        }
+      }
+    },
+    "Folder name": {
+      "comment": "Placeholder in the New Folder name field.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folder name"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Имя папки"
+          }
+        }
+      }
+    },
+    "Folder names can’t contain the “/” character.": {
+      "comment": "New Folder failure detail: slash in name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folder names can’t contain the “/” character."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В именах папок нельзя использовать символ «/»."
+          }
+        }
+      }
+    },
+    "Forward": {
+      "comment": "Accessibility label and tooltip for the titlebar Forward button.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forward"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вперёд"
           }
         }
       }
@@ -777,6 +1879,23 @@
         }
       }
     },
+    "Install FileMerge (part of Xcode), Kaleidoscope, or BBEdit to compare files side by side.": {
+      "comment": "Compare failure detail suggesting diff tools to install.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Install FileMerge (part of Xcode), Kaleidoscope, or BBEdit to compare files side by side."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Установите FileMerge (входит в Xcode), Kaleidoscope или BBEdit, чтобы сравнивать файлы бок о бок."
+          }
+        }
+      }
+    },
     "Keep Both": {
       "comment": "Conflict resolution button.",
       "localizations": {
@@ -806,6 +1925,93 @@
           "stringUnit": {
             "state": "translated",
             "value": "Язык"
+          }
+        }
+      }
+    },
+    "Move %lld items to the Trash?": {
+      "comment": "Trash confirmation for several items; %lld is the count.",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Move %lld item to the Trash?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Move %lld items to the Trash?"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Переместить %lld объект в Корзину?"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Переместить %lld объекта в Корзину?"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Переместить %lld объектов в Корзину?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Переместить %lld объектов в Корзину?"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Move to Trash": {
+      "comment": "Confirm button on the Trash confirmation.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move to Trash"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переместить в Корзину"
+          }
+        }
+      }
+    },
+    "Move “%@” to the Trash?": {
+      "comment": "Trash confirmation for a single item; %@ is its name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move “%@” to the Trash?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переместить «%@» в Корзину?"
           }
         }
       }
@@ -844,6 +2050,23 @@
         }
       }
     },
+    "New Folder": {
+      "comment": "Title of the New Folder dialog.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Folder"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Новая папка"
+          }
+        }
+      }
+    },
     "Next": {
       "comment": "Tour: next-screen button.",
       "localizations": {
@@ -857,6 +2080,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "Далее"
+          }
+        }
+      }
+    },
+    "No Applications": {
+      "comment": "Open With menu, disabled item: nothing is registered to open this file.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Applications"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет программ"
+          }
+        }
+      }
+    },
+    "No comparison tool found": {
+      "comment": "Compare failure when no diff tool is installed.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No comparison tool found"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Средство сравнения не найдено"
+          }
+        }
+      }
+    },
+    "No text editor found": {
+      "comment": "F4 failure when no plain-text editor is registered.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No text editor found"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Текстовый редактор не найден"
           }
         }
       }
@@ -878,6 +2152,23 @@
         }
       }
     },
+    "Nothing to compare": {
+      "comment": "Compare failure title when no file is under the cursor.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing to compare"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нечего сравнивать"
+          }
+        }
+      }
+    },
     "OK": {
       "comment": "Dismiss button.",
       "localizations": {
@@ -891,6 +2182,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "OK"
+          }
+        }
+      }
+    },
+    "Only files on this Mac can be edited — copy it out first (F5).": {
+      "comment": "Status when F4 is pressed on an archive member or remote file.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only files on this Mac can be edited — copy it out first (F5)."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Править можно только файлы на этом Mac — сначала скопируйте файл (F5)."
+          }
+        }
+      }
+    },
+    "Open": {
+      "comment": "Open panel button for picking an app in Open With ▸ Other…",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть"
           }
         }
       }
@@ -929,6 +2254,74 @@
         }
       }
     },
+    "Open With": {
+      "comment": "Context-menu submenu: choose which app opens the file.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open With"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть в программе"
+          }
+        }
+      }
+    },
+    "Open a different folder in the other panel first.": {
+      "comment": "Copy/move failure detail: pick a different destination.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open a different folder in the other panel first."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сначала откройте на другой панели другую папку."
+          }
+        }
+      }
+    },
+    "Open a file, or type a new name to create one.": {
+      "comment": "Body of the ⇧F4 edit/create-file dialog.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open a file, or type a new name to create one."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Откройте файл или введите новое имя, чтобы создать его."
+          }
+        }
+      }
+    },
+    "Opening %@…": {
+      "comment": "In-progress status while opening a file; %@ is the file name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opening %@…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открытие %@…"
+          }
+        }
+      }
+    },
     "Opening a folder from a search tab leaves the results in place and opens it in the other pane. When off, focus stays on the results so you can keep opening more.": {
       "comment": "Panels footer: focus opened search directory.",
       "localizations": {
@@ -946,6 +2339,23 @@
         }
       }
     },
+    "Opening in %@…": {
+      "comment": "In-progress status while opening a file in the editor; %@ is the app name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opening in %@…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открытие в %@…"
+          }
+        }
+      }
+    },
     "Operations": {
       "comment": "Settings tab.",
       "localizations": {
@@ -959,6 +2369,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Операции"
+          }
+        }
+      }
+    },
+    "Other…": {
+      "comment": "Open With menu item: pick an application by hand.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Other…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Другое…"
           }
         }
       }
@@ -1120,6 +2547,40 @@
         }
       }
     },
+    "Put Back": {
+      "comment": "Confirm button on the Restore All confirmation.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Put Back"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вернуть"
+          }
+        }
+      }
+    },
+    "Put a file under the cursor in each panel, then compare them.": {
+      "comment": "Compare failure detail.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Put a file under the cursor in each panel, then compare them."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поместите файл под курсор на каждой панели, затем сравните их."
+          }
+        }
+      }
+    },
     "Receive beta updates": {
       "localizations": {
         "en": {
@@ -1216,6 +2677,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Сбросить к стандартному"
+          }
+        }
+      }
+    },
+    "Restore All": {
+      "comment": "Trash context-menu item: put every trashed item back.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore All"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вернуть всё"
           }
         }
       }
@@ -1321,6 +2799,57 @@
         }
       },
       "comment": "Language picker entry meaning “follow the macOS language”."
+    },
+    "Scripts": {
+      "comment": "Context-menu submenu: user scripts to run on the file.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scripts"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скрипты"
+          }
+        }
+      }
+    },
+    "Select": {
+      "comment": "Confirm button of the wildcard dialog when adding files to the selection.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выделить"
+          }
+        }
+      }
+    },
+    "Select Files": {
+      "comment": "Title of the wildcard-pattern dialog when adding files to the selection.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select Files"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выделить файлы"
+          }
+        }
+      }
     },
     "Settings": {
       "comment": "Settings window title.",
@@ -1509,6 +3038,23 @@
         }
       }
     },
+    "Something with the same name is in the original folder, so it was left in the Trash rather than replaced.": {
+      "comment": "Put-Back detail: a name collision blocked the restore.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Something with the same name is in the original folder, so it was left in the Trash rather than replaced."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В исходной папке уже есть объект с таким именем, поэтому он остался в Корзине и не был заменён."
+          }
+        }
+      }
+    },
     "Switch": {
       "comment": "Shortcuts: confirm preset switch.",
       "localizations": {
@@ -1560,6 +3106,23 @@
         }
       }
     },
+    "Tags": {
+      "comment": "Context-menu submenu: Finder tags for the file.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tags"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Метки"
+          }
+        }
+      }
+    },
     "That item isn’t a folder.": {
       "comment": "Error sentence: not a directory.",
       "localizations": {
@@ -1573,6 +3136,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Это не папка."
+          }
+        }
+      }
+    },
+    "The Trash is empty": {
+      "comment": "Shown when Put Back is invoked but nothing is there.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Trash is empty"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Корзина пуста"
           }
         }
       }
@@ -1611,6 +3191,23 @@
         }
       }
     },
+    "The other panel isn’t a folder you can copy into.": {
+      "comment": "Copy/move failure detail: destination isn't a writable folder.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The other panel isn’t a folder you can copy into."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Другая панель — не папка, в которую можно копировать."
+          }
+        }
+      }
+    },
     "The system reported an error (code %d).": {
       "comment": "Error sentence: generic I/O. %d is an error code.",
       "localizations": {
@@ -1645,6 +3242,108 @@
         }
       }
     },
+    "There is nothing to erase.": {
+      "comment": "Empty-Trash detail when the Trash is already empty.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There is nothing to erase."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалять нечего."
+          }
+        }
+      }
+    },
+    "There is nothing to put back.": {
+      "comment": "Put-Back detail when the Trash is already empty.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There is nothing to put back."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Возвращать нечего."
+          }
+        }
+      }
+    },
+    "There’s already a folder with that name.": {
+      "comment": "Edit-file failure detail: name is a folder.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There’s already a folder with that name."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Папка с таким именем уже существует."
+          }
+        }
+      }
+    },
+    "These files are large (%@).": {
+      "comment": "Oversized-compare warning title; %@ is a formatted byte size.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "These files are large (%@)."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Эти файлы большие (%@)."
+          }
+        }
+      }
+    },
+    "This can’t be undone.": {
+      "comment": "Warning that an action is irreversible.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This can’t be undone."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Это действие нельзя отменить."
+          }
+        }
+      }
+    },
+    "Trash": {
+      "comment": "Tab title for the merged Trash listing.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trash"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Корзина"
+          }
+        }
+      }
+    },
     "Type shortcut…": {
       "comment": "Shortcut recorder while capturing keys.",
       "localizations": {
@@ -1658,6 +3357,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Введите сочетание…"
+          }
+        }
+      }
+    },
+    "Unselect": {
+      "comment": "Confirm button of the wildcard dialog when removing files from the selection.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unselect"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Снять выделение"
+          }
+        }
+      }
+    },
+    "Unselect Files": {
+      "comment": "Title of the wildcard-pattern dialog when removing files from the selection.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unselect Files"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Снять выделение с файлов"
           }
         }
       }
@@ -1691,6 +3424,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Вы можете просматривать любую папку на этом Mac. Чтобы изменить это, откройте «Полный доступ к диску» в Системных настройках."
+          }
+        }
+      }
+    },
+    "You can restore items from the Trash later.": {
+      "comment": "Trash confirmation body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can restore items from the Trash later."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Объекты можно будет восстановить из Корзины позже."
           }
         }
       }
@@ -4337,6 +6087,40 @@
         }
       }
     },
+    "macOS records the original folder when an item is trashed, and there is no record for this one. Drag it out of the Trash instead.": {
+      "comment": "Put-Back detail: no recorded origin folder.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS records the original folder when an item is trashed, and there is no record for this one. Drag it out of the Trash instead."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS запоминает исходную папку при удалении объекта, но для этого объекта записи нет. Перетащите его из Корзины вручную."
+          }
+        }
+      }
+    },
+    "macOS reports no application for plain text. Choose one in Settings ▸ Operations.": {
+      "comment": "F4 failure detail pointing to the settings.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS reports no application for plain text. Choose one in Settings ▸ Operations."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS не сообщает о программе для простого текста. Выберите её в разделе «Настройки ▸ Операции»."
+          }
+        }
+      }
+    },
     "tour.files.body": {
       "comment": "First-run tour screen 'tour.files': body.",
       "localizations": {
@@ -4517,6 +6301,23 @@
       },
       "extractionState": "manual"
     },
+    "untitled folder": {
+      "comment": "Default name prefilled in the New Folder dialog.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "untitled folder"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "новая папка"
+          }
+        }
+      }
+    },
     "“%@” already exists in “%@”": {
       "comment": "Conflict sheet title. Both %@ are names (the item, then the folder).",
       "localizations": {
@@ -4530,6 +6331,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "«%@» уже существует в «%@»"
+          }
+        }
+      }
+    },
+    "“%@” is already back": {
+      "comment": "Put-Back result for one item whose original folder already holds that name; %@ is the item name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is already back"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Объект «%@» уже возвращён"
           }
         }
       }

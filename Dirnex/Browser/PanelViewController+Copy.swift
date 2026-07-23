@@ -77,8 +77,19 @@ extension PanelViewController {
         // routed to add-into before reaching here.
         guard destination.backend == .local || destination.backend.isSFTP else {
             presentOperationFailure(
-                message: kind == .copy ? "Can’t copy here" : "Can’t move here",
-                detail: "The other panel isn’t a folder you can copy into."
+                message: kind == .copy
+                    ? String(
+                        localized: "Can’t copy here",
+                        comment: "Copy failure title: destination can't receive files."
+                    )
+                    : String(
+                        localized: "Can’t move here",
+                        comment: "Move failure title: destination can't receive files."
+                    ),
+                detail: String(
+                    localized: "The other panel isn’t a folder you can copy into.",
+                    comment: "Copy/move failure detail: destination isn't a writable folder."
+                )
             )
             return
         }
@@ -86,8 +97,19 @@ extension PanelViewController {
         // with every item; point the user at a real destination instead.
         guard destination != panel.path else {
             presentOperationFailure(
-                message: kind == .copy ? "Can’t copy into the same folder" : "Can’t move into the same folder",
-                detail: "Open a different folder in the other panel first."
+                message: kind == .copy
+                    ? String(
+                        localized: "Can’t copy into the same folder",
+                        comment: "Copy failure title: source and destination are the same folder."
+                    )
+                    : String(
+                        localized: "Can’t move into the same folder",
+                        comment: "Move failure title: source and destination are the same folder."
+                    ),
+                detail: String(
+                    localized: "Open a different folder in the other panel first.",
+                    comment: "Copy/move failure detail: pick a different destination."
+                )
             )
             return
         }

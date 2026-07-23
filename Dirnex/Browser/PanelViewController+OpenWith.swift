@@ -72,22 +72,32 @@ extension PanelViewController {
         if let preferred = candidates.defaultApplication {
             // Finder's wording: the app a plain double-click would have used is named as such, so
             // the item at the top reads as a confirmation rather than one more choice.
-            items.append(appItem(for: preferred, urls: urls, suffix: " (default)"))
+            items.append(appItem(for: preferred, urls: urls, isDefault: true))
             if !candidates.others.isEmpty { items.append(.separator()) }
         }
         for application in candidates.others {
-            items.append(appItem(for: application, urls: urls, suffix: ""))
+            items.append(appItem(for: application, urls: urls))
         }
         if candidates.isEmpty {
             // Not an error and not an empty menu: nothing *registered* opens this, which is exactly
             // when a user reaches for Other… to pick something themselves.
-            let empty = NSMenuItem(title: "No Applications", action: nil, keyEquivalent: "")
+            let empty = NSMenuItem(
+                title: String(
+                    localized: "No Applications",
+                    comment: "Open With menu, disabled item: nothing is registered to open this file."
+                ),
+                action: nil,
+                keyEquivalent: ""
+            )
             empty.isEnabled = false
             items.append(empty)
         }
         items.append(.separator())
         let other = NSMenuItem(
-            title: "Other…",
+            title: String(
+                localized: "Other…",
+                comment: "Open With menu item: pick an application by hand."
+            ),
             action: #selector(openWithOther(_:)),
             keyEquivalent: ""
         )
@@ -106,9 +116,18 @@ extension PanelViewController {
         return menu
     }
 
-    private func appItem(for application: ApplicationRef, urls: [URL], suffix: String) -> NSMenuItem {
+    private func appItem(for application: ApplicationRef, urls: [URL], isDefault: Bool = false) -> NSMenuItem {
+        // Compose the whole title through the catalog rather than appending a " (default)" suffix:
+        // `displayName + suffix` resolves to a plain `String` and never localizes (docs/NOTES.md),
+        // and Russian parenthesizes differently anyway.
+        let title = isDefault
+            ? String(
+                localized: "\(application.displayName) (default)",
+                comment: "Open With menu item for the app a double-click would use; %@ is the app name."
+            )
+            : application.displayName
         let item = NSMenuItem(
-            title: application.displayName + suffix,
+            title: title,
             action: #selector(openWithApplication(_:)),
             keyEquivalent: ""
         )
@@ -127,7 +146,10 @@ extension PanelViewController {
         OpenWithLauncher.open(urls, with: application) { [weak self] error in
             guard let error else { return }
             self?.presentOperationFailure(
-                message: "Couldn’t open with “\(application.displayName)”.",
+                message: String(
+                    localized: "Couldn’t open with “\(application.displayName)”.",
+                    comment: "Open With failure; %@ is the app name."
+                ),
                 detail: error.localizedDescription
             )
         }
@@ -138,8 +160,14 @@ extension PanelViewController {
     @objc private func openWithOther(_ sender: NSMenuItem) {
         guard let urls = sender.representedObject as? [URL], !urls.isEmpty else { return }
         let panel = NSOpenPanel()
-        panel.title = "Choose an Application"
-        panel.prompt = "Open"
+        panel.title = String(
+            localized: "Choose an Application",
+            comment: "Open panel title for picking an app in Open With ▸ Other…"
+        )
+        panel.prompt = String(
+            localized: "Open",
+            comment: "Open panel button for picking an app in Open With ▸ Other…"
+        )
         panel.directoryURL = URL(fileURLWithPath: "/Applications")
         panel.allowedContentTypes = [.application]
         panel.allowsMultipleSelection = false

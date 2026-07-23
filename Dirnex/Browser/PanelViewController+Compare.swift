@@ -16,8 +16,14 @@ extension PanelViewController {
     @objc func compareByContents(_ sender: Any?) {
         guard let (left, right) = comparableCursorPair() else {
             presentOperationFailure(
-                message: "Nothing to compare",
-                detail: "Put a file under the cursor in each panel, then compare them."
+                message: String(
+                    localized: "Nothing to compare",
+                    comment: "Compare failure title when no file is under the cursor."
+                ),
+                detail: String(
+                    localized: "Put a file under the cursor in each panel, then compare them.",
+                    comment: "Compare failure detail."
+                )
             )
             return
         }
@@ -65,7 +71,12 @@ extension PanelViewController {
             presentDiffFailure(.noToolInstalled)
             return
         }
-        showComparisonProgress("Comparing \(left.lastComponent)…")
+        showComparisonProgress(
+            String(
+                localized: "Comparing \(left.lastComponent)…",
+                comment: "In-progress status while comparing; %@ is a file name."
+            )
+        )
         Task { [weak self] in
             let outcome = await Task.detached(priority: .userInitiated) {
                 try? ByteComparator.prescan(left, right)
@@ -74,7 +85,12 @@ extension PanelViewController {
             // `nil` is a pre-flight that threw — fall through to the launch, as documented above.
             switch outcome ?? .different {
             case .identical:
-                reportComparisonResult("Files are identical — nothing to compare.")
+                reportComparisonResult(
+                    String(
+                        localized: "Files are identical — nothing to compare.",
+                        comment: "Compare result when the two files match byte for byte."
+                    )
+                )
             case let .tooLargeToScan(largestByteSize):
                 confirmOversizedCompare(left, right, tool: tool, byteSize: largestByteSize)
             case .different:
@@ -93,11 +109,21 @@ extension PanelViewController {
     ) {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "These files are large (\(FileFormatting.byteString(byteSize)))."
-        alert.informativeText = "\(tool.displayName) may take a long time to compare them, or "
-            + "become unresponsive."
-        alert.addButton(withTitle: "Compare Anyway")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(
+            localized: "These files are large (\(FileFormatting.byteString(byteSize))).",
+            comment: "Oversized-compare warning title; %@ is a formatted byte size."
+        )
+        alert.informativeText = String(
+            localized: "\(tool.displayName) may take a long time to compare them, or become unresponsive.",
+            comment: "Oversized-compare warning body; %@ is the diff tool name."
+        )
+        alert.addButton(
+            withTitle: String(
+                localized: "Compare Anyway",
+                comment: "Proceed button on the oversized-compare warning."
+            )
+        )
+        alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
         alert.enableEscapeToCancel()
         let proceed: (NSApplication.ModalResponse) -> Void = { [weak self] response in
             guard response == .alertFirstButtonReturn else { return }
@@ -113,7 +139,12 @@ extension PanelViewController {
     /// Spawn the tool and say so. The launch is detached and a cold FileMerge takes seconds to draw
     /// its first window, so without this line the app looks like it swallowed the keystroke.
     private func spawn(_ tool: ExternalDiffTool, comparing left: VFSPath, with right: VFSPath) {
-        showComparisonProgress("Opening in \(tool.displayName)…")
+        showComparisonProgress(
+            String(
+                localized: "Opening in \(tool.displayName)…",
+                comment: "In-progress status while launching the diff tool; %@ is the tool name."
+            )
+        )
         ExternalDiffLauncher.compare(left.path, right.path) { [weak self] result in
             guard case let .failure(failure) = result else { return }
             self?.clearTransientStatus()
@@ -147,7 +178,7 @@ extension PanelViewController {
         }
         let alert = NSAlert()
         alert.messageText = message
-        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))
         alert.enableEscapeToCancel()
         alert.beginSheetModal(for: sheet, completionHandler: nil)
     }
@@ -156,14 +187,27 @@ extension PanelViewController {
         switch failure {
         case .noToolInstalled:
             presentOperationFailure(
-                message: "No comparison tool found",
-                detail: "Install FileMerge (part of Xcode), Kaleidoscope, or BBEdit to compare "
-                    + "files side by side."
+                message: String(
+                    localized: "No comparison tool found",
+                    comment: "Compare failure when no diff tool is installed."
+                ),
+                detail: String(
+                    localized: """
+                    Install FileMerge (part of Xcode), Kaleidoscope, or BBEdit to compare files side by side.
+                    """,
+                    comment: "Compare failure detail suggesting diff tools to install."
+                )
             )
         case let .launchFailed(tool):
             presentOperationFailure(
-                message: "Couldn’t open \(tool.displayName)",
-                detail: "\(tool.displayName) is installed but couldn’t be launched."
+                message: String(
+                    localized: "Couldn’t open \(tool.displayName)",
+                    comment: "Compare failure when the diff tool won't launch; %@ is the tool name."
+                ),
+                detail: String(
+                    localized: "\(tool.displayName) is installed but couldn’t be launched.",
+                    comment: "Compare failure detail; %@ is the diff tool name."
+                )
             )
         }
     }

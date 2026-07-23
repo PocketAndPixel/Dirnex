@@ -12,19 +12,27 @@ extension BrowserWindowController {
     /// Back, Forward — evenly spaced in the otherwise empty transparent title bar. Assumes
     /// `installHiddenToggle` has already prepared the eye button (behaviour + size); this places it.
     func installNavigationButtons() {
+        let back = String(
+            localized: "Back",
+            comment: "Accessibility label and tooltip for the titlebar Back button."
+        )
+        let forward = String(
+            localized: "Forward",
+            comment: "Accessibility label and tooltip for the titlebar Forward button."
+        )
         configureNavButton(
             backButton,
             symbol: "chevron.backward",
-            label: "Back",
+            label: back,
             action: #selector(navigateBackPressed(_:)),
-            tooltip: navTooltip("Back", "go.back")
+            tooltip: navTooltip(back, "go.back")
         )
         configureNavButton(
             forwardButton,
             symbol: "chevron.forward",
-            label: "Forward",
+            label: forward,
             action: #selector(navigateForwardPressed(_:)),
-            tooltip: navTooltip("Forward", "go.forward")
+            tooltip: navTooltip(forward, "go.forward")
         )
 
         // One evenly-spaced cluster: the hidden-files eye toggle, then Back/Forward. The eye button

@@ -28,7 +28,12 @@ extension PanelViewController {
             // An archive member or a remote file would edit an extracted temp copy whose saves go
             // nowhere. Said out loud rather than silently declined: a no-op that looks like it
             // worked is the expensive kind of wrong.
-            showTransientStatus("Only files on this Mac can be edited — copy it out first (F5).")
+            showTransientStatus(
+                String(
+                    localized: "Only files on this Mac can be edited — copy it out first (F5).",
+                    comment: "Status when F4 is pressed on an archive member or remote file."
+                )
+            )
             return
         }
         edit(entry)
@@ -48,7 +53,13 @@ extension PanelViewController {
         let editor = ExternalTextEditorLauncher.preferredEditor()
         switch menuItem.action {
         case #selector(editCursorFile(_:)):
-            menuItem.title = editor.map { "Edit with \($0.displayName)" } ?? "Edit"
+            menuItem.title = editor.map { String(
+                localized: "Edit with \($0.displayName)",
+                comment: "F4 menu title naming the chosen text editor; %@ is the app name."
+            ) } ?? String(
+                localized: "Edit",
+                comment: "F4 menu title when no specific editor is chosen."
+            )
             // Enabled exactly where the key does something, so "inert" is a *greyed* item rather
             // than a keystroke that vanishes: a local file to open, or nothing under the cursor at
             // all, where F4 becomes the ⇧F4 dialog. A folder or a non-local file greys out.
@@ -56,7 +67,13 @@ extension PanelViewController {
             if let entry = cursorEntryToEdit() { return entry.path.backend == .local }
             return isCursorOnNothing && canCreateFileHere
         case #selector(editNewFile(_:)):
-            menuItem.title = editor.map { "Edit File with \($0.displayName)…" } ?? "Edit File…"
+            menuItem.title = editor.map { String(
+                localized: "Edit File with \($0.displayName)…",
+                comment: "⇧F4 menu title naming the chosen text editor; %@ is the app name."
+            ) } ?? String(
+                localized: "Edit File…",
+                comment: "⇧F4 menu title when no specific editor is chosen."
+            )
             return editor != nil && canCreateFileHere
         default:
             return nil
@@ -106,25 +123,41 @@ extension PanelViewController {
     /// takes seconds to draw its first window, so without this line the app looks like it swallowed
     /// the keystroke.
     private func openInEditor(_ path: VFSPath) {
-        showTransientStatus("Opening \(path.lastComponent)…")
+        showTransientStatus(String(
+            localized: "Opening \(path.lastComponent)…",
+            comment: "In-progress status while opening a file; %@ is the file name."
+        ))
         ExternalTextEditorLauncher.edit(path.localURL) { [weak self] editor, error in
             guard let self else { return }
             guard let editor else {
                 clearTransientStatus()
                 presentOperationFailure(
-                    message: "No text editor found",
-                    detail: "macOS reports no application for plain text. Choose one in "
-                        + "Settings ▸ Operations."
+                    message: String(
+                        localized: "No text editor found",
+                        comment: "F4 failure when no plain-text editor is registered."
+                    ),
+                    detail: String(
+                        localized: "macOS reports no application for plain text. Choose one in Settings ▸ Operations.",
+                        comment: "F4 failure detail pointing to the settings."
+                    )
                 )
                 return
             }
             guard let error else {
-                showTransientStatus("Opening in \(editor.displayName)…")
+                showTransientStatus(
+                    String(
+                        localized: "Opening in \(editor.displayName)…",
+                        comment: "In-progress status while opening a file in the editor; %@ is the app name."
+                    )
+                )
                 return
             }
             clearTransientStatus()
             presentOperationFailure(
-                message: "Couldn’t open “\(path.lastComponent)”",
+                message: String(
+                    localized: "Couldn’t open “\(path.lastComponent)”",
+                    comment: "F4 failure title; %@ is the file name."
+                ),
                 detail: describe(error)
             )
         }
@@ -138,16 +171,30 @@ extension PanelViewController {
     private func promptForFileToEdit() {
         guard let target = writeDirectory, canCreateFileHere else { return }
         let alert = NSAlert()
-        alert.messageText = "Edit File"
+        alert.messageText = String(
+            localized: "Edit File",
+            comment: "Title of the ⇧F4 edit/create-file dialog."
+        )
         // The folder isn't named here: the path bar above the dialog already says which one this
         // is, and the field below is prefilled out of it.
-        alert.informativeText = "Open a file, or type a new name to create one."
-        alert.addButton(withTitle: "Edit")
-        alert.addButton(withTitle: "Cancel")
+        alert.informativeText = String(
+            localized: "Open a file, or type a new name to create one.",
+            comment: "Body of the ⇧F4 edit/create-file dialog."
+        )
+        alert.addButton(
+            withTitle: String(
+                localized: "Edit",
+                comment: "Confirm button of the ⇧F4 edit/create-file dialog."
+            )
+        )
+        alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
 
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
         field.stringValue = prefilledName()
-        field.placeholderString = "File name"
+        field.placeholderString = String(
+            localized: "File name",
+            comment: "Placeholder in the ⇧F4 file-name field."
+        )
         alert.accessoryView = field
         alert.window.initialFirstResponder = field
 
@@ -187,8 +234,14 @@ extension PanelViewController {
         guard !name.isEmpty else { return } // an empty name is a silent cancel
         guard !name.contains("/") else {
             presentOperationFailure(
-                message: "Can’t create the file",
-                detail: "File names can’t contain the “/” character."
+                message: String(
+                    localized: "Can’t create the file",
+                    comment: "Create-file failure title for an invalid name."
+                ),
+                detail: String(
+                    localized: "File names can’t contain the “/” character.",
+                    comment: "Create-file failure detail: slash in name."
+                )
             )
             return
         }
@@ -205,8 +258,14 @@ extension PanelViewController {
             if let existing {
                 guard existing.kind == .file else {
                     presentOperationFailure(
-                        message: "Can’t edit “\(name)”",
-                        detail: "There’s already a folder with that name."
+                        message: String(
+                            localized: "Can’t edit “\(name)”",
+                            comment: "Edit-file failure title; %@ is the name."
+                        ),
+                        detail: String(
+                            localized: "There’s already a folder with that name.",
+                            comment: "Edit-file failure detail: name is a folder."
+                        )
                     )
                     return
                 }
@@ -222,7 +281,10 @@ extension PanelViewController {
                 openInEditor(target)
             } catch {
                 presentOperationFailure(
-                    message: "Can’t create “\(name)”",
+                    message: String(
+                        localized: "Can’t create “\(name)”",
+                        comment: "Create-file failure title; %@ is the name."
+                    ),
                     detail: describe(error)
                 )
             }

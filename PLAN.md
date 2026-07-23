@@ -190,8 +190,33 @@ involved. Worth a lint rule keeping bare literals out of UI files afterwards.
 - **Deferred within this slice:** the App Intents strings (`AutomationIntents.swift`,
   `DirnexOperationEntity.swift`) now *extract* but stay untranslated — they are their own pass (see
   below), and leaving them out changes nothing at runtime (the English key is the fallback).
-- **Remaining:** the `Dirnex/Browser/` controllers — the bulk of the sweep (menu items, column
-  headers, empty-state and progress strings, tooltips, the sidebar, the queue, the path bar).
+- **Slice 2 landed (2026-07-23): the file-pane menu and operation surface.** The right-click menus,
+  Open With, the wildcard Select/Unselect dialog, Compare-by-contents (its confirmations and
+  failures), New Folder and create-file, the Trash — Empty Trash, Restore All / Put Back, and their
+  failures — F4/⇧F4 Edit, the copy/move destination errors, and the titlebar Back/Forward buttons:
+  90 new catalog keys across 10 files, all Russian-filled. Three NOTES.md traps recurred and were
+  fixed at the source: verb-splicing (`"Couldn’t \(verb)…"` for the deletion failures → four whole
+  sentences), the non-localizing `displayName + suffix` concatenation in Open With (→ a composed
+  `"%@ (default)"` key), and a **name/count split** — the single-item confirmation names the file
+  (`Move “%@” to the Trash?`) while the many-item one counts (`Move %lld items…`), so it is *not* a
+  plain plural: the two branches are separate keys and only the count branch carries the Russian
+  one/few/many. Keys were taken from the compiler-emitted `.stringsdata` and added by script,
+  verified additive-only against the catalog with the multiline `\`-continuation strings checked
+  verbatim against the emitted keys (swiftformat leaves the space before `\` intact — confirmed, not
+  assumed).
+- **Deferred as its own slice: the undo/redo action *labels*.** The "Undo Move" / "Redo Clear
+  Selection" menu titles compose `"Undo \(label)"` from a label that is *data*, not an app literal:
+  the file-op names ("Move", "Copy", "Rename", "Move to Trash", "New Folder") originate in
+  `DirnexCore`'s `UndoJournal`, and the selection/navigation names ("Mark", "Select All", "Invert
+  Selection", "Back", …) are passed *into* the core from the panes. Localizing this properly means
+  giving those labels the registry treatment (a symbolic key per label, joined in the app) and
+  localizing the `"Undo %@"` / `"Redo %@"` frames — a core-touching change. Doing only the app half
+  would leave the menu mixing a Russian frame with English labels, which is worse than uniform
+  English, so the whole concern waits for one slice.
+- **Remaining:** the rest of the `Dirnex/Browser/` controllers — the sidebar, the tabs/queue/path
+  bar chrome, column headers, connect-server and archive prompts, multi-rename, user-script and
+  workspace organizers, sync, and the assorted status/tooltip strings; then the undo-label slice
+  above.
 
 **Pass 3 — the remaining six languages.** Adding one is a line in `AppLanguages.all` plus its
 column in the catalog; `LocalizationCoverageTests` fails until the column is complete.
