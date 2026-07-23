@@ -118,7 +118,11 @@ extension PanelViewController {
         field.placeholderString = String(localized: "Archive name")
 
         let popup = NSPopUpButton(frame: NSRect(x: fieldX, y: 0, width: 220, height: 26))
-        for format in ArchivePacking.Format.allCases { popup.addItem(withTitle: format.displayName) }
+        for format in ArchivePacking.Format.allCases {
+            // Through the catalog, not `format.displayName`: the core's English is data here, and a
+            // literal at this variable-driven call site would extract nothing (`LocalizationKey`).
+            popup.addItem(withTitle: LocalizedCatalog.title(for: format))
+        }
         popup.selectItem(at: 0)
 
         container.addSubview(nameLabel)

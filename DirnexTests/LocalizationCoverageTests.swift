@@ -151,6 +151,24 @@ struct LocalizationCoverageTests {
         }
     }
 
+    @Test("every pack-dialog archive format is translated in every shipped language")
+    func everyArchiveFormatIsTranslated() throws {
+        for language in translatedLanguages {
+            let bundle = try bundle(for: language)
+            for format in ArchivePacking.Format.allCases {
+                let key = LocalizationKey.archiveFormat(format)
+                let value = translation(key, in: bundle)
+                #expect(value != nil, "\(language.code): no \(key)")
+                // "Zip" and "7-Zip" are product names that stay themselves in every language, so
+                // the still-English check only fires for the descriptive multi-word labels — the
+                // same carve-out `everyCommandTitleIsTranslated` makes for one-word titles.
+                if let value, format.displayName.contains(" ") {
+                    #expect(value != format.displayName, "\(language.code): \(key) is still English")
+                }
+            }
+        }
+    }
+
     @Test("every undo/redo action label is translated in every shipped language")
     func everyUndoActionLabelIsTranslated() throws {
         for language in translatedLanguages {

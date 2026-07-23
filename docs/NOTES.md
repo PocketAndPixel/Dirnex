@@ -458,11 +458,47 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   The exception proves the shape — a payload that is genuinely the *remote's* words (`sftp`'s stderr)
   should stay a raw `String` and be allowed to come back **empty**, with the app supplying the
   localized stand-in, rather than the core authoring a sentence it cannot translate.
+- **Interpolating a plain `String` into a `LocalizedStringResource` extracts the key `%@`.**
+  `case .noWindow: return "\(Scripting.noWindowMessage)"` compiles, reads as wrapped, and puts an
+  untranslated sentence in the Shortcuts error banner — because the *format* is all the compiler
+  sees, and the sentence itself lives in a `static let` that no sweep looks at. It is worse than a
+  bare literal: a bare literal is at least findable, while this one shows up in `.stringsdata` as a
+  legitimate-looking entry. Declare such a message as a `LocalizedStringResource` **once** and hand
+  it over whole; the `NSScriptCommand` side, which needs a plain `String` for `scriptErrorString`,
+  resolves the same resource through `String(localized:)`. The tell in a stringsdata diff is a key of
+  exactly `%@` — legitimate only when every argument is *already* localized (`DisplayRepresentation(
+  title: "\(name)")`, whose `name` came out of `LocalizedCatalog`).
+- **App Intents strings are extracted by the compiler; App Shortcut *phrases* need their own
+  catalog.** Every `LocalizedStringResource` in an `AppIntent` — `title`, `IntentDescription`,
+  `categoryName`, `@Parameter(title:description:)`, `Summary(…)` — lands in that file's
+  `.stringsdata` under the `Localizable` table with no annotation, so "App Intents can't be
+  localized" is wrong; they are simply keys nobody added to the catalog. The phrases in an
+  `AppShortcutsProvider` are the exception: the extractor writes them to an **`AppShortcuts`** table,
+  which compiles from `AppShortcuts.xcstrings`, not `Localizable.xcstrings` — a phrase left in the
+  wrong file is silently English. Every phrase must keep `${applicationName}` in every language.
+  Under file-system-synchronized groups the new catalog joins the target by existing; confirm with
+  `ls <app>/Contents/Resources/<lang>.lproj`. None of this is checkable in Shortcuts from a local
+  build — see "macOS system gates" — so the compiled `.strings` is the verification.
+- **`String(localized:comment:)` takes a `StaticString`, so a shared comment must be repeated
+  verbatim.** It cannot be hoisted into a constant, and two sites keying the same string with
+  *different* comments hand the translator whichever one `xcstringstool` kept. Three sites now draw
+  "iCloud Drive" (sidebar row, tab title, path-bar crumb) and all three carry the identical comment
+  literal. Watch the 120-column lint ceiling: a comment that reads well at 16 spaces of indentation
+  is the thing that trips it.
 - **`plutil -extract` reads a dotted key as a keypath.** Checking `vfs.unsupported.trash` against a
   compiled `Localizable.strings` reported every one of 27 keys MISSING from a bundle that contained
   all of them — a wrong answer in the alarming direction, right after a passing coverage test, which
   is exactly when a bad probe is most likely to be believed. `plutil -convert json -o -` and look the
   key up in the dictionary.
+- **A pair of "identity" and "display" fields on one type invites a caller to pass the same value to
+  both.** `ResultsPresentation` carries `pathSummary` (the stable English token that becomes the
+  synthetic `VFSPath`) and `title` (what the tab chip draws). The Trash gets this right and its
+  comment even *names* the rule — and `iCloudPresentation()` handed `ICloudLocation.mergedName` to
+  both, so the tab title and the path bar's root crumb bypassed the catalog. It survived every sweep
+  twice over: the value is a constant reached through a variable, so no bare-literal scan sees it,
+  and Russian keeps "iCloud Drive" as the product name, so no screenshot sees it either. It would
+  have surfaced only in a language that transliterates. When a type has both kinds of field, check
+  each *caller* passes two different things, not just that the type documents the difference.
 - **A virtual "place you visit" that borrows the search backend leaks English through its label.**
   Recents rides the `.search` results machinery, so its path bar drew `"Results for \(pathSummary)"`
   — and with `pathSummary` an English identity that reads "Результаты для Recents" in a Russian UI,

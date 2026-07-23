@@ -501,13 +501,50 @@ involved. Worth a lint rule keeping bare literals out of UI files afterwards.
     results" — a stutter that reads identically in English and predates this slice. Fixing it means
     giving the generic search a self-naming identity the way Recents and the Trash have one; it is a
     wording decision, not a translation gap.
+- **Slice 13 landed (2026-07-24): the deferred automation surface, and one real miss.** The two
+  standing deferrals (App Intents, archive formats) cleared, plus a leak neither audit had named;
+  **30 new `Localizable` keys and a new `AppShortcuts.xcstrings`** across 8 files. What each was:
+  - **The App Intents strings were extracted all along** — every `LocalizedStringResource` literal
+    sits in `AutomationIntents.stringsdata`, so the deferral was never "the compiler can't see
+    these", it was 21 keys nobody had put in the catalog. Titles, descriptions, category names,
+    parameter titles and the two `Summary(…)` lines all took ordinary catalog entries with no code
+    change.
+  - **The App Shortcut *phrases* need their own catalog**, `AppShortcuts.xcstrings`, and the
+    stringsdata says so: the extractor writes them into an `AppShortcuts` table while everything else
+    goes to `Localizable`. The file-system-synchronized group picked the new catalog up with no
+    `project.pbxproj` edit, and both `.lproj`s compiled an `AppShortcuts.strings`. A phrase has to
+    keep `${applicationName}` in every language.
+  - **`"\(Scripting.noWindowMessage)"` extracted the key `%@`.** Interpolating a plain `String` into
+    an intent's `LocalizedStringResource` yields a format with no sentence in it, so the message was
+    invisible to extraction *and* to every catalog sweep — it looked wrapped. `noWindowMessage` is now
+    a `LocalizedStringResource` declared once and resolved through `String(localized:)` on the
+    AppleScript side, so both doors share one extracted key.
+  - **The AppleScript error messages are now translated too**, reversing Slice 12's call. The `.sdef`
+    *terminology* genuinely must stay English — a script breaks if `reveal` is renamed — but an error
+    message is prose read by a human in Script Editor, and translating it breaks nothing. The verb
+    names stay verbatim *inside* the sentences («Команде reveal нужен POSIX-путь, например reveal
+    "/Users/me".»). Vocabulary and prose are different things; only the first is load-bearing.
+  - **The archive format names took the registry treatment**, like the search filters before them:
+    `LocalizationKey.archiveFormat(_:)` keyed by the case's raw value, `LocalizedCatalog.title(for:)`
+    at the popup, the core's `displayName` left in place as English fallback *data*. New coverage test,
+    with the same one-word carve-out the command titles use — "Zip" and "7-Zip" are product names.
+    Confirmed live in a Russian build: `Zip · Tar-архив (gzip) · Tar-архив (bzip2) · 7-Zip · Tar (без
+    сжатия)`, all fitting the popup.
+  - **The one genuine miss: iCloud Drive's tab title and path-bar crumb** both read
+    `ICloudLocation.mergedName` straight out of the core. The Trash had the answer next door and even
+    said so in a comment — `pathSummary` is a stable English *identity*, the `title` is what's shown
+    and localizes — and iCloud used the same constant for both. Invisible in Russian, where Apple
+    keeps the product name; it would surface the first time a language transliterates it.
+  - The extracted-vs-catalogued diff over every `.stringsdata` now comes back **clean**, with one
+    deliberate survivor: `DisplayRepresentation(title: "\(name)")` in `DirnexOperationEntity` extracts
+    `%@` because both arguments are already localized upstream. That is the shape the `noWindow` bug
+    wore, so it is worth knowing which instances are legitimate.
 - **Pass 2 is complete.** Every AppKit/SwiftUI literal and every registry-owned string is wrapped and
-  Russian-filled across Slices 1–11. One documented non-goal stays English: the stock Finder-tag
-  *names* in the ⌃T menu, which are `DirnexCore` `systemTagName` data with the localization caveat
-  already in `FinderTag`. Two deferrals stand, both re-confirmed by Slice 11's audit: the App Intents
-  strings (21 keys, their own pass) and the archive format names. The AppleScript error *messages*
-  join the `.sdef` terminology in staying English, on the same reasoning. Next is Pass 3 — the
-  remaining six languages. 
+  Russian-filled across Slices 1–13, the automation surface included. One documented non-goal stays
+  English: the stock Finder-tag *names* in the ⌃T menu, which are `DirnexCore` `systemTagName` data
+  with the localization caveat already in `FinderTag`. The AppleScript `.sdef` terminology stays
+  English by design — it is a scripting vocabulary, not prose. Next is Pass 3 — the remaining six
+  languages. 
   
 **Pass 3 — the remaining six languages.** Adding one is a line in `AppLanguages.all` plus its
 column in the catalog; `LocalizationCoverageTests` fails until the column is complete.
@@ -523,8 +560,9 @@ are narrow — but never buy width by cutting a word. The rule is repeated in th
 `functionBar.*.label` entry, which is where a translator actually reads it.
 
 Deliberately excluded: the AppleScript `.sdef` terminology, since scripting vocabulary is
-conventionally English and translating it breaks users' scripts. App Intents phrases are localizable
-but are their own pass.
+conventionally English and translating it breaks users' scripts. That covers the verb *names* only —
+the error messages those verbs report are prose and were translated in Slice 13, keeping the verb
+names verbatim inside the sentences. App Intents titles, descriptions and phrases landed there too.
 
 ## 5. Cross-cutting: testing strategy
 

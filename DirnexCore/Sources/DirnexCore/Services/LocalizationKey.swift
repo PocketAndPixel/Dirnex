@@ -106,6 +106,15 @@ public enum LocalizationKey {
         "undo.action.\(label.rawValue).title"
     }
 
+    /// A pack-dialog archive format's label, e.g. `archive.format.tarGz.title`.
+    /// `ArchivePacking.Format.displayName` is `DirnexCore` data reached through a variable at the
+    /// popup — `Format.allCases.map(\.displayName)` — so it gets the registry treatment the search
+    /// filters do rather than an app `String(localized:)`, which would extract nothing. Keyed by the
+    /// case's raw value, which is also the persisted suffix mapping, so a rename is loud.
+    public static func archiveFormat(_ format: ArchivePacking.Format) -> String {
+        "archive.format.\(format.rawValue).title"
+    }
+
     /// The sentence explaining why an operation is unsupported, e.g. `vfs.unsupported.trash`.
     /// `VFSUnsupportedReason.sentence` is `DirnexCore` data reached through a *return value*
     /// (`VFSErrorText.sentence(for:)`) rather than an assignment, which is precisely why it needs

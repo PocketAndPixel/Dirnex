@@ -46,7 +46,10 @@ extension SidebarViewController {
     /// carries neither.
     func iCloudCell(for path: VFSPath) -> NSView {
         cloudCell(
-            name: String(localized: "iCloud Drive", comment: "Sidebar row for Apple's iCloud Drive."),
+            name: String(
+                localized: "iCloud Drive",
+                comment: "Apple's iCloud Drive: the sidebar row, the tab title, and the path bar's root crumb."
+            ),
             symbolName: "icloud",
             tooltip: path.path
         )

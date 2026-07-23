@@ -93,6 +93,13 @@ enum LocalizedCatalog {
         L10n.string(LocalizationKey.tagColor(color), fallback: color.title)
     }
 
+    /// A pack-dialog archive format's label, translated. `ArchivePacking.Format.displayName` is
+    /// `DirnexCore` data reached through a variable (`Format.allCases`), so it is joined here by the
+    /// format's stable raw value rather than wrapped at the popup, which would extract nothing.
+    static func title(for format: ArchivePacking.Format) -> String {
+        L10n.string(LocalizationKey.archiveFormat(format), fallback: format.displayName)
+    }
+
     /// An undo/redo action's name, translated — spliced into the "Undo %@" / "Redo %@" menu title
     /// and the "finished with issues" alert. `UndoActionLabel.title` is `DirnexCore` data reached
     /// through a variable (`record.label`), so — like the sidebar sections — the app joins it here

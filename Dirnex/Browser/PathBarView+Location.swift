@@ -99,7 +99,15 @@ extension PathBarView {
     /// walking up out of one of these folders does. That is what makes the merge a place in a chain
     /// instead of somewhere you can only arrive from the sidebar.
     func rebuildICloudCrumbs(_ trail: [ICloudLocation.Step]) {
-        let root = Crumb(title: ICloudLocation.mergedName, target: ICloudLocation.mergedPath)
+        // The crumb's *target* is the core's stable synthetic path; its *title* is the displayed
+        // name, so it localizes rather than borrowing `mergedName`, which is an identity.
+        let root = Crumb(
+            title: String(
+                localized: "iCloud Drive",
+                comment: "Apple's iCloud Drive: the sidebar row, the tab title, and the path bar's root crumb."
+            ),
+            target: ICloudLocation.mergedPath
+        )
         installCrumbs(
             [root] + trail.map { Crumb(title: $0.title, target: $0.directory) },
             leadingSymbol: "icloud"

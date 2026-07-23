@@ -1,6 +1,57 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "\"%@\" could not be run.": {
+      "comment": "AppleScript error when an operation resolved but did not dispatch; %@ is its name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\"%@\" could not be run."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось выполнить \"%@\"."
+          }
+        }
+      }
+    },
+    "\"%@\" is not a known Dirnex operation.": {
+      "comment": "AppleScript error for an unknown operation; %@ is what the script asked for.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\"%@\" is not a known Dirnex operation."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\"%@\" — неизвестная операция Dirnex."
+          }
+        }
+      }
+    },
+    "\"%@\" is not an absolute POSIX path.": {
+      "comment": "AppleScript error for a relative or malformed path; %@ is what was passed.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\"%@\" is not an absolute POSIX path."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\"%@\" — не абсолютный POSIX-путь."
+          }
+        }
+      }
+    },
     "%@ (default)": {
       "comment": "Open With menu item for the app a double-click would use; %@ is the app name.",
       "localizations": {
@@ -1490,6 +1541,23 @@
         }
       }
     },
+    "Brings Dirnex's active panel to a file or folder and selects it, like Finder's Reveal.": {
+      "comment": "Shortcuts action description for Reveal in Dirnex.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brings Dirnex's active panel to a file or folder and selects it, like Finder's Reveal."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открывает папку с файлом в активной панели Dirnex и ставит на него курсор — как «Показать в Finder»."
+          }
+        }
+      }
+    },
     "Browse a remote SFTP account or an SMB share on your network.": {
       "comment": "Subtitle of the Connect to Server dialog.",
       "localizations": {
@@ -2187,6 +2255,23 @@
         }
       }
     },
+    "Copies the active panel's selection to the other panel, as F5 does.": {
+      "comment": "Shortcuts action description for Copy Selection to Other Panel.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copies the active panel's selection to the other panel, as F5 does."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Копирует выделенное в активной панели на другую панель — то же, что F5."
+          }
+        }
+      }
+    },
     "Copy %@": {
       "comment": "Queue row label; %@ is the file being copied.",
       "localizations": {
@@ -2234,6 +2319,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Скопировать пути"
+          }
+        }
+      }
+    },
+    "Copy Selection": {
+      "comment": "Short Shortcuts/Spotlight title for Copy Selection to Other Panel.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy Selection"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Копировать выделенное"
+          }
+        }
+      }
+    },
+    "Copy Selection to Other Panel": {
+      "comment": "Shortcuts action title for the `copy selection` verb (F5).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy Selection to Other Panel"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Копировать выделенное на другую панель"
           }
         }
       }
@@ -3680,6 +3799,23 @@
         }
       }
     },
+    "Dirnex Operation": {
+      "comment": "The Shortcuts type name for a Dirnex command or user script, shown in the picker.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex Operation"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Операция Dirnex"
+          }
+        }
+      }
+    },
     "Dirnex already has Full Disk Access": {
       "comment": "FDA already-granted sheet title.",
       "localizations": {
@@ -3710,6 +3846,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dirnex может просматривать всё, но macOS держит некоторые папки закрытыми — домашние папки других пользователей, Почту и Сообщения, резервные копии Time Machine и всё, что считается конфиденциальным. Без полного доступа к диску открытие одной из них покажет запрет доступа; всё остальное работает нормально.\n\nНажмите «Открыть Системные настройки», затем включите Dirnex в разделе «Полный доступ к диску». macOS попросит Dirnex перезапуститься, чтобы новый доступ вступил в силу."
+          }
+        }
+      }
+    },
+    "Dirnex has no open browser window to act on.": {
+      "comment": "Automation error when Dirnex is running with no browser window to act on.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex has no open browser window to act on."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В Dirnex нет открытого окна, с которым можно работать."
           }
         }
       }
@@ -4192,6 +4345,23 @@
         }
       }
     },
+    "File": {
+      "comment": "Shortcuts parameter title: the file or folder to reveal.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "File"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файл"
+          }
+        }
+      }
+    },
     "File name": {
       "comment": "Placeholder in the ⇧F4 file-name field.",
       "localizations": {
@@ -4222,6 +4392,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "В именах файлов нельзя использовать символ «/»."
+          }
+        }
+      }
+    },
+    "Files": {
+      "comment": "Shortcuts action category for the file verbs.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Files"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файлы"
           }
         }
       }
@@ -5250,6 +5437,23 @@
         }
       }
     },
+    "Navigation": {
+      "comment": "Shortcuts action category for the navigation verbs.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Navigation"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Навигация"
+          }
+        }
+      }
+    },
     "New (copying in)": {
       "comment": "Conflict card header for the incoming, copied item.",
       "localizations": {
@@ -5909,6 +6113,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Открытие в %@…"
+          }
+        }
+      }
+    },
+    "Operation": {
+      "comment": "Shortcuts parameter title: the Dirnex command or user script to run.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Operation"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Операция"
           }
         }
       }
@@ -7165,6 +7386,40 @@
         }
       }
     },
+    "Reveal ${file} in Dirnex": {
+      "comment": "Shortcuts summary line for Reveal in Dirnex; ${file} is the chosen file.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reveal ${file} in Dirnex"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показать ${file} в Dirnex"
+          }
+        }
+      }
+    },
+    "Reveal in Dirnex": {
+      "comment": "Shortcuts action title for the `reveal` verb.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reveal in Dirnex"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показать в Dirnex"
+          }
+        }
+      }
+    },
     "Reveals dotfiles like .git and .env in every pane. Also on the toolbar and ⇧⌘.": {
       "comment": "Panels footer: hidden files.",
       "localizations": {
@@ -7212,6 +7467,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Щёлкните строку правой кнопкой, чтобы изменить действие"
+          }
+        }
+      }
+    },
+    "Run ${operation} in Dirnex": {
+      "comment": "Shortcuts summary line for Run Dirnex Operation; ${operation} is the chosen operation.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Run ${operation} in Dirnex"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выполнить ${operation} в Dirnex"
+          }
+        }
+      }
+    },
+    "Run Dirnex Operation": {
+      "comment": "Shortcuts action title for the `run operation` verb.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Run Dirnex Operation"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выполнить операцию Dirnex"
           }
         }
       }
@@ -7280,6 +7569,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Отдельно для каждого файла"
+          }
+        }
+      }
+    },
+    "Runs any Dirnex command or user script, chosen from a list.": {
+      "comment": "Shortcuts action description for Run Dirnex Operation.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Runs any Dirnex command or user script, chosen from a list."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выполняет любую команду Dirnex или пользовательский скрипт, выбранные из списка."
           }
         }
       }
@@ -8240,6 +8546,23 @@
         }
       }
     },
+    "That file has no location on disk, so there is nothing to reveal.": {
+      "comment": "Shortcuts error when the file handed to Reveal in Dirnex is not on disk.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That file has no location on disk, so there is nothing to reveal."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У этого файла нет расположения на диске — показывать нечего."
+          }
+        }
+      }
+    },
     "That item isn’t a folder.": {
       "comment": "Error sentence: not a directory.",
       "localizations": {
@@ -8253,6 +8576,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Это не папка."
+          }
+        }
+      }
+    },
+    "The Dirnex command or user script to run.": {
+      "comment": "Shortcuts parameter description for Run Dirnex Operation.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Dirnex command or user script to run."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Команда Dirnex или пользовательский скрипт, который нужно выполнить."
           }
         }
       }
@@ -8372,6 +8712,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Редактор, в котором F4 открывает файл под курсором. ⇧F4 сначала запрашивает имя нового файла и создаёт его, если он ещё не существует."
+          }
+        }
+      }
+    },
+    "The file or folder to reveal.": {
+      "comment": "Shortcuts parameter description for Reveal in Dirnex.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The file or folder to reveal."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файл или папка, которую нужно показать."
           }
         }
       }
@@ -9408,6 +9765,91 @@
           "stringUnit": {
             "state": "translated",
             "value": "системную комбинацию клавиш"
+          }
+        }
+      }
+    },
+    "archive.format.sevenZip.title": {
+      "comment": "Pack-dialog format: the 7-Zip container. A product name — normally left as it is.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "7-Zip"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "7-Zip"
+          }
+        }
+      }
+    },
+    "archive.format.tar.title": {
+      "comment": "Pack-dialog format: a plain tar archive with no compression.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tar (uncompressed)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tar (без сжатия)"
+          }
+        }
+      }
+    },
+    "archive.format.tarBz2.title": {
+      "comment": "Pack-dialog format: a tar archive compressed with bzip2.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tarball (bzip2)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tar-архив (bzip2)"
+          }
+        }
+      }
+    },
+    "archive.format.tarGz.title": {
+      "comment": "Pack-dialog format: a tar archive compressed with gzip.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tarball (gzip)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tar-архив (gzip)"
+          }
+        }
+      }
+    },
+    "archive.format.zip.title": {
+      "comment": "Pack-dialog format: the Zip container. A product name — normally left as it is.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zip"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zip"
           }
         }
       }
@@ -12224,6 +12666,40 @@
         }
       }
     },
+    "reveal needs a POSIX path, e.g. reveal \"/Users/me\".": {
+      "comment": "AppleScript error for a `reveal` with no path. The verb name and the example are AppleScript syntax and stay as they are.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "reveal needs a POSIX path, e.g. reveal \"/Users/me\"."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Команде reveal нужен POSIX-путь, например reveal \"/Users/me\"."
+          }
+        }
+      }
+    },
+    "run operation needs a command id or title.": {
+      "comment": "AppleScript error for a `run operation` with no argument. The verb name is AppleScript syntax and stays as it is.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "run operation needs a command id or title."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Команде run operation нужен идентификатор или название команды."
+          }
+        }
+      }
+    },
     "search.age.month.title": {
       "comment": "Find Files Modified filter; DirnexCore data (SearchAge).",
       "localizations": {
@@ -13646,6 +14122,23 @@
         }
       }
     },
+    "“%@” could not be run.": {
+      "comment": "Shortcuts error when an operation could not be dispatched; %@ is its name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” could not be run."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось выполнить «%@»."
+          }
+        }
+      }
+    },
     "“%@” failed": {
       "comment": "Script outcome title, single file; %@ is the script name.",
       "localizations": {
@@ -13710,6 +14203,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "«%@» уже занято"
+          }
+        }
+      }
+    },
+    "“%@” is not a file Dirnex can reveal.": {
+      "comment": "Shortcuts error for an unrevealable path; %@ is the file name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is not a file Dirnex can reveal."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex не может показать «%@»."
           }
         }
       }

@@ -86,11 +86,17 @@ extension PanelViewController {
             // The synthetic path the presentation builds from these two is `ICloudLocation
             // .mergedPath`, which is what the path bar's root crumb targets — they have to be the
             // same location or clicking the crumb would install a *second* iCloud tab identity.
+            // Stable English identity, never displayed, exactly as the Trash's `pathSummary` is.
             pathSummary: ICloudLocation.mergedName,
             sort: panel.model.sort,
             query: nil,
             scope: nil,
-            title: ICloudLocation.mergedName,
+            // The *tab title* is what's shown, so it localizes — the core's `mergedName` is the
+            // identity above and carries no words for the screen.
+            title: String(
+                localized: "iCloud Drive",
+                comment: "Apple's iCloud Drive: the sidebar row, the tab title, and the path bar's root crumb."
+            ),
             // The pane's own setting, not the results default: this is a place being browsed, and
             // its dotfiles are ordinary dotfiles — a forced-on `.DS_Store` would be the first row of
             // the user's iCloud Drive.
