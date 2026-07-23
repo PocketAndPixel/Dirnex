@@ -44,7 +44,7 @@ extension PanelViewController: FileTableViewInput {
         } else if panel.selectionCount > 0 {
             let previousMarks = panel.selection
             panel.clearSelection()
-            recordMarkChange(since: previousMarks, label: "Clear Selection")
+            recordMarkChange(since: previousMarks, label: .clearSelection)
             resetMouseSelectionAnchor()
             tableView.reloadData()
             updateChrome()
@@ -74,7 +74,7 @@ extension PanelViewController: FileTableViewInput {
         let markedRow = row(forEntryIndex: panel.cursor)
         let previousMarks = panel.selection
         panel.toggleMarkAtCursorAndAdvance()
-        recordMarkChange(since: previousMarks, label: "Mark")
+        recordMarkChange(since: previousMarks, label: .mark)
         redrawRow(markedRow)
         syncCursorToTable()
         updateChrome()
@@ -91,7 +91,7 @@ extension PanelViewController: FileTableViewInput {
     func fileTableMarkAll(_ tableView: FileTableView) {
         let previousMarks = panel.selection
         panel.selectAll()
-        recordMarkChange(since: previousMarks, label: "Select All")
+        recordMarkChange(since: previousMarks, label: .selectAll)
         tableView.reloadData()
         updateChrome()
         refreshQuickLookIfVisible()

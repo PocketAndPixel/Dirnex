@@ -36,26 +36,34 @@ final class EscapeDismissingView: NSView {
 }
 
 extension NSAlert {
-    /// Ensure the Escape key dismisses this alert. `NSAlert` already binds Escape to a button titled
-    /// "Cancel"; this fills the gaps. A multi-button alert with no Cancel (Retry/Skip/Abort,
-    /// Remove/Keep) gets Escape bound to its safest choice. A lone "OK" alert keeps Return as its
-    /// button's default and answers Escape through a zero-size accessory that clicks the button —
-    /// the button can't carry two key equivalents at once. Call after adding every button and before
-    /// running the alert.
-    func enableEscapeToCancel() {
-        // A button already answers Escape (an NSAlert "Cancel") — nothing to add.
-        guard !buttons.contains(where: { $0.keyEquivalent == "\u{1b}" }) else { return }
+    /// Ensure the Escape key dismisses this alert, bound to the choice that loses nothing.
+    ///
+    /// `NSAlert` does bind Escape itself — but it matches the **byte string "Cancel"**, not a
+    /// localized one, so under any translation its binding silently stops happening: probed with the
+    /// process pinned to `ru`, a button titled «Отмена» is given no key equivalent at all (and, added
+    /// first, is given Return instead). Escape is therefore ours to assign in every language, and it
+    /// cannot be assigned by reading a button's *title* for the same reason.
+    ///
+    /// `safe` names the choice in the vocabulary the caller already reads the result back in. It
+    /// defaults to the **last** button, which is where a Cancel belongs and where all but one of
+    /// Dirnex's alerts put theirs; pass it explicitly wherever the safe choice sits elsewhere
+    /// (`Cancel` added first to make it the rightmost, `OK` ahead of an action button).
+    ///
+    /// A lone-button alert keeps Return as its button's default and answers Escape through a
+    /// zero-size accessory that clicks it — one button can't carry two key equivalents at once.
+    /// Call after adding every button and before running the alert.
+    func enableEscapeToCancel(safe: NSApplication.ModalResponse? = nil) {
         if buttons.count > 1 {
-            let safeTitles: Set<String> = [
-                "Cancel",
-                "Keep",
-                "Abort",
-                "No",
-                "Don't Save",
-                "Don’t Save"
-            ]
-            let target = buttons.first { safeTitles.contains($0.title) } ?? buttons.last
-            target?.keyEquivalent = "\u{1b}"
+            let first = NSApplication.ModalResponse.alertFirstButtonReturn.rawValue
+            let index = safe.map { Int($0.rawValue - first) }
+            let named = index.flatMap { buttons.indices.contains($0) ? buttons[$0] : nil }
+            guard let target = named ?? buttons.last else { return }
+            // AppKit may have put Escape on an English "Cancel" that isn't the button we want, and
+            // two buttons answering Escape is undefined — clear before assigning.
+            for button in buttons where button !== target && button.keyEquivalent == "\u{1b}" {
+                button.keyEquivalent = ""
+            }
+            target.keyEquivalent = "\u{1b}"
         } else if let only = buttons.first, accessoryView == nil {
             let catcher = EscapeDismissingView()
             catcher.onEscape = { [weak only] in only?.performClick(nil) }

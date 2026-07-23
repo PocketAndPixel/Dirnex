@@ -117,13 +117,13 @@ struct ShortcutRecorder: NSViewRepresentable {
 
         private func refreshLabel() {
             if isRecording {
-                label.stringValue = "Type shortcut…"
+                label.stringValue = String(localized: "Type shortcut…")
                 label.textColor = .secondaryLabelColor
             } else if let shortcut {
                 label.stringValue = shortcut.display
                 label.textColor = isConflicting ? .systemRed : .labelColor
             } else {
-                label.stringValue = "Add Shortcut"
+                label.stringValue = String(localized: "Add Shortcut")
                 label.textColor = .tertiaryLabelColor
             }
         }

@@ -62,13 +62,19 @@ final class QueueJobRowView: NSView {
 
         cancelButton.image = NSImage(
             systemSymbolName: "xmark.circle",
-            accessibilityDescription: "Cancel"
+            accessibilityDescription: String(
+                localized: "Cancel",
+                comment: "Accessibility label for a queue row's cancel button."
+            )
         )
         cancelButton.imagePosition = .imageOnly
         cancelButton.isBordered = false
         cancelButton.bezelStyle = .toolbar
         cancelButton.contentTintColor = .tertiaryLabelColor
-        cancelButton.toolTip = "Cancel this operation"
+        cancelButton.toolTip = String(
+            localized: "Cancel this operation",
+            comment: "Tooltip on a queue row's cancel button."
+        )
         cancelButton.target = self
         cancelButton.action = #selector(cancelClicked)
         cancelButton.setContentHuggingPriority(.required, for: .horizontal)
@@ -103,9 +109,29 @@ final class QueueJobRowView: NSView {
     /// tracks every snapshot; only the fast-moving byte readout is coalesced (see below).
     func update(with job: JobSnapshot) {
         jobID = job.id
-        let verb = job.kind == .copy ? "Copy" : "Move"
+        // Whole sentences per branch rather than a spliced verb (docs/NOTES.md).
         let name = job.progress?.currentItem?.lastComponent
-        nameLabel.stringValue = name.map { "\(verb) \($0)" } ?? "\(verb)…"
+        if let name {
+            nameLabel.stringValue = job.kind == .copy
+                ? String(
+                    localized: "Copy \(name)",
+                    comment: "Queue row label; %@ is the file being copied."
+                )
+                : String(
+                    localized: "Move \(name)",
+                    comment: "Queue row label; %@ is the file being moved."
+                )
+        } else {
+            nameLabel.stringValue = job.kind == .copy
+                ? String(
+                    localized: "Copy…",
+                    comment: "Queue row label for a copy job with no current item yet."
+                )
+                : String(
+                    localized: "Move…",
+                    comment: "Queue row label for a move job with no current item yet."
+                )
+        }
 
         switch job.status {
         case .waiting: bar.doubleValue = 0
@@ -126,10 +152,22 @@ final class QueueJobRowView: NSView {
         lastStatus = job.status
 
         switch job.status {
-        case .waiting: statusLabel.stringValue = "Waiting"
-        case .paused: statusLabel.stringValue = "Paused"
-        case .finished: statusLabel.stringValue = "Done"
-        case .cancelled: statusLabel.stringValue = "Cancelled"
+        case .waiting: statusLabel.stringValue = String(
+                localized: "Waiting",
+                comment: "Queue row status: the operation is queued but not yet started."
+            )
+        case .paused: statusLabel.stringValue = String(
+                localized: "Paused",
+                comment: "Queue row status: the operation is paused."
+            )
+        case .finished: statusLabel.stringValue = String(
+                localized: "Done",
+                comment: "Queue row status: the operation finished."
+            )
+        case .cancelled: statusLabel.stringValue = String(
+                localized: "Cancelled",
+                comment: "Queue row status: the operation was cancelled."
+            )
         case .running:
             guard statusChanged
                 || Date().timeIntervalSince(lastDetailRefresh) >= Self.detailRefreshInterval
@@ -143,7 +181,10 @@ final class QueueJobRowView: NSView {
         guard let progress, progress.totalBytes > 0 else { return "" }
         let done = Self.byteFormatter.string(fromByteCount: progress.completedBytes)
         let total = Self.byteFormatter.string(fromByteCount: progress.totalBytes)
-        return "\(done) / \(total)"
+        return String(
+            localized: "\(done) / \(total)",
+            comment: "Queue row byte readout: %1$@ transferred / %2$@ total."
+        )
     }
 
     @objc private func cancelClicked() {

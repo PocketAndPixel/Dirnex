@@ -56,17 +56,17 @@ enum FullDiskAccessOnboarding {
     static func presentForTrash(over window: NSWindow?) {
         AppPreferences.shared.hasSeenFullDiskAccessOnboarding = true
         let alert = NSAlert()
-        alert.messageText = "Dirnex needs Full Disk Access to show the Trash"
-        alert.informativeText = """
+        alert.messageText = String(localized: "Dirnex needs Full Disk Access to show the Trash")
+        alert.informativeText = String(localized: """
         macOS keeps the Trash private, so Dirnex can't list it until you allow it to. Everything \
         else keeps working as it does now.
 
         Click Open System Settings, then switch on Dirnex under Full Disk Access. macOS will ask \
         Dirnex to relaunch so the new access takes effect.
-        """
+        """)
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "Open System Settings")
-        alert.addButton(withTitle: "Not Now")
+        alert.addButton(withTitle: String(localized: "Open System Settings"))
+        alert.addButton(withTitle: String(localized: "Not Now"))
         alert.enableEscapeToCancel() // ⎋ → Not Now; there is no work to lose by declining.
 
         present(alert, over: window) { response in
@@ -86,17 +86,17 @@ enum FullDiskAccessOnboarding {
         guard !AppPreferences.shared.hasOfferedFullDiskAccessForICloud else { return }
         AppPreferences.shared.hasOfferedFullDiskAccessForICloud = true
         let alert = NSAlert()
-        alert.messageText = "Some of iCloud Drive needs Full Disk Access"
-        alert.informativeText = """
+        alert.messageText = String(localized: "Some of iCloud Drive needs Full Disk Access")
+        alert.informativeText = String(localized: """
         Your files in iCloud Drive are listed above. The folders apps keep there — Pages, \
         Preview, Shortcuts — are private to macOS until you allow Dirnex to read them.
 
         Click Open System Settings, then switch on Dirnex under Full Disk Access. macOS will ask \
         Dirnex to relaunch so the new access takes effect.
-        """
+        """)
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "Open System Settings")
-        alert.addButton(withTitle: "Not Now")
+        alert.addButton(withTitle: String(localized: "Open System Settings"))
+        alert.addButton(withTitle: String(localized: "Not Now"))
         alert.enableEscapeToCancel() // ⎋ → Not Now; the listing keeps working either way.
 
         present(alert, over: window) { response in
@@ -108,8 +108,8 @@ enum FullDiskAccessOnboarding {
 
     private static func showPrompt(over window: NSWindow?) {
         let alert = NSAlert()
-        alert.messageText = "Give Dirnex Full Disk Access"
-        alert.informativeText = """
+        alert.messageText = String(localized: "Give Dirnex Full Disk Access")
+        alert.informativeText = String(localized: """
         Dirnex can browse everywhere, but macOS keeps some folders private — other users' home \
         folders, Mail and Messages, Time Machine backups, and anywhere it considers sensitive. \
         Without Full Disk Access, opening one of those shows a permission wall; everywhere else \
@@ -117,10 +117,10 @@ enum FullDiskAccessOnboarding {
 
         Click Open System Settings, then switch on Dirnex under Full Disk Access. macOS will ask \
         Dirnex to relaunch so the new access takes effect.
-        """
+        """)
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "Open System Settings")
-        alert.addButton(withTitle: "Not Now")
+        alert.addButton(withTitle: String(localized: "Open System Settings"))
+        alert.addButton(withTitle: String(localized: "Not Now"))
         alert.enableEscapeToCancel() // ⎋ → Not Now; there is no work to lose by declining.
 
         present(alert, over: window) { response in
@@ -130,13 +130,17 @@ enum FullDiskAccessOnboarding {
 
     private static func showAlreadyGranted(over window: NSWindow?) {
         let alert = NSAlert()
-        alert.messageText = "Dirnex already has Full Disk Access"
-        alert.informativeText = "You can browse every folder on this Mac. "
-            + "To change this, open Full Disk Access in System Settings."
+        alert.messageText = String(localized: "Dirnex already has Full Disk Access")
+        alert.informativeText = String(localized: """
+        You can browse every folder on this Mac. To change this, open Full Disk Access in System \
+        Settings.
+        """)
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "OK")
-        alert.addButton(withTitle: "Open System Settings")
-        alert.enableEscapeToCancel() // ⎋ → OK (the lone safe default here).
+        alert.addButton(withTitle: String(localized: "OK"))
+        alert.addButton(withTitle: String(localized: "Open System Settings"))
+        // ⎋ → OK (the lone safe default here) — named, because it is *not* the last button and the
+        // default would otherwise hand Escape to "Open System Settings".
+        alert.enableEscapeToCancel(safe: .alertFirstButtonReturn)
 
         present(alert, over: window) { response in
             if response == .alertSecondButtonReturn { openSystemSettings() }

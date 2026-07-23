@@ -1,0 +1,40 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "${applicationName} copy selection" : {
+      "comment" : "Spotlight/Siri phrase for Copy Selection to Other Panel. Must contain ${applicationName}, which stands for “Dirnex”.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName} copy selection"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName} копировать выделенное"
+          }
+        }
+      }
+    },
+    "Copy the selection in ${applicationName}" : {
+      "comment" : "Spotlight/Siri phrase for Copy Selection to Other Panel. Must contain ${applicationName}, which stands for “Dirnex”.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy the selection in ${applicationName}"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Копировать выделенное в ${applicationName}"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

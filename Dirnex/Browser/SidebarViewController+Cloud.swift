@@ -45,7 +45,14 @@ extension SidebarViewController {
     /// with the real container path as its tooltip. No eject or delete affordance — a system row
     /// carries neither.
     func iCloudCell(for path: VFSPath) -> NSView {
-        cloudCell(name: "iCloud Drive", symbolName: "icloud", tooltip: path.path)
+        cloudCell(
+            name: String(
+                localized: "iCloud Drive",
+                comment: "Apple's iCloud Drive: the sidebar row, the tab title, and the path bar's root crumb."
+            ),
+            symbolName: "icloud",
+            tooltip: path.path
+        )
     }
 
     /// Build (or reuse) a provider mount's cell — "Google Drive", or "Google Drive

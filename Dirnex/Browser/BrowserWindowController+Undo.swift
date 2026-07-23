@@ -19,7 +19,7 @@ extension BrowserWindowController {
         on pane: PanelViewController,
         directory: VFSPath,
         previousMarks: Set<VFSPath>,
-        label: String
+        label: UndoActionLabel
     ) {
         let side: PaneSide = (pane === leftPanel) ? .left : .right
         undoController.recordSelection(SelectionChange(
@@ -31,11 +31,11 @@ extension BrowserWindowController {
         ))
     }
 
-    var nextUndoLabel: String? {
+    var nextUndoLabel: UndoActionLabel? {
         undoController.nextLabel
     }
 
-    var nextRedoLabel: String? {
+    var nextRedoLabel: UndoActionLabel? {
         undoController.nextRedoLabel
     }
 
@@ -87,17 +87,26 @@ extension BrowserWindowController {
 
         var lines: [String] = []
         if record.nonReversibleCount > 0 {
-            let items = record.nonReversibleCount == 1 ? "1 item" : "\(record.nonReversibleCount) items"
-            lines.append("\(items) overwrote existing files and can’t be restored.")
+            let overwrote = record.nonReversibleCount
+            lines.append(
+                String(
+                    localized: "\(overwrote) items overwrote existing files and can’t be restored."
+                )
+            )
         }
         if !report.succeeded {
             let count = report.failures.count
-            let items = count == 1 ? "1 item" : "\(count) items"
-            lines.append(
-                "\(items) couldn’t be put back: \(leftPanel.describe(report.failures[0].error))"
-            )
+            let reason = leftPanel.describe(report.failures[0].error)
+            lines.append(String(localized: "\(count) items couldn’t be put back: \(reason)"))
         }
-        presentIssues(title: "Undo \(record.label) finished with issues", lines: lines)
+        let action = LocalizedCatalog.title(for: record.label)
+        presentIssues(
+            title: String(
+                localized: "Undo \(action) finished with issues",
+                comment: "Alert title after a partial undo. %@ is the translated action name."
+            ),
+            lines: lines
+        )
     }
 
     /// Redo's outcome. Unlike undo, `nonReversibleCount` is irrelevant here — redo re-applies
@@ -106,9 +115,16 @@ extension BrowserWindowController {
     private func presentRedoOutcome(record: UndoRecord, report: UndoReport) {
         guard !report.succeeded else { return }
         let count = report.failures.count
-        let items = count == 1 ? "1 item" : "\(count) items"
-        let line = "\(items) couldn’t be re-applied: \(leftPanel.describe(report.failures[0].error))"
-        presentIssues(title: "Redo \(record.label) finished with issues", lines: [line])
+        let reason = leftPanel.describe(report.failures[0].error)
+        let line = String(localized: "\(count) items couldn’t be re-applied: \(reason)")
+        let action = LocalizedCatalog.title(for: record.label)
+        presentIssues(
+            title: String(
+                localized: "Redo \(action) finished with issues",
+                comment: "Alert title after a partial redo. %@ is the translated action name."
+            ),
+            lines: [line]
+        )
     }
 
     private func presentIssues(title: String, lines: [String]) {
@@ -116,7 +132,7 @@ extension BrowserWindowController {
         alert.alertStyle = .warning
         alert.messageText = title
         alert.informativeText = lines.joined(separator: "\n")
-        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))
         alert.enableEscapeToCancel()
         if let window { alert.beginSheetModal(for: window) } else { alert.runModal() }
     }

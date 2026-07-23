@@ -142,11 +142,18 @@ final class CloudDownloadPrompt {
             try? await Task.sleep(for: Self.sheetDelay)
             guard !isFinished, !isCancelled, let window else { return }
             let alert = NSAlert()
-            alert.messageText = "Downloading “\(entry.name)”…"
-            alert.informativeText = "This item is stored in iCloud. "
-                + "Dirnex is fetching it before opening it."
+            alert.messageText = String(
+                localized: "Downloading “\(entry.name)”…",
+                comment: "iCloud download progress title; %@ is the file name."
+            )
+            alert.informativeText = String(
+                localized: "This item is stored in iCloud. Dirnex is fetching it before opening it.",
+                comment: "iCloud download progress body."
+            )
             alert.alertStyle = .informational
-            alert.addButton(withTitle: "Stop")
+            alert.addButton(
+                withTitle: String(localized: "Stop", comment: "Button that cancels the download.")
+            )
             alert.enableEscapeToCancel()
 
             // Indeterminate on purpose: macOS exposes no per-item progress through the resource
@@ -179,10 +186,15 @@ final class CloudDownloadPrompt {
     private func report(detail: String) {
         dismissSheet()
         let alert = NSAlert()
-        alert.messageText = "Couldn’t download “\(entry.name)”"
+        alert.messageText = String(
+            localized: "Couldn’t download “\(entry.name)”",
+            comment: "iCloud download failure title; %@ is the file name."
+        )
         alert.informativeText = detail
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "OK")
+        alert.addButton(
+            withTitle: String(localized: "OK", comment: "Button that dismisses an alert.")
+        )
         alert.enableEscapeToCancel()
         if let window {
             alert.beginSheetModal(for: window, completionHandler: nil)
@@ -196,17 +208,35 @@ final class CloudDownloadPrompt {
     /// treating it as an answer would abandon downloads that were about to arrive.
     nonisolated private static func verdict(_ error: CloudTransferError) -> String? {
         switch error {
-        case .serverUnavailable: nil
-        case .quotaExceeded: "There isn’t enough iCloud storage to complete this."
-        case .itemUnavailable: "The item isn’t available on any device iCloud can reach right now."
-        case .other: "iCloud couldn’t provide this item."
+        case .serverUnavailable:
+            nil
+        case .quotaExceeded:
+            String(
+                localized: "There isn’t enough iCloud storage to complete this.",
+                comment: "iCloud download failure: the account is out of space."
+            )
+        case .itemUnavailable:
+            String(
+                localized: "The item isn’t available on any device iCloud can reach right now.",
+                comment: "iCloud download failure: no device holds the bytes."
+            )
+        case .other:
+            String(
+                localized: "iCloud couldn’t provide this item.",
+                comment: "iCloud download failure with no specific diagnosis."
+            )
         }
     }
 
     private static func describe(_ reason: CloudDownloadFailure) -> String {
         switch reason {
         case .stalled:
-            "iCloud didn’t start the download. Check your network connection and try again."
+            String(
+                localized: """
+                iCloud didn’t start the download. Check your network connection and try again.
+                """,
+                comment: "iCloud download failure: the transfer never began."
+            )
         case let .provider(detail):
             detail
         }

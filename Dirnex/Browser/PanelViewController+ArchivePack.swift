@@ -32,8 +32,10 @@ extension PanelViewController {
         guard destPane.panel.path.backend == .local,
               destPane.backend.capabilities.contains(.write) else {
             presentOperationFailure(
-                message: "Can’t pack here",
-                detail: "Open a folder on disk in the other panel to hold the new archive."
+                message: String(localized: "Can’t pack here"),
+                detail: String(
+                    localized: "Open a folder on disk in the other panel to hold the new archive."
+                )
             )
             return
         }
@@ -45,10 +47,14 @@ extension PanelViewController {
     private func presentPackSheet(sources: [FileEntry], destinationPane: PanelViewController) {
         let destination = destinationPane.panel.path
         let alert = NSAlert()
-        alert.messageText = "Pack \(sources.count == 1 ? "“\(sources[0].name)”" : "\(sources.count) items")"
-        alert.informativeText = "Create an archive in “\(destination.lastComponent)”."
-        alert.addButton(withTitle: "Pack")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = sources.count == 1
+            ? String(localized: "Pack “\(sources[0].name)”")
+            : String(localized: "Pack \(sources.count) items")
+        alert.informativeText = String(
+            localized: "Create an archive in “\(destination.lastComponent)”."
+        )
+        alert.addButton(withTitle: String(localized: "Pack"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
 
         let baseName = ArchivePacking.defaultBaseName(
             forSourceNames: sources.map(\.name),
@@ -89,21 +95,39 @@ extension PanelViewController {
         let formatPopup: NSPopUpButton
     }
 
-    /// Build the sheet's accessory: a name field over a format popup.
+    /// Build the sheet's accessory: a name field over a format popup. The label column is sized to
+    /// the wider of the two localized captions rather than a fixed width — the 48 pt that "Name:" /
+    /// "Format:" fit in English clipped Russian "Формат:", and a translation's fit is a live concern.
     private func makePackAccessory(baseName: String) -> PackAccessory {
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: 340, height: 56))
+        let width: CGFloat = 340
+        let nameLabel = packLabel(String(localized: "Name:"), y: 32)
+        let formatLabel = packLabel(String(localized: "Format:"), y: 4)
+        let labelWidth = ceil(max(
+            nameLabel.intrinsicContentSize.width,
+            formatLabel.intrinsicContentSize.width
+        ))
+        let fieldX = labelWidth + 8
+        for label in [nameLabel, formatLabel] {
+            label.frame = NSRect(x: 0, y: label.frame.minY, width: labelWidth, height: 18)
+        }
 
-        let field = NSTextField(frame: NSRect(x: 56, y: 30, width: 284, height: 24))
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: width, height: 56))
+
+        let field = NSTextField(frame: NSRect(x: fieldX, y: 30, width: width - fieldX, height: 24))
         field.stringValue = baseName
-        field.placeholderString = "Archive name"
+        field.placeholderString = String(localized: "Archive name")
 
-        let popup = NSPopUpButton(frame: NSRect(x: 56, y: 0, width: 220, height: 26))
-        for format in ArchivePacking.Format.allCases { popup.addItem(withTitle: format.displayName) }
+        let popup = NSPopUpButton(frame: NSRect(x: fieldX, y: 0, width: 220, height: 26))
+        for format in ArchivePacking.Format.allCases {
+            // Through the catalog, not `format.displayName`: the core's English is data here, and a
+            // literal at this variable-driven call site would extract nothing (`LocalizationKey`).
+            popup.addItem(withTitle: LocalizedCatalog.title(for: format))
+        }
         popup.selectItem(at: 0)
 
-        container.addSubview(packLabel("Name:", y: 32))
+        container.addSubview(nameLabel)
         container.addSubview(field)
-        container.addSubview(packLabel("Format:", y: 4))
+        container.addSubview(formatLabel)
         container.addSubview(popup)
         return PackAccessory(view: container, nameField: field, formatPopup: popup)
     }
@@ -128,10 +152,12 @@ extension PanelViewController {
         if (try? destinationPane.backend.stat(at: target)) != nil {
             let alert = NSAlert()
             alert.alertStyle = .warning
-            alert.messageText = "“\(archiveName)” already exists"
-            alert.informativeText = "Replace the existing archive in “\(destinationPane.panel.path.lastComponent)”?"
-            alert.addButton(withTitle: "Replace")
-            alert.addButton(withTitle: "Cancel")
+            alert.messageText = String(localized: "“\(archiveName)” already exists")
+            alert.informativeText = String(
+                localized: "Replace the existing archive in “\(destinationPane.panel.path.lastComponent)”?"
+            )
+            alert.addButton(withTitle: String(localized: "Replace"))
+            alert.addButton(withTitle: String(localized: "Cancel"))
             let proceed: (NSApplication.ModalResponse) -> Void = { [weak self] response in
                 guard response == .alertFirstButtonReturn else { return }
                 self?.runPack(sources: sources, target: target, destinationPane: destinationPane)
@@ -168,7 +194,7 @@ extension PanelViewController {
                 destinationPane.refreshCurrentDirectory(selecting: target)
             } catch {
                 presentOperationFailure(
-                    message: "Couldn’t create the archive",
+                    message: String(localized: "Couldn’t create the archive"),
                     detail: describe(error)
                 )
             }

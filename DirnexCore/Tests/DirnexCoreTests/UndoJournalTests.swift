@@ -289,7 +289,7 @@ struct UndoJournalTests {
     func codableRoundTrip() throws {
         let records = [
             UndoRecord.rename(from: .local("/dir/old name.txt"), to: .local("/dir/new name.txt")),
-            UndoRecord(label: "Copy", steps: [
+            UndoRecord(label: .copy, steps: [
                 .removeCopy(source: .local("/src/x"), copy: .local("/dest/x")),
                 .restore(from: .local("/dest/y"), to: .local("/src/y"))
             ], nonReversibleCount: 2)

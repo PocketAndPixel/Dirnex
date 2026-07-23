@@ -37,16 +37,23 @@ enum MainMenuBuilder {
     }
 
     private struct MenuSpec {
-        let title: String
+        /// The registry category this menu shows, and the source of its title.
+        ///
+        /// Carried as a `CommandCategory` rather than a `String` so the menu bar cannot drift from
+        /// the palette's group labels — and so the title is localized in one place. A hardcoded
+        /// "File" here was invisible in an English screenshot and left the whole menu bar untranslated.
+        let category: CommandCategory
         let items: [Item]
         var isWindow = false
+
+        var title: String { category.localizedTitle }
     }
 
     /// The top-level menus after the app menu, mirroring the categories in the registry but
     /// owning the grouping/separators AppKit users expect. Cmd+W closes a *tab* (File);
     /// the window keeps Cmd+Shift+W (Window), matching Safari/Terminal.
     private static let layout: [MenuSpec] = [
-        MenuSpec(title: "File", items: [
+        MenuSpec(category: .file, items: [
             .command("file.newTab"), .command("file.closeTab"), .separator,
             .command("file.openWith"), .command("file.share"), .separator,
             .command("file.copy"), .command("file.move"), .command("file.pack"),
@@ -60,15 +67,15 @@ enum MainMenuBuilder {
             // only in a Trash listing — where those two are the operations it undoes.
             .separator, .command("file.putBack")
         ]),
-        MenuSpec(title: "Edit", items: [
+        MenuSpec(category: .edit, items: [
             .command("edit.undo"), .command("edit.redo"), .separator,
             .command("edit.copy"), .command("edit.paste"), .command("edit.pasteMove")
         ]),
-        MenuSpec(title: "Select", items: [
+        MenuSpec(category: .selection, items: [
             .command("select.all"), .command("select.invert"), .separator,
             .command("select.byPattern"), .command("select.unselectByPattern")
         ]),
-        MenuSpec(title: "View", items: [
+        MenuSpec(category: .view, items: [
             .command("view.commandPalette"), .separator,
             .command("view.toggleSidebar"), .command("view.focusSidebar"),
             .command("view.toggleHidden"),
@@ -80,17 +87,17 @@ enum MainMenuBuilder {
             .separator,
             .command("view.terminal")
         ]),
-        MenuSpec(title: "Go", items: [
+        MenuSpec(category: .navigation, items: [
             .command("go.back"), .command("go.forward"), .command("go.history"), .separator,
             .command("go.editLocation"), .command("go.parent"), .command("go.search"),
             .command("go.saveSearch"), .separator,
             .command("go.favorites"), .command("go.addToFavorites"), .separator,
             .command("go.connectServer"), .command("go.openInTerminal")
         ]),
-        MenuSpec(title: "Workspace", items: [
+        MenuSpec(category: .workspace, items: [
             .command("workspace.list"), .command("workspace.save")
         ]),
-        MenuSpec(title: "Window", items: [
+        MenuSpec(category: .window, items: [
             .command("window.minimize"), .command("window.close"), .separator,
             .command("window.previousTab"), .command("window.nextTab")
         ], isWindow: true)
@@ -128,7 +135,7 @@ enum MainMenuBuilder {
     /// Internal so the pane's context menu is built from this same one place — a right-click item
     /// and its menu-bar twin must never be able to disagree about a title or a shortcut.
     static func commandItem(for id: String, bindings: KeyBindingStore = .shared) -> NSMenuItem? {
-        guard let command = CommandCatalog.command(for: id),
+        guard let command = LocalizedCatalog.command(for: id),
               let selector = CommandBinding.selector(for: id) else { return nil }
         let shortcut = bindings.shortcut(for: id)
         let item = NSMenuItem(
@@ -149,8 +156,13 @@ enum MainMenuBuilder {
     /// `NSApp.servicesMenu` is single-valued: a second copy would take the population away from
     /// this one rather than getting its own.
     private static func servicesMenuItem() -> NSMenuItem {
-        let item = NSMenuItem(title: "Services", action: nil, keyEquivalent: "")
-        let menu = NSMenu(title: "Services")
+        // AppKit localizes the Services *contents* but not this item's own title — we build it.
+        let title = String(
+            localized: "Services",
+            comment: "App-menu item holding the Services submenu."
+        )
+        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        let menu = NSMenu(title: title)
         item.submenu = menu
         NSApp.servicesMenu = menu
         return item
@@ -162,8 +174,13 @@ enum MainMenuBuilder {
         appMenuItem.submenu = appMenu
         let appName = ProcessInfo.processInfo.processName
 
+        // These four are the standard app-menu items, but we build them ourselves, so nothing
+        // localizes them for us — the rest of this menu comes from the (translated) registry.
         appMenu.addItem(
-            withTitle: "About \(appName)",
+            withTitle: String(
+                localized: "About \(appName)",
+                comment: "App-menu item opening the About panel; %@ is the app name."
+            ),
             action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
             keyEquivalent: ""
         )
@@ -185,12 +202,18 @@ enum MainMenuBuilder {
         appMenu.addItem(servicesMenuItem())
         appMenu.addItem(.separator())
         appMenu.addItem(
-            withTitle: "Hide \(appName)",
+            withTitle: String(
+                localized: "Hide \(appName)",
+                comment: "App-menu item that hides the app; %@ is the app name."
+            ),
             action: #selector(NSApplication.hide(_:)),
             keyEquivalent: "h"
         )
         let hideOthers = appMenu.addItem(
-            withTitle: "Hide Others",
+            withTitle: String(
+                localized: "Hide Others",
+                comment: "App-menu item that hides every other app."
+            ),
             action: #selector(NSApplication.hideOtherApplications(_:)),
             keyEquivalent: "h"
         )

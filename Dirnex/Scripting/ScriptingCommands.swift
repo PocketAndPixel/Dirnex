@@ -19,11 +19,23 @@ final class DirnexRevealScriptCommand: NSScriptCommand {
         guard let path = directParameter as? String else {
             return fail(
                 AppleScriptError.missingParameter,
-                "reveal needs a POSIX path, e.g. reveal \"/Users/me\"."
+                String(
+                    localized: "reveal needs a POSIX path, e.g. reveal \"/Users/me\".",
+                    comment: """
+                    AppleScript error for a `reveal` with no path. The verb name and the example \
+                    are AppleScript syntax and stay as they are.
+                    """
+                )
             )
         }
         guard let target = AutomationReveal.target(forPOSIXPath: path) else {
-            return fail(AppleScriptError.notFound, "\"\(path)\" is not an absolute POSIX path.")
+            return fail(
+                AppleScriptError.notFound,
+                String(
+                    localized: "\"\(path)\" is not an absolute POSIX path.",
+                    comment: "AppleScript error for a relative or malformed path; %@ is what was passed."
+                )
+            )
         }
         // Only the window work needs the main actor; its result comes back as a Sendable Bool
         // (assumeIsolated requires that) so the Any?/error is built out here. `false` = no window.
@@ -32,7 +44,7 @@ final class DirnexRevealScriptCommand: NSScriptCommand {
             window.reveal(target)
             return true
         }
-        return revealed ? true : fail(AppleScriptError.notFound, Scripting.noWindowMessage)
+        return revealed ? true : fail(AppleScriptError.notFound, Scripting.noWindow)
     }
 }
 
@@ -45,7 +57,7 @@ final class DirnexCopySelectionScriptCommand: NSScriptCommand {
             guard let window = Scripting.activeWindow else { return nil }
             return window.runCommand(id: "file.copy")
         }
-        guard let ran else { return fail(AppleScriptError.notFound, Scripting.noWindowMessage) }
+        guard let ran else { return fail(AppleScriptError.notFound, Scripting.noWindow) }
         return ran
     }
 }
@@ -57,20 +69,38 @@ final class DirnexRunOperationScriptCommand: NSScriptCommand {
         guard let query = directParameter as? String else {
             return fail(
                 AppleScriptError.missingParameter,
-                "run operation needs a command id or title."
+                String(
+                    localized: "run operation needs a command id or title.",
+                    comment: """
+                    AppleScript error for a `run operation` with no argument. The verb name is \
+                    AppleScript syntax and stays as it is.
+                    """
+                )
             )
         }
         // Resolution is pure (and the store read is nonisolated), so only the dispatch is isolated.
         let scripts = UserScriptStore.load().scripts
         guard let id = AutomationOperation.resolve(query, userScripts: scripts) else {
-            return fail(AppleScriptError.notFound, "\"\(query)\" is not a known Dirnex operation.")
+            return fail(
+                AppleScriptError.notFound,
+                String(
+                    localized: "\"\(query)\" is not a known Dirnex operation.",
+                    comment: "AppleScript error for an unknown operation; %@ is what the script asked for."
+                )
+            )
         }
         let ran = MainActor.assumeIsolated { () -> Bool? in
             guard let window = Scripting.activeWindow else { return nil }
             return window.runCommand(id: id)
         }
-        guard let ran else { return fail(AppleScriptError.notFound, Scripting.noWindowMessage) }
-        return ran ? true : fail(AppleScriptError.notFound, "\"\(query)\" could not be run.")
+        guard let ran else { return fail(AppleScriptError.notFound, Scripting.noWindow) }
+        return ran ? true : fail(
+            AppleScriptError.notFound,
+            String(
+                localized: "\"\(query)\" could not be run.",
+                comment: "AppleScript error when an operation resolved but did not dispatch; %@ is its name."
+            )
+        )
     }
 }
 

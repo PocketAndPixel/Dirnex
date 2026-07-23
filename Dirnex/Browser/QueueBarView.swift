@@ -162,19 +162,28 @@ final class QueueBarView: NSView {
         configure(
             disclosureButton,
             symbol: "chevron.right",
-            accessibility: "Show operation details",
+            accessibility: String(
+                localized: "Show operation details",
+                comment: "Queue-bar disclosure button: reveal the per-operation list."
+            ),
             action: #selector(disclosureClicked)
         )
         configure(
             pauseButton,
             symbol: "pause.fill",
-            accessibility: "Pause",
+            accessibility: String(
+                localized: "Pause",
+                comment: "Queue-bar button that pauses all running file operations."
+            ),
             action: #selector(pauseClicked)
         )
         configure(
             cancelButton,
             symbol: "xmark.circle.fill",
-            accessibility: "Cancel all",
+            accessibility: String(
+                localized: "Cancel all",
+                comment: "Queue-bar button that cancels every queued file operation."
+            ),
             action: #selector(cancelClicked)
         )
 
@@ -253,51 +262,21 @@ final class QueueBarView: NSView {
         }
 
         let symbol = snapshot.isPaused ? "play.fill" : "pause.fill"
-        let title = snapshot.isPaused ? "Resume" : "Pause"
+        let title = snapshot.isPaused
+            ? String(
+                localized: "Resume",
+                comment: "Queue-bar button that resumes paused file operations."
+            )
+            : String(
+                localized: "Pause",
+                comment: "Queue-bar button that pauses all running file operations."
+            )
         pauseButton.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title)
         pauseButton.toolTip = title
 
         updateJobList(snapshot)
         refreshDisclosure()
         syncHeight()
-    }
-
-    private func statusText(for snapshot: QueueSnapshot) -> String {
-        let active = snapshot.jobs.filter { $0.status == .running || $0.status == .paused }
-        let pending = snapshot.jobs.filter { $0.status == .waiting }.count
-
-        var text: String
-        if let current = active.first {
-            let verb = current.kind == .copy ? "Copying" : "Moving"
-            if let name = current.progress?.currentItem?.lastComponent, !name.isEmpty {
-                text = "\(verb) \(name)"
-            } else {
-                text = "\(verb)…"
-            }
-        } else {
-            text = "Preparing…"
-        }
-        if snapshot.isPaused { text = "Paused — \(text)" }
-
-        let more = max(0, active.count - 1) + pending
-        if more > 0 { text += "  (+\(more) more)" }
-        return text
-    }
-
-    private func detailText(for aggregate: AggregateProgress, paused: Bool) -> String {
-        let done = Self.byteFormatter.string(fromByteCount: aggregate.completedBytes)
-        let total = Self.byteFormatter.string(fromByteCount: aggregate.totalBytes)
-        var parts = ["\(done) of \(total)"]
-        if !paused, aggregate.bytesPerSecond > 0 {
-            let rate = Self.byteFormatter.string(fromByteCount: Int64(aggregate.bytesPerSecond))
-            parts.append("\(rate)/s")
-            if let eta = aggregate.estimatedTimeRemaining, let text = Self.etaFormatter.string(
-                from: eta
-            ) {
-                parts.append("\(text) left")
-            }
-        }
-        return parts.joined(separator: " · ")
     }
 
     // MARK: - Actions
@@ -309,6 +288,92 @@ final class QueueBarView: NSView {
         isExpanded.toggle()
         refreshDisclosure()
         syncHeight()
+    }
+}
+
+// MARK: - Status and detail text
+
+extension QueueBarView {
+    /// The aggregate one-line status: what's happening now (`Copying <name>`), a paused prefix, and
+    /// a `(+N more)` tail for the other queued jobs. In its own extension so the class body stays
+    /// under the type-body-length ceiling (docs/NOTES.md).
+    func statusText(for snapshot: QueueSnapshot) -> String {
+        let active = snapshot.jobs.filter { $0.status == .running || $0.status == .paused }
+        let pending = snapshot.jobs.filter { $0.status == .waiting }.count
+
+        // Whole sentences per branch rather than a spliced verb (docs/NOTES.md): a language that
+        // inflects the object or reorders the clause can't build "Copying <name>" from a bare verb.
+        var text: String
+        if let current = active.first {
+            let name = current.progress?.currentItem?.lastComponent
+            if let name, !name.isEmpty {
+                text = current.kind == .copy
+                    ? String(
+                        localized: "Copying \(name)",
+                        comment: "Queue-bar status; %@ is the file being copied."
+                    )
+                    : String(
+                        localized: "Moving \(name)",
+                        comment: "Queue-bar status; %@ is the file being moved."
+                    )
+            } else {
+                text = current.kind == .copy
+                    ? String(
+                        localized: "Copying…",
+                        comment: "Queue-bar status while a copy is being prepared."
+                    )
+                    : String(
+                        localized: "Moving…",
+                        comment: "Queue-bar status while a move is being prepared."
+                    )
+            }
+        } else {
+            text = String(
+                localized: "Preparing…",
+                comment: "Queue-bar status before any operation has started transferring."
+            )
+        }
+        if snapshot.isPaused {
+            text = String(
+                localized: "Paused — \(text)",
+                comment: "Queue-bar status prefix when paused; %@ is the underlying status."
+            )
+        }
+
+        let more = max(0, active.count - 1) + pending
+        if more > 0 {
+            text += "  " + String(
+                localized: "(+\(more) more)",
+                comment: "Queue-bar suffix counting the other queued operations; %lld is how many."
+            )
+        }
+        return text
+    }
+
+    /// The byte/throughput/ETA readout beneath the status line, `·`-joined.
+    func detailText(for aggregate: AggregateProgress, paused: Bool) -> String {
+        let done = Self.byteFormatter.string(fromByteCount: aggregate.completedBytes)
+        let total = Self.byteFormatter.string(fromByteCount: aggregate.totalBytes)
+        var parts = [String(
+            localized: "\(done) of \(total)",
+            comment: "Queue-bar byte readout: %1$@ transferred of %2$@ total."
+        )]
+        if !paused, aggregate.bytesPerSecond > 0 {
+            let rate = Self.byteFormatter.string(fromByteCount: Int64(aggregate.bytesPerSecond))
+            parts.append(String(
+                localized: "\(rate)/s",
+                comment: "Queue-bar throughput readout; %@ is a byte count, e.g. “1.2 MB/s”."
+            ))
+            if let eta = aggregate.estimatedTimeRemaining, let text = Self.etaFormatter.string(
+                from: eta
+            ) {
+                parts.append(String(
+                    localized: "\(text) left",
+                    comment: "Queue-bar ETA readout; %@ is a formatted duration, e.g. “2 min left”."
+                ))
+            }
+        }
+        return parts.joined(separator: " · ")
     }
 }
 
@@ -367,7 +432,15 @@ extension QueueBarView {
         let symbol = isExpanded ? "chevron.down" : "chevron.right"
         disclosureButton.image = NSImage(
             systemSymbolName: symbol,
-            accessibilityDescription: isExpanded ? "Hide operation details" : "Show operation details"
+            accessibilityDescription: isExpanded
+                ? String(
+                    localized: "Hide operation details",
+                    comment: "Queue-bar disclosure button: collapse the per-operation list."
+                )
+                : String(
+                    localized: "Show operation details",
+                    comment: "Queue-bar disclosure button: reveal the per-operation list."
+                )
         )
         jobScroll.isHidden = !(isExpanded && !displayedJobIDs.isEmpty)
     }

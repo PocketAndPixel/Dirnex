@@ -28,7 +28,10 @@ extension SidebarViewController {
         guard let volume, let total = volume.totalCapacity, let available = volume.availableCapacity else {
             return volume?.name
         }
-        return "\(FileFormatting.byteString(available)) available of \(FileFormatting.byteString(total))"
+        return String(
+            localized: "\(FileFormatting.byteString(available)) available of \(FileFormatting.byteString(total))",
+            comment: "Volume capacity tooltip; %1$@ is free space, %2$@ is total capacity."
+        )
     }
 
     /// Eject (or unmount) a removable volume via the workspace, surfacing any failure —
@@ -38,7 +41,10 @@ extension SidebarViewController {
             try NSWorkspace.shared.unmountAndEjectDevice(at: volume.path.localURL)
         } catch {
             let alert = NSAlert()
-            alert.messageText = "Couldn’t eject “\(volume.name)”"
+            alert.messageText = String(
+                localized: "Couldn’t eject “\(volume.name)”",
+                comment: "Eject-failure alert title; %@ is the volume's name."
+            )
             alert.informativeText = error.localizedDescription
             alert.alertStyle = .warning
             if let window = view.window {

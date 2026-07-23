@@ -29,10 +29,18 @@ extension PanelViewController {
     private func presentTerminalLaunchFailure(_ failure: ExternalTerminalLauncher.Failure) {
         guard case let .launchFailed(terminal) = failure else { return }
         let alert = NSAlert()
-        alert.messageText = "Can’t open \(terminal.displayName)"
-        alert.informativeText = "\(terminal.displayName) is installed but couldn’t be launched."
+        alert.messageText = String(
+            localized: "Can’t open \(terminal.displayName)",
+            comment: "Terminal-launch failure title; %@ is the terminal app's name."
+        )
+        alert.informativeText = String(
+            localized: "\(terminal.displayName) is installed but couldn’t be launched.",
+            comment: "Terminal-launch failure body; %@ is the terminal app's name."
+        )
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "OK")
+        alert.addButton(
+            withTitle: String(localized: "OK", comment: "Button that dismisses an alert.")
+        )
         alert.enableEscapeToCancel()
         if let window = view.window {
             alert.beginSheetModal(for: window)

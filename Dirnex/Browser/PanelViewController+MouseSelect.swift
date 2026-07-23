@@ -38,11 +38,11 @@ extension PanelViewController {
         if shift {
             let anchorIndex = resolvedAnchorIndex(fallingBackTo: index)
             panel.selectRange(from: anchorIndex, through: index, base: mouseSelectionBase)
-            recordMarkChange(since: previousMarks, label: "Select Range")
+            recordMarkChange(since: previousMarks, label: .selectRange)
         } else {
             panel.toggleMarkMovingCursor(to: index)
             setAnchor(to: index)
-            recordMarkChange(since: previousMarks, label: "Mark")
+            recordMarkChange(since: previousMarks, label: .mark)
         }
         cursorOnParentRow = false
         reloadEverything()

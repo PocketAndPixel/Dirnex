@@ -40,7 +40,7 @@ public enum ByteComparator {
         isCancelled: () -> Bool = { false }
     ) throws -> Bool {
         guard lhs.backend == .local, rhs.backend == .local else {
-            throw VFSError.unsupported("Content comparison is only available for local files.")
+            throw VFSError.unsupported(.contentComparisonNeedsLocalFiles)
         }
         guard lhs != rhs else { return true }
 
@@ -85,7 +85,7 @@ public enum ByteComparator {
         isCancelled: () -> Bool = { false }
     ) throws -> ContentComparison {
         guard lhs.backend == .local, rhs.backend == .local else {
-            throw VFSError.unsupported("Content comparison is only available for local files.")
+            throw VFSError.unsupported(.contentComparisonNeedsLocalFiles)
         }
         guard lhs != rhs else { return .identical }
 
@@ -113,7 +113,7 @@ public enum ByteComparator {
             throw VFSError.fromErrno(errnoValue(from: error), path: path)
         }
         guard (attributes[.type] as? FileAttributeType) == .typeRegular else {
-            throw VFSError.unsupported("Only regular files can be compared by content.")
+            throw VFSError.unsupported(.contentComparisonNeedsRegularFile)
         }
         return (attributes[.size] as? Int64) ?? 0
     }

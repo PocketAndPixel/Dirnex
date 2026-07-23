@@ -31,21 +31,39 @@ struct GitBranchChipTests {
 
     @Test("a detached HEAD says so rather than showing an empty chip")
     func detached() {
-        #expect(GitBranchChipView.text(for: .detached) == "detached HEAD")
+        // Against the localized primitive, not the English literal — the stand-in moved out of
+        // `GitBranch.displayName` and into the app so it could be translated (PLAN.md §M12
+        // Slice 11), and the app test target inherits whatever language is pinned (docs/NOTES.md).
+        let expected = String(localized: "detached HEAD")
+        #expect(GitBranchChipView.text(for: .detached) == expected)
+        #expect(!expected.isEmpty, "a nameless branch must never render as an empty chip")
     }
 
     @Test("the tooltip spells out what the arrows meant")
     func toolTip() {
         let branch = GitBranch(name: "Dev", upstream: "origin/Dev", ahead: 1, behind: 3)
         let text = GitBranchChipView.toolTip(for: branch)
-        #expect(text == "Branch Dev · Tracking origin/Dev · 1 commit to push · 3 commits to pull")
+        // Assert against the localized primitives, not English literals, so the suite passes whatever
+        // language the app test target inherits (docs/NOTES.md). Still pins the segment order, the
+        // " · " join, and the singular/plural selection (1 → "commit", 3 → "commits").
+        let expected = [
+            String(localized: "Branch \("Dev")"),
+            String(localized: "Tracking \("origin/Dev")"),
+            String(localized: "\(1) commits to push"),
+            String(localized: "\(3) commits to pull")
+        ].joined(separator: " · ")
+        #expect(text == expected)
     }
 
     @Test("a fresh repository reports having no commits, not a missing branch")
     func noCommits() {
         let branch = GitBranch(name: "main", hasNoCommits: true)
         #expect(GitBranchChipView.text(for: branch) == "main")
-        #expect(GitBranchChipView.toolTip(for: branch) == "Branch main · No commits yet")
+        let expected = [
+            String(localized: "Branch \("main")"),
+            String(localized: "No commits yet")
+        ].joined(separator: " · ")
+        #expect(GitBranchChipView.toolTip(for: branch) == expected)
     }
 }
 

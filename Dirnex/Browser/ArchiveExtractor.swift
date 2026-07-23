@@ -54,7 +54,7 @@ enum ArchiveExtractor {
             try process.run()
         } catch {
             try? FileManager.default.removeItem(at: directory)
-            throw VFSError.unsupported("Couldn’t run bsdtar to extract from the archive.")
+            throw VFSError.unsupported(.archiveToolUnavailableForExtract)
         }
         process.waitUntilExit()
 
@@ -64,7 +64,7 @@ enum ArchiveExtractor {
         guard extractedPaths.contains(where: { FileManager.default.fileExists(atPath: $0) }) else {
             try? FileManager.default.removeItem(at: directory)
             let name = (archiveOnDiskPath as NSString).lastPathComponent
-            throw VFSError.unsupported("Couldn’t extract from the archive “\(name)”.")
+            throw VFSError.unsupported(.archiveExtractFailed(archive: name))
         }
         return Extraction(directory: directory, extractedPaths: extractedPaths)
     }

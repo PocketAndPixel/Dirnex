@@ -57,20 +57,7 @@ struct UpdateAvailabilityTests {
         }
     }
 
-    @Test("the tooltip names the version when there is one")
-    func tooltipNamesVersion() {
-        #expect(UpdateAvailability.available(version: "1.3.0").tooltip.contains("1.3.0"))
-        #expect(UpdateAvailability.available(version: "1.3.0").tooltip.contains("Dirnex"))
-    }
-
-    @Test("the tooltip falls back rather than showing an empty version")
-    func tooltipFallsBack() {
-        let tooltip = UpdateAvailability.available(version: nil).tooltip
-        #expect(tooltip == "An update is available — click to install")
-    }
-
-    @Test("with nothing pending the tooltip describes the check the button would run")
-    func tooltipWhenIdle() {
-        #expect(UpdateAvailability.none.tooltip == "Check for updates")
-    }
+    // The tooltip's *wording* moved to the app in M12 Slice 11 (it has to be translated, and the
+    // core ships no resources), so its tests moved with it — `UpdateIndicatorTooltipTests`. What
+    // drives it is the state above, which is covered here and is the part that can be wrong.
 }

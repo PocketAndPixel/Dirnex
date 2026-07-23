@@ -54,7 +54,11 @@ public enum VFSError: Error, Sendable, Equatable {
     case alreadyExists(VFSPath)
     /// Any other POSIX/backend failure, carrying the raw errno for diagnostics.
     case io(path: VFSPath, code: Int32)
-    case unsupported(String)
+    /// The backend cannot do this, for a reason the user is shown. The payload is a named
+    /// ``VFSUnsupportedReason`` rather than a `String` so the sentence can be translated — it
+    /// reaches the screen through `VFSErrorText.sentence(for:)`, where a bare literal would be
+    /// invisible to string extraction (PLAN.md §M12 Slice 11).
+    case unsupported(VFSUnsupportedReason)
 
     /// Map a POSIX `errno` to the closest semantic case.
     static func fromErrno(_ code: Int32, path: VFSPath) -> VFSError {
@@ -182,24 +186,24 @@ public extension VFSBackend {
     }
 
     func createDirectory(at path: VFSPath) throws {
-        throw VFSError.unsupported("This location doesn’t support creating folders.")
+        throw VFSError.unsupported(.createDirectory)
     }
 
     func createFile(at path: VFSPath) throws {
-        throw VFSError.unsupported("This location doesn’t support creating files.")
+        throw VFSError.unsupported(.createFile)
     }
 
     func moveItem(at source: VFSPath, to destination: VFSPath) throws {
-        throw VFSError.unsupported("This location doesn’t support moving items.")
+        throw VFSError.unsupported(.moveItem)
     }
 
     func removeItem(at path: VFSPath) throws {
-        throw VFSError.unsupported("This location doesn’t support deleting items.")
+        throw VFSError.unsupported(.removeItem)
     }
 
     @discardableResult
     func trashItem(at path: VFSPath) throws -> VFSPath? {
-        throw VFSError.unsupported("This location doesn’t have a Trash.")
+        throw VFSError.unsupported(.trash)
     }
 
     func cloneItem(at source: VFSPath, to destination: VFSPath) throws -> Bool {
@@ -212,11 +216,11 @@ public extension VFSBackend {
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws {
-        throw VFSError.unsupported("This location doesn’t support copying files.")
+        throw VFSError.unsupported(.copyFile)
     }
 
     func createSymbolicLink(at destination: VFSPath, withDestination target: String) throws {
-        throw VFSError.unsupported("This location doesn’t support symbolic links.")
+        throw VFSError.unsupported(.symbolicLink)
     }
 
     func copyMetadata(at source: VFSPath, to destination: VFSPath) throws {

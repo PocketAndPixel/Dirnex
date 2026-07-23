@@ -35,7 +35,7 @@ protocol PanelHost: AnyObject {
         on pane: PanelViewController,
         directory: VFSPath,
         previousMarks: Set<VFSPath>,
-        label: String
+        label: UndoActionLabel
     )
 
     /// Reverse the most recent operation on the window's undo journal (Cmd+Z). Refreshes
@@ -47,12 +47,12 @@ protocol PanelHost: AnyObject {
     func redoLastOperation()
 
     /// The label of the action Cmd+Z would reverse next, for the menu title, or `nil` when
-    /// the journal is empty.
-    var nextUndoLabel: String? { get }
+    /// the journal is empty. `DirnexCore` data — the app joins it to a translation.
+    var nextUndoLabel: UndoActionLabel? { get }
 
     /// The label of the action Cmd+Shift+Z would re-apply next, or `nil` when there's nothing
     /// to redo.
-    var nextRedoLabel: String? { get }
+    var nextRedoLabel: UndoActionLabel? { get }
 
     /// Capture both panes' current tabs into a named workspace (PLAN.md §M3 "Workspaces").
     /// The window owns this because a workspace spans both panes, which a single pane can't see.
@@ -403,7 +403,7 @@ final class PanelViewController: NSViewController {
                 guard token == loadToken else { return }
                 panel.setModel(model)
                 resetMouseSelectionAnchor()
-                recordMarkChange(since: departedMarks, in: departed, label: "Clear Selection")
+                recordMarkChange(since: departedMarks, in: departed, label: .clearSelection)
                 if let child, let index = panel.model.index(ofID: child) {
                     panel.moveCursor(to: index)
                 }

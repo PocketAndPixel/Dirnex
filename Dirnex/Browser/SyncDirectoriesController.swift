@@ -136,7 +136,10 @@ final class SyncDirectoriesController: NSViewController {
             }
         case let .failure(error):
             rows = []
-            scanError = (error as? VFSError).map(describe) ?? "The folders couldn’t be compared."
+            scanError = (error as? VFSError).map(describe) ?? String(
+                localized: "The folders couldn’t be compared.",
+                comment: "Sync error: the comparison failed for an unspecified reason."
+            )
         }
         tableView.reloadData()
         updateChrome()
@@ -215,7 +218,10 @@ final class SyncDirectoriesController: NSViewController {
         directionControl.isEnabled = !isScanning
         comparisonControl.isEnabled = !isScanning
         if isScanning {
-            setStatus("Comparing folders…", isError: false)
+            setStatus(String(
+                localized: "Comparing folders…",
+                comment: "Sync status shown while the two folders are being compared."
+            ), isError: false)
             syncButton.isEnabled = false
             return
         }
@@ -225,7 +231,10 @@ final class SyncDirectoriesController: NSViewController {
             return
         }
         if rows.isEmpty {
-            setStatus("The folders are already in sync.", isError: false)
+            setStatus(String(
+                localized: "The folders are already in sync.",
+                comment: "Sync status: no differences were found."
+            ), isError: false)
             syncButton.isEnabled = false
             return
         }
@@ -233,8 +242,16 @@ final class SyncDirectoriesController: NSViewController {
         let copies = checked.filter { isCopy($0.action) }.count
         let deletes = checked.count - copies
         let conflicts = rows.filter { $0.action == .conflict }.count
-        var text = "\(copies) to copy, \(deletes) to delete"
-        if conflicts > 0 { text += " · \(conflicts) conflict\(conflicts == 1 ? "" : "s") skipped" }
+        var text = String(
+            localized: "\(copies) to copy, \(deletes) to delete",
+            comment: "Sync status summary; %1$lld files to copy, %2$lld to delete."
+        )
+        if conflicts > 0 {
+            text += " · " + String(
+                localized: "\(conflicts) conflicts skipped",
+                comment: "Sync status suffix; %lld conflicting items left unchanged. Plural."
+            )
+        }
         setStatus(text, isError: false)
         syncButton.isEnabled = !checked.isEmpty
     }
@@ -268,9 +285,21 @@ final class SyncDirectoriesController: NSViewController {
 
     private func describe(_ error: VFSError) -> String {
         switch error {
-        case .notFound: return "One of the folders no longer exists."
-        case .permissionDenied: return "Permission was denied reading one of the folders."
-        default: return "The folders couldn’t be compared."
+        case .notFound:
+            return String(
+                localized: "One of the folders no longer exists.",
+                comment: "Sync error: a compared folder was removed."
+            )
+        case .permissionDenied:
+            return String(
+                localized: "Permission was denied reading one of the folders.",
+                comment: "Sync error: no read permission on a compared folder."
+            )
+        default:
+            return String(
+                localized: "The folders couldn’t be compared.",
+                comment: "Sync error: the comparison failed for an unspecified reason."
+            )
         }
     }
 
@@ -302,7 +331,18 @@ private extension SyncDirectoriesController {
     }
 
     func makeControls() -> NSView {
-        for (index, title) in ["Left → Right", "Both Directions", "Right → Left"].enumerated() {
+        let directions = [
+            String(
+                localized: "Left → Right",
+                comment: "Sync direction: mirror the left folder onto the right."
+            ),
+            String(localized: "Both Directions", comment: "Sync direction: reconcile both folders."),
+            String(
+                localized: "Right → Left",
+                comment: "Sync direction: mirror the right folder onto the left."
+            )
+        ]
+        for (index, title) in directions.enumerated() {
             directionControl.segmentCount = 3
             directionControl.setLabel(title, forSegment: index)
         }
@@ -310,7 +350,14 @@ private extension SyncDirectoriesController {
         directionControl.target = self
         directionControl.action = #selector(directionChanged(_:))
 
-        for (index, title) in ["Size & Date", "Content"].enumerated() {
+        let comparisons = [
+            String(
+                localized: "Size & Date",
+                comment: "Sync comparison method: compare by size and modification date."
+            ),
+            String(localized: "Content", comment: "Sync comparison method: compare byte-for-byte.")
+        ]
+        for (index, title) in comparisons.enumerated() {
             comparisonControl.segmentCount = 2
             comparisonControl.setLabel(title, forSegment: index)
         }
@@ -318,15 +365,34 @@ private extension SyncDirectoriesController {
         comparisonControl.target = self
         comparisonControl.action = #selector(comparisonChanged(_:))
 
-        let hint = label("Right-click a row to change its action")
+        let hint = label(String(
+            localized: "Right-click a row to change its action",
+            comment: "Sync sheet hint above the diff table."
+        ))
         hint.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         hint.textColor = .tertiaryLabelColor
         hint.lineBreakMode = .byTruncatingTail
+        // The hint is the one element that yields: a longer translation of the controls (Russian's
+        // are far wider than English's) must truncate the hint away rather than collapse the
+        // direction control to an unreadable "…". The controls keep the stock 750 resistance.
+        hint.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
         let row = NSStackView(views: [
-            label("Direction:"), directionControl,
+            label(
+                String(
+                    localized: "Direction:",
+                    comment: "Sync sheet label before the direction control."
+                )
+            ),
+            directionControl,
             spacer(width: 16),
-            label("Compare by:"), comparisonControl,
+            label(
+                String(
+                    localized: "Compare by:",
+                    comment: "Sync sheet label before the comparison-method control."
+                )
+            ),
+            comparisonControl,
             spacer(width: 0), hint
         ])
         row.orientation = .horizontal
@@ -337,7 +403,14 @@ private extension SyncDirectoriesController {
 
     func makeTable() -> NSView {
         addColumn("include", title: "", width: 26)
-        addColumn("name", title: "Item", width: 300)
+        addColumn(
+            "name",
+            title: String(
+                localized: "Item",
+                comment: "Sync diff table column header: the item's relative path."
+            ),
+            width: 300
+        )
         addColumn("left", title: leftDir.lastComponent, width: 130)
         addColumn("action", title: "", width: 60)
         addColumn("right", title: rightDir.lastComponent, width: 130)
@@ -383,11 +456,18 @@ private extension SyncDirectoriesController {
         statusLabel.textColor = .secondaryLabelColor
         statusLabel.lineBreakMode = .byTruncatingTail
 
-        let cancelButton = NSButton(title: "Cancel", target: self, action: #selector(cancel(_:)))
+        let cancelButton = NSButton(
+            title: String(localized: "Cancel", comment: "Dismiss button."),
+            target: self,
+            action: #selector(cancel(_:))
+        )
         cancelButton.bezelStyle = .rounded
         cancelButton.keyEquivalent = "\u{1b}" // Esc
 
-        syncButton.title = "Synchronize"
+        syncButton.title = String(
+            localized: "Synchronize",
+            comment: "Confirm button of the sync delete prompt and the sync sheet."
+        )
         syncButton.bezelStyle = .rounded
         syncButton.keyEquivalent = "\r"
         syncButton.target = self

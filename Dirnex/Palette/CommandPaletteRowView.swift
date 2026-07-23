@@ -64,7 +64,7 @@ final class CommandPaletteRowView: NSTableCellView {
             offsets: match.titleMatchOffsets,
             selected: selected
         )
-        categoryLabel.stringValue = match.command.category.title.uppercased()
+        categoryLabel.stringValue = match.command.category.localizedTitle.uppercased()
         shortcutLabel.stringValue = shortcut?.display ?? ""
 
         categoryLabel.textColor = selected ? .white.withAlphaComponent(0.7) : .tertiaryLabelColor

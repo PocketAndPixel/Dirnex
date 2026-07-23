@@ -47,16 +47,33 @@ extension PanelViewController {
         // the merged iCloud listing, the CloudDocs container the merge is built on (PLAN.md §M9).
         guard let target = writeDirectory else { return }
         let alert = NSAlert()
-        alert.messageText = "New Folder"
+        alert.messageText = String(
+            localized: "New Folder",
+            comment: "Title of the New Folder dialog."
+        )
         // Named for what the pane shows, not for the directory underneath: "iCloud Drive", not
         // "com~apple~CloudDocs", which is a folder the user has never heard of.
-        alert.informativeText = "Create a folder in “\(panel.path.lastComponent)”."
-        alert.addButton(withTitle: "Create")
-        alert.addButton(withTitle: "Cancel")
+        alert.informativeText = String(
+            localized: "Create a folder in “\(panel.path.lastComponent)”.",
+            comment: "New Folder dialog body; %@ is the containing folder name."
+        )
+        alert.addButton(
+            withTitle: String(
+                localized: "Create",
+                comment: "Confirm button of the New Folder dialog."
+            )
+        )
+        alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
 
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
-        field.stringValue = "untitled folder"
-        field.placeholderString = "Folder name"
+        field.stringValue = String(
+            localized: "untitled folder",
+            comment: "Default name prefilled in the New Folder dialog."
+        )
+        field.placeholderString = String(
+            localized: "Folder name",
+            comment: "Placeholder in the New Folder name field."
+        )
         alert.accessoryView = field
         alert.window.initialFirstResponder = field
 
@@ -77,8 +94,14 @@ extension PanelViewController {
         guard !name.isEmpty else { return } // an empty name is a silent cancel
         guard !name.contains("/") else {
             presentOperationFailure(
-                message: "Can’t create the folder",
-                detail: "Folder names can’t contain the “/” character."
+                message: String(
+                    localized: "Can’t create the folder",
+                    comment: "New Folder failure title for an invalid name."
+                ),
+                detail: String(
+                    localized: "Folder names can’t contain the “/” character.",
+                    comment: "New Folder failure detail: slash in name."
+                )
             )
             return
         }
@@ -95,7 +118,10 @@ extension PanelViewController {
                 host?.recordUndoableAction(.newFolder(at: target))
             } catch {
                 presentOperationFailure(
-                    message: "Can’t create “\(name)”",
+                    message: String(
+                        localized: "Can’t create “\(name)”",
+                        comment: "New Folder failure title; %@ is the folder name."
+                    ),
                     detail: describe(error)
                 )
             }
@@ -153,11 +179,25 @@ extension PanelViewController {
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = targets.count == 1
-            ? "Move “\(targets[0].name)” to the Trash?"
-            : "Move \(targets.count) items to the Trash?"
-        alert.informativeText = "You can restore items from the Trash later."
-        alert.addButton(withTitle: "Move to Trash")
-        alert.addButton(withTitle: "Cancel")
+            ? String(
+                localized: "Move “\(targets[0].name)” to the Trash?",
+                comment: "Trash confirmation for a single item; %@ is its name."
+            )
+            : String(
+                localized: "Move \(targets.count) items to the Trash?",
+                comment: "Trash confirmation for several items; %lld is the count."
+            )
+        alert.informativeText = String(
+            localized: "You can restore items from the Trash later.",
+            comment: "Trash confirmation body."
+        )
+        alert.addButton(
+            withTitle: String(
+                localized: "Move to Trash",
+                comment: "Confirm button on the Trash confirmation."
+            )
+        )
+        alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
 
         let handler: (NSApplication.ModalResponse) -> Void = { response in
             if response == .alertFirstButtonReturn { proceed() }
@@ -176,11 +216,25 @@ extension PanelViewController {
         let alert = NSAlert()
         alert.alertStyle = .critical
         alert.messageText = targets.count == 1
-            ? "Delete “\(targets[0].name)” permanently?"
-            : "Delete \(targets.count) items permanently?"
-        alert.informativeText = "This can’t be undone."
-        alert.addButton(withTitle: "Delete")
-        alert.addButton(withTitle: "Cancel")
+            ? String(
+                localized: "Delete “\(targets[0].name)” permanently?",
+                comment: "Permanent-delete confirmation for a single item; %@ is its name."
+            )
+            : String(
+                localized: "Delete \(targets.count) items permanently?",
+                comment: "Permanent-delete confirmation for several items; %lld is the count."
+            )
+        alert.informativeText = String(
+            localized: "This can’t be undone.",
+            comment: "Warning that an action is irreversible."
+        )
+        alert.addButton(
+            withTitle: String(
+                localized: "Delete",
+                comment: "Confirm button on the permanent-delete confirmation."
+            )
+        )
+        alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
 
         let handler: (NSApplication.ModalResponse) -> Void = { response in
             if response == .alertFirstButtonReturn { proceed() }
@@ -233,10 +287,33 @@ extension PanelViewController {
     }
 
     private func presentDeletionFailures(_ failures: [OperationFailure], permanent: Bool) {
-        let verb = permanent ? "delete" : "move to Trash"
-        let message = failures.count == 1
-            ? "Couldn’t \(verb) “\(failures[0].path.lastComponent)”"
-            : "Couldn’t \(verb) \(failures.count) items"
+        // Whole sentences per branch rather than a spliced verb: `"Couldn’t \(verb)…"` reads wrong
+        // in a language that inflects the object or reorders the clause (docs/NOTES.md).
+        let name = failures[0].path.lastComponent
+        let count = failures.count
+        let single = count == 1
+        let message: String
+        if permanent {
+            message = single
+                ? String(
+                    localized: "Couldn’t delete “\(name)”",
+                    comment: "Permanent-delete failure for one item; %@ is its name."
+                )
+                : String(
+                    localized: "Couldn’t delete \(count) items",
+                    comment: "Permanent-delete failure for several items; %lld is the count."
+                )
+        } else {
+            message = single
+                ? String(
+                    localized: "Couldn’t move “\(name)” to the Trash",
+                    comment: "Move-to-Trash failure for one item; %@ is its name."
+                )
+                : String(
+                    localized: "Couldn’t move \(count) items to the Trash",
+                    comment: "Move-to-Trash failure for several items; %lld is the count."
+                )
+        }
         presentOperationFailure(message: message, detail: describe(failures[0].error))
     }
 
@@ -295,7 +372,7 @@ extension PanelViewController {
         alert.alertStyle = .warning
         alert.messageText = message
         alert.informativeText = detail
-        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))
         alert.enableEscapeToCancel()
         if let window = view.window {
             alert.beginSheetModal(for: window)

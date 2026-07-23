@@ -22,8 +22,8 @@ extension PanelViewController {
         // The other pane must be a real, writable on-disk folder to receive the extracted files.
         guard destination.backend == .local, destPane.backend.capabilities.contains(.write) else {
             presentOperationFailure(
-                message: "Can’t extract here",
-                detail: "Open a folder on disk in the other panel first."
+                message: String(localized: "Can’t extract here"),
+                detail: String(localized: "Open a folder on disk in the other panel first.")
             )
             return
         }
@@ -45,8 +45,10 @@ extension PanelViewController {
 
                 guard !localSources.isEmpty else {
                     presentOperationFailure(
-                        message: "Couldn’t extract the selected items",
-                        detail: "The archive may be damaged or the items may be missing."
+                        message: String(localized: "Couldn’t extract the selected items"),
+                        detail: String(
+                            localized: "The archive may be damaged or the items may be missing."
+                        )
                     )
                     return
                 }
@@ -58,7 +60,7 @@ extension PanelViewController {
                 focusTable()
             } catch {
                 presentOperationFailure(
-                    message: "Couldn’t extract from the archive",
+                    message: String(localized: "Couldn’t extract from the archive"),
                     detail: describe(error)
                 )
             }

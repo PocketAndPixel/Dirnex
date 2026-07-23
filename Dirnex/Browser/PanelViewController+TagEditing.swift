@@ -78,7 +78,7 @@ extension PanelViewController {
         if !offered.isEmpty { items.append(.separator()) }
 
         let newTag = NSMenuItem(
-            title: "New Tag…",
+            title: String(localized: "New Tag…", comment: "Tag menu: create a brand-new tag."),
             action: #selector(promptForNewTag(_:)),
             keyEquivalent: ""
         )
@@ -86,7 +86,10 @@ extension PanelViewController {
         items.append(newTag)
 
         let clear = NSMenuItem(
-            title: "Remove All Tags",
+            title: String(
+                localized: "Remove All Tags",
+                comment: "Tag menu: strip every tag from the targets."
+            ),
             action: #selector(removeAllTags(_:)),
             keyEquivalent: ""
         )
@@ -205,7 +208,13 @@ extension PanelViewController {
                 return nil
             }.value
             if let failure {
-                presentOperationFailure(message: "Couldn’t change tags", detail: failure)
+                presentOperationFailure(
+                    message: String(
+                        localized: "Couldn’t change tags",
+                        comment: "Tag-change failure alert title."
+                    ),
+                    detail: failure
+                )
             }
             refreshTagsAfterEdit()
         }
@@ -215,17 +224,27 @@ extension PanelViewController {
     /// is the user's to make (see this file's header).
     private func presentNewTagPrompt(completion: @escaping (FinderTag) -> Void) {
         let alert = NSAlert()
-        alert.messageText = "New Tag"
-        alert.informativeText = "Name the tag and choose the colour it will be introduced in."
-        alert.addButton(withTitle: "Add")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(localized: "New Tag", comment: "Title of the new-tag dialog.")
+        alert.informativeText = String(
+            localized: "Name the tag and choose the colour it will be introduced in.",
+            comment: "New-tag dialog body."
+        )
+        alert.addButton(
+            withTitle: String(localized: "Add", comment: "Button that creates the new tag.")
+        )
+        alert.addButton(
+            withTitle: String(localized: "Cancel", comment: "Button that dismisses a dialog.")
+        )
         alert.enableEscapeToCancel()
 
         let field = NSTextField(frame: NSRect(x: 0, y: 32, width: 260, height: 24))
-        field.placeholderString = "Tag name"
+        field.placeholderString = String(
+            localized: "Tag name",
+            comment: "Placeholder in the new-tag name field."
+        )
         let colors = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
         for color in FinderTagColor.allCases {
-            colors.addItem(withTitle: color.title)
+            colors.addItem(withTitle: LocalizedCatalog.title(for: color))
             colors.lastItem?.image = TagDotStyle.menuImage(for: color)
         }
         // The closed button draws the selected item's dot hard against its name; the open list gets

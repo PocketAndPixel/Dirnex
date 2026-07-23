@@ -39,7 +39,10 @@ final class GitBranchChipView: NSView {
 
         icon.image = NSImage(
             systemSymbolName: "arrow.triangle.branch",
-            accessibilityDescription: "Git branch"
+            accessibilityDescription: String(
+                localized: "Git branch",
+                comment: "Accessibility label for the branch glyph in the path bar."
+            )
         )
         icon.contentTintColor = .secondaryLabelColor
         icon.imageScaling = .scaleProportionallyDown
@@ -83,10 +86,23 @@ final class GitBranchChipView: NSView {
         toolTip = Self.toolTip(for: branch)
     }
 
+    /// What to print where a branch name goes. A detached `HEAD` has no name, and the stand-in is a
+    /// *word* — so it lives here rather than on `GitBranch`, where it was a core literal reached
+    /// through a variable and rendered English inside this very tooltip (PLAN.md §M12 Slice 11).
+    private static func displayName(for branch: GitBranch) -> String {
+        branch.name ?? String(
+            localized: "detached HEAD",
+            comment: """
+            Stands in for the branch name in the Git chip when HEAD is not on a branch. Lower case: \
+            it sits inline where a branch name would, unlike the tooltip's "Detached HEAD".
+            """
+        )
+    }
+
     /// `Dev`, or `Dev ↑2↓1` when it has drifted from its upstream. The arrows are the one piece of
     /// shorthand here, and they are the same ones `git status`'s own long form spells out.
     static func text(for branch: GitBranch) -> String {
-        var text = branch.displayName
+        var text = displayName(for: branch)
         if branch.ahead > 0 {
             text += " ↑\(branch.ahead)"
         }
@@ -99,18 +115,41 @@ final class GitBranchChipView: NSView {
     /// The long form, for the hover the shorthand earns: what the arrows meant, and which upstream
     /// they were measured against.
     static func toolTip(for branch: GitBranch) -> String {
-        var lines = [branch.isDetached ? "Detached HEAD" : "Branch \(branch.displayName)"]
+        var lines = [
+            branch.isDetached
+                ? String(
+                    localized: "Detached HEAD",
+                    comment: "Git branch tooltip: HEAD is not on a branch."
+                )
+                : String(
+                    localized: "Branch \(displayName(for: branch))",
+                    comment: "Git branch tooltip; %@ is the branch name."
+                )
+        ]
         if branch.hasNoCommits {
-            lines.append("No commits yet")
+            lines.append(String(
+                localized: "No commits yet",
+                comment: "Git branch tooltip: the branch has no commits."
+            ))
         }
         if let upstream = branch.upstream {
-            lines.append("Tracking \(upstream)")
+            lines.append(String(
+                localized: "Tracking \(upstream)",
+                comment: "Git branch tooltip; %@ is the upstream ref."
+            ))
         }
+        // Catalog plurals rather than a hand-rolled commit/commits (docs/NOTES.md).
         if branch.ahead > 0 {
-            lines.append("\(branch.ahead) commit\(branch.ahead == 1 ? "" : "s") to push")
+            lines.append(String(
+                localized: "\(branch.ahead) commits to push",
+                comment: "Git branch tooltip; %lld commits are ahead of upstream. Plural."
+            ))
         }
         if branch.behind > 0 {
-            lines.append("\(branch.behind) commit\(branch.behind == 1 ? "" : "s") to pull")
+            lines.append(String(
+                localized: "\(branch.behind) commits to pull",
+                comment: "Git branch tooltip; %lld commits are behind upstream. Plural."
+            ))
         }
         return lines.joined(separator: " · ")
     }

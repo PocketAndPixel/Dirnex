@@ -13,7 +13,12 @@ struct QuickViewCaption: Equatable {
     let count: Int
 
     /// "3 of 42" — the position half of the header, rendered beside the name.
-    var positionText: String { "\(position) of \(count)" }
+    var positionText: String {
+        String(
+            localized: "\(position) of \(count)",
+            comment: "Quick View header position readout: %1$lld is the cursor's place, %2$lld the count."
+        )
+    }
 }
 
 /// The name-and-position strip a full-size Quick View draws across its top. A vibrant bar rather

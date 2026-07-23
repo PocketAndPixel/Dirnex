@@ -92,13 +92,16 @@ extension PanelViewController {
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = names.count == 1
-            ? "Replace “\(names[0])” in “\(archiveName)”?"
-            : "Replace \(names.count) items in “\(archiveName)”?"
-        alert.informativeText =
-            "An item with the same name is already in the archive. Replacing rewrites the archive "
-                + "and can’t be undone."
-        alert.addButton(withTitle: "Replace")
-        alert.addButton(withTitle: "Cancel")
+            ? String(localized: "Replace “\(names[0])” in “\(archiveName)”?")
+            : String(localized: "Replace \(names.count) items in “\(archiveName)”?")
+        alert.informativeText = String(
+            localized: """
+            An item with the same name is already in the archive. Replacing rewrites the archive \
+            and can’t be undone.
+            """
+        )
+        alert.addButton(withTitle: String(localized: "Replace"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
 
         let handler: (NSApplication.ModalResponse) -> Void = { response in
             if response == .alertFirstButtonReturn { proceed() }
@@ -140,8 +143,8 @@ extension PanelViewController {
             } catch {
                 presentOperationFailure(
                     message: sources.count == 1
-                        ? "Couldn’t add “\(sources[0].name)”"
-                        : "Couldn’t add \(sources.count) items to “\(name)”",
+                        ? String(localized: "Couldn’t add “\(sources[0].name)”")
+                        : String(localized: "Couldn’t add \(sources.count) items to “\(name)”"),
                     detail: describe(error)
                 )
             }

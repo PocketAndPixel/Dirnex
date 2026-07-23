@@ -90,12 +90,10 @@ struct SFTPTransportTests {
                 "kex_exchange failed"
             )
         )
-        // An empty stderr still yields a usable message.
-        if case let .failure(message) = SFTPTransportError.classify(stderr: "   ") {
-            #expect(!message.isEmpty)
-        } else {
-            Issue.record("expected a .failure for empty stderr")
-        }
+        // A silent server yields an *empty* failure, not a sentence: the payload is the remote's
+        // own words, and the app supplies a localized stand-in when there are none (PLAN.md §M12
+        // Slice 11). Still a `.failure`, so the caller's error path is unchanged.
+        #expect(SFTPTransportError.classify(stderr: "   ") == .failure(""))
     }
 
     // MARK: - SFTPHostKeyChange

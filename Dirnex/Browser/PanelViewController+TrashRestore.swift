@@ -44,8 +44,14 @@ extension PanelViewController {
             let restorable = entries.filter { !$0.isHidden }
             guard !restorable.isEmpty else {
                 presentOperationFailure(
-                    message: "The Trash is empty",
-                    detail: "There is nothing to put back."
+                    message: String(
+                        localized: "The Trash is empty",
+                        comment: "Shown when Put Back is invoked but nothing is there."
+                    ),
+                    detail: String(
+                        localized: "There is nothing to put back.",
+                        comment: "Put-Back detail when the Trash is already empty."
+                    )
                 )
                 return
             }
@@ -60,12 +66,18 @@ extension PanelViewController {
     private func confirmRestoreAll(count: Int, proceed: @escaping () -> Void) {
         let alert = NSAlert()
         alert.alertStyle = .informational
-        alert.messageText = count == 1
-            ? "Put 1 item back?"
-            : "Put \(count) items back?"
-        alert.informativeText = "Each item returns to the folder it was deleted from."
-        alert.addButton(withTitle: "Put Back")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(localized: "Put \(count) items back?")
+        alert.informativeText = String(
+            localized: "Each item returns to the folder it was deleted from.",
+            comment: "Restore-All confirmation body."
+        )
+        alert.addButton(
+            withTitle: String(
+                localized: "Put Back",
+                comment: "Confirm button on the Restore All confirmation."
+            )
+        )
+        alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
         alert.enableEscapeToCancel()
 
         let handler: (NSApplication.ModalResponse) -> Void = { response in
@@ -112,28 +124,56 @@ extension PanelViewController {
         if !outcome.blocked.isEmpty {
             presentOperationFailure(
                 message: outcome.blocked.count == 1
-                    ? "“\(outcome.blocked[0].lastComponent)” is already back"
-                    : "\(outcome.blocked.count) items are already back",
-                detail: "Something with the same name is in the original folder, so it was left in "
-                    + "the Trash rather than replaced."
+                    ? String(
+                        localized: "“\(outcome.blocked[0].lastComponent)” is already back",
+                        comment: "Put-Back result: this item's name already exists at its origin; %@ is the item name."
+                    )
+                    : String(
+                        localized: "\(outcome.blocked.count) items are already back",
+                        comment: "Put-Back result for several blocked items; %lld is the count."
+                    ),
+                detail: String(
+                    localized: """
+                    Something with the same name is in the original folder, so it was left in \
+                    the Trash rather than replaced.
+                    """,
+                    comment: "Put-Back detail: a name collision blocked the restore."
+                )
             )
             return
         }
         if !outcome.unrecorded.isEmpty {
             presentOperationFailure(
                 message: outcome.unrecorded.count == 1
-                    ? "Don’t know where “\(outcome.unrecorded[0].lastComponent)” came from"
-                    : "Don’t know where \(outcome.unrecorded.count) items came from",
-                detail: "macOS records the original folder when an item is trashed, and there is no "
-                    + "record for this one. Drag it out of the Trash instead."
+                    ? String(
+                        localized: "Don’t know where “\(outcome.unrecorded[0].lastComponent)” came from",
+                        comment: "Put-Back result for one item with no recorded origin; %@ is the item name."
+                    )
+                    : String(
+                        localized: "Don’t know where \(outcome.unrecorded.count) items came from",
+                        comment: "Put-Back result for several items with no recorded origin; %lld is the count."
+                    ),
+                detail: String(
+                    localized: """
+                    macOS records the original folder when an item is trashed, and there is no \
+                    record for this one. Drag it out of the Trash instead.
+                    """,
+                    comment: "Put-Back detail: no recorded origin folder."
+                )
             )
             return
         }
         if let error = outcome.firstError, let path = outcome.failed.first {
             presentOperationFailure(
                 message: outcome.failed.count == 1
-                    ? "Couldn’t put “\(path.lastComponent)” back"
-                    : "Couldn’t put \(outcome.failed.count) items back",
+                    ? String(
+                        localized: "Couldn’t put “\(path.lastComponent)” back",
+                        comment: "Put-Back failure for one item; %@ is the item name."
+                    )
+                    : String(
+                        localized: "Couldn’t put \(outcome.failed.count) items back",
+                        comment: "Put-Back failure for several items; %lld is the count."
+                    ),
                 detail: describe(error)
             )
         }

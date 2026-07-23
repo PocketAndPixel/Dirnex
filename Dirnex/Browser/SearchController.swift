@@ -34,18 +34,63 @@ final class SearchController: NSViewController {
     private let findButton = NSButton()
 
     private let kindOptions: [(title: String, kind: SearchKind?)] =
-        [("Any kind", nil)] + SearchKind.allCases.map { ($0.title, $0) }
+        [
+            (
+                String(
+                    localized: "Any kind",
+                    comment: "Find Files: the Kind popup's no-filter option."
+                ),
+                nil
+            )
+        ]
+        + SearchKind.allCases.map { (LocalizedCatalog.title(for: $0), $0) }
 
     private let sizeOptions: [(title: String, bytes: Int64?)] = [
-        ("Any size", nil),
-        ("Larger than 1 MB", 1_048_576),
-        ("Larger than 10 MB", 10_485_760),
-        ("Larger than 100 MB", 104_857_600),
-        ("Larger than 1 GB", 1_073_741_824)
+        (
+            String(localized: "Any size", comment: "Find Files: the Size popup's no-filter option."),
+            nil
+        ),
+        (
+            String(
+                localized: "Larger than 1 MB",
+                comment: "Find Files: a minimum-size filter option."
+            ),
+            1_048_576
+        ),
+        (
+            String(
+                localized: "Larger than 10 MB",
+                comment: "Find Files: a minimum-size filter option."
+            ),
+            10_485_760
+        ),
+        (
+            String(
+                localized: "Larger than 100 MB",
+                comment: "Find Files: a minimum-size filter option."
+            ),
+            104_857_600
+        ),
+        (
+            String(
+                localized: "Larger than 1 GB",
+                comment: "Find Files: a minimum-size filter option."
+            ),
+            1_073_741_824
+        )
     ]
 
     private let dateOptions: [(title: String, age: SearchAge?)] =
-        [("Any date", nil)] + SearchAge.allCases.map { ($0.title, $0) }
+        [
+            (
+                String(
+                    localized: "Any date",
+                    comment: "Find Files: the Modified popup's no-filter option."
+                ),
+                nil
+            )
+        ]
+        + SearchAge.allCases.map { (LocalizedCatalog.title(for: $0), $0) }
 
     init(currentFolderName: String) {
         self.currentFolderName = currentFolderName
@@ -73,7 +118,7 @@ final class SearchController: NSViewController {
             stack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             stack.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-            container.widthAnchor.constraint(equalToConstant: 460)
+            container.widthAnchor.constraint(equalToConstant: 552)
         ])
         view = container
     }
@@ -89,9 +134,18 @@ final class SearchController: NSViewController {
     }
 
     private func makeControlsGrid() -> NSView {
-        configure(nameField, placeholder: "part of the file name")
-        configure(contentField, placeholder: "text inside the file")
-        configure(tagField, placeholder: "Work, Red — all must match")
+        configure(nameField, placeholder: String(
+            localized: "part of the file name",
+            comment: "Find Files: placeholder in the Name-contains field."
+        ))
+        configure(contentField, placeholder: String(
+            localized: "text inside the file",
+            comment: "Find Files: placeholder in the Content-contains field."
+        ))
+        configure(tagField, placeholder: String(
+            localized: "Work, Red — all must match",
+            comment: "Find Files: placeholder in the Tags field; example tag names, comma-separated."
+        ))
         // Explicitly, through the `NSTokenField`-typed reference: `configure` takes an `NSTextField`,
         // and assigning the delegate through that would go via the superclass's setter.
         tagField.delegate = self
@@ -103,21 +157,33 @@ final class SearchController: NSViewController {
         for (title, _) in kindOptions { kindPopup.addItem(withTitle: title) }
         for (title, _) in sizeOptions { sizePopup.addItem(withTitle: title) }
         for (title, _) in dateOptions { datePopup.addItem(withTitle: title) }
-        scopePopup.addItem(withTitle: "This Folder (“\(currentFolderName)”)")
-        scopePopup.addItem(withTitle: "Everywhere")
+        scopePopup.addItem(withTitle: String(
+            localized: "This Folder (“\(currentFolderName)”)",
+            comment: "Find Files: the Search-in popup option scoping to the current folder; %@ is its name."
+        ))
+        scopePopup.addItem(withTitle: String(
+            localized: "Everywhere",
+            comment: "Find Files: the Search-in popup option searching the whole index."
+        ))
         for popup in [kindPopup, sizePopup, datePopup] {
             popup.target = self
             popup.action = #selector(controlChanged(_:))
         }
 
         let grid = NSGridView(views: [
-            [label("Name contains:"), nameField],
-            [label("Content contains:"), contentField],
-            [label("Tags:"), tagField],
-            [label("Kind:"), kindPopup],
-            [label("Size:"), sizePopup],
-            [label("Modified:"), datePopup],
-            [label("Search in:"), scopePopup]
+            [
+                label(String(localized: "Name contains:", comment: "Find Files: field label.")),
+                nameField
+            ],
+            [
+                label(String(localized: "Content contains:", comment: "Find Files: field label.")),
+                contentField
+            ],
+            [label(String(localized: "Tags:", comment: "Find Files: field label.")), tagField],
+            [label(String(localized: "Kind:", comment: "Find Files: field label.")), kindPopup],
+            [label(String(localized: "Size:", comment: "Find Files: field label.")), sizePopup],
+            [label(String(localized: "Modified:", comment: "Find Files: field label.")), datePopup],
+            [label(String(localized: "Search in:", comment: "Find Files: field label.")), scopePopup]
         ])
         grid.rowSpacing = 8
         grid.columnSpacing = 10
@@ -127,11 +193,18 @@ final class SearchController: NSViewController {
     }
 
     private func makeFooter() -> NSView {
-        let cancelButton = NSButton(title: "Cancel", target: self, action: #selector(cancel(_:)))
+        let cancelButton = NSButton(
+            title: String(localized: "Cancel", comment: "Button that dismisses a dialog."),
+            target: self,
+            action: #selector(cancel(_:))
+        )
         cancelButton.bezelStyle = .rounded
         cancelButton.keyEquivalent = "\u{1b}" // Esc
 
-        findButton.title = "Find"
+        findButton.title = String(
+            localized: "Find",
+            comment: "Find Files: the button that runs the search."
+        )
         findButton.bezelStyle = .rounded
         findButton.keyEquivalent = "\r"
         findButton.target = self
@@ -142,7 +215,7 @@ final class SearchController: NSViewController {
         let footer = NSStackView(views: [spacer, cancelButton, findButton])
         footer.orientation = .horizontal
         footer.spacing = 10
-        footer.widthAnchor.constraint(equalToConstant: 420).isActive = true
+        footer.widthAnchor.constraint(equalToConstant: 512).isActive = true
         return footer
     }
 
@@ -211,7 +284,7 @@ final class SearchController: NSViewController {
         field.placeholderString = placeholder
         field.delegate = self
         field.translatesAutoresizingMaskIntoConstraints = false
-        field.widthAnchor.constraint(equalToConstant: 300).isActive = true
+        field.widthAnchor.constraint(equalToConstant: 360).isActive = true
     }
 }
 

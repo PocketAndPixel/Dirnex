@@ -285,10 +285,16 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         button.imagePosition = .imageOnly
         button.image = NSImage(
             systemSymbolName: "sidebar.leading",
-            accessibilityDescription: "Toggle Sidebar"
+            accessibilityDescription: String(
+                localized: "Toggle Sidebar",
+                comment: "Accessibility label for the sidebar toggle button."
+            )
         )
         button.image?.isTemplate = true
-        button.toolTip = "Hide or show the sidebar"
+        button.toolTip = String(
+            localized: "Hide or show the sidebar",
+            comment: "Tooltip for the sidebar toggle button."
+        )
         button.target = splitViewController
         button.action = #selector(NSSplitViewController.toggleSidebar(_:))
         button.translatesAutoresizingMaskIntoConstraints = false

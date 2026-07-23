@@ -97,11 +97,17 @@ extension PanelViewController {
                 results.entries,
                 truncated: results.truncated,
                 as: ResultsPresentation(
-                    pathSummary: "Recents",
+                    // Stable English identity, not display: the path bar self-names off it
+                    // (`rebuildVirtualLabel`) and the tab title below localizes — the same split the
+                    // Trash makes.
+                    pathSummary: ResultsPresentation.recentsIdentity,
                     sort: RecentsQuery.resultSort,
                     query: nil,
                     scope: nil,
-                    title: "Recents"
+                    title: String(
+                        localized: "Recents",
+                        comment: "Tab title for the Recents listing."
+                    )
                 )
             )
         }
@@ -122,7 +128,7 @@ extension PanelViewController {
             entries,
             truncated: truncated,
             as: ResultsPresentation(
-                pathSummary: query.summary,
+                pathSummary: LocalizedCatalog.summary(of: query),
                 sort: panel.model.sort,
                 query: query,
                 scope: scope,
@@ -144,7 +150,8 @@ extension PanelViewController {
     @objc func saveCurrentSearch(_ sender: Any?) {
         let tab = tabs[activeTabIndex]
         guard let query = tab.searchQuery else { return }
-        guard let name = promptForSavedSearchName(default: query.summaryPlainName) else { return }
+        let prefill = LocalizedCatalog.plainName(of: query)
+        guard let name = promptForSavedSearchName(default: prefill) else { return }
 
         var store = SavedSearchStore.load()
         if store.contains(name: name), !confirmReplaceSavedSearch(named: name) { return }
@@ -161,13 +168,26 @@ extension PanelViewController {
     /// non-empty result or `nil` on cancel / an empty name.
     private func promptForSavedSearchName(default defaultName: String) -> String? {
         let alert = NSAlert()
-        alert.messageText = "Save Search"
-        alert.informativeText = "Give this search a name to keep it in the sidebar and re-run it later."
-        alert.addButton(withTitle: "Save")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(
+            localized: "Save Search",
+            comment: "Title of the save-search dialog."
+        )
+        alert.informativeText = String(
+            localized: "Give this search a name to keep it in the sidebar and re-run it later.",
+            comment: "Save-search dialog body."
+        )
+        alert.addButton(
+            withTitle: String(localized: "Save", comment: "Button that saves the search.")
+        )
+        alert.addButton(
+            withTitle: String(localized: "Cancel", comment: "Button that dismisses a dialog.")
+        )
 
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
-        field.placeholderString = "Search name"
+        field.placeholderString = String(
+            localized: "Search name",
+            comment: "Placeholder in the save-search name field."
+        )
         field.stringValue = defaultName
         alert.accessoryView = field
         alert.window.initialFirstResponder = field
@@ -182,10 +202,23 @@ extension PanelViewController {
     private func confirmReplaceSavedSearch(named name: String) -> Bool {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "Replace “\(name)”?"
-        alert.informativeText = "A saved search named “\(name)” already exists. Replace it?"
-        alert.addButton(withTitle: "Replace")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(
+            localized: "Replace “\(name)”?",
+            comment: "Save-search overwrite confirmation title; %@ is the saved-search name."
+        )
+        alert.informativeText = String(
+            localized: "A saved search named “\(name)” already exists. Replace it?",
+            comment: "Save-search overwrite confirmation body; %@ is the saved-search name."
+        )
+        alert.addButton(
+            withTitle: String(
+                localized: "Replace",
+                comment: "Button that overwrites the existing item."
+            )
+        )
+        alert.addButton(
+            withTitle: String(localized: "Cancel", comment: "Button that dismisses a dialog.")
+        )
         return alert.runModal() == .alertFirstButtonReturn
     }
 }

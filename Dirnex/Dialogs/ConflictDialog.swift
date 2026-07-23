@@ -32,18 +32,22 @@ enum ConflictDialog {
         let alert = NSAlert()
         alert.alertStyle = .warning
         let folder = context.existing.path.parent?.lastComponent ?? ""
-        alert.messageText = "“\(context.source.name)” already exists in “\(folder)”"
-        alert.informativeText = "An item with the same name is already here. Choose how to resolve it."
+        alert.messageText = String(
+            localized: "“\(context.source.name)” already exists in “\(folder)”"
+        )
+        alert.informativeText = String(
+            localized: "An item with the same name is already here. Choose how to resolve it."
+        )
         alert.accessoryView = accessory
         alert.showsSuppressionButton = true
-        alert.suppressionButton?.title = "Apply to all remaining conflicts"
+        alert.suppressionButton?.title = String(localized: "Apply to all remaining conflicts")
 
         // Order (and response mapping) mirror the earlier single-policy prompt for parity.
-        alert.addButton(withTitle: "Replace")
-        alert.addButton(withTitle: "Keep Both")
-        alert.addButton(withTitle: "Skip")
-        alert.addButton(withTitle: "Replace If Newer")
-        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: String(localized: "Replace"))
+        alert.addButton(withTitle: String(localized: "Keep Both"))
+        alert.addButton(withTitle: String(localized: "Skip"))
+        alert.addButton(withTitle: String(localized: "Replace If Newer"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
 
         let response = await runAlert(alert, in: window)
         let applyToAll = alert.suppressionButton?.state == .on

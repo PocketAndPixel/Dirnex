@@ -42,7 +42,7 @@ extension PanelViewController {
     func invertMarks() {
         let previousMarks = panel.selection
         panel.invertSelection()
-        recordMarkChange(since: previousMarks, label: "Invert Selection")
+        recordMarkChange(since: previousMarks, label: .invertSelection)
         redrawAfterSelectionChange()
     }
 
@@ -54,10 +54,29 @@ extension PanelViewController {
     /// into one keystroke and Return.
     private func promptForPatternSelection(deselect: Bool) {
         let alert = NSAlert()
-        alert.messageText = deselect ? "Unselect Files" : "Select Files"
-        alert.informativeText = "Enter a wildcard pattern (for example “*.jpg”)."
-        alert.addButton(withTitle: deselect ? "Unselect" : "Select")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = deselect
+            ? String(
+                localized: "Unselect Files",
+                comment: "Title of the wildcard-pattern dialog when removing files from the selection."
+            )
+            : String(
+                localized: "Select Files",
+                comment: "Title of the wildcard-pattern dialog when adding files to the selection."
+            )
+        alert.informativeText = String(
+            localized: "Enter a wildcard pattern (for example “*.jpg”).",
+            comment: "Wildcard-selection dialog body."
+        )
+        alert.addButton(withTitle: deselect
+            ? String(
+                localized: "Unselect",
+                comment: "Confirm button of the wildcard dialog when removing files from the selection."
+            )
+            : String(
+                localized: "Select",
+                comment: "Confirm button of the wildcard dialog when adding files to the selection."
+            ))
+        alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
 
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
         field.stringValue = defaultSelectionPattern()
@@ -97,7 +116,7 @@ extension PanelViewController {
         } else {
             panel.selectMatching(pattern)
         }
-        recordMarkChange(since: previousMarks, label: deselect ? "Unselect Files" : "Select Files")
+        recordMarkChange(since: previousMarks, label: deselect ? .unselectFiles : .selectFiles)
         redrawAfterSelectionChange()
     }
 

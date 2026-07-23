@@ -61,7 +61,11 @@ struct CopySelectionInDirnexIntent: AppIntent {
     func perform() async throws -> some IntentResult {
         guard let window = Scripting.activeWindow else { throw DirnexIntentError.noWindow }
         guard window.runCommand(id: "file.copy") else {
-            throw DirnexIntentError.couldNotRun("Copy to Other Panel")
+            // The registry's own translated title, not a second English copy of it — a display
+            // string that exists twice gets localized once (docs/NOTES.md).
+            throw DirnexIntentError.couldNotRun(
+                LocalizedCatalog.command(for: "file.copy")?.title ?? "file.copy"
+            )
         }
         return .result()
     }
@@ -130,13 +134,24 @@ enum DirnexIntentError: Swift.Error, CustomLocalizedStringResourceConvertible {
     var localizedStringResource: LocalizedStringResource {
         switch self {
         case .noWindow:
-            return "\(Scripting.noWindowMessage)"
+            // Handed over whole, not interpolated: `"\(someString)"` builds the key `"%@"`, so the
+            // sentence itself would never be extracted or translated (docs/NOTES.md).
+            return Scripting.noWindowMessage
         case .notOnDisk:
-            return "That file has no location on disk, so there is nothing to reveal."
+            return LocalizedStringResource(
+                "That file has no location on disk, so there is nothing to reveal.",
+                comment: "Shortcuts error when the file handed to Reveal in Dirnex is not on disk."
+            )
         case let .notRevealable(name):
-            return "“\(name)” is not a file Dirnex can reveal."
+            return LocalizedStringResource(
+                "“\(name)” is not a file Dirnex can reveal.",
+                comment: "Shortcuts error for an unrevealable path; %@ is the file name."
+            )
         case let .couldNotRun(name):
-            return "“\(name)” could not be run."
+            return LocalizedStringResource(
+                "“\(name)” could not be run.",
+                comment: "Shortcuts error when an operation could not be dispatched; %@ is its name."
+            )
         }
     }
 }

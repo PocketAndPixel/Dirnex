@@ -27,29 +27,49 @@ extension SidebarViewController {
     static let savedSearchIcon = templateSymbol(
         "magnifyingglass",
         pointSize: 14,
-        describedAs: "Saved search"
+        describedAs: String(
+            localized: "Saved search",
+            comment: "Accessibility label for a saved-search sidebar row's glyph."
+        )
     )
 
     /// A tooltip describing where a saved search runs — the scope folder, or "Everywhere".
     private func savedSearchTooltip(_ search: SavedSearch) -> String {
-        guard let scope = search.scope else { return "Search everywhere" }
-        return "Search in “\(scope.lastComponent)”"
+        guard let scope = search.scope else {
+            return String(
+                localized: "Search everywhere",
+                comment: "Tooltip on a saved search with no scope folder — it searches the whole Mac."
+            )
+        }
+        return String(
+            localized: "Search in “\(scope.lastComponent)”",
+            comment: "Tooltip on a scoped saved search; %@ is the scope folder's name."
+        )
     }
 
     // MARK: - Right-click menu
 
     /// Populate `menu` with the Run / Rename / Delete items for `search`.
     func buildSavedSearchMenu(_ menu: NSMenu, for search: SavedSearch) {
-        menu.addItem(
-            savedSearchMenuItem("Run Search", #selector(runSavedSearchItem(_:)), search.name)
-        )
+        menu.addItem(savedSearchMenuItem(
+            String(
+                localized: "Run Search",
+                comment: "Saved-search context-menu item: run the query."
+            ),
+            #selector(runSavedSearchItem(_:)),
+            search.name
+        ))
         menu.addItem(.separator())
-        menu.addItem(
-            savedSearchMenuItem("Rename…", #selector(renameSavedSearchItem(_:)), search.name)
-        )
-        menu.addItem(
-            savedSearchMenuItem("Delete", #selector(deleteSavedSearchItem(_:)), search.name)
-        )
+        menu.addItem(savedSearchMenuItem(
+            String(localized: "Rename…", comment: "Saved-search context-menu item: rename it."),
+            #selector(renameSavedSearchItem(_:)),
+            search.name
+        ))
+        menu.addItem(savedSearchMenuItem(
+            String(localized: "Delete", comment: "Saved-search context-menu item: delete it."),
+            #selector(deleteSavedSearchItem(_:)),
+            search.name
+        ))
     }
 
     /// One management item, carrying the search's *name* so a mid-open store change can't act
@@ -88,10 +108,19 @@ extension SidebarViewController {
     func confirmDeleteSavedSearch(named name: String) {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "Delete “\(name)”?"
-        alert.informativeText = "This removes the saved search from the sidebar. No files are deleted."
-        alert.addButton(withTitle: "Delete")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(
+            localized: "Delete “\(name)”?",
+            comment: "Saved-search delete confirmation title; %@ is the search's name."
+        )
+        alert.informativeText = String(
+            localized: "This removes the saved search from the sidebar. No files are deleted.",
+            comment: "Body of the delete-saved-search confirmation."
+        )
+        alert.addButton(withTitle: String(
+            localized: "Delete",
+            comment: "Confirm button that deletes a saved search."
+        ))
+        alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
 
         let commit = { [weak self] (response: NSApplication.ModalResponse) in
             guard response == .alertFirstButtonReturn else { return }
@@ -109,9 +138,14 @@ extension SidebarViewController {
     /// Ask for a new name, prefilled with the current one; `nil` on cancel or an empty name.
     private func promptForSavedSearchRename(current: String) -> String? {
         let alert = NSAlert()
-        alert.messageText = "Rename Saved Search"
-        alert.addButton(withTitle: "Rename")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(
+            localized: "Rename Saved Search",
+            comment: "Title of the dialog that renames a saved search."
+        )
+        alert.addButton(
+            withTitle: String(localized: "Rename", comment: "Confirm button of a rename dialog.")
+        )
+        alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
 
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
         field.stringValue = current
@@ -128,8 +162,14 @@ extension SidebarViewController {
     private func presentSavedSearchRenameCollision(_ name: String) {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "“\(name)” is already taken"
-        alert.informativeText = "Another saved search already uses that name. Pick a different one."
+        alert.messageText = String(
+            localized: "“\(name)” is already taken",
+            comment: "Rename-collision title; %@ is the name the user typed."
+        )
+        alert.informativeText = String(
+            localized: "Another saved search already uses that name. Pick a different one.",
+            comment: "Body of the saved-search rename-collision alert."
+        )
         if let window = view.window {
             alert.beginSheetModal(for: window)
         } else {

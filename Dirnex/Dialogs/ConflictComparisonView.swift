@@ -12,13 +12,15 @@ final class ConflictComparisonView: NSView {
         let existingNewer = context.existing.modificationDate > context.source.modificationDate
 
         let source = Self.card(
-            title: context.kind == .copy ? "New (copying in)" : "New (moving in)",
+            title: context.kind == .copy
+                ? String(localized: "New (copying in)")
+                : String(localized: "New (moving in)"),
             entry: context.source,
             thumbnail: sourceThumbnail,
             dateIsNewer: sourceNewer
         )
         let existing = Self.card(
-            title: "Already here",
+            title: String(localized: "Already here"),
             entry: context.existing,
             thumbnail: existingThumbnail,
             dateIsNewer: existingNewer
@@ -70,12 +72,14 @@ final class ConflictComparisonView: NSView {
         name.maximumNumberOfLines = 2
         name.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
-        let detail = entry.isDirectoryLike ? "Folder" : FileFormatting.byteString(entry.byteSize)
+        let detail = entry.isDirectoryLike
+            ? String(localized: "Folder")
+            : FileFormatting.byteString(entry.byteSize)
         let size = label(detail, size: 11, weight: .regular, color: .secondaryLabelColor)
 
         let dateText = FileFormatting.dateString(for: entry)
         let date = label(
-            dateIsNewer ? "\(dateText) · newer" : dateText,
+            dateIsNewer ? String(localized: "\(dateText) · newer") : dateText,
             size: 11,
             weight: dateIsNewer ? .semibold : .regular,
             color: dateIsNewer ? .controlAccentColor : .secondaryLabelColor

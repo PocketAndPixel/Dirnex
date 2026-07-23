@@ -55,7 +55,11 @@ final class TabBarView: NSView {
         stack.translatesAutoresizingMaskIntoConstraints = false
 
         newButton.image = NSImage(
-            systemSymbolName: "plus", accessibilityDescription: "New Tab"
+            systemSymbolName: "plus",
+            accessibilityDescription: String(
+                localized: "New Tab",
+                comment: "Accessibility label for the new-tab (+) button in a pane's tab strip."
+            )
         )
         newButton.imageScaling = .scaleProportionallyDown
         newButton.isBordered = false
@@ -65,7 +69,10 @@ final class TabBarView: NSView {
         newButton.contentTintColor = .secondaryLabelColor
         newButton.target = self
         newButton.action = #selector(newTabClicked)
-        newButton.toolTip = "New Tab (⌘T)"
+        newButton.toolTip = String(
+            localized: "New Tab (⌘T)",
+            comment: "Tooltip on the new-tab (+) button; ⌘T is the keyboard shortcut."
+        )
 
         addSubview(stack)
         NSLayoutConstraint.activate([
@@ -162,7 +169,13 @@ final class TabChipView: NSView {
         label.translatesAutoresizingMaskIntoConstraints = false
         label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
-        closeButton.image = NSImage(systemSymbolName: "xmark", accessibilityDescription: "Close Tab")
+        closeButton.image = NSImage(
+            systemSymbolName: "xmark",
+            accessibilityDescription: String(
+                localized: "Close Tab",
+                comment: "Accessibility label for a tab chip's close (×) button."
+            )
+        )
         closeButton.imageScaling = .scaleProportionallyDown
         closeButton.isBordered = false
         closeButton.bezelStyle = .inline
@@ -172,7 +185,10 @@ final class TabChipView: NSView {
         closeButton.target = self
         closeButton.action = #selector(closeClicked)
         closeButton.translatesAutoresizingMaskIntoConstraints = false
-        closeButton.toolTip = "Close Tab (⌘W)"
+        closeButton.toolTip = String(
+            localized: "Close Tab (⌘W)",
+            comment: "Tooltip on a tab chip's close (×) button; ⌘W is the keyboard shortcut."
+        )
 
         addSubview(label)
         addSubview(closeButton)

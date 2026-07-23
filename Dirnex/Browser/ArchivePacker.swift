@@ -33,7 +33,7 @@ enum ArchivePacker {
         do {
             try process.run()
         } catch {
-            throw VFSError.unsupported("Couldn’t run bsdtar to create the archive.")
+            throw VFSError.unsupported(.archiveToolUnavailableForCreate)
         }
         process.waitUntilExit()
 
@@ -43,7 +43,7 @@ enum ArchivePacker {
               FileManager.default.fileExists(atPath: archiveOnDiskPath) else {
             try? FileManager.default.removeItem(atPath: archiveOnDiskPath)
             let name = (archiveOnDiskPath as NSString).lastPathComponent
-            throw VFSError.unsupported("Couldn’t create the archive “\(name)”.")
+            throw VFSError.unsupported(.archiveCreateFailed(archive: name))
         }
     }
 }

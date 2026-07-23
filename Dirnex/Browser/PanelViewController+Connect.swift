@@ -163,7 +163,10 @@ extension PanelViewController {
                     return
                 }
                 presentOperationFailure(
-                    message: "Couldn’t connect to “\(location.host)”.",
+                    message: String(
+                        localized: "Couldn’t connect to “\(location.host)”.",
+                        comment: "Error when a server connection fails; %@ is the host name."
+                    ),
                     detail: Self.connectFailureDetail(error)
                 )
             }
@@ -177,14 +180,31 @@ extension PanelViewController {
         }
         switch transportError {
         case .notFound:
-            return "The remote path wasn’t found."
+            return String(
+                localized: "The remote path wasn’t found.",
+                comment: "SFTP connect failure detail: the remote path does not exist."
+            )
         case .permissionDenied:
-            return "Permission denied. Check the username and that the key is authorized on the server."
+            return String(
+                localized: "Permission denied. Check the username and that the key is authorized on the server.",
+                comment: "SFTP connect failure detail: authentication was rejected."
+            )
         case let .hostKeyChanged(change):
             // Reached only if a host-key change surfaces outside the connect probe's re-trust flow.
-            return "The server’s host key has changed (new fingerprint \(change.fingerprint))."
+            return String(
+                localized: "The server’s host key has changed (new fingerprint \(change.fingerprint)).",
+                comment: "SFTP connect failure detail; %@ is the new host-key fingerprint."
+            )
         case let .failure(message):
-            return message
+            // The server's own words when it said anything; ours when it said nothing, since
+            // `classify` leaves the payload empty rather than authoring an untranslatable
+            // sentence in the core (PLAN.md §M12 Slice 11).
+            return message.isEmpty
+                ? String(
+                    localized: "The SFTP server reported an error.",
+                    comment: "SFTP connect failure detail when the server gave no reason."
+                )
+                : message
         }
     }
 
@@ -201,11 +221,20 @@ extension PanelViewController {
     ) {
         let alert = NSAlert()
         alert.alertStyle = .critical
-        alert.messageText = "The identity of “\(location.host)” has changed"
+        alert.messageText = String(
+            localized: "The identity of “\(location.host)” has changed",
+            comment: "Host-key-change alert title; %@ is the host name."
+        )
         alert.informativeText = Self.hostKeyChangeDetail(change)
-        // "Cancel" is added first so it's the default (Return / Escape) and rightmost.
-        alert.addButton(withTitle: "Cancel")
-        alert.addButton(withTitle: "Trust New Key & Connect")
+        // "Cancel" is added first so it's the rightmost and answers Escape. AppKit gives it Escape
+        // only in English — it matches the literal string "Cancel" — so name it, or a translated
+        // build leaves this alert with no way out (docs/NOTES.md).
+        alert.addButton(withTitle: String(localized: "Cancel", comment: "Cancel button."))
+        alert.addButton(withTitle: String(
+            localized: "Trust New Key & Connect",
+            comment: "Host-key-change alert: accept the new key and reconnect."
+        ))
+        alert.enableEscapeToCancel(safe: .alertFirstButtonReturn)
 
         let handler: (NSApplication.ModalResponse) -> Void = { response in
             if response == .alertSecondButtonReturn { trust() }
@@ -218,19 +247,37 @@ extension PanelViewController {
     }
 
     private static func hostKeyChangeDetail(_ change: SFTPHostKeyChange) -> String {
-        let keyLabel = change.keyType.isEmpty ? "key" : "\(change.keyType) key"
-        let fingerprint = change.fingerprint.isEmpty ? "(unavailable)" : change.fingerprint
-        return """
-        This server is presenting a different host \(keyLabel) than the one you trusted before. \
-        If you reinstalled the server or pointed a new SFTP app at this address, this is expected — \
-        but it can also mean someone is intercepting the connection (a man-in-the-middle attack).
+        // "key" vs. "RSA key" is composed as its own unit so the surrounding sentence stays one
+        // localizable literal and Russian can reorder "%@ key" → "ключ %@" (docs/NOTES.md).
+        let keyLabel = change.keyType.isEmpty
+            ? String(
+                localized: "key",
+                comment: "Host-key-change body: generic word for the host key."
+            )
+            : String(
+                localized: "\(change.keyType) key",
+                comment: "Host-key-change body; %@ is the key type, e.g. RSA."
+            )
+        let fingerprint = change.fingerprint.isEmpty
+            ? String(
+                localized: "(unavailable)",
+                comment: "Shown in place of a host-key fingerprint that couldn’t be read."
+            )
+            : change.fingerprint
+        return String(
+            localized: """
+            This server is presenting a different host \(keyLabel) than the one you trusted before. \
+            If you reinstalled the server or pointed a new SFTP app at this address, this is expected — \
+            but it can also mean someone is intercepting the connection (a man-in-the-middle attack).
 
-        New fingerprint:
-        \(fingerprint)
+            New fingerprint:
+            \(fingerprint)
 
-        Only continue if you recognize this fingerprint. Trusting it replaces the old key so future \
-        connections to this server succeed.
-        """
+            Only continue if you recognize this fingerprint. Trusting it replaces the old key so future \
+            connections to this server succeed.
+            """,
+            comment: "Host-key-change alert body; %1$@ is the key label, %2$@ the fingerprint."
+        )
     }
 
     /// Drop the stale `known_hosts` pin (via `ssh-keygen -R`) and reconnect. `StrictHostKeyChecking=
@@ -249,10 +296,19 @@ extension PanelViewController {
                 SFTPKnownHostsRepair.removeKey(target: target, knownHostsFile: file)
             }.value
             guard removed else {
+                let path = file.isEmpty ? "~/.ssh/known_hosts" : file
                 presentOperationFailure(
-                    message: "Couldn’t update the known hosts for “\(location.host)”.",
-                    detail: "The old host key couldn’t be removed automatically. Remove it from "
-                        + "\(file.isEmpty ? "~/.ssh/known_hosts" : file) and try connecting again."
+                    message: String(
+                        localized: "Couldn’t update the known hosts for “\(location.host)”.",
+                        comment: "Error when clearing a stale known_hosts entry fails; %@ is the host."
+                    ),
+                    detail: String(
+                        localized: """
+                        The old host key couldn’t be removed automatically. Remove it from \(path) \
+                        and try connecting again.
+                        """,
+                        comment: "Known-hosts update failure detail; %@ is the known_hosts file path."
+                    )
                 )
                 return
             }
@@ -296,7 +352,10 @@ extension PanelViewController {
                 guard token == loadToken else { return }
                 let detail = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
                 presentOperationFailure(
-                    message: "Couldn’t connect to “\(location.host)”.",
+                    message: String(
+                        localized: "Couldn’t connect to “\(location.host)”.",
+                        comment: "Error when a server connection fails; %@ is the host name."
+                    ),
                     detail: detail
                 )
             }

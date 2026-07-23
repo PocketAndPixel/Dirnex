@@ -99,7 +99,15 @@ extension PathBarView {
     /// walking up out of one of these folders does. That is what makes the merge a place in a chain
     /// instead of somewhere you can only arrive from the sidebar.
     func rebuildICloudCrumbs(_ trail: [ICloudLocation.Step]) {
-        let root = Crumb(title: ICloudLocation.mergedName, target: ICloudLocation.mergedPath)
+        // The crumb's *target* is the core's stable synthetic path; its *title* is the displayed
+        // name, so it localizes rather than borrowing `mergedName`, which is an identity.
+        let root = Crumb(
+            title: String(
+                localized: "iCloud Drive",
+                comment: "Apple's iCloud Drive: the sidebar row, the tab title, and the path bar's root crumb."
+            ),
+            target: ICloudLocation.mergedPath
+        )
         installCrumbs(
             [root] + trail.map { Crumb(title: $0.title, target: $0.directory) },
             leadingSymbol: "icloud"
@@ -149,9 +157,26 @@ extension PathBarView {
     /// it gets a crumb trail (`rebuildICloudCrumbs`) rather than a dead end.
     func rebuildVirtualLabel(for path: VFSPath) {
         if path.backend == .trash {
-            installVirtualLabel("Trash", symbolNamed: "trash")
+            installVirtualLabel(
+                String(localized: "Trash", comment: "Path-bar label for the merged Trash listing."),
+                symbolNamed: "trash"
+            )
+        } else if path.lastComponent == PanelViewController.ResultsPresentation.recentsIdentity {
+            // Recents self-names for the same reason the Trash does: it is a place you visited, not a
+            // search someone ran, so "Results for Recents" would misdescribe it. It matches on the
+            // stable English `pathSummary` identity and carries the `clock` glyph its sidebar row uses.
+            installVirtualLabel(
+                String(localized: "Recents", comment: "Path-bar label for the Recents listing."),
+                symbolNamed: "clock"
+            )
         } else {
-            installVirtualLabel("Results for \(path.lastComponent)", symbolNamed: "magnifyingglass")
+            installVirtualLabel(
+                String(
+                    localized: "Results for \(path.lastComponent)",
+                    comment: "Path-bar label for a search-results snapshot; %@ is the query."
+                ),
+                symbolNamed: "magnifyingglass"
+            )
         }
     }
 

@@ -46,12 +46,28 @@ extension BrowserWindowController {
     private func updateHiddenToggleButton() {
         let showing = AppPreferences.shared.showHidden
         let symbol = showing ? "eye" : "eye.slash"
-        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: "Show hidden files")
+        let image = NSImage(
+            systemSymbolName: symbol,
+            accessibilityDescription: String(
+                localized: "Show hidden files",
+                comment: "Accessibility label for the hidden-files toggle button."
+            )
+        )
         image?.isTemplate = true
         hiddenToggleButton.image = image
         hiddenToggleButton.contentTintColor = showing ? .controlAccentColor : nil
 
-        let action = showing ? "Hide hidden files" : "Show hidden files"
+        // The `(shortcut)` suffix is language-neutral formatting, so — as with the Back/Forward
+        // tooltips — only the action verb is localized, not the composed string.
+        let action = showing
+            ? String(
+                localized: "Hide hidden files",
+                comment: "Hidden-files toggle tooltip when they are showing."
+            )
+            : String(
+                localized: "Show hidden files",
+                comment: "Hidden-files toggle tooltip when they are hidden."
+            )
         if let hint = KeyBindingStore.shared.shortcut(for: "view.toggleHidden")?.display {
             hiddenToggleButton.toolTip = "\(action) (\(hint))"
         } else {

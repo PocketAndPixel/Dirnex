@@ -52,7 +52,7 @@ extension PanelViewController {
         if isParentRow(row) {
             let previousMarks = panel.selection
             panel.clearSelection()
-            recordMarkChange(since: previousMarks, label: "Clear Selection")
+            recordMarkChange(since: previousMarks, label: .clearSelection)
             cursorOnParentRow = true
             renderRefresh()
             return
@@ -64,7 +64,7 @@ extension PanelViewController {
         if panel.isMarked(panel.model[index]) { return }
         let previousMarks = panel.selection
         panel.clearSelection()
-        recordMarkChange(since: previousMarks, label: "Clear Selection")
+        recordMarkChange(since: previousMarks, label: .clearSelection)
         panel.moveCursor(to: index)
         cursorOnParentRow = false
         // `renderRefresh`, not `syncCursorToTable` + `updateChrome`: dropping the marks changes what
@@ -80,7 +80,7 @@ extension PanelViewController {
     private func entryMenu() -> NSMenu {
         let menu = NSMenu()
         let open = NSMenuItem(
-            title: "Open",
+            title: String(localized: "Open", comment: "Context-menu item: open the file or folder."),
             action: #selector(openContextEntry(_:)),
             keyEquivalent: ""
         )
@@ -117,7 +117,7 @@ extension PanelViewController {
         add(["file.putBack"], to: menu)
         menu.addSeparator()
         let open = NSMenuItem(
-            title: "Open",
+            title: String(localized: "Open", comment: "Context-menu item: open the file or folder."),
             action: #selector(openContextEntry(_:)),
             keyEquivalent: ""
         )
@@ -142,10 +142,22 @@ extension PanelViewController {
     /// recoverable one under the pointer first.
     private func trashBackgroundMenu() -> NSMenu {
         let menu = NSMenu()
-        menu.addItem(trashItem("Restore All", #selector(restoreAllFromContextMenu(_:))))
+        menu.addItem(trashItem(
+            String(
+                localized: "Restore All",
+                comment: "Trash context-menu item: put every trashed item back."
+            ),
+            #selector(restoreAllFromContextMenu(_:))
+        ))
         menu.addSeparator()
         // The ellipsis is a promise, as on the sidebar row: this asks before it destroys anything.
-        menu.addItem(trashItem("Empty Trash…", #selector(emptyTrashFromContextMenu(_:))))
+        menu.addItem(trashItem(
+            String(
+                localized: "Empty Trash…",
+                comment: "Trash context-menu item: permanently erase everything, after a prompt."
+            ),
+            #selector(emptyTrashFromContextMenu(_:))
+        ))
         return menu
     }
 
@@ -175,7 +187,15 @@ extension PanelViewController {
     /// right-click time even if a background refresh reshuffles the pane before the click lands.
     private func copyPathItem(for paths: [String]) -> NSMenuItem {
         let item = NSMenuItem(
-            title: paths.count > 1 ? "Copy Paths" : "Copy Path",
+            title: paths.count > 1
+                ? String(
+                    localized: "Copy Paths",
+                    comment: "Context-menu item: copy several file paths to the clipboard."
+                )
+                : String(
+                    localized: "Copy Path",
+                    comment: "Context-menu item: copy the file path to the clipboard."
+                ),
             action: #selector(copyContextPath(_:)),
             keyEquivalent: ""
         )
@@ -189,7 +209,14 @@ extension PanelViewController {
     /// than a second click that replaces it. Rebuilt on open (`NSMenuDelegate`) so it reads the
     /// files rather than a snapshot taken when the parent menu was assembled.
     private func tagsMenuItem() -> NSMenuItem {
-        let item = NSMenuItem(title: "Tags", action: nil, keyEquivalent: "")
+        let item = NSMenuItem(
+            title: String(
+                localized: "Tags",
+                comment: "Context-menu submenu: Finder tags for the file."
+            ),
+            action: nil,
+            keyEquivalent: ""
+        )
         let submenu = NSMenu()
         submenu.identifier = .tagsSubmenu
         submenu.delegate = self
@@ -203,7 +230,14 @@ extension PanelViewController {
     /// list plus its **Manage Scripts…** tail is built by `scriptMenuItems()`, shared with nothing
     /// else, so the right-click submenu and the ⌘K palette run scripts through one code path.
     private func scriptsMenuItem() -> NSMenuItem {
-        let item = NSMenuItem(title: "Scripts", action: nil, keyEquivalent: "")
+        let item = NSMenuItem(
+            title: String(
+                localized: "Scripts",
+                comment: "Context-menu submenu: user scripts to run on the file."
+            ),
+            action: nil,
+            keyEquivalent: ""
+        )
         let submenu = NSMenu()
         submenu.identifier = .scriptsSubmenu
         submenu.delegate = self
@@ -216,7 +250,14 @@ extension PanelViewController {
     /// list costs a round trip to LaunchServices per distinct type in the selection, and a
     /// right-click that never hovers Open With should not pay for it.
     private func openWithMenuItem() -> NSMenuItem {
-        let item = NSMenuItem(title: "Open With", action: nil, keyEquivalent: "")
+        let item = NSMenuItem(
+            title: String(
+                localized: "Open With",
+                comment: "Context-menu submenu: choose which app opens the file."
+            ),
+            action: nil,
+            keyEquivalent: ""
+        )
         let submenu = NSMenu()
         submenu.identifier = .openWithSubmenu
         submenu.delegate = self

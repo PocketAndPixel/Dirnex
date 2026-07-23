@@ -264,7 +264,7 @@ struct MultiRenameTests {
             (original: .local("/dir/a.txt"), renamed: .local("/dir/doc_a.txt")),
             (original: .local("/dir/b.txt"), renamed: .local("/dir/doc_b.txt"))
         ])
-        #expect(record?.label == "Rename")
+        #expect(record?.label == .rename)
         #expect(record?.steps == [
             .restore(from: .local("/dir/doc_a.txt"), to: .local("/dir/a.txt")),
             .restore(from: .local("/dir/doc_b.txt"), to: .local("/dir/b.txt"))

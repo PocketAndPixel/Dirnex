@@ -21,8 +21,14 @@ extension PanelViewController {
     private func beginSync(left: PanelViewController, right: PanelViewController) {
         guard Self.canSync(left), Self.canSync(right) else {
             presentOperationFailure(
-                message: "Can’t synchronize",
-                detail: "Both panels must show a real folder on disk."
+                message: String(
+                    localized: "Can’t synchronize",
+                    comment: "Sync failure title: a panel isn't a real local folder."
+                ),
+                detail: String(
+                    localized: "Both panels must show a real folder on disk.",
+                    comment: "Sync failure detail: both panels must be local folders."
+                )
             )
             return
         }
@@ -30,8 +36,14 @@ extension PanelViewController {
         let rightDir = right.panel.path
         guard leftDir != rightDir else {
             presentOperationFailure(
-                message: "The panels show the same folder",
-                detail: "Open a different folder in one panel to compare them."
+                message: String(
+                    localized: "The panels show the same folder",
+                    comment: "Sync failure title: both panels show the same folder."
+                ),
+                detail: String(
+                    localized: "Open a different folder in one panel to compare them.",
+                    comment: "Sync failure detail: open a different folder to compare."
+                )
             )
             return
         }
@@ -80,12 +92,19 @@ extension PanelViewController {
         }
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = deletions == 1
-            ? "Synchronizing will move 1 item to the Trash."
-            : "Synchronizing will move \(deletions) items to the Trash."
-        alert.informativeText = "You can restore them from the Trash later."
-        alert.addButton(withTitle: "Synchronize")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(
+            localized: "Synchronizing will move \(deletions) items to the Trash.",
+            comment: "Sync delete confirmation title; %lld is the number of items. Plural."
+        )
+        alert.informativeText = String(
+            localized: "You can restore them from the Trash later.",
+            comment: "Sync delete confirmation body."
+        )
+        alert.addButton(withTitle: String(
+            localized: "Synchronize",
+            comment: "Confirm button of the sync delete prompt and the sync sheet."
+        ))
+        alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
         let apply: (NSApplication.ModalResponse) -> Void = { [weak self] response in
             guard response == .alertFirstButtonReturn else { return }
             self?.applySync(decisions, leftDir: leftDir, rightDir: rightDir)

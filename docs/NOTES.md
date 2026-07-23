@@ -272,6 +272,261 @@ at build time.
   entirely, including from any pending-work set, or a row with no total is pending forever and
   gets re-queued on every render.
 
+## Localization
+
+Two styles, deliberately: the app's own literals are keyed by their **English text**
+(`String(localized: "Relaunch")`, and every SwiftUI literal automatically), so Xcode extracts them
+and a missing translation falls back to readable English; `DirnexCore`'s registry strings are keyed
+**symbolically by their stable id** (`command.file.copy.title`), because the core ships no resources
+and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its one primitive.
+
+- **`Text("a " + "b")` silently does not localize.** The concatenation resolves to a `String`, which
+  picks SwiftUI's *verbatim* `Text(_: String)` overload rather than the `LocalizedStringKey` one —
+  so the string is never looked up, never extracted, and renders in English with a fully translated
+  catalog sitting right there. It compiles, it lints, and it looks identical in an English
+  screenshot; eight of these were hiding in the Settings panes and only a Russian run found them.
+  Merge into one literal, using `\` line continuations inside a `"""` literal to keep it readable —
+  the *literal* has to be single, the source line does not.
+- **The menu bar's titles were a second copy of the category names.** `MenuSpec(title: "File")`
+  duplicated `CommandCategory.file.title`, so translating the registry left the whole menu bar in
+  English while every menu's *contents* switched — visible only by launching. `MenuSpec` now carries
+  the `CommandCategory` and derives its title, which is the general lesson: a display string that
+  exists twice will be localized once.
+- **Switch languages via `AppleLanguages` in the app's own defaults domain, not a private lookup.**
+  It is the lever System Settings ▸ Language & Region ▸ Applications pulls, so AppKit's stock menu
+  items, the open/save panels and Sparkle's dialogs follow along. A homegrown "resolve strings
+  against a chosen bundle" scheme switches only *our* strings and leaves the rest in the system
+  language — permanently half-translated. The price is that it lands at launch, not live.
+- **Read the system's languages from the *global* domain.** `Locale.preferredLanguages` and
+  `UserDefaults.standard.stringArray(forKey: "AppleLanguages")` both already reflect our own
+  override, so asking either what the *system* prefers hands back our own answer — and "Same as
+  System" resolves to whatever was last pinned. Same asymmetry on the way in: reading the pin needs
+  `persistentDomain(forName: <bundle id>)`, because the standard search falls through to the global
+  domain and would read the system list back as a pin the user never set.
+- **A relaunch must wait for the old process to exit, not run alongside it.** Dirnex writes its tabs
+  and workspaces on the way down, so an instance launched *before* the terminating one has finished
+  restores the previous session and then has it overwritten. A detached
+  `while kill -0 <pid>; do sleep 0.1; done; open <bundle>` is the whole fix, and the session came
+  back intact across a live language switch because of it.
+- **`Command.id` is now a translation key**, as its own doc comment always claimed it would be
+  ("never localized, never changes"). Renaming one orphans its translations in every language, and
+  nothing in the compiler notices — the English fallback renders, so an untranslated command looks
+  *fine* in an English screenshot. `LocalizationCoverageTests` reads the real compiled `.lproj` and
+  fails when a command, category or function-bar caption has no entry.
+- **Translated palette keywords are added to the English ones, never substituted.** A Russian user
+  who reaches for "copy" out of habit, or who followed English docs, must still find the command;
+  verified live by typing `duplicate` and getting «Копировать на другую панель».
+- **String Catalogs handle multi-argument plurals, but only through `substitutions`.** A plain
+  plural variation covers `"Put %lld items back?"`; a sentence with a count *and* another argument
+  needs the count declared as a named substitution (`%#@items@` plus `argNum`/`formatSpecifier`) and
+  the remaining arguments made positional (`%2$@`). That is also what lets Russian move the verb to
+  the front — "Не удалось вернуть %#@items@" — which a fixed word order could not express.
+  `xcstringstool` validates it at build time, so a malformed entry fails the build rather than the
+  user.
+- **The function-bar captions are whole verbs in every language — never abbreviations.** They are
+  the app's primary buttons and are permanently on screen, so an abbreviation ("Копир.", "Перемещ.")
+  reads as a cramped app rather than as a considered one, and a trailing period reads as a
+  truncation bug. The rule, with its rationale, lives in the `comment` of every
+  `functionBar.*.label` entry — a translator reads the catalog, not this file — and is restated in
+  PLAN.md §M12. Russian is the worked example: `Переименовать · Просмотр · Править · Копировать ·
+  Переместить · Новая папка · Удалить`.
+- **A String Catalog key with no value for the *source* language compiles to the key itself.**
+  Not to "absent" — `xcstringstool` writes `functionBar.file.copy.shortLabel` as its own value into
+  `en.lproj`, so a lookup succeeds and puts a dotted key on screen. An entry translated for `ru` and
+  left blank for `en` is the natural way to write "this language needs no override", and it is a
+  trap. `L10n.translation` therefore treats *value == key* as missing, which is safe precisely
+  because the keys it serves are symbolic; the English-text keys, where value equals key by design,
+  never go through it.
+- **`NSStackView.fillEqually` equalizes the surplus, not the views** — it never squeezes an arranged
+  view below its intrinsic content width. Measured on the function bar at the 640 pt window minimum:
+  cells came out **108 / 94 / 89 / 87.5 / 87.5 / 87**, each sized to its own caption, and every full
+  Russian verb ("Переименовать", "Переместить") fitted with room to spare; only above ~1400 pt do the
+  cells become equal, because that is when there is surplus to share. So a caption-shortening
+  fallback for narrow windows was **unreachable code**, and was written, measured, and deleted in
+  the same pass. Two lessons: don't reason about a stack's widths from its distribution constant,
+  and a "does it fit" mechanism needs the measurement *before* it is built, not after.
+- **Don't derive point geometry from a computer-use screenshot — including for text fitting.** The
+  capture is downsampled (1372 px for a 1728 pt display), so a caption that looked comfortably
+  inside its cell and one that looked flush against the divider were both unresolvable, and two
+  rounds of reasoning off the image contradicted each other. What settled it in one run: an `NSLog`
+  in `layout()` dumping `bounds.width` beside the measured title widths, with the binary run from a
+  shell. Also: `NSButtonCell.titleRect(forBounds:)` is not a usable measure for a borderless button
+  — it returns the bounds unchanged (no reserved padding) and returns **zero width** on an early
+  layout pass.
+- **A fixed-width label column clips a longer translation.** The pack sheet laid its `Name:` /
+  `Format:` captions in a hardcoded 48 pt right-aligned column that the English fit and Russian
+  «Формат:» did not — the "т:" was simply cut, invisible in an English screenshot and at build time.
+  Size such a column to the *wider of the localized captions* (`ceil(max(label.intrinsicContentSize
+  .width, …))`) and offset the field/popup from that, not from a magic number — the same lesson as the
+  function bar, applied to a manual frame layout instead of a stack view. An `NSTextField`'s
+  `intrinsicContentSize` is a usable measure here (unlike `NSButtonCell.titleRect`, below); it needs no
+  window. Only the live Russian run caught it.
+- **A fixed-width horizontal `NSStackView` collapses a *segmented control* under a longer
+  translation, not just a label.** The sync sheet's controls row (`Направление:` + a 3-segment
+  direction control + `Сравнивать по:` + a 2-segment comparison control + a hint, pinned to 680 pt)
+  read fine in English and, in Russian, squeezed the direction control down to a single unreadable
+  «…» while the row *looked* laid out. Measured (an `NSLog` of each arranged subview's
+  `intrinsicContentSize.width`, run from a shell — **not** eyeballed off the downsampled screenshot,
+  which cannot resolve it): the row demanded **1163 pt** in 680 — the direction control alone wanted
+  345 pt against English's ~250, the comparison control 233, and even dropping the hint the controls
+  needed ~810. Two-part fix: (1) lower the **hint's** horizontal compression resistance
+  (`.defaultLow`) so it is the element that truncates away — language-agnostic, and it stops the
+  controls collapsing whatever the translation; (2) shorten the Russian segment labels so the
+  controls' own intrinsic total drops under 680 (`Слева направо`→`Направо`, `В обе стороны`→`Обе`,
+  `Справа налево`→`Налево`, 345→190 pt), then re-measure to confirm. Equal (750) compression
+  resistance across every arranged view is why it collapsed the *wrong* thing; a segmented control
+  has no `lineBreakMode` escape hatch, so it just crushes its cells.
+- **Resizing a window for a probe: `defaults write "NSWindow Frame <autosave>"` then relaunch.**
+  `System Events` needs assistive access that `osascript` does not have (`-1719`), Dirnex's `.sdef`
+  exposes no windows (`-1728`), and a synthetic corner drag misses the resize edge. The frame
+  autosave key is deterministic and gives exact point widths.
+- **The app test target inherits the developer's own `AppleLanguages` pin.** `xcodebuild test` runs
+  the tests *in the app*, so pinning Dirnex to Russian to check a translation makes any test
+  asserting English display text fail — `AutomationIntentsTests` was asserting `"Copy to Other
+  Panel"` when what it meant was "the Shortcuts entity draws its name from the registry". Assert
+  against `LocalizedCatalog`, not against literals, and the suite passes in either language (both
+  were run to prove it).
+- **Endonyms are data, not strings.** The language picker lists each language in its own language
+  ("Русский", not "Russian"), because a user stranded in a UI they cannot read has to be able to
+  find the way back. They live in `AppLanguages` beside the codes and are never translated.
+- **Locale-dependent formatting came free and region stays put.** `ByteCountFormatter` and
+  `DateFormatter` already follow the current locale, so sizes and dates localized with no code
+  change — and because `AppleLanguages` sets the *language* only, a Russian UI on a European region
+  keeps that region's separators.
+- **A bare-literal sweep has to scan the *multi-line* constructor forms, not just `x = "…"`.** A
+  grep for `messageText = "`, `addButton(withTitle: "`, `.title = "` and friends found the alerts but
+  silently skipped every menu item written as a wrapped `NSMenuItem(\n  title: "New Tag…",\n  …)` —
+  the literal sits on its own line, so the sink keyword and the string are never on the same line.
+  The Favorites and tag menus shipped bare through a whole pass because of it, and only a *second*
+  scan (strip comments, then match a sink keyword within a few lines of a bare literal) caught them.
+  Corollary trap in that second scan: a `comment:` argument whose prose contains "title:" or
+  "detail:" (`comment: "Copy failure title: …"`) trips a naive sink match — a false positive to
+  filter, not a bare literal.
+- **A sink-keyword sweep cannot see a string that reaches the screen through a *return value*.**
+  Both scans above look for the assignment (`messageText =`, `title:`), and `PanelViewController`'s
+  status line has none: `statusText() -> String` builds `"\(total) items"`, `"\(marked) of \(total)
+  selected · …"`, `"Filter “\(shown)” · …"` and the Git-sizes tail as plain literals, and one caller
+  far away assigns the result. So the *permanently visible* line under both panes — the one thing on
+  screen at all times — read "26 items" in a fully translated Russian UI, through every pass of both
+  sweeps. Scan for the shape instead: a bare prose literal (has a space, has a lowercase word) that
+  is not inside `String(localized:)` and is not a symbolic key, over the whole app. That scan
+  finishes in seconds and is the one that finds this class. Two filters keep it honest — SwiftUI
+  literals are auto-extracted (so `Text("Show hidden files")` is a false positive; confirm by
+  looking the string up in the catalog rather than by reading the call site), and `fatalError("init(
+  coder:) has not been implemented")` is noise in every AppKit view.
+- **A key already sitting translated in the catalog does not mean every site uses it.**
+  `"Compare with %@…"` has had its Russian since the Synchronize sheet's row menu was localized,
+  while `validateMenuItem`'s live retitling of the same menu item builds the identical sentence as a
+  bare literal — so the menu draws English with the translation right there. The duplicate-display-
+  string lesson (`MenuSpec` and the category names, above) has this second half: after de-duplicating
+  the *string*, check that every site that produces it goes through the lookup. Grepping the catalog
+  for a key proves the key exists, not that the screen uses it.
+- **A free-form `String` payload on an error case is an untranslatable string with extra steps.**
+  `VFSError.unsupported(String)` collected **30** authored sentences — 17 in `DirnexCore`, 13 in the
+  app — and `VFSErrorText` ended its switch with `case let .unsupported(message): return message`, so
+  every one went to the screen in English under a *translated* alert title, at the exact moment
+  something had failed. No sweep could see them: each is a literal at a `throw`, not at a display
+  site. The fix is the `UndoActionLabel` move applied to an error — name the vocabulary
+  (`VFSUnsupportedReason`), keep the English as fallback *data*, key it by the case. Two things that
+  only come up when the strings take arguments: carry the `%@` **format and its arguments
+  separately** and splice *after* the lookup, or a translation can never reorder them positionally;
+  and `CaseIterable` cannot be synthesized for an enum with associated values, so `allCases` is
+  spelled out with placeholder arguments — the key doesn't depend on them, which is the whole reason
+  that works. Worth a coverage assertion beyond "is it translated": **count the placeholders**, since
+  a translation that drops a `%@` silently swallows the file name the sentence was naming.
+- **The sink-keyword blind spot has a general shape, and it is worth scanning for directly.** Three
+  separate sweeps across Slices 1–10 all looked for the *assignment* (`messageText =`, `title:`,
+  `String(localized:`), and all three missed the same class: text composed in a computed property or
+  a function that **returns** `String`, with the assignment a file away. Slice 9 fixed one instance
+  of it (`statusText()`); Slice 11's audit found six more surfaces still leaking, including two that
+  are on screen permanently (the cloud sync badge on every cloud row, the titlebar update indicator).
+  The scan that finds them takes seconds: a bare prose literal (has a space, has a lowercase word)
+  that is not inside `String(localized:)` and is not a symbolic key, over the app **and the core**.
+  Two filters keep it honest — a `comment:` argument is a translator note, not a bare literal (it is
+  the single largest false-positive class, ~450 of 512 hits in one run), and SwiftUI literals are
+  auto-extracted. Cross-check the survivors against the compiler-emitted `.stringsdata`: a key that
+  is *extracted but absent from the catalog* is wrapped-but-untranslated, which the coverage tests
+  never see because they only check symbolic registry keys.
+- **A presentation decision in the core is a string that can never be translated.** Three surfaces
+  were fixed by *deleting* core API rather than keying it: `UpdateAvailability.tooltip`,
+  `GitBranch.displayName`'s `"detached HEAD"`, and `SFTPTransportError.classify`'s empty-stderr
+  fallback. `SyncBadgeStyle`'s own comment already stated the rule — "the core picks the *state*;
+  this picks the pixels and the words" — and each of these was that rule skipped once. The tell is a
+  computed property on a core value type that returns a *sentence* rather than a fact. Moving the
+  words is cheaper than keying them, and it takes the tests with it: the three core tests asserting
+  the tooltip's English became app tests, while the state they rested on stayed covered where it was.
+  The exception proves the shape — a payload that is genuinely the *remote's* words (`sftp`'s stderr)
+  should stay a raw `String` and be allowed to come back **empty**, with the app supplying the
+  localized stand-in, rather than the core authoring a sentence it cannot translate.
+- **Interpolating a plain `String` into a `LocalizedStringResource` extracts the key `%@`.**
+  `case .noWindow: return "\(Scripting.noWindowMessage)"` compiles, reads as wrapped, and puts an
+  untranslated sentence in the Shortcuts error banner — because the *format* is all the compiler
+  sees, and the sentence itself lives in a `static let` that no sweep looks at. It is worse than a
+  bare literal: a bare literal is at least findable, while this one shows up in `.stringsdata` as a
+  legitimate-looking entry. Declare such a message as a `LocalizedStringResource` **once** and hand
+  it over whole; the `NSScriptCommand` side, which needs a plain `String` for `scriptErrorString`,
+  resolves the same resource through `String(localized:)`. The tell in a stringsdata diff is a key of
+  exactly `%@` — legitimate only when every argument is *already* localized (`DisplayRepresentation(
+  title: "\(name)")`, whose `name` came out of `LocalizedCatalog`).
+- **App Intents strings are extracted by the compiler; App Shortcut *phrases* need their own
+  catalog.** Every `LocalizedStringResource` in an `AppIntent` — `title`, `IntentDescription`,
+  `categoryName`, `@Parameter(title:description:)`, `Summary(…)` — lands in that file's
+  `.stringsdata` under the `Localizable` table with no annotation, so "App Intents can't be
+  localized" is wrong; they are simply keys nobody added to the catalog. The phrases in an
+  `AppShortcutsProvider` are the exception: the extractor writes them to an **`AppShortcuts`** table,
+  which compiles from `AppShortcuts.xcstrings`, not `Localizable.xcstrings` — a phrase left in the
+  wrong file is silently English. Every phrase must keep `${applicationName}` in every language.
+  Under file-system-synchronized groups the new catalog joins the target by existing; confirm with
+  `ls <app>/Contents/Resources/<lang>.lproj`. None of this is checkable in Shortcuts from a local
+  build — see "macOS system gates" — so the compiled `.strings` is the verification.
+- **`String(localized:comment:)` takes a `StaticString`, so a shared comment must be repeated
+  verbatim.** It cannot be hoisted into a constant, and two sites keying the same string with
+  *different* comments hand the translator whichever one `xcstringstool` kept. Three sites now draw
+  "iCloud Drive" (sidebar row, tab title, path-bar crumb) and all three carry the identical comment
+  literal. Watch the 120-column lint ceiling: a comment that reads well at 16 spaces of indentation
+  is the thing that trips it.
+- **`plutil -extract` reads a dotted key as a keypath.** Checking `vfs.unsupported.trash` against a
+  compiled `Localizable.strings` reported every one of 27 keys MISSING from a bundle that contained
+  all of them — a wrong answer in the alarming direction, right after a passing coverage test, which
+  is exactly when a bad probe is most likely to be believed. `plutil -convert json -o -` and look the
+  key up in the dictionary.
+- **A pair of "identity" and "display" fields on one type invites a caller to pass the same value to
+  both.** `ResultsPresentation` carries `pathSummary` (the stable English token that becomes the
+  synthetic `VFSPath`) and `title` (what the tab chip draws). The Trash gets this right and its
+  comment even *names* the rule — and `iCloudPresentation()` handed `ICloudLocation.mergedName` to
+  both, so the tab title and the path bar's root crumb bypassed the catalog. It survived every sweep
+  twice over: the value is a constant reached through a variable, so no bare-literal scan sees it,
+  and Russian keeps "iCloud Drive" as the product name, so no screenshot sees it either. It would
+  have surfaced only in a language that transliterates. When a type has both kinds of field, check
+  each *caller* passes two different things, not just that the type documents the difference.
+- **A virtual "place you visit" that borrows the search backend leaks English through its label.**
+  Recents rides the `.search` results machinery, so its path bar drew `"Results for \(pathSummary)"`
+  — and with `pathSummary` an English identity that reads "Результаты для Recents" in a Russian UI,
+  the tab title likewise "Recents". This is the same distinction the Trash already makes ("a place
+  you visited, not a search someone ran"): the fix is to *self-name*. Keep `pathSummary` a stable
+  English identity (never displayed — `ResultsPresentation.recentsIdentity`), localize the tab title,
+  and have `rebuildVirtualLabel` match on that identity to draw the localized name with the sidebar
+  row's own glyph (`clock`), exactly as it special-cases `backend == .trash`. Only the live Russian
+  run surfaced it — an English screenshot showed "Results for Recents", which reads as fine.
+- **`NSAlert` binds Escape by matching the byte string `"Cancel"`, so translating the button silently
+  removes the alert's way out.** Probed with the process pinned to `ru`: a button titled «Отмена» is
+  given *no* key equivalent at all, and added first (to make it rightmost) it is given **Return**
+  instead — while the English `"Cancel"` gets `\u{1b}` in either language. This is not cosmetic like
+  the rest of this section: it changes what the keyboard does, in the one direction where the user
+  is trying to get out. And it is invisible twice over — nothing logs, and an English screenshot is
+  perfect. `enableEscapeToCancel` used to guess from a set of English titles for the alerts AppKit
+  left alone, which fails identically and for the same reason, so the fix could not be "translate
+  the set": it now takes the safe **`NSApplication.ModalResponse`**, the vocabulary the caller
+  already reads the result back in, defaulting to the last button. Two live bugs fell out of the
+  probe — the host-key alert (translated Cancel added first, no Escape at all in Russian) and Full
+  Disk Access's already-granted alert, whose comment claimed "⎋ → OK" while the code handed Escape
+  to *Open System Settings* in **both** languages, because `"OK"` was not in the set either.
+  - The general shape, and the one worth carrying: **a decision keyed off displayed text is a
+    localization bug waiting for a translator.** The title-matching sites are easy to grep once you
+    know to look (`titles.contains($0.title)`, `if button.title == …`); what makes them expensive is
+    that they fail as *behaviour*, so no string sweep and no coverage test over the catalog can see
+    them. Key off an identity the display layer doesn't own.
+
 ## Lint ceilings and file splitting
 
 SwiftLint enforces `file_length` 500 and `type_body_length` 250, and the big AppKit controllers

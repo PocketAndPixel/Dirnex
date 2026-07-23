@@ -87,15 +87,39 @@ extension BrowserWindowController {
     }
 
     private func reportFailures(_ report: OperationReport, kind: FileOperation.Kind) {
-        let verb = kind == .copy ? "copy" : "move"
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = report.failures.count == 1
-            ? "Couldn’t \(verb) “\(report.failures[0].path.lastComponent)”"
-            : "Couldn’t \(verb) \(report.failures.count) items"
+        // Whole sentences per branch rather than a spliced verb (docs/NOTES.md).
+        let name = report.failures[0].path.lastComponent
+        let count = report.failures.count
+        let single = count == 1
+        if kind == .copy {
+            alert.messageText = single
+                ? String(
+                    localized: "Couldn’t copy “\(name)”",
+                    comment: "Copy failure for one item; %@ is its name."
+                )
+                : String(
+                    localized: "Couldn’t copy \(count) items",
+                    comment: "Copy failure for several items; %lld is the count."
+                )
+        } else {
+            alert.messageText = single
+                ? String(
+                    localized: "Couldn’t move “\(name)”",
+                    comment: "Move failure for one item; %@ is its name."
+                )
+                : String(
+                    localized: "Couldn’t move \(count) items",
+                    comment: "Move failure for several items; %lld is the count."
+                )
+        }
         // Reuse the pane's error phrasing (pure — it only switches on the error).
         alert.informativeText = leftPanel.describe(report.failures[0].error)
-        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: String(
+            localized: "OK",
+            comment: "Dismiss button on a file-operation failure alert."
+        ))
         alert.enableEscapeToCancel()
         if let window { alert.beginSheetModal(for: window) } else { alert.runModal() }
     }

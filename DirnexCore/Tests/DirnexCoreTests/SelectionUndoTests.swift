@@ -13,7 +13,7 @@ struct SelectionUndoTests {
         prior: Set<String>,
         new: Set<String>,
         pane: PaneSide = .left,
-        label: String = "Mark"
+        label: UndoActionLabel = .mark
     ) -> SelectionChange {
         SelectionChange(
             pane: pane,
@@ -37,10 +37,10 @@ struct SelectionUndoTests {
 
     @Test("inverse preserves pane, directory, and label")
     func inverseKeepsRouting() {
-        let sel = change(prior: [], new: ["x"], pane: .right, label: "Select All")
+        let sel = change(prior: [], new: ["x"], pane: .right, label: .selectAll)
         #expect(sel.inverse.pane == .right)
         #expect(sel.inverse.directory == .local("/dir"))
-        #expect(sel.inverse.label == "Select All")
+        #expect(sel.inverse.label == .selectAll)
     }
 
     private func entry(_ name: String) -> FileEntry {
@@ -88,13 +88,13 @@ struct SelectionUndoTests {
     func mixedTimeline() {
         var journal = UndoJournal()
         journal.record(.newFolder(at: .local("/dir/new")))
-        journal.record(.selection(change(prior: [], new: ["a"], label: "Select All")))
+        journal.record(.selection(change(prior: [], new: ["a"], label: .selectAll)))
 
         // Cmd+Z reverses the most recent action first — the selection change.
         let first = journal.takeForUndo()
-        #expect(first?.selection?.label == "Select All")
+        #expect(first?.selection?.label == .selectAll)
         // Then the file op underneath it.
-        #expect(journal.top?.fileOperation?.label == "New Folder")
+        #expect(journal.top?.fileOperation?.label == .newFolder)
     }
 
     @Test("undo then redo of a selection change round-trips the marks")

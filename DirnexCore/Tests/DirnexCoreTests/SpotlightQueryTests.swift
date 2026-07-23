@@ -156,10 +156,14 @@ struct SpotlightQueryTests {
 
     @Test("a lone tag chip names the results panel")
     func tagSummary() {
-        #expect(SpotlightQuery(tags: ["Work"]).summaryPlainName == "Work")
-        #expect(SpotlightQuery(tags: ["Work", "Urgent"]).summaryPlainName == "Search results")
+        #expect(SpotlightQuery(tags: ["Work"]).plainNameTerm == .tag("Work"))
+        #expect(SpotlightQuery(tags: ["Work", "Urgent"]).plainNameTerm == .generic)
         // A name still outranks it — the more specific term wins.
-        #expect(SpotlightQuery(nameContains: "photo", tags: ["Work"]).summaryPlainName == "photo")
+        #expect(
+            SpotlightQuery(nameContains: "photo", tags: ["Work"]).plainNameTerm == .name("photo")
+        )
+        // The crumb never takes a tag, however lone it is — only the "Save Search…" prefill does.
+        #expect(SpotlightQuery(tags: ["Work"]).summaryTerm == .generic)
     }
 
     /// Saved searches persisted before tags existed have no `tags` key, and the synthesized decoder
@@ -196,21 +200,23 @@ struct SpotlightQueryTests {
         #expect(query.mdfindArguments(scopePath: "") == [#"kMDItemFSName == "*todo*"cd"#])
     }
 
-    @Test("the summary prefers the name, then content, then a lone kind, then a fallback")
+    /// The *term*, not the label: the words are the app's (`LocalizedCatalog.summary(of:)`), because
+    /// a sentence authored here could never be translated. Trimming still belongs to the term.
+    @Test("the summary term prefers the name, then content, then a lone kind, then a fallback")
     func summaryPrecedence() {
-        #expect(SpotlightQuery(nameContains: "  taxes ").summary == "“taxes”")
-        #expect(SpotlightQuery(contentContains: "invoice").summary == "“invoice”")
-        #expect(SpotlightQuery(kinds: [.movie]).summary == "Movies")
-        #expect(SpotlightQuery(kinds: [.movie, .image]).summary == "Search results")
-        #expect(SpotlightQuery(minSizeBytes: 10).summary == "Search results")
+        #expect(SpotlightQuery(nameContains: "  taxes ").summaryTerm == .name("taxes"))
+        #expect(SpotlightQuery(contentContains: "invoice").summaryTerm == .content("invoice"))
+        #expect(SpotlightQuery(kinds: [.movie]).summaryTerm == .kind(.movie))
+        #expect(SpotlightQuery(kinds: [.movie, .image]).summaryTerm == .generic)
+        #expect(SpotlightQuery(minSizeBytes: 10).summaryTerm == .generic)
     }
 
-    @Test("the plain-name summary drops the display quotes for an editable default")
+    @Test("the plain-name term follows the same precedence, so one prefill matches the crumb")
     func summaryPlainName() {
-        #expect(SpotlightQuery(nameContains: "  taxes ").summaryPlainName == "taxes")
-        #expect(SpotlightQuery(contentContains: "invoice").summaryPlainName == "invoice")
-        #expect(SpotlightQuery(kinds: [.movie]).summaryPlainName == "Movies")
-        #expect(SpotlightQuery(minSizeBytes: 10).summaryPlainName == "Search results")
+        #expect(SpotlightQuery(nameContains: "  taxes ").plainNameTerm == .name("taxes"))
+        #expect(SpotlightQuery(contentContains: "invoice").plainNameTerm == .content("invoice"))
+        #expect(SpotlightQuery(kinds: [.movie]).plainNameTerm == .kind(.movie))
+        #expect(SpotlightQuery(minSizeBytes: 10).plainNameTerm == .generic)
     }
 
     @Test("a fully-populated query round-trips through Codable so it can be saved")

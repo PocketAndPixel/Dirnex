@@ -25,9 +25,16 @@ struct AutomationIntentsTests {
         let operations = try await DirnexOperationQuery().allEntities()
         #expect(operations.count >= CommandCatalog.all.count)
         let copy = try #require(operations.first { $0.id == "file.copy" })
-        #expect(copy.name == "Copy to Other Panel")
+        // Asserted against the localized registry rather than against the English literals it used
+        // to name. `xcodebuild test` runs these in the *app*, which honours whatever
+        // `AppleLanguages` the developer's own `com.dirnex.Dirnex` domain carries — so pinning the
+        // app to Russian to check a translation made this suite fail on display text that was never
+        // what it was testing. What it is testing is that the Shortcuts entity draws its name and
+        // subtitle from the registry at all.
+        let expected = try #require(LocalizedCatalog.command(for: "file.copy"))
+        #expect(copy.name == expected.title)
         // The subtitle that keeps two similar rows apart in the picker.
-        #expect(copy.category == "File")
+        #expect(copy.category == expected.category.localizedTitle)
     }
 
     @Test("typing in the picker fuzzy-searches, best match first")

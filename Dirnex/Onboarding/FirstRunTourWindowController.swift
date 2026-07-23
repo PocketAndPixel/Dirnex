@@ -21,7 +21,7 @@ final class FirstRunTourWindowController: NSWindowController, NSWindowDelegate {
     /// The last screen's primary button label. The launch flow leaves it "Get Started" (it hands
     /// off to Full Disk Access onboarding next); the on-demand flow sets it to "Open Command
     /// Palette", the palette-centric payoff the tour's copy promises.
-    var finalButtonTitle = "Get Started"
+    var finalButtonTitle = String(localized: "Get Started")
 
     private let screens = FirstRunTour.screens
     private var index = 0
@@ -123,19 +123,22 @@ final class FirstRunTourWindowController: NSWindowController, NSWindowDelegate {
     /// Back's availability) for where in the tour it now sits.
     private func configure(for page: Int) {
         let screen = screens[page]
+        let title = LocalizedCatalog.title(for: screen)
         imageView.image = NSImage(
             systemSymbolName: screen.symbol,
-            accessibilityDescription: screen.title
+            accessibilityDescription: title
         )
-        titleLabel.stringValue = screen.title
-        bodyLabel.stringValue = screen.body
+        titleLabel.stringValue = title
+        bodyLabel.stringValue = LocalizedCatalog.body(for: screen)
         populateCommands(screen.commandIDs)
         updateDots(current: page)
 
         let isLast = page == screens.count - 1
         backButton.isHidden = page == 0
-        nextButton.title = isLast ? finalButtonTitle : "Next"
-        skipButton.title = isLast ? "Not Now" : "Skip Tour"
+        nextButton.title = isLast ? finalButtonTitle : String(localized: "Next")
+        skipButton.title = isLast
+            ? String(localized: "Not Now")
+            : String(localized: "Skip Tour")
     }
 
     // MARK: - Command rows
@@ -150,7 +153,7 @@ final class FirstRunTourWindowController: NSWindowController, NSWindowDelegate {
         }
         commandsStack.isHidden = ids.isEmpty
         for id in ids {
-            guard let command = CommandCatalog.command(for: id) else { continue }
+            guard let command = LocalizedCatalog.command(for: id) else { continue }
             let shortcut = KeyBindingStore.shared.shortcut(for: id)?.display
             commandsStack.addArrangedSubview(commandRow(title: command.title, shortcut: shortcut))
         }
@@ -253,10 +256,10 @@ final class FirstRunTourWindowController: NSWindowController, NSWindowDelegate {
         dotsStack.orientation = .horizontal
         dotsStack.spacing = 7
 
-        configureButton(backButton, title: "Back", action: #selector(goBack))
-        configureButton(skipButton, title: "Skip Tour", action: #selector(skip))
+        configureButton(backButton, title: String(localized: "Back"), action: #selector(goBack))
+        configureButton(skipButton, title: String(localized: "Skip Tour"), action: #selector(skip))
         skipButton.keyEquivalent = "\u{1b}" // ⎋ leaves the tour, like every other Dirnex sheet
-        configureButton(nextButton, title: "Next", action: #selector(goNext))
+        configureButton(nextButton, title: String(localized: "Next"), action: #selector(goNext))
         nextButton.keyEquivalent = "\r" // ⏎ advances / opens the palette; also the default button
 
         let trailing = NSStackView(views: [skipButton, backButton, nextButton])

@@ -206,27 +206,43 @@ public struct SpotlightQuery: Sendable, Equatable, Codable {
 
     // MARK: - Presentation
 
-    /// A short, human label for the results — used as the virtual panel's title and path-bar
-    /// crumb. Prefers the most specific term the user gave.
-    public var summary: String {
-        let name = trimmedName
-        if !name.isEmpty { return "“\(name)”" }
-        let content = trimmedContent
-        if !content.isEmpty { return "“\(content)”" }
-        if kinds.count == 1, let only = kinds.first { return only.title }
-        return "Search results"
+    /// Which term of a query stands for the whole of it — the *fact* behind the label the panel
+    /// title, the path-bar crumb and the "Save Search…" default are all built from.
+    ///
+    /// Deliberately not a finished string: a label reading "Search results" or a bare `SearchKind
+    /// .title` is a sentence this module cannot translate, and it went to the screen in English out
+    /// of a fully translated catalog (docs/NOTES.md). The core picks the term, the app picks the
+    /// words — the `SyncBadgeStyle` split, applied to a query.
+    public enum SummaryTerm: Sendable, Equatable {
+        /// The name substring the user typed.
+        case name(String)
+        /// The content substring the user typed.
+        case content(String)
+        /// The one kind filter, when it is the only one.
+        case kind(SearchKind)
+        /// The one tag filter, when it is the only one. Reached by `plainNameTerm` alone.
+        case tag(String)
+        /// Nothing specific enough to name — a size or date filter on its own.
+        case generic
     }
 
-    /// The same precedence as `summary` but without the display quotes — a sensible default the
-    /// "Save Search…" prompt can prefill into an editable name field.
-    public var summaryPlainName: String {
+    /// The most specific term the user gave, for the panel title and path-bar crumb.
+    public var summaryTerm: SummaryTerm {
         let name = trimmedName
-        if !name.isEmpty { return name }
+        if !name.isEmpty { return .name(name) }
         let content = trimmedContent
-        if !content.isEmpty { return content }
-        if kinds.count == 1, let only = kinds.first { return only.title }
-        if let onlyTag = trimmedTags.first, trimmedTags.count == 1 { return onlyTag }
-        return "Search results"
+        if !content.isEmpty { return .content(content) }
+        if kinds.count == 1, let only = kinds.first { return .kind(only) }
+        return .generic
+    }
+
+    /// The same precedence, plus a lone tag — the prefill for the "Save Search…" name field, where
+    /// a tag is a perfectly good name for the search even though it is a poor crumb.
+    public var plainNameTerm: SummaryTerm {
+        let term = summaryTerm
+        guard case .generic = term else { return term }
+        if let onlyTag = trimmedTags.first, trimmedTags.count == 1 { return .tag(onlyTag) }
+        return .generic
     }
 
     // MARK: - Codable

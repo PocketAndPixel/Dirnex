@@ -21,15 +21,15 @@ extension PanelViewController {
 
     private func confirmArchiveDelete(of targets: [FileEntry], proceed: @escaping () -> Void) {
         let archiveName = (panel.path.backend.archivePath.map { ($0 as NSString).lastPathComponent })
-            ?? "the archive"
+            ?? String(localized: "the archive")
         let alert = NSAlert()
         alert.alertStyle = .critical
         alert.messageText = targets.count == 1
-            ? "Delete “\(targets[0].name)” from “\(archiveName)”?"
-            : "Delete \(targets.count) items from “\(archiveName)”?"
-        alert.informativeText = "This rewrites the archive and can’t be undone."
-        alert.addButton(withTitle: "Delete")
-        alert.addButton(withTitle: "Cancel")
+            ? String(localized: "Delete “\(targets[0].name)” from “\(archiveName)”?")
+            : String(localized: "Delete \(targets.count) items from “\(archiveName)”?")
+        alert.informativeText = String(localized: "This rewrites the archive and can’t be undone.")
+        alert.addButton(withTitle: String(localized: "Delete"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
 
         let handler: (NSApplication.ModalResponse) -> Void = { response in
             if response == .alertFirstButtonReturn { proceed() }
@@ -57,8 +57,8 @@ extension PanelViewController {
             } catch {
                 presentOperationFailure(
                     message: targets.count == 1
-                        ? "Couldn’t delete “\(targets[0].name)”"
-                        : "Couldn’t delete \(targets.count) items from “\(name)”",
+                        ? String(localized: "Couldn’t delete “\(targets[0].name)”")
+                        : String(localized: "Couldn’t delete \(targets.count) items from “\(name)”"),
                     detail: describe(error)
                 )
             }

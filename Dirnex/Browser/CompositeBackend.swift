@@ -179,12 +179,12 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         if path.backend == .local { return local }
         if let archivePath = path.backend.archivePath { return try mountedArchive(at: archivePath) }
         if path.backend.isSFTP { return try connectedSFTP(for: path.backend) }
-        throw VFSError.unsupported("No backend can handle \(path).")
+        throw VFSError.unsupported(.noBackendForPath(path: "\(path)"))
     }
 
     private func connectedSFTP(for backendID: VFSBackendID) throws -> SFTPBackend {
         guard let backend = sftpBackend(for: backendID) else {
-            throw VFSError.unsupported("Not connected to \(backendID). Reconnect to the server.")
+            throw VFSError.unsupported(.serverNotConnected(server: "\(backendID)"))
         }
         return backend
     }
@@ -225,7 +225,7 @@ enum ArchiveMounter {
         do {
             try process.run()
         } catch {
-            throw VFSError.unsupported("Couldn’t run bsdtar to open the archive.")
+            throw VFSError.unsupported(.archiveToolUnavailableForRead)
         }
         // Read to EOF before waiting so a large table of contents can't deadlock a full pipe.
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
@@ -233,7 +233,7 @@ enum ArchiveMounter {
 
         guard process.terminationStatus == 0, let text = String(data: data, encoding: .utf8) else {
             let name = (archivePath as NSString).lastPathComponent
-            throw VFSError.unsupported("Couldn’t read the archive “\(name)”.")
+            throw VFSError.unsupported(.archiveUnreadable(archive: name))
         }
         return ArchiveTOC(verboseListing: text)
     }

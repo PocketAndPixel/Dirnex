@@ -89,8 +89,14 @@ extension PanelViewController {
         }
         guard !newName.contains("/") else {
             presentOperationFailure(
-                message: "Can’t rename “\(oldName)”",
-                detail: "Names can’t contain the “/” character."
+                message: String(
+                    localized: "Can’t rename “\(oldName)”",
+                    comment: "Rename validation failure title; %@ is the current name."
+                ),
+                detail: String(
+                    localized: "Names can’t contain the “/” character.",
+                    comment: "Rename validation failure body: slash is not allowed in a name."
+                )
             )
             focusTable()
             return
@@ -116,7 +122,10 @@ extension PanelViewController {
                 host?.recordUndoableAction(.rename(from: source, to: destination))
             } catch {
                 presentOperationFailure(
-                    message: "Can’t rename “\(oldName)”",
+                    message: String(
+                        localized: "Can’t rename “\(oldName)”",
+                        comment: "Rename failure title; %@ is the current name."
+                    ),
                     detail: describe(error)
                 )
                 focusTable()

@@ -23,7 +23,7 @@ struct ShortcutsSettingsView: View {
                 ForEach(CommandCategory.allCases, id: \.self) { category in
                     let commands = filteredCommands(in: category)
                     if !commands.isEmpty {
-                        Section(category.title) {
+                        Section(category.localizedTitle) {
                             ForEach(commands, id: \.id) { command in
                                 row(for: command)
                             }
@@ -41,15 +41,23 @@ struct ShortcutsSettingsView: View {
             Button("Switch", role: .destructive) { store.apply(preset: preset) }
             Button("Cancel", role: .cancel) {}
         } message: { preset in
-            Text("Your customized shortcuts will be replaced by the \(preset.title) preset. "
-                + "All your changes will be lost.")
+            Text(
+                """
+                Your customized shortcuts will be replaced by the \(preset.title) preset. All your changes \
+                will be lost.
+                """
+            )
         }
         .alert("Restore default shortcuts?", isPresented: $confirmingRestore) {
             Button("Restore Defaults", role: .destructive) { store.resetAll() }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("All your shortcut customizations will be removed and the macOS defaults "
-                + "restored. All your changes will be lost.")
+            Text(
+                """
+                All your shortcut customizations will be removed and the macOS defaults restored. All your \
+                changes will be lost.
+                """
+            )
         }
     }
 
@@ -154,7 +162,7 @@ struct ShortcutsSettingsView: View {
     // MARK: - Helpers
 
     private func filteredCommands(in category: CommandCategory) -> [Command] {
-        CommandCatalog.all.filter { command in
+        LocalizedCatalog.all.filter { command in
             guard command.category == category else { return false }
             guard !query.isEmpty else { return true }
             return command.title.localizedCaseInsensitiveContains(query)
@@ -163,7 +171,7 @@ struct ShortcutsSettingsView: View {
     }
 
     private func conflictNames(_ ids: [String]) -> String {
-        ids.compactMap { CommandCatalog.command(for: $0)?.title }
+        ids.compactMap { LocalizedCatalog.command(for: $0)?.title }
             .joined(separator: ", ")
     }
 }

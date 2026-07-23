@@ -124,8 +124,15 @@ extension PanelViewController: NSMenuItemValidation {
             // installed the answer depends on a setting. `validateMenuItem` is AppKit's only hook
             // for a title that tracks live state. The palette keeps the generic catalog title —
             // that one is what its fuzzy search matches against, so it must not move.
-            menuItem.title = ExternalDiffLauncher.preferredTool()
-                .map { "Compare with \($0.displayName)…" } ?? "Compare By Contents…"
+            // Both halves go through the lookup the *other* sites already use — the sheet's row
+            // action for the named form, the registry for the generic one. Composing either as a
+            // literal here draws English out of a translated catalog (docs/NOTES.md).
+            menuItem.title = ExternalDiffLauncher.preferredTool().map { tool in
+                String(
+                    localized: "Compare with \(tool.displayName)…",
+                    comment: "Menu item naming the diff tool that will open; %@ is the tool name."
+                )
+            } ?? LocalizedCatalog.command(for: "file.compareByContents")?.title ?? menuItem.title
             // Diffs the two panes' cursor files — needs a real file under each cursor.
             return canCompareByContents
         default:

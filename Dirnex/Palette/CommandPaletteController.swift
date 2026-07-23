@@ -103,7 +103,7 @@ final class CommandPaletteController: NSObject {
     /// script created in the organizer is searchable immediately) — they rank and render alongside
     /// the built-ins, and `runSelected` routes a `userScript.*` pick to the script runner.
     func reload(query: String) {
-        let commands = CommandCatalog.all + UserScriptStore.load().paletteCommands
+        let commands = LocalizedCatalog.all + UserScriptStore.load().paletteCommands
         matches = CommandMatcher.search(query, in: commands, recents: recents.ids)
         selectedIndex = matches.isEmpty ? -1 : 0
         tableView.reloadData()
@@ -158,7 +158,7 @@ final class CommandPaletteController: NSObject {
     }
 
     private func makeContentView() -> NSView {
-        searchField.placeholderString = "Run a command…"
+        searchField.placeholderString = String(localized: "Run a command…")
         searchField.font = .systemFont(ofSize: 20, weight: .regular)
         searchField.usesSingleLineMode = true
         searchField.isBezeled = false

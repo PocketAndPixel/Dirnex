@@ -57,7 +57,10 @@ extension SidebarViewController {
             name: tag.name,
             image: TagDotStyle.menuImage(for: tag.color, diameter: 12),
             canEject: false,
-            tooltip: "Find files tagged “\(tag.name)”"
+            tooltip: String(
+                localized: "Find files tagged “\(tag.name)”",
+                comment: "Tooltip on a tag sidebar row; %@ is the tag's name."
+            )
         )
         return cell
     }
@@ -68,15 +71,24 @@ extension SidebarViewController {
         let config = NSImage.SymbolConfiguration(pointSize: 13, weight: .regular)
         let image = NSImage(
             systemSymbolName: "circle.on.circle",
-            accessibilityDescription: "All tags"
+            accessibilityDescription: String(
+                localized: "All tags",
+                comment: "Accessibility label for the sidebar's “All Tags…” row glyph."
+            )
         )?
             .withSymbolConfiguration(config)
         image?.isTemplate = true
         cell.configure(
-            name: "All Tags…",
+            name: String(
+                localized: "All Tags…",
+                comment: "Sidebar row that reveals every custom tag found while browsing."
+            ),
             image: image ?? NSImage(),
             canEject: false,
-            tooltip: "Show every tag found while browsing"
+            tooltip: String(
+                localized: "Show every tag found while browsing",
+                comment: "Tooltip on the sidebar's “All Tags…” row."
+            )
         )
         return cell
     }
@@ -111,12 +123,23 @@ extension SidebarViewController {
     /// and "Remove All Tags" strips the selection, not the tag. The tag *list* is what the sidebar
     /// shows, so the tag list is what the sidebar edits — the same split Finder draws.
     func buildTagMenu(_ menu: NSMenu, for tag: FinderTag) {
-        menu.addItem(tagMenuItem("Find Tagged Files", #selector(findTaggedFilesItem(_:)), tag))
+        menu.addItem(tagMenuItem(
+            String(
+                localized: "Find Tagged Files",
+                comment: "Tag context-menu item: search for files carrying the tag."
+            ),
+            #selector(findTaggedFilesItem(_:)),
+            tag
+        ))
         // No Delete for the stock seven: `FinderTag.isSystem` covers why it could not do anything.
         // They are a constant, not a sighting, so the row would be back on the next rebuild.
         guard !tag.isSystem else { return }
         menu.addItem(.separator())
-        menu.addItem(tagMenuItem("Delete Tag", #selector(deleteTagItem(_:)), tag))
+        menu.addItem(tagMenuItem(
+            String(localized: "Delete Tag", comment: "Tag context-menu item: delete a custom tag."),
+            #selector(deleteTagItem(_:)),
+            tag
+        ))
     }
 
     /// One management item, carrying the tag itself. The saved-search menu carries a *name* so a
@@ -216,13 +239,22 @@ extension SidebarViewController {
     private func confirmDeleteTag(_ tag: FinderTag, carriers: Int) async -> Bool {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "Delete the tag “\(tag.name)”?"
-        alert.informativeText = """
-        It will be removed from \(carriers == 1 ? "1 file" : "\(carriers) files"), \
-        everywhere Spotlight has indexed. The files themselves aren’t deleted.
-        """
-        alert.addButton(withTitle: "Delete Tag")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(
+            localized: "Delete the tag “\(tag.name)”?",
+            comment: "Delete-tag confirmation title; %@ is the tag's name."
+        )
+        alert.informativeText = String(
+            localized: """
+            It will be removed from \(carriers) files, everywhere Spotlight has indexed. \
+            The files themselves aren’t deleted.
+            """,
+            comment: "Body of the delete-tag confirmation; %lld is how many files carry the tag."
+        )
+        alert.addButton(withTitle: String(
+            localized: "Delete Tag",
+            comment: "Confirm button that deletes a custom tag."
+        ))
+        alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
 
         return await runTagAlert(alert) == .alertFirstButtonReturn
     }
@@ -232,12 +264,18 @@ extension SidebarViewController {
     private func presentTagDeleteFailure(_ tag: FinderTag, outcome: TagStripOutcome, carriers: Int) {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "Couldn’t fully delete “\(tag.name)”"
+        alert.messageText = String(
+            localized: "Couldn’t fully delete “\(tag.name)”",
+            comment: "Partial tag-deletion failure title; %@ is the tag's name."
+        )
         let removed = carriers - outcome.failed
-        alert.informativeText = """
-        Removed from \(removed) of \(carriers) files. \(outcome.firstError ?? "")
-        The tag stays in the sidebar because files still carry it.
-        """
+        alert.informativeText = String(
+            localized: """
+            Removed from \(removed) of \(carriers) files. \(outcome.firstError ?? "")
+            The tag stays in the sidebar because files still carry it.
+            """,
+            comment: "Body of the partial tag-deletion failure; %1$lld removed of %2$lld, %3$@ is the error."
+        )
         Task { _ = await runTagAlert(alert) }
     }
 

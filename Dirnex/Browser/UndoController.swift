@@ -36,12 +36,13 @@ final class UndoController {
     /// Whether Cmd+Shift+Z has anything to re-apply right now.
     var canRedo: Bool { journal.canRedo }
 
-    /// The label of the action Cmd+Z would reverse next ("Move", "Copy", "Rename", …), for
-    /// the menu title — or `nil` when there's nothing to undo.
-    var nextLabel: String? { journal.top?.label }
+    /// The label of the action Cmd+Z would reverse next (`.move`, `.copy`, `.rename`, …), for
+    /// the menu title — or `nil` when there's nothing to undo. Data the window joins to a
+    /// translation (`LocalizedCatalog`).
+    var nextLabel: UndoActionLabel? { journal.top?.label }
     /// The label of the action Cmd+Shift+Z would re-apply next, or `nil` when there's nothing
     /// to redo.
-    var nextRedoLabel: String? { journal.redoTop?.label }
+    var nextRedoLabel: UndoActionLabel? { journal.redoTop?.label }
 
     /// Push a freshly-completed, reversible operation onto the stack and persist it. A fresh
     /// operation also clears the redo stack (`UndoJournal.record`).

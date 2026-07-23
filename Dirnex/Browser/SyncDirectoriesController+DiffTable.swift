@@ -55,7 +55,9 @@ extension SyncDirectoriesController: NSTableViewDelegate {
             dash.textColor = .tertiaryLabelColor
             return dash
         }
-        let size = entry.isDirectory ? "folder" : FileFormatting.sizeString(for: entry)
+        let size = entry.isDirectory
+            ? String(localized: "folder", comment: "Sync diff table: size cell for a subfolder.")
+            : FileFormatting.sizeString(for: entry)
         let field = NSTextField(
             labelWithString: size + " · " + FileFormatting.dateString(for: entry)
         )
@@ -81,17 +83,40 @@ extension SyncDirectoriesController: NSTableViewDelegate {
     /// and a warning for a conflict the run skips.
     private func actionDisplay(_ action: SyncAction) -> ActionStyle {
         switch action {
-        case .copyToRight: return ActionStyle("→", .systemGreen, "Copy to \(rightDir.lastComponent)")
-        case .copyToLeft: return ActionStyle("←", .systemGreen, "Copy to \(leftDir.lastComponent)")
-        case .deleteRight: return ActionStyle(
-                "✕",
-                .systemRed,
-                "Delete from \(rightDir.lastComponent)"
+        case .copyToRight: return ActionStyle("→", .systemGreen, copyToTip(rightDir.lastComponent))
+        case .copyToLeft: return ActionStyle("←", .systemGreen, copyToTip(leftDir.lastComponent))
+        case .deleteRight: return ActionStyle("✕", .systemRed, deleteFromTip(rightDir.lastComponent))
+        case .deleteLeft: return ActionStyle("✕", .systemRed, deleteFromTip(leftDir.lastComponent))
+        case .conflict: return ActionStyle(
+                "⚠",
+                .systemOrange,
+                String(
+                    localized: "Conflict — left unchanged",
+                    comment: "Sync action tooltip: both sides changed; the run skips this row."
+                )
             )
-        case .deleteLeft: return ActionStyle("✕", .systemRed, "Delete from \(leftDir.lastComponent)")
-        case .conflict: return ActionStyle("⚠", .systemOrange, "Conflict — left unchanged")
-        case .none: return ActionStyle("=", .tertiaryLabelColor, "Identical")
+        case .none: return ActionStyle(
+                "=",
+                .tertiaryLabelColor,
+                String(localized: "Identical", comment: "Sync action tooltip: the two sides match.")
+            )
         }
+    }
+
+    /// "Copy to <folder>" for both the action cell's tooltip and the override menu; %@ is a
+    /// folder name (data), so one localized frame serves every side.
+    private func copyToTip(_ folder: String) -> String {
+        String(
+            localized: "Copy to \(folder)",
+            comment: "Sync action: copy the item into the named folder; %@ is a folder name."
+        )
+    }
+
+    private func deleteFromTip(_ folder: String) -> String {
+        String(
+            localized: "Delete from \(folder)",
+            comment: "Sync action: delete the item from the named folder; %@ is a folder name."
+        )
     }
 }
 
@@ -149,27 +174,39 @@ extension SyncDirectoriesController: NSMenuDelegate {
 
     private func menuTitle(for action: SyncAction) -> String {
         switch action {
-        case .copyToRight: return "Copy to \(rightDir.lastComponent)"
-        case .copyToLeft: return "Copy to \(leftDir.lastComponent)"
-        case .deleteLeft: return "Delete from \(leftDir.lastComponent)"
-        case .deleteRight: return "Delete from \(rightDir.lastComponent)"
+        case .copyToRight: return copyToTip(rightDir.lastComponent)
+        case .copyToLeft: return copyToTip(leftDir.lastComponent)
+        case .deleteLeft: return deleteFromTip(leftDir.lastComponent)
+        case .deleteRight: return deleteFromTip(rightDir.lastComponent)
         case .none, .conflict: return ""
         }
     }
 
     private func overrideUnavailableTitle(for status: SyncStatus) -> String {
         status == .typeMismatch
-            ? "One side is a folder — resolve manually"
-            : "No actions available"
+            ? String(
+                localized: "One side is a folder — resolve manually",
+                comment: "Sync override menu: a file-vs-folder clash has no safe automatic action."
+            )
+            : String(
+                localized: "No actions available",
+                comment: "Sync override menu: this row has no legal override."
+            )
     }
 
     /// Name the external-diff item after the tool that would open (so the user knows what launches),
     /// or a neutral title when none is installed — the click then explains how to get one.
     private func compareContentsTitle() -> String {
         if let tool = ExternalDiffLauncher.preferredTool() {
-            return "Compare with \(tool.displayName)…"
+            return String(
+                localized: "Compare with \(tool.displayName)…",
+                comment: "Sync override menu: open the two files in an external diff tool; %@ is the tool name."
+            )
         }
-        return "Compare Contents…"
+        return String(
+            localized: "Compare Contents…",
+            comment: "Sync override menu: open the two files in an external diff tool (none configured)."
+        )
     }
 }
 
