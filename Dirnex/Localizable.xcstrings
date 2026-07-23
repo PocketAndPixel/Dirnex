@@ -18,6 +18,23 @@
         }
       }
     },
+    "%@ / %@": {
+      "comment": "Queue row byte readout: %1$@ transferred / %2$@ total.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ / %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ / %2$@"
+          }
+        }
+      }
+    },
     "%@ available of %@": {
       "comment": "Volume capacity tooltip; %1$@ is free space, %2$@ is total capacity.",
       "localizations": {
@@ -52,6 +69,23 @@
         }
       }
     },
+    "%@ left": {
+      "comment": "Queue-bar ETA readout; %@ is a formatted duration, e.g. “2 min left”.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ left"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "осталось %@"
+          }
+        }
+      }
+    },
     "%@ may take a long time to compare them, or become unresponsive.": {
       "comment": "Oversized-compare warning body; %@ is the diff tool name.",
       "localizations": {
@@ -69,6 +103,23 @@
         }
       }
     },
+    "%@ of %@": {
+      "comment": "Queue-bar byte readout: %1$@ transferred of %2$@ total.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ of %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ из %2$@"
+          }
+        }
+      }
+    },
     "%@ · newer": {
       "comment": "Conflict card date, flagged as the newer of the two. %@ is a date.",
       "localizations": {
@@ -82,6 +133,129 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ · новее"
+          }
+        }
+      }
+    },
+    "%@/s": {
+      "comment": "Queue-bar throughput readout; %@ is a byte count, e.g. “1.2 MB/s”.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@/s"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@/с"
+          }
+        }
+      }
+    },
+    "%lld commits to pull": {
+      "comment": "Git branch tooltip; %lld commits are behind upstream. Plural.",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld commit to pull"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld commits to pull"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld коммит для получения"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld коммита для получения"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld коммитов для получения"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld коммитов для получения"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld commits to push": {
+      "comment": "Git branch tooltip; %lld commits are ahead of upstream. Plural.",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld commit to push"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld commits to push"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld коммит для отправки"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld коммита для отправки"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld коммитов для отправки"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld коммитов для отправки"
+                }
+              }
+            }
           }
         }
       }
@@ -334,6 +508,23 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "(+%lld more)": {
+      "comment": "Queue-bar suffix counting the other queued operations; %lld is how many.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(+%lld more)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(+%lld ещё)"
           }
         }
       }
@@ -660,6 +851,23 @@
         }
       }
     },
+    "Branch %@": {
+      "comment": "Git branch tooltip; %@ is the branch name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Branch %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ветка %@"
+          }
+        }
+      }
+    },
     "Cancel": {
       "comment": "Conflict dialog cancel button.",
       "localizations": {
@@ -673,6 +881,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "Отмена"
+          }
+        }
+      }
+    },
+    "Cancel all": {
+      "comment": "Queue-bar button that cancels every queued file operation.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel all"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отменить все"
+          }
+        }
+      }
+    },
+    "Cancel this operation": {
+      "comment": "Tooltip on a queue row's cancel button.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel this operation"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отменить эту операцию"
+          }
+        }
+      }
+    },
+    "Cancelled": {
+      "comment": "Queue row status: the operation was cancelled.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelled"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отменено"
           }
         }
       }
@@ -847,6 +1106,40 @@
         }
       }
     },
+    "Close Tab": {
+      "comment": "Accessibility label for a tab chip's close (×) button.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close Tab"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Закрыть вкладку"
+          }
+        }
+      }
+    },
+    "Close Tab (⌘W)": {
+      "comment": "Tooltip on a tab chip's close (×) button; ⌘W is the keyboard shortcut.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close Tab (⌘W)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Закрыть вкладку (⌘W)"
+          }
+        }
+      }
+    },
     "Collapsed": {
       "comment": "Accessibility state of a folded sidebar section's disclosure triangle.",
       "localizations": {
@@ -949,6 +1242,23 @@
         }
       }
     },
+    "Copy %@": {
+      "comment": "Queue row label; %@ is the file being copied.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Копирование %@"
+          }
+        }
+      }
+    },
     "Copy Path": {
       "comment": "Context-menu item: copy the file path to the clipboard.",
       "localizations": {
@@ -979,6 +1289,110 @@
           "stringUnit": {
             "state": "translated",
             "value": "Скопировать пути"
+          }
+        }
+      }
+    },
+    "Copying %@": {
+      "comment": "Queue-bar status; %@ is the file being copied.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copying %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Копирование %@"
+          }
+        }
+      }
+    },
+    "Copying…": {
+      "comment": "Queue-bar status while a copy is being prepared.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copying…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Копирование…"
+          }
+        }
+      }
+    },
+    "Copy…": {
+      "comment": "Queue row label for a copy job with no current item yet.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Копирование…"
+          }
+        }
+      }
+    },
+    "Couldn’t copy %lld items": {
+      "comment": "Copy failure for several items; %lld is the count.",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Couldn’t copy %lld item"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Couldn’t copy %lld items"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось скопировать %lld объект"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось скопировать %lld объекта"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось скопировать %lld объектов"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось скопировать %lld объектов"
+                }
+              }
+            }
           }
         }
       }
@@ -1170,6 +1584,59 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не удалось полностью удалить «%@»"
+          }
+        }
+      }
+    },
+    "Couldn’t move %lld items": {
+      "comment": "Move failure for several items; %lld is the count.",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Couldn’t move %lld item"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Couldn’t move %lld items"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось переместить %lld объект"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось переместить %lld объекта"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось переместить %lld объектов"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось переместить %lld объектов"
+                }
+              }
+            }
           }
         }
       }
@@ -1433,6 +1900,23 @@
         }
       }
     },
+    "Date Modified": {
+      "comment": "File-list column header: last-modified date.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Date Modified"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Дата изменения"
+          }
+        }
+      }
+    },
     "Delete": {
       "comment": "Confirm button on the permanent-delete confirmation.",
       "localizations": {
@@ -1588,6 +2072,23 @@
         }
       }
     },
+    "Detached HEAD": {
+      "comment": "Git branch tooltip: HEAD is not on a branch.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detached HEAD"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отсоединённый HEAD"
+          }
+        }
+      }
+    },
     "Dirnex already has Full Disk Access": {
       "comment": "FDA already-granted sheet title.",
       "localizations": {
@@ -1655,6 +2156,23 @@
         }
       },
       "comment": "%@ is a language name written in that language, e.g. “Русский”."
+    },
+    "Done": {
+      "comment": "Queue row status: the operation finished.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Готово"
+          }
+        }
+      }
     },
     "Don’t know where %lld items came from": {
       "comment": "Put-Back result for several items with no recorded origin; %lld is the count.",
@@ -2151,6 +2669,40 @@
         }
       }
     },
+    "Git branch": {
+      "comment": "Accessibility label for the branch glyph in the path bar.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Git branch"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ветка Git"
+          }
+        }
+      }
+    },
+    "Git status": {
+      "comment": "Tooltip on the one-letter Git status column header.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Git status"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Статус Git"
+          }
+        }
+      }
+    },
     "Give Dirnex Full Disk Access": {
       "comment": "FDA (general) sheet title.",
       "localizations": {
@@ -2181,6 +2733,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Скрыть %@"
+          }
+        }
+      }
+    },
+    "Hide operation details": {
+      "comment": "Queue-bar disclosure button: collapse the per-operation list.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide operation details"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скрыть детали операций"
           }
         }
       }
@@ -2288,6 +2857,23 @@
         }
       }
     },
+    "Move %@": {
+      "comment": "Queue row label; %@ is the file being moved.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перемещение %@"
+          }
+        }
+      }
+    },
     "Move %lld items to the Trash?": {
       "comment": "Trash confirmation for several items; %lld is the count.",
       "localizations": {
@@ -2375,6 +2961,74 @@
         }
       }
     },
+    "Move…": {
+      "comment": "Queue row label for a move job with no current item yet.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перемещение…"
+          }
+        }
+      }
+    },
+    "Moving %@": {
+      "comment": "Queue-bar status; %@ is the file being moved.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moving %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перемещение %@"
+          }
+        }
+      }
+    },
+    "Moving…": {
+      "comment": "Queue-bar status while a move is being prepared.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moving…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перемещение…"
+          }
+        }
+      }
+    },
+    "Name": {
+      "comment": "File-list column header: the entry's name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Имя"
+          }
+        }
+      }
+    },
     "New (copying in)": {
       "comment": "Conflict card header for the incoming, copied item.",
       "localizations": {
@@ -2426,6 +3080,40 @@
         }
       }
     },
+    "New Tab": {
+      "comment": "Accessibility label for the new-tab (+) button in a pane's tab strip.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Tab"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Новая вкладка"
+          }
+        }
+      }
+    },
+    "New Tab (⌘T)": {
+      "comment": "Tooltip on the new-tab (+) button; ⌘T is the keyboard shortcut.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Tab (⌘T)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Новая вкладка (⌘T)"
+          }
+        }
+      }
+    },
     "Next": {
       "comment": "Tour: next-screen button.",
       "localizations": {
@@ -2456,6 +3144,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Нет программ"
+          }
+        }
+      }
+    },
+    "No commits yet": {
+      "comment": "Git branch tooltip: the branch has no commits.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No commits yet"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пока нет коммитов"
           }
         }
       }
@@ -2766,6 +3471,57 @@
         }
       }
     },
+    "Pause": {
+      "comment": "Queue-bar button that pauses all running file operations.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pause"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пауза"
+          }
+        }
+      }
+    },
+    "Paused": {
+      "comment": "Queue row status: the operation is paused.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paused"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Приостановлено"
+          }
+        }
+      }
+    },
+    "Paused — %@": {
+      "comment": "Queue-bar status prefix when the queue is paused; %@ is the underlying status.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paused — %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Приостановлено — %@"
+          }
+        }
+      }
+    },
     "Permanent delete always asks for confirmation, regardless of this setting.": {
       "comment": "Operations footer: confirm trash.",
       "localizations": {
@@ -2832,6 +3588,23 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "Preparing…": {
+      "comment": "Queue-bar status before any operation has started transferring.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparing…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подготовка…"
           }
         }
       }
@@ -3261,6 +4034,40 @@
         }
       }
     },
+    "Results for %@": {
+      "comment": "Path-bar label for a search-results snapshot; %@ is the query.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Results for %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Результаты для %@"
+          }
+        }
+      }
+    },
+    "Resume": {
+      "comment": "Queue-bar button that resumes paused file operations.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resume"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Продолжить"
+          }
+        }
+      }
+    },
     "Retry": {
       "comment": "Error resolution button.",
       "localizations": {
@@ -3482,6 +4289,23 @@
         }
       }
     },
+    "Share of this folder": {
+      "comment": "Tooltip on the size-bar column header: each row's share of the folder's total size.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share of this folder"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Доля от этой папки"
+          }
+        }
+      }
+    },
     "Shortcuts": {
       "comment": "Settings tab.",
       "localizations": {
@@ -3601,6 +4425,23 @@
         }
       }
     },
+    "Show operation details": {
+      "comment": "Queue-bar disclosure button: reveal the per-operation list.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show operation details"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показать детали операций"
+          }
+        }
+      }
+    },
     "Shows each file's tag colours at the right edge of its name, as Finder does. Also in the View menu. Archives and remote volumes have no tags, so nothing is drawn there.": {
       "comment": "Panels footer: Finder tags.",
       "localizations": {
@@ -3614,6 +4455,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Показывает цвета тегов у правого края имени каждого файла, как в Finder. Также доступно в меню «Вид». У архивов и удалённых томов тегов нет, поэтому для них ничего не отображается."
+          }
+        }
+      }
+    },
+    "Size": {
+      "comment": "File-list column header: the file's size.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Size"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Размер"
           }
         }
       }
@@ -4026,6 +4884,23 @@
         }
       }
     },
+    "Tracking %@": {
+      "comment": "Git branch tooltip; %@ is the upstream ref.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tracking %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отслеживает %@"
+          }
+        }
+      }
+    },
     "Trash": {
       "comment": "Tab title for the merged Trash listing.",
       "localizations": {
@@ -4090,6 +4965,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Снять выделение с файлов"
+          }
+        }
+      }
+    },
+    "Waiting": {
+      "comment": "Queue row status: the operation is queued but not yet started.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waiting"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ожидание"
           }
         }
       }

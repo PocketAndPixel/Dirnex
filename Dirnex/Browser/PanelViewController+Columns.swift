@@ -16,9 +16,21 @@ extension PanelViewController {
 
         var title: String {
             switch self {
-            case .name: return "Name"
-            case .size: return "Size"
-            case .date: return "Date Modified"
+            case .name:
+                return String(
+                    localized: "Name",
+                    comment: "File-list column header: the entry's name."
+                )
+            case .size:
+                return String(
+                    localized: "Size",
+                    comment: "File-list column header: the file's size."
+                )
+            case .date:
+                return String(
+                    localized: "Date Modified",
+                    comment: "File-list column header: last-modified date."
+                )
             // One letter wide, so a header title could only ever be an ellipsis; the tooltip in
             // `installGitColumn` names it instead.
             case .git: return ""

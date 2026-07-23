@@ -149,9 +149,18 @@ extension PathBarView {
     /// it gets a crumb trail (`rebuildICloudCrumbs`) rather than a dead end.
     func rebuildVirtualLabel(for path: VFSPath) {
         if path.backend == .trash {
-            installVirtualLabel("Trash", symbolNamed: "trash")
+            installVirtualLabel(
+                String(localized: "Trash", comment: "Path-bar label for the merged Trash listing."),
+                symbolNamed: "trash"
+            )
         } else {
-            installVirtualLabel("Results for \(path.lastComponent)", symbolNamed: "magnifyingglass")
+            installVirtualLabel(
+                String(
+                    localized: "Results for \(path.lastComponent)",
+                    comment: "Path-bar label for a search-results snapshot; %@ is the query."
+                ),
+                symbolNamed: "magnifyingglass"
+            )
         }
     }
 

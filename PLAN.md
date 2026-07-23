@@ -222,6 +222,30 @@ involved. Worth a lint rule keeping bare literals out of UI files afterwards.
   varies there). Keys taken from the compiler-emitted `.stringsdata`, added by script, verified
   additive-only. Verified live in Russian: all eight section headers (Недавние · Поиски · Избранное ·
   Облако · Тома · Серверы · Корзина), the system rows, and the Trash and server context menus.
+- **Slice 4 landed (2026-07-23): the pane chrome.** The always-visible browser furniture — the tab
+  strip (New/Close tooltips and accessibility labels), the window-bottom queue bar and its per-job
+  rows (Pause/Resume, Cancel all, the disclosure toggle, and the whole live status/detail readout),
+  the copy/move batch-failure alert, the path-bar crumb "Copy Path" menu and the Trash / search
+  virtual labels, the three real column headers (Name · Size · Date Modified) plus the Git-status and
+  size-bar header tooltips, and the Git branch chip's tooltip: 44 new catalog keys across 10 files,
+  all Russian-filled. The recurring traps, all fixed at the source: **verb-splicing** in three places
+  (`"Copying \(name)"` / `"Moving \(name)"` in the queue header and rows, and `"Couldn’t \(verb)…"`
+  in the batch-failure alert → whole sentences per branch), and **hand-rolled plurals** in the branch
+  chip (`commit\(n==1 ? "" : "s")` → catalog `%lld commits to push` / `to pull`, Russian
+  one/few/many) and in the alert (`Couldn’t copy/move %lld items`). The **column headers are data**
+  read through `Column.title` — but the literals live *in* that computed property, so wrapping them
+  there extracts fine (unlike `SidebarSection.title`, whose value reaches the display site as a
+  variable and needed the registry treatment). Five keys were reused, already translated, rather than
+  re-added (`Cancel`, `OK`, `Trash`, `Copy Path`, and the single-item `Couldn’t copy/move “%@”`).
+  `GitBranchChipView.toolTip` moved from bare literals to `String(localized:)`, so its two unit tests
+  (which asserted English while the app test target inherits the Russian pin) were rewritten to build
+  the expected string from the same primitives — pinning order, the `·` join, and the singular/plural
+  selection without pinning a language (docs/NOTES.md). Keys taken from the compiler-emitted
+  `.stringsdata`, added by script with an exact-match guard, verified additive-only (44 added, 0
+  changed). One structural cost: the `String(localized:)` wrapping pushed `QueueBarView` past the
+  type-body-length ceiling, so `statusText`/`detailText` moved to a same-file extension. Verified live
+  in Russian: the column headers (Имя · Размер · Дата изменения) render, truncating on column width
+  exactly as the English would.
 - **Deferred as its own slice: the undo/redo action *labels*.** The "Undo Move" / "Redo Clear
   Selection" menu titles compose `"Undo \(label)"` from a label that is *data*, not an app literal:
   the file-op names ("Move", "Copy", "Rename", "Move to Trash", "New Folder") originate in
@@ -231,9 +255,9 @@ involved. Worth a lint rule keeping bare literals out of UI files afterwards.
   localizing the `"Undo %@"` / `"Redo %@"` frames — a core-touching change. Doing only the app half
   would leave the menu mixing a Russian frame with English labels, which is worse than uniform
   English, so the whole concern waits for one slice.
-- **Remaining:** the rest of the `Dirnex/Browser/` controllers — the tabs/queue/path bar chrome,
-  column headers, connect-server and archive prompts, multi-rename, user-script and workspace
-  organizers, sync, and the assorted status/tooltip strings; then the undo-label slice above.
+- **Remaining:** the rest of the `Dirnex/Browser/` controllers — connect-server and archive prompts,
+  multi-rename, user-script and workspace organizers, sync, and the assorted status/tooltip strings;
+  then the undo-label slice above.
 
 **Pass 3 — the remaining six languages.** Adding one is a line in `AppLanguages.all` plus its
 column in the catalog; `LocalizationCoverageTests` fails until the column is complete.

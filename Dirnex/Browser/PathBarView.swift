@@ -482,11 +482,11 @@ extension PathBarView {
     /// leave the menu aimed at a stale location.
     private func crumbMenu(for target: VFSPath) -> NSMenu {
         let menu = NSMenu()
-        let item = NSMenuItem(
-            title: "Copy Path",
-            action: #selector(copyCrumbPath(_:)),
-            keyEquivalent: ""
+        let title = String(
+            localized: "Copy Path",
+            comment: "Path-bar crumb menu: copy the path as text."
         )
+        let item = NSMenuItem(title: title, action: #selector(copyCrumbPath(_:)), keyEquivalent: "")
         item.target = self
         item.representedObject = target.path
         menu.addItem(item)

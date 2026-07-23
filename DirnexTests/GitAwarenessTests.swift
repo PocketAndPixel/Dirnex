@@ -38,14 +38,27 @@ struct GitBranchChipTests {
     func toolTip() {
         let branch = GitBranch(name: "Dev", upstream: "origin/Dev", ahead: 1, behind: 3)
         let text = GitBranchChipView.toolTip(for: branch)
-        #expect(text == "Branch Dev · Tracking origin/Dev · 1 commit to push · 3 commits to pull")
+        // Assert against the localized primitives, not English literals, so the suite passes whatever
+        // language the app test target inherits (docs/NOTES.md). Still pins the segment order, the
+        // " · " join, and the singular/plural selection (1 → "commit", 3 → "commits").
+        let expected = [
+            String(localized: "Branch \("Dev")"),
+            String(localized: "Tracking \("origin/Dev")"),
+            String(localized: "\(1) commits to push"),
+            String(localized: "\(3) commits to pull")
+        ].joined(separator: " · ")
+        #expect(text == expected)
     }
 
     @Test("a fresh repository reports having no commits, not a missing branch")
     func noCommits() {
         let branch = GitBranch(name: "main", hasNoCommits: true)
         #expect(GitBranchChipView.text(for: branch) == "main")
-        #expect(GitBranchChipView.toolTip(for: branch) == "Branch main · No commits yet")
+        let expected = [
+            String(localized: "Branch \("main")"),
+            String(localized: "No commits yet")
+        ].joined(separator: " · ")
+        #expect(GitBranchChipView.toolTip(for: branch) == expected)
     }
 }
 

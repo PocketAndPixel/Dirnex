@@ -364,7 +364,10 @@ extension PanelViewController {
         resizeNameColumn(by: -sizeBarColumnFootprint)
         let column = NSTableColumn(identifier: identifier)
         column.title = Column.sizeBar.title
-        column.headerToolTip = "Share of this folder"
+        column.headerToolTip = String(
+            localized: "Share of this folder",
+            comment: "Tooltip on the size-bar column header: each row's share of the folder's total size."
+        )
         column.width = Column.sizeBar.defaultWidth
         column.minWidth = Column.sizeBar.minWidth
         tableView.addTableColumn(column)

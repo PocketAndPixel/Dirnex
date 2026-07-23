@@ -205,7 +205,10 @@ extension PanelViewController {
         resizeNameColumn(by: -gitColumnFootprint)
         let column = NSTableColumn(identifier: identifier)
         column.title = Column.git.title
-        column.headerToolTip = "Git status"
+        column.headerToolTip = String(
+            localized: "Git status",
+            comment: "Tooltip on the one-letter Git status column header."
+        )
         column.width = Column.git.defaultWidth
         column.minWidth = Column.git.minWidth
         column.maxWidth = Column.git.defaultWidth
