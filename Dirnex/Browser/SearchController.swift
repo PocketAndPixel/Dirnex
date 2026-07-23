@@ -118,7 +118,7 @@ final class SearchController: NSViewController {
             stack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             stack.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-            container.widthAnchor.constraint(equalToConstant: 460)
+            container.widthAnchor.constraint(equalToConstant: 552)
         ])
         view = container
     }
@@ -215,7 +215,7 @@ final class SearchController: NSViewController {
         let footer = NSStackView(views: [spacer, cancelButton, findButton])
         footer.orientation = .horizontal
         footer.spacing = 10
-        footer.widthAnchor.constraint(equalToConstant: 420).isActive = true
+        footer.widthAnchor.constraint(equalToConstant: 512).isActive = true
         return footer
     }
 
@@ -284,7 +284,7 @@ final class SearchController: NSViewController {
         field.placeholderString = placeholder
         field.delegate = self
         field.translatesAutoresizingMaskIntoConstraints = false
-        field.widthAnchor.constraint(equalToConstant: 300).isActive = true
+        field.widthAnchor.constraint(equalToConstant: 360).isActive = true
     }
 }
 
