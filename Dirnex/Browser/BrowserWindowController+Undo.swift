@@ -132,7 +132,7 @@ extension BrowserWindowController {
         alert.alertStyle = .warning
         alert.messageText = title
         alert.informativeText = lines.joined(separator: "\n")
-        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))
         alert.enableEscapeToCancel()
         if let window { alert.beginSheetModal(for: window) } else { alert.runModal() }
     }

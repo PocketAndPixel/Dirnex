@@ -226,12 +226,15 @@ extension PanelViewController {
             comment: "Host-key-change alert title; %@ is the host name."
         )
         alert.informativeText = Self.hostKeyChangeDetail(change)
-        // "Cancel" is added first so it's the default (Return / Escape) and rightmost.
+        // "Cancel" is added first so it's the rightmost and answers Escape. AppKit gives it Escape
+        // only in English — it matches the literal string "Cancel" — so name it, or a translated
+        // build leaves this alert with no way out (docs/NOTES.md).
         alert.addButton(withTitle: String(localized: "Cancel", comment: "Cancel button."))
         alert.addButton(withTitle: String(
             localized: "Trust New Key & Connect",
             comment: "Host-key-change alert: accept the new key and reconnect."
         ))
+        alert.enableEscapeToCancel(safe: .alertFirstButtonReturn)
 
         let handler: (NSApplication.ModalResponse) -> Void = { response in
             if response == .alertSecondButtonReturn { trust() }

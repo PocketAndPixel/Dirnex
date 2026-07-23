@@ -156,8 +156,13 @@ enum MainMenuBuilder {
     /// `NSApp.servicesMenu` is single-valued: a second copy would take the population away from
     /// this one rather than getting its own.
     private static func servicesMenuItem() -> NSMenuItem {
-        let item = NSMenuItem(title: "Services", action: nil, keyEquivalent: "")
-        let menu = NSMenu(title: "Services")
+        // AppKit localizes the Services *contents* but not this item's own title — we build it.
+        let title = String(
+            localized: "Services",
+            comment: "App-menu item holding the Services submenu."
+        )
+        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        let menu = NSMenu(title: title)
         item.submenu = menu
         NSApp.servicesMenu = menu
         return item
@@ -169,8 +174,13 @@ enum MainMenuBuilder {
         appMenuItem.submenu = appMenu
         let appName = ProcessInfo.processInfo.processName
 
+        // These four are the standard app-menu items, but we build them ourselves, so nothing
+        // localizes them for us — the rest of this menu comes from the (translated) registry.
         appMenu.addItem(
-            withTitle: "About \(appName)",
+            withTitle: String(
+                localized: "About \(appName)",
+                comment: "App-menu item opening the About panel; %@ is the app name."
+            ),
             action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
             keyEquivalent: ""
         )
@@ -192,12 +202,18 @@ enum MainMenuBuilder {
         appMenu.addItem(servicesMenuItem())
         appMenu.addItem(.separator())
         appMenu.addItem(
-            withTitle: "Hide \(appName)",
+            withTitle: String(
+                localized: "Hide \(appName)",
+                comment: "App-menu item that hides the app; %@ is the app name."
+            ),
             action: #selector(NSApplication.hide(_:)),
             keyEquivalent: "h"
         )
         let hideOthers = appMenu.addItem(
-            withTitle: "Hide Others",
+            withTitle: String(
+                localized: "Hide Others",
+                comment: "App-menu item that hides every other app."
+            ),
             action: #selector(NSApplication.hideOtherApplications(_:)),
             keyEquivalent: "h"
         )

@@ -467,14 +467,48 @@ involved. Worth a lint rule keeping bare literals out of UI files afterwards.
   - Keys added by script with the usual exact-match guard against the emitted `.stringsdata` and an
     additive-only check (50 added, 0 changed), and `Couldn’t mount the share (error %d).` was taken
     verbatim from it — the errno is an `Int32`, so the specifier is `%d`, not `%lld`.
+- **Slice 12 landed (2026-07-24): the completeness audit, and the first *behavioural* leak.** A
+  full re-run of Slice 11's sweep over the app and the core, cross-checked both ways against the
+  compiler-emitted `.stringsdata` (extracted-but-uncatalogued *and* catalogued-but-unused), plus a
+  scan for bare literals at AppKit display sinks. The catalog itself came back clean — 726 keys, `en`
+  and `ru` complete, no blanks — and the extracted-but-untranslated set was **exactly** the 21 App
+  Intents keys already deferred, so Slices 1–11 held. Six leaks remained; **6 new catalog keys**
+  across 8 files. Three were confirmed on screen in a Russian build before being touched.
+  - **The app menu was a third English** — `About Dirnex`, `Services`, `Hide Dirnex`, `Hide Others`,
+    hand-built `NSMenuItem`s in the first menu of the app, sitting between fully translated registry
+    items. The `MenuSpec` fix from Pass 1 covered the menu *bar's* titles; these are the standard
+    app-menu items AppKit does not build for us, so nothing inherited them.
+  - **Two sites had a translated key sitting right there and did not use it**: the Quick View header
+    read "14 of 21" while `%@ of %@` was already translated for the queue bar, and the File menu drew
+    `Compare with FileMerge…` while `Compare with %@…` was already translated for the Synchronize
+    sheet — the *exact* instance NOTES.md records as a lesson, written down after Slice 8 and never
+    actually fixed. The de-duplication lesson has this second half: after de-duplicating the string,
+    check that every site producing it goes through the lookup.
+  - **`SpotlightQuery.summary` was a presentation decision in the core**, so it went to the path bar
+    and tab chip as English `"Search results"` or a raw `SearchKind.title`, bypassing the join the
+    Find-Files popup itself uses. Fixed the Slice 11 way — by *deleting* the words, not keying them:
+    the core now answers `SummaryTerm` (`.name`/`.content`/`.kind`/`.tag`/`.generic`), keeping the
+    tested precedence, and `LocalizedCatalog.summary(of:)`/`.plainName(of:)` pick the words. The
+    display quotes became a `“%@”` format so Russian can answer `«%@»`.
+  - **`NSAlert`'s Escape binding is English-only, which made this the first leak that changed
+    *behaviour* rather than pixels** — see NOTES.md for the probe and the two live bugs it turned up.
+    `enableEscapeToCancel(safe:)` now takes an `NSApplication.ModalResponse` instead of matching
+    titles, and `EscapeToDismissTests` pins it with cases carrying no English word anywhere.
+  - Keys added by script with the usual exact-match guard against the emitted `.stringsdata` and an
+    additive-only check (6 added, 0 changed); the placeholder guard had to learn that `%1$lld` and
+    `%lld` are the same argument, since positional specifiers are exactly how a translation reorders.
+  - **Known and left alone:** an ad-hoc search with no term of its own draws "Results for Search
+    results" — a stutter that reads identically in English and predates this slice. Fixing it means
+    giving the generic search a self-naming identity the way Recents and the Trash have one; it is a
+    wording decision, not a translation gap.
 - **Pass 2 is complete.** Every AppKit/SwiftUI literal and every registry-owned string is wrapped and
   Russian-filled across Slices 1–11. One documented non-goal stays English: the stock Finder-tag
   *names* in the ⌃T menu, which are `DirnexCore` `systemTagName` data with the localization caveat
   already in `FinderTag`. Two deferrals stand, both re-confirmed by Slice 11's audit: the App Intents
   strings (21 keys, their own pass) and the archive format names. The AppleScript error *messages*
   join the `.sdef` terminology in staying English, on the same reasoning. Next is Pass 3 — the
-  remaining six languages.
-
+  remaining six languages. 
+  
 **Pass 3 — the remaining six languages.** Adding one is a line in `AppLanguages.all` plus its
 column in the catalog; `LocalizationCoverageTests` fails until the column is complete.
 

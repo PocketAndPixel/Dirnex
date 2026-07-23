@@ -722,6 +722,24 @@
         }
       }
     },
+    "%lld of %lld": {
+      "comment": "Quick View header position readout: %1$lld is the cursor's place, %2$lld the count.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld of %lld"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld из %2$lld"
+          }
+        }
+      }
+    },
     "%lld of %lld selected · %@": {
       "comment": "Pane status line while rows are marked. %1$lld is the marked count, %2$lld the total in the folder, %3$@ their combined size.",
       "localizations": {
@@ -924,6 +942,24 @@
           "stringUnit": {
             "state": "translated",
             "value": "Прервать"
+          }
+        }
+      }
+    },
+    "About %@": {
+      "comment": "App-menu item opening the About panel; %@ is the app name.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "О программе %@"
           }
         }
       }
@@ -4513,6 +4549,24 @@
         }
       }
     },
+    "Hide Others": {
+      "comment": "App-menu item that hides every other app.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide Others"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скрыть остальные"
+          }
+        }
+      }
+    },
     "Hide hidden files": {
       "comment": "Hidden-files toggle tooltip when they are showing.",
       "localizations": {
@@ -7485,6 +7539,24 @@
         }
       }
     },
+    "Search results": {
+      "comment": "A search's crumb when only a size or date filter names it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search results"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Результаты поиска"
+          }
+        }
+      }
+    },
     "Select": {
       "comment": "Confirm button of the wildcard dialog when adding files to the selection.",
       "localizations": {
@@ -7532,6 +7604,24 @@
           "stringUnit": {
             "state": "translated",
             "value": "Сервер"
+          }
+        }
+      }
+    },
+    "Services": {
+      "comment": "App-menu item holding the Services submenu.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Services"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Службы"
           }
         }
       }
@@ -13500,6 +13590,24 @@
           "stringUnit": {
             "state": "translated",
             "value": "В этом расположении нет Корзины."
+          }
+        }
+      }
+    },
+    "“%@”": {
+      "comment": "A search's crumb when it is named by a term the user typed; %@ is the term.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@»"
           }
         }
       }

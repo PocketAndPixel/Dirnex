@@ -128,7 +128,7 @@ extension PanelViewController {
             entries,
             truncated: truncated,
             as: ResultsPresentation(
-                pathSummary: query.summary,
+                pathSummary: LocalizedCatalog.summary(of: query),
                 sort: panel.model.sort,
                 query: query,
                 scope: scope,
@@ -150,7 +150,8 @@ extension PanelViewController {
     @objc func saveCurrentSearch(_ sender: Any?) {
         let tab = tabs[activeTabIndex]
         guard let query = tab.searchQuery else { return }
-        guard let name = promptForSavedSearchName(default: query.summaryPlainName) else { return }
+        let prefill = LocalizedCatalog.plainName(of: query)
+        guard let name = promptForSavedSearchName(default: prefill) else { return }
 
         var store = SavedSearchStore.load()
         if store.contains(name: name), !confirmReplaceSavedSearch(named: name) { return }

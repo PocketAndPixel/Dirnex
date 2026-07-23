@@ -138,7 +138,9 @@ enum FullDiskAccessOnboarding {
         alert.alertStyle = .informational
         alert.addButton(withTitle: String(localized: "OK"))
         alert.addButton(withTitle: String(localized: "Open System Settings"))
-        alert.enableEscapeToCancel() // ⎋ → OK (the lone safe default here).
+        // ⎋ → OK (the lone safe default here) — named, because it is *not* the last button and the
+        // default would otherwise hand Escape to "Open System Settings".
+        alert.enableEscapeToCancel(safe: .alertFirstButtonReturn)
 
         present(alert, over: window) { response in
             if response == .alertSecondButtonReturn { openSystemSettings() }

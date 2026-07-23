@@ -472,6 +472,24 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   and have `rebuildVirtualLabel` match on that identity to draw the localized name with the sidebar
   row's own glyph (`clock`), exactly as it special-cases `backend == .trash`. Only the live Russian
   run surfaced it — an English screenshot showed "Results for Recents", which reads as fine.
+- **`NSAlert` binds Escape by matching the byte string `"Cancel"`, so translating the button silently
+  removes the alert's way out.** Probed with the process pinned to `ru`: a button titled «Отмена» is
+  given *no* key equivalent at all, and added first (to make it rightmost) it is given **Return**
+  instead — while the English `"Cancel"` gets `\u{1b}` in either language. This is not cosmetic like
+  the rest of this section: it changes what the keyboard does, in the one direction where the user
+  is trying to get out. And it is invisible twice over — nothing logs, and an English screenshot is
+  perfect. `enableEscapeToCancel` used to guess from a set of English titles for the alerts AppKit
+  left alone, which fails identically and for the same reason, so the fix could not be "translate
+  the set": it now takes the safe **`NSApplication.ModalResponse`**, the vocabulary the caller
+  already reads the result back in, defaulting to the last button. Two live bugs fell out of the
+  probe — the host-key alert (translated Cancel added first, no Escape at all in Russian) and Full
+  Disk Access's already-granted alert, whose comment claimed "⎋ → OK" while the code handed Escape
+  to *Open System Settings* in **both** languages, because `"OK"` was not in the set either.
+  - The general shape, and the one worth carrying: **a decision keyed off displayed text is a
+    localization bug waiting for a translator.** The title-matching sites are easy to grep once you
+    know to look (`titles.contains($0.title)`, `if button.title == …`); what makes them expensive is
+    that they fail as *behaviour*, so no string sweep and no coverage test over the catalog can see
+    them. Key off an identity the display layer doesn't own.
 
 ## Lint ceilings and file splitting
 
