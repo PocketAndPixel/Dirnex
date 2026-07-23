@@ -26,9 +26,9 @@ final class ConnectServerForm: NSObject, NSTextFieldDelegate {
     private let address = ConnectFormFactory.textField(placeholder: "smb://host/share")
     private let smbHost = ConnectFormFactory.textField(placeholder: "nas.local")
     private let smbShare = ConnectFormFactory.textField(placeholder: "Media")
-    private let smbUser = ConnectFormFactory.textField(placeholder: "guest (leave blank)")
+    private let smbUser = ConnectFormFactory.textField(placeholder: ConnectText.smbUserHint)
     private let smbPassword = ConnectFormFactory.secureField(
-        placeholder: "Password (blank for guest)"
+        placeholder: ConnectText.smbPasswordHint
     )
 
     // SFTP fields.
@@ -36,13 +36,13 @@ final class ConnectServerForm: NSObject, NSTextFieldDelegate {
     private let sftpPort = ConnectFormFactory.textField(placeholder: "22")
     private let sftpUser = ConnectFormFactory.textField(placeholder: NSUserName())
     private let keyFile = ConnectFormFactory.textField(placeholder: "~/.ssh/id_ed25519")
-    private let sftpSecret = ConnectFormFactory.secureField(placeholder: "Password")
+    private let sftpSecret = ConnectFormFactory.secureField(placeholder: ConnectText.authPassword)
 
     // SFTP auth toggle: a Tab-reachable switch flanked by its two mode labels. Off = private key
     // (the default), on = password; the active label is emphasized and the inactive one dimmed.
     private let authSwitch = KeyNavigableSwitch()
-    private let authKeyLabel = ConnectFormFactory.label("Private Key")
-    private let authPasswordLabel = ConnectFormFactory.label("Password")
+    private let authKeyLabel = ConnectFormFactory.label(ConnectText.privateKey)
+    private let authPasswordLabel = ConnectFormFactory.label(ConnectText.authPassword)
     private lazy var authControlView = ConnectFormFactory.authToggle(
         keyLabel: authKeyLabel,
         toggle: authSwitch,
@@ -50,7 +50,7 @@ final class ConnectServerForm: NSObject, NSTextFieldDelegate {
     )
 
     // Shared.
-    private let saveName = ConnectFormFactory.textField(placeholder: "Optional — save in sidebar")
+    private let saveName = ConnectFormFactory.textField(placeholder: ConnectText.saveHint)
 
     // Rows toggled per protocol / auth method.
     private var smbRows: [NSGridRow] = []
@@ -73,7 +73,9 @@ final class ConnectServerForm: NSObject, NSTextFieldDelegate {
             target: nil,
             action: nil
         )
-        let grid = NSGridView(views: [[ConnectFormFactory.label("Protocol:"), protocolControl]])
+        let grid = NSGridView(views: [[
+            ConnectFormFactory.label(ConnectText.proto), protocolControl
+        ]])
         accessoryView = NSView()
         initialFirstResponder = sftpHost
         super.init()
@@ -89,21 +91,25 @@ final class ConnectServerForm: NSObject, NSTextFieldDelegate {
 
     private func buildRows(in grid: NSGridView) {
         smbRows = [
-            grid.addRow(with: [ConnectFormFactory.label("Address:"), address]),
-            grid.addRow(with: [ConnectFormFactory.label("Host:"), smbHost]),
-            grid.addRow(with: [ConnectFormFactory.label("Share:"), smbShare]),
-            grid.addRow(with: [ConnectFormFactory.label("User:"), smbUser]),
-            grid.addRow(with: [ConnectFormFactory.label("Password:"), smbPassword])
+            grid.addRow(with: [ConnectFormFactory.label(ConnectText.address), address]),
+            grid.addRow(with: [ConnectFormFactory.label(ConnectText.host), smbHost]),
+            grid.addRow(with: [ConnectFormFactory.label(ConnectText.share), smbShare]),
+            grid.addRow(with: [ConnectFormFactory.label(ConnectText.user), smbUser]),
+            grid.addRow(with: [ConnectFormFactory.label(ConnectText.password), smbPassword])
         ]
         sftpSharedRows = [
-            grid.addRow(with: [ConnectFormFactory.label("Host:"), sftpHost]),
-            grid.addRow(with: [ConnectFormFactory.label("Port:"), sftpPort]),
-            grid.addRow(with: [ConnectFormFactory.label("User:"), sftpUser]),
-            grid.addRow(with: [ConnectFormFactory.label("Auth:"), authControlView])
+            grid.addRow(with: [ConnectFormFactory.label(ConnectText.host), sftpHost]),
+            grid.addRow(with: [ConnectFormFactory.label(ConnectText.port), sftpPort]),
+            grid.addRow(with: [ConnectFormFactory.label(ConnectText.user), sftpUser]),
+            grid.addRow(with: [ConnectFormFactory.label(ConnectText.auth), authControlView])
         ]
-        sftpKeyRow = grid.addRow(with: [ConnectFormFactory.label("Key file:"), keyFile])
-        sftpPasswordRow = grid.addRow(with: [ConnectFormFactory.label("Password:"), sftpSecret])
-        grid.addRow(with: [ConnectFormFactory.label("Save as:"), saveName])
+        sftpKeyRow = grid.addRow(
+            with: [ConnectFormFactory.label(ConnectText.keyFile), keyFile]
+        )
+        sftpPasswordRow = grid.addRow(
+            with: [ConnectFormFactory.label(ConnectText.password), sftpSecret]
+        )
+        grid.addRow(with: [ConnectFormFactory.label(ConnectText.saveAs), saveName])
 
         grid.column(at: 0).xPlacement = .trailing
         grid.rowAlignment = .firstBaseline
@@ -397,6 +403,90 @@ private enum ConnectFormFactory {
         stack.spacing = 8
         stack.translatesAutoresizingMaskIntoConstraints = false
         return stack
+    }
+}
+
+/// The Connect dialog's on-screen strings — the field labels (reused across the two protocol
+/// layouts, which share the Host / User / Password rows), the auth-mode labels, and the field
+/// placeholders that carry English hints. Kept out of the class body so its length stays under the
+/// ceiling; the literals live *at* the `String(localized:)` call, so extraction works — unlike
+/// passing a variable to `String(localized:)`, which extracts nothing (docs/NOTES.md).
+@MainActor
+private enum ConnectText {
+    static var proto: String {
+        String(localized: "Protocol:", comment: "Connect field label: SFTP or SMB.")
+    }
+
+    static var address: String {
+        String(localized: "Address:", comment: "Connect field label: the SMB URL.")
+    }
+
+    static var host: String {
+        String(localized: "Host:", comment: "Connect field label: server host name.")
+    }
+
+    static var share: String {
+        String(localized: "Share:", comment: "Connect field label: SMB share name.")
+    }
+
+    static var user: String {
+        String(localized: "User:", comment: "Connect field label: user name.")
+    }
+
+    static var password: String {
+        String(localized: "Password:", comment: "Connect field label: password.")
+    }
+
+    static var port: String {
+        String(localized: "Port:", comment: "Connect field label: SFTP port.")
+    }
+
+    static var auth: String {
+        String(localized: "Auth:", comment: "Connect field label: SFTP authentication method.")
+    }
+
+    static var keyFile: String {
+        String(localized: "Key file:", comment: "Connect field label: SFTP key-file path.")
+    }
+
+    static var saveAs: String {
+        String(localized: "Save as:", comment: "Connect field label: name to save under.")
+    }
+
+    /// Auth-mode label, and the SFTP password field's placeholder — both the bare word "Password".
+    static var authPassword: String {
+        String(
+            localized: "Password",
+            comment: "Password field label and placeholder in the Connect dialog."
+        )
+    }
+
+    static var privateKey: String {
+        String(
+            localized: "Private Key",
+            comment: "SFTP auth-mode label: authenticate with a private key file."
+        )
+    }
+
+    static var smbUserHint: String {
+        String(
+            localized: "guest (leave blank)",
+            comment: "Placeholder in the SMB user field: a blank user connects as guest."
+        )
+    }
+
+    static var smbPasswordHint: String {
+        String(
+            localized: "Password (blank for guest)",
+            comment: "Placeholder in the SMB password field: a blank password connects as guest."
+        )
+    }
+
+    static var saveHint: String {
+        String(
+            localized: "Optional — save in sidebar",
+            comment: "Placeholder in the name field: naming the connection saves it to the sidebar."
+        )
     }
 }
 

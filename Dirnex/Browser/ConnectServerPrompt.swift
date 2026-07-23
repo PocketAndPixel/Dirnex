@@ -31,10 +31,19 @@ enum ConnectServerPrompt {
         let form = ConnectServerForm(prefill: prefill)
 
         let alert = NSAlert()
-        alert.messageText = "Connect to Server"
-        alert.informativeText = "Browse a remote SFTP account or an SMB share on your network."
-        alert.addButton(withTitle: "Connect")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(
+            localized: "Connect to Server",
+            comment: "Title of the Connect to Server dialog."
+        )
+        alert.informativeText = String(
+            localized: "Browse a remote SFTP account or an SMB share on your network.",
+            comment: "Subtitle of the Connect to Server dialog."
+        )
+        alert.addButton(withTitle: String(
+            localized: "Connect",
+            comment: "Confirm button in the Connect to Server dialog."
+        ))
+        alert.addButton(withTitle: String(localized: "Cancel", comment: "Cancel button."))
         alert.accessoryView = form.accessoryView
         alert.window.initialFirstResponder = form.initialFirstResponder
 

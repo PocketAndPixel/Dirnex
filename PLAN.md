@@ -246,6 +246,32 @@ involved. Worth a lint rule keeping bare literals out of UI files afterwards.
   type-body-length ceiling, so `statusText`/`detailText` moved to a same-file extension. Verified live
   in Russian: the column headers (Имя · Размер · Дата изменения) render, truncating on column width
   exactly as the English would.
+- **Slice 5 landed (2026-07-23): the connect-to-server dialog.** The whole modal — the title,
+  subtitle and buttons, the protocol picker's field labels (Protocol / Address / Host / Share /
+  User / Password / Port / Auth / Key file / Save as), the SFTP auth-mode labels and the
+  instructional field placeholders, and every connect-failure and host-key-change string: 29 new
+  catalog keys across 3 files (`ConnectServerForm`, `ConnectServerPrompt`, `PanelViewController+
+  Connect`), all Russian-filled; `Cancel` and `Connect` reused. The **technical-example
+  placeholders are deliberately left untranslated** — the `smb://host/share` template, the
+  `nas.local` / `example.com` hosts, the `Media` share, the `22` port, the `~/.ssh/id_ed25519`
+  path, and the `SFTP` / `SMB` acronyms — the same convention as `example.com` everywhere. Two
+  NOTES.md traps recurred and were fixed at the source: the **`+`-concatenation trap** —
+  `String(localized: "a " + "b")` is a runtime `String`, not a localization-value literal, so it
+  extracts *nothing*, exactly the `Text("a" + "b")` failure (the permission-denied and known-hosts
+  details were rewritten to single literals, the latter a `\`-continued `"""` block for width); and
+  **noun-splicing** in the host-key body, where `keyLabel = keyType.isEmpty ? "key" : "\(keyType)
+  key"` composes "key" vs "RSA key" as its own unit so the sentence stays one literal and Russian
+  reorders `%@ key` → «ключ %@». The 13 field labels (Host / User / Password recur across the two
+  protocol layouts) and the placeholders live in a private `ConnectText` helper — each a computed
+  property with its literal *at* the `String(localized:)` call, so extraction works (unlike a
+  variable argument) while the class body stays under the type-body ceiling and the shared labels
+  dedupe to one key. Keys taken from the compiler-emitted `.stringsdata`, added by script, verified
+  additive-only (29 added, 0 changed). Verified live in Russian, both SFTP and SMB layouts
+  (Подключение к серверу · Хост · Аутентификация: Закрытый ключ / Пароль · Адрес · Ресурс · гость
+  (оставьте пустым)); the dialog is reached from **Переход ▸ Подключиться к серверу**, Finder's ⌘K
+  slot, not File. One thing only the live run caught: «Необязательно — сохранить в боковой панели»
+  overran the 280 pt Save-as field, so it was shortened to «Необязательно — в боковой панели» — a
+  translation's *fit* is a live check, not a catalog one.
 - **Deferred as its own slice: the undo/redo action *labels*.** The "Undo Move" / "Redo Clear
   Selection" menu titles compose `"Undo \(label)"` from a label that is *data*, not an app literal:
   the file-op names ("Move", "Copy", "Rename", "Move to Trash", "New Folder") originate in
@@ -255,9 +281,9 @@ involved. Worth a lint rule keeping bare literals out of UI files afterwards.
   localizing the `"Undo %@"` / `"Redo %@"` frames — a core-touching change. Doing only the app half
   would leave the menu mixing a Russian frame with English labels, which is worse than uniform
   English, so the whole concern waits for one slice.
-- **Remaining:** the rest of the `Dirnex/Browser/` controllers — connect-server and archive prompts,
-  multi-rename, user-script and workspace organizers, sync, and the assorted status/tooltip strings;
-  then the undo-label slice above.
+- **Remaining:** the rest of the `Dirnex/Browser/` controllers — the archive prompts, multi-rename,
+  the user-script and workspace organizers, sync, and the assorted status/tooltip strings; then the
+  undo-label slice above.
 
 **Pass 3 — the remaining six languages.** Adding one is a line in `AppLanguages.all` plus its
 column in the catalog; `LocalizationCoverageTests` fails until the column is complete.

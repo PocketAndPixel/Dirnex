@@ -69,6 +69,23 @@
         }
       }
     },
+    "%@ key": {
+      "comment": "Host-key-change body; %@ is the key type, e.g. RSA.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ key"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ключ %@"
+          }
+        }
+      }
+    },
     "%@ left": {
       "comment": "Queue-bar ETA readout; %@ is a formatted duration, e.g. “2 min left”.",
       "localizations": {
@@ -529,6 +546,23 @@
         }
       }
     },
+    "(unavailable)": {
+      "comment": "Shown in place of a host-key fingerprint that couldn’t be read.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(unavailable)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(недоступен)"
+          }
+        }
+      }
+    },
     "A row of F-key buttons along the window bottom — Rename, View, Copy, Move, New Folder, Delete — the Total Commander function bar. Also in the View menu; the keys work whether or not the bar is shown.": {
       "comment": "Panels footer: function key bar.",
       "localizations": {
@@ -576,6 +610,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Добавить сочетание"
+          }
+        }
+      }
+    },
+    "Address:": {
+      "comment": "Connect field label: the SMB URL.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Address:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Адрес:"
           }
         }
       }
@@ -783,6 +834,23 @@
         }
       }
     },
+    "Auth:": {
+      "comment": "Connect field label: SFTP authentication method.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auth:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Аутентификация:"
+          }
+        }
+      }
+    },
     "Automatic": {
       "comment": "Picker option: choose the tool/editor automatically.",
       "localizations": {
@@ -864,6 +932,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ветка %@"
+          }
+        }
+      }
+    },
+    "Browse a remote SFTP account or an SMB share on your network.": {
+      "comment": "Subtitle of the Connect to Server dialog.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Browse a remote SFTP account or an SMB share on your network."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Просматривайте удалённую учётную запись SFTP или сетевой ресурс SMB в вашей сети."
           }
         }
       }
@@ -1242,6 +1327,23 @@
         }
       }
     },
+    "Connect to Server": {
+      "comment": "Title of the Connect to Server dialog.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connect to Server"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подключение к серверу"
+          }
+        }
+      }
+    },
     "Copy %@": {
       "comment": "Queue row label; %@ is the file being copied.",
       "localizations": {
@@ -1340,6 +1442,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Копирование…"
+          }
+        }
+      }
+    },
+    "Couldn’t connect to “%@”.": {
+      "comment": "Error when a server connection fails; %@ is the host name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t connect to “%@”."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось подключиться к «%@»."
           }
         }
       }
@@ -1845,6 +1964,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не удалось вернуть «%@» на место"
+          }
+        }
+      }
+    },
+    "Couldn’t update the known hosts for “%@”.": {
+      "comment": "Error when clearing a stale known_hosts entry fails; %@ is the host.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t update the known hosts for “%@”."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось обновить список известных хостов для «%@»."
           }
         }
       }
@@ -2754,6 +2890,23 @@
         }
       }
     },
+    "Host:": {
+      "comment": "Connect field label: server host name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Host:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Хост:"
+          }
+        }
+      }
+    },
     "Install FileMerge (part of Xcode), Kaleidoscope, or BBEdit to compare files side by side.": {
       "comment": "Compare failure detail suggesting diff tools to install.",
       "localizations": {
@@ -2837,6 +2990,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Оставить оба"
+          }
+        }
+      }
+    },
+    "Key file:": {
+      "comment": "Connect field label: SFTP key-file path.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Key file:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файл ключа:"
           }
         }
       }
@@ -3437,6 +3607,23 @@
         }
       }
     },
+    "Optional — save in sidebar": {
+      "comment": "Placeholder in the name field: naming the connection saves it to the sidebar.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optional — save in sidebar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Необязательно — в боковой панели"
+          }
+        }
+      }
+    },
     "Other…": {
       "comment": "Open With menu item: pick an application by hand.",
       "localizations": {
@@ -3467,6 +3654,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "Панели"
+          }
+        }
+      }
+    },
+    "Password": {
+      "comment": "Password field label and placeholder in the Connect dialog.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Password"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пароль"
+          }
+        }
+      }
+    },
+    "Password (blank for guest)": {
+      "comment": "Placeholder in the SMB password field: a blank password connects as guest.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Password (blank for guest)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пароль (пусто для гостя)"
+          }
+        }
+      }
+    },
+    "Password:": {
+      "comment": "Connect field label: password.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Password:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пароль:"
           }
         }
       }
@@ -3592,6 +3830,40 @@
         }
       }
     },
+    "Permission denied. Check the username and that the key is authorized on the server.": {
+      "comment": "SFTP connect failure detail: authentication was rejected.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permission denied. Check the username and that the key is authorized on the server."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отказано в доступе. Проверьте имя пользователя и то, что ключ авторизован на сервере."
+          }
+        }
+      }
+    },
+    "Port:": {
+      "comment": "Connect field label: SFTP port.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Port:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Порт:"
+          }
+        }
+      }
+    },
     "Preparing…": {
       "comment": "Queue-bar status before any operation has started transferring.",
       "localizations": {
@@ -3622,6 +3894,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Набор"
+          }
+        }
+      }
+    },
+    "Private Key": {
+      "comment": "SFTP auth-mode label: authenticate with a private key file.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Private Key"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Закрытый ключ"
+          }
+        }
+      }
+    },
+    "Protocol:": {
+      "comment": "Connect field label: SFTP or SMB.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Protocol:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Протокол:"
           }
         }
       }
@@ -4153,6 +4459,23 @@
       },
       "comment": "Language picker entry meaning “follow the macOS language”."
     },
+    "Save as:": {
+      "comment": "Connect field label: name to save under.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save as:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранить как:"
+          }
+        }
+      }
+    },
     "Saved search": {
       "comment": "Accessibility label for a saved-search sidebar row's glyph.",
       "localizations": {
@@ -4302,6 +4625,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Доля от этой папки"
+          }
+        }
+      }
+    },
+    "Share:": {
+      "comment": "Connect field label: SMB share name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ресурс:"
           }
         }
       }
@@ -4680,6 +5020,23 @@
         }
       }
     },
+    "The identity of “%@” has changed": {
+      "comment": "Host-key-change alert title; %@ is the host name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The identity of “%@” has changed"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Идентификация «%@» изменилась"
+          }
+        }
+      }
+    },
     "The item no longer exists.": {
       "comment": "Error sentence: not found.",
       "localizations": {
@@ -4697,6 +5054,23 @@
         }
       }
     },
+    "The old host key couldn’t be removed automatically. Remove it from %@ and try connecting again.": {
+      "comment": "Known-hosts update failure detail; %@ is the known_hosts file path.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The old host key couldn’t be removed automatically. Remove it from %@ and try connecting again."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Старый ключ хоста не удалось удалить автоматически. Удалите его из %@ и попробуйте подключиться снова."
+          }
+        }
+      }
+    },
     "The other panel isn’t a folder you can copy into.": {
       "comment": "Copy/move failure detail: destination isn't a writable folder.",
       "localizations": {
@@ -4710,6 +5084,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Другая панель — не папка, в которую можно копировать."
+          }
+        }
+      }
+    },
+    "The remote path wasn’t found.": {
+      "comment": "SFTP connect failure detail: the remote path does not exist.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The remote path wasn’t found."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалённый путь не найден."
+          }
+        }
+      }
+    },
+    "The server’s host key has changed (new fingerprint %@).": {
+      "comment": "SFTP connect failure detail; %@ is the new host-key fingerprint.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server’s host key has changed (new fingerprint %@)."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ключ хоста сервера изменился (новый отпечаток %@)."
           }
         }
       }
@@ -4884,6 +5292,23 @@
         }
       }
     },
+    "This server is presenting a different host %@ than the one you trusted before. If you reinstalled the server or pointed a new SFTP app at this address, this is expected — but it can also mean someone is intercepting the connection (a man-in-the-middle attack).\n\nNew fingerprint:\n%@\n\nOnly continue if you recognize this fingerprint. Trusting it replaces the old key so future connections to this server succeed.": {
+      "comment": "Host-key-change alert body; first %@ is the key label, second %@ the fingerprint.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This server is presenting a different host %@ than the one you trusted before. If you reinstalled the server or pointed a new SFTP app at this address, this is expected — but it can also mean someone is intercepting the connection (a man-in-the-middle attack).\n\nNew fingerprint:\n%@\n\nOnly continue if you recognize this fingerprint. Trusting it replaces the old key so future connections to this server succeed."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот сервер предъявляет другой %@ хоста, чем тот, которому вы доверяли ранее. Если вы переустановили сервер или указали этот адрес в новом приложении SFTP — это ожидаемо, но также может означать, что кто-то перехватывает соединение (атака «человек посередине»).\n\nНовый отпечаток:\n%@\n\nПродолжайте, только если узнаёте этот отпечаток. Доверие заменит старый ключ, чтобы будущие подключения к этому серверу проходили успешно."
+          }
+        }
+      }
+    },
     "Tracking %@": {
       "comment": "Git branch tooltip; %@ is the upstream ref.",
       "localizations": {
@@ -4914,6 +5339,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Корзина"
+          }
+        }
+      }
+    },
+    "Trust New Key & Connect": {
+      "comment": "Host-key-change alert: accept the new key and reconnect.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trust New Key & Connect"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Доверять новому ключу и подключиться"
           }
         }
       }
@@ -4965,6 +5407,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Снять выделение с файлов"
+          }
+        }
+      }
+    },
+    "User:": {
+      "comment": "Connect field label: user name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "User:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пользователь:"
           }
         }
       }
@@ -7661,6 +8120,23 @@
         }
       }
     },
+    "guest (leave blank)": {
+      "comment": "Placeholder in the SMB user field: a blank user connects as guest.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "guest (leave blank)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "гость (оставьте пустым)"
+          }
+        }
+      }
+    },
     "iCloud Drive": {
       "comment": "Sidebar row for Apple's iCloud Drive.",
       "localizations": {
@@ -7674,6 +8150,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "iCloud Drive"
+          }
+        }
+      }
+    },
+    "key": {
+      "comment": "Host-key-change body: generic word for the host key.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "key"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ключ"
           }
         }
       }
