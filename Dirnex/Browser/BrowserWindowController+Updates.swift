@@ -22,7 +22,10 @@ extension BrowserWindowController {
         updateIndicatorButton.imagePosition = .imageOnly
         let image = NSImage(
             systemSymbolName: "arrow.down.circle.fill",
-            accessibilityDescription: "Update available"
+            accessibilityDescription: String(
+                localized: "Update available",
+                comment: "Accessibility label for the titlebar update indicator."
+            )
         )
         image?.isTemplate = true
         updateIndicatorButton.image = image

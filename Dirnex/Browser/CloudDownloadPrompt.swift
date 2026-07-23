@@ -142,11 +142,18 @@ final class CloudDownloadPrompt {
             try? await Task.sleep(for: Self.sheetDelay)
             guard !isFinished, !isCancelled, let window else { return }
             let alert = NSAlert()
-            alert.messageText = "Downloading “\(entry.name)”…"
-            alert.informativeText = "This item is stored in iCloud. "
-                + "Dirnex is fetching it before opening it."
+            alert.messageText = String(
+                localized: "Downloading “\(entry.name)”…",
+                comment: "iCloud download progress title; %@ is the file name."
+            )
+            alert.informativeText = String(
+                localized: "This item is stored in iCloud. Dirnex is fetching it before opening it.",
+                comment: "iCloud download progress body."
+            )
             alert.alertStyle = .informational
-            alert.addButton(withTitle: "Stop")
+            alert.addButton(
+                withTitle: String(localized: "Stop", comment: "Button that cancels the download.")
+            )
             alert.enableEscapeToCancel()
 
             // Indeterminate on purpose: macOS exposes no per-item progress through the resource
@@ -179,10 +186,15 @@ final class CloudDownloadPrompt {
     private func report(detail: String) {
         dismissSheet()
         let alert = NSAlert()
-        alert.messageText = "Couldn’t download “\(entry.name)”"
+        alert.messageText = String(
+            localized: "Couldn’t download “\(entry.name)”",
+            comment: "iCloud download failure title; %@ is the file name."
+        )
         alert.informativeText = detail
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "OK")
+        alert.addButton(
+            withTitle: String(localized: "OK", comment: "Button that dismisses an alert.")
+        )
         alert.enableEscapeToCancel()
         if let window {
             alert.beginSheetModal(for: window, completionHandler: nil)

@@ -153,6 +153,14 @@ extension PathBarView {
                 String(localized: "Trash", comment: "Path-bar label for the merged Trash listing."),
                 symbolNamed: "trash"
             )
+        } else if path.lastComponent == PanelViewController.ResultsPresentation.recentsIdentity {
+            // Recents self-names for the same reason the Trash does: it is a place you visited, not a
+            // search someone ran, so "Results for Recents" would misdescribe it. It matches on the
+            // stable English `pathSummary` identity and carries the `clock` glyph its sidebar row uses.
+            installVirtualLabel(
+                String(localized: "Recents", comment: "Path-bar label for the Recents listing."),
+                symbolNamed: "clock"
+            )
         } else {
             installVirtualLabel(
                 String(

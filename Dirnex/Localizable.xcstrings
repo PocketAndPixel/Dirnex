@@ -790,6 +790,23 @@
         }
       }
     },
+    "A saved search named “%@” already exists. Replace it?": {
+      "comment": "Save-search overwrite confirmation body; %@ is the saved-search name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A saved search named “%@” already exists. Replace it?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранённый поиск с именем «%@» уже существует. Заменить его?"
+          }
+        }
+      }
+    },
     "A workspace named “%@” already exists. Replace it with the current layout?": {
       "comment": "Replace-workspace confirmation body; %@ is the workspace name.",
       "localizations": {
@@ -820,6 +837,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Прервать"
+          }
+        }
+      }
+    },
+    "Add": {
+      "comment": "Button that creates the new tag.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавить"
+          }
+        }
+      }
+    },
+    "Add Current Folder": {
+      "comment": "Favorites menu: pin the folder now open.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add Current Folder"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавить текущую папку"
           }
         }
       }
@@ -1023,6 +1074,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "Это имя уже занято другим сохранённым поиском. Выберите другое."
+          }
+        }
+      }
+    },
+    "Any date": {
+      "comment": "Find Files: the Modified popup's no-filter option.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Any date"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Любая дата"
+          }
+        }
+      }
+    },
+    "Any kind": {
+      "comment": "Find Files: the Kind popup's no-filter option.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Any kind"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Любой тип"
+          }
+        }
+      }
+    },
+    "Any size": {
+      "comment": "Find Files: the Size popup's no-filter option.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Any size"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Любой размер"
           }
         }
       }
@@ -1469,6 +1571,23 @@
         }
       }
     },
+    "Can’t open %@": {
+      "comment": "Terminal-launch failure title; %@ is the terminal app's name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can’t open %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось открыть %@"
+          }
+        }
+      }
+    },
     "Can’t open “%@”": {
       "comment": "Directory-load failure sheet title. %@ is a name.",
       "localizations": {
@@ -1499,6 +1618,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Упаковка здесь невозможна"
+          }
+        }
+      }
+    },
+    "Can’t rename “%@”": {
+      "comment": "Rename validation failure title; %@ is the current name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can’t rename “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось переименовать «%@»"
           }
         }
       }
@@ -1860,6 +1996,23 @@
         }
       }
     },
+    "Content contains:": {
+      "comment": "Find Files: field label.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Content contains:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Содержимое содержит:"
+          }
+        }
+      }
+    },
     "Copy %@": {
       "comment": "Queue row label; %@ is the file being copied.",
       "localizations": {
@@ -2065,6 +2218,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не удалось добавить «%@»"
+          }
+        }
+      }
+    },
+    "Couldn’t change tags": {
+      "comment": "Tag-change failure alert title.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t change tags"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось изменить метки"
           }
         }
       }
@@ -2312,6 +2482,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не удалось удалить «%@»"
+          }
+        }
+      }
+    },
+    "Couldn’t download “%@”": {
+      "comment": "iCloud download failure title; %@ is the file name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t download “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось загрузить «%@»"
           }
         }
       }
@@ -3406,6 +3593,23 @@
         }
       }
     },
+    "Downloading “%@”…": {
+      "comment": "iCloud download progress title; %@ is the file name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloading “%@”…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загрузка «%@»…"
+          }
+        }
+      }
+    },
     "Each item returns to the folder it was deleted from.": {
       "comment": "Restore-All confirmation body.",
       "localizations": {
@@ -3627,6 +3831,23 @@
         }
       }
     },
+    "Everywhere": {
+      "comment": "Find Files: the Search-in popup option searching the whole index.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Everywhere"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Везде"
+          }
+        }
+      }
+    },
     "Exited with status %d.": {
       "comment": "Script outcome detail; %lld is the non-zero exit status.",
       "localizations": {
@@ -3759,6 +3980,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Фильтр"
+          }
+        }
+      }
+    },
+    "Find": {
+      "comment": "Find Files: the button that runs the search.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Find"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Найти"
           }
         }
       }
@@ -3984,6 +4222,23 @@
         }
       }
     },
+    "Give this search a name to keep it in the sidebar and re-run it later.": {
+      "comment": "Save-search dialog body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Give this search a name to keep it in the sidebar and re-run it later."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Дайте поиску имя, чтобы сохранить его в боковой панели и повторять позже."
+          }
+        }
+      }
+    },
     "Hide %@": {
       "comment": "Tooltip on an open sidebar section header; %@ is the section name.",
       "localizations": {
@@ -4001,6 +4256,23 @@
         }
       }
     },
+    "Hide hidden files": {
+      "comment": "Hidden-files toggle tooltip when they are showing.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide hidden files"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скрыть скрытые файлы"
+          }
+        }
+      }
+    },
     "Hide operation details": {
       "comment": "Queue-bar disclosure button: collapse the per-operation list.",
       "localizations": {
@@ -4014,6 +4286,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Скрыть детали операций"
+          }
+        }
+      }
+    },
+    "Hide or show the sidebar": {
+      "comment": "Tooltip for the sidebar toggle button.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide or show the sidebar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скрыть или показать боковую панель"
           }
         }
       }
@@ -4156,6 +4445,23 @@
         }
       }
     },
+    "Keep": {
+      "comment": "Button that keeps the missing favorite pinned.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оставить"
+          }
+        }
+      }
+    },
     "Keep Both": {
       "comment": "Conflict resolution button.",
       "localizations": {
@@ -4207,6 +4513,23 @@
         }
       }
     },
+    "Kind:": {
+      "comment": "Find Files: field label.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kind:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тип:"
+          }
+        }
+      }
+    },
     "Language": {
       "localizations": {
         "en": {
@@ -4219,6 +4542,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "Язык"
+          }
+        }
+      }
+    },
+    "Larger than 1 GB": {
+      "comment": "Find Files: a minimum-size filter option.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Larger than 1 GB"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Больше 1 ГБ"
+          }
+        }
+      }
+    },
+    "Larger than 1 MB": {
+      "comment": "Find Files: a minimum-size filter option.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Larger than 1 MB"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Больше 1 МБ"
+          }
+        }
+      }
+    },
+    "Larger than 10 MB": {
+      "comment": "Find Files: a minimum-size filter option.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Larger than 10 MB"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Больше 10 МБ"
+          }
+        }
+      }
+    },
+    "Larger than 100 MB": {
+      "comment": "Find Files: a minimum-size filter option.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Larger than 100 MB"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Больше 100 МБ"
           }
         }
       }
@@ -4270,6 +4661,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Управление рабочими средами…"
+          }
+        }
+      }
+    },
+    "Modified:": {
+      "comment": "Find Files: field label.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modified:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Изменён:"
           }
         }
       }
@@ -4446,6 +4854,23 @@
         }
       }
     },
+    "Name contains:": {
+      "comment": "Find Files: field label.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name contains:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Имя содержит:"
+          }
+        }
+      }
+    },
     "Name mask:": {
       "comment": "Multi-rename form label for the name template.",
       "localizations": {
@@ -4463,6 +4888,23 @@
         }
       }
     },
+    "Name the tag and choose the colour it will be introduced in.": {
+      "comment": "New-tag dialog body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name the tag and choose the colour it will be introduced in."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Назовите метку и выберите цвет, в котором она появится."
+          }
+        }
+      }
+    },
     "Name:": {
       "comment": "Pack sheet label for the archive-name field.",
       "localizations": {
@@ -4476,6 +4918,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Имя:"
+          }
+        }
+      }
+    },
+    "Names can’t contain the “/” character.": {
+      "comment": "Rename validation failure body: slash is not allowed in a name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Names can’t contain the “/” character."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В именах нельзя использовать символ «/»."
           }
         }
       }
@@ -4599,6 +5058,40 @@
         }
       }
     },
+    "New Tag": {
+      "comment": "Title of the new-tag dialog.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Tag"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Новая метка"
+          }
+        }
+      }
+    },
+    "New Tag…": {
+      "comment": "Tag menu: create a brand-new tag.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Tag…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Новая метка…"
+          }
+        }
+      }
+    },
     "Next": {
       "comment": "Tour: next-screen button.",
       "localizations": {
@@ -4629,6 +5122,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Нет программ"
+          }
+        }
+      }
+    },
+    "No Pinned Folders": {
+      "comment": "Favorites menu: shown when nothing is pinned.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Pinned Folders"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет закреплённых папок"
           }
         }
       }
@@ -5760,6 +6270,40 @@
         }
       }
     },
+    "Remove All Tags": {
+      "comment": "Tag menu: strip every tag from the targets.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove All Tags"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Убрать все метки"
+          }
+        }
+      }
+    },
+    "Remove Current Folder": {
+      "comment": "Favorites menu: unpin the folder now open.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove Current Folder"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Убрать текущую папку"
+          }
+        }
+      }
+    },
     "Remove from Sidebar": {
       "comment": "Sidebar favorite context-menu item: unpin the folder.",
       "localizations": {
@@ -6395,6 +6939,23 @@
         }
       }
     },
+    "Save Search": {
+      "comment": "Title of the save-search dialog.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save Search"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранить поиск"
+          }
+        }
+      }
+    },
     "Save Workspace": {
       "comment": "Title of the Save Workspace prompt.",
       "localizations": {
@@ -6561,6 +7122,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Искать в «%@»"
+          }
+        }
+      }
+    },
+    "Search in:": {
+      "comment": "Find Files: field label.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search in:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Искать в:"
+          }
+        }
+      }
+    },
+    "Search name": {
+      "comment": "Placeholder in the save-search name field.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search name"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Имя поиска"
           }
         }
       }
@@ -6803,6 +7398,23 @@
         }
       }
     },
+    "Showing the first %lld results": {
+      "comment": "Search-results truncation title; %lld is the fixed result cap.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Showing the first %lld results"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показаны первые %lld результатов"
+          }
+        }
+      }
+    },
     "Shows each file's tag colours at the right edge of its name, as Finder does. Also in the View menu. Archives and remote volumes have no tags, so nothing is drawn there.": {
       "comment": "Panels footer: Finder tags.",
       "localizations": {
@@ -6850,6 +7462,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Размеру и дате"
+          }
+        }
+      }
+    },
+    "Size:": {
+      "comment": "Find Files: field label.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Size:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Размер:"
           }
         }
       }
@@ -6969,6 +7598,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Шаг"
+          }
+        }
+      }
+    },
+    "Stop": {
+      "comment": "Button that cancels the download.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Остановить"
           }
         }
       }
@@ -7094,6 +7740,23 @@
         }
       }
     },
+    "Tag name": {
+      "comment": "Placeholder in the new-tag name field.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tag name"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Имя метки"
+          }
+        }
+      }
+    },
     "Tags": {
       "comment": "Context-menu submenu: Finder tags for the file.",
       "localizations": {
@@ -7107,6 +7770,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Метки"
+          }
+        }
+      }
+    },
+    "Tags:": {
+      "comment": "Find Files: field label.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tags:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Метки:"
           }
         }
       }
@@ -7502,6 +8182,23 @@
         }
       }
     },
+    "This Folder (“%@”)": {
+      "comment": "Find Files: the Search-in popup option scoping to the current folder; %@ is its name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This Folder (“%@”)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Эта папка («%@»)"
+          }
+        }
+      }
+    },
     "This can’t be undone.": {
       "comment": "Warning that an action is irreversible.",
       "localizations": {
@@ -7515,6 +8212,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Это действие нельзя отменить."
+          }
+        }
+      }
+    },
+    "This folder has been moved or deleted. Remove it from the favorites?": {
+      "comment": "Missing-favorite alert body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This folder has been moved or deleted. Remove it from the favorites?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Эта папка перемещена или удалена. Убрать её из избранного?"
+          }
+        }
+      }
+    },
+    "This item is stored in iCloud. Dirnex is fetching it before opening it.": {
+      "comment": "iCloud download progress body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This item is stored in iCloud. Dirnex is fetching it before opening it."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот объект хранится в iCloud. Dirnex загружает его перед открытием."
           }
         }
       }
@@ -7600,6 +8331,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Этот сервер предъявляет другой %@ хоста, чем тот, которому вы доверяли ранее. Если вы переустановили сервер или указали этот адрес в новом приложении SFTP — это ожидаемо, но также может означать, что кто-то перехватывает соединение (атака «человек посередине»).\n\nНовый отпечаток:\n%@\n\nПродолжайте, только если узнаёте этот отпечаток. Доверие заменит старый ключ, чтобы будущие подключения к этому серверу проходили успешно."
+          }
+        }
+      }
+    },
+    "Toggle Sidebar": {
+      "comment": "Accessibility label for the sidebar toggle button.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toggle Sidebar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показать/скрыть боковую панель"
           }
         }
       }
@@ -7740,6 +8488,23 @@
         }
       }
     },
+    "Update available": {
+      "comment": "Accessibility label for the titlebar update indicator.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update available"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Доступно обновление"
+          }
+        }
+      }
+    },
     "User:": {
       "comment": "Connect field label: user name.",
       "localizations": {
@@ -7803,6 +8568,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Когда запускать"
+          }
+        }
+      }
+    },
+    "Work, Red — all must match": {
+      "comment": "Find Files: placeholder in the Tags field; example tag names, comma-separated.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Work, Red — all must match"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Работа, Красный — все должны совпадать"
           }
         }
       }
@@ -7939,6 +8721,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ваши файлы в iCloud Drive показаны выше. Папки, которые там хранят приложения — Pages, «Просмотр», «Быстрые команды» — закрыты macOS, пока вы не разрешите Dirnex их читать.\n\nНажмите «Открыть Системные настройки», затем включите Dirnex в разделе «Полный доступ к диску». macOS попросит Dirnex перезапуститься, чтобы новый доступ вступил в силу."
+          }
+        }
+      }
+    },
+    "Your search matched more items. Narrow it to see the rest.": {
+      "comment": "Search-results truncation body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your search matched more items. Narrow it to see the rest."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поиск нашёл больше объектов. Уточните его, чтобы увидеть остальные."
           }
         }
       }
@@ -10704,6 +11503,23 @@
         }
       }
     },
+    "part of the file name": {
+      "comment": "Find Files: placeholder in the Name-contains field.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "part of the file name"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "часть имени файла"
+          }
+        }
+      }
+    },
     "replacement": {
       "comment": "Multi-rename replace field placeholder.",
       "localizations": {
@@ -10717,6 +11533,176 @@
           "stringUnit": {
             "state": "translated",
             "value": "замена"
+          }
+        }
+      }
+    },
+    "search.age.month.title": {
+      "comment": "Find Files Modified filter; DirnexCore data (SearchAge).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Past month"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "За месяц"
+          }
+        }
+      }
+    },
+    "search.age.today.title": {
+      "comment": "Find Files Modified filter; DirnexCore data (SearchAge).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сегодня"
+          }
+        }
+      }
+    },
+    "search.age.week.title": {
+      "comment": "Find Files Modified filter; DirnexCore data (SearchAge).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Past week"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "За неделю"
+          }
+        }
+      }
+    },
+    "search.age.year.title": {
+      "comment": "Find Files Modified filter; DirnexCore data (SearchAge).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Past year"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "За год"
+          }
+        }
+      }
+    },
+    "search.kind.archive.title": {
+      "comment": "Find Files Kind filter; DirnexCore data (SearchKind).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archives"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Архивы"
+          }
+        }
+      }
+    },
+    "search.kind.audio.title": {
+      "comment": "Find Files Kind filter; DirnexCore data (SearchKind).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audio"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Аудио"
+          }
+        }
+      }
+    },
+    "search.kind.document.title": {
+      "comment": "Find Files Kind filter; DirnexCore data (SearchKind).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Documents"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Документы"
+          }
+        }
+      }
+    },
+    "search.kind.folder.title": {
+      "comment": "Find Files Kind filter; DirnexCore data (SearchKind).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folders"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Папки"
+          }
+        }
+      }
+    },
+    "search.kind.image.title": {
+      "comment": "Find Files Kind filter; DirnexCore data (SearchKind).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Images"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Изображения"
+          }
+        }
+      }
+    },
+    "search.kind.movie.title": {
+      "comment": "Find Files Kind filter; DirnexCore data (SearchKind).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Movies"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Видео"
           }
         }
       }
@@ -10870,6 +11856,159 @@
           "stringUnit": {
             "state": "translated",
             "value": "что-то другое"
+          }
+        }
+      }
+    },
+    "tag.color.blue.title": {
+      "comment": "New Tag colour name; DirnexCore data (FinderTagColor).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Blue"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Синий"
+          }
+        }
+      }
+    },
+    "tag.color.green.title": {
+      "comment": "New Tag colour name; DirnexCore data (FinderTagColor).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Green"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зелёный"
+          }
+        }
+      }
+    },
+    "tag.color.grey.title": {
+      "comment": "New Tag colour name; DirnexCore data (FinderTagColor).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grey"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Серый"
+          }
+        }
+      }
+    },
+    "tag.color.none.title": {
+      "comment": "New Tag colour name; DirnexCore data (FinderTagColor).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Colour"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Без цвета"
+          }
+        }
+      }
+    },
+    "tag.color.orange.title": {
+      "comment": "New Tag colour name; DirnexCore data (FinderTagColor).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orange"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оранжевый"
+          }
+        }
+      }
+    },
+    "tag.color.purple.title": {
+      "comment": "New Tag colour name; DirnexCore data (FinderTagColor).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Purple"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Фиолетовый"
+          }
+        }
+      }
+    },
+    "tag.color.red.title": {
+      "comment": "New Tag colour name; DirnexCore data (FinderTagColor).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Red"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Красный"
+          }
+        }
+      }
+    },
+    "tag.color.yellow.title": {
+      "comment": "New Tag colour name; DirnexCore data (FinderTagColor).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yellow"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Жёлтый"
+          }
+        }
+      }
+    },
+    "text inside the file": {
+      "comment": "Find Files: placeholder in the Content-contains field.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "text inside the file"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "текст внутри файла"
           }
         }
       }
@@ -11203,6 +12342,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "«%@» уже занято"
+          }
+        }
+      }
+    },
+    "“%@” isn’t available": {
+      "comment": "Missing-favorite alert title; %@ is the folder name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” isn’t available"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Папка «%@» недоступна"
           }
         }
       }

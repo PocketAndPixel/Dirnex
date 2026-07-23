@@ -356,6 +356,39 @@ involved. Worth a lint rule keeping bare literals out of UI files afterwards.
   657 pt; re-measured to confirm. The scripts organizer and the Save-Workspace prompt were verified
   clean live; the run/notice failure alerts were checked through the compiled `ru.lproj`, being
   awkward to provoke.
+- **Slice 9 landed (2026-07-23): the remaining Browser controllers.** The last bare status/tooltip
+  strings across `Dirnex/Browser/` — the Find Files sheet (`SearchController`: field labels, the
+  kind/size/date/scope popups, placeholders, Find/Cancel), the Save Search and Replace dialogs, the
+  New Tag dialog and its colour popup, the tag menu (New Tag… / Remove All Tags) and tag-change
+  failure, the Favorites ⌃D menu (No Pinned Folders / Add·Remove Current Folder / missing-favorite
+  alert), the terminal-launch failure, the iCloud download sheet, the inline-rename validation and
+  failure alerts, the search-results truncation alert, and the window-controller tooltips (Toggle
+  Sidebar, hidden-files toggle, update indicator): **68 new catalog keys across 15 files**, all
+  Russian-filled; ~19 keys reused (Cancel/OK/Save/Remove/Replace, the pre-existing `Replace “%@”?`,
+  `Recents`, `Trash`, `Results for %@`, and several more). **Three `DirnexCore` data enums got the
+  registry treatment** (like `SidebarSection`): `SearchKind`/`SearchAge`/`FinderTagColor` `.title`
+  reach the popups through a variable, so `LocalizationKey.searchKind/searchAge/tagColor` key them
+  (the last by a switch-derived stable token, not its `Int` raw value, so the catalog reads as colour
+  names), `LocalizedCatalog.title(for:)` joins them, and `LocalizationCoverageTests` now fails on an
+  untranslated kind/age/colour (18 symbolic keys). Recurring traps fixed at the source: the
+  **`+`-concatenation trap** in the iCloud download body (`"a " + "b"` → one literal), and the New Tag
+  dialog's `colour` popup built its titles from `color.title` (a variable) — the exact reason the
+  registry treatment exists. **Two things only the live Russian run caught, both after a *second*,
+  wider scan:** the first pattern-based sweep missed every **multi-line `NSMenuItem(title:` / menu
+  constructor** (the Favorites and tag menu items sat bare), and the **Recents virtual tab leaked
+  English** — its tab title read "Recents" and its path bar "Результаты для Recents", because a
+  `.search`-backend listing borrows the "Results for %@" phrasing. Fixed by giving Recents the Trash's
+  self-naming treatment: `pathSummary` stays a stable English identity (`ResultsPresentation
+  .recentsIdentity`, never displayed), the tab title localizes, and `rebuildVirtualLabel` matches on
+  the identity to draw "Недавние" with the sidebar's `clock` glyph — the same lesson as the Trash,
+  that a *place you visit* must name itself rather than read as a search someone ran. The stock tag
+  *names* in the ⌃T menu (Red/Orange/…) stay English on purpose — they are `FinderTag.systemTagName`
+  data, a separate core concern, not the colour titles. Keys taken from the compiler-emitted
+  `.stringsdata`, added by script with an exact-match guard, verified additive-only (68 added, 0
+  changed). Verified live in Russian: the whole Find Files sheet with all four popups, the Favorites
+  and tag menus, the New Tag dialog and its eight colour names (Без цвета · Серый · … · Оранжевый),
+  and the Recents self-naming; the awkward-to-provoke alerts were checked through the compiled
+  `ru.lproj`.
 - **Deferred as its own slice: the undo/redo action *labels*.** The "Undo Move" / "Redo Clear
   Selection" menu titles compose `"Undo \(label)"` from a label that is *data*, not an app literal:
   the file-op names ("Move", "Copy", "Rename", "Move to Trash", "New Folder") originate in
@@ -365,9 +398,9 @@ involved. Worth a lint rule keeping bare literals out of UI files afterwards.
   localizing the `"Undo %@"` / `"Redo %@"` frames — a core-touching change. Doing only the app half
   would leave the menu mixing a Russian frame with English labels, which is worse than uniform
   English, so the whole concern waits for one slice.
-- **Remaining:** a sweep for any assorted status/tooltip strings still bare in the `Dirnex/Browser/`
-  controllers (Favorites/Search/TagEditing/Terminal/CloudDownload alerts and the window-controller
-  tooltips were spotted but not yet done); then the undo-label slice above.
+- **Remaining:** the undo-label slice above — the last piece of Pass 2. The Browser-controller sweep
+  is done (Slice 9). One documented non-goal stays English: the stock Finder-tag *names* in the ⌃T
+  menu, which are `DirnexCore` `systemTagName` data with the localization caveat already in `FinderTag`.
 
 **Pass 3 — the remaining six languages.** Adding one is a line in `AppLanguages.all` plus its
 column in the catalog; `LocalizationCoverageTests` fails until the column is complete.

@@ -393,6 +393,24 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   `DateFormatter` already follow the current locale, so sizes and dates localized with no code
   change — and because `AppleLanguages` sets the *language* only, a Russian UI on a European region
   keeps that region's separators.
+- **A bare-literal sweep has to scan the *multi-line* constructor forms, not just `x = "…"`.** A
+  grep for `messageText = "`, `addButton(withTitle: "`, `.title = "` and friends found the alerts but
+  silently skipped every menu item written as a wrapped `NSMenuItem(\n  title: "New Tag…",\n  …)` —
+  the literal sits on its own line, so the sink keyword and the string are never on the same line.
+  The Favorites and tag menus shipped bare through a whole pass because of it, and only a *second*
+  scan (strip comments, then match a sink keyword within a few lines of a bare literal) caught them.
+  Corollary trap in that second scan: a `comment:` argument whose prose contains "title:" or
+  "detail:" (`comment: "Copy failure title: …"`) trips a naive sink match — a false positive to
+  filter, not a bare literal.
+- **A virtual "place you visit" that borrows the search backend leaks English through its label.**
+  Recents rides the `.search` results machinery, so its path bar drew `"Results for \(pathSummary)"`
+  — and with `pathSummary` an English identity that reads "Результаты для Recents" in a Russian UI,
+  the tab title likewise "Recents". This is the same distinction the Trash already makes ("a place
+  you visited, not a search someone ran"): the fix is to *self-name*. Keep `pathSummary` a stable
+  English identity (never displayed — `ResultsPresentation.recentsIdentity`), localize the tab title,
+  and have `rebuildVirtualLabel` match on that identity to draw the localized name with the sidebar
+  row's own glyph (`clock`), exactly as it special-cases `backend == .trash`. Only the live Russian
+  run surfaced it — an English screenshot showed "Results for Recents", which reads as fine.
 
 ## Lint ceilings and file splitting
 

@@ -38,7 +38,14 @@ extension PanelViewController {
         let favorites = FavoritesStore.load()
 
         if favorites.entries.isEmpty {
-            let empty = NSMenuItem(title: "No Pinned Folders", action: nil, keyEquivalent: "")
+            let empty = NSMenuItem(
+                title: String(
+                    localized: "No Pinned Folders",
+                    comment: "Favorites menu: shown when nothing is pinned."
+                ),
+                action: nil,
+                keyEquivalent: ""
+            )
             empty.isEnabled = false
             menu.addItem(empty)
         } else {
@@ -51,7 +58,15 @@ extension PanelViewController {
 
         let pinned = favorites.contains(panel.path)
         let toggle = NSMenuItem(
-            title: pinned ? "Remove Current Folder" : "Add Current Folder",
+            title: pinned
+                ? String(
+                    localized: "Remove Current Folder",
+                    comment: "Favorites menu: unpin the folder now open."
+                )
+                : String(
+                    localized: "Add Current Folder",
+                    comment: "Favorites menu: pin the folder now open."
+                ),
             action: #selector(toggleCurrentFolderPin(_:)),
             keyEquivalent: ""
         )
@@ -115,11 +130,27 @@ extension PanelViewController {
     /// A pinned folder no longer exists — tell the user and offer to unpin it in one step.
     private func presentMissingFavoriteEntry(_ path: VFSPath) {
         let alert = NSAlert()
-        alert.messageText = "“\(path.lastComponent)” isn’t available"
-        alert.informativeText = "This folder has been moved or deleted. Remove it from the favorites?"
+        alert.messageText = String(
+            localized: "“\(path.lastComponent)” isn’t available",
+            comment: "Missing-favorite alert title; %@ is the folder name."
+        )
+        alert.informativeText = String(
+            localized: "This folder has been moved or deleted. Remove it from the favorites?",
+            comment: "Missing-favorite alert body."
+        )
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "Remove")
-        alert.addButton(withTitle: "Keep")
+        alert.addButton(
+            withTitle: String(
+                localized: "Remove",
+                comment: "Button that unpins the missing favorite."
+            )
+        )
+        alert.addButton(
+            withTitle: String(
+                localized: "Keep",
+                comment: "Button that keeps the missing favorite pinned."
+            )
+        )
         alert.enableEscapeToCancel() // ⎋ → Keep (there is no "Cancel" button here)
         let removeFromFavorites = { [weak self] in
             var favorites = FavoritesStore.load()

@@ -108,6 +108,49 @@ struct LocalizationCoverageTests {
         }
     }
 
+    @Test("every Find-Files kind and age filter is translated in every shipped language")
+    func everySearchFilterIsTranslated() throws {
+        for language in translatedLanguages {
+            let bundle = try bundle(for: language)
+            for kind in SearchKind.allCases {
+                let key = LocalizationKey.searchKind(kind)
+                let value = translation(key, in: bundle)
+                #expect(value != nil, "\(language.code): no \(key)")
+                if let value { #expect(
+                    value != kind.title,
+                    "\(language.code): \(key) is still English"
+                ) }
+            }
+            for age in SearchAge.allCases {
+                let key = LocalizationKey.searchAge(age)
+                let value = translation(key, in: bundle)
+                #expect(value != nil, "\(language.code): no \(key)")
+                if let value { #expect(
+                    value != age.title,
+                    "\(language.code): \(key) is still English"
+                ) }
+            }
+        }
+    }
+
+    @Test("every Finder tag colour name is translated in every shipped language")
+    func everyTagColorIsTranslated() throws {
+        for language in translatedLanguages {
+            let bundle = try bundle(for: language)
+            for color in FinderTagColor.allCases {
+                let key = LocalizationKey.tagColor(color)
+                let value = translation(key, in: bundle)
+                #expect(value != nil, "\(language.code): no \(key)")
+                // "No Colour" → "Без цвета" and the rest all differ from English; the colour
+                // names are single words but none coincides across en/ru.
+                if let value { #expect(
+                    value != color.title,
+                    "\(language.code): \(key) is still English"
+                ) }
+            }
+        }
+    }
+
     @Test("a translated command keeps its English keywords searchable alongside the new ones")
     func keywordsAreAdditive() {
         // The palette is the one place a translation could *remove* a user's ability to find

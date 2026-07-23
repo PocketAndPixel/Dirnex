@@ -63,6 +63,39 @@ public enum LocalizationKey {
         "sidebar.section.\(section.rawValue).title"
     }
 
+    /// A Find-Files "Kind" filter option's label, e.g. `search.kind.image.title`. `SearchKind.title`
+    /// is `DirnexCore` data (English label, stable string raw value) reached through a variable at
+    /// the popup — `SearchKind.allCases.map { $0.title }` — so it gets the registry treatment the
+    /// sidebar sections do rather than an app `String(localized:)`, which would extract nothing.
+    public static func searchKind(_ kind: SearchKind) -> String {
+        "search.kind.\(kind.rawValue).title"
+    }
+
+    /// A Find-Files "Modified" filter option's label, e.g. `search.age.week.title`. Same data-through-
+    /// a-variable situation as ``searchKind(_:)``.
+    public static func searchAge(_ age: SearchAge) -> String {
+        "search.age.\(age.rawValue).title"
+    }
+
+    /// A Finder tag colour's name for the New Tag colour popup, e.g. `tag.color.red.title`.
+    /// `FinderTagColor.title` is `DirnexCore` data reached through a variable, so it gets the registry
+    /// treatment. Keyed by a stable string token rather than the enum's `Int` raw value (Apple's tag
+    /// colour index) so the catalog reads as colour names, not indices, for the translator.
+    public static func tagColor(_ color: FinderTagColor) -> String {
+        let token: String
+        switch color {
+        case .none: token = "none"
+        case .grey: token = "grey"
+        case .green: token = "green"
+        case .purple: token = "purple"
+        case .blue: token = "blue"
+        case .yellow: token = "yellow"
+        case .red: token = "red"
+        case .orange: token = "orange"
+        }
+        return "tag.color.\(token).title"
+    }
+
     /// Split a translated comma-separated keyword value into terms, dropping empties and
     /// surrounding whitespace. Tolerant on purpose — the value is typed by a translator, and a
     /// stray trailing comma should cost nothing.

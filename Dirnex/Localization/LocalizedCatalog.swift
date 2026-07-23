@@ -74,6 +74,25 @@ enum LocalizedCatalog {
         L10n.string(LocalizationKey.sidebarSection(section), fallback: section.title)
     }
 
+    /// A Find-Files "Kind" filter option's label, translated. `SearchKind.title` is `DirnexCore`
+    /// data reached through a variable at the popup, so — like the sidebar sections — the app joins
+    /// it here by the kind's stable id and falls back to the core's English.
+    static func title(for kind: SearchKind) -> String {
+        L10n.string(LocalizationKey.searchKind(kind), fallback: kind.title)
+    }
+
+    /// A Find-Files "Modified" filter option's label, translated.
+    static func title(for age: SearchAge) -> String {
+        L10n.string(LocalizationKey.searchAge(age), fallback: age.title)
+    }
+
+    /// A Finder tag colour's name for the New Tag colour popup, translated. `FinderTagColor.title`
+    /// is `DirnexCore` data reached through a variable, so it is joined here rather than wrapped at
+    /// the display site.
+    static func title(for color: FinderTagColor) -> String {
+        L10n.string(LocalizationKey.tagColor(color), fallback: color.title)
+    }
+
     /// English keywords plus the translated ones, English first and duplicates dropped.
     ///
     /// Additive rather than replacing on purpose: a Russian-speaking user who has read the English

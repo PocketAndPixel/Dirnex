@@ -26,6 +26,12 @@ extension PanelViewController {
     /// How a virtual results tab presents its hits — everything that differs between an ⌥F7/saved
     /// search, Recents and the Trash, bundled so `openResults` stays within its parameter budget.
     struct ResultsPresentation {
+        /// The stable English `pathSummary` the Recents listing is identified by. Never displayed —
+        /// the tab title and path-bar label localize separately — but the path bar matches on it to
+        /// self-name Recents rather than borrow the "Results for …" phrasing (see
+        /// `rebuildVirtualLabel`), exactly as the Trash matches on `backend == .trash`.
+        static let recentsIdentity = "Recents"
+
         /// The synthetic container's backend: `.search` for hits, `.trash` for the merged Trash.
         var backend: VFSBackendID = .search
         /// The synthetic path's last component and the path-bar crumb.
@@ -71,8 +77,14 @@ extension PanelViewController {
 
         if truncated {
             presentOperationFailure(
-                message: "Showing the first \(SpotlightSearchRunner.resultLimit) results",
-                detail: "Your search matched more items. Narrow it to see the rest."
+                message: String(
+                    localized: "Showing the first \(SpotlightSearchRunner.resultLimit) results",
+                    comment: "Search-results truncation title; %lld is the fixed result cap."
+                ),
+                detail: String(
+                    localized: "Your search matched more items. Narrow it to see the rest.",
+                    comment: "Search-results truncation body."
+                )
             )
         }
     }
