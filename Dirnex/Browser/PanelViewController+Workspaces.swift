@@ -66,7 +66,14 @@ extension PanelViewController {
         let workspaces = WorkspaceStore.load()
 
         if workspaces.workspaces.isEmpty {
-            let empty = NSMenuItem(title: "No Saved Workspaces", action: nil, keyEquivalent: "")
+            let empty = NSMenuItem(
+                title: String(
+                    localized: "No Saved Workspaces",
+                    comment: "Workspaces popup: shown when no workspaces have been saved."
+                ),
+                action: nil,
+                keyEquivalent: ""
+            )
             empty.isEnabled = false
             menu.addItem(empty)
         } else {
@@ -78,7 +85,10 @@ extension PanelViewController {
         menu.addItem(.separator())
 
         let save = NSMenuItem(
-            title: "Save Workspace…",
+            title: String(
+                localized: "Save Workspace…",
+                comment: "Workspaces popup item: snapshot both panes as a new workspace."
+            ),
             action: #selector(saveWorkspace(_:)),
             keyEquivalent: ""
         )
@@ -86,7 +96,10 @@ extension PanelViewController {
         menu.addItem(save)
 
         let manage = NSMenuItem(
-            title: "Manage Workspaces…",
+            title: String(
+                localized: "Manage Workspaces…",
+                comment: "Workspaces popup item: open the organizer to rename/reorder/delete."
+            ),
             action: #selector(manageWorkspaces(_:)),
             keyEquivalent: ""
         )
@@ -118,7 +131,10 @@ extension PanelViewController {
     private static let workspaceIcon: NSImage? = {
         let image = NSImage(
             systemSymbolName: "square.split.2x1",
-            accessibilityDescription: "Workspace"
+            accessibilityDescription: String(
+                localized: "Workspace",
+                comment: "Accessibility label for the two-pane workspace glyph."
+            )
         )
         image?.size = NSSize(width: 16, height: 16)
         image?.isTemplate = true
@@ -145,13 +161,25 @@ extension PanelViewController {
     /// an empty name.
     private func promptForWorkspaceName() -> String? {
         let alert = NSAlert()
-        alert.messageText = "Save Workspace"
-        alert.informativeText = "Save both panels and all their tabs so you can switch back to this layout."
-        alert.addButton(withTitle: "Save")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(
+            localized: "Save Workspace",
+            comment: "Title of the Save Workspace prompt."
+        )
+        alert.informativeText = String(
+            localized: "Save both panels and all their tabs so you can switch back to this layout.",
+            comment: "Body of the Save Workspace prompt."
+        )
+        alert.addButton(withTitle: String(
+            localized: "Save",
+            comment: "Confirm button of the Save Workspace prompt."
+        ))
+        alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
 
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
-        field.placeholderString = "Workspace name"
+        field.placeholderString = String(
+            localized: "Workspace name",
+            comment: "Placeholder in the Save Workspace name field."
+        )
         alert.accessoryView = field
         alert.window.initialFirstResponder = field
 
@@ -165,10 +193,19 @@ extension PanelViewController {
     private func confirmReplaceWorkspace(named name: String) -> Bool {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "Replace “\(name)”?"
-        alert.informativeText = "A workspace named “\(name)” already exists. Replace it with the current layout?"
-        alert.addButton(withTitle: "Replace")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(
+            localized: "Replace “\(name)”?",
+            comment: "Replace-workspace confirmation title; %@ is the workspace name."
+        )
+        alert.informativeText = String(
+            localized: "A workspace named “\(name)” already exists. Replace it with the current layout?",
+            comment: "Replace-workspace confirmation body; %@ is the workspace name."
+        )
+        alert.addButton(withTitle: String(
+            localized: "Replace",
+            comment: "Confirm button of the replace-workspace prompt."
+        ))
+        alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
         return alert.runModal() == .alertFirstButtonReturn
     }
 }

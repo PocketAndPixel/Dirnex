@@ -12,7 +12,8 @@ import DirnexCore
 /// exactly like the favorites / saved-search organizers.
 @MainActor
 final class UserScriptsOrganizerController: NSViewController {
-    private var scripts = UserScriptStore.load()
+    /// Internal (not `private`) so the table data-source companion file can read it.
+    var scripts = UserScriptStore.load()
     /// The name (identity) of the script currently loaded into the editor, so a commit targets the
     /// right script even if the table selection is mid-change. `nil` when nothing is selected.
     private var editingName: String?
@@ -40,7 +41,10 @@ final class UserScriptsOrganizerController: NSViewController {
         // `done` flushes the in-progress edit first, so nothing typed is lost on the way out.
         container.dismissesWhileEditing = true
 
-        let title = NSTextField(labelWithString: "Scripts")
+        let title = NSTextField(labelWithString: String(
+            localized: "Scripts",
+            comment: "Title of the user-scripts organizer sheet."
+        ))
         title.font = .systemFont(ofSize: NSFont.systemFontSize, weight: .semibold)
         title.translatesAutoresizingMaskIntoConstraints = false
 
@@ -57,7 +61,14 @@ final class UserScriptsOrganizerController: NSViewController {
 
         configureDetail()
 
-        let doneButton = NSButton(title: "Done", target: self, action: #selector(done(_:)))
+        let doneButton = NSButton(
+            title: String(
+                localized: "Done",
+                comment: "Dismiss button of the scripts organizer sheet."
+            ),
+            target: self,
+            action: #selector(done(_:))
+        )
         doneButton.bezelStyle = .rounded
         doneButton.keyEquivalent = "\r"
         doneButton.translatesAutoresizingMaskIntoConstraints = false
@@ -94,12 +105,21 @@ final class UserScriptsOrganizerController: NSViewController {
     private func configureDetail() {
         nameField.translatesAutoresizingMaskIntoConstraints = false
         nameField.delegate = self
-        nameField.placeholderString = "Script name"
+        nameField.placeholderString = String(
+            localized: "Script name",
+            comment: "Placeholder in the script-name field of the scripts organizer."
+        )
 
         runModePopUp.translatesAutoresizingMaskIntoConstraints = false
-        runModePopUp.addItem(withTitle: "Run once for the whole selection")
+        runModePopUp.addItem(withTitle: String(
+            localized: "Run once for the whole selection",
+            comment: "Scripts organizer run-mode option: one process for all selected files."
+        ))
         runModePopUp.lastItem?.representedObject = UserScriptRunMode.combined
-        runModePopUp.addItem(withTitle: "Run once per selected file")
+        runModePopUp.addItem(withTitle: String(
+            localized: "Run once per selected file",
+            comment: "Scripts organizer run-mode option: one process per selected file."
+        ))
         runModePopUp.lastItem?.representedObject = UserScriptRunMode.perFile
         runModePopUp.target = self
         runModePopUp.action = #selector(runModeChanged(_:))
@@ -110,7 +130,10 @@ final class UserScriptsOrganizerController: NSViewController {
 
         keywordsField.translatesAutoresizingMaskIntoConstraints = false
         keywordsField.delegate = self
-        keywordsField.placeholderString = "Palette keywords (comma-separated)"
+        keywordsField.placeholderString = String(
+            localized: "Palette keywords (comma-separated)",
+            comment: "Placeholder in the scripts organizer keywords field."
+        )
 
         configureCommandView()
 
@@ -118,15 +141,30 @@ final class UserScriptsOrganizerController: NSViewController {
         detailStack.alignment = .leading
         detailStack.spacing = 6
         detailStack.translatesAutoresizingMaskIntoConstraints = false
-        detailStack.addArrangedSubview(fieldLabel("Name"))
+        detailStack.addArrangedSubview(fieldLabel(String(
+            localized: "Name",
+            comment: "Scripts organizer field label: the script's name."
+        )))
         detailStack.addArrangedSubview(nameField)
-        detailStack.addArrangedSubview(fieldLabel("When run"))
+        detailStack.addArrangedSubview(fieldLabel(String(
+            localized: "When run",
+            comment: "Scripts organizer field label: the run mode (whole selection vs per file)."
+        )))
         detailStack.addArrangedSubview(runModePopUp)
-        detailStack.addArrangedSubview(fieldLabel("Function key"))
+        detailStack.addArrangedSubview(fieldLabel(String(
+            localized: "Function key",
+            comment: "Scripts organizer field label: the F-key bound to the script."
+        )))
         detailStack.addArrangedSubview(functionKeyPopUp)
-        detailStack.addArrangedSubview(fieldLabel("Keywords"))
+        detailStack.addArrangedSubview(fieldLabel(String(
+            localized: "Keywords",
+            comment: "Scripts organizer field label: the palette search keywords."
+        )))
         detailStack.addArrangedSubview(keywordsField)
-        detailStack.addArrangedSubview(fieldLabel("Command"))
+        detailStack.addArrangedSubview(fieldLabel(String(
+            localized: "Command",
+            comment: "Scripts organizer field label: the shell command body."
+        )))
         detailStack.addArrangedSubview(commandScrollView)
         detailStack.addArrangedSubview(helpLabel())
         for control in [nameField, runModePopUp, functionKeyPopUp, keywordsField, commandScrollView] {
@@ -136,64 +174,13 @@ final class UserScriptsOrganizerController: NSViewController {
         commandScrollView.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
     }
 
-    private func configureCommandView() {
-        commandTextView.isRichText = false
-        commandTextView.font = .monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
-        commandTextView.isAutomaticQuoteSubstitutionEnabled = false
-        commandTextView.isAutomaticDashSubstitutionEnabled = false
-        commandTextView.isAutomaticSpellingCorrectionEnabled = false
-        commandTextView.delegate = self
-        commandTextView.allowsUndo = true
-        commandTextView.isVerticallyResizable = true
-        commandTextView.textContainer?.widthTracksTextView = true
-
-        commandScrollView.documentView = commandTextView
-        commandScrollView.hasVerticalScroller = true
-        commandScrollView.borderType = .bezelBorder
-        commandScrollView.translatesAutoresizingMaskIntoConstraints = false
-    }
-
-    private func activateConstraints(
-        in container: NSView,
-        title: NSTextField,
-        doneButton: NSButton
-    ) {
-        NSLayoutConstraint.activate([
-            title.topAnchor.constraint(equalTo: container.topAnchor, constant: 16),
-            title.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
-
-            scrollView.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 10),
-            scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
-            scrollView.widthAnchor.constraint(equalToConstant: 190),
-
-            addButton.topAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: 8),
-            addButton.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
-            addButton.widthAnchor.constraint(equalToConstant: 26),
-            addButton.heightAnchor.constraint(equalToConstant: 24),
-            addButton.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -16),
-            removeButton.centerYAnchor.constraint(equalTo: addButton.centerYAnchor),
-            removeButton.leadingAnchor.constraint(equalTo: addButton.trailingAnchor, constant: 6),
-            removeButton.widthAnchor.constraint(equalToConstant: 26),
-            removeButton.heightAnchor.constraint(equalToConstant: 24),
-
-            detailStack.topAnchor.constraint(equalTo: scrollView.topAnchor),
-            detailStack.leadingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: 16),
-            detailStack.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -20),
-            detailStack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
-
-            doneButton.centerYAnchor.constraint(equalTo: addButton.centerYAnchor),
-            doneButton.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -20),
-            doneButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 76),
-
-            container.widthAnchor.constraint(equalToConstant: 640),
-            container.heightAnchor.constraint(equalToConstant: 460)
-        ])
-    }
-
     // MARK: - Actions
 
     @objc private func addScript(_ sender: Any?) {
-        let name = uniqueName(base: "New Script")
+        let name = uniqueName(base: String(
+            localized: "New Script",
+            comment: "Default name for a newly created user script."
+        ))
         scripts.save(UserScript(name: name, command: "", runMode: .combined))
         persist()
         tableView.reloadData()
@@ -287,7 +274,8 @@ final class UserScriptsOrganizerController: NSViewController {
     }
 
     /// Load the selected script into the editor, or clear and disable it when nothing is selected.
-    fileprivate func loadDetail() {
+    /// Internal (not `fileprivate`) so the table data-source companion file can call it.
+    func loadDetail() {
         guard let index = selectedIndex, scripts.scripts.indices.contains(index) else {
             editingName = nil
             setDetailEnabled(false)
@@ -352,14 +340,20 @@ private extension UserScriptsOrganizerController {
             bindings: KeyBindingStore.shared.bindings
         )
         functionKeyPopUp.removeAllItems()
-        functionKeyPopUp.addItem(withTitle: "None")
+        functionKeyPopUp.addItem(withTitle: String(
+            localized: "None",
+            comment: "Scripts organizer function-key popup: no key assigned to the script."
+        ))
         functionKeyPopUp.lastItem?.representedObject = nil
         for number in assignable {
             functionKeyPopUp.addItem(withTitle: "F\(number)")
             functionKeyPopUp.lastItem?.representedObject = number
         }
         if let key, !assignable.contains(key) {
-            functionKeyPopUp.addItem(withTitle: "F\(key) (unavailable)")
+            functionKeyPopUp.addItem(withTitle: String(
+                localized: "F\(key) (unavailable)",
+                comment: "Scripts organizer popup: a reserved key the script still holds; %lld is the key number."
+            ))
             functionKeyPopUp.lastItem?.representedObject = key
         }
         let index = functionKeyPopUp.itemArray.firstIndex { $0.representedObject as? Int == key }
@@ -388,9 +382,13 @@ private extension UserScriptsOrganizerController {
     }
 
     func helpLabel() -> NSTextField {
-        let label = NSTextField(wrappingLabelWithString:
-            "The selection is passed as arguments (\"$@\", \"$1\"). "
-                + "Also available: $DIRNEX_CURRENT_DIR, $DIRNEX_OTHER_DIR, $DIRNEX_SELECTED_PATHS.")
+        let label = NSTextField(wrappingLabelWithString: String(
+            localized: """
+            The selection is passed as arguments ("$@", "$1"). Also available: \
+            $DIRNEX_CURRENT_DIR, $DIRNEX_OTHER_DIR, $DIRNEX_SELECTED_PATHS.
+            """,
+            comment: "Scripts organizer help text; the $-tokens are literal shell variables and stay untranslated."
+        ))
         label.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         label.textColor = .tertiaryLabelColor
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -404,42 +402,59 @@ private extension UserScriptsOrganizerController {
         button.target = self
         button.action = action
     }
-}
 
-// MARK: - NSTableViewDataSource / Delegate
+    func configureCommandView() {
+        commandTextView.isRichText = false
+        commandTextView.font = .monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+        commandTextView.isAutomaticQuoteSubstitutionEnabled = false
+        commandTextView.isAutomaticDashSubstitutionEnabled = false
+        commandTextView.isAutomaticSpellingCorrectionEnabled = false
+        commandTextView.delegate = self
+        commandTextView.allowsUndo = true
+        commandTextView.isVerticallyResizable = true
+        commandTextView.textContainer?.widthTracksTextView = true
 
-extension UserScriptsOrganizerController: NSTableViewDataSource, NSTableViewDelegate {
-    func numberOfRows(in tableView: NSTableView) -> Int {
-        scripts.scripts.count
+        commandScrollView.documentView = commandTextView
+        commandScrollView.hasVerticalScroller = true
+        commandScrollView.borderType = .bezelBorder
+        commandScrollView.translatesAutoresizingMaskIntoConstraints = false
     }
 
-    func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
-        guard scripts.scripts.indices.contains(row) else { return nil }
-        let identifier = NSUserInterfaceItemIdentifier("UserScriptCell")
-        let cell = tableView.makeView(withIdentifier: identifier, owner: self) as? NSTableCellView
-            ?? makeCell(identifier: identifier)
-        cell.textField?.stringValue = scripts.scripts[row].name
-        return cell
-    }
-
-    func tableViewSelectionDidChange(_ notification: Notification) {
-        loadDetail()
-    }
-
-    private func makeCell(identifier: NSUserInterfaceItemIdentifier) -> NSTableCellView {
-        let cell = NSTableCellView()
-        cell.identifier = identifier
-        let textField = NSTextField(labelWithString: "")
-        textField.lineBreakMode = .byTruncatingTail
-        textField.translatesAutoresizingMaskIntoConstraints = false
-        cell.addSubview(textField)
-        cell.textField = textField
+    func activateConstraints(
+        in container: NSView,
+        title: NSTextField,
+        doneButton: NSButton
+    ) {
         NSLayoutConstraint.activate([
-            textField.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 4),
-            textField.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -2),
-            textField.centerYAnchor.constraint(equalTo: cell.centerYAnchor)
+            title.topAnchor.constraint(equalTo: container.topAnchor, constant: 16),
+            title.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
+
+            scrollView.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 10),
+            scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
+            scrollView.widthAnchor.constraint(equalToConstant: 190),
+
+            addButton.topAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: 8),
+            addButton.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
+            addButton.widthAnchor.constraint(equalToConstant: 26),
+            addButton.heightAnchor.constraint(equalToConstant: 24),
+            addButton.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -16),
+            removeButton.centerYAnchor.constraint(equalTo: addButton.centerYAnchor),
+            removeButton.leadingAnchor.constraint(equalTo: addButton.trailingAnchor, constant: 6),
+            removeButton.widthAnchor.constraint(equalToConstant: 26),
+            removeButton.heightAnchor.constraint(equalToConstant: 24),
+
+            detailStack.topAnchor.constraint(equalTo: scrollView.topAnchor),
+            detailStack.leadingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: 16),
+            detailStack.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -20),
+            detailStack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
+
+            doneButton.centerYAnchor.constraint(equalTo: addButton.centerYAnchor),
+            doneButton.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -20),
+            doneButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 76),
+
+            container.widthAnchor.constraint(equalToConstant: 640),
+            container.heightAnchor.constraint(equalToConstant: 460)
         ])
-        return cell
     }
 }
 

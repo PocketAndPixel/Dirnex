@@ -361,6 +361,21 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   function bar, applied to a manual frame layout instead of a stack view. An `NSTextField`'s
   `intrinsicContentSize` is a usable measure here (unlike `NSButtonCell.titleRect`, below); it needs no
   window. Only the live Russian run caught it.
+- **A fixed-width horizontal `NSStackView` collapses a *segmented control* under a longer
+  translation, not just a label.** The sync sheet's controls row (`Направление:` + a 3-segment
+  direction control + `Сравнивать по:` + a 2-segment comparison control + a hint, pinned to 680 pt)
+  read fine in English and, in Russian, squeezed the direction control down to a single unreadable
+  «…» while the row *looked* laid out. Measured (an `NSLog` of each arranged subview's
+  `intrinsicContentSize.width`, run from a shell — **not** eyeballed off the downsampled screenshot,
+  which cannot resolve it): the row demanded **1163 pt** in 680 — the direction control alone wanted
+  345 pt against English's ~250, the comparison control 233, and even dropping the hint the controls
+  needed ~810. Two-part fix: (1) lower the **hint's** horizontal compression resistance
+  (`.defaultLow`) so it is the element that truncates away — language-agnostic, and it stops the
+  controls collapsing whatever the translation; (2) shorten the Russian segment labels so the
+  controls' own intrinsic total drops under 680 (`Слева направо`→`Направо`, `В обе стороны`→`Обе`,
+  `Справа налево`→`Налево`, 345→190 pt), then re-measure to confirm. Equal (750) compression
+  resistance across every arranged view is why it collapsed the *wrong* thing; a segmented control
+  has no `lineBreakMode` escape hatch, so it just crushes its cells.
 - **Resizing a window for a probe: `defaults write "NSWindow Frame <autosave>"` then relaunch.**
   `System Events` needs assistive access that `osascript` does not have (`-1719`), Dirnex's `.sdef`
   exposes no windows (`-1728`), and a synthetic corner drag misses the resize edge. The frame

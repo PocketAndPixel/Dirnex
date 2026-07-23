@@ -62,8 +62,14 @@ extension PanelViewController {
     func runScript(_ script: UserScript) {
         guard let context = userScriptContext() else {
             presentOperationFailure(
-                message: "Can’t run “\(script.name)”",
-                detail: "The active panel isn’t a folder on this disk."
+                message: String(
+                    localized: "Can’t run “\(script.name)”",
+                    comment: "Script run failure title; %@ is the script name."
+                ),
+                detail: String(
+                    localized: "The active panel isn’t a folder on this disk.",
+                    comment: "Script run failure detail: no local folder to run in."
+                )
             )
             return
         }
@@ -71,8 +77,14 @@ extension PanelViewController {
         // zero processes silently (a combined script, by contrast, runs against the directory).
         if script.runMode == .perFile, context.selection.isEmpty {
             presentOperationFailure(
-                message: "Nothing selected",
-                detail: "“\(script.name)” runs once per file — select one or more items first."
+                message: String(
+                    localized: "Nothing selected",
+                    comment: "Script run failure title: a per-file script needs a selection."
+                ),
+                detail: String(
+                    localized: "“\(script.name)” runs once per file — select one or more items first.",
+                    comment: "Script run failure detail; %@ is the script name."
+                )
             )
             return
         }
@@ -87,17 +99,34 @@ extension PanelViewController {
         guard let first = outcome.failures.first else { return }
         let message: String
         if outcome.failures.count == 1, outcome.total == 1 {
-            message = "“\(outcome.script.name)” failed"
+            message = String(
+                localized: "“\(outcome.script.name)” failed",
+                comment: "Script outcome title, single file; %@ is the script name."
+            )
         } else {
-            message = "“\(outcome.script.name)” failed on \(outcome.failures.count) of \(outcome.total)"
+            message = String(
+                localized: "“\(outcome.script.name)” failed on \(outcome.failures.count) of \(outcome.total)",
+                comment: "Script outcome title; %1$@ script name, %2$lld failures of %3$lld runs."
+            )
         }
         var detail = first.stderr.isEmpty
             ? (
-                first.exitCode.map { "Exited with status \($0)." } ?? "The script could not be launched."
+                first.exitCode.map {
+                    String(
+                        localized: "Exited with status \($0).",
+                        comment: "Script outcome detail; %lld is the non-zero exit status."
+                    )
+                } ?? String(
+                    localized: "The script could not be launched.",
+                    comment: "Script outcome detail: the process failed to spawn."
+                )
             )
             : first.stderr
         if let file = first.files.first {
-            detail = "\((file as NSString).lastPathComponent): \(detail)"
+            detail = String(
+                localized: "\((file as NSString).lastPathComponent): \(detail)",
+                comment: "Script outcome detail prefixed by the file it failed on; %1$@ file name, %2$@ detail."
+            )
         }
         presentOperationFailure(message: message, detail: detail)
     }
@@ -130,13 +159,23 @@ extension PanelViewController {
             items.append(item)
         }
         if scripts.isEmpty {
-            let empty = NSMenuItem(title: "No Scripts", action: nil, keyEquivalent: "")
+            let empty = NSMenuItem(
+                title: String(
+                    localized: "No Scripts",
+                    comment: "Scripts submenu: shown when no user scripts have been created."
+                ),
+                action: nil,
+                keyEquivalent: ""
+            )
             empty.isEnabled = false
             items.append(empty)
         }
         items.append(.separator())
         let manage = NSMenuItem(
-            title: "Manage Scripts…",
+            title: String(
+                localized: "Manage Scripts…",
+                comment: "Scripts submenu item: open the scripts organizer."
+            ),
             action: #selector(manageUserScripts(_:)),
             keyEquivalent: ""
         )

@@ -321,6 +321,41 @@ involved. Worth a lint rule keeping bare literals out of UI files afterwards.
   plural «Переименовать 3 объекта» (correct *few* form for 3). The failure alerts were checked
   through the compiled `ru.lproj` (`.strings` + `.stringsdict`) rather than live, being awkward to
   provoke.
+- **Slice 8 landed (2026-07-23): scripts, workspaces, and directory sync.** The whole
+  script/workspace/sync surface — the scripts organizer sheet (name/run-mode/function-key/keywords/
+  command fields, the argv-env help text), the **Scripts ▸** submenu and script-run failures, the
+  displaced-function-key notice; the workspace organizer, the Workspaces popup, and the save/replace
+  prompts; the Synchronize Directories sheet (direction/comparison controls, the diff table's action
+  glyphs and per-row override menu, the status/error lines) and its menu action and delete
+  confirmation: 74 new catalog keys across 9 files, all Russian-filled; `Cancel`, `Done`, `Name`,
+  `OK`, `Replace`, `Scripts` reused. The recurring traps, all fixed at the source: the
+  **`+`-concatenation trap** in two multi-sentence bodies (the scripts help text and the
+  displaced-keys footer → single `\`-continued `"""` literals); **verb/noun-splicing** in the
+  displaced-keys line, kept as *one* positional-arg frame (`• %@ — %@ now runs %@.`) so Russian
+  reorders it, with the key label and the claimant (`a macOS shortcut` / `a Dirnex command` / a
+  command title) translating as independent object noun phrases; the **name/count split** in the
+  script-run and displaced-keys titles (single names the file, many counts — separate keys, only the
+  count branch a plural); and three **catalog plurals** (`%lld conflicts skipped`, `%lld scripts no
+  longer run…`, `Synchronizing will move %lld items to the Trash.`, Russian one/few/many). Two
+  plain-string decisions matching earlier slices: the sync status `%lld to copy, %lld to delete`
+  stays a two-count string (neither verb inflects), and the script exit line is `Exited with status
+  %d.` — the exit code is an `Int32`, so the emitted specifier is `%d`, not `%lld` (taken verbatim
+  from the `.stringsdata`, not assumed). Technical tokens stay literal, as ever: the `$@` / `$1` /
+  `$DIRNEX_*` shell variables in the scripts help. One structural cost: localization pushed
+  `UserScriptsOrganizerController` past **all three** SwiftLint ceilings at once — the
+  view-construction methods moved to the same-file `private extension` (type-body), and the table
+  data-source moved to a companion `UserScriptsOrganizerController+Table.swift` (file-length),
+  widening `scripts`/`loadDetail` to internal (docs/NOTES.md file-splitting). Keys taken from the
+  compiler-emitted `.stringsdata`, added by script with an exact-match guard, verified additive-only
+  (74 added, 0 changed). **The live Russian run caught one fit bug, as every slice has:** the sync
+  controls row overflowed — measured (`NSLog`, not eyeballed) at **1163 pt demanded in a 680 pt row**,
+  which collapsed the direction segmented control to an unreadable «…». Fixed two ways: the hint's
+  horizontal compression resistance was lowered so it (not the controls) yields — a language-agnostic
+  structural fix — and the Russian direction labels were shortened to single words («Слева
+  направо»→«Направо», «В обе стороны»→«Обе», «Справа налево»→«Налево»), bringing the controls to
+  657 pt; re-measured to confirm. The scripts organizer and the Save-Workspace prompt were verified
+  clean live; the run/notice failure alerts were checked through the compiled `ru.lproj`, being
+  awkward to provoke.
 - **Deferred as its own slice: the undo/redo action *labels*.** The "Undo Move" / "Redo Clear
   Selection" menu titles compose `"Undo \(label)"` from a label that is *data*, not an app literal:
   the file-op names ("Move", "Copy", "Rename", "Move to Trash", "New Folder") originate in
@@ -330,8 +365,9 @@ involved. Worth a lint rule keeping bare literals out of UI files afterwards.
   localizing the `"Undo %@"` / `"Redo %@"` frames — a core-touching change. Doing only the app half
   would leave the menu mixing a Russian frame with English labels, which is worse than uniform
   English, so the whole concern waits for one slice.
-- **Remaining:** the rest of the `Dirnex/Browser/` controllers — the user-script and workspace
-  organizers, sync, and the assorted status/tooltip strings; then the undo-label slice above.
+- **Remaining:** a sweep for any assorted status/tooltip strings still bare in the `Dirnex/Browser/`
+  controllers (Favorites/Search/TagEditing/Terminal/CloudDownload alerts and the window-controller
+  tooltips were spotted but not yet done); then the undo-label slice above.
 
 **Pass 3 — the remaining six languages.** Adding one is a line in `AppLanguages.all` plus its
 column in the catalog; `LocalizationCoverageTests` fails until the column is complete.

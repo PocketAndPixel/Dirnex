@@ -34,11 +34,20 @@ enum DisplacedScriptKeysNotice {
         let alert = NSAlert()
         alert.alertStyle = .informational
         alert.messageText = scripts.count == 1
-            ? "“\(scripts[0].name)” no longer runs from its function key"
-            : "\(scripts.count) scripts no longer run from their function keys"
+            ? String(
+                localized: "“\(scripts[0].name)” no longer runs from its function key",
+                comment: "Displaced-script alert title, one script; %@ is the script name."
+            )
+            : String(
+                localized: "\(scripts.count) scripts no longer run from their function keys",
+                comment: "Displaced-script alert title, several scripts; %lld is the count. Plural."
+            )
         alert.informativeText = describe(scripts)
-        alert.addButton(withTitle: "Manage Scripts…")
-        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: String(
+            localized: "Manage Scripts…",
+            comment: "Scripts submenu item: open the scripts organizer."
+        ))
+        alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))
         alert.enableEscapeToCancel()
         let handle: (NSApplication.ModalResponse) -> Void = { response in
             guard response == .alertFirstButtonReturn else { return }
@@ -59,24 +68,49 @@ enum DisplacedScriptKeysNotice {
     /// leaves the user hunting for which one.
     private static func describe(_ scripts: [UserScript]) -> String {
         let lines = scripts.map { script -> String in
-            let key = script.functionKey.map { "F\($0)" } ?? "its key"
-            return "• \(script.name) — \(key) now runs \(claimant(of: script.functionKey))."
+            let key = script.functionKey.map { "F\($0)" } ?? String(
+                localized: "its key",
+                comment: "Displaced-script line: key label when the F-key number is unknown."
+            )
+            // One frame with three data/phrase slots: name, the key label, and the localized
+            // phrase for what now owns the key. Kept a single literal so a language can reorder it.
+            return String(
+                localized: "• \(script.name) — \(key) now runs \(claimant(of: script.functionKey)).",
+                comment: "Displaced-script line; %1$@ script name, %2$@ key label, %3$@ what now owns the key."
+            )
         }
-        return lines.joined(separator: "\n")
-            + "\n\nEach script still runs from the ⌘K palette and the Scripts submenu. "
-            + "Give it a free key in Manage Scripts to get the keystroke back."
+        let footer = String(
+            localized: """
+            Each script still runs from the ⌘K palette and the Scripts submenu. \
+            Give it a free key in Manage Scripts to get the keystroke back.
+            """,
+            comment: "Displaced-script alert footer paragraph."
+        )
+        return lines.joined(separator: "\n") + "\n\n" + footer
     }
 
-    /// What now owns a function key: a bar slot's command, or macOS itself.
+    /// What now owns a function key: a bar slot's command, or macOS itself. Each phrase is the
+    /// object of "now runs %@" above, so it translates as an object noun phrase.
     private static func claimant(of functionKey: Int?) -> String {
-        guard let functionKey else { return "something else" }
+        guard let functionKey else {
+            return String(
+                localized: "something else",
+                comment: "Displaced-script claimant: the key's new owner is unknown."
+            )
+        }
         if FunctionBar.systemReservedFunctionKeys.contains(functionKey) {
-            return "a macOS shortcut"
+            return String(
+                localized: "a macOS shortcut",
+                comment: "Displaced-script claimant: a system-reserved function key."
+            )
         }
         let slot = FunctionBar.slot(forFunctionKey: functionKey, in: FunctionBar.defaultSlots)
         guard let commandID = slot?.commandID,
               let command = LocalizedCatalog.command(for: commandID) else {
-            return "a Dirnex command"
+            return String(
+                localized: "a Dirnex command",
+                comment: "Displaced-script claimant: a Dirnex command holds the key."
+            )
         }
         return "“\(command.title)”"
     }

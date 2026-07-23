@@ -28,7 +28,10 @@ final class WorkspaceOrganizerController: NSViewController {
         let container = EscapeDismissingView()
         container.onEscape = { [weak self] in self?.done(nil) }
 
-        let title = NSTextField(labelWithString: "Organize Workspaces")
+        let title = NSTextField(labelWithString: String(
+            localized: "Organize Workspaces",
+            comment: "Title of the workspace organizer sheet."
+        ))
         title.font = .systemFont(ofSize: NSFont.systemFontSize, weight: .semibold)
         title.translatesAutoresizingMaskIntoConstraints = false
 
@@ -41,7 +44,14 @@ final class WorkspaceOrganizerController: NSViewController {
         configureButton(removeButton, symbol: "minus", action: #selector(removeSelected(_:)))
         removeButton.translatesAutoresizingMaskIntoConstraints = false
 
-        let doneButton = NSButton(title: "Done", target: self, action: #selector(done(_:)))
+        let doneButton = NSButton(
+            title: String(
+                localized: "Done",
+                comment: "Dismiss button of the workspace organizer sheet."
+            ),
+            target: self,
+            action: #selector(done(_:))
+        )
         doneButton.bezelStyle = .rounded
         doneButton.keyEquivalent = "\r"
         doneButton.translatesAutoresizingMaskIntoConstraints = false
@@ -266,7 +276,10 @@ extension WorkspaceOrganizerController: NSTableViewDelegate {
     private static let workspaceIcon: NSImage? = {
         let image = NSImage(
             systemSymbolName: "square.split.2x1",
-            accessibilityDescription: "Workspace"
+            accessibilityDescription: String(
+                localized: "Workspace",
+                comment: "Accessibility label for the two-pane workspace glyph."
+            )
         )
         image?.size = NSSize(width: 16, height: 16)
         image?.isTemplate = true

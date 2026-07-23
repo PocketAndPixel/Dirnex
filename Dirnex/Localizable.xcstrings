@@ -171,6 +171,23 @@
         }
       }
     },
+    "%@: %@": {
+      "comment": "Script outcome detail prefixed by the file it failed on; %1$@ file name, %2$@ detail.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@: %2$@"
+          }
+        }
+      }
+    },
     "%lld commits to pull": {
       "comment": "Git branch tooltip; %lld commits are behind upstream. Plural.",
       "localizations": {
@@ -270,6 +287,59 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "%lld коммитов для отправки"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld conflicts skipped": {
+      "comment": "Sync status suffix; %lld conflicting items left unchanged. Plural.",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflict skipped"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflicts skipped"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфликт пропущен"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфликта пропущено"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфликтов пропущено"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфликтов пропущено"
                 }
               }
             }
@@ -599,6 +669,76 @@
         }
       }
     },
+    "%lld scripts no longer run from their function keys": {
+      "comment": "Displaced-script alert title, several scripts; %lld is the count. Plural.",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld script no longer runs from its function key"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld scripts no longer run from their function keys"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld скрипт больше не запускается по своей функциональной клавише"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld скрипта больше не запускаются по своим функциональным клавишам"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld скриптов больше не запускаются по своим функциональным клавишам"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld скриптов больше не запускаются по своим функциональным клавишам"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld to copy, %lld to delete": {
+      "comment": "Sync status summary; %1$lld files to copy, %2$lld to delete.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld to copy, %lld to delete"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "К копированию: %1$lld, к удалению: %2$lld"
+          }
+        }
+      }
+    },
     "(+%lld more)": {
       "comment": "Queue-bar suffix counting the other queued operations; %lld is how many.",
       "localizations": {
@@ -646,6 +786,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ряд кнопок с F-клавишами вдоль нижнего края окна — Переименовать, Просмотр, Копировать, Переместить, Новая папка, Удалить — панель функций Total Commander. Также доступно в меню «Вид»; клавиши работают независимо от того, показана панель или нет."
+          }
+        }
+      }
+    },
+    "A workspace named “%@” already exists. Replace it with the current layout?": {
+      "comment": "Replace-workspace confirmation body; %@ is the workspace name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A workspace named “%@” already exists. Replace it with the current layout?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Рабочая среда «%@» уже существует. Заменить её текущим расположением?"
           }
         }
       }
@@ -1023,6 +1180,40 @@
         }
       }
     },
+    "Both Directions": {
+      "comment": "Sync direction: reconcile both folders.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Both Directions"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обе"
+          }
+        }
+      }
+    },
+    "Both panels must show a real folder on disk.": {
+      "comment": "Sync failure detail: both panels must be local folders.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Both panels must show a real folder on disk."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обе панели должны показывать реальную папку на диске."
+          }
+        }
+      }
+    },
     "Branch %@": {
       "comment": "Git branch tooltip; %@ is the branch name.",
       "localizations": {
@@ -1312,6 +1503,40 @@
         }
       }
     },
+    "Can’t run “%@”": {
+      "comment": "Script run failure title; %@ is the script name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can’t run “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось запустить «%@»"
+          }
+        }
+      }
+    },
+    "Can’t synchronize": {
+      "comment": "Sync failure title: a panel isn't a real local folder.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can’t synchronize"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось синхронизировать"
+          }
+        }
+      }
+    },
     "Capitalized": {
       "comment": "Multi-rename case option: capitalize each word.",
       "localizations": {
@@ -1414,6 +1639,23 @@
         }
       }
     },
+    "Command": {
+      "comment": "Scripts organizer field label: the shell command body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Command"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Команда"
+          }
+        }
+      }
+    },
     "Compare Anyway": {
       "comment": "Proceed button on the oversized-compare warning.",
       "localizations": {
@@ -1448,6 +1690,40 @@
         }
       }
     },
+    "Compare Contents…": {
+      "comment": "Sync override menu: open the two files in an external diff tool (none configured).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compare Contents…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сравнить содержимое…"
+          }
+        }
+      }
+    },
+    "Compare by:": {
+      "comment": "Sync sheet label before the comparison-method control.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compare by:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сравнивать по:"
+          }
+        }
+      }
+    },
     "Compare files with": {
       "comment": "Operations picker label: diff tool.",
       "localizations": {
@@ -1465,6 +1741,23 @@
         }
       }
     },
+    "Compare with %@…": {
+      "comment": "Sync override menu: open the two files in an external diff tool; %@ is the tool name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compare with %@…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сравнить в %@…"
+          }
+        }
+      }
+    },
     "Comparing %@…": {
       "comment": "In-progress status while comparing; %@ is a file name.",
       "localizations": {
@@ -1478,6 +1771,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Сравнение %@…"
+          }
+        }
+      }
+    },
+    "Comparing folders…": {
+      "comment": "Sync status shown while the two folders are being compared.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comparing folders…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сравнение папок…"
+          }
+        }
+      }
+    },
+    "Conflict — left unchanged": {
+      "comment": "Sync action tooltip: both sides changed; the run skips this row.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conflict — left unchanged"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Конфликт — без изменений"
           }
         }
       }
@@ -1512,6 +1839,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Подключение к серверу"
+          }
+        }
+      }
+    },
+    "Content": {
+      "comment": "Sync comparison method: compare byte-for-byte.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Content"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Содержимому"
           }
         }
       }
@@ -1563,6 +1907,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Скопировать пути"
+          }
+        }
+      }
+    },
+    "Copy to %@": {
+      "comment": "Sync action: copy the item into the named folder; %@ is a folder name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy to %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Копировать в %@"
           }
         }
       }
@@ -2737,6 +3098,23 @@
         }
       }
     },
+    "Delete from %@": {
+      "comment": "Sync action: delete the item from the named folder; %@ is a folder name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete from %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить из %@"
+          }
+        }
+      }
+    },
     "Delete the tag “%@”?": {
       "comment": "Delete-tag confirmation title; %@ is the tag's name.",
       "localizations": {
@@ -2852,6 +3230,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Цифры"
+          }
+        }
+      }
+    },
+    "Direction:": {
+      "comment": "Sync sheet label before the direction control.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direction:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Направление:"
           }
         }
       }
@@ -3024,6 +3419,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Каждый объект вернётся в папку, из которой был удалён."
+          }
+        }
+      }
+    },
+    "Each script still runs from the ⌘K palette and the Scripts submenu. Give it a free key in Manage Scripts to get the keystroke back.": {
+      "comment": "Displaced-script alert footer paragraph.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Each script still runs from the ⌘K palette and the Scripts submenu. Give it a free key in Manage Scripts to get the keystroke back."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Каждый скрипт по-прежнему доступен из палитры ⌘K и подменю «Скрипты». Назначьте ему свободную клавишу в «Управлении скриптами», чтобы вернуть сочетание."
           }
         }
       }
@@ -3215,6 +3627,23 @@
         }
       }
     },
+    "Exited with status %d.": {
+      "comment": "Script outcome detail; %lld is the non-zero exit status.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exited with status %d."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Завершился с кодом %d."
+          }
+        }
+      }
+    },
     "Expanded": {
       "comment": "Accessibility state of an open sidebar section's disclosure triangle.",
       "localizations": {
@@ -3245,6 +3674,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Расширение:"
+          }
+        }
+      }
+    },
+    "F%lld (unavailable)": {
+      "comment": "Scripts organizer popup: a reserved key the script still holds; %lld is the key number.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "F%lld (unavailable)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "F%lld (недоступна)"
           }
         }
       }
@@ -3436,6 +3882,23 @@
         }
       }
     },
+    "Function key": {
+      "comment": "Scripts organizer field label: the F-key bound to the script.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Function key"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Функциональная клавиша"
+          }
+        }
+      }
+    },
     "General": {
       "comment": "Settings tab.",
       "localizations": {
@@ -3572,6 +4035,23 @@
         }
       }
     },
+    "Identical": {
+      "comment": "Sync action tooltip: the two sides match.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Identical"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Идентичны"
+          }
+        }
+      }
+    },
     "Install FileMerge (part of Xcode), Kaleidoscope, or BBEdit to compare files side by side.": {
       "comment": "Compare failure detail suggesting diff tools to install.",
       "localizations": {
@@ -3659,6 +4139,23 @@
         }
       }
     },
+    "Item": {
+      "comment": "Sync diff table column header: the item's relative path.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Item"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Объект"
+          }
+        }
+      }
+    },
     "Keep Both": {
       "comment": "Conflict resolution button.",
       "localizations": {
@@ -3693,6 +4190,23 @@
         }
       }
     },
+    "Keywords": {
+      "comment": "Scripts organizer field label: the palette search keywords.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keywords"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ключевые слова"
+          }
+        }
+      }
+    },
     "Language": {
       "localizations": {
         "en": {
@@ -3705,6 +4219,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "Язык"
+          }
+        }
+      }
+    },
+    "Left → Right": {
+      "comment": "Sync direction: mirror the left folder onto the right.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Left → Right"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Направо"
+          }
+        }
+      }
+    },
+    "Manage Scripts…": {
+      "comment": "Scripts submenu item: open the scripts organizer.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manage Scripts…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Управление скриптами…"
+          }
+        }
+      }
+    },
+    "Manage Workspaces…": {
+      "comment": "Workspaces popup item: open the organizer to rename/reorder/delete.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manage Workspaces…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Управление рабочими средами…"
           }
         }
       }
@@ -3983,6 +4548,23 @@
         }
       }
     },
+    "New Script": {
+      "comment": "Default name for a newly created user script.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Script"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Новый скрипт"
+          }
+        }
+      }
+    },
     "New Tab": {
       "comment": "Accessibility label for the new-tab (+) button in a pane's tab strip.",
       "localizations": {
@@ -4051,6 +4633,57 @@
         }
       }
     },
+    "No Saved Workspaces": {
+      "comment": "Workspaces popup: shown when no workspaces have been saved.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Saved Workspaces"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет сохранённых рабочих сред"
+          }
+        }
+      }
+    },
+    "No Scripts": {
+      "comment": "Scripts submenu: shown when no user scripts have been created.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Scripts"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет скриптов"
+          }
+        }
+      }
+    },
+    "No actions available": {
+      "comment": "Sync override menu: this row has no legal override.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No actions available"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет доступных действий"
+          }
+        }
+      }
+    },
     "No commits yet": {
       "comment": "Git branch tooltip: the branch has no commits.",
       "localizations": {
@@ -4102,6 +4735,23 @@
         }
       }
     },
+    "None": {
+      "comment": "Scripts organizer function-key popup: no key assigned to the script.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "None"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет"
+          }
+        }
+      }
+    },
     "Not Now": {
       "comment": "FDA / tour sheet: decline button.",
       "localizations": {
@@ -4115,6 +4765,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не сейчас"
+          }
+        }
+      }
+    },
+    "Nothing selected": {
+      "comment": "Script run failure title: a per-file script needs a selection.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing selected"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ничего не выбрано"
           }
         }
       }
@@ -4149,6 +4816,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "OK"
+          }
+        }
+      }
+    },
+    "One of the folders no longer exists.": {
+      "comment": "Sync error: a compared folder was removed.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One of the folders no longer exists."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Одна из папок больше не существует."
+          }
+        }
+      }
+    },
+    "One side is a folder — resolve manually": {
+      "comment": "Sync override menu: a file-vs-folder clash has no safe automatic action.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One side is a folder — resolve manually"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "С одной стороны папка — разрешите вручную"
           }
         }
       }
@@ -4234,6 +4935,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Открыть в программе"
+          }
+        }
+      }
+    },
+    "Open a different folder in one panel to compare them.": {
+      "comment": "Sync failure detail: open a different folder to compare.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open a different folder in one panel to compare them."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Откройте в одной из панелей другую папку, чтобы сравнить их."
           }
         }
       }
@@ -4391,6 +5109,23 @@
         }
       }
     },
+    "Organize Workspaces": {
+      "comment": "Title of the workspace organizer sheet.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Organize Workspaces"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Управление рабочими средами"
+          }
+        }
+      }
+    },
     "Original case": {
       "comment": "Multi-rename case option: leave case unchanged.",
       "localizations": {
@@ -4508,6 +5243,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Упаковать «%@»"
+          }
+        }
+      }
+    },
+    "Palette keywords (comma-separated)": {
+      "comment": "Placeholder in the scripts organizer keywords field.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Palette keywords (comma-separated)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ключевые слова для палитры (через запятую)"
           }
         }
       }
@@ -4714,6 +5466,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Отказано в доступе. Проверьте имя пользователя и то, что ключ авторизован на сервере."
+          }
+        }
+      }
+    },
+    "Permission was denied reading one of the folders.": {
+      "comment": "Sync error: no read permission on a compared folder.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permission was denied reading one of the folders."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет прав на чтение одной из папок."
           }
         }
       }
@@ -5337,6 +6106,23 @@
         }
       }
     },
+    "Replace “%@”?": {
+      "comment": "Replace-workspace confirmation title; %@ is the workspace name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replace “%@”?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Заменить «%@»?"
+          }
+        }
+      }
+    },
     "Reset to default": {
       "comment": "Shortcuts row: reset one command's shortcut.",
       "localizations": {
@@ -5473,6 +6259,40 @@
         }
       }
     },
+    "Right → Left": {
+      "comment": "Sync direction: mirror the right folder onto the left.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Right → Left"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Налево"
+          }
+        }
+      }
+    },
+    "Right-click a row to change its action": {
+      "comment": "Sync sheet hint above the diff table.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Right-click a row to change its action"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Щёлкните строку правой кнопкой, чтобы изменить действие"
+          }
+        }
+      }
+    },
     "Run Search": {
       "comment": "Saved-search context-menu item: run the query.",
       "localizations": {
@@ -5507,6 +6327,40 @@
         }
       }
     },
+    "Run once for the whole selection": {
+      "comment": "Scripts organizer run-mode option: one process for all selected files.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Run once for the whole selection"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Один раз для всего выделения"
+          }
+        }
+      }
+    },
+    "Run once per selected file": {
+      "comment": "Scripts organizer run-mode option: one process per selected file.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Run once per selected file"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отдельно для каждого файла"
+          }
+        }
+      }
+    },
     "Same as System": {
       "localizations": {
         "en": {
@@ -5523,6 +6377,57 @@
         }
       },
       "comment": "Language picker entry meaning “follow the macOS language”."
+    },
+    "Save": {
+      "comment": "Confirm button of the Save Workspace prompt.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранить"
+          }
+        }
+      }
+    },
+    "Save Workspace": {
+      "comment": "Title of the Save Workspace prompt.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save Workspace"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранить рабочую среду"
+          }
+        }
+      }
+    },
+    "Save Workspace…": {
+      "comment": "Workspaces popup item: snapshot both panes as a new workspace.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save Workspace…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранить рабочую среду…"
+          }
+        }
+      }
     },
     "Save as:": {
       "comment": "Connect field label: name to save under.",
@@ -5541,6 +6446,23 @@
         }
       }
     },
+    "Save both panels and all their tabs so you can switch back to this layout.": {
+      "comment": "Body of the Save Workspace prompt.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save both panels and all their tabs so you can switch back to this layout."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохраните обе панели и все их вкладки, чтобы вернуться к этому расположению."
+          }
+        }
+      }
+    },
     "Saved search": {
       "comment": "Accessibility label for a saved-search sidebar row's glyph.",
       "localizations": {
@@ -5554,6 +6476,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Сохранённый поиск"
+          }
+        }
+      }
+    },
+    "Script name": {
+      "comment": "Placeholder in the script-name field of the scripts organizer.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Script name"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Название скрипта"
           }
         }
       }
@@ -5898,6 +6837,23 @@
         }
       }
     },
+    "Size & Date": {
+      "comment": "Sync comparison method: compare by size and modification date.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Size & Date"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Размеру и дате"
+          }
+        }
+      }
+    },
     "Skip": {
       "comment": "Conflict / error resolution button.",
       "localizations": {
@@ -6068,6 +7024,76 @@
         }
       }
     },
+    "Synchronize": {
+      "comment": "Confirm button of the sync delete prompt and the sync sheet.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronize"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Синхронизировать"
+          }
+        }
+      }
+    },
+    "Synchronizing will move %lld items to the Trash.": {
+      "comment": "Sync delete confirmation title; %lld is the number of items. Plural.",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Synchronizing will move %lld item to the Trash."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Synchronizing will move %lld items to the Trash."
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Синхронизация переместит %lld объект в Корзину."
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Синхронизация переместит %lld объекта в Корзину."
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Синхронизация переместит %lld объектов в Корзину."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Синхронизация переместит %lld объектов в Корзину."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Tags": {
       "comment": "Context-menu submenu: Finder tags for the file.",
       "localizations": {
@@ -6119,6 +7145,23 @@
         }
       }
     },
+    "The active panel isn’t a folder on this disk.": {
+      "comment": "Script run failure detail: no local folder to run in.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The active panel isn’t a folder on this disk."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Активная панель не является папкой на этом диске."
+          }
+        }
+      }
+    },
     "The archive may be damaged or the items may be missing.": {
       "comment": "Extract failure body when nothing landed.",
       "localizations": {
@@ -6149,6 +7192,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Редактор, в котором F4 открывает файл под курсором. ⇧F4 сначала запрашивает имя нового файла и создаёт его, если он ещё не существует."
+          }
+        }
+      }
+    },
+    "The folders are already in sync.": {
+      "comment": "Sync status: no differences were found.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The folders are already in sync."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Папки уже синхронизированы."
+          }
+        }
+      }
+    },
+    "The folders couldn’t be compared.": {
+      "comment": "Sync error: the comparison failed for an unspecified reason.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The folders couldn’t be compared."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось сравнить папки."
           }
         }
       }
@@ -6238,6 +7315,23 @@
         }
       }
     },
+    "The panels show the same folder": {
+      "comment": "Sync failure title: both panels show the same folder.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The panels show the same folder"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Панели показывают одну и ту же папку"
+          }
+        }
+      }
+    },
     "The remote path wasn’t found.": {
       "comment": "SFTP connect failure detail: the remote path does not exist.",
       "localizations": {
@@ -6251,6 +7345,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Удалённый путь не найден."
+          }
+        }
+      }
+    },
+    "The script could not be launched.": {
+      "comment": "Script outcome detail: the process failed to spawn.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The script could not be launched."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось запустить скрипт."
+          }
+        }
+      }
+    },
+    "The selection is passed as arguments (\"$@\", \"$1\"). Also available: $DIRNEX_CURRENT_DIR, $DIRNEX_OTHER_DIR, $DIRNEX_SELECTED_PATHS.": {
+      "comment": "Scripts organizer help text; the $-tokens are literal shell variables and stay untranslated.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The selection is passed as arguments (\"$@\", \"$1\"). Also available: $DIRNEX_CURRENT_DIR, $DIRNEX_OTHER_DIR, $DIRNEX_SELECTED_PATHS."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выделение передаётся как аргументы («$@», «$1»). Также доступны: $DIRNEX_CURRENT_DIR, $DIRNEX_OTHER_DIR, $DIRNEX_SELECTED_PATHS."
           }
         }
       }
@@ -6662,6 +7790,57 @@
         }
       }
     },
+    "When run": {
+      "comment": "Scripts organizer field label: the run mode (whole selection vs per file).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When run"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Когда запускать"
+          }
+        }
+      }
+    },
+    "Workspace": {
+      "comment": "Accessibility label for the two-pane workspace glyph.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workspace"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Рабочая среда"
+          }
+        }
+      }
+    },
+    "Workspace name": {
+      "comment": "Placeholder in the Save Workspace name field.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workspace name"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Название рабочей среды"
+          }
+        }
+      }
+    },
     "You can browse every folder on this Mac. To change this, open Full Disk Access in System Settings.": {
       "comment": "FDA already-granted sheet body.",
       "localizations": {
@@ -6692,6 +7871,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Объекты можно будет восстановить из Корзины позже."
+          }
+        }
+      }
+    },
+    "You can restore them from the Trash later.": {
+      "comment": "Sync delete confirmation body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can restore them from the Trash later."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Позже вы сможете восстановить их из Корзины."
           }
         }
       }
@@ -6743,6 +7939,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ваши файлы в iCloud Drive показаны выше. Папки, которые там хранят приложения — Pages, «Просмотр», «Быстрые команды» — закрыты macOS, пока вы не разрешите Dirnex их читать.\n\nНажмите «Открыть Системные настройки», затем включите Dirnex в разделе «Полный доступ к диску». macOS попросит Dirnex перезапуститься, чтобы новый доступ вступил в силу."
+          }
+        }
+      }
+    },
+    "a Dirnex command": {
+      "comment": "Displaced-script claimant: a Dirnex command holds the key.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "a Dirnex command"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "команду Dirnex"
+          }
+        }
+      }
+    },
+    "a macOS shortcut": {
+      "comment": "Displaced-script claimant: a system-reserved function key.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "a macOS shortcut"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "системную комбинацию клавиш"
           }
         }
       }
@@ -9195,6 +10425,23 @@
         }
       }
     },
+    "folder": {
+      "comment": "Sync diff table: size cell for a subfolder.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "folder"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "папка"
+          }
+        }
+      }
+    },
     "functionBar.file.copy.label": {
       "comment": "FUNCTION BAR — these seven are the app's primary buttons and are always on screen, so they carry the whole app's first impression. Rules for every language: use a WHOLE VERB in the imperative or infinitive, whichever that language uses for menu commands — never a clipped or abbreviated form (write “Копировать”, not “Копир.” or “Копия”), and never a truncation with a period. A noun phrase is acceptable only where the command genuinely names a thing rather than an action (F7 “Новая папка”). Match the wording of the command's own menu title where the verb is the same, so the button and the menu item read as the same command. Prefer the shorter of two correct verbs — the cell is narrow — but never buy width by cutting a word. This button copies the selection to the other panel.",
       "extractionState": "manual",
@@ -9351,6 +10598,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "iCloud Drive"
+          }
+        }
+      }
+    },
+    "its key": {
+      "comment": "Displaced-script line: key label when the F-key number is unknown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "its key"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "эта клавиша"
           }
         }
       }
@@ -9589,6 +10853,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Тома"
+          }
+        }
+      }
+    },
+    "something else": {
+      "comment": "Displaced-script claimant: the key's new owner is unknown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "something else"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "что-то другое"
           }
         }
       }
@@ -9858,6 +11139,40 @@
         }
       }
     },
+    "“%@” failed": {
+      "comment": "Script outcome title, single file; %@ is the script name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” failed"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сбой «%@»"
+          }
+        }
+      }
+    },
+    "“%@” failed on %lld of %lld": {
+      "comment": "Script outcome title; %1$@ script name, %2$lld failures of %3$lld runs.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” failed on %lld of %lld"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сбой «%1$@»: %2$lld из %3$lld"
+          }
+        }
+      }
+    },
     "“%@” is already back": {
       "comment": "Put-Back result for one item whose original folder already holds that name; %@ is the item name.",
       "localizations": {
@@ -9892,6 +11207,40 @@
         }
       }
     },
+    "“%@” no longer runs from its function key": {
+      "comment": "Displaced-script alert title, one script; %@ is the script name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” no longer runs from its function key"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скрипт «%@» больше не запускается по своей функциональной клавише"
+          }
+        }
+      }
+    },
+    "“%@” runs once per file — select one or more items first.": {
+      "comment": "Script run failure detail; %@ is the script name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” runs once per file — select one or more items first."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скрипт «%@» выполняется отдельно для каждого файла — сначала выберите один или несколько объектов."
+          }
+        }
+      }
+    },
     "“Same as System” follows your macOS language and falls back to English.": {
       "localizations": {
         "en": {
@@ -9904,6 +11253,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "«Как в системе» следует языку macOS, а если он не поддерживается — английскому."
+          }
+        }
+      }
+    },
+    "• %@ — %@ now runs %@.": {
+      "comment": "Displaced-script line; %1$@ script name, %2$@ key label, %3$@ what now owns the key.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "• %@ — %@ now runs %@."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "• %1$@ — %2$@ теперь запускает %3$@."
           }
         }
       }
