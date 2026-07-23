@@ -272,6 +272,28 @@ involved. Worth a lint rule keeping bare literals out of UI files afterwards.
   slot, not File. One thing only the live run caught: «Необязательно — сохранить в боковой панели»
   overran the 280 pt Save-as field, so it was shortened to «Необязательно — в боковой панели» — a
   translation's *fit* is a live check, not a catalog one.
+- **Slice 6 landed (2026-07-23): the archive prompts.** The pack sheet (Alt+F5) — title, subtitle,
+  the Name/Format labels, the archive-name placeholder, the format popup, and the overwrite
+  confirmation — plus every add/delete/extract confirmation and failure across the archive-write
+  surface: 28 new catalog keys across 5 files (`PanelViewController+ArchivePack` / `+ArchiveWrite` /
+  `+ArchiveAdd` / `+ArchiveExtract` / `+NestedArchive`), all Russian-filled; `Cancel`, `Replace`,
+  `Delete`, and the single-item `Couldn’t delete “%@”` (from Slice 2) reused. Two recurring traps,
+  fixed at the source: the **name/count split** — pack/delete/replace/add each name the file in the
+  single case (`Delete “%@” from “%@”?`) and count in the many case (`Delete %lld items from “%@”?`),
+  so they are separate keys and only the count branch carries the Russian one/few/many (three of them
+  a count-plus-name `substitutions` plural, `%#@items@` + `%2$@`); and the **`+`-concatenation trap**
+  in the archive-replace body (`"a " + "b"` → one `\`-continued `"""` literal). The **format-popup
+  names stay English** (`Zip`, `Tarball (gzip)`, `7-Zip`, `Tar`) — technical vocabulary, the same
+  convention as the SFTP/SMB acronyms; they are `DirnexCore` data and translating them would need the
+  registry treatment, deferred. Keys taken from the compiler-emitted `.stringsdata`, inserted by
+  script at their sorted positions, verified additive-only (28 added, 0 changed). One fit issue only
+  the live run caught: the pack sheet's fixed **48 pt label column clipped Russian «Формат:»** (the
+  English "Format:" fit) — fixed by sizing the column to the wider of the two localized captions
+  (`intrinsicContentSize`) rather than a magic width, the same class as Slice 5's Save-as overrun.
+  Verified live in Russian: the pack sheet (single title «Упаковать «jmeter.log»», plural «Упаковать
+  3 объекта», subtitle, both labels now fitting, the «Имя архива» placeholder), a successful pack, and
+  the delete-from-archive confirmation («Удалить «%@» из «%@»?» · «Это перезапишет архив; действие
+  нельзя отменить.»).
 - **Deferred as its own slice: the undo/redo action *labels*.** The "Undo Move" / "Redo Clear
   Selection" menu titles compose `"Undo \(label)"` from a label that is *data*, not an app literal:
   the file-op names ("Move", "Copy", "Rename", "Move to Trash", "New Folder") originate in
@@ -281,9 +303,9 @@ involved. Worth a lint rule keeping bare literals out of UI files afterwards.
   localizing the `"Undo %@"` / `"Redo %@"` frames — a core-touching change. Doing only the app half
   would leave the menu mixing a Russian frame with English labels, which is worse than uniform
   English, so the whole concern waits for one slice.
-- **Remaining:** the rest of the `Dirnex/Browser/` controllers — the archive prompts, multi-rename,
-  the user-script and workspace organizers, sync, and the assorted status/tooltip strings; then the
-  undo-label slice above.
+- **Remaining:** the rest of the `Dirnex/Browser/` controllers — multi-rename, the user-script and
+  workspace organizers, sync, and the assorted status/tooltip strings; then the undo-label slice
+  above.
 
 **Pass 3 — the remaining six languages.** Adding one is a line in `AppLanguages.all` plus its
 column in the catalog; `LocalizationCoverageTests` fails until the column is complete.

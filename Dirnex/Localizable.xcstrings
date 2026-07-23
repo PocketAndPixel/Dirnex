@@ -766,6 +766,23 @@
         }
       }
     },
+    "An item with the same name is already in the archive. Replacing rewrites the archive and can’t be undone.": {
+      "comment": "Add-into-archive replace-confirmation body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An item with the same name is already in the archive. Replacing rewrites the archive and can’t be undone."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Объект с таким именем уже есть в архиве. Замена перезапишет архив; действие нельзя отменить."
+          }
+        }
+      }
+    },
     "Another saved search already uses that name. Pick a different one.": {
       "comment": "Body of the saved-search rename-collision alert.",
       "localizations": {
@@ -813,6 +830,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Применить ко всем остальным ошибкам"
+          }
+        }
+      }
+    },
+    "Archive name": {
+      "comment": "Placeholder in the pack sheet's name field.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archive name"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Имя архива"
           }
         }
       }
@@ -1123,6 +1157,23 @@
         }
       }
     },
+    "Can’t extract here": {
+      "comment": "Alert title when the other panel isn't a real folder to receive extracted files.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can’t extract here"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Извлечение здесь невозможно"
+          }
+        }
+      }
+    },
     "Can’t move here": {
       "comment": "Move failure title: destination can't receive files.",
       "localizations": {
@@ -1170,6 +1221,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не удалось открыть «%@»"
+          }
+        }
+      }
+    },
+    "Can’t pack here": {
+      "comment": "Alert title when the other panel isn't a real folder for the new archive.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can’t pack here"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Упаковка здесь невозможна"
           }
         }
       }
@@ -1446,6 +1514,96 @@
         }
       }
     },
+    "Couldn’t add %lld items to “%@”": {
+      "comment": "Add-into-archive failure, several items; %lld count, %@ archive name. Plural.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t add %#@items@ to “%2$@”"
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg item"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg items"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось добавить %#@items@ в «%2$@»"
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg объект"
+                    }
+                  },
+                  "few": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg объекта"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg объектов"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg объектов"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Couldn’t add “%@”": {
+      "comment": "Add-into-archive failure, one item; %@ is its name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t add “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось добавить «%@»"
+          }
+        }
+      }
+    },
     "Couldn’t connect to “%@”.": {
       "comment": "Error when a server connection fails; %@ is the host name.",
       "localizations": {
@@ -1533,6 +1691,23 @@
         }
       }
     },
+    "Couldn’t create the archive": {
+      "comment": "Pack failure alert title.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t create the archive"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось создать архив"
+          }
+        }
+      }
+    },
     "Couldn’t delete %lld items": {
       "comment": "Permanent-delete failure for several items; %lld is the count.",
       "localizations": {
@@ -1579,6 +1754,79 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "Не удалось удалить %lld объектов"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Couldn’t delete %lld items from “%@”": {
+      "comment": "Delete-from-archive failure, several items; %lld count, %@ archive name. Plural.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t delete %#@items@ from “%2$@”"
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg item"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg items"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось удалить %#@items@ из «%2$@»"
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg объект"
+                    }
+                  },
+                  "few": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg объекта"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg объектов"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg объектов"
+                    }
+                  }
                 }
               }
             }
@@ -1686,6 +1934,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не удалось удалить «%@»"
+          }
+        }
+      }
+    },
+    "Couldn’t extract from the archive": {
+      "comment": "Extract failure alert title.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t extract from the archive"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось извлечь из архива"
+          }
+        }
+      }
+    },
+    "Couldn’t extract the selected items": {
+      "comment": "Extract failure title when nothing landed.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t extract the selected items"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось извлечь выбранные объекты"
           }
         }
       }
@@ -1864,6 +2146,23 @@
         }
       }
     },
+    "Couldn’t open the nested archive": {
+      "comment": "Failure opening an archive nested inside another archive.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t open the nested archive"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось открыть вложенный архив"
+          }
+        }
+      }
+    },
     "Couldn’t open with “%@”.": {
       "comment": "Open With failure; %@ is the app name.",
       "localizations": {
@@ -2019,6 +2318,23 @@
         }
       }
     },
+    "Create an archive in “%@”.": {
+      "comment": "Pack sheet subtitle; %@ is the destination folder name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create an archive in “%@”."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Создать архив в «%@»."
+          }
+        }
+      }
+    },
     "Custom": {
       "comment": "Shortcuts preset picker: hand-edited state.",
       "localizations": {
@@ -2066,6 +2382,79 @@
           "stringUnit": {
             "state": "translated",
             "value": "Удалить"
+          }
+        }
+      }
+    },
+    "Delete %lld items from “%@”?": {
+      "comment": "Delete-from-archive title, several items; %lld count, %@ archive name. Plural.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete %#@items@ from “%2$@”?"
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg item"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg items"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить %#@items@ из «%2$@»?"
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg объект"
+                    }
+                  },
+                  "few": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg объекта"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg объектов"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg объектов"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -2153,6 +2542,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Удалить метку «%@»?"
+          }
+        }
+      }
+    },
+    "Delete “%@” from “%@”?": {
+      "comment": "Delete-from-archive title, one item; %1$@ item name, %2$@ archive name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete “%@” from “%@”?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить «%@» из «%@»?"
           }
         }
       }
@@ -2754,6 +3160,23 @@
         }
       }
     },
+    "Format:": {
+      "comment": "Pack sheet label for the archive-format popup.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Format:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Формат:"
+          }
+        }
+      }
+    },
     "Forward": {
       "comment": "Accessibility label and tooltip for the titlebar Forward button.",
       "localizations": {
@@ -3199,6 +3622,23 @@
         }
       }
     },
+    "Name:": {
+      "comment": "Pack sheet label for the archive-name field.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Имя:"
+          }
+        }
+      }
+    },
     "New (copying in)": {
       "comment": "Conflict card header for the incoming, copied item.",
       "localizations": {
@@ -3539,6 +3979,40 @@
         }
       }
     },
+    "Open a folder on disk in the other panel first.": {
+      "comment": "Alert body for the can't-extract-here case.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open a folder on disk in the other panel first."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сначала откройте папку на диске в другой панели."
+          }
+        }
+      }
+    },
+    "Open a folder on disk in the other panel to hold the new archive.": {
+      "comment": "Alert body for the can't-pack-here case.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open a folder on disk in the other panel to hold the new archive."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Откройте папку на диске в другой панели для нового архива."
+          }
+        }
+      }
+    },
     "Opening %@…": {
       "comment": "In-progress status while opening a file; %@ is the file name.",
       "localizations": {
@@ -3637,6 +4111,93 @@
           "stringUnit": {
             "state": "translated",
             "value": "Другое…"
+          }
+        }
+      }
+    },
+    "Pack": {
+      "comment": "Pack sheet confirm button (create an archive).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pack"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Упаковать"
+          }
+        }
+      }
+    },
+    "Pack %lld items": {
+      "comment": "Pack sheet title, several items; %lld is the count. Plural.",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Pack %lld item"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Pack %lld items"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Упаковать %lld объект"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Упаковать %lld объекта"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Упаковать %lld объектов"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Упаковать %lld объектов"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Pack “%@”": {
+      "comment": "Pack sheet title, one item; %@ is its name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pack “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Упаковать «%@»"
           }
         }
       }
@@ -4255,6 +4816,79 @@
         }
       }
     },
+    "Replace %lld items in “%@”?": {
+      "comment": "Add-into-archive replace title, several items; %lld count, %@ archive name. Plural.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replace %#@items@ in “%2$@”?"
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg item"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg items"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Заменить %#@items@ в «%2$@»?"
+          },
+          "substitutions": {
+            "items": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg объект"
+                    }
+                  },
+                  "few": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg объекта"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg объектов"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg объектов"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Replace If Newer": {
       "comment": "Conflict resolution button.",
       "localizations": {
@@ -4268,6 +4902,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Заменить, если новее"
+          }
+        }
+      }
+    },
+    "Replace the existing archive in “%@”?": {
+      "comment": "Pack overwrite-confirmation body; %@ is the destination folder name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replace the existing archive in “%@”?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Заменить существующий архив в «%@»?"
+          }
+        }
+      }
+    },
+    "Replace “%@” in “%@”?": {
+      "comment": "Add-into-archive replace title, one item; %1$@ item name, %2$@ archive name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replace “%@” in “%@”?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Заменить «%@» в «%@»?"
           }
         }
       }
@@ -5003,6 +5671,23 @@
         }
       }
     },
+    "The archive may be damaged or the items may be missing.": {
+      "comment": "Extract failure body when nothing landed.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The archive may be damaged or the items may be missing."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Возможно, архив повреждён или объекты отсутствуют."
+          }
+        }
+      }
+    },
     "The editor F4 opens the file under the cursor in. ⇧F4 names a new file first, creating it if it doesn’t exist yet.": {
       "comment": "Operations footer: text editor.",
       "localizations": {
@@ -5288,6 +5973,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Переименуется строка в боковой панели. Сама папка не переименовывается."
+          }
+        }
+      }
+    },
+    "This rewrites the archive and can’t be undone.": {
+      "comment": "Delete-from-archive confirmation body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This rewrites the archive and can’t be undone."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Это перезапишет архив; действие нельзя отменить."
           }
         }
       }
@@ -8358,6 +9060,23 @@
         }
       }
     },
+    "the archive": {
+      "comment": "Fallback archive name in the delete-from-archive prompt when the real name is unavailable (unreachable in practice). Genitive, to read as “… from “the archive”?”.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "the archive"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "архива"
+          }
+        }
+      }
+    },
     "tour.files.body": {
       "comment": "First-run tour screen 'tour.files': body.",
       "localizations": {
@@ -8551,6 +9270,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "новая папка"
+          }
+        }
+      }
+    },
+    "“%@” already exists": {
+      "comment": "Pack overwrite-confirmation title; %@ is the archive file name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” already exists"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» уже существует"
           }
         }
       }

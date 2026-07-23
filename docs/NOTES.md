@@ -353,6 +353,14 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   shell. Also: `NSButtonCell.titleRect(forBounds:)` is not a usable measure for a borderless button
   — it returns the bounds unchanged (no reserved padding) and returns **zero width** on an early
   layout pass.
+- **A fixed-width label column clips a longer translation.** The pack sheet laid its `Name:` /
+  `Format:` captions in a hardcoded 48 pt right-aligned column that the English fit and Russian
+  «Формат:» did not — the "т:" was simply cut, invisible in an English screenshot and at build time.
+  Size such a column to the *wider of the localized captions* (`ceil(max(label.intrinsicContentSize
+  .width, …))`) and offset the field/popup from that, not from a magic number — the same lesson as the
+  function bar, applied to a manual frame layout instead of a stack view. An `NSTextField`'s
+  `intrinsicContentSize` is a usable measure here (unlike `NSButtonCell.titleRect`, below); it needs no
+  window. Only the live Russian run caught it.
 - **Resizing a window for a probe: `defaults write "NSWindow Frame <autosave>"` then relaunch.**
   `System Events` needs assistive access that `osascript` does not have (`-1719`), Dirnex's `.sdef`
   exposes no windows (`-1728`), and a synthetic corner drag misses the resize edge. The frame

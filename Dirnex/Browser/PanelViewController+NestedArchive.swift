@@ -74,7 +74,7 @@ extension PanelViewController {
                 navigate(to: nestedArchiveRoot(atOnDiskPath: mountPath))
             } catch {
                 presentOperationFailure(
-                    message: "Couldn’t open the nested archive",
+                    message: String(localized: "Couldn’t open the nested archive"),
                     detail: describe(error)
                 )
             }
