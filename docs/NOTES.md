@@ -402,6 +402,25 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   Corollary trap in that second scan: a `comment:` argument whose prose contains "title:" or
   "detail:" (`comment: "Copy failure title: …"`) trips a naive sink match — a false positive to
   filter, not a bare literal.
+- **A sink-keyword sweep cannot see a string that reaches the screen through a *return value*.**
+  Both scans above look for the assignment (`messageText =`, `title:`), and `PanelViewController`'s
+  status line has none: `statusText() -> String` builds `"\(total) items"`, `"\(marked) of \(total)
+  selected · …"`, `"Filter “\(shown)” · …"` and the Git-sizes tail as plain literals, and one caller
+  far away assigns the result. So the *permanently visible* line under both panes — the one thing on
+  screen at all times — read "26 items" in a fully translated Russian UI, through every pass of both
+  sweeps. Scan for the shape instead: a bare prose literal (has a space, has a lowercase word) that
+  is not inside `String(localized:)` and is not a symbolic key, over the whole app. That scan
+  finishes in seconds and is the one that finds this class. Two filters keep it honest — SwiftUI
+  literals are auto-extracted (so `Text("Show hidden files")` is a false positive; confirm by
+  looking the string up in the catalog rather than by reading the call site), and `fatalError("init(
+  coder:) has not been implemented")` is noise in every AppKit view.
+- **A key already sitting translated in the catalog does not mean every site uses it.**
+  `"Compare with %@…"` has had its Russian since the Synchronize sheet's row menu was localized,
+  while `validateMenuItem`'s live retitling of the same menu item builds the identical sentence as a
+  bare literal — so the menu draws English with the translation right there. The duplicate-display-
+  string lesson (`MenuSpec` and the category names, above) has this second half: after de-duplicating
+  the *string*, check that every site that produces it goes through the lookup. Grepping the catalog
+  for a key proves the key exists, not that the screen uses it.
 - **A virtual "place you visit" that borrows the search backend leaks English through its label.**
   Recents rides the `.search` results machinery, so its path bar drew `"Results for \(pathSummary)"`
   — and with `pathSummary` an English identity that reads "Результаты для Recents" in a Russian UI,

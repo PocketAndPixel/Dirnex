@@ -64,15 +64,35 @@ extension PanelViewController {
             let bytes = panel.selectedEntries.reduce(Int64(0)) { sum, entry in
                 sum + panel.model.effectiveByteSize(of: entry)
             }
-            counts = "\(marked) of \(total) selected · \(FileFormatting.byteString(bytes))"
+            counts = String(
+                localized: "\(marked) of \(total) selected · \(FileFormatting.byteString(bytes))",
+                comment: """
+                Pane status line while rows are marked. %1$lld is the marked count, \
+                %2$lld the total in the folder, %3$@ their combined size.
+                """
+            )
         } else {
-            counts = total == 1 ? "1 item" : "\(total) items"
+            // One key with a plural variation, not a 1-vs-many ternary: a language with more than
+            // two forms (Russian has three) can't be expressed by a branch in Swift.
+            counts = String(
+                localized: "\(total) items",
+                comment: "Pane status line when nothing is marked. %lld is the row count."
+            )
         }
 
         // Say so whenever folder totals are filtered. Without this the mode is invisible in exactly
         // the situation that matters — a folder reading 2 GB where Finder says 17 GB — and the user
         // has no way to connect the number to the setting that produced it.
-        let counted = areGitAwareSizesActive ? counts + " · sizes exclude Git-ignored" : counts
+        let counted = areGitAwareSizesActive
+            ? String(
+                localized: "\(counts) · sizes exclude Git-ignored",
+                comment: """
+                Pane status line suffix when Git-ignored files are excluded from folder totals. \
+                %@ is the count or selection summary it qualifies. One whole clause rather than a \
+                concatenated tail, so a translation can reorder it.
+                """
+            )
+            : counts
 
         let filter = panel.model.filter
         guard !filter.isEmpty else { return counted }
@@ -82,7 +102,13 @@ extension PanelViewController {
         let shown = filter.count > Self.maxFilterDisplayLength
             ? String(filter.prefix(Self.maxFilterDisplayLength)) + "…"
             : filter
-        return "Filter “\(shown)” · \(counted)"
+        return String(
+            localized: "Filter “\(shown)” · \(counted)",
+            comment: """
+            Pane status line while type-to-filter is active. %1$@ is the typed filter, \
+            %2$@ the count or selection summary it narrows.
+            """
+        )
     }
 
     /// The longest type-to-filter string echoed verbatim in the status line before it's ellipsized.

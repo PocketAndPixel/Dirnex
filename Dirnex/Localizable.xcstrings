@@ -154,6 +154,23 @@
         }
       }
     },
+    "%@ · sizes exclude Git-ignored": {
+      "comment": "Pane status line suffix when Git-ignored files are excluded from folder totals. %@ is the count or selection summary it qualifies. One whole clause rather than a concatenated tail, so a translation can reorder it.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · sizes exclude Git-ignored"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · размеры без игнорируемого Git"
+          }
+        }
+      }
+    },
     "%@/s": {
       "comment": "Queue-bar throughput readout; %@ is a byte count, e.g. “1.2 MB/s”.",
       "localizations": {
@@ -340,6 +357,59 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "%lld конфликтов пропущено"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld items": {
+      "comment": "Pane status line when nothing is marked. %lld is the row count.",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld item"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld items"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld объект"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld объекта"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld объектов"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld объектов"
                 }
               }
             }
@@ -648,6 +718,23 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "%lld of %lld selected · %@": {
+      "comment": "Pane status line while rows are marked. %1$lld is the marked count, %2$lld the total in the folder, %3$@ their combined size.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld of %lld selected · %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выбрано %1$lld из %2$lld · %3$@"
           }
         }
       }
@@ -3980,6 +4067,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Фильтр"
+          }
+        }
+      }
+    },
+    "Filter “%@” · %@": {
+      "comment": "Pane status line while type-to-filter is active. %1$@ is the typed filter, %2$@ the count or selection summary it narrows.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filter “%1$@” · %2$@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Фильтр «%1$@» · %2$@"
           }
         }
       }
