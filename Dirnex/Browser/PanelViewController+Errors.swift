@@ -43,8 +43,10 @@ enum VFSErrorText {
             return String(localized: "An item with that name already exists here.")
         case let .io(_, code):
             return String(localized: "The system reported an error (code \(code)).")
-        case let .unsupported(message):
-            return message
+        case let .unsupported(reason):
+            // The one case whose text the core authors. It is a named reason, not a string, so it
+            // can be looked up here rather than passed through in English (PLAN.md §M12 Slice 11).
+            return LocalizedCatalog.sentence(for: reason)
         }
     }
 }

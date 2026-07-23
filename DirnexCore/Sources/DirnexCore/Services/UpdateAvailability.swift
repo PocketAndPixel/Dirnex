@@ -55,11 +55,10 @@ public struct UpdateAvailability: Sendable, Equatable {
         }
     }
 
-    /// The indicator's tooltip. Names the version when the appcast gave one, since "1.3.0 is
-    /// available" is the one thing a user hovering the button wants to know that the glyph can't say.
-    public var tooltip: String {
-        guard isAvailable else { return "Check for updates" }
-        guard let pendingVersion else { return "An update is available — click to install" }
-        return "Dirnex \(pendingVersion) is available — click to install"
-    }
+    // The indicator's *tooltip* lives in the app (`BrowserWindowController+Updates`), not here.
+    // This type owns the state — is something pending, and which version — and the words that
+    // render it are the app's, the same split `SyncBadgeStyle` and `GitStatusStyle` already draw
+    // ("the core picks the state; this picks the pixels and the words"). Composed here it was a
+    // bare literal reached through a variable: permanently on screen in the titlebar, and English
+    // in a fully translated UI (PLAN.md §M12 Slice 11).
 }

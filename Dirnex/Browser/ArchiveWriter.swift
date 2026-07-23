@@ -75,7 +75,7 @@ enum ArchiveWriter {
                     try FileManager.default.copyItem(at: sourceURL, to: destinationURL)
                 } catch {
                     throw VFSError.unsupported(
-                        "Couldn’t add “\(sourceURL.lastPathComponent)” to the archive “\(name)”."
+                        .archiveAddFailed(item: sourceURL.lastPathComponent, archive: name)
                     )
                 }
             }
@@ -105,7 +105,7 @@ enum ArchiveWriter {
                 archiveOnDiskPath: archiveOnDiskPath,
                 into: workingDirectory.path
             ),
-            failure: "Couldn’t read the archive “\(name)”."
+            failure: .archiveUnreadable(archive: name)
         )
 
         try edit(workingDirectory.path)
@@ -122,16 +122,16 @@ enum ArchiveWriter {
                     newArchiveOnDiskPath: rewrittenURL.path,
                     from: workingDirectory.path
                 ),
-                failure: "Couldn’t rewrite the archive “\(name)”."
+                failure: .archiveRewriteFailed(archive: name)
             )
             guard FileManager.default.fileExists(atPath: rewrittenURL.path) else {
-                throw VFSError.unsupported("Couldn’t rewrite the archive “\(name)”.")
+                throw VFSError.unsupported(.archiveRewriteFailed(archive: name))
             }
             _ = try FileManager.default.replaceItemAt(archiveURL, withItemAt: rewrittenURL)
         } catch {
             try? FileManager.default.removeItem(at: rewrittenURL)
             throw error is VFSError ? error : VFSError.unsupported(
-                "Couldn’t update the archive “\(name)”."
+                .archiveUpdateFailed(archive: name)
             )
         }
     }
@@ -147,7 +147,7 @@ enum ArchiveWriter {
     /// Run one `bsdtar` invocation to completion, throwing `failure` on a spawn error or non-zero
     /// exit. Both streams are discarded — nothing here reads them, and doing so avoids a full-pipe
     /// stall and keeps libarchive warnings off the console (a real problem shows as a non-zero exit).
-    private static func run(_ arguments: [String], failure message: String) throws {
+    private static func run(_ arguments: [String], failure reason: VFSUnsupportedReason) throws {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/bsdtar")
         process.arguments = arguments
@@ -157,9 +157,9 @@ enum ArchiveWriter {
         do {
             try process.run()
         } catch {
-            throw VFSError.unsupported(message)
+            throw VFSError.unsupported(reason)
         }
         process.waitUntilExit()
-        guard process.terminationStatus == 0 else { throw VFSError.unsupported(message) }
+        guard process.terminationStatus == 0 else { throw VFSError.unsupported(reason) }
     }
 }

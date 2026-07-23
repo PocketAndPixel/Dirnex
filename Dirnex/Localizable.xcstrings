@@ -1148,6 +1148,23 @@
         }
       }
     },
+    "An update is available — click to install": {
+      "comment": "Titlebar update indicator tooltip when the appcast named no version.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An update is available — click to install"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Доступно обновление — нажмите, чтобы установить"
+          }
+        }
+      }
+    },
     "Another saved search already uses that name. Pick a different one.": {
       "comment": "Body of the saved-search rename-collision alert.",
       "localizations": {
@@ -1297,6 +1314,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Аутентификация:"
+          }
+        }
+      }
+    },
+    "Authentication failed. Check the username and password, or try a guest connection.": {
+      "comment": "SMB mount failure: the server rejected the credentials.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authentication failed. Check the username and password, or try a guest connection."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось пройти аутентификацию. Проверьте имя пользователя и пароль или попробуйте гостевое подключение."
           }
         }
       }
@@ -1790,6 +1824,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Регистр:"
+          }
+        }
+      }
+    },
+    "Check for updates": {
+      "comment": "Titlebar update indicator tooltip when nothing is pending.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check for updates"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверить наличие обновлений"
           }
         }
       }
@@ -2728,6 +2779,40 @@
         }
       }
     },
+    "Couldn’t launch sftp.": {
+      "comment": "SFTP failure: the sftp binary could not be spawned.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t launch sftp."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось запустить sftp."
+          }
+        }
+      }
+    },
+    "Couldn’t mount the share (error %d).": {
+      "comment": "SMB mount failure with no specific diagnosis; %lld is the errno.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t mount the share (error %d)."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось подключить ресурс (ошибка %d)."
+          }
+        }
+      }
+    },
     "Couldn’t move %lld items": {
       "comment": "Move failure for several items; %lld is the count.",
       "localizations": {
@@ -3002,6 +3087,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не удалось вернуть «%@» на место"
+          }
+        }
+      }
+    },
+    "Couldn’t reach “%@”. Check the address and that the server is online.": {
+      "comment": "SMB mount failure: the host did not answer; %@ is the host name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t reach “%@”. Check the address and that the server is online."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось связаться с «%@». Проверьте адрес и доступность сервера."
           }
         }
       }
@@ -3525,6 +3627,23 @@
         }
       }
     },
+    "Dirnex %@ is available — click to install": {
+      "comment": "Titlebar update indicator tooltip; %@ is the pending version.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex %@ is available — click to install"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Доступна версия Dirnex %@ — нажмите, чтобы установить"
+          }
+        }
+      }
+    },
     "Dirnex already has Full Disk Access": {
       "comment": "FDA already-granted sheet title.",
       "localizations": {
@@ -3693,6 +3812,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Загрузка «%@»…"
+          }
+        }
+      }
+    },
+    "Downloading…": {
+      "comment": "Cloud sync badge tooltip: the file is being fetched from the provider.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloading…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загрузка…"
           }
         }
       }
@@ -3931,6 +4067,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Везде"
+          }
+        }
+      }
+    },
+    "Excluded from sync": {
+      "comment": "Cloud sync badge tooltip: the file is deliberately not synced.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Excluded from sync"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Исключено из синхронизации"
           }
         }
       }
@@ -5379,6 +5532,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не сейчас"
+          }
+        }
+      }
+    },
+    "Not downloaded — stored in the cloud": {
+      "comment": "Cloud sync badge tooltip: a placeholder whose bytes are not local yet.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not downloaded — stored in the cloud"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не загружено — хранится в облаке"
           }
         }
       }
@@ -7825,6 +7995,40 @@
         }
       }
     },
+    "Sync conflict — resolve in Finder": {
+      "comment": "Cloud sync badge tooltip: two versions diverged; Finder owns the fix.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sync conflict — resolve in Finder"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Конфликт синхронизации — разрешите в Finder"
+          }
+        }
+      }
+    },
+    "Sync failed": {
+      "comment": "Cloud sync badge tooltip: the provider gave up on a transfer.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sync failed"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ошибка синхронизации"
+          }
+        }
+      }
+    },
     "Synchronize": {
       "comment": "Confirm button of the sync delete prompt and the sync sheet.",
       "localizations": {
@@ -7963,6 +8167,40 @@
         }
       }
     },
+    "The SFTP server reported an error.": {
+      "comment": "SFTP connect failure detail when the server gave no reason.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The SFTP server reported an error."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер SFTP сообщил об ошибке."
+          }
+        }
+      }
+    },
+    "The SFTP server stopped responding.": {
+      "comment": "SFTP failure: the server held the channel open past the timeout.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The SFTP server stopped responding."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер SFTP перестал отвечать."
+          }
+        }
+      }
+    },
     "The Trash is empty": {
       "comment": "Shown when Put Back is invoked but nothing is there.",
       "localizations": {
@@ -8010,6 +8248,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Возможно, архив повреждён или объекты отсутствуют."
+          }
+        }
+      }
+    },
+    "The connection was cancelled.": {
+      "comment": "SMB mount failure: the user cancelled the mount.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The connection was cancelled."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подключение отменено."
           }
         }
       }
@@ -8078,6 +8333,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Идентификация «%@» изменилась"
+          }
+        }
+      }
+    },
+    "The item isn’t available on any device iCloud can reach right now.": {
+      "comment": "iCloud download failure: no device holds the bytes.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The item isn’t available on any device iCloud can reach right now."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Объект сейчас недоступен ни на одном устройстве, доступном iCloud."
           }
         }
       }
@@ -8235,6 +8507,23 @@
         }
       }
     },
+    "The share wasn’t found on “%@”. Check the share name.": {
+      "comment": "SMB mount failure; %@ is the host name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The share wasn’t found on “%@”. Check the share name."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ресурс не найден на «%@». Проверьте имя ресурса."
+          }
+        }
+      }
+    },
     "The system reported an error (code %d).": {
       "comment": "Error sentence: generic I/O. %d is an error code.",
       "localizations": {
@@ -8299,6 +8588,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Возвращать нечего."
+          }
+        }
+      }
+    },
+    "There isn’t enough iCloud storage to complete this.": {
+      "comment": "iCloud download failure: the account is out of space.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There isn’t enough iCloud storage to complete this."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В iCloud недостаточно места для выполнения операции."
           }
         }
       }
@@ -8694,6 +9000,23 @@
         }
       }
     },
+    "Up to date": {
+      "comment": "Cloud sync badge tooltip: the local file matches the cloud.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Up to date"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Синхронизировано"
+          }
+        }
+      }
+    },
     "Update available": {
       "comment": "Accessibility label for the titlebar update indicator.",
       "localizations": {
@@ -8741,6 +9064,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ожидание"
+          }
+        }
+      }
+    },
+    "Waiting to upload": {
+      "comment": "Cloud sync badge tooltip: local changes have not reached the cloud yet.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waiting to upload"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ожидает выгрузки"
           }
         }
       }
@@ -11430,6 +11770,23 @@
         }
       }
     },
+    "detached HEAD": {
+      "comment": "Stands in for the branch name in the Git chip when HEAD is not on a branch. Lower case: it sits inline where a branch name would, unlike the tooltip's \"Detached HEAD\".",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "detached HEAD"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "отсоединённый HEAD"
+          }
+        }
+      }
+    },
     "folder": {
       "comment": "Sync diff table: size cell for a subfolder.",
       "localizations": {
@@ -11603,6 +11960,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "iCloud Drive"
+          }
+        }
+      }
+    },
+    "iCloud couldn’t provide this item.": {
+      "comment": "iCloud download failure with no specific diagnosis.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud couldn’t provide this item."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud не смог предоставить этот объект."
+          }
+        }
+      }
+    },
+    "iCloud didn’t start the download. Check your network connection and try again.": {
+      "comment": "iCloud download failure: the transfer never began.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud didn’t start the download. Check your network connection and try again."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud не начал загрузку. Проверьте подключение к сети и повторите попытку."
           }
         }
       }
@@ -12650,6 +13041,465 @@
           "stringUnit": {
             "state": "translated",
             "value": "новая папка"
+          }
+        }
+      }
+    },
+    "vfs.unsupported.alreadyInTrash": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. %@ is the item name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is already in the Trash."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Объект «%@» уже в Корзине."
+          }
+        }
+      }
+    },
+    "vfs.unsupported.archiveAddFailed": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. %1$@ is the item, %2$@ the archive.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t add “%@” to the archive “%@”."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось добавить «%@» в архив «%@»."
+          }
+        }
+      }
+    },
+    "vfs.unsupported.archiveCreateFailed": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. %@ is the archive name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t create the archive “%@”."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось создать архив «%@»."
+          }
+        }
+      }
+    },
+    "vfs.unsupported.archiveExtractFailed": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. %@ is the archive name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t extract from the archive “%@”."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось распаковать архив «%@»."
+          }
+        }
+      }
+    },
+    "vfs.unsupported.archiveRewriteFailed": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. %@ is the archive name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t rewrite the archive “%@”."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось перезаписать архив «%@»."
+          }
+        }
+      }
+    },
+    "vfs.unsupported.archiveToolUnavailableForCreate": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. bsdtar is a tool name; leave it as is.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t run bsdtar to create the archive."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось запустить bsdtar для создания архива."
+          }
+        }
+      }
+    },
+    "vfs.unsupported.archiveToolUnavailableForExtract": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. bsdtar is a tool name; leave it as is.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t run bsdtar to extract from the archive."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось запустить bsdtar для распаковки архива."
+          }
+        }
+      }
+    },
+    "vfs.unsupported.archiveToolUnavailableForRead": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. bsdtar is a tool name; leave it as is.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t run bsdtar to open the archive."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось запустить bsdtar для открытия архива."
+          }
+        }
+      }
+    },
+    "vfs.unsupported.archiveUnreadable": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. %@ is the archive name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t read the archive “%@”."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось прочитать архив «%@»."
+          }
+        }
+      }
+    },
+    "vfs.unsupported.archiveUpdateFailed": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. %@ is the archive name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t update the archive “%@”."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось обновить архив «%@»."
+          }
+        }
+      }
+    },
+    "vfs.unsupported.cloudStatusNeedsLocalFile": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only local files can be cloud-provider items."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Облачными могут быть только локальные файлы."
+          }
+        }
+      }
+    },
+    "vfs.unsupported.contentComparisonNeedsLocalFiles": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Content comparison is only available for local files."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сравнение по содержимому доступно только для локальных файлов."
+          }
+        }
+      }
+    },
+    "vfs.unsupported.contentComparisonNeedsRegularFile": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only regular files can be compared by content."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "По содержимому можно сравнивать только обычные файлы."
+          }
+        }
+      }
+    },
+    "vfs.unsupported.copyFile": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This location doesn’t support copying files."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В этом расположении нельзя копировать файлы."
+          }
+        }
+      }
+    },
+    "vfs.unsupported.createDirectory": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This location doesn’t support creating folders."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В этом расположении нельзя создавать папки."
+          }
+        }
+      }
+    },
+    "vfs.unsupported.createFile": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This location doesn’t support creating files."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В этом расположении нельзя создавать файлы."
+          }
+        }
+      }
+    },
+    "vfs.unsupported.deleteConnectionRoot": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can’t delete the connection root."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нельзя удалить корень подключения."
+          }
+        }
+      }
+    },
+    "vfs.unsupported.moveItem": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This location doesn’t support moving items."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В этом расположении нельзя перемещать объекты."
+          }
+        }
+      }
+    },
+    "vfs.unsupported.noBackendForPath": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. %@ is the path.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No backend can handle %@."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет обработчика для пути %@."
+          }
+        }
+      }
+    },
+    "vfs.unsupported.pathOutsideArchive": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. %1$@ is the path, %2$@ the archive.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Path %@ does not belong to archive %@."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Путь %@ не относится к архиву %@."
+          }
+        }
+      }
+    },
+    "vfs.unsupported.pathOutsideConnection": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. %1$@ is the path, %2$@ the connection descriptor.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Path %@ does not belong to %@."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Путь %@ не относится к %@."
+          }
+        }
+      }
+    },
+    "vfs.unsupported.remoteToRemoteCopy": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copying directly between remote locations isn’t supported."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Копирование напрямую между удалёнными расположениями не поддерживается."
+          }
+        }
+      }
+    },
+    "vfs.unsupported.removeItem": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This location doesn’t support deleting items."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В этом расположении нельзя удалять объекты."
+          }
+        }
+      }
+    },
+    "vfs.unsupported.serverNotConnected": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. %@ is the server descriptor.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not connected to %@. Reconnect to the server."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет подключения к %@. Подключитесь к серверу заново."
+          }
+        }
+      }
+    },
+    "vfs.unsupported.symbolicLink": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This location doesn’t support symbolic links."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В этом расположении не поддерживаются символические ссылки."
+          }
+        }
+      }
+    },
+    "vfs.unsupported.tagsNeedLocalFile": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only local files carry Finder tags."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Метки Finder есть только у локальных файлов."
+          }
+        }
+      }
+    },
+    "vfs.unsupported.trash": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This location doesn’t have a Trash."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В этом расположении нет Корзины."
           }
         }
       }

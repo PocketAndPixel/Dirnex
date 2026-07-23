@@ -76,8 +76,13 @@ public enum SFTPTransportError: Error, Sendable, Equatable {
     /// reconnect. Usually a reinstalled or replaced server, but it *can* be a man-in-the-middle — so
     /// it's a distinct case that drives a warning, never a silent retry.
     case hostKeyChanged(SFTPHostKeyChange)
-    /// Any other failure — a dropped connection, an auth failure, an unexpected error — with a
-    /// human-readable reason for logs and the UI.
+    /// Any other failure — a dropped connection, an auth failure, an unexpected error — carrying
+    /// the server's own text, verbatim.
+    ///
+    /// **Empty when the server said nothing**, deliberately: this is the remote's words, not ours,
+    /// and the core has no business authoring a sentence it cannot translate (PLAN.md §M12
+    /// Slice 11). The app supplies a localized stand-in for the empty case, exactly as it already
+    /// owns the wording for ``notFound``, ``permissionDenied`` and ``hostKeyChanged``.
     case failure(String)
 
     /// Classify a failed `sftp` batch invocation's stderr. The two recoverable shapes a browse
@@ -100,8 +105,7 @@ public enum SFTPTransportError: Error, Sendable, Equatable {
         if text.contains("not found") || text.contains("no such file") {
             return .notFound
         }
-        let trimmed = stderr.trimmingCharacters(in: .whitespacesAndNewlines)
-        return .failure(trimmed.isEmpty ? "The SFTP server reported an error." : trimmed)
+        return .failure(stderr.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
     /// An error found in the stderr of an interactive (password-auth) session that *exited zero*, or

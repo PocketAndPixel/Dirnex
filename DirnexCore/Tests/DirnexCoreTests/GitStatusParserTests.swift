@@ -164,7 +164,8 @@ struct GitStatusParserBranchTests {
         let parsed = branch("## HEAD (no branch)")
         #expect(parsed.name == nil)
         #expect(parsed.isDetached)
-        #expect(parsed.displayName == "detached HEAD")
+        // What the chip *prints* for a nameless branch is the app's word to choose and translate
+        // (`GitBranchChipView`), so there is no `displayName` here to assert — M12 Slice 11.
     }
 
     @Test("a fresh repository reports its branch and that it has no commits")
@@ -173,7 +174,6 @@ struct GitStatusParserBranchTests {
         #expect(parsed.name == "main")
         #expect(parsed.hasNoCommits)
         #expect(!parsed.isDetached)
-        #expect(parsed.displayName == "main")
     }
 
     @Test("a fresh repository that already has an upstream set")

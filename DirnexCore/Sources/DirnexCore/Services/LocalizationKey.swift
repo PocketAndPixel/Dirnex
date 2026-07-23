@@ -106,6 +106,16 @@ public enum LocalizationKey {
         "undo.action.\(label.rawValue).title"
     }
 
+    /// The sentence explaining why an operation is unsupported, e.g. `vfs.unsupported.trash`.
+    /// `VFSUnsupportedReason.sentence` is `DirnexCore` data reached through a *return value*
+    /// (`VFSErrorText.sentence(for:)`) rather than an assignment, which is precisely why it needs
+    /// the registry treatment: a literal there extracts nothing and renders English under a
+    /// translated alert title. The catalog value carries the same `%@` placeholders the English
+    /// format does, and may reorder them positionally (`%1$@`).
+    public static func vfsUnsupported(_ reason: VFSUnsupportedReason) -> String {
+        "vfs.unsupported.\(reason.key)"
+    }
+
     /// Split a translated comma-separated keyword value into terms, dropping empties and
     /// surrounding whitespace. Tolerant on purpose — the value is typed by a translator, and a
     /// stray trailing comma should cost nothing.

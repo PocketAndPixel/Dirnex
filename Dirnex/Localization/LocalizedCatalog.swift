@@ -101,6 +101,21 @@ enum LocalizedCatalog {
         L10n.string(LocalizationKey.undoActionLabel(label), fallback: label.title)
     }
 
+    /// Why an operation is unsupported, translated — the sentence `VFSErrorText` puts under an
+    /// alert's title. `VFSUnsupportedReason.sentence` is `DirnexCore` data reached through a return
+    /// value, so it is joined here by the reason's stable key and falls back to the core's English.
+    ///
+    /// The arguments are spliced *after* the lookup, into whichever format won: a translation may
+    /// reorder them positionally (`%1$@`), which is the whole reason the reason carries its
+    /// arguments separately instead of a finished sentence.
+    static func sentence(for reason: VFSUnsupportedReason) -> String {
+        guard let format = L10n.translation(LocalizationKey.vfsUnsupported(reason)) else {
+            return reason.sentence
+        }
+        guard !reason.arguments.isEmpty else { return format }
+        return String(format: format, arguments: reason.arguments)
+    }
+
     /// English keywords plus the translated ones, English first and duplicates dropped.
     ///
     /// Additive rather than replacing on purpose: a Russian-speaking user who has read the English

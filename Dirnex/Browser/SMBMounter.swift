@@ -179,15 +179,32 @@ struct SMBMountError: LocalizedError {
     var errorDescription: String? {
         switch status {
         case Int32(EAUTH), Int32(EACCES), Int32(EPERM):
-            return "Authentication failed. Check the username and password, or try a guest connection."
+            return String(
+                localized: """
+                Authentication failed. Check the username and password, or try a guest connection.
+                """,
+                comment: "SMB mount failure: the server rejected the credentials."
+            )
         case Int32(ENOENT), Int32(ENODEV):
-            return "The share wasn’t found on “\(host)”. Check the share name."
+            return String(
+                localized: "The share wasn’t found on “\(host)”. Check the share name.",
+                comment: "SMB mount failure; %@ is the host name."
+            )
         case Int32(EHOSTDOWN), Int32(EHOSTUNREACH), Int32(ETIMEDOUT), Int32(ECONNREFUSED):
-            return "Couldn’t reach “\(host)”. Check the address and that the server is online."
+            return String(
+                localized: "Couldn’t reach “\(host)”. Check the address and that the server is online.",
+                comment: "SMB mount failure: the host did not answer; %@ is the host name."
+            )
         case Int32(ECANCELED):
-            return "The connection was cancelled."
+            return String(
+                localized: "The connection was cancelled.",
+                comment: "SMB mount failure: the user cancelled the mount."
+            )
         default:
-            return "Couldn’t mount the share (error \(status))."
+            return String(
+                localized: "Couldn’t mount the share (error \(status)).",
+                comment: "SMB mount failure with no specific diagnosis; %lld is the errno."
+            )
         }
     }
 }

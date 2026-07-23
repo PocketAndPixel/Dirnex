@@ -421,6 +421,48 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   string lesson (`MenuSpec` and the category names, above) has this second half: after de-duplicating
   the *string*, check that every site that produces it goes through the lookup. Grepping the catalog
   for a key proves the key exists, not that the screen uses it.
+- **A free-form `String` payload on an error case is an untranslatable string with extra steps.**
+  `VFSError.unsupported(String)` collected **30** authored sentences — 17 in `DirnexCore`, 13 in the
+  app — and `VFSErrorText` ended its switch with `case let .unsupported(message): return message`, so
+  every one went to the screen in English under a *translated* alert title, at the exact moment
+  something had failed. No sweep could see them: each is a literal at a `throw`, not at a display
+  site. The fix is the `UndoActionLabel` move applied to an error — name the vocabulary
+  (`VFSUnsupportedReason`), keep the English as fallback *data*, key it by the case. Two things that
+  only come up when the strings take arguments: carry the `%@` **format and its arguments
+  separately** and splice *after* the lookup, or a translation can never reorder them positionally;
+  and `CaseIterable` cannot be synthesized for an enum with associated values, so `allCases` is
+  spelled out with placeholder arguments — the key doesn't depend on them, which is the whole reason
+  that works. Worth a coverage assertion beyond "is it translated": **count the placeholders**, since
+  a translation that drops a `%@` silently swallows the file name the sentence was naming.
+- **The sink-keyword blind spot has a general shape, and it is worth scanning for directly.** Three
+  separate sweeps across Slices 1–10 all looked for the *assignment* (`messageText =`, `title:`,
+  `String(localized:`), and all three missed the same class: text composed in a computed property or
+  a function that **returns** `String`, with the assignment a file away. Slice 9 fixed one instance
+  of it (`statusText()`); Slice 11's audit found six more surfaces still leaking, including two that
+  are on screen permanently (the cloud sync badge on every cloud row, the titlebar update indicator).
+  The scan that finds them takes seconds: a bare prose literal (has a space, has a lowercase word)
+  that is not inside `String(localized:)` and is not a symbolic key, over the app **and the core**.
+  Two filters keep it honest — a `comment:` argument is a translator note, not a bare literal (it is
+  the single largest false-positive class, ~450 of 512 hits in one run), and SwiftUI literals are
+  auto-extracted. Cross-check the survivors against the compiler-emitted `.stringsdata`: a key that
+  is *extracted but absent from the catalog* is wrapped-but-untranslated, which the coverage tests
+  never see because they only check symbolic registry keys.
+- **A presentation decision in the core is a string that can never be translated.** Three surfaces
+  were fixed by *deleting* core API rather than keying it: `UpdateAvailability.tooltip`,
+  `GitBranch.displayName`'s `"detached HEAD"`, and `SFTPTransportError.classify`'s empty-stderr
+  fallback. `SyncBadgeStyle`'s own comment already stated the rule — "the core picks the *state*;
+  this picks the pixels and the words" — and each of these was that rule skipped once. The tell is a
+  computed property on a core value type that returns a *sentence* rather than a fact. Moving the
+  words is cheaper than keying them, and it takes the tests with it: the three core tests asserting
+  the tooltip's English became app tests, while the state they rested on stayed covered where it was.
+  The exception proves the shape — a payload that is genuinely the *remote's* words (`sftp`'s stderr)
+  should stay a raw `String` and be allowed to come back **empty**, with the app supplying the
+  localized stand-in, rather than the core authoring a sentence it cannot translate.
+- **`plutil -extract` reads a dotted key as a keypath.** Checking `vfs.unsupported.trash` against a
+  compiled `Localizable.strings` reported every one of 27 keys MISSING from a bundle that contained
+  all of them — a wrong answer in the alarming direction, right after a passing coverage test, which
+  is exactly when a bad probe is most likely to be believed. `plutil -convert json -o -` and look the
+  key up in the dictionary.
 - **A virtual "place you visit" that borrows the search backend leaks English through its label.**
   Recents rides the `.search` results machinery, so its path bar drew `"Results for \(pathSummary)"`
   — and with `pathSummary` an English identity that reads "Результаты для Recents" in a Russian UI,

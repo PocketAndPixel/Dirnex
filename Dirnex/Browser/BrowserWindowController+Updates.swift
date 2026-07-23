@@ -60,7 +60,32 @@ extension BrowserWindowController {
     private func updateUpdateIndicator() {
         let availability = (NSApp.delegate as? AppDelegate)?.updateAvailability ?? .none
         updateIndicatorButton.isHidden = !availability.isAvailable
-        updateIndicatorButton.toolTip = availability.tooltip
+        updateIndicatorButton.toolTip = Self.tooltip(for: availability)
+    }
+
+    /// The indicator's tooltip. Names the version when the appcast gave one, since "1.3.0 is
+    /// available" is the one thing a user hovering the button wants to know that the glyph can't say.
+    ///
+    /// The words are the app's, not `UpdateAvailability`'s — the core owns the *state* and ships no
+    /// resources, so a sentence composed there is English forever on a permanently visible control
+    /// (PLAN.md §M12 Slice 11). Internal so `UpdateIndicatorTooltipTests` can drive it directly.
+    static func tooltip(for availability: UpdateAvailability) -> String {
+        guard availability.isAvailable else {
+            return String(
+                localized: "Check for updates",
+                comment: "Titlebar update indicator tooltip when nothing is pending."
+            )
+        }
+        guard let pendingVersion = availability.pendingVersion else {
+            return String(
+                localized: "An update is available — click to install",
+                comment: "Titlebar update indicator tooltip when the appcast named no version."
+            )
+        }
+        return String(
+            localized: "Dirnex \(pendingVersion) is available — click to install",
+            comment: "Titlebar update indicator tooltip; %@ is the pending version."
+        )
     }
 
     /// Dispatch through the responder chain to `AppDelegate.checkForUpdates` — the same path the App

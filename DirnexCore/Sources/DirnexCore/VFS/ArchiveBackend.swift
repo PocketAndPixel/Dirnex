@@ -49,7 +49,7 @@ public struct ArchiveBackend: VFSBackend {
     private func requireOwnBackend(_ path: VFSPath) throws {
         guard path.backend == id else {
             throw VFSError.unsupported(
-                "Path \(path) does not belong to archive \(archiveOnDiskPath)."
+                .pathOutsideArchive(path: "\(path)", archive: archiveOnDiskPath)
             )
         }
     }

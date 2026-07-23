@@ -208,17 +208,35 @@ final class CloudDownloadPrompt {
     /// treating it as an answer would abandon downloads that were about to arrive.
     nonisolated private static func verdict(_ error: CloudTransferError) -> String? {
         switch error {
-        case .serverUnavailable: nil
-        case .quotaExceeded: "There isn’t enough iCloud storage to complete this."
-        case .itemUnavailable: "The item isn’t available on any device iCloud can reach right now."
-        case .other: "iCloud couldn’t provide this item."
+        case .serverUnavailable:
+            nil
+        case .quotaExceeded:
+            String(
+                localized: "There isn’t enough iCloud storage to complete this.",
+                comment: "iCloud download failure: the account is out of space."
+            )
+        case .itemUnavailable:
+            String(
+                localized: "The item isn’t available on any device iCloud can reach right now.",
+                comment: "iCloud download failure: no device holds the bytes."
+            )
+        case .other:
+            String(
+                localized: "iCloud couldn’t provide this item.",
+                comment: "iCloud download failure with no specific diagnosis."
+            )
         }
     }
 
     private static func describe(_ reason: CloudDownloadFailure) -> String {
         switch reason {
         case .stalled:
-            "iCloud didn’t start the download. Check your network connection and try again."
+            String(
+                localized: """
+                iCloud didn’t start the download. Check your network connection and try again.
+                """,
+                comment: "iCloud download failure: the transfer never began."
+            )
         case let .provider(detail):
             detail
         }

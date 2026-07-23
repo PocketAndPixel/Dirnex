@@ -418,10 +418,62 @@ involved. Worth a lint rule keeping bare literals out of UI files afterwards.
   rendering the composed frame + translated label. The file-op labels share the identical display path
   (the same join, the same frame), so proving the selection path proves them without mutating the
   filesystem; their translations were checked through the compiled `ru.lproj`.
+- **Slice 11 landed (2026-07-23): the strings that reach the screen through a *return value*.** An
+  audit after Slice 10 — a full sweep of the app *and* the core for bare prose, cross-checked against
+  the compiler-emitted `.stringsdata` — found Pass 2's sweeps had all shared one blind spot, and it
+  cost seven surfaces. Every earlier scan looked for the **assignment** (`messageText =`, `title:`,
+  `String(localized:`); these seven compose their text in a computed property or a function that
+  *returns* `String`, with the assignment a file away. It is the `statusText()` lesson from Slice 9
+  generalized: that one was fixed as an instance, not as a class. **50 new catalog keys across 20
+  files**, all Russian-filled.
+  - **The 30 `VFSError.unsupported` sentences were the bulk of it**, and the fix is structural rather
+    than a wrapping pass: `PanelViewController+Errors` ended its switch with `case let
+    .unsupported(message): return message`, so every one of them — 17 authored in `DirnexCore`, 13 in
+    the app — went to the screen in English, under a translated alert title, at the exact moment
+    something had failed. The payload changed from a free-form `String` to a new
+    `VFSUnsupportedReason` enum (the `UndoActionLabel` move from Slice 10, applied to an error):
+    English `sentence` = fallback data, stable `key` = the translation key, and — because six of the
+    sentences take arguments — a `%@` `englishFormat` plus its `arguments`, spliced *after* the
+    lookup so a translation can reorder them positionally. `LocalizationKey.vfsUnsupported` keys it,
+    `LocalizedCatalog.sentence(for:)` joins it, and one coverage test over
+    `VFSUnsupportedReason.allCases` (27 symbolic keys) proves every sentence is translated **and**
+    that no translation dropped a placeholder — a lost `%@` swallows the file name the sentence was
+    naming. `CaseIterable` can't be synthesized with associated values, so `allCases` is spelled out
+    with placeholder arguments; the key doesn't depend on them.
+  - **Three surfaces moved their *words* out of the core rather than getting keys**, because the core
+    owned a presentation decision it had no business owning: `UpdateAvailability.tooltip` (the
+    permanently visible titlebar indicator) → `BrowserWindowController.tooltip(for:)`;
+    `GitBranch.displayName`'s `"detached HEAD"` → `GitBranchChipView`; and
+    `SFTPTransportError.classify`'s empty-stderr fallback, which now returns `.failure("")` — the
+    payload is the *server's* words, and the app supplies a localized stand-in when there are none,
+    exactly as it already owned the wording for `.notFound` / `.permissionDenied`. This is the
+    `SyncBadgeStyle` / `GitStatusStyle` split ("the core picks the state; this picks the pixels and
+    the words") applied where it had been skipped. Three core tests asserting the tooltip's English
+    moved to the app as `UpdateIndicatorTooltipTests`; the *state* they rested on was already covered
+    in `UpdateAvailabilityTests`, so nothing was lost.
+  - **The remaining four were ordinary wrapping** of return-value producers: the cloud sync badge's
+    tooltip and VoiceOver label (`SyncBadgeStyle.label(for:)`, 7 strings, on every cloud row),
+    `SMBMountError.errorDescription` (5), `CloudDownloadPrompt`'s `verdict`/`describe` (4), and
+    `SFTPProcessTransport`'s two failures. Each literal sits *at* its `String(localized:)` call
+    rather than being switched into one, or it extracts nothing.
+  - Verified live in Russian, three of the seven end to end: a deliberately corrupt `.zip` produced
+    «Не удалось прочитать архив «broken.zip».» (the whole chain — core enum → key → catalog → join →
+    `VFSErrorText` — with the argument spliced), a detached-HEAD repo drew «отсоединённый HEAD» in the
+    Git chip, and an evicted iCloud file's badge read «Не загружено — хранится в облаке». The four
+    awkward-to-provoke ones (SMB, iCloud download, SFTP, the update indicator) were checked through
+    the compiled `ru.lproj`, as earlier slices did. One probe was wrong before it was right, and is
+    worth recording: `plutil -extract` reads a dotted key as a **keypath**, so it reported all 27
+    `vfs.unsupported.*` keys MISSING from a bundle that had every one of them.
+  - Keys added by script with the usual exact-match guard against the emitted `.stringsdata` and an
+    additive-only check (50 added, 0 changed), and `Couldn’t mount the share (error %d).` was taken
+    verbatim from it — the errno is an `Int32`, so the specifier is `%d`, not `%lld`.
 - **Pass 2 is complete.** Every AppKit/SwiftUI literal and every registry-owned string is wrapped and
-  Russian-filled across Slices 1–10. One documented non-goal stays English: the stock Finder-tag
+  Russian-filled across Slices 1–11. One documented non-goal stays English: the stock Finder-tag
   *names* in the ⌃T menu, which are `DirnexCore` `systemTagName` data with the localization caveat
-  already in `FinderTag`. Next is Pass 3 — the remaining six languages.
+  already in `FinderTag`. Two deferrals stand, both re-confirmed by Slice 11's audit: the App Intents
+  strings (21 keys, their own pass) and the archive format names. The AppleScript error *messages*
+  join the `.sdef` terminology in staying English, on the same reasoning. Next is Pass 3 — the
+  remaining six languages.
 
 **Pass 3 — the remaining six languages.** Adding one is a line in `AppLanguages.all` plus its
 column in the catalog; `LocalizationCoverageTests` fails until the column is complete.

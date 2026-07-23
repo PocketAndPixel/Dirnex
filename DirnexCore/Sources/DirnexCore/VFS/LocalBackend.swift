@@ -121,7 +121,7 @@ public struct LocalBackend: VFSBackend {
     @discardableResult
     public func trashItem(at path: VFSPath) throws -> VFSPath? {
         guard !TrashLocations.isInsideTrash(path) else {
-            throw VFSError.unsupported("“\(path.lastComponent)” is already in the Trash.")
+            throw VFSError.unsupported(.alreadyInTrash(name: path.lastComponent))
         }
         var resultingURL: NSURL?
         let url = URL(fileURLWithPath: path.path)

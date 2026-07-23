@@ -140,7 +140,10 @@ struct SFTPProcessTransport: SFTPTransport {
         do {
             try process.run()
         } catch {
-            throw SFTPTransportError.failure("Couldn’t launch sftp.")
+            throw SFTPTransportError.failure(String(
+                localized: "Couldn’t launch sftp.",
+                comment: "SFTP failure: the sftp binary could not be spawned."
+            ))
         }
 
         // Feed the single batch command, then EOF so sftp runs it and exits.
@@ -174,7 +177,10 @@ struct SFTPProcessTransport: SFTPTransport {
                 // read partially, hence the default-throw below).
                 return String(bytes: outputData, encoding: .utf8) ?? ""
             }
-            throw SFTPTransportError.failure("The SFTP server stopped responding.")
+            throw SFTPTransportError.failure(String(
+                localized: "The SFTP server stopped responding.",
+                comment: "SFTP failure: the server held the channel open past the timeout."
+            ))
         }
         group.wait()
         process.waitUntilExit()

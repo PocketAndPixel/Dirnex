@@ -88,7 +88,7 @@ public struct SFTPBackend: VFSBackend {
     public func removeItem(at path: VFSPath) throws {
         try requireOwnBackend(path)
         guard let parent = path.parent else {
-            throw VFSError.unsupported("Can’t delete the connection root.")
+            throw VFSError.unsupported(.deleteConnectionRoot)
         }
         let siblings = try listDirectory(at: parent)
         guard let entry = siblings.first(where: { $0.name == path.lastComponent }) else {
@@ -148,7 +148,7 @@ public struct SFTPBackend: VFSBackend {
         } else if source.backend == .local, destination.backend == id {
             transferred = try uploadFile(fromLocal: source.path, remote: destination)
         } else {
-            throw VFSError.unsupported("Copying directly between remote locations isn’t supported.")
+            throw VFSError.unsupported(.remoteToRemoteCopy)
         }
         if isCancelled() { throw CancellationError() }
         progress(transferred)
@@ -210,7 +210,9 @@ public struct SFTPBackend: VFSBackend {
 
     private func requireOwnBackend(_ path: VFSPath) throws {
         guard path.backend == id else {
-            throw VFSError.unsupported("Path \(path) does not belong to \(location.descriptor).")
+            throw VFSError.unsupported(
+                .pathOutsideConnection(path: "\(path)", connection: location.descriptor)
+            )
         }
     }
 

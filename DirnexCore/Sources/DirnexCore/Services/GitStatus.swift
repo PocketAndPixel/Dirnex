@@ -171,8 +171,9 @@ public struct GitBranch: Sendable, Hashable {
     /// A detached `HEAD`, as Git's `## HEAD (no branch)` header reports it.
     public static let detached = GitBranch(name: nil, isDetached: true)
 
-    /// What the path bar shows.
-    public var displayName: String {
-        name ?? "detached HEAD"
-    }
+    // No `displayName` here on purpose. A detached `HEAD` needs a *word* ("detached HEAD"), and
+    // words for the screen are the app's (`GitBranchChipView`), the same core-decides-state /
+    // app-decides-words split `SyncBadgeStyle` and `GitStatusStyle` already draw. Composed in the
+    // core it was a bare literal reached through a variable — English inside an otherwise
+    // translated tooltip, invisible to extraction (PLAN.md §M12 Slice 11).
 }

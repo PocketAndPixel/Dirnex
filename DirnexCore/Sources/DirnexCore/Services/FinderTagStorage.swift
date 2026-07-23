@@ -181,7 +181,7 @@ public enum FinderTagStorage {
 
     private static func requireLocal(_ path: VFSPath) throws {
         guard path.backend == .local else {
-            throw VFSError.unsupported("Only local files carry Finder tags.")
+            throw VFSError.unsupported(.tagsNeedLocalFile)
         }
     }
 

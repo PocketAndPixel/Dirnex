@@ -196,7 +196,15 @@ extension PanelViewController {
                 comment: "SFTP connect failure detail; %@ is the new host-key fingerprint."
             )
         case let .failure(message):
-            return message
+            // The server's own words when it said anything; ours when it said nothing, since
+            // `classify` leaves the payload empty rather than authoring an untranslatable
+            // sentence in the core (PLAN.md §M12 Slice 11).
+            return message.isEmpty
+                ? String(
+                    localized: "The SFTP server reported an error.",
+                    comment: "SFTP connect failure detail when the server gave no reason."
+                )
+                : message
         }
     }
 

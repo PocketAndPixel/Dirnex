@@ -118,7 +118,7 @@ public enum CloudSyncStorage {
 
     private static func requireLocal(_ path: VFSPath) throws {
         guard path.backend == .local else {
-            throw VFSError.unsupported("Only local files can be cloud-provider items.")
+            throw VFSError.unsupported(.cloudStatusNeedsLocalFile)
         }
     }
 }

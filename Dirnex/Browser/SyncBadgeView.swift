@@ -119,15 +119,47 @@ enum SyncBadgeStyle {
     }
 
     /// The tooltip text. Phrased as what is true of the file, not as an error code.
+    ///
+    /// Each literal sits *at* its `String(localized:)` call rather than being switched into one, so
+    /// the extractor sees it — a `String(localized: someLabel)` over a variable extracts nothing
+    /// (docs/NOTES.md). The badge rides on every cloud row, so this is permanently on screen.
     static func label(for status: CloudSyncStatus) -> String {
         switch status {
-        case .upToDate: "Up to date"
-        case .notDownloaded: "Not downloaded — stored in the cloud"
-        case .downloading: "Downloading…"
-        case .uploading: "Waiting to upload"
-        case .conflicted: "Sync conflict — resolve in Finder"
-        case .failed: "Sync failed"
-        case .excluded: "Excluded from sync"
+        case .upToDate:
+            String(
+                localized: "Up to date",
+                comment: "Cloud sync badge tooltip: the local file matches the cloud."
+            )
+        case .notDownloaded:
+            String(
+                localized: "Not downloaded — stored in the cloud",
+                comment: "Cloud sync badge tooltip: a placeholder whose bytes are not local yet."
+            )
+        case .downloading:
+            String(
+                localized: "Downloading…",
+                comment: "Cloud sync badge tooltip: the file is being fetched from the provider."
+            )
+        case .uploading:
+            String(
+                localized: "Waiting to upload",
+                comment: "Cloud sync badge tooltip: local changes have not reached the cloud yet."
+            )
+        case .conflicted:
+            String(
+                localized: "Sync conflict — resolve in Finder",
+                comment: "Cloud sync badge tooltip: two versions diverged; Finder owns the fix."
+            )
+        case .failed:
+            String(
+                localized: "Sync failed",
+                comment: "Cloud sync badge tooltip: the provider gave up on a transfer."
+            )
+        case .excluded:
+            String(
+                localized: "Excluded from sync",
+                comment: "Cloud sync badge tooltip: the file is deliberately not synced."
+            )
         }
     }
 }

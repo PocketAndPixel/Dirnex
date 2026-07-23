@@ -31,7 +31,12 @@ struct GitBranchChipTests {
 
     @Test("a detached HEAD says so rather than showing an empty chip")
     func detached() {
-        #expect(GitBranchChipView.text(for: .detached) == "detached HEAD")
+        // Against the localized primitive, not the English literal — the stand-in moved out of
+        // `GitBranch.displayName` and into the app so it could be translated (PLAN.md §M12
+        // Slice 11), and the app test target inherits whatever language is pinned (docs/NOTES.md).
+        let expected = String(localized: "detached HEAD")
+        #expect(GitBranchChipView.text(for: .detached) == expected)
+        #expect(!expected.isEmpty, "a nameless branch must never render as an empty chip")
     }
 
     @Test("the tooltip spells out what the arrows meant")

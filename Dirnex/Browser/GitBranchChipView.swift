@@ -86,10 +86,23 @@ final class GitBranchChipView: NSView {
         toolTip = Self.toolTip(for: branch)
     }
 
+    /// What to print where a branch name goes. A detached `HEAD` has no name, and the stand-in is a
+    /// *word* — so it lives here rather than on `GitBranch`, where it was a core literal reached
+    /// through a variable and rendered English inside this very tooltip (PLAN.md §M12 Slice 11).
+    private static func displayName(for branch: GitBranch) -> String {
+        branch.name ?? String(
+            localized: "detached HEAD",
+            comment: """
+            Stands in for the branch name in the Git chip when HEAD is not on a branch. Lower case: \
+            it sits inline where a branch name would, unlike the tooltip's "Detached HEAD".
+            """
+        )
+    }
+
     /// `Dev`, or `Dev ↑2↓1` when it has drifted from its upstream. The arrows are the one piece of
     /// shorthand here, and they are the same ones `git status`'s own long form spells out.
     static func text(for branch: GitBranch) -> String {
-        var text = branch.displayName
+        var text = displayName(for: branch)
         if branch.ahead > 0 {
             text += " ↑\(branch.ahead)"
         }
@@ -109,7 +122,7 @@ final class GitBranchChipView: NSView {
                     comment: "Git branch tooltip: HEAD is not on a branch."
                 )
                 : String(
-                    localized: "Branch \(branch.displayName)",
+                    localized: "Branch \(displayName(for: branch))",
                     comment: "Git branch tooltip; %@ is the branch name."
                 )
         ]
