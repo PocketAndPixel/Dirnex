@@ -110,8 +110,13 @@ final class PanelTab {
 
     /// The short label shown on the tab chip — a saved search's custom name when set, else the
     /// directory name (or the volume name at the backend root, matching the path bar's root crumb).
+    ///
+    /// Only the *local* root is the volume: at an archive's or an SFTP account's root the path bar
+    /// names the archive file / the account, so a bare "Macintosh HD" there contradicted the crumb
+    /// trail right below it (`displayName` is the shared answer, and the load-failure sheet's too).
     var title: String {
         if let customTitle, !customTitle.isEmpty { return customTitle }
-        return panel.path.isRoot ? "Macintosh HD" : panel.path.lastComponent
+        if panel.path.isRoot, panel.path.backend == .local { return "Macintosh HD" }
+        return panel.path.displayName
     }
 }

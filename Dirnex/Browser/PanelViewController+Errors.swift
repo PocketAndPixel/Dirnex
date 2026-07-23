@@ -7,7 +7,7 @@ import DirnexCore
 extension PanelViewController {
     func presentLoadFailure(_ error: Error, path: VFSPath) {
         let alert = NSAlert()
-        alert.messageText = String(localized: "Can’t open “\(path.lastComponent)”")
+        alert.messageText = String(localized: "Can’t open “\(path.displayName)”")
         alert.informativeText = describe(error)
         alert.alertStyle = .warning
         alert.addButton(withTitle: String(localized: "OK"))
