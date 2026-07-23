@@ -52,7 +52,7 @@ extension PanelViewController {
         if isParentRow(row) {
             let previousMarks = panel.selection
             panel.clearSelection()
-            recordMarkChange(since: previousMarks, label: "Clear Selection")
+            recordMarkChange(since: previousMarks, label: .clearSelection)
             cursorOnParentRow = true
             renderRefresh()
             return
@@ -64,7 +64,7 @@ extension PanelViewController {
         if panel.isMarked(panel.model[index]) { return }
         let previousMarks = panel.selection
         panel.clearSelection()
-        recordMarkChange(since: previousMarks, label: "Clear Selection")
+        recordMarkChange(since: previousMarks, label: .clearSelection)
         panel.moveCursor(to: index)
         cursorOnParentRow = false
         // `renderRefresh`, not `syncCursorToTable` + `updateChrome`: dropping the marks changes what

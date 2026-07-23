@@ -14,7 +14,11 @@ extension PanelViewController {
     /// `directory` defaults to the pane's current folder, which is right for an in-place gesture.
     /// Pass it explicitly when a navigation has already cleared the marks and moved the pane on —
     /// the entry must name the *departed* folder so undo restores the marks there, not here.
-    func recordMarkChange(since previous: Set<VFSPath>, in directory: VFSPath? = nil, label: String) {
+    func recordMarkChange(
+        since previous: Set<VFSPath>,
+        in directory: VFSPath? = nil,
+        label: UndoActionLabel
+    ) {
         guard panel.selection != previous else { return }
         host?.recordSelectionChange(
             on: self,

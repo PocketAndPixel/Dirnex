@@ -389,18 +389,39 @@ involved. Worth a lint rule keeping bare literals out of UI files afterwards.
   and tag menus, the New Tag dialog and its eight colour names (Без цвета · Серый · … · Оранжевый),
   and the Recents self-naming; the awkward-to-provoke alerts were checked through the compiled
   `ru.lproj`.
-- **Deferred as its own slice: the undo/redo action *labels*.** The "Undo Move" / "Redo Clear
-  Selection" menu titles compose `"Undo \(label)"` from a label that is *data*, not an app literal:
-  the file-op names ("Move", "Copy", "Rename", "Move to Trash", "New Folder") originate in
-  `DirnexCore`'s `UndoJournal`, and the selection/navigation names ("Mark", "Select All", "Invert
-  Selection", "Back", …) are passed *into* the core from the panes. Localizing this properly means
-  giving those labels the registry treatment (a symbolic key per label, joined in the app) and
-  localizing the `"Undo %@"` / `"Redo %@"` frames — a core-touching change. Doing only the app half
-  would leave the menu mixing a Russian frame with English labels, which is worse than uniform
-  English, so the whole concern waits for one slice.
-- **Remaining:** the undo-label slice above — the last piece of Pass 2. The Browser-controller sweep
-  is done (Slice 9). One documented non-goal stays English: the stock Finder-tag *names* in the ⌃T
-  menu, which are `DirnexCore` `systemTagName` data with the localization caveat already in `FinderTag`.
+- **Slice 10 landed (2026-07-23): the undo/redo action labels — the last piece of Pass 2.** The
+  "Undo Move" / "Redo Clear Selection" menu titles composed `"Undo \(label)"` from a `label` that is
+  *data*, not an app literal: the file-op names ("Copy", "Move", "New Folder", "Rename", "Move to
+  Trash") originate in `DirnexCore`'s `UndoJournal`, and the selection-gesture names ("Mark", "Select
+  All", "Invert Selection", "Select Files", "Unselect Files", "Clear Selection", "Select Range") are
+  authored in the app and passed *into* the core on a `SelectionChange`. The fix was **the registry
+  treatment, made honest by a type change**: a new `DirnexCore` enum `UndoActionLabel` names the whole
+  finite vocabulary (English `title` = fallback data, stable `rawValue` = the key), and `UndoRecord
+  .label` / `SelectionChange.label` / `UndoEntry.label` went from `String` to it — so a mistyped label
+  is now a compile error, not a silently-untranslated magic string, and one coverage test
+  (`UndoActionLabel.allCases`, 12 symbolic keys) proves every label is translated. `LocalizationKey
+  .undoActionLabel` keys it, `LocalizedCatalog.title(for:)` joins it, and the two `"Undo %@"` /
+  `"Redo %@"` menu frames plus the two `"Undo %@ finished with issues"` alert frames and the idle
+  "Undo"/"Redo" collapse became `String(localized:)` literals (six English-text keys; Russian splices
+  the accusative noun that follows «Отменить/Повторить» — "Отменить копирование", "Отменить выделение").
+  18 new catalog keys across 12 core+app files, all Russian-filled. Two things worth recording. **The
+  label is persisted** (a file-op record survives relaunch, `UndoController`), so the clean-token
+  `rawValue` changes the journal's on-disk form — which decodes-or-resets exactly as `UndoController`
+  already documents ("fails to decode and starts empty — a one-time reset, never a crash"), verified,
+  not assumed. And the four **frame keys are English-text keys, not covered by the coverage test**
+  (which only checks symbolic registry keys), so their exact spelling was confirmed against the
+  compiler-emitted `.stringsdata` (`Undo %@`, `Redo %@ finished with issues`, … — byte-identical, no
+  `%1$@` positional drift that would have silently fallen back to English) and against the compiled
+  `ru.lproj`. Keys added by script, verified additive-only (18 added, 0 changed). Verified live in
+  Russian: Space-mark → **Правка ▸ «Отменить выделение»** with **«Повторить»** collapsed, then Cmd+Z →
+  **«Отменить»** collapsed with **«Повторить выделение»** — all four states (active/idle × undo/redo)
+  rendering the composed frame + translated label. The file-op labels share the identical display path
+  (the same join, the same frame), so proving the selection path proves them without mutating the
+  filesystem; their translations were checked through the compiled `ru.lproj`.
+- **Pass 2 is complete.** Every AppKit/SwiftUI literal and every registry-owned string is wrapped and
+  Russian-filled across Slices 1–10. One documented non-goal stays English: the stock Finder-tag
+  *names* in the ⌃T menu, which are `DirnexCore` `systemTagName` data with the localization caveat
+  already in `FinderTag`. Next is Pass 3 — the remaining six languages.
 
 **Pass 3 — the remaining six languages.** Adding one is a line in `AppLanguages.all` plus its
 column in the catalog; `LocalizationCoverageTests` fails until the column is complete.

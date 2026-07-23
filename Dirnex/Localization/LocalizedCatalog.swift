@@ -93,6 +93,14 @@ enum LocalizedCatalog {
         L10n.string(LocalizationKey.tagColor(color), fallback: color.title)
     }
 
+    /// An undo/redo action's name, translated — spliced into the "Undo %@" / "Redo %@" menu title
+    /// and the "finished with issues" alert. `UndoActionLabel.title` is `DirnexCore` data reached
+    /// through a variable (`record.label`), so — like the sidebar sections — the app joins it here
+    /// by the label's stable raw value and falls back to the core's English.
+    static func title(for label: UndoActionLabel) -> String {
+        L10n.string(LocalizationKey.undoActionLabel(label), fallback: label.title)
+    }
+
     /// English keywords plus the translated ones, English first and duplicates dropped.
     ///
     /// Additive rather than replacing on purpose: a Russian-speaking user who has read the English

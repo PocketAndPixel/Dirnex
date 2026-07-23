@@ -43,16 +43,18 @@ public struct SelectionChange: Sendable, Equatable, Codable {
     public let priorSelection: Set<VFSPath>
     /// The marks the gesture produced — the set Redo restores.
     public let newSelection: Set<VFSPath>
-    /// The gesture's name, shown in the menu as "Undo \(label)" ("Mark", "Select All",
-    /// "Invert Selection", "Select Files", "Unselect Files", "Clear Selection", "Select Range").
-    public let label: String
+    /// The gesture's name, shown in the menu as "Undo \(label.title)" (`.mark`, `.selectAll`,
+    /// `.invertSelection`, `.selectFiles`, `.unselectFiles`, `.clearSelection`, `.selectRange`).
+    /// Authored in the app and passed in — the core stays UI-agnostic about the gesture, but the
+    /// vocabulary is finite (`UndoActionLabel`), so it is data the app can translate, not prose.
+    public let label: UndoActionLabel
 
     public init(
         pane: PaneSide,
         directory: VFSPath,
         priorSelection: Set<VFSPath>,
         newSelection: Set<VFSPath>,
-        label: String
+        label: UndoActionLabel
     ) {
         self.pane = pane
         self.directory = directory
@@ -87,8 +89,8 @@ public enum UndoEntry: Sendable, Equatable, Codable {
     case fileOperation(UndoRecord)
     case selection(SelectionChange)
 
-    /// The menu label of whichever action this is ("Move", "Select All", …).
-    public var label: String {
+    /// The menu label of whichever action this is (`.move`, `.selectAll`, …).
+    public var label: UndoActionLabel {
         switch self {
         case let .fileOperation(record): return record.label
         case let .selection(change): return change.label

@@ -6219,6 +6219,57 @@
         }
       }
     },
+    "Redo": {
+      "comment": "Edit-menu Redo item when there is nothing to redo.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повторить"
+          }
+        }
+      }
+    },
+    "Redo %@": {
+      "comment": "Edit-menu item naming the action to redo, e.g. “Redo Move”. %@ is the translated action name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redo %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повторить %@"
+          }
+        }
+      }
+    },
+    "Redo %@ finished with issues": {
+      "comment": "Alert title after a partial redo. %@ is the translated action name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redo %@ finished with issues"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "При повторе «%@» возникли проблемы"
+          }
+        }
+      }
+    },
     "Regular expression": {
       "comment": "Multi-rename tool: checkbox toggling regex find & replace.",
       "localizations": {
@@ -8450,6 +8501,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "ПРОПИСНЫЕ"
+          }
+        }
+      }
+    },
+    "Undo": {
+      "comment": "Edit-menu Undo item when there is nothing to undo.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Undo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отменить"
+          }
+        }
+      }
+    },
+    "Undo %@": {
+      "comment": "Edit-menu item naming the action to undo, e.g. “Undo Move”. %@ is the translated action name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Undo %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отменить %@"
+          }
+        }
+      }
+    },
+    "Undo %@ finished with issues": {
+      "comment": "Alert title after a partial undo. %@ is the translated action name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Undo %@ finished with issues"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "При отмене «%@» возникли проблемы"
           }
         }
       }
@@ -12226,6 +12328,210 @@
         }
       },
       "extractionState": "manual"
+    },
+    "undo.action.clearSelection.title": {
+      "comment": "Undo/redo action name spliced into “Undo %@”; DirnexCore data (UndoActionLabel). Russian is the accusative noun that follows “Отменить/Повторить”.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear Selection"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "сброс выделения"
+          }
+        }
+      }
+    },
+    "undo.action.copy.title": {
+      "comment": "Undo/redo action name spliced into “Undo %@”; DirnexCore data (UndoActionLabel). Russian is the accusative noun that follows “Отменить/Повторить”.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "копирование"
+          }
+        }
+      }
+    },
+    "undo.action.invertSelection.title": {
+      "comment": "Undo/redo action name spliced into “Undo %@”; DirnexCore data (UndoActionLabel). Russian is the accusative noun that follows “Отменить/Повторить”.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invert Selection"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "инверсию выделения"
+          }
+        }
+      }
+    },
+    "undo.action.mark.title": {
+      "comment": "Undo/redo action name spliced into “Undo %@”; DirnexCore data (UndoActionLabel). Russian is the accusative noun that follows “Отменить/Повторить”.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mark"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "выделение"
+          }
+        }
+      }
+    },
+    "undo.action.move.title": {
+      "comment": "Undo/redo action name spliced into “Undo %@”; DirnexCore data (UndoActionLabel). Russian is the accusative noun that follows “Отменить/Повторить”.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "перемещение"
+          }
+        }
+      }
+    },
+    "undo.action.moveToTrash.title": {
+      "comment": "Undo/redo action name spliced into “Undo %@”; DirnexCore data (UndoActionLabel). Russian is the accusative noun that follows “Отменить/Повторить”.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move to Trash"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "перемещение в Корзину"
+          }
+        }
+      }
+    },
+    "undo.action.newFolder.title": {
+      "comment": "Undo/redo action name spliced into “Undo %@”; DirnexCore data (UndoActionLabel). Russian is the accusative noun that follows “Отменить/Повторить”.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Folder"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "создание папки"
+          }
+        }
+      }
+    },
+    "undo.action.rename.title": {
+      "comment": "Undo/redo action name spliced into “Undo %@”; DirnexCore data (UndoActionLabel). Russian is the accusative noun that follows “Отменить/Повторить”.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rename"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "переименование"
+          }
+        }
+      }
+    },
+    "undo.action.selectAll.title": {
+      "comment": "Undo/redo action name spliced into “Undo %@”; DirnexCore data (UndoActionLabel). Russian is the accusative noun that follows “Отменить/Повторить”.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select All"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "выделение всего"
+          }
+        }
+      }
+    },
+    "undo.action.selectFiles.title": {
+      "comment": "Undo/redo action name spliced into “Undo %@”; DirnexCore data (UndoActionLabel). Russian is the accusative noun that follows “Отменить/Повторить”.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select Files"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "выделение файлов"
+          }
+        }
+      }
+    },
+    "undo.action.selectRange.title": {
+      "comment": "Undo/redo action name spliced into “Undo %@”; DirnexCore data (UndoActionLabel). Russian is the accusative noun that follows “Отменить/Повторить”.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select Range"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "выделение диапазона"
+          }
+        }
+      }
+    },
+    "undo.action.unselectFiles.title": {
+      "comment": "Undo/redo action name spliced into “Undo %@”; DirnexCore data (UndoActionLabel). Russian is the accusative noun that follows “Отменить/Повторить”.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unselect Files"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "снятие выделения"
+          }
+        }
+      }
     },
     "untitled folder": {
       "comment": "Default name prefilled in the New Folder dialog.",

@@ -58,9 +58,10 @@ public enum UndoStep: Sendable, Equatable, Codable {
 /// and how many parts of the original operation can't be reversed at all.
 public struct UndoRecord: Sendable, Equatable, Codable, Identifiable {
     public let id: UUID
-    /// The operation's name, shown in the menu as "Undo \(label)" ("Move", "Copy",
-    /// "Rename", "New Folder", "Move to Trash").
-    public let label: String
+    /// The operation's name, shown in the menu as "Undo \(label.title)" (`.move`, `.copy`,
+    /// `.rename`, `.newFolder`, `.moveToTrash`). Data, not a display string — the app joins it to a
+    /// translation through `LocalizedCatalog` (see `UndoActionLabel`).
+    public let label: UndoActionLabel
     public let date: Date
     /// The inverse operations, applied in order by `UndoJournal.revert`.
     public let steps: [UndoStep]
@@ -70,7 +71,7 @@ public struct UndoRecord: Sendable, Equatable, Codable, Identifiable {
 
     public init(
         id: UUID = UUID(),
-        label: String,
+        label: UndoActionLabel,
         date: Date = Date(),
         steps: [UndoStep],
         nonReversibleCount: Int = 0
@@ -130,7 +131,7 @@ public extension UndoRecord {
         }
         guard !steps.isEmpty else { return nil }
         return UndoRecord(
-            label: kind == .copy ? "Copy" : "Move",
+            label: kind == .copy ? .copy : .move,
             date: date,
             steps: steps,
             nonReversibleCount: nonReversible
@@ -139,12 +140,12 @@ public extension UndoRecord {
 
     /// Undo a New Folder by removing the folder — while it's still empty (`removeCreatedFolder`).
     static func newFolder(at path: VFSPath, date: Date = Date()) -> UndoRecord {
-        UndoRecord(label: "New Folder", date: date, steps: [.removeCreatedFolder(path)])
+        UndoRecord(label: .newFolder, date: date, steps: [.removeCreatedFolder(path)])
     }
 
     /// Undo an inline rename by moving the new name back to the old one.
     static func rename(from old: VFSPath, to new: VFSPath, date: Date = Date()) -> UndoRecord {
-        UndoRecord(label: "Rename", date: date, steps: [.restore(from: new, to: old)])
+        UndoRecord(label: .rename, date: date, steps: [.restore(from: new, to: old)])
     }
 
     /// Undo a Multi-Rename batch by moving each renamed item back to its original name — one
@@ -158,7 +159,7 @@ public extension UndoRecord {
     ) -> UndoRecord? {
         let steps = items.map { UndoStep.restore(from: $0.renamed, to: $0.original) }
         guard !steps.isEmpty else { return nil }
-        return UndoRecord(label: "Rename", date: date, steps: steps)
+        return UndoRecord(label: .rename, date: date, steps: steps)
     }
 
     /// Undo a Move-to-Trash by restoring each item from the Trash location it landed at back
@@ -170,7 +171,7 @@ public extension UndoRecord {
     ) -> UndoRecord? {
         let steps = items.map { UndoStep.restore(from: $0.trashed, to: $0.original) }
         guard !steps.isEmpty else { return nil }
-        return UndoRecord(label: "Move to Trash", date: date, steps: steps)
+        return UndoRecord(label: .moveToTrash, date: date, steps: steps)
     }
 }
 

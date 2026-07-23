@@ -151,6 +151,24 @@ struct LocalizationCoverageTests {
         }
     }
 
+    @Test("every undo/redo action label is translated in every shipped language")
+    func everyUndoActionLabelIsTranslated() throws {
+        for language in translatedLanguages {
+            let bundle = try bundle(for: language)
+            for label in UndoActionLabel.allCases {
+                let key = LocalizationKey.undoActionLabel(label)
+                let value = translation(key, in: bundle)
+                #expect(value != nil, "\(language.code): no \(key)")
+                // None of the labels coincide across en/ru, so a byte-identical value is a
+                // copied-in key that was never translated (the "Undo Move" that only a Russian
+                // speaker ever finds).
+                if let value {
+                    #expect(value != label.title, "\(language.code): \(key) is still English")
+                }
+            }
+        }
+    }
+
     @Test("a translated command keeps its English keywords searchable alongside the new ones")
     func keywordsAreAdditive() {
         // The palette is the one place a translation could *remove* a user's ability to find

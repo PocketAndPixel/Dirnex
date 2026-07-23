@@ -96,6 +96,16 @@ public enum LocalizationKey {
         return "tag.color.\(token).title"
     }
 
+    /// An undo/redo action's name, spliced into the "Undo %@" / "Redo %@" menu title, e.g.
+    /// `undo.action.moveToTrash.title`. `UndoActionLabel.title` is `DirnexCore` data reached through
+    /// a variable (`record.label`) at the menu, so — like the sidebar sections — the app joins it
+    /// here by the label's stable raw value and falls back to the core's English. Keying by the raw
+    /// value means renaming a case (which also changes the persisted journal's on-disk form) loudly
+    /// orphans its translations rather than silently rendering English.
+    public static func undoActionLabel(_ label: UndoActionLabel) -> String {
+        "undo.action.\(label.rawValue).title"
+    }
+
     /// Split a translated comma-separated keyword value into terms, dropping empties and
     /// surrounding whitespace. Tolerant on purpose — the value is typed by a translator, and a
     /// stray trailing comma should cost nothing.

@@ -25,14 +25,24 @@ extension PanelViewController {
     /// `validateMenuItem` in `+FileOps`, so it can't be `private`.
     func validateUndoItem(_ menuItem: NSMenuItem) -> Bool {
         if view.window?.firstResponder is NSText {
-            menuItem.title = "Undo"
+            menuItem.title = String(
+                localized: "Undo",
+                comment: "Edit-menu item with nothing to undo."
+            )
             return false
         }
         guard let label = host?.nextUndoLabel else {
-            menuItem.title = "Undo"
+            menuItem.title = String(
+                localized: "Undo",
+                comment: "Edit-menu item with nothing to undo."
+            )
             return false
         }
-        menuItem.title = "Undo \(label)"
+        let action = LocalizedCatalog.title(for: label)
+        menuItem.title = String(
+            localized: "Undo \(action)",
+            comment: "Edit-menu item naming the action to undo, e.g. \"Undo Move\"."
+        )
         return true
     }
 
@@ -41,14 +51,24 @@ extension PanelViewController {
     /// next action ("Redo Move"), collapsing to plain "Redo".
     func validateRedoItem(_ menuItem: NSMenuItem) -> Bool {
         if view.window?.firstResponder is NSText {
-            menuItem.title = "Redo"
+            menuItem.title = String(
+                localized: "Redo",
+                comment: "Edit-menu item with nothing to redo."
+            )
             return false
         }
         guard let label = host?.nextRedoLabel else {
-            menuItem.title = "Redo"
+            menuItem.title = String(
+                localized: "Redo",
+                comment: "Edit-menu item with nothing to redo."
+            )
             return false
         }
-        menuItem.title = "Redo \(label)"
+        let action = LocalizedCatalog.title(for: label)
+        menuItem.title = String(
+            localized: "Redo \(action)",
+            comment: "Edit-menu item naming the action to redo, e.g. \"Redo Move\"."
+        )
         return true
     }
 }

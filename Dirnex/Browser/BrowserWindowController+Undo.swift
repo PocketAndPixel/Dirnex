@@ -19,7 +19,7 @@ extension BrowserWindowController {
         on pane: PanelViewController,
         directory: VFSPath,
         previousMarks: Set<VFSPath>,
-        label: String
+        label: UndoActionLabel
     ) {
         let side: PaneSide = (pane === leftPanel) ? .left : .right
         undoController.recordSelection(SelectionChange(
@@ -31,11 +31,11 @@ extension BrowserWindowController {
         ))
     }
 
-    var nextUndoLabel: String? {
+    var nextUndoLabel: UndoActionLabel? {
         undoController.nextLabel
     }
 
-    var nextRedoLabel: String? {
+    var nextRedoLabel: UndoActionLabel? {
         undoController.nextRedoLabel
     }
 
@@ -99,7 +99,14 @@ extension BrowserWindowController {
             let reason = leftPanel.describe(report.failures[0].error)
             lines.append(String(localized: "\(count) items couldn’t be put back: \(reason)"))
         }
-        presentIssues(title: "Undo \(record.label) finished with issues", lines: lines)
+        let action = LocalizedCatalog.title(for: record.label)
+        presentIssues(
+            title: String(
+                localized: "Undo \(action) finished with issues",
+                comment: "Alert title after a partial undo. %@ is the translated action name."
+            ),
+            lines: lines
+        )
     }
 
     /// Redo's outcome. Unlike undo, `nonReversibleCount` is irrelevant here — redo re-applies
@@ -110,7 +117,14 @@ extension BrowserWindowController {
         let count = report.failures.count
         let reason = leftPanel.describe(report.failures[0].error)
         let line = String(localized: "\(count) items couldn’t be re-applied: \(reason)")
-        presentIssues(title: "Redo \(record.label) finished with issues", lines: [line])
+        let action = LocalizedCatalog.title(for: record.label)
+        presentIssues(
+            title: String(
+                localized: "Redo \(action) finished with issues",
+                comment: "Alert title after a partial redo. %@ is the translated action name."
+            ),
+            lines: [line]
+        )
     }
 
     private func presentIssues(title: String, lines: [String]) {
