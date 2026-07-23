@@ -529,6 +529,76 @@
         }
       }
     },
+    "%lld name conflicts": {
+      "comment": "Multi-rename status: count of name collisions blocking the batch. Plural.",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld name conflict"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld name conflicts"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфликт имён"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфликта имён"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфликтов имён"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфликтов имён"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld of %lld will be renamed": {
+      "comment": "Multi-rename status: N of M items will change name. Verb is invariant.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld of %lld will be renamed"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Будет переименовано %lld из %lld"
+          }
+        }
+      }
+    },
     "(+%lld more)": {
       "comment": "Queue-bar suffix counting the other queued operations; %lld is how many.",
       "localizations": {
@@ -1238,6 +1308,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Упаковка здесь невозможна"
+          }
+        }
+      }
+    },
+    "Capitalized": {
+      "comment": "Multi-rename case option: capitalize each word.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capitalized"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "С заглавной"
+          }
+        }
+      }
+    },
+    "Case:": {
+      "comment": "Multi-rename form label for the letter-case option.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Case:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Регистр:"
           }
         }
       }
@@ -2267,6 +2371,76 @@
         }
       }
     },
+    "Couldn’t rename %lld items": {
+      "comment": "Multi-rename failure counting the items that failed. Plural.",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Couldn’t rename %lld item"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Couldn’t rename %lld items"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось переименовать %lld объект"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось переименовать %lld объекта"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось переименовать %lld объектов"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось переименовать %lld объектов"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Couldn’t rename “%@”": {
+      "comment": "Multi-rename failure naming the single file that failed; %@ is the name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t rename “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось переименовать «%@»"
+          }
+        }
+      }
+    },
     "Couldn’t update the known hosts for “%@”.": {
       "comment": "Error when clearing a stale known_hosts entry fails; %@ is the host.",
       "localizations": {
@@ -2280,6 +2454,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не удалось обновить список известных хостов для «%@»."
+          }
+        }
+      }
+    },
+    "Counter:": {
+      "comment": "Multi-rename form label for the counter controls.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Counter:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Счётчик:"
           }
         }
       }
@@ -2331,6 +2522,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Создать архив в «%@»."
+          }
+        }
+      }
+    },
+    "Current Name": {
+      "comment": "Multi-rename preview column header: the existing name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Current Name"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Текущее имя"
           }
         }
       }
@@ -2627,6 +2835,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Отсоединённый HEAD"
+          }
+        }
+      }
+    },
+    "Digits": {
+      "comment": "Multi-rename counter field label: zero-padding width.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Digits"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цифры"
           }
         }
       }
@@ -3007,6 +3232,23 @@
         }
       }
     },
+    "Extension:": {
+      "comment": "Multi-rename form label for the extension template.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extension:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Расширение:"
+          }
+        }
+      }
+    },
     "File name": {
       "comment": "Placeholder in the ⇧F4 file-name field.",
       "localizations": {
@@ -3347,6 +3589,23 @@
         }
       }
     },
+    "Invalid search pattern": {
+      "comment": "Multi-rename status when the regex does not compile.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invalid search pattern"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Неверный шаблон поиска"
+          }
+        }
+      }
+    },
     "It will be removed from %lld files, everywhere Spotlight has indexed. The files themselves aren’t deleted.": {
       "comment": "Body of the delete-tag confirmation; %lld is how many files carry the tag.",
       "localizations": {
@@ -3622,6 +3881,23 @@
         }
       }
     },
+    "Name mask:": {
+      "comment": "Multi-rename form label for the name template.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name mask:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Маска имени:"
+          }
+        }
+      }
+    },
     "Name:": {
       "comment": "Pack sheet label for the archive-name field.",
       "localizations": {
@@ -3686,6 +3962,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Новая папка"
+          }
+        }
+      }
+    },
+    "New Name": {
+      "comment": "Multi-rename preview column header: the proposed name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Name"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Новое имя"
           }
         }
       }
@@ -4094,6 +4387,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Необязательно — в боковой панели"
+          }
+        }
+      }
+    },
+    "Original case": {
+      "comment": "Multi-rename case option: leave case unchanged.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Original case"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Исходный регистр"
           }
         }
       }
@@ -4630,6 +4940,23 @@
         }
       }
     },
+    "Regular expression": {
+      "comment": "Multi-rename tool: checkbox toggling regex find & replace.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regular expression"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Регулярное выражение"
+          }
+        }
+      }
+    },
     "Relaunch": {
       "localizations": {
         "en": {
@@ -4728,6 +5055,59 @@
           "stringUnit": {
             "state": "translated",
             "value": "Переименовать"
+          }
+        }
+      }
+    },
+    "Rename %lld Items": {
+      "comment": "Multi-rename confirm button; %lld items will be renamed. Plural.",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Rename %lld Item"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Rename %lld Items"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Переименовать %lld объект"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Переименовать %lld объекта"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Переименовать %lld объектов"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Переименовать %lld объектов"
+                }
+              }
+            }
           }
         }
       }
@@ -4919,6 +5299,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Заменить существующий архив в «%@»?"
+          }
+        }
+      }
+    },
+    "Replace with:": {
+      "comment": "Multi-rename form label: replacement text.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replace with:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Заменить на:"
           }
         }
       }
@@ -5191,6 +5588,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Искать везде"
+          }
+        }
+      }
+    },
+    "Search for:": {
+      "comment": "Multi-rename form label: text to find.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search for:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Найти:"
           }
         }
       }
@@ -5569,6 +5983,40 @@
         }
       }
     },
+    "Start": {
+      "comment": "Multi-rename counter field label: first number.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Начало"
+          }
+        }
+      }
+    },
+    "Step": {
+      "comment": "Multi-rename counter field label: increment between items.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Step"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Шаг"
+          }
+        }
+      }
+    },
     "Switch": {
       "comment": "Shortcuts: confirm preset switch.",
       "localizations": {
@@ -5752,6 +6200,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Старый ключ хоста не удалось удалить автоматически. Удалите его из %@ и попробуйте подключиться снова."
+          }
+        }
+      }
+    },
+    "The other items were renamed.": {
+      "comment": "Multi-rename partial-failure detail line.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The other items were renamed."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Остальные объекты переименованы."
           }
         }
       }
@@ -6011,6 +6476,23 @@
         }
       }
     },
+    "Tokens:  [N] name   [E] extension   [C] counter   [Y] [M] [D] date   [h] [n] [s] time": {
+      "comment": "Multi-rename token legend; bracketed tokens are literal mask syntax and never translate.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tokens:  [N] name   [E] extension   [C] counter   [Y] [M] [D] date   [h] [n] [s] time"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Токены:  [N] имя   [E] расширение   [C] счётчик   [Y] [M] [D] дата   [h] [n] [s] время"
+          }
+        }
+      }
+    },
     "Tracking %@": {
       "comment": "Git branch tooltip; %@ is the upstream ref.",
       "localizations": {
@@ -6075,6 +6557,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Введите сочетание…"
+          }
+        }
+      }
+    },
+    "UPPERCASE": {
+      "comment": "Multi-rename case option; shown in uppercase to demonstrate it.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "UPPERCASE"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ПРОПИСНЫЕ"
           }
         }
       }
@@ -8873,6 +9372,23 @@
         }
       }
     },
+    "lowercase": {
+      "comment": "Multi-rename case option; shown in lowercase to demonstrate it.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "lowercase"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "строчные"
+          }
+        }
+      }
+    },
     "macOS keeps the Trash private, so Dirnex can't list it until you allow it to. Everything else keeps working as it does now.\n\nClick Open System Settings, then switch on Dirnex under Full Disk Access. macOS will ask Dirnex to relaunch so the new access takes effect.": {
       "comment": "FDA (Trash) sheet body.",
       "localizations": {
@@ -8920,6 +9436,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "macOS не сообщает о программе для простого текста. Выберите её в разделе «Настройки ▸ Операции»."
+          }
+        }
+      }
+    },
+    "replacement": {
+      "comment": "Multi-rename replace field placeholder.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "replacement"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "замена"
           }
         }
       }
@@ -9056,6 +9589,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Тома"
+          }
+        }
+      }
+    },
+    "text to find": {
+      "comment": "Multi-rename search field placeholder.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "text to find"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "текст для поиска"
           }
         }
       }

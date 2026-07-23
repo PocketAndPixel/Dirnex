@@ -26,7 +26,7 @@ final class MultiRenameController: NSViewController {
     private let findField = NSTextField()
     private let replaceField = NSTextField()
     private let regexCheckbox = NSButton(
-        checkboxWithTitle: "Regular expression",
+        checkboxWithTitle: String(localized: "Regular expression"),
         target: nil,
         action: nil
     )
@@ -43,10 +43,10 @@ final class MultiRenameController: NSViewController {
 
     /// Case options in popup order, paired with their user-facing titles.
     private let caseOptions: [(title: String, transform: RenameCase)] = [
-        ("Original case", .asIs),
-        ("lowercase", .lower),
-        ("UPPERCASE", .upper),
-        ("Capitalized", .capitalized)
+        (String(localized: "Original case"), .asIs),
+        (String(localized: "lowercase"), .lower),
+        (String(localized: "UPPERCASE"), .upper),
+        (String(localized: "Capitalized"), .capitalized)
     ]
 
     init(items: [FileEntry], existingNames: Set<String>) {
@@ -100,8 +100,13 @@ final class MultiRenameController: NSViewController {
     private func makeControlsGrid() -> NSView {
         configure(nameField, placeholder: "[N]", string: "[N]", width: 440)
         configure(extensionField, placeholder: "[E]", string: "[E]", width: 440)
-        configure(findField, placeholder: "text to find", string: "", width: 440)
-        configure(replaceField, placeholder: "replacement", string: "", width: 440)
+        configure(findField, placeholder: String(localized: "text to find"), string: "", width: 440)
+        configure(
+            replaceField,
+            placeholder: String(localized: "replacement"),
+            string: "",
+            width: 440
+        )
         regexCheckbox.target = self
         regexCheckbox.action = #selector(controlChanged(_:))
         for (title, _) in caseOptions { casePopup.addItem(withTitle: title) }
@@ -109,13 +114,13 @@ final class MultiRenameController: NSViewController {
         casePopup.action = #selector(controlChanged(_:))
 
         let grid = NSGridView(views: [
-            [label("Name mask:"), nameField],
-            [label("Extension:"), extensionField],
-            [label("Search for:"), findField],
-            [label("Replace with:"), replaceField],
+            [label(String(localized: "Name mask:")), nameField],
+            [label(String(localized: "Extension:")), extensionField],
+            [label(String(localized: "Search for:")), findField],
+            [label(String(localized: "Replace with:")), replaceField],
             [NSGridCell.emptyContentView, regexCheckbox],
-            [label("Case:"), casePopup],
-            [label("Counter:"), makeCounterRow()]
+            [label(String(localized: "Case:")), casePopup],
+            [label(String(localized: "Counter:")), makeCounterRow()]
         ])
         grid.rowSpacing = 8
         grid.columnSpacing = 10
@@ -129,9 +134,9 @@ final class MultiRenameController: NSViewController {
         configure(stepField, placeholder: "1", string: "1", width: 54)
         configure(digitsField, placeholder: "1", string: "1", width: 54)
         let row = NSStackView(views: [
-            label("Start"), startField,
-            label("Step"), stepField,
-            label("Digits"), digitsField
+            label(String(localized: "Start")), startField,
+            label(String(localized: "Step")), stepField,
+            label(String(localized: "Digits")), digitsField
         ])
         row.orientation = .horizontal
         row.spacing = 6
@@ -139,8 +144,14 @@ final class MultiRenameController: NSViewController {
     }
 
     private func makeLegend() -> NSView {
-        let text = "Tokens:  [N] name   [E] extension   [C] counter   "
-            + "[Y] [M] [D] date   [h] [n] [s] time"
+        // Bracketed tokens are the mask syntax the user types, so they stay literal in every
+        // language; only the words around them translate.
+        let text = String(
+            localized: """
+            Tokens:  [N] name   [E] extension   [C] counter   \
+            [Y] [M] [D] date   [h] [n] [s] time
+            """
+        )
         let legend = NSTextField(labelWithString: text)
         legend.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         legend.textColor = .secondaryLabelColor
@@ -148,7 +159,11 @@ final class MultiRenameController: NSViewController {
     }
 
     private func makePreview() -> NSView {
-        for (identifier, title) in [("current", "Current Name"), ("new", "New Name")] {
+        let columns = [
+            ("current", String(localized: "Current Name")),
+            ("new", String(localized: "New Name"))
+        ]
+        for (identifier, title) in columns {
             let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(identifier))
             column.title = title
             column.width = 280
@@ -176,11 +191,15 @@ final class MultiRenameController: NSViewController {
         statusLabel.textColor = .secondaryLabelColor
         statusLabel.lineBreakMode = .byTruncatingTail
 
-        let cancelButton = NSButton(title: "Cancel", target: self, action: #selector(cancel(_:)))
+        let cancelButton = NSButton(
+            title: String(localized: "Cancel"),
+            target: self,
+            action: #selector(cancel(_:))
+        )
         cancelButton.bezelStyle = .rounded
         cancelButton.keyEquivalent = "\u{1b}" // Esc
 
-        renameButton.title = "Rename"
+        renameButton.title = String(localized: "Rename")
         renameButton.bezelStyle = .rounded
         renameButton.keyEquivalent = "\r"
         renameButton.target = self
@@ -228,17 +247,21 @@ final class MultiRenameController: NSViewController {
         let problems = proposals.lazy.filter { $0.status.isProblem }.count
 
         if !spec.regexIsValid {
-            setStatus("Invalid search pattern", isError: true)
+            setStatus(String(localized: "Invalid search pattern"), isError: true)
             renameButton.isEnabled = false
         } else if problems > 0 {
-            setStatus("\(problems) name \(problems == 1 ? "conflict" : "conflicts")", isError: true)
+            setStatus(String(localized: "\(problems) name conflicts"), isError: true)
             renameButton.isEnabled = false
         } else {
-            setStatus("\(renaming) of \(items.count) will be renamed", isError: false)
+            setStatus(
+                String(localized: "\(renaming) of \(items.count) will be renamed"),
+                isError: false
+            )
             renameButton.isEnabled = renaming > 0
         }
-        renameButton.title = renaming > 0 ? "Rename \(renaming) \(renaming == 1 ? "Item" : "Items")"
-            : "Rename"
+        renameButton.title = renaming > 0
+            ? String(localized: "Rename \(renaming) Items")
+            : String(localized: "Rename")
     }
 
     private func setStatus(_ text: String, isError: Bool) {

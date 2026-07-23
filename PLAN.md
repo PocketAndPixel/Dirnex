@@ -294,6 +294,33 @@ involved. Worth a lint rule keeping bare literals out of UI files afterwards.
   3 объекта», subtitle, both labels now fitting, the «Имя архива» placeholder), a successful pack, and
   the delete-from-archive confirmation («Удалить «%@» из «%@»?» · «Это перезапишет архив; действие
   нельзя отменить.»).
+- **Slice 7 landed (2026-07-23): the Multi-Rename tool.** The whole ⇧F2 sheet — the name/extension
+  mask fields and their hint placeholders, search & replace, the regex toggle, the case popup, the
+  counter row, the token legend, the two preview column headers, the footer status and the confirm
+  button — plus the batch failure alert: 26 new catalog keys across 2 files
+  (`MultiRenameController`, `PanelViewController+MultiRename`), all Russian-filled; `Cancel` and
+  `Rename` reused. Three recurring traps, fixed at the source: **hand-rolled plurals** became catalog
+  plurals through `String(localized:)` interpolation — the conflict count (`count == 1 ? "conflict"
+  : "conflicts"` → `%lld name conflicts`) and the confirm button (`renaming == 1 ? "Item" : "Items"`
+  → `Rename %lld Items`), each Russian one/few/many; the **name/count split** in the failure alert
+  (single case names the file `Couldn’t rename “%@”`, many case counts `Couldn’t rename %lld items`,
+  only the count branch carrying the plural); and the **`+`-concatenation trap** in the token legend
+  (`"a " + "b"` → one `\`-continued `"""` literal). Two deliberate non-translations: the **mask
+  tokens** (`[N] [E] [C] [Y] [M] [D] [h] [n] [s]`) stay literal because they are the syntax the user
+  types into the fields — the same convention as the SFTP/SMB acronyms — so only the words *around*
+  them in the legend translate; and the status line `%lld of %lld will be renamed` stays a **plain
+  two-argument string, not a plural**, because Russian expresses it with the impersonal neuter
+  «Будет переименовано N из M», invariant across every count (the same reasoning that kept Slice 3's
+  three-argument failure line out of a plural). Keys taken from the compiler-emitted `.stringsdata`,
+  added by script with an **exact-match guard** — a mistyped curly quote aborts rather than creating a
+  phantom entry — verified additive-only (26 added, 0 changed), the multi-space legend key checked
+  verbatim against the emitted key. Verified live in Russian: the whole sheet (Маска имени ·
+  Расширение · Найти · Заменить на · Регулярное выражение · Регистр: Исходный регистр · Счётчик:
+  Начало/Шаг/Цифры · the token legend · Текущее имя/Новое имя), with every label fitting the fixed
+  640 pt sheet, and both count strings live — the status «Будет переименовано 3 из 3» and the button
+  plural «Переименовать 3 объекта» (correct *few* form for 3). The failure alerts were checked
+  through the compiled `ru.lproj` (`.strings` + `.stringsdict`) rather than live, being awkward to
+  provoke.
 - **Deferred as its own slice: the undo/redo action *labels*.** The "Undo Move" / "Redo Clear
   Selection" menu titles compose `"Undo \(label)"` from a label that is *data*, not an app literal:
   the file-op names ("Move", "Copy", "Rename", "Move to Trash", "New Folder") originate in
@@ -303,9 +330,8 @@ involved. Worth a lint rule keeping bare literals out of UI files afterwards.
   localizing the `"Undo %@"` / `"Redo %@"` frames — a core-touching change. Doing only the app half
   would leave the menu mixing a Russian frame with English labels, which is worse than uniform
   English, so the whole concern waits for one slice.
-- **Remaining:** the rest of the `Dirnex/Browser/` controllers — multi-rename, the user-script and
-  workspace organizers, sync, and the assorted status/tooltip strings; then the undo-label slice
-  above.
+- **Remaining:** the rest of the `Dirnex/Browser/` controllers — the user-script and workspace
+  organizers, sync, and the assorted status/tooltip strings; then the undo-label slice above.
 
 **Pass 3 — the remaining six languages.** Adding one is a line in `AppLanguages.all` plus its
 column in the catalog; `LocalizationCoverageTests` fails until the column is complete.

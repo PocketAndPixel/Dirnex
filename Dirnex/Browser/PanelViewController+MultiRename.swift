@@ -80,11 +80,11 @@ extension PanelViewController {
 
     private func presentMultiRenameFailures(_ failures: [VFSPath]) {
         let message = failures.count == 1
-            ? "Couldn’t rename “\(failures[0].lastComponent)”"
-            : "Couldn’t rename \(failures.count) items"
+            ? String(localized: "Couldn’t rename “\(failures[0].lastComponent)”")
+            : String(localized: "Couldn’t rename \(failures.count) items")
         presentOperationFailure(
             message: message,
-            detail: "The other items were renamed."
+            detail: String(localized: "The other items were renamed.")
         )
     }
 }
