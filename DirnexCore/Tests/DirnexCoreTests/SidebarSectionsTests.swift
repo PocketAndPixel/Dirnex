@@ -17,7 +17,7 @@ struct SidebarSectionsTests {
         // would move a whole section on screen without anything else looking wrong.
         #expect(
             SidebarSection.allCases
-                == [.recents, .searches, .favorites, .icloud, .volumes, .servers, .tags, .trash]
+                == [.recents, .searches, .favorites, .icloud, .volumes, .servers, .trash, .tags]
         )
     }
 
