@@ -186,15 +186,15 @@ final class SidebarViewController: NSViewController {
         // Assembled in `SidebarViewController+Cloud`.
         append(.icloud, items: cloudRows(), to: &rows)
         append(.volumes, items: SidebarLocations.volumes().map(Row.volume), to: &rows)
-        // Saved servers close the sidebar, grouped with the local volumes as the "places you browse"
+        // Saved servers, grouped with the local volumes as the "places you browse"
         // (PLAN.md §M5 "a Servers sidebar section mirroring Searches").
         append(.servers, items: ServerConnectionStore.load().connections.map(Row.server), to: &rows)
-        // Tags come last, where Finder puts them, and only when View ▸ Show Tags is on.
-        append(.tags, items: tagRows(), to: &rows)
-        // The Trash closes the sidebar, where the Dock puts it (PLAN.md §M8). Always present: every
-        // Mac has one, and whether it can be read is the pane's answer to give, not a reason to
-        // hide the row.
+        // The Trash sits above Tags, just below the volumes and servers it complements. Always
+        // present: every Mac has one, and whether it can be read is the pane's answer to give, not
+        // a reason to hide the row.
         append(.trash, items: [.trash], to: &rows)
+        // Tags close the sidebar, where Finder puts them, and only when View ▸ Show Tags is on.
+        append(.tags, items: tagRows(), to: &rows)
         self.rows = rows
         tableView.reloadData()
 

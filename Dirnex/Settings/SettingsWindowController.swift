@@ -20,15 +20,27 @@ final class SettingsWindowController: NSWindowController {
         window.title = String(localized: "Settings")
         window.styleMask = [.titled, .closable, .miniaturizable]
         window.isReleasedWhenClosed = false
-        window.center()
         super.init(window: window)
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    /// Bring the Settings window to the front, centering it the first time it appears.
+    private var hasCentered = false
+
+    /// Bring the Settings window to the front, centering it the first time it appears. The SwiftUI
+    /// content only sizes the window once its hosting view lays out — which `showWindow` does too
+    /// late — so force that layout and adopt the content's fitting size here, *then* centre, before
+    /// the window is shown. Centering earlier (or after `showWindow`) lands a placeholder-sized
+    /// window off-centre, which is what a not-yet-laid-out window does.
     func present() {
+        if !hasCentered, let window, let content = window.contentViewController?.view {
+            content.layoutSubtreeIfNeeded()
+            let fitting = content.fittingSize
+            if fitting.width > 0, fitting.height > 0 { window.setContentSize(fitting) }
+            window.centerOnScreen()
+            hasCentered = true
+        }
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)

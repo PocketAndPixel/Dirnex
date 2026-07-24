@@ -245,7 +245,7 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         window.contentViewController = makeContainerViewController()
         if !window.setFrameUsingName("MainWindow") {
             window.setContentSize(NSSize(width: 1300, height: 750))
-            window.center()
+            window.centerOnScreen()
         }
         window.setFrameAutosaveName("MainWindow")
 

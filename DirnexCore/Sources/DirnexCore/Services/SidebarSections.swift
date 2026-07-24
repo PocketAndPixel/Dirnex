@@ -19,8 +19,8 @@ public enum SidebarSection: String, CaseIterable, Sendable, Hashable {
     case icloud
     case volumes
     case servers
-    case tags
     case trash
+    case tags
 
     /// The section header's label.
     public var title: String {
@@ -31,8 +31,8 @@ public enum SidebarSection: String, CaseIterable, Sendable, Hashable {
         case .icloud: "Cloud"
         case .volumes: "Volumes"
         case .servers: "Servers"
-        case .tags: "Tags"
         case .trash: "Trash"
+        case .tags: "Tags"
         }
     }
 }
