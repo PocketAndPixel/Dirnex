@@ -82,8 +82,13 @@ final class SMBMounter {
         }
 
         let openOptions = NSMutableDictionary()
-        // Never block on an interactive NetFS dialog — a wrong password should return an error.
-        openOptions[kNAUIOptionKey as String] = kNAUIOptionNoUI
+        // Suppress NetFS's interactive UI so a wrong password fails fast — *except* when no share was
+        // named. There, letting the UI through is the whole point: `NetFSMountURLSync` on a bare
+        // `smb://host` shows macOS's own share picker (the NetFS header: "the user will be prompted
+        // with a window to let them select one or more items to mount"), which is how the user finds
+        // a share they don't know the name of. There is no public API to list shares ourselves.
+        openOptions[kNAUIOptionKey as String] = location.share == nil ? kNAUIOptionAllowUI
+            : kNAUIOptionNoUI
 
         let user: CFString?
         let pass: CFString?
