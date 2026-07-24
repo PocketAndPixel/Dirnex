@@ -88,6 +88,26 @@ struct SMBLocationTests {
         #expect(SMBLocation(url: "smb://user@/share") == nil) // empty host after the user
     }
 
+    @Test("an email username keeps its own @; only host[:port] follows the last @")
+    func parseEmailUsername() {
+        let location = SMBLocation(url: "smb://oleg.verhoglyad@gmail.com@192.168.1.60/MediaShare")
+        #expect(location?.username == "oleg.verhoglyad@gmail.com")
+        #expect(location?.host == "192.168.1.60")
+        #expect(location?.share == "MediaShare")
+        #expect(location?.port == SMBLocation.defaultPort)
+        // And it survives the round-trip, so editing the address field can't corrupt the host.
+        #expect(location?.url == "smb://oleg.verhoglyad@gmail.com@192.168.1.60/MediaShare")
+    }
+
+    @Test("an email username splits correctly even with a port")
+    func parseEmailUsernameWithPort() {
+        let location = SMBLocation(url: "smb://me@work.com@10.0.0.5:4450/backup")
+        #expect(location?.username == "me@work.com")
+        #expect(location?.host == "10.0.0.5")
+        #expect(location?.port == 4450)
+        #expect(location?.share == "backup")
+    }
+
     @Test("a non-numeric colon suffix stays part of the host, port defaults")
     func parseNonNumericColonStaysInHost() {
         let location = SMBLocation(url: "smb://a:b/share")

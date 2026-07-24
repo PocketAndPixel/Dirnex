@@ -140,17 +140,19 @@ final class ConnectServerForm: NSObject, NSTextFieldDelegate {
     }
 
     /// Wrap the grid in a fixed-size container sized to the *taller* of the two protocol layouts, so
-    /// switching protocols (which hides/shows rows) never resizes the modal mid-flight — the slack
-    /// just sits below the shorter layout. The container keeps an explicit **frame** (autoresizing,
-    /// not `false`): `NSAlert` sizes an accessory view by its frame, so a constraint-only container
-    /// collapses to zero and overlaps the alert's message. The grid is pinned to the top-left inside
-    /// it and keeps its own intrinsic size (so a shorter layout just leaves slack below).
+    /// switching protocols (which hides/shows rows) never resizes the sheet mid-flight — the slack
+    /// just sits below the shorter layout. The container is pinned to an explicit width/height via
+    /// constraints (not a frame) so it carries a fixed size into the sheet's stack view. The grid is
+    /// pinned to the top-left inside it and keeps its own intrinsic size (so a shorter layout just
+    /// leaves slack below).
     private func layout(grid: NSGridView) {
         let reserved = reservedSize(of: grid)
-        accessoryView.frame = NSRect(origin: .zero, size: reserved)
+        accessoryView.translatesAutoresizingMaskIntoConstraints = false
         grid.translatesAutoresizingMaskIntoConstraints = false
         accessoryView.addSubview(grid)
         NSLayoutConstraint.activate([
+            accessoryView.widthAnchor.constraint(equalToConstant: reserved.width),
+            accessoryView.heightAnchor.constraint(equalToConstant: reserved.height),
             grid.topAnchor.constraint(equalTo: accessoryView.topAnchor),
             grid.leadingAnchor.constraint(equalTo: accessoryView.leadingAnchor)
         ])
@@ -374,6 +376,7 @@ private enum ConnectFormFactory {
         let field = NSTextField()
         field.placeholderString = placeholder
         field.translatesAutoresizingMaskIntoConstraints = false
+        configureSingleLine(field)
         return field
     }
 
@@ -381,7 +384,21 @@ private enum ConnectFormFactory {
         let field = NSSecureTextField()
         field.placeholderString = placeholder
         field.translatesAutoresizingMaskIntoConstraints = false
+        configureSingleLine(field)
         return field
+    }
+
+    /// Keep an entry field to a single, horizontally-scrolling line. A long value — a full
+    /// `smb://user@host/share` address is easily wider than the 280 pt field — otherwise wraps and
+    /// grows the row, which pushed the grid apart and made the field read as empty. Single-line mode
+    /// scrolls to follow the cursor instead; `.byTruncatingHead` keeps the business end (host and
+    /// share) visible when the field isn't being edited. Set the break mode *after* single-line mode,
+    /// which forces `.byTruncatingTail` of its own.
+    private static func configureSingleLine(_ field: NSTextField) {
+        field.usesSingleLineMode = true
+        field.cell?.wraps = false
+        field.cell?.isScrollable = true
+        field.cell?.lineBreakMode = .byTruncatingHead
     }
 
     static func label(_ text: String) -> NSTextField {
@@ -403,90 +420,6 @@ private enum ConnectFormFactory {
         stack.spacing = 8
         stack.translatesAutoresizingMaskIntoConstraints = false
         return stack
-    }
-}
-
-/// The Connect dialog's on-screen strings — the field labels (reused across the two protocol
-/// layouts, which share the Host / User / Password rows), the auth-mode labels, and the field
-/// placeholders that carry English hints. Kept out of the class body so its length stays under the
-/// ceiling; the literals live *at* the `String(localized:)` call, so extraction works — unlike
-/// passing a variable to `String(localized:)`, which extracts nothing (docs/NOTES.md).
-@MainActor
-private enum ConnectText {
-    static var proto: String {
-        String(localized: "Protocol:", comment: "Connect field label: SFTP or SMB.")
-    }
-
-    static var address: String {
-        String(localized: "Address:", comment: "Connect field label: the SMB URL.")
-    }
-
-    static var host: String {
-        String(localized: "Host:", comment: "Connect field label: server host name.")
-    }
-
-    static var share: String {
-        String(localized: "Share:", comment: "Connect field label: SMB share name.")
-    }
-
-    static var user: String {
-        String(localized: "User:", comment: "Connect field label: user name.")
-    }
-
-    static var password: String {
-        String(localized: "Password:", comment: "Connect field label: password.")
-    }
-
-    static var port: String {
-        String(localized: "Port:", comment: "Connect field label: SFTP port.")
-    }
-
-    static var auth: String {
-        String(localized: "Auth:", comment: "Connect field label: SFTP authentication method.")
-    }
-
-    static var keyFile: String {
-        String(localized: "Key file:", comment: "Connect field label: SFTP key-file path.")
-    }
-
-    static var saveAs: String {
-        String(localized: "Save as:", comment: "Connect field label: name to save under.")
-    }
-
-    /// Auth-mode label, and the SFTP password field's placeholder — both the bare word "Password".
-    static var authPassword: String {
-        String(
-            localized: "Password",
-            comment: "Password field label and placeholder in the Connect dialog."
-        )
-    }
-
-    static var privateKey: String {
-        String(
-            localized: "Private Key",
-            comment: "SFTP auth-mode label: authenticate with a private key file."
-        )
-    }
-
-    static var smbUserHint: String {
-        String(
-            localized: "guest (leave blank)",
-            comment: "Placeholder in the SMB user field: a blank user connects as guest."
-        )
-    }
-
-    static var smbPasswordHint: String {
-        String(
-            localized: "Password (blank for guest)",
-            comment: "Placeholder in the SMB password field: a blank password connects as guest."
-        )
-    }
-
-    static var saveHint: String {
-        String(
-            localized: "Optional — save in sidebar",
-            comment: "Placeholder in the name field: naming the connection saves it to the sidebar."
-        )
     }
 }
 

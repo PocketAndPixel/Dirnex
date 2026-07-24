@@ -61,33 +61,38 @@ public extension SMBLocation {
     /// Parse a `smb://[user@]host[:port][/share]` URL — the Finder-⌘K form the address field takes
     /// (type or paste) — into editable coordinates, or `nil` when it isn't an SMB URL / is malformed.
     ///
-    /// The username is taken up to the first `@`; the host up to the first `/` (a `:port` suffix on
-    /// the host is split off only when the tail is all digits, so a hostname is never mangled); the
-    /// share is the *first* path component after the host, so a deeper `…/share/sub/dir` still mounts
-    /// the share (navigating into `sub/dir` happens after the mount, an app concern). A `DOMAIN;user`
-    /// prefix and a bracketed IPv6 literal aren't split out yet — realistic LAN shares use a
-    /// hostname/IP and a plain user, so those are later refinements, not correctness holes here.
+    /// The share is the *first* path component after the host, so a deeper `…/share/sub/dir` still
+    /// mounts the share (navigating into `sub/dir` happens after the mount, an app concern). Within
+    /// the authority that precedes it, the username is taken up to the **last** `@` — a host never
+    /// contains one, but an email login (a Microsoft-account Windows share) does, so splitting at the
+    /// first `@` would fold `user@domain` into the host. The host runs to any `:port` suffix, split
+    /// off only when the tail is all digits, so a hostname is never mangled. A `DOMAIN;user` prefix
+    /// and a bracketed IPv6 literal aren't split out yet — realistic LAN shares use a hostname/IP and
+    /// a plain or email user, so those are later refinements, not correctness holes here.
     init?(url: String) {
         guard url.hasPrefix(SMBLocation.scheme) else { return nil }
-        var body = Substring(url.dropFirst(SMBLocation.scheme.count))
+        let body = Substring(url.dropFirst(SMBLocation.scheme.count))
 
-        var username: String?
-        if let atIndex = body.firstIndex(of: "@") {
-            username = String(body[..<atIndex])
-            body = body[body.index(after: atIndex)...]
-        }
-
-        // Everything up to the first slash is host[:port]; the remainder is the share path.
-        let hostPort: Substring
+        // Everything up to the first slash is the authority (user@host[:port]); the rest is the path.
+        let authority: Substring
         var share: String?
         if let slashIndex = body.firstIndex(of: "/") {
-            hostPort = body[..<slashIndex]
+            authority = body[..<slashIndex]
             let rest = body[body.index(after: slashIndex)...]
             // Only the first path component is the share; deeper subpaths are navigated post-mount.
             let firstComponent = rest.prefix { $0 != "/" }
             share = firstComponent.isEmpty ? nil : String(firstComponent)
         } else {
-            hostPort = body
+            authority = body
+        }
+
+        // Split the username off at the *last* `@`, so an email login keeps its own `@` and only the
+        // host[:port] remains — the host side of an SMB URL never carries an `@`.
+        var username: String?
+        var hostPort = authority
+        if let atIndex = authority.lastIndex(of: "@") {
+            username = String(authority[..<atIndex])
+            hostPort = authority[authority.index(after: atIndex)...]
         }
 
         // Split a trailing `:digits` off the host as the port; leave any other colon in the host.
