@@ -116,8 +116,9 @@ final class ConnectServerPrompt: NSObject {
         buttons.spacing = 8
         buttons.alignment = .centerY
 
+        let (header, subtitle) = ConnectPromptChrome.header()
         let stack = NSStackView(
-            views: [ConnectPromptChrome.header(), form.accessoryView, errorLabel, buttons]
+            views: [header, form.accessoryView, errorLabel, buttons]
         )
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -132,7 +133,15 @@ final class ConnectServerPrompt: NSObject {
             stack.leadingAnchor.constraint(equalTo: content.leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: content.trailingAnchor),
             stack.bottomAnchor.constraint(equalTo: content.bottomAnchor),
-            // Everything spans the (widest) form width, so the error wraps and the buttons right-align.
+            // Everything spans the form width, so the error and buttons align to it. The subtitle
+            // gets its own width (the form width minus the icon it sits beside) so it wraps within
+            // the window instead of running to the right edge while the form sits padded — a direct
+            // width constraint on the label is what makes a wrapping NSTextField actually wrap, the
+            // same trick errorLabel uses.
+            subtitle.widthAnchor.constraint(
+                equalTo: form.accessoryView.widthAnchor,
+                constant: -(ConnectPromptChrome.iconSize + ConnectPromptChrome.headerSpacing)
+            ),
             buttons.widthAnchor.constraint(equalTo: form.accessoryView.widthAnchor),
             errorLabel.widthAnchor.constraint(equalTo: form.accessoryView.widthAnchor)
         ])
@@ -228,14 +237,20 @@ private enum ConnectPromptChrome {
         )
     }
 
+    /// The app icon's side, and the gap between it and the titles — shared with `buildLayout`, which
+    /// derives the subtitle's wrap width from the form width by subtracting the space the icon takes.
+    static let iconSize: CGFloat = 56
+    static let headerSpacing: CGFloat = 12
+
     /// The icon-and-titles row shown above the form, matching the shape `NSAlert` drew for free.
-    static func header() -> NSStackView {
+    /// Returns the subtitle alongside the row so the caller can pin its wrap width to the form.
+    static func header() -> (row: NSStackView, subtitle: NSTextField) {
         let icon = NSImageView(image: NSApp.applicationIconImage)
         icon.imageScaling = .scaleProportionallyUpOrDown
         icon.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            icon.widthAnchor.constraint(equalToConstant: 56),
-            icon.heightAnchor.constraint(equalToConstant: 56)
+            icon.widthAnchor.constraint(equalToConstant: iconSize),
+            icon.heightAnchor.constraint(equalToConstant: iconSize)
         ])
 
         let title = NSTextField(labelWithString: ConnectPromptChrome.title)
@@ -251,8 +266,8 @@ private enum ConnectPromptChrome {
         let header = NSStackView(views: [icon, titles])
         header.orientation = .horizontal
         header.alignment = .top
-        header.spacing = 12
-        return header
+        header.spacing = headerSpacing
+        return (header, subtitle)
     }
 
     static func configure(_ button: NSButton, title: String, key: String) {
