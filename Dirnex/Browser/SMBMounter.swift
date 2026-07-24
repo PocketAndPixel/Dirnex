@@ -172,7 +172,22 @@ final class SMBMounter {
 }
 
 /// A failed SMB mount, mapped from the NetFS/`errno` status into a human-readable reason.
+///
+/// `NetFSMountURLSync` returns a *positive* value for an `errno` and a *negative* value for an
+/// OSStatus (documented in `<NetFS/NetFS.h>`). The negative NetAuth codes below aren't exported by
+/// the NetFS module, so they're spelled out here with their symbolic names, exactly as that header
+/// lists them.
 struct SMBMountError: LocalizedError {
+    /// No share was available to mount — the server was reached and authenticated, but named no
+    /// share (blank Share field). `<NetAuth/NetAuthErrors.h>`.
+    static let kNetAuthErrorNoSharesAvailable: Int32 = -6003
+    /// The server refused a guest / anonymous mount. `<NetAuth/NetAuthErrors.h>`.
+    static let kNetAuthErrorGuestNotSupported: Int32 = -6004
+    /// The NetFS-layer spelling of "no shares available". `<NetFS/NetFS.h>`.
+    static let eNetFSNoSharesAvail: Int32 = -5998
+    /// The mount was cancelled (Carbon `userCanceledErr`), the negative-OSStatus twin of `ECANCELED`.
+    static let userCanceledErr: Int32 = -128
+
     let status: Int32
     let host: String
 
@@ -185,6 +200,25 @@ struct SMBMountError: LocalizedError {
                 """,
                 comment: "SMB mount failure: the server rejected the credentials."
             )
+        // A reachable, authenticated server that offered no share to mount comes back as a *negative*
+        // OSStatus (from <NetFS/NetFS.h> and <NetAuth/NetAuthErrors.h>), not an errno — almost always
+        // because the Share field was left blank, so there was nothing to open. A bare `smb://host`
+        // can't pick a share without an interactive prompt, and Dirnex suppresses that prompt (so a
+        // bad password fails fast instead of blocking), so there's no fallback share picker here.
+        case Self.kNetAuthErrorNoSharesAvailable, // -6003
+             Self.eNetFSNoSharesAvail: // -5998
+            return String(
+                localized: """
+                Connected to “\(host)”, but couldn’t find a shared folder to open. Enter the name of a \
+                folder shared on that computer in the Share field.
+                """,
+                comment: "SMB mount failure: authenticated but no share to mount; %@ is the host name."
+            )
+        case Self.kNetAuthErrorGuestNotSupported: // -6004
+            return String(
+                localized: "“\(host)” doesn’t allow guest access. Enter a username and password.",
+                comment: "SMB mount failure: the server refused a guest mount; %@ is the host name."
+            )
         case Int32(ENOENT), Int32(ENODEV):
             return String(
                 localized: "The share wasn’t found on “\(host)”. Check the share name.",
@@ -195,7 +229,7 @@ struct SMBMountError: LocalizedError {
                 localized: "Couldn’t reach “\(host)”. Check the address and that the server is online.",
                 comment: "SMB mount failure: the host did not answer; %@ is the host name."
             )
-        case Int32(ECANCELED):
+        case Int32(ECANCELED), Self.userCanceledErr: // -128
             return String(
                 localized: "The connection was cancelled.",
                 comment: "SMB mount failure: the user cancelled the mount."
