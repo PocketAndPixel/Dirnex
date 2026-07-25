@@ -2256,7 +2256,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "7 Fermetures Éclair"
+            "value" : "7-Zip"
           }
         },
         "ru" : {
@@ -2348,7 +2348,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fermeture Éclair"
+            "value" : "Zip"
           }
         },
         "ru" : {
