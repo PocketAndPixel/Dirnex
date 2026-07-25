@@ -218,6 +218,22 @@ extension PanelViewController {
                 localized: "Login failed. Check the user name and password.",
                 comment: "FTP connect failure detail: authentication was rejected."
             )
+        case .tlsRequired:
+            return String(
+                localized: """
+                This server requires an encrypted connection. Choose FTPS (explicit or implicit) \
+                instead of plain FTP.
+                """,
+                comment: "FTP connect failure detail: the server requires TLS and refused a plain login."
+            )
+        case .tlsNotAvailable:
+            return String(
+                localized: """
+                This server doesn’t offer encryption on this port. Choose plain FTP, or connect on \
+                the port that provides FTPS.
+                """,
+                comment: "FTP connect failure detail: explicit FTPS asked for but no TLS on this port."
+            )
         case .certificateUntrusted:
             return String(
                 localized: "The server’s certificate couldn’t be verified.",

@@ -42,6 +42,31 @@ struct FTPTransportErrorTests {
         #expect(error == .loginDenied)
     }
 
+    /// Observed against port 2121, which speaks only plain FTP: an explicit-FTPS connection fails
+    /// its required upgrade with `CURLE_USE_SSL_FAILED`, distinct from an untrusted certificate
+    /// because no certificate was ever exchanged.
+    @Test("explicit FTPS against a plain-only port is tlsNotAvailable (exit 64, observed)")
+    func requiredTLSNotOfferedIsTLSNotAvailable() {
+        let error = FTPTransportError.classify(
+            exitCode: 64, stderr: "curl: (64) Requested SSL level failed"
+        )
+        #expect(error == .tlsNotAvailable)
+    }
+
+    /// Observed against port 2122, which requires `AUTH TLS`: a plain-FTP login is refused with
+    /// reply **503** (bad command sequence) before the password is weighed. The same exit code
+    /// with 530 is a genuine wrong-credential failure, so the reply code is what splits them —
+    /// telling the user to enable TLS instead of to re-check a password that may be correct.
+    @Test("a plain login to a TLS-only server is tlsRequired, not loginDenied (exit 67 + 503)")
+    func plainLoginToTLSOnlyServerIsTLSRequired() {
+        #expect(FTPTransportError.classify(
+            exitCode: 67, stderr: "curl: (67) Access denied: 503"
+        ) == .tlsRequired)
+        #expect(FTPTransportError.classify(
+            exitCode: 67, stderr: "curl: (67) Access denied: 530"
+        ) == .loginDenied)
+    }
+
     /// Observed by attempting `RMD` on a directory that still had files in it.
     @Test("a failed quote command is read through its FTP reply code (exit 21, observed)")
     func failedQuoteCommandUsesReplyCode() {

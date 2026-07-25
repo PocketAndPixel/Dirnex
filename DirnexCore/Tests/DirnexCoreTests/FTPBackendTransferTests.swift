@@ -163,7 +163,9 @@ struct FTPBackendTransferTests {
             (.loginDenied, .permissionDenied(path("/pub"))),
             (.timedOut, .io(path: path("/pub"), code: EIO)),
             (.unreachable, .io(path: path("/pub"), code: EIO)),
-            (.certificateChanged, .io(path: path("/pub"), code: EIO))
+            (.certificateChanged, .io(path: path("/pub"), code: EIO)),
+            (.tlsNotAvailable, .io(path: path("/pub"), code: EIO)),
+            (.tlsRequired, .io(path: path("/pub"), code: EIO))
         ]
         for (transportError, expected) in cases {
             let transport = FakeFTPTransport()

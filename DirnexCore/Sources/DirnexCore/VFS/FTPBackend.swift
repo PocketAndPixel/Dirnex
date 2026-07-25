@@ -234,10 +234,12 @@ public struct FTPBackend: VFSBackend {
                 throw VFSError.notFound(path)
             case .permissionDenied, .loginDenied:
                 throw VFSError.permissionDenied(path)
-            // The certificate cases surface on the connect probe, where the app's trust flow can
-            // act on them; reaching one down here means a server changed key mid-session, which is
-            // an I/O failure from this layer's point of view.
-            case .certificateUntrusted, .certificateChanged, .unreachable, .timedOut, .failure:
+            // The certificate and TLS-mode cases surface on the connect probe, where the app can
+            // act on them (trust the cert, or tell the user to change the security mode); reaching
+            // one down here means a server changed behaviour mid-session, which is an I/O failure
+            // from this layer's point of view.
+            case .certificateUntrusted, .certificateChanged, .unreachable, .timedOut,
+                 .tlsNotAvailable, .tlsRequired, .failure:
                 throw VFSError.io(path: path, code: EIO)
             }
         } catch let error as FTPQuoteCommand.UnsafePath {

@@ -96,6 +96,16 @@ public enum FTPTransportError: Error, Sendable, Equatable {
     case unreachable
     /// The operation exceeded its time budget.
     case timedOut
+    /// The connection asked for a TLS level the server does not offer — explicit FTPS against a
+    /// port that speaks only plain FTP. `curl`'s `CURLE_USE_SSL_FAILED` (exit 64). Distinct from
+    /// ``certificateUntrusted``: there is no certificate to weigh, because the upgrade never
+    /// happened, so the fix is to change the security mode or the port, not to trust anything.
+    case tlsNotAvailable
+    /// The server requires TLS before it will accept a login, and the connection was plain FTP —
+    /// so the login is refused (exit 67) with reply **503** ("bad sequence of commands") before
+    /// the password is ever weighed. Distinct from ``loginDenied``: the credentials may be
+    /// perfect; the fix is to switch to FTPS, not to re-check the user name and password.
+    case tlsRequired
     /// Anything else, carrying `curl`'s own text verbatim.
     ///
     /// **Empty when there was nothing to say**, deliberately — this is the tool's words, not ours,
@@ -112,7 +122,15 @@ public enum FTPTransportError: Error, Sendable, Equatable {
         case 28: return .timedOut
         case 60, 35, 58, 59, 77, 83: return .certificateUntrusted
         case 90, 91: return .certificateChanged
-        case 67: return .loginDenied
+        // 64 is `CURLE_USE_SSL_FAILED` — a required TLS upgrade the server would not do, raised
+        // when explicit FTPS meets a plain-only port (observed against port 2121, 2026-07-25).
+        case 64: return .tlsNotAvailable
+        // 67 is a login denial. A 503 reply on it is not a bad credential but a server that
+        // demands AUTH TLS first, refusing a plain-FTP login before the password matters (observed
+        // against a TLS-only port). Every other 67 — 530 and the rest — is a genuine login failure.
+        // `ftpReplyCode` narrows to 4xx/5xx and takes the last match, so the server's address in
+        // the message can't be misread as the reply.
+        case 67: return ftpReplyCode(in: stderr) == 503 ? .tlsRequired : .loginDenied
         case 78: return .notFound
         // 9 is `CURLE_FTP_ACCESS_DENIED` — "couldn't cd into the directory", raised both for a
         // directory that isn't there and for one the account may not enter. 21 is a failed `-Q`
