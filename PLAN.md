@@ -560,8 +560,10 @@ whenever it is picked back up.
   Settings and matched from French regional tags such as `fr-CA`. Its complete `Localizable`
   column (786 entries, including every plural variant) and both App Shortcut phrases are present in
   the built `fr.lproj`. The function bar and command-category captions received a manual UI pass so
-  they use correct whole verbs and nouns. `LocalizationCoverageTests` now checks French alongside
-  Russian; the app bundle test confirms it is compiled and all registry data is translated.
+  they use correct whole verbs and nouns. The Synchronize sheet keeps the three complete direction
+  labels on their own row, sizing each segment to its localized caption so no language is cut off.
+  `LocalizationCoverageTests` now checks French alongside Russian; the app bundle test confirms it
+  is compiled and all registry data is translated.
 
 **Standing rule for the function bar, in every language.** The seven F-key captions are the app's
 primary buttons and are on screen permanently, so they carry the first impression of the whole app:
