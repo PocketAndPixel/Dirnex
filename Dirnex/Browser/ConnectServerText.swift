@@ -75,6 +75,15 @@ enum ConnectText {
         String(localized: "User:", comment: "Connect field label: user name.")
     }
 
+    /// Placeholder in the SFTP and FTP user fields — a neutral hint, deliberately not the machine's
+    /// own login name (which would put a real person's account name in the field before they typed).
+    static var userHint: String {
+        String(
+            localized: "username",
+            comment: "Placeholder in the Connect dialog's user field (SFTP and FTP)."
+        )
+    }
+
     static var password: String {
         String(localized: "Password:", comment: "Connect field label: password.")
     }
@@ -95,11 +104,20 @@ enum ConnectText {
         String(localized: "Save as:", comment: "Connect field label: name to save under.")
     }
 
-    /// Auth-mode label, and the SFTP password field's placeholder — both the bare word "Password".
+    /// The SFTP auth-mode label beside the switch — capitalized to parallel "Private Key". The
+    /// password *field* uses the lowercase `passwordHint` placeholder instead (see `userHint`).
     static var authPassword: String {
         String(
             localized: "Password",
-            comment: "Password field label and placeholder in the Connect dialog."
+            comment: "SFTP auth-mode label beside the switch, paired with Private Key."
+        )
+    }
+
+    /// Placeholder in the SFTP and FTP password fields — lowercase, matching `userHint`.
+    static var passwordHint: String {
+        String(
+            localized: "password",
+            comment: "Placeholder in the Connect dialog's password field (SFTP and FTP)."
         )
     }
 
@@ -119,7 +137,7 @@ enum ConnectText {
 
     static var smbPasswordHint: String {
         String(
-            localized: "Password (blank for guest)",
+            localized: "password (blank for guest)",
             comment: "Placeholder in the SMB password field: a blank password connects as guest."
         )
     }

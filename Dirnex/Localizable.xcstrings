@@ -6510,23 +6510,6 @@
         }
       }
     },
-    "Password (blank for guest)": {
-      "comment": "Placeholder in the SMB password field: a blank password connects as guest.",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Password (blank for guest)"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Пароль (пусто для гостя)"
-          }
-        }
-      }
-    },
     "Password:": {
       "comment": "Connect field label: password.",
       "localizations": {
@@ -13023,6 +13006,40 @@
         }
       }
     },
+    "password": {
+      "comment": "Placeholder in the Connect dialog's password field (SFTP and FTP).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "password"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "пароль"
+          }
+        }
+      }
+    },
+    "password (blank for guest)": {
+      "comment": "Placeholder in the SMB password field: a blank password connects as guest.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "password (blank for guest)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "пароль (пусто для гостя)"
+          }
+        }
+      }
+    },
     "replacement": {
       "comment": "Multi-rename replace field placeholder.",
       "localizations": {
@@ -13981,6 +13998,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "новая папка"
+          }
+        }
+      }
+    },
+    "username": {
+      "comment": "Placeholder in the Connect dialog's user field (SFTP and FTP).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "username"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "имя пользователя"
           }
         }
       }

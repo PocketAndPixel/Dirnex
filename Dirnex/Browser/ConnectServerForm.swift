@@ -18,25 +18,25 @@ final class ConnectServerForm: NSObject {
     /// The field the dialog should focus first, per the initially-selected protocol.
     private(set) var initialFirstResponder: NSView
 
-    // Protocol picker.
-    private let protocolControl: NSSegmentedControl
+    // Protocol picker — a dropdown listing SMB, SFTP, FTP in that order.
+    private let protocolControl = NSPopUpButton(frame: .zero, pullsDown: false)
 
     // SFTP fields.
     private let sftpHost = ConnectFormFactory.textField(placeholder: "example.com")
     private let sftpPort = ConnectFormFactory.textField(placeholder: "22")
-    private let sftpUser = ConnectFormFactory.textField(placeholder: NSUserName())
+    private let sftpUser = ConnectFormFactory.textField(placeholder: ConnectText.userHint)
     private let keyFile = ConnectFormFactory.textField(placeholder: "~/.ssh/id_ed25519")
-    private let sftpSecret = ConnectFormFactory.secureField(placeholder: ConnectText.authPassword)
+    private let sftpSecret = ConnectFormFactory.secureField(placeholder: ConnectText.passwordHint)
 
-    // SFTP auth toggle: a Tab-reachable switch flanked by its two mode labels. Off = private key
-    // (the default), on = password; the active label is emphasized and the inactive one dimmed.
+    // SFTP auth toggle: a Tab-reachable switch flanked by its two mode labels. Off = password
+    // (the default), on = private key; the active label is emphasized and the inactive one dimmed.
     private let authSwitch = KeyNavigableSwitch()
     private let authKeyLabel = ConnectFormFactory.label(ConnectText.privateKey)
     private let authPasswordLabel = ConnectFormFactory.label(ConnectText.authPassword)
     private lazy var authControlView = ConnectFormFactory.authToggle(
-        keyLabel: authKeyLabel,
+        passwordLabel: authPasswordLabel,
         toggle: authSwitch,
-        passwordLabel: authPasswordLabel
+        keyLabel: authKeyLabel
     )
 
     // Shared.
@@ -54,13 +54,6 @@ final class ConnectServerForm: NSObject {
     private let smb = ConnectServerSMBFields()
 
     init(prefill: ServerConnection?) {
-        // SFTP first (the secure default and the most-used), then FTP, then SMB.
-        protocolControl = NSSegmentedControl(
-            labels: ["SFTP", "FTP", "SMB"],
-            trackingMode: .selectOne,
-            target: nil,
-            action: nil
-        )
         let grid = NSGridView(views: [[
             ConnectFormFactory.label(ConnectText.proto), protocolControl
         ]])
@@ -106,7 +99,10 @@ final class ConnectServerForm: NSObject {
     }
 
     private func wireControls() {
-        protocolControl.selectedSegment = 0
+        // SMB, SFTP, FTP — the dropdown's order — but SFTP stays the initial selection: the secure
+        // default and the most-used.
+        protocolControl.addItems(withTitles: ["SMB", "SFTP", "FTP"])
+        protocolControl.selectItem(at: Protocols.sftp.rawValue)
         protocolControl.target = self
         protocolControl.action = #selector(protocolChanged)
 
@@ -115,7 +111,6 @@ final class ConnectServerForm: NSObject {
         authSwitch.action = #selector(authChanged)
 
         sftpPort.stringValue = String(SFTPLocation.defaultPort)
-        sftpUser.stringValue = NSUserName()
         if let known = ConnectFormFactory.defaultIdentityFile() { keyFile.stringValue = known }
     }
 
@@ -172,23 +167,23 @@ final class ConnectServerForm: NSObject {
 
     // MARK: - Toggles & sync
 
-    /// Which protocol the picker has selected. Named rather than compared by index, so adding a
-    /// third one could not silently re-point `isSMB` at FTP — which is exactly what it would have
-    /// done, since SMB moved from segment 1 to segment 2.
+    /// Which protocol the picker has selected. Named rather than compared by index, so re-ordering
+    /// the dropdown can't silently re-point one predicate at another protocol. The raw values are the
+    /// dropdown's item order: SMB, SFTP, FTP.
     private enum Protocols: Int {
-        case sftp = 0
-        case ftp = 1
-        case smb = 2
+        case smb = 0
+        case sftp = 1
+        case ftp = 2
     }
 
     private var selectedProtocol: Protocols {
-        Protocols(rawValue: protocolControl.selectedSegment) ?? .sftp
+        Protocols(rawValue: protocolControl.indexOfSelectedItem) ?? .sftp
     }
 
     private var isSMB: Bool { selectedProtocol == .smb }
     private var isFTP: Bool { selectedProtocol == .ftp }
-    /// Whether SFTP key auth is selected (switch off); password auth is the on state.
-    private var usingKey: Bool { authSwitch.state == .off }
+    /// Whether SFTP key auth is selected (switch on); password auth is the default off state.
+    private var usingKey: Bool { authSwitch.state == .on }
 
     @objc private func protocolChanged() {
         updateVisibility()
@@ -239,23 +234,23 @@ final class ConnectServerForm: NSObject {
         saveName.stringValue = prefill.name
         switch prefill.endpoint {
         case let .sftp(location, authentication):
-            protocolControl.selectedSegment = Protocols.sftp.rawValue
+            protocolControl.selectItem(at: Protocols.sftp.rawValue)
             sftpHost.stringValue = location.host
             sftpPort.stringValue = String(location.port)
             sftpUser.stringValue = location.username
             switch authentication {
             case let .key(identityFile):
-                authSwitch.state = .off
+                authSwitch.state = .on
                 keyFile.stringValue = identityFile
             case .password:
-                authSwitch.state = .on
+                authSwitch.state = .off
                 sftpSecret.stringValue = SFTPKeychain.password(for: location) ?? ""
             }
         case let .ftp(location, authentication, _):
-            protocolControl.selectedSegment = Protocols.ftp.rawValue
+            protocolControl.selectItem(at: Protocols.ftp.rawValue)
             ftp.apply(location: location, authentication: authentication)
         case let .smb(location):
-            protocolControl.selectedSegment = Protocols.smb.rawValue
+            protocolControl.selectItem(at: Protocols.smb.rawValue)
             smb.apply(location: location)
         }
     }
@@ -375,14 +370,14 @@ enum ConnectFormFactory {
         return field
     }
 
-    /// The auth-method cell: the switch centered between its two mode labels ("Private Key" | switch |
-    /// "Password"), so both choices stay visible the way the old segmented control showed them.
+    /// The auth-method cell: the switch centered between its two mode labels ("Password" | switch |
+    /// "Private Key"), so both choices stay visible. Password is the off/default state, on the left.
     static func authToggle(
-        keyLabel: NSTextField,
+        passwordLabel: NSTextField,
         toggle: NSSwitch,
-        passwordLabel: NSTextField
+        keyLabel: NSTextField
     ) -> NSStackView {
-        let stack = NSStackView(views: [keyLabel, toggle, passwordLabel])
+        let stack = NSStackView(views: [passwordLabel, toggle, keyLabel])
         stack.orientation = .horizontal
         stack.alignment = .centerY
         stack.spacing = 8
