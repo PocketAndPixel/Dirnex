@@ -1,7 +1,7 @@
 import AppKit
 import DirnexCore
 
-/// The FTP half of the Connect-to-Server form: host, port, security mode, user (or anonymous) and
+/// The FTP half of the Connect-to-Server form: security mode, host, port, user (or anonymous) and
 /// password, plus the cleartext note that appears only when plain FTP is chosen.
 ///
 /// It is its own object rather than more stored properties on `ConnectServerForm` because that class
@@ -50,14 +50,18 @@ final class ConnectServerFTPFields {
     // MARK: - Building
 
     func buildRows(in grid: NSGridView) -> [NSView] {
+        // Security leads, directly under the Protocol picker: it sets the port and decides whether the
+        // connection is encrypted, so it comes before the host and credentials it governs.
         rows = [
-            grid.addRow(with: [ConnectFormFactory.label(ConnectText.host), host]),
-            grid.addRow(with: [ConnectFormFactory.label(ConnectText.port), port]),
             grid.addRow(with: [ConnectFormFactory.label(ConnectText.security), securityControl])
         ]
+        // The cleartext note sits right under Security (plain FTP only), warning about the mode just
+        // picked.
         noteRow = grid.addRow(with: [NSGridCell.emptyContentView, securityNote])
-        // Anonymous sits on its own row between Security and the credentials it governs: checking it
-        // hides the User and Password rows outright, since a public login uses neither.
+        rows.append(grid.addRow(with: [ConnectFormFactory.label(ConnectText.host), host]))
+        rows.append(grid.addRow(with: [ConnectFormFactory.label(ConnectText.port), port]))
+        // Anonymous sits on its own row between the connection details and the credentials it governs:
+        // checking it hides the User and Password rows outright, since a public login uses neither.
         rows.append(grid.addRow(with: [NSGridCell.emptyContentView, anonymousCheckbox]))
         credentialRows = [
             grid.addRow(with: [ConnectFormFactory.label(ConnectText.user), user]),

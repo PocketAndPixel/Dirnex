@@ -9,8 +9,9 @@ import DirnexCore
 ///
 /// The three protocols keep independent field sets (rather than sharing host/user) so switching
 /// protocols never carries one's values — or one's defaults, like SFTP's `NSUserName()` — into
-/// another. Only the rows for the selected protocol are shown; the accessory is sized once to the
-/// tallest layout so toggling never resizes the sheet.
+/// another. Only the rows for the selected protocol are shown, and the sheet re-fits its height to
+/// whichever protocol is selected — the width is reserved once (the widest layout) so switching only
+/// ever changes the height, never jogs the sheet sideways.
 @MainActor
 final class ConnectServerForm: NSObject {
     /// The view to hand `NSAlert.accessoryView` — a fixed-size container holding the grid.
@@ -99,10 +100,10 @@ final class ConnectServerForm: NSObject {
     }
 
     private func wireControls() {
-        // SMB, SFTP, FTP — the dropdown's order — but SFTP stays the initial selection: the secure
-        // default and the most-used.
+        // SMB, SFTP, FTP — the dropdown's order, and SMB is the initial selection: connecting to a
+        // share on the local network is the most common reason to open this dialog.
         protocolControl.addItems(withTitles: ["SMB", "SFTP", "FTP"])
-        protocolControl.selectItem(at: Protocols.sftp.rawValue)
+        protocolControl.selectItem(at: Protocols.smb.rawValue)
         protocolControl.target = self
         protocolControl.action = #selector(protocolChanged)
 
@@ -114,55 +115,51 @@ final class ConnectServerForm: NSObject {
         if let known = ConnectFormFactory.defaultIdentityFile() { keyFile.stringValue = known }
     }
 
-    /// Wrap the grid in a fixed-size container sized to the *taller* of the two protocol layouts, so
-    /// switching protocols (which hides/shows rows) never resizes the sheet mid-flight — the slack
-    /// just sits below the shorter layout. The container is pinned to an explicit width/height via
-    /// constraints (not a frame) so it carries a fixed size into the sheet's stack view. The grid is
-    /// pinned to the top-left inside it and keeps its own intrinsic size (so a shorter layout just
-    /// leaves slack below).
+    /// Wrap the grid in a container whose *width* is reserved once — the widest of the three protocol
+    /// layouts — so switching protocols never jogs the sheet sideways, while its *height* follows the
+    /// grid's own (the grid is pinned top and bottom). A shorter protocol therefore makes a shorter
+    /// sheet instead of leaving slack below it: `ConnectServerPrompt` re-fits the sheet on
+    /// `onLayoutChanged`, which the protocol picker fires. The width is pinned via a constraint (not a
+    /// frame) so it carries a fixed size into the sheet's stack view; the grid is pinned to the
+    /// leading edge inside it.
     private func layout(grid: NSGridView) {
-        let reserved = reservedSize(of: grid)
+        let width = reservedWidth(of: grid)
         accessoryView.translatesAutoresizingMaskIntoConstraints = false
         grid.translatesAutoresizingMaskIntoConstraints = false
         accessoryView.addSubview(grid)
         NSLayoutConstraint.activate([
-            accessoryView.widthAnchor.constraint(equalToConstant: reserved.width),
-            accessoryView.heightAnchor.constraint(equalToConstant: reserved.height),
+            accessoryView.widthAnchor.constraint(equalToConstant: width),
             grid.topAnchor.constraint(equalTo: accessoryView.topAnchor),
-            grid.leadingAnchor.constraint(equalTo: accessoryView.leadingAnchor)
+            grid.leadingAnchor.constraint(equalTo: accessoryView.leadingAnchor),
+            grid.bottomAnchor.constraint(equalTo: accessoryView.bottomAnchor)
         ])
     }
 
-    /// The size to reserve for the accessory: the larger fitting size across both protocol layouts,
-    /// measured by toggling visibility. The final visibility is restored by `updateVisibility()`.
-    private func reservedSize(of grid: NSGridView) -> CGSize {
-        // SFTP shows its shared rows plus exactly one auth field; the key and password rows are the
-        // same height, so measuring with the key row visible captures the layout's true maximum.
+    /// The width to reserve for the accessory: the widest fitting width across all three protocol
+    /// layouts, measured by toggling visibility. Reserving the max keeps the sheet from jogging
+    /// sideways when the protocol changes; the height is left to follow the selected layout. The final
+    /// visibility is restored by `updateVisibility()`.
+    private func reservedWidth(of grid: NSGridView) -> CGFloat {
         setRows(smb.rows, hidden: true)
         setRows(sftpSharedRows, hidden: false)
         sftpKeyRow.isHidden = false
         sftpPasswordRow.isHidden = true
         grid.layoutSubtreeIfNeeded()
-        let sftpSize = grid.fittingSize
+        let sftpWidth = grid.fittingSize.width
 
         setRows(sftpSharedRows, hidden: true)
         sftpKeyRow.isHidden = true
         setRows(smb.rows, hidden: false)
         grid.layoutSubtreeIfNeeded()
-        let smbSize = grid.fittingSize
+        let smbWidth = grid.fittingSize.width
 
-        // FTP is measured with its cleartext note *visible*, which is its tallest state — so
-        // toggling to plain FTP grows into reserved slack instead of resizing the sheet.
         setRows(smb.rows, hidden: true)
         setRows(ftp.allRows, hidden: false)
         grid.layoutSubtreeIfNeeded()
-        let ftpSize = grid.fittingSize
+        let ftpWidth = grid.fittingSize.width
         setRows(ftp.allRows, hidden: true)
 
-        return CGSize(
-            width: max(sftpSize.width, max(smbSize.width, ftpSize.width)),
-            height: max(sftpSize.height, max(smbSize.height, ftpSize.height))
-        )
+        return max(sftpWidth, max(smbWidth, ftpWidth))
     }
 
     // MARK: - Toggles & sync
