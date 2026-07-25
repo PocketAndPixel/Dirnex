@@ -371,9 +371,11 @@ final class PanelViewController: NSViewController {
         let tabIndex = activeTabIndex
         // Captured before the async load: was this tab showing a *non-re-listable* virtual pane
         // when we left? A `.search` results listing (and a browsed archive) can't be re-entered
-        // from a history trail, so leaving one starts fresh. An SFTP location *is* re-listable, so
-        // it keeps a normal back/forward trail like a local directory.
-        let wasVirtual = panel.path.backend != .local && !panel.path.backend.isSFTP
+        // from a history trail, so leaving one starts fresh. An SFTP or FTP location *is*
+        // re-listable, so it keeps a normal back/forward trail like a local directory.
+        let wasVirtual = panel.path.backend != .local
+            && !panel.path.backend.isSFTP
+            && !panel.path.backend.isFTP
         // Captured alongside it: was this tab showing a *results* listing? Its chip label and the
         // query behind "Save Search…" describe the results, not a place, so arriving at a real
         // directory has to drop them — otherwise clicking Home out of the Trash lands in the home

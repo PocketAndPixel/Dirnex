@@ -1,13 +1,15 @@
 import AppKit
 import DirnexCore
 
-/// Connect-to-Server (PLAN.md §M5 "one place that keeps every saved remote — SFTP and SMB alike").
-/// Prompts for a remote server, connects it, and — when named — saves it to the sidebar's Servers
-/// section. Two protocols share one entry point:
+/// Connect-to-Server (PLAN.md §M5 "one place that keeps every saved remote — SFTP and SMB alike",
+/// extended by §M13 with FTP). Prompts for a remote server, connects it, and — when named — saves it
+/// to the sidebar's Servers section. Three protocols share one entry point:
 ///
 /// - **SFTP** browses through a `VFSBackend`: a throwaway transport probes the connection (resolving
 ///   the remote home doubles as an auth/host test), then the same config is registered on the pane's
 ///   `CompositeBackend` so listings route to it. Password auth feeds `sftp` via `SSH_ASKPASS`.
+/// - **FTP / FTPS** browses through a `VFSBackend` too, over the system `curl`; its connect and its
+///   certificate-trust prompt live in `PanelViewController+ConnectFTP`.
 /// - **SMB** rides the OS mounter: `SMBMounter` mounts the share into `/Volumes/…` and the pane
 ///   navigates onto the resulting local path, so every M2 op works unchanged.
 ///
@@ -44,6 +46,24 @@ extension PanelViewController {
                     location: location,
                     authentication: authentication,
                     password: stored,
+                    saveName: nil,
+                    activityName: server.name
+                ))
+            }
+        case let .ftp(location, authentication, trustedPublicKey):
+            // A named account whose password was never saved (or has been cleared) falls back to the
+            // prefilled sheet rather than failing silently. Anonymous needs no secret at all.
+            if case .password = authentication, FTPKeychain.password(for: location) == nil {
+                editServer(server)
+                return
+            }
+            let storedFTP = FTPKeychain.password(for: location) ?? ""
+            runSidebarConnect(host: location.host) { [self] in
+                await connectFTP(FTPConnectRequest(
+                    location: location,
+                    authentication: authentication,
+                    password: storedFTP,
+                    trustedPublicKey: trustedPublicKey,
                     saveName: nil,
                     activityName: server.name
                 ))
@@ -92,6 +112,15 @@ extension PanelViewController {
                 location: location,
                 authentication: authentication,
                 password: form.password,
+                saveName: form.saveName,
+                activityName: nil
+            ))
+        case let .ftp(location, authentication, trustedPublicKey):
+            return await connectFTP(FTPConnectRequest(
+                location: location,
+                authentication: authentication,
+                password: form.password ?? "",
+                trustedPublicKey: trustedPublicKey,
                 saveName: form.saveName,
                 activityName: nil
             ))

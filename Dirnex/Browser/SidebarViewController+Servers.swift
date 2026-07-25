@@ -26,10 +26,16 @@ extension SidebarViewController {
     }
 
     /// A per-protocol SF Symbol so a saved server reads as remote at a glance: a globe-ish network
-    /// glyph for SFTP, a connected-drive glyph for an SMB share. Template so the source list tints
-    /// it with the row's text color like the other sidebar glyphs.
+    /// glyph for SFTP, a connected-drive glyph for an SMB share, and an up/down transfer glyph for
+    /// FTP — the protocol's own name, and unmistakable against the other two at 14 pt.
+    /// Template so the source list tints it with the row's text color like the other sidebar glyphs.
     private static func serverIcon(for kind: ServerKind) -> NSImage {
-        let symbol = kind == .smb ? "externaldrive.connected.to.line.below" : "network"
+        let symbol: String
+        switch kind {
+        case .smb: symbol = "externaldrive.connected.to.line.below"
+        case .ftp: symbol = "arrow.up.arrow.down.circle"
+        case .sftp: symbol = "network"
+        }
         return templateSymbol(symbol, pointSize: 14, describedAs: String(
             localized: "Server",
             comment: "Accessibility label for a saved-server sidebar row's glyph."
@@ -133,6 +139,8 @@ extension SidebarViewController {
         switch server.endpoint {
         case let .sftp(location, authentication):
             if case .password = authentication { SFTPKeychain.removePassword(for: location) }
+        case let .ftp(location, authentication, _):
+            if case .password = authentication { FTPKeychain.removePassword(for: location) }
         case let .smb(location):
             if location.username != nil { SMBKeychain.removePassword(for: location) }
         }

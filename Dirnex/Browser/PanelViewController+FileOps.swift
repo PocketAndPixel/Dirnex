@@ -341,7 +341,9 @@ extension PanelViewController {
         // re-listable, so it must refresh after an upload/delete/mkdir even without FSEvents). A
         // virtual pane (search results, a browsed archive) has no directory to re-list, so a
         // both-panes refresh after a file operation leaves its snapshot untouched.
-        guard panel.path.backend == .local || panel.path.backend.isSFTP else { return }
+        guard panel.path.backend == .local
+            || panel.path.backend.isSFTP
+            || panel.path.backend.isFTP else { return }
         loadToken += 1
         let token = loadToken
         let path = panel.path

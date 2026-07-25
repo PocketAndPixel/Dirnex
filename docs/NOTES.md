@@ -253,6 +253,15 @@ at build time.
   for free. Anchor the *top* to `safeAreaLayoutGuide`, though — a window with `.fullSizeContentView`
   runs its content under the transparent title bar, and anything pinned to the bare top edge draws
   through the titlebar accessories living up there.
+- **A new VFS backend that is a *place* has to be named at every site that lists the old ones, and
+  the compiler checks none of them.** `PathBarView`'s location chain ends in an `else` that draws the
+  search-results label, so a freshly connected FTP server's path bar read **"Results for /"** — the
+  results phrasing, on a server nobody searched. Four more gates had the identical shape, each
+  spelling `isSFTP` where it meant *"a real remote directory"*: the `wasVirtual` capture in
+  `navigate` (which decides whether back/forward survives), ⌘C validation, the copy-destination
+  guard, and the clipboard guard. All five compiled and all five were wrong; only connecting showed
+  it. When adding a backend, grep for the previous one's predicate and read every hit — an `else`
+  branch is where the omission hides, and its fallback is usually the *most* misleading option.
 - **Right-click menu items must capture their paths at build time** into `representedObject`,
   and entry-vs-`..` must be decided from the clicked row, not a cursor flag — a right-click on a
   marked row leaves that flag stale.
@@ -376,6 +385,13 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   `Справа налево`→`Налево`, 345→190 pt), then re-measure to confirm. Equal (750) compression
   resistance across every arranged view is why it collapsed the *wrong* thing; a segmented control
   has no `lineBreakMode` escape hatch, so it just crushes its cells.
+- **A wrapping `NSTextField` with no width constraint does not wrap — it overruns.** It takes its
+  *intrinsic single-line* width, so the connect sheet's plain-FTP note ran past the sheet's edge in
+  Russian and lost its final period, while the shorter English text happened to fit. This is the
+  third instance of the same family (after the pack sheet's fixed label column and the sync sheet's
+  segmented controls) and the cheapest to prevent: give such a label the same width constraint the
+  fields get, and measure the layout's reserved height with it *visible* so the second line is
+  already accounted for. As with the other two, only the live Russian run showed it.
 - **Resizing a window for a probe: `defaults write "NSWindow Frame <autosave>"` then relaunch.**
   `System Events` needs assistive access that `osascript` does not have (`-1719`), Dirnex's `.sdef`
   exposes no windows (`-1728`), and a synthetic corner drag misses the resize edge. The frame
@@ -533,6 +549,13 @@ SwiftLint enforces `file_length` 500 and `type_body_length` 250, and the big App
 ride right at them. New panel code goes in a `PanelViewController+X.swift` extension;
 `CommandCatalog` and `PathBarView` are near the type-body limit too.
 
+- **When a type is at the ceiling, the next feature is the moment to split by *concept*, not to
+  shave lines.** `ConnectServerForm` held two protocols' fields and sat at `type_body_length`; FTP's
+  went into their own object, and SMB's followed immediately so all three are symmetric — each
+  protocol owning its fields in its own file is what the form always implied. Watch for an index
+  comparison while doing it: the picker read `selectedSegment == 1` for SMB, and inserting FTP at
+  index 1 would have re-pointed `isSMB` at the new protocol with nothing to catch it. A named enum
+  costs three lines and makes that class impossible.
 - **Swift `private`/`fileprivate` do not cross files**, so members a companion file touches must
   widen to internal.
 - **Worse:** a `private` stored `tableView` in a type that also conforms to `NSTableViewDelegate`
@@ -581,6 +604,81 @@ against a fake.
   `keyboard-interactive` hangs ~60 s on a wrong password under askpass (macOS PAM).
 - **Drain both pipes concurrently** or a two-pipe deadlock wedges the process, and bound the wait
   — some appliances hold the SSH channel open after every command and never return.
+
+### curl (FTP and FTPS)
+
+macOS ships **no `ftp`, `tnftp` or `lftp`** — probed, only `/usr/bin/curl` (8.7.1). Every
+`VFSBackend` verb maps onto it, and the mapping was exercised against a live server rather than read
+off a man page.
+
+- **The exit code is the classification — do not scrape stderr.** Every failure that matters has its
+  own documented code, each observed by provoking it: **6/7** unreachable, **28** timed out, **60**
+  certificate not trusted, **67** login denied, **78** file not found, **90** pinned key mismatch,
+  **9** "couldn't cd into the directory", **21** a `-Q` command the server refused. This is the one
+  place FTP is *easier* than SFTP, whose classifier greps English prose and would misread a localized
+  OpenSSH; an exit code says the same thing in every language.
+  - Only **9** and **21** need the reply code out of the message, and the scan must be narrowed to
+    **4xx/5xx** and take the **last** match — `curl`'s text routinely carries the server's address,
+    and `192.168.1.50` yields a three-digit `192` that a first-match scan classifies on.
+  - **FTP's own 550 is ambiguous** — RFC 959 "file unavailable" covers both a missing path and a
+    forbidden one, and servers use it for both. Read it as *not found*: that is what a browse
+    recovers from, and sending the user to check permissions on a path that isn't there wastes their
+    time.
+- **`-C -` resumes in both directions, and `-w` hands back the delta.** Verified byte-exact: a
+  resumed download from a 1 MiB partial of a 3 MiB file reported exactly 2 097 152 and compared
+  identical to the whole file, and `-C -` on an *upload* makes `curl` query the remote `SIZE` itself
+  (no `--append` needed). So `%{size_download}` / `%{size_upload}` are the bytes moved *this run* —
+  unlike the `sftp` path, which reports a final size the backend has to subtract a prior length from.
+- **The credential cannot go in `argv`** (`-u user:pass` is readable by any `ps`) and should not go
+  on disk. `-K -` — a config file on **stdin** — is neither. Escaping there is an injection guard,
+  not formatting: probed, an unescaped newline in a quoted value makes `curl` read the remainder as
+  further *directives* and abort with `'"' is unknown`.
+- **FTP has no quoting at all**, so a `-Q` argument is the rest of the line. A name containing CR or
+  LF is therefore two commands (`DELE a\r\nDELE important.txt`), and there is nothing to escape it
+  *with* — refuse such a path outright. Neither POSIX nor Windows allows these in a name.
+- **Percent-encode a URL path more strictly than `CharacterSet.urlPathAllowed`**, which permits the
+  sub-delimiters: a `;` in a name is read as FTP's `;type=a` URL suffix and a `#` as a fragment, so a
+  legal file name can change *which file* is fetched. Keep only `A-Za-z0-9-._~/` literal.
+- **A listing URL needs its trailing slash** or the server answers with the file of that name instead
+  of a `LIST`.
+- **`LIST` is not standardized and its stamps are unusable for comparison.** Real bytes are Unix
+  `ls -l` (bare names, *no* `.`/`..` rows, symlink targets shown — all three differ from `sftp`'s
+  dialect); IIS emits a DOS form instead. The timestamp is year-less for recent files **and**
+  zone-less, on the *server's* clock, so an FTP mtime is approximate by construction: fine to display
+  and sort by, not fine to compare two files with (`DirectorySync` must not use `.sizeAndDate` on an
+  FTP side). `MLSD` would fix it and **`curl` cannot send it** — only `LIST` and `NLST`. A per-file
+  `-I` does give an exact, zone-anchored `Last-Modified`, so it is a stat-one-item path, never a
+  listing path.
+- **`curl`'s progress meter is a bar, not an accountant**: measured at ~1 update/second, rounded to
+  `k`/`M` (`339k`). Exact counts come from `-w` at the end.
+- **An FTPS data connection can return zero bytes and exit 18 on this `curl`** when TLS 1.3 is
+  negotiated; `--tlsv1.2 --tls-max 1.2` fixes it, on both SSL backends. Apply it as a **retry after
+  exit 18**, not up front — forcing every server to 1.2 is a real downgrade for the ones that do 1.3
+  correctly. It fails in the quiet direction (an empty listing reads as an empty directory), so a
+  smoke test must assert *non-empty* rather than merely "no error".
+
+#### FTPS trust
+
+- **`--cacert` cannot be used to trust a self-signed server.** Handing `curl` the server's own
+  certificate as an anchor still fails the *host-name* check — `certificate subject name
+  'test-server.local' does not match target host name '192.168.1.50'` — because a NAS certificate
+  names itself, not the address the user types. "Add it to the trust store" is simply not an
+  available design.
+- **`--pinnedpubkey sha256//…` is, and it is exact.** Verified on both of this `curl`'s TLS backends:
+  the right pin transfers, a wrong one aborts with exit 90 *before any data moves*. Pass `--insecure`
+  **only** together with a pin — that pairing is trust-on-first-use with SSH's teeth; `--insecure`
+  alone is the blanket "don't verify" that must never ship. Making it an enum rather than two
+  booleans is what keeps a later edit from setting one without the other.
+- **`curl -w '%{certs}'` prints the chain as PEM** plus labelled subject/issuer/dates, so the app
+  needs no `openssl` to show the user what it is being asked to trust.
+- **What `--pinnedpubkey` hashes is the `SubjectPublicKeyInfo`, not the certificate**, so it must be
+  walked out of the DER (skip the optional `[0]` version, then five fields of `TBSCertificate`) and
+  digested as a complete TLV. Display the *certificate's* SHA-256 alongside it — that is the value
+  every other tool shows and the one a user compares against a NAS admin page — but pin the key,
+  which survives a routine certificate renewal the way SSH's key pinning does. Verify the walk
+  against a **real** captured certificate whose two digests were computed by `openssl`, not by the
+  code under test: a drifted walk would pin a key the server never presented, and comparing against
+  your own output could never catch it.
 
 ### The Trash
 

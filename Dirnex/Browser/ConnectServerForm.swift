@@ -1,78 +1,60 @@
 import AppKit
 import DirnexCore
 
-/// The editable body of the Connect-to-Server dialog: a protocol picker (SFTP | SMB) over two
-/// per-protocol field sets, with the SMB set's `smb://user@host/share` address field parsing
-/// live into editable host / share / user fields and back (PLAN.md §M5 "Address entry is
-/// Finder-⌘K-style … parses into editable host / share / user fields shown below it … kept in
-/// sync"). `ConnectServerPrompt` wraps this in an `NSAlert`; this owns the controls, the toggles,
-/// the two-way URL sync, and reading a validated `Form` back out.
+/// The editable body of the Connect-to-Server dialog: a protocol picker (SFTP | FTP | SMB) over
+/// three per-protocol field sets. This owns the picker, the SFTP rows and their auth toggle, the
+/// shared "Save as" row, and the layout; `ConnectServerFTPFields` and `ConnectServerSMBFields` own
+/// theirs, in their own files — three protocols' worth of stored controls does not fit in one type
+/// under SwiftLint's `type_body_length`.
 ///
-/// The two protocols keep independent field sets (rather than sharing host/user) so switching
-/// protocols never carries one's values — or one's defaults, like SFTP's `NSUserName()` — into the
-/// other. Only the rows for the selected protocol are shown; the accessory is sized once to the
-/// taller layout so toggling never resizes the modal.
+/// The three protocols keep independent field sets (rather than sharing host/user) so switching
+/// protocols never carries one's values — or one's defaults, like SFTP's `NSUserName()` — into
+/// another. Only the rows for the selected protocol are shown, and the sheet re-fits its height to
+/// whichever protocol is selected — the width is reserved once (the widest layout) so switching only
+/// ever changes the height, never jogs the sheet sideways.
 @MainActor
-final class ConnectServerForm: NSObject, NSTextFieldDelegate {
+final class ConnectServerForm: NSObject {
     /// The view to hand `NSAlert.accessoryView` — a fixed-size container holding the grid.
     let accessoryView: NSView
     /// The field the dialog should focus first, per the initially-selected protocol.
     private(set) var initialFirstResponder: NSView
 
-    // Protocol picker.
-    private let protocolControl: NSSegmentedControl
-
-    // SMB fields.
-    private let address = ConnectFormFactory.textField(placeholder: "smb://host/share")
-    private let smbHost = ConnectFormFactory.textField(placeholder: "nas.local")
-    private let smbShare = ConnectFormFactory.textField(placeholder: "Media")
-    private let smbUser = ConnectFormFactory.textField(placeholder: ConnectText.smbUserHint)
-    private let smbPassword = ConnectFormFactory.secureField(
-        placeholder: ConnectText.smbPasswordHint
-    )
+    // Protocol picker — a dropdown listing SMB, SFTP, FTP in that order.
+    private let protocolControl = NSPopUpButton(frame: .zero, pullsDown: false)
 
     // SFTP fields.
     private let sftpHost = ConnectFormFactory.textField(placeholder: "example.com")
     private let sftpPort = ConnectFormFactory.textField(placeholder: "22")
-    private let sftpUser = ConnectFormFactory.textField(placeholder: NSUserName())
+    private let sftpUser = ConnectFormFactory.textField(placeholder: ConnectText.userHint)
     private let keyFile = ConnectFormFactory.textField(placeholder: "~/.ssh/id_ed25519")
-    private let sftpSecret = ConnectFormFactory.secureField(placeholder: ConnectText.authPassword)
+    private let sftpSecret = ConnectFormFactory.secureField(placeholder: ConnectText.passwordHint)
 
-    // SFTP auth toggle: a Tab-reachable switch flanked by its two mode labels. Off = private key
-    // (the default), on = password; the active label is emphasized and the inactive one dimmed.
+    // SFTP auth toggle: a Tab-reachable switch flanked by its two mode labels. Off = password
+    // (the default), on = private key; the active label is emphasized and the inactive one dimmed.
     private let authSwitch = KeyNavigableSwitch()
     private let authKeyLabel = ConnectFormFactory.label(ConnectText.privateKey)
     private let authPasswordLabel = ConnectFormFactory.label(ConnectText.authPassword)
     private lazy var authControlView = ConnectFormFactory.authToggle(
-        keyLabel: authKeyLabel,
+        passwordLabel: authPasswordLabel,
         toggle: authSwitch,
-        passwordLabel: authPasswordLabel
+        keyLabel: authKeyLabel
     )
 
     // Shared.
     private let saveName = ConnectFormFactory.textField(placeholder: ConnectText.saveHint)
 
     // Rows toggled per protocol / auth method.
-    private var smbRows: [NSGridRow] = []
     /// The SFTP rows shown regardless of auth method (host / port / user / the auth toggle).
     private var sftpSharedRows: [NSGridRow] = []
     /// The two auth-dependent SFTP rows; exactly one shows, matching the selected method.
     private var sftpKeyRow: NSGridRow!
     private var sftpPasswordRow: NSGridRow!
 
-    /// The SMB port isn't a visible field — it rides the address URL (default 445 elided). Parsed
-    /// out of the URL and folded back in when rebuilding it, so a non-default port round-trips.
-    private var smbPort = SMBLocation.defaultPort
-    /// Guards the two-way sync from re-entrancy while it writes the paired field.
-    private var isSyncing = false
+    /// The FTP and SMB field sets, each in its own object and its own file (see the type comment).
+    private let ftp = ConnectServerFTPFields()
+    private let smb = ConnectServerSMBFields()
 
     init(prefill: ServerConnection?) {
-        protocolControl = NSSegmentedControl(
-            labels: ["SFTP", "SMB"],
-            trackingMode: .selectOne,
-            target: nil,
-            action: nil
-        )
         let grid = NSGridView(views: [[
             ConnectFormFactory.label(ConnectText.proto), protocolControl
         ]])
@@ -90,13 +72,7 @@ final class ConnectServerForm: NSObject, NSTextFieldDelegate {
     // MARK: - Building
 
     private func buildRows(in grid: NSGridView) {
-        smbRows = [
-            grid.addRow(with: [ConnectFormFactory.label(ConnectText.address), address]),
-            grid.addRow(with: [ConnectFormFactory.label(ConnectText.host), smbHost]),
-            grid.addRow(with: [ConnectFormFactory.label(ConnectText.share), smbShare]),
-            grid.addRow(with: [ConnectFormFactory.label(ConnectText.user), smbUser]),
-            grid.addRow(with: [ConnectFormFactory.label(ConnectText.password), smbPassword])
-        ]
+        let smbControls = smb.buildRows(in: grid)
         sftpSharedRows = [
             grid.addRow(with: [ConnectFormFactory.label(ConnectText.host), sftpHost]),
             grid.addRow(with: [ConnectFormFactory.label(ConnectText.port), sftpPort]),
@@ -109,21 +85,25 @@ final class ConnectServerForm: NSObject, NSTextFieldDelegate {
         sftpPasswordRow = grid.addRow(
             with: [ConnectFormFactory.label(ConnectText.password), sftpSecret]
         )
+        let ftpControls = ftp.buildRows(in: grid)
+        ftp.onLayoutChanged = { [weak self] in self?.onLayoutChanged?() }
         grid.addRow(with: [ConnectFormFactory.label(ConnectText.saveAs), saveName])
 
         grid.column(at: 0).xPlacement = .trailing
         grid.rowAlignment = .firstBaseline
         let controls: [NSView] = [
-            protocolControl, address, smbHost, smbShare, smbUser, smbPassword,
-            sftpHost, sftpPort, sftpUser, keyFile, sftpSecret, saveName
-        ]
+            protocolControl, sftpHost, sftpPort, sftpUser, keyFile, sftpSecret, saveName
+        ] + ftpControls + smbControls
         for control in controls {
             control.widthAnchor.constraint(equalToConstant: 280).isActive = true
         }
     }
 
     private func wireControls() {
-        protocolControl.selectedSegment = 0
+        // SMB, SFTP, FTP — the dropdown's order, and SMB is the initial selection: connecting to a
+        // share on the local network is the most common reason to open this dialog.
+        protocolControl.addItems(withTitles: ["SMB", "SFTP", "FTP"])
+        protocolControl.selectItem(at: Protocols.smb.rawValue)
         protocolControl.target = self
         protocolControl.action = #selector(protocolChanged)
 
@@ -132,64 +112,79 @@ final class ConnectServerForm: NSObject, NSTextFieldDelegate {
         authSwitch.action = #selector(authChanged)
 
         sftpPort.stringValue = String(SFTPLocation.defaultPort)
-        sftpUser.stringValue = NSUserName()
         if let known = ConnectFormFactory.defaultIdentityFile() { keyFile.stringValue = known }
-
-        // Only the SMB set needs live field⇄URL syncing.
-        for field in [address, smbHost, smbShare, smbUser] { field.delegate = self }
     }
 
-    /// Wrap the grid in a fixed-size container sized to the *taller* of the two protocol layouts, so
-    /// switching protocols (which hides/shows rows) never resizes the sheet mid-flight — the slack
-    /// just sits below the shorter layout. The container is pinned to an explicit width/height via
-    /// constraints (not a frame) so it carries a fixed size into the sheet's stack view. The grid is
-    /// pinned to the top-left inside it and keeps its own intrinsic size (so a shorter layout just
-    /// leaves slack below).
+    /// Wrap the grid in a container whose *width* is reserved once — the widest of the three protocol
+    /// layouts — so switching protocols never jogs the sheet sideways, while its *height* follows the
+    /// grid's own (the grid is pinned top and bottom). A shorter protocol therefore makes a shorter
+    /// sheet instead of leaving slack below it: `ConnectServerPrompt` re-fits the sheet on
+    /// `onLayoutChanged`, which the protocol picker fires. The width is pinned via a constraint (not a
+    /// frame) so it carries a fixed size into the sheet's stack view; the grid is pinned to the
+    /// leading edge inside it.
     private func layout(grid: NSGridView) {
-        let reserved = reservedSize(of: grid)
+        let width = reservedWidth(of: grid)
         accessoryView.translatesAutoresizingMaskIntoConstraints = false
         grid.translatesAutoresizingMaskIntoConstraints = false
         accessoryView.addSubview(grid)
         NSLayoutConstraint.activate([
-            accessoryView.widthAnchor.constraint(equalToConstant: reserved.width),
-            accessoryView.heightAnchor.constraint(equalToConstant: reserved.height),
+            accessoryView.widthAnchor.constraint(equalToConstant: width),
             grid.topAnchor.constraint(equalTo: accessoryView.topAnchor),
-            grid.leadingAnchor.constraint(equalTo: accessoryView.leadingAnchor)
+            grid.leadingAnchor.constraint(equalTo: accessoryView.leadingAnchor),
+            grid.bottomAnchor.constraint(equalTo: accessoryView.bottomAnchor)
         ])
     }
 
-    /// The size to reserve for the accessory: the larger fitting size across both protocol layouts,
-    /// measured by toggling visibility. The final visibility is restored by `updateVisibility()`.
-    private func reservedSize(of grid: NSGridView) -> CGSize {
-        // SFTP shows its shared rows plus exactly one auth field; the key and password rows are the
-        // same height, so measuring with the key row visible captures the layout's true maximum.
-        setRows(smbRows, hidden: true)
+    /// The width to reserve for the accessory: the widest fitting width across all three protocol
+    /// layouts, measured by toggling visibility. Reserving the max keeps the sheet from jogging
+    /// sideways when the protocol changes; the height is left to follow the selected layout. The final
+    /// visibility is restored by `updateVisibility()`.
+    private func reservedWidth(of grid: NSGridView) -> CGFloat {
+        setRows(smb.rows, hidden: true)
         setRows(sftpSharedRows, hidden: false)
         sftpKeyRow.isHidden = false
         sftpPasswordRow.isHidden = true
         grid.layoutSubtreeIfNeeded()
-        let sftpSize = grid.fittingSize
+        let sftpWidth = grid.fittingSize.width
 
         setRows(sftpSharedRows, hidden: true)
         sftpKeyRow.isHidden = true
-        setRows(smbRows, hidden: false)
+        setRows(smb.rows, hidden: false)
         grid.layoutSubtreeIfNeeded()
-        let smbSize = grid.fittingSize
+        let smbWidth = grid.fittingSize.width
 
-        return CGSize(
-            width: max(sftpSize.width, smbSize.width),
-            height: max(sftpSize.height, smbSize.height)
-        )
+        setRows(smb.rows, hidden: true)
+        setRows(ftp.allRows, hidden: false)
+        grid.layoutSubtreeIfNeeded()
+        let ftpWidth = grid.fittingSize.width
+        setRows(ftp.allRows, hidden: true)
+
+        return max(sftpWidth, max(smbWidth, ftpWidth))
     }
 
     // MARK: - Toggles & sync
 
-    private var isSMB: Bool { protocolControl.selectedSegment == 1 }
-    /// Whether SFTP key auth is selected (switch off); password auth is the on state.
-    private var usingKey: Bool { authSwitch.state == .off }
+    /// Which protocol the picker has selected. Named rather than compared by index, so re-ordering
+    /// the dropdown can't silently re-point one predicate at another protocol. The raw values are the
+    /// dropdown's item order: SMB, SFTP, FTP.
+    private enum Protocols: Int {
+        case smb = 0
+        case sftp = 1
+        case ftp = 2
+    }
+
+    private var selectedProtocol: Protocols {
+        Protocols(rawValue: protocolControl.indexOfSelectedItem) ?? .sftp
+    }
+
+    private var isSMB: Bool { selectedProtocol == .smb }
+    private var isFTP: Bool { selectedProtocol == .ftp }
+    /// Whether SFTP key auth is selected (switch on); password auth is the default off state.
+    private var usingKey: Bool { authSwitch.state == .on }
 
     @objc private func protocolChanged() {
         updateVisibility()
+        onLayoutChanged?()
     }
 
     @objc private func authChanged() {
@@ -200,14 +195,23 @@ final class ConnectServerForm: NSObject, NSTextFieldDelegate {
     /// the key-file row for key auth or the password row for password auth (never both). SFTP always
     /// shows the four shared rows plus one auth field, so toggling auth keeps the height fixed.
     private func updateVisibility() {
-        let smb = isSMB
-        setRows(smbRows, hidden: !smb)
-        setRows(sftpSharedRows, hidden: smb)
-        sftpKeyRow.isHidden = smb || !usingKey
-        sftpPasswordRow.isHidden = smb || usingKey
+        let selected = selectedProtocol
+        setRows(smb.rows, hidden: selected != .smb)
+        setRows(sftpSharedRows, hidden: selected != .sftp)
+        sftpKeyRow.isHidden = selected != .sftp || !usingKey
+        sftpPasswordRow.isHidden = selected != .sftp || usingKey
+        ftp.setHidden(selected != .ftp)
         updateAuthEmphasis()
-        initialFirstResponder = smb ? address : sftpHost
+        switch selected {
+        case .smb: initialFirstResponder = smb.firstResponder
+        case .ftp: initialFirstResponder = ftp.firstResponder
+        case .sftp: initialFirstResponder = sftpHost
+        }
     }
+
+    /// Raised when a toggle changes the layout's height, so the sheet can re-fit around it — the
+    /// plain-FTP note appears and disappears with the security picker.
+    var onLayoutChanged: (() -> Void)?
 
     private func setRows(_ rows: [NSGridRow], hidden: Bool) {
         for row in rows { row.isHidden = hidden }
@@ -220,42 +224,6 @@ final class ConnectServerForm: NSObject, NSTextFieldDelegate {
         authPasswordLabel.textColor = usingKey ? .secondaryLabelColor : .labelColor
     }
 
-    func controlTextDidChange(_ notification: Notification) {
-        guard isSMB, !isSyncing else { return }
-        isSyncing = true
-        defer { isSyncing = false }
-        let object = notification.object as AnyObject
-        if object === address {
-            syncFieldsFromURL()
-        } else if object === smbHost || object === smbShare || object === smbUser {
-            syncURLFromFields()
-        }
-    }
-
-    /// Parse the address field into the host / share / user fields. A malformed, mid-typed URL just
-    /// leaves the fields at their last good values rather than clearing them.
-    private func syncFieldsFromURL() {
-        guard let location = SMBLocation(url: address.stringValue) else { return }
-        smbHost.stringValue = location.host
-        smbShare.stringValue = location.share ?? ""
-        smbUser.stringValue = location.username ?? ""
-        smbPort = location.port
-    }
-
-    /// Rebuild the address field from the host / share / user fields (folding the remembered port
-    /// back in). Skipped while the host is empty — there's no URL to form yet.
-    private func syncURLFromFields() {
-        let host = smbHost.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !host.isEmpty else { return }
-        let location = SMBLocation(
-            host: host,
-            share: smbShare.stringValue,
-            username: smbUser.stringValue,
-            port: smbPort
-        )
-        address.stringValue = location.url
-    }
-
     // MARK: - Prefill
 
     private func applyPrefill(_ prefill: ServerConnection?) {
@@ -263,28 +231,24 @@ final class ConnectServerForm: NSObject, NSTextFieldDelegate {
         saveName.stringValue = prefill.name
         switch prefill.endpoint {
         case let .sftp(location, authentication):
-            protocolControl.selectedSegment = 0
+            protocolControl.selectItem(at: Protocols.sftp.rawValue)
             sftpHost.stringValue = location.host
             sftpPort.stringValue = String(location.port)
             sftpUser.stringValue = location.username
             switch authentication {
             case let .key(identityFile):
-                authSwitch.state = .off
+                authSwitch.state = .on
                 keyFile.stringValue = identityFile
             case .password:
-                authSwitch.state = .on
+                authSwitch.state = .off
                 sftpSecret.stringValue = SFTPKeychain.password(for: location) ?? ""
             }
+        case let .ftp(location, authentication, _):
+            protocolControl.selectItem(at: Protocols.ftp.rawValue)
+            ftp.apply(location: location, authentication: authentication)
         case let .smb(location):
-            protocolControl.selectedSegment = 1
-            address.stringValue = location.url
-            smbHost.stringValue = location.host
-            smbShare.stringValue = location.share ?? ""
-            smbUser.stringValue = location.username ?? ""
-            smbPort = location.port
-            if location.username != nil {
-                smbPassword.stringValue = SMBKeychain.password(for: location) ?? ""
-            }
+            protocolControl.selectItem(at: Protocols.smb.rawValue)
+            smb.apply(location: location)
         }
     }
 
@@ -295,27 +259,11 @@ final class ConnectServerForm: NSObject, NSTextFieldDelegate {
     func readForm() -> ConnectServerPrompt.Form? {
         let trimmedName = saveName.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         let name = trimmedName.isEmpty ? nil : trimmedName
-        return isSMB ? readSMBForm(saveName: name) : readSFTPForm(saveName: name)
-    }
-
-    private func readSMBForm(saveName: String?) -> ConnectServerPrompt.Form? {
-        // The fields are authoritative (the address URL may be mid-edit); they stay in sync with it.
-        let host = smbHost.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !host.isEmpty else { return nil }
-        let location = SMBLocation(
-            host: host,
-            share: smbShare.stringValue.trimmingCharacters(in: .whitespacesAndNewlines),
-            username: smbUser.stringValue.trimmingCharacters(in: .whitespacesAndNewlines),
-            port: smbPort
-        )
-        // A guest mount (no username) carries no password; an authenticated one takes the field as
-        // typed (an empty password is legitimate for some servers, so it isn't rejected).
-        let password = location.username == nil ? nil : smbPassword.stringValue
-        return ConnectServerPrompt.Form(
-            endpoint: .smb(location),
-            password: password,
-            saveName: saveName
-        )
+        switch selectedProtocol {
+        case .smb: return smb.readForm(saveName: name)
+        case .ftp: return ftp.readForm(saveName: name)
+        case .sftp: return readSFTPForm(saveName: name)
+        }
     }
 
     private func readSFTPForm(saveName: String?) -> ConnectServerPrompt.Form? {
@@ -349,10 +297,12 @@ final class ConnectServerForm: NSObject, NSTextFieldDelegate {
 }
 
 /// The small view factories and value helpers the form is built from — split out of
-/// `ConnectServerForm` so its class body stays within the length limit while everything stays in
-/// one file. `@MainActor` because it vends AppKit controls.
+/// `ConnectServerForm` so its class body stays within the length limit. `@MainActor` because it
+/// vends AppKit controls. `internal` rather than `private` so `ConnectServerFTPFields`, which lives
+/// in its own file for the same length reason, builds its controls from the same factory —
+/// `private` does not cross files (docs/NOTES.md).
 @MainActor
-private enum ConnectFormFactory {
+enum ConnectFormFactory {
     static func isSafeArgument(_ value: String) -> Bool {
         !value.isEmpty && !value.hasPrefix("-")
     }
@@ -407,14 +357,24 @@ private enum ConnectFormFactory {
         return field
     }
 
-    /// The auth-method cell: the switch centered between its two mode labels ("Private Key" | switch |
-    /// "Password"), so both choices stay visible the way the old segmented control showed them.
+    /// A small secondary-colour explanatory line under a control — used for the plain-FTP cleartext
+    /// note. Wraps, so a longer translation grows downward instead of being clipped.
+    static func note(_ text: String) -> NSTextField {
+        let field = NSTextField(wrappingLabelWithString: text)
+        field.textColor = .secondaryLabelColor
+        field.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        field.translatesAutoresizingMaskIntoConstraints = false
+        return field
+    }
+
+    /// The auth-method cell: the switch centered between its two mode labels ("Password" | switch |
+    /// "Private Key"), so both choices stay visible. Password is the off/default state, on the left.
     static func authToggle(
-        keyLabel: NSTextField,
+        passwordLabel: NSTextField,
         toggle: NSSwitch,
-        passwordLabel: NSTextField
+        keyLabel: NSTextField
     ) -> NSStackView {
-        let stack = NSStackView(views: [keyLabel, toggle, passwordLabel])
+        let stack = NSStackView(views: [passwordLabel, toggle, keyLabel])
         stack.orientation = .horizontal
         stack.alignment = .centerY
         stack.spacing = 8

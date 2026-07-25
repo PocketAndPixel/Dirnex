@@ -1,7 +1,7 @@
 import AppKit
 import DirnexCore
 
-/// The "Connect to Server" dialog: pick a protocol (SFTP | SMB), fill in the coordinates and
+/// The "Connect to Server" dialog: pick a protocol (SFTP | FTP | SMB), fill in the coordinates and
 /// credentials, and optionally name the connection to save it in the sidebar's Servers section.
 ///
 /// Unlike the original `NSAlert` shell, this is a **sheet that stays open until the connection
@@ -16,10 +16,11 @@ import DirnexCore
 final class ConnectServerPrompt: NSObject {
     struct Form {
         /// Where and how to connect, without the secret — exactly what a saved `ServerConnection`
-        /// stores. SFTP carries its location + auth *method*; SMB carries its location.
+        /// stores. SFTP and FTP each carry their location + auth *method*; SMB carries its location.
         let endpoint: ServerEndpoint
-        /// The plaintext secret for this session: an SFTP `.password` password, or an SMB
-        /// authenticated-mount password; `nil` for SFTP key auth or an SMB guest mount.
+        /// The plaintext secret for this session: an SFTP `.password` password, an FTP password, or
+        /// an SMB authenticated-mount password; `nil` for SFTP key auth, FTP anonymous, or an SMB
+        /// guest mount.
         let password: String?
         /// The name under which to save this connection in the sidebar, or `nil` to connect without
         /// saving.
@@ -86,6 +87,9 @@ final class ConnectServerPrompt: NSObject {
         self.onSucceeded = onSucceeded
         super.init()
         buildLayout()
+        // Switching protocols, or revealing the plain-FTP note, changes the form's height; the
+        // accessory reserves the tallest layout, but the sheet still has to re-fit around it.
+        form.onLayoutChanged = { [weak self] in self?.resizeToFit() }
     }
 
     // MARK: - Layout
@@ -217,7 +221,7 @@ private enum ConnectPromptChrome {
 
     static var subtitle: String {
         String(
-            localized: "Browse a remote SFTP account or an SMB share on your network.",
+            localized: "Browse a remote SFTP or FTP account, or an SMB share on your network.",
             comment: "Subtitle of the Connect to Server dialog."
         )
     }

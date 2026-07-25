@@ -31,8 +31,11 @@ extension PanelViewController: NSMenuItemValidation {
             // `copy:` only reaches the pane when the file table is first responder — a name/
             // path field editor intercepts ⌘C for text copy — so this validates the file case.
             // An archive entry has no on-disk URL to place on the pasteboard, and a remote SFTP
-            // entry has no *local* one (F5 copies it out instead), so both are excluded.
-            return !isArchive && !panel.path.backend.isSFTP && !selectionTargets().isEmpty
+            // or FTP entry has no *local* one (F5 copies it out instead), so all are excluded.
+            return !isArchive
+                && !panel.path.backend.isSFTP
+                && !panel.path.backend.isFTP
+                && !selectionTargets().isEmpty
         case #selector(saveCurrentSearch(_:)):
             // Only meaningful on a results pane that still carries the query behind it.
             return canSaveCurrentSearch
