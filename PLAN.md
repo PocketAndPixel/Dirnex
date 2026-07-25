@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M11 shipped · M12 (localization) Passes 1–2 done, Pass 3 parked · M13 (FTP/FTPS) next · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
+Status: M0–M11 shipped · M12 (localization) Passes 1–2 done, Pass 3 parked · M13 (FTP/FTPS) shipped · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
 
 ---
 
@@ -568,7 +568,7 @@ conventionally English and translating it breaks users' scripts. That covers the
 the error messages those verbs report are prose and were translated in Slice 13, keeping the verb
 names verbatim inside the sentences. App Intents titles, descriptions and phrases landed there too.
 
-### Next: M13 — FTP and FTPS (S–M)
+### Shipped: M13 — FTP and FTPS (S–M)
 
 Two more remote protocols through the seam M5 already cut. Nearly all of the cost was paid then:
 `ServerConnection` says in its own doc comment that it "unifies the two protocols the app speaks so a
@@ -666,6 +666,75 @@ data channel and every server quirk owned by hand, to buy progress granularity `
 Deliberately out of scope: `MLSD` (the transport cannot send it); FTP-side `DirectorySync` by
 timestamp (unreliable by construction, see above); write-back for files edited in place over FTP,
 which is the same deferred edit-temp-watch-repack slice SFTP and archives are already waiting on.
+
+**Slice 1 landed (2026-07-25).** Core only, app untouched: `FTPLocation`, `FTPSecurity`,
+`FTPAuthentication`, `FTPTransport` + `FTPTransportError`, `FTPCertificate`, `FTPProcessArguments` +
+`FTPConfigFile` + `FTPQuoteCommand`, `FTPListingParser`, `FTPBackend`, and `ServerKind.ftp` /
+`ServerEndpoint.ftp`. 1173 core tests green, both linters clean. A second live probe against a real
+FTP/FTPS server preceded the code and moved the design in five places:
+
+- **Resume is proven** — the deliverable listed above as unverified. `-C -` works in *both*
+  directions (not `--append`), byte-for-byte identical to a whole transfer, and `-w
+  '%{size_download}'` / `'%{size_upload}'` report exactly the bytes moved this run. So the transport
+  hands the backend its progress delta directly, where `SFTPBackend` has to subtract a prior size.
+- **The exit code is the classification.** Every failure that matters has its own documented `curl`
+  exit code (9/21/28/60/67/78/90 all observed by provoking them), so nothing scrapes prose — and
+  unlike `SFTPTransportError.classify`, which greps English, it cannot be broken by a localized tool.
+- **`--cacert` cannot trust a self-signed server**: it still fails on the name mismatch a NAS
+  certificate always has (`CN=test-server.local` vs the IP the user typed). `--pinnedpubkey
+  sha256//…` is the only mechanism that works, and it is exact — a wrong pin aborts with exit 90
+  before any data moves, verified on both TLS backends. `curl -w '%{certs}'` yields the PEM, so the
+  app needs no `openssl`.
+- **The TLS-1.2 pin is now opt-in, not unconditional.** Forcing every server to 1.2 is a real
+  downgrade for those that do 1.3 correctly, so `FTPProcessArguments` negotiates freely and the
+  workaround is armed only after the documented symptom (exit 18). Still one tested place to
+  re-measure, which was the point of putting it there.
+- **Three schemes, not two.** `ftps://` already means *implicit* FTPS to `curl` and the RFC, so
+  explicit — the mode everyone actually means — takes FileZilla's `ftpes://`. Two schemes cannot
+  round-trip three modes, and a saved server decoding as the wrong one is silent.
+
+Both §7 questions are **resolved** (2026-07-25, by the user): the connect form defaults to FTPS with
+plain FTP a deliberate switch and no per-connect nagging; and transfers report one exact byte count
+per file, matching what `SFTPProcessTransport` ships — `curl`'s meter was measured at ~1 Hz rounded
+to `k`/`M`, good for a bar but not for accounting, and an intra-file bar is worth doing for both
+backends together or not at all.
+
+**Slices 2 and 3 landed (2026-07-25).** `FTPCurlTransport`, `FTPKeychain`, the FTP branch of the
+connect form, `CompositeBackend` routing, the sidebar row and the certificate-trust prompt; then the
+live run and the M12 pass. All four checks green (1173 core + 127 app tests, both linters clean).
+
+**Exit criteria met, verified live against a real FTP/FTPS server** — first through a throwaway
+harness compiled against the real core driving the real transport (every `VFSBackend` verb, resume
+in both directions byte-compared against the original, a wrong pin refused, error classification),
+then through the built app: connect over FTPS with the certificate trusted **by fingerprint**,
+browse, F5 upload through the queue (the M2 conflict sheet resolved a name clash against the remote
+with no new code), F8 delete degrading to a *confirmed permanent* delete, remote rename and
+recursive delete, and a reconnect from the sidebar with no prompt — proving the stored pin and the
+Keychain password. Resume, the deliverable this milestone inherited as unproven, is proven.
+
+Three things the app half turned up, none of them in the core:
+
+- **A new backend that is a *place* must be added to the path bar, or it silently renders as a
+  search.** `PathBarView`'s chain has an explicit `sftpLocation` branch and an `else` that draws the
+  results label, so FTP fell through and a freshly connected server's path bar read
+  **"Results for /"**. Four more gates had the same shape — `wasVirtual` in `navigate`, the ⌘C
+  validation, the copy-destination guard, and the clipboard guard all named `isSFTP` where they
+  meant "a real remote directory". Every one compiled, and only connecting showed it.
+- **The connect form could not hold a third protocol.** `ConnectServerForm` was already at
+  `type_body_length`; FTP's fields went into their own object, and SMB's followed for symmetry, so
+  each protocol now owns its fields in its own file. The picker's index comparison (`selectedSegment
+  == 1` for SMB) became a named enum in the same pass — inserting FTP at index 1 would otherwise have
+  re-pointed `isSMB` at it silently.
+- **The plain-FTP note was clipped in Russian**, the exact class docs/NOTES.md already records twice.
+  A wrapping `NSTextField` with no width constraint takes its *intrinsic single-line* width, so it
+  overran the sheet and lost its final period; the English text happened to fit. Pinning it to the
+  field width makes it wrap, and the layout's reserved height already covered the second line. Only
+  the live Russian run showed it.
+
+Left for M12 Pass 3 rather than done here: nothing FTP-specific — the 23 new strings are English +
+Russian and verified in the compiled `ru.lproj`, so the milestone leaves no localization debt behind
+it. Two *pre-existing* gaps in the same dialog ("Fill in the required fields to connect.", "The
+connection couldn’t be set up.") were filled while in there.
 
 ## 5. Cross-cutting: testing strategy
 

@@ -38,6 +38,11 @@ extension PathBarView {
             // account (`oleg@mac › Users › oleg › Dev`), like a local path — not the dead-end
             // "results" label a search snapshot gets.
             rebuildCrumbs(for: path, rootTitle: "\(location.username)@\(location.host)")
+        } else if let location = path.backend.ftpLocation {
+            // An FTP account is re-listable for the same reason and gets the same treatment. Without
+            // this branch it fell through to `rebuildVirtualLabel` and drew "Results for /" — the
+            // search phrasing, on a remote server nobody searched (caught only by connecting).
+            rebuildCrumbs(for: path, rootTitle: "\(location.username)@\(location.host)")
         } else {
             rebuildVirtualLabel(for: path)
         }

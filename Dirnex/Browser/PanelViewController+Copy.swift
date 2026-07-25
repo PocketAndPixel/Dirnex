@@ -71,11 +71,13 @@ extension PanelViewController {
         let sources = selectionTargets()
         guard !sources.isEmpty, let destPane = host?.panelCounterpart(of: self) else { return }
         let destination = destPane.panel.path
-        // The queue writes into a real directory — on disk (`.local`) or on a connected SFTP
-        // account (upload through the SFTP backend's `put`). A read-only nested archive or a
-        // search-results pane has no directory to receive files; a *writable* archive was already
-        // routed to add-into before reaching here.
-        guard destination.backend == .local || destination.backend.isSFTP else {
+        // The queue writes into a real directory — on disk (`.local`), or on a connected SFTP or
+        // FTP account (an upload through that backend's transfer primitive). A read-only nested
+        // archive or a search-results pane has no directory to receive files; a *writable* archive
+        // was already routed to add-into before reaching here.
+        guard destination.backend == .local
+            || destination.backend.isSFTP
+            || destination.backend.isFTP else {
             presentOperationFailure(
                 message: kind == .copy
                     ? String(
