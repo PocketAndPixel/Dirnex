@@ -14,7 +14,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "« %@ »"
+            "value" : "«%@»"
           }
         },
         "ru" : {
@@ -358,7 +358,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"Same as System\" suit votre langue macOS et passe automatiquement au mode anglais."
+            "value" : "« Identique au système » utilise la langue de macOS et revient à l’anglais si elle n’est pas disponible."
           }
         },
         "ru" : {
@@ -588,7 +588,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ gauche"
+            "value" : "%@ restant"
           }
         },
         "ru" : {
@@ -931,13 +931,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Article %lld"
+                  "value" : "Élément %lld"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld articles"
+                  "value" : "%lld éléments"
                 }
               }
             }
@@ -1008,7 +1008,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Les articles %lld sont déjà de retour."
+                  "value" : "Les éléments %lld sont déjà restaurés."
                 }
               }
             }
@@ -1426,7 +1426,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld de %lld sélectionné · %@"
+            "value" : "%lld sur %lld sélectionnés · %@"
           }
         },
         "ru" : {
@@ -1612,7 +1612,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Une raccourci pour macOS"
+            "value" : "Un raccourci macOS"
           }
         },
         "ru" : {
@@ -1635,7 +1635,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Une rangée de boutons de touche F le long du bas de la fenêtre - Renommer, Afficher, Copier, Déplacer, Nouveau dossier, Supprimer - la barre de fonctions Total Commander. Aussi dans le menu Afficher ; les touches fonctionnent qu'elles soient affichées ou non."
+            "value" : "Une rangée de boutons de touches F au bas de la fenêtre — Renommer, Aperçu, Copier, Déplacer, Nouveau dossier, Supprimer — forme la barre de fonctions de Total Commander. Elle est aussi disponible dans le menu Présentation ; les touches fonctionnent même si la barre est masquée."
           }
         },
         "ru" : {
@@ -1681,7 +1681,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un espace de travail nommé «%@» existe déjà. Le remplacez-vous par le schéma actuel ?"
+            "value" : "Un espace de travail nommé «%@» existe déjà. Le remplacer par la disposition actuelle ?"
           }
         },
         "ru" : {
@@ -1704,7 +1704,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Avorter"
+            "value" : "Abandonner"
           }
         },
         "ru" : {
@@ -1728,7 +1728,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "À Propos De %@"
+            "value" : "À propos de %@"
           }
         },
         "ru" : {
@@ -1774,7 +1774,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ajouter Le Dossier Actuel"
+            "value" : "Ajouter le dossier actuel"
           }
         },
         "ru" : {
@@ -1797,7 +1797,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ajouter Raccourci"
+            "value" : "Ajouter un raccourci"
           }
         },
         "ru" : {
@@ -1957,7 +1957,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Offre également des builds de pré-sortie lorsque Dirnex vérifie les mises à jour. Les bêta-tests sont plus récents mais moins testés ; vous êtes automatiquement ramené à une version stable une fois qu'une de ces versions est mise à jour."
+            "value" : "Propose aussi les versions préliminaires lors de la recherche de mises à jour. Les bêtas sont plus récentes, mais moins testées ; vous repasserez automatiquement à une version stable dès qu’elle sera à jour."
           }
         },
         "ru" : {
@@ -1980,7 +1980,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un article avec ce nom existe déjà ici."
+            "value" : "Un élément portant ce nom existe déjà ici."
           }
         },
         "ru" : {
@@ -2003,7 +2003,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un article avec le même nom est déjà là. Choisissez comment le résoudre."
+            "value" : "Un élément portant le même nom existe déjà ici. Choisissez comment résoudre le conflit."
           }
         },
         "ru" : {
@@ -2210,7 +2210,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Appliquer à tous les erreurs restantes"
+            "value" : "Appliquer à toutes les erreurs restantes"
           }
         },
         "ru" : {
@@ -2371,7 +2371,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Demandez avant de déplacer les articles dans la poubelle."
+            "value" : "Demander confirmation avant de déplacer des éléments vers la corbeille"
           }
         },
         "ru" : {
@@ -2486,7 +2486,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "En Arrière"
+            "value" : "Retour"
           }
         },
         "ru" : {
@@ -2509,7 +2509,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Marque un fichier dont les octets sont toujours dans iCloud (ou un autre fournisseur), en cours d'ascension ou de descente, ou en conflit - au bord droit de son nom, comme le fait Finder. Les dossiers situés en dehors d'un fournisseur de cloud ne sont jamais scannés, et les fichiers entièrement synchronisés ne montrent rien. Aussi dans le menu Affichage."
+            "value" : "Affiche, à droite du nom d’un fichier, un badge lorsque ses données sont encore dans iCloud (ou chez un autre fournisseur), en cours d’envoi ou de téléchargement, ou en conflit, comme dans le Finder. Les dossiers hors d’un fournisseur de stockage en nuage ne sont jamais analysés et les fichiers entièrement synchronisés n’affichent rien. Cette option est aussi disponible dans le menu Présentation."
           }
         },
         "ru" : {
@@ -2532,7 +2532,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les Deux Directions"
+            "value" : "Dans les deux sens"
           }
         },
         "ru" : {
@@ -2601,7 +2601,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Amène le panneau actif de Dirnex dans un fichier ou un dossier et le sélectionne, comme le fait Reveal de Finder."
+            "value" : "Ouvre le dossier du fichier ou dossier indiqué dans le panneau actif de Dirnex et le sélectionne, comme la commande Révéler du Finder."
           }
         },
         "ru" : {
@@ -2808,7 +2808,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Je ne peux pas déménager ici"
+            "value" : "Impossible de déplacer ici"
           }
         },
         "ru" : {
@@ -2900,7 +2900,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Je ne peux pas faire mes valises ici"
+            "value" : "Impossible de créer une archive ici"
           }
         },
         "ru" : {
@@ -3153,7 +3153,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vérifiez les mises à jour"
+            "value" : "Rechercher les mises à jour"
           }
         },
         "ru" : {
@@ -3176,7 +3176,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Choisissez Une Application"
+            "value" : "Choisir une application"
           }
         },
         "ru" : {
@@ -3199,7 +3199,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fermer La Barre D'Onglets"
+            "value" : "Fermer l’onglet"
           }
         },
         "ru" : {
@@ -3222,7 +3222,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fermer La Barre D'Onglets (⌘W)"
+            "value" : "Fermer l’onglet (⌘W)"
           }
         },
         "ru" : {
@@ -3292,7 +3292,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mise à jour, mise à niveau, éclat, version, sortie, nouveau"
+            "value" : "mise à jour, mise à niveau, version, publication, nouveau"
           }
         },
         "ru" : {
@@ -3364,7 +3364,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Accès Complet Au Disque..."
+            "value" : "Accès complet au disque…"
           }
         },
         "ru" : {
@@ -3460,7 +3460,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Paramètres..."
+            "value" : "Réglages…"
           }
         },
         "ru" : {
@@ -3508,7 +3508,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bienvenue À Dirnex..."
+            "value" : "Découvrir Dirnex…"
           }
         },
         "ru" : {
@@ -3532,7 +3532,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Panneau de notes, duplication, tableau de collage"
+            "value" : "presse-papiers, dupliquer"
           }
         },
         "ru" : {
@@ -3580,7 +3580,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Panneau de presse, panneau de collage"
+            "value" : "presse-papiers"
           }
         },
         "ru" : {
@@ -3628,7 +3628,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Panneau de notes, colle, découpe, papier collant"
+            "value" : "presse-papiers, coller, couper"
           }
         },
         "ru" : {
@@ -3652,7 +3652,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Déplacez Les Articles Ici"
+            "value" : "Déplacer les éléments ici"
           }
         },
         "ru" : {
@@ -3676,7 +3676,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Répéter, envoyer en avant, encore, réappliquer"
+            "value" : "répéter, avancer, de nouveau, réappliquer"
           }
         },
         "ru" : {
@@ -3844,7 +3844,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Comparer Par Contenu..."
+            "value" : "Comparer le contenu…"
           }
         },
         "ru" : {
@@ -3892,7 +3892,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copier Vers Un Autre Panneau"
+            "value" : "Copier vers l’autre panneau"
           }
         },
         "ru" : {
@@ -4036,7 +4036,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Modifier Le Fichier..."
+            "value" : "Modifier le fichier…"
           }
         },
         "ru" : {
@@ -4084,7 +4084,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gérer Les Scripts..."
+            "value" : "Gérer les scripts…"
           }
         },
         "ru" : {
@@ -4132,7 +4132,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Passer Au Panneau D'Autres"
+            "value" : "Déplacer vers l’autre panneau"
           }
         },
         "ru" : {
@@ -4180,7 +4180,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Outil De Renommage Multiple..."
+            "value" : "Outil de renommage multiple…"
           }
         },
         "ru" : {
@@ -4228,7 +4228,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nouvelle Dossier"
+            "value" : "Nouveau dossier"
           }
         },
         "ru" : {
@@ -4276,7 +4276,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nouvelle Onglet"
+            "value" : "Nouvel onglet"
           }
         },
         "ru" : {
@@ -4300,7 +4300,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ouvert, application, application, lancement, éditeur, par défaut"
+            "value" : "ouvrir, application, lancer, éditeur, par défaut"
           }
         },
         "ru" : {
@@ -4324,7 +4324,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ouvrir Avec"
+            "value" : "Ouvrir avec"
           }
         },
         "ru" : {
@@ -4372,7 +4372,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Emballer..."
+            "value" : "Créer une archive…"
           }
         },
         "ru" : {
@@ -4396,7 +4396,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restaurer, annuler la suppression, enlever du tas, récupérer, original, annuler la suppression."
+            "value" : "restaurer, annuler la suppression, corbeille, récupérer, emplacement d’origine"
           }
         },
         "ru" : {
@@ -4420,7 +4420,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Remettre En Place"
+            "value" : "Remettre"
           }
         },
         "ru" : {
@@ -4516,7 +4516,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Partager..."
+            "value" : "Partager…"
           }
         },
         "ru" : {
@@ -4564,7 +4564,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Synchroniser Les Dossiers..."
+            "value" : "Synchroniser les dossiers…"
           }
         },
         "ru" : {
@@ -4588,7 +4588,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trouveur, étiquette, étiquette, couleur, couleur, marque"
+            "value" : "Finder, balise, étiquette, couleur, marquer"
           }
         },
         "ru" : {
@@ -4612,7 +4612,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tags..."
+            "value" : "Balises…"
           }
         },
         "ru" : {
@@ -4660,7 +4660,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mettre En Poubelle"
+            "value" : "Placer dans la corbeille"
           }
         },
         "ru" : {
@@ -4684,7 +4684,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Clépin, marque-page, favori"
+            "value" : "épingler, signet, favori"
           }
         },
         "ru" : {
@@ -4708,7 +4708,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ajouter Aux Favoris"
+            "value" : "Ajouter aux favoris"
           }
         },
         "ru" : {
@@ -4732,7 +4732,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Histoire, précédente, rétrograde"
+            "value" : "historique, précédent, retour"
           }
         },
         "ru" : {
@@ -4852,7 +4852,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Va À La Localisation..."
+            "value" : "Aller à l’emplacement…"
           }
         },
         "ru" : {
@@ -4876,7 +4876,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Favoris, signets, en attente, saut, ctrl d"
+            "value" : "favoris, signets, épinglé, accès rapide, ctrl d"
           }
         },
         "ru" : {
@@ -4924,7 +4924,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Histoire, suivant"
+            "value" : "historique, suivant"
           }
         },
         "ru" : {
@@ -4948,7 +4948,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Avant"
+            "value" : "Suivant"
           }
         },
         "ru" : {
@@ -5860,7 +5860,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Porte-Clés Terminal"
+            "value" : "Tiroir Terminal"
           }
         },
         "ru" : {
@@ -7982,7 +7982,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Impossible de déplacer les éléments %lld dans la poubelle."
+                  "value" : "Impossible de placer les éléments %lld dans la corbeille."
                 }
               }
             }
@@ -8358,7 +8358,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Caisse :"
+            "value" : "Compteur :"
           }
         },
         "ru" : {
@@ -8473,7 +8473,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Coutume"
+            "value" : "Personnalisé"
           }
         },
         "ru" : {
@@ -8496,7 +8496,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Date De Modification"
+            "value" : "Date de modification"
           }
         },
         "ru" : {
@@ -8852,7 +8852,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Articles supprimés, de chaque volume"
+            "value" : "Éléments supprimés de tous les volumes"
           }
         },
         "ru" : {
@@ -8875,7 +8875,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "TÊTE détachée"
+            "value" : "HEAD détachée"
           }
         },
         "ru" : {
@@ -8898,7 +8898,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "TÊTE Détachée"
+            "value" : "HEAD détachée"
           }
         },
         "ru" : {
@@ -9222,7 +9222,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Marché Conclu!"
+            "value" : "Terminé"
           }
         },
         "ru" : {
@@ -9245,7 +9245,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Téléchargement De «%@»..."
+            "value" : "Téléchargement de «%@»…"
           }
         },
         "ru" : {
@@ -9268,7 +9268,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Téléchargement En Cours..."
+            "value" : "Téléchargement…"
           }
         },
         "ru" : {
@@ -9314,7 +9314,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chaque script fonctionne toujours à partir de la palette ⌘K et du menu sous-menu Scripts. Donnez-lui une touche gratuite dans Gérer les scripts pour récupérer la touche."
+            "value" : "Chaque script reste disponible dans la palette ⌘K et le sous-menu Scripts. Attribuez-lui une touche libre dans Gérer les scripts pour rétablir son raccourci clavier."
           }
         },
         "ru" : {
@@ -9521,7 +9521,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Poubelle Vide"
+            "value" : "Vider la corbeille"
           }
         },
         "ru" : {
@@ -9544,7 +9544,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Poubelle Vide..."
+            "value" : "Vider la corbeille…"
           }
         },
         "ru" : {
@@ -9567,7 +9567,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Entrez un motif de caractère wildcard (par exemple \"*.jpg\")."
+            "value" : "Saisissez un motif avec caractères génériques (par exemple « *.jpg »)."
           }
         },
         "ru" : {
@@ -9659,7 +9659,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Élargi"
+            "value" : "Développé"
           }
         },
         "ru" : {
@@ -9935,7 +9935,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trouvez des fichiers étiquetés «%@»"
+            "value" : "Rechercher les fichiers portant la balise «%@»"
           }
         },
         "ru" : {
@@ -9958,7 +9958,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trouver Des Fichiers Étiquetés"
+            "value" : "Rechercher les fichiers portant une balise"
           }
         },
         "ru" : {
@@ -10471,7 +10471,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Donnez À Dirnex Un Accès Complet Au Disque Dur."
+            "value" : "Accorder à Dirnex l’accès complet au disque"
           }
         },
         "ru" : {
@@ -10679,7 +10679,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iCloud n'a pas pu fournir cet article."
+            "value" : "iCloud n’a pas pu fournir cet élément."
           }
         },
         "ru" : {
@@ -10725,7 +10725,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Stockage iCloud"
+            "value" : "iCloud Drive"
           }
         },
         "ru" : {
@@ -10817,7 +10817,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Émis à : %@\n\nÉmis par : %@\n\nExpire : %@\n\nempreinte digitale SHA-256 :\n\n%@"
+            "value" : "Délivré à : %@\nDélivré par : %@\nExpire le : %@\n\nEmpreinte SHA-256 :\n%@"
           }
         },
         "ru" : {
@@ -10911,7 +10911,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Article"
+            "value" : "Élément"
           }
         },
         "ru" : {
@@ -10934,7 +10934,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "C'est la clé"
+            "value" : "sa clé"
           }
         },
         "ru" : {
@@ -11072,7 +11072,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Genre :"
+            "value" : "Type :"
           }
         },
         "ru" : {
@@ -11117,7 +11117,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plus grand que 1 Go"
+            "value" : "Supérieur à 1 Go"
           }
         },
         "ru" : {
@@ -11140,7 +11140,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plus grand que 1 Mo"
+            "value" : "Supérieur à 1 Mo"
           }
         },
         "ru" : {
@@ -11163,7 +11163,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plus grand que 10 Mo"
+            "value" : "Supérieur à 10 Mo"
           }
         },
         "ru" : {
@@ -11186,7 +11186,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plus grand que 100 Mo"
+            "value" : "Supérieur à 100 Mo"
           }
         },
         "ru" : {
@@ -11278,7 +11278,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS garde la corbeille privée, donc Dirnex ne peut pas la lister tant que vous ne l'autorisez pas. Tout le reste fonctionne comme avant.\n\nCliquez sur Ouvrir les paramètres du système, puis activez Dirnex sous Accès complet au disque. macOS demandera à Dirnex de redémarrer afin que le nouveau accès prenne effet."
+            "value" : "macOS protège la corbeille. Dirnex ne peut pas l’afficher tant que vous ne lui en avez pas donné l’autorisation. Tout le reste continue de fonctionner normalement.\n\nCliquez sur Ouvrir les réglages système, puis activez Dirnex dans Accès complet au disque. macOS vous demandera de relancer Dirnex pour appliquer cette autorisation."
           }
         },
         "ru" : {
@@ -11301,7 +11301,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS enregistre le dossier original lorsque l'un des éléments est mis en poubelle, et il n'y a pas de trace pour celui-ci. Faites plutôt glisser-déposer ce dossier hors de la poubelle."
+            "value" : "macOS enregistre le dossier d’origine d’un élément placé dans la corbeille, mais aucune information n’est disponible pour celui-ci. Faites-le plutôt glisser hors de la corbeille."
           }
         },
         "ru" : {
@@ -11347,7 +11347,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gérer Les Scripts..."
+            "value" : "Gérer les scripts…"
           }
         },
         "ru" : {
@@ -11370,7 +11370,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gérer Les Espaces De Travail..."
+            "value" : "Gérer les espaces de travail…"
           }
         },
         "ru" : {
@@ -11416,7 +11416,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Déplacer «%@» Dans La Corbeille ?"
+            "value" : "Placer «%@» dans la corbeille ?"
           }
         },
         "ru" : {
@@ -11477,13 +11477,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Déplacer l'élément %lld dans la poubelle ?"
+                  "value" : "Placer l’élément %lld dans la corbeille ?"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Déplacer les éléments %lld dans la poubelle ?"
+                  "value" : "Placer les éléments %lld dans la corbeille ?"
                 }
               }
             }
@@ -11533,7 +11533,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mettre En Poubelle"
+            "value" : "Placer dans la corbeille"
           }
         },
         "ru" : {
@@ -11556,7 +11556,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mouvement..."
+            "value" : "Déplacer…"
           }
         },
         "ru" : {
@@ -11602,7 +11602,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "En Train De Déménager..."
+            "value" : "Déplacement…"
           }
         },
         "ru" : {
@@ -11694,7 +11694,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nommez l'étiquette et choisissez la couleur dans laquelle elle sera introduite."
+            "value" : "Nommez la balise et choisissez sa couleur."
           }
         },
         "ru" : {
@@ -11809,7 +11809,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nouveau (en déménagement)"
+            "value" : "Nouveau (déplacement en cours)"
           }
         },
         "ru" : {
@@ -11832,7 +11832,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nouvelle Dossier"
+            "value" : "Nouveau dossier"
           }
         },
         "ru" : {
@@ -11855,7 +11855,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nouveau Nom"
+            "value" : "Nouveau nom"
           }
         },
         "ru" : {
@@ -11878,7 +11878,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nouveau Scénario"
+            "value" : "Nouveau script"
           }
         },
         "ru" : {
@@ -11901,7 +11901,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nouvelle Onglet"
+            "value" : "Nouvel onglet"
           }
         },
         "ru" : {
@@ -11924,7 +11924,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nouvelle Barre D'Onglets (⌘T)"
+            "value" : "Nouvel onglet (⌘T)"
           }
         },
         "ru" : {
@@ -11947,7 +11947,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nouvelle Étiquette"
+            "value" : "Nouvelle balise"
           }
         },
         "ru" : {
@@ -11970,7 +11970,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nouvelle Étiquette..."
+            "value" : "Nouvelle balise…"
           }
         },
         "ru" : {
@@ -11993,7 +11993,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Prochain"
+            "value" : "Suivant"
           }
         },
         "ru" : {
@@ -12039,7 +12039,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aucune Candidature"
+            "value" : "Aucune application"
           }
         },
         "ru" : {
@@ -12062,7 +12062,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pas encore de engagements"
+            "value" : "Aucun commit pour le moment"
           }
         },
         "ru" : {
@@ -12108,7 +12108,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aucune Dossier Épinglé"
+            "value" : "Aucun dossier épinglé"
           }
         },
         "ru" : {
@@ -12131,7 +12131,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aucun Espace De Travail Sauvegardé"
+            "value" : "Aucun espace de travail enregistré"
           }
         },
         "ru" : {
@@ -12154,7 +12154,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pas De Scripts"
+            "value" : "Aucun script"
           }
         },
         "ru" : {
@@ -12246,7 +12246,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pas Maintenant"
+            "value" : "Pas maintenant"
           }
         },
         "ru" : {
@@ -12338,7 +12338,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'une des dossiers n'existe plus."
+            "value" : "L’un des dossiers n’existe plus."
           }
         },
         "ru" : {
@@ -12361,7 +12361,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un côté est un dossier - résoudre manuellement"
+            "value" : "Un côté est un dossier — résolution manuelle nécessaire"
           }
         },
         "ru" : {
@@ -12407,7 +12407,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ouvert"
+            "value" : "Ouvrir"
           }
         },
         "ru" : {
@@ -12545,7 +12545,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ouvrir La Palette De Commandes"
+            "value" : "Ouvrir la palette de commandes"
           }
         },
         "ru" : {
@@ -12568,7 +12568,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Paramètres Du Système Ouvert"
+            "value" : "Ouvrir les réglages système"
           }
         },
         "ru" : {
@@ -12591,7 +12591,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ouvrir Avec"
+            "value" : "Ouvrir avec"
           }
         },
         "ru" : {
@@ -12775,7 +12775,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Carte d'identité originale"
+            "value" : "Casse d’origine"
           }
         },
         "ru" : {
@@ -12821,7 +12821,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Paquet"
+            "value" : "Créer une archive"
           }
         },
         "ru" : {
@@ -12844,7 +12844,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Emballer «%@»"
+            "value" : "Créer une archive avec «%@»"
           }
         },
         "ru" : {
@@ -12888,7 +12888,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Emballer les articles %lld"
+                  "value" : "Créer une archive avec %lld éléments"
                 }
               }
             }
@@ -13354,7 +13354,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Préparation En Cours..."
+            "value" : "Préparation…"
           }
         },
         "ru" : {
@@ -13377,7 +13377,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Programmer"
+            "value" : "Préréglage"
           }
         },
         "ru" : {
@@ -13540,7 +13540,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Remettre En Place"
+            "value" : "Remettre"
           }
         },
         "ru" : {
@@ -13608,7 +13608,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Derniers"
+            "value" : "Récents"
           }
         },
         "ru" : {
@@ -13654,7 +13654,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Réinitialiser %@"
+            "value" : "Rétablir %@"
           }
         },
         "ru" : {
@@ -13677,7 +13677,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Réinitialiser %@ terminé avec des problèmes."
+            "value" : "Le rétablissement de %@ s’est terminé avec des problèmes."
           }
         },
         "ru" : {
@@ -13746,7 +13746,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enlever"
+            "value" : "Supprimer"
           }
         },
         "ru" : {
@@ -13792,7 +13792,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Supprimer Toutes Les Balises"
+            "value" : "Supprimer toutes les balises"
           }
         },
         "ru" : {
@@ -13815,7 +13815,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Supprimer Le Dossier Actuel"
+            "value" : "Supprimer le dossier actuel"
           }
         },
         "ru" : {
@@ -13838,7 +13838,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Supprimer De La Barre Latérale"
+            "value" : "Supprimer de la barre latérale"
           }
         },
         "ru" : {
@@ -13861,7 +13861,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Supprimé des fichiers %lld de %lld . %@\n\nL'étiquette reste dans la barre latérale car les fichiers le portent toujours."
+            "value" : "Supprimée de %lld fichiers sur %lld. %@\nLa balise reste dans la barre latérale, car certains fichiers la portent encore."
           }
         },
         "ru" : {
@@ -13884,7 +13884,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rebaptiser"
+            "value" : "Renommer"
           }
         },
         "ru" : {
@@ -13978,7 +13978,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Renommer Favori"
+            "value" : "Renommer le favori"
           }
         },
         "ru" : {
@@ -14001,7 +14001,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Renommer La Recherche Enregistrée"
+            "value" : "Renommer la recherche enregistrée"
           }
         },
         "ru" : {
@@ -14024,7 +14024,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Renommer..."
+            "value" : "Renommer…"
           }
         },
         "ru" : {
@@ -14092,7 +14092,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Remplacer «%@» Dans «%@» ?"
+            "value" : "Remplacer «%@» dans «%@» ?"
           }
         },
         "ru" : {
@@ -14239,7 +14239,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Remplacer Si Plus Récent"
+            "value" : "Remplacer si plus récent"
           }
         },
         "ru" : {
@@ -14285,7 +14285,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Remplacer Par :"
+            "value" : "Remplacer par :"
           }
         },
         "ru" : {
@@ -14354,7 +14354,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restaurer Tout"
+            "value" : "Tout restaurer"
           }
         },
         "ru" : {
@@ -14400,7 +14400,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restaurer Les Paramètres Par Défaut"
+            "value" : "Restaurer les réglages par défaut"
           }
         },
         "ru" : {
@@ -14423,7 +14423,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Résultats Pour %@"
+            "value" : "Résultats pour %@"
           }
         },
         "ru" : {
@@ -14446,7 +14446,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Curriculum Vitae"
+            "value" : "Reprendre"
           }
         },
         "ru" : {
@@ -14469,7 +14469,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Juger À Nouveau"
+            "value" : "Réessayer"
           }
         },
         "ru" : {
@@ -14492,7 +14492,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Révélez ${file} dans Dirnex"
+            "value" : "Révéler ${file} dans Dirnex"
           }
         },
         "ru" : {
@@ -14515,7 +14515,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Révéler À Dirnex"
+            "value" : "Révéler dans Dirnex"
           }
         },
         "ru" : {
@@ -14561,7 +14561,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Révèle les fichiers dot comme .git et .env dans chaque volet. Aussi sur la barre d'outils et ⇧⌘."
+            "value" : "Affiche les fichiers invisibles comme .git et .env dans chaque panneau. Cette option est aussi disponible dans la barre d’outils et avec ⇧⌘."
           }
         },
         "ru" : {
@@ -14653,7 +14653,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Exécuter une commande..."
+            "value" : "Exécuter une commande…"
           }
         },
         "ru" : {
@@ -14676,7 +14676,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Exécuter L'Opération Dirnex"
+            "value" : "Exécuter une opération Dirnex"
           }
         },
         "ru" : {
@@ -14699,7 +14699,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Exécutez une fois pour toute la sélection."
+            "value" : "Exécuter une fois pour toute la sélection"
           }
         },
         "ru" : {
@@ -14745,7 +14745,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'opération de mise en marche nécessite un identifiant de commande ou un titre."
+            "value" : "L’exécution d’une opération nécessite un identifiant ou un titre de commande."
           }
         },
         "ru" : {
@@ -14791,7 +14791,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Exécute n'importe quel commande Dirnex ou script utilisateur, choisi dans une liste."
+            "value" : "Exécute toute commande Dirnex ou tout script utilisateur choisi dans une liste."
           }
         },
         "ru" : {
@@ -14814,7 +14814,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Même Que Le Système"
+            "value" : "Identique au système"
           }
         },
         "ru" : {
@@ -14837,7 +14837,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Économiser"
+            "value" : "Enregistrer"
           }
         },
         "ru" : {
@@ -14883,7 +14883,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enregistrez les deux panneaux et toutes leurs onglets afin de pouvoir revenir à ce thème."
+            "value" : "Enregistrez les deux panneaux et tous leurs onglets pour pouvoir revenir à cette disposition."
           }
         },
         "ru" : {
@@ -14906,7 +14906,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sauvegarder La Recherche"
+            "value" : "Enregistrer la recherche"
           }
         },
         "ru" : {
@@ -14929,7 +14929,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enregistrer L'Espace De Travail"
+            "value" : "Enregistrer l’espace de travail"
           }
         },
         "ru" : {
@@ -14952,7 +14952,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enregistrer L'Espace De Travail..."
+            "value" : "Enregistrer l’espace de travail…"
           }
         },
         "ru" : {
@@ -15090,7 +15090,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rechercher Dans «%@»"
+            "value" : "Rechercher dans «%@»"
           }
         },
         "ru" : {
@@ -15113,7 +15113,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rechercher Dans :"
+            "value" : "Rechercher dans :"
           }
         },
         "ru" : {
@@ -15206,7 +15206,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aujourd'Hui"
+            "value" : "Aujourd’hui"
           }
         },
         "ru" : {
@@ -15275,7 +15275,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fichiers Archive"
+            "value" : "Fichiers d’archive"
           }
         },
         "ru" : {
@@ -15298,7 +15298,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fichiers Audio"
+            "value" : "Fichiers audio"
           }
         },
         "ru" : {
@@ -15321,7 +15321,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fichiers Document"
+            "value" : "Fichiers document"
           }
         },
         "ru" : {
@@ -15344,7 +15344,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fichiers"
+            "value" : "Dossiers"
           }
         },
         "ru" : {
@@ -15367,7 +15367,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fichiers Image"
+            "value" : "Fichiers image"
           }
         },
         "ru" : {
@@ -15575,7 +15575,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Partager :"
+            "value" : "Partage :"
           }
         },
         "ru" : {
@@ -15690,7 +15690,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Afficher les balises du localiseur de"
+            "value" : "Afficher les balises Finder"
           }
         },
         "ru" : {
@@ -15874,7 +15874,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Derniers"
+            "value" : "Récents"
           }
         },
         "ru" : {
@@ -15943,7 +15943,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Étiquettes"
+            "value" : "Balises"
           }
         },
         "ru" : {
@@ -15966,7 +15966,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ordures"
+            "value" : "Corbeille"
           }
         },
         "ru" : {
@@ -16035,7 +16035,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Taille Et Date"
+            "value" : "Taille et date"
           }
         },
         "ru" : {
@@ -16104,7 +16104,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ouvrir Le Tour"
+            "value" : "Passer la visite"
           }
         },
         "ru" : {
@@ -16127,7 +16127,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Certains de iCloud Drive nécessitent un accès complet au disque."
+            "value" : "Certaines parties d’iCloud Drive nécessitent l’accès complet au disque."
           }
         },
         "ru" : {
@@ -16150,7 +16150,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Certains raccourcis sont attribués à plus d'un commandement."
+            "value" : "Certains raccourcis sont attribués à plusieurs commandes."
           }
         },
         "ru" : {
@@ -16288,7 +16288,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Interrupteur"
+            "value" : "Basculer"
           }
         },
         "ru" : {
@@ -16311,7 +16311,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Changez de focus sur les dossiers ouverts à partir des résultats de recherche."
+            "value" : "Placer le focus sur les dossiers ouverts depuis les résultats de recherche"
           }
         },
         "ru" : {
@@ -16334,7 +16334,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Échangez les paramètres par défaut ?"
+            "value" : "Changer de préréglage ?"
           }
         },
         "ru" : {
@@ -16357,7 +16357,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Conflit de synchronisation - résolu dans le Finder"
+            "value" : "Conflit de synchronisation — à résoudre dans le Finder"
           }
         },
         "ru" : {
@@ -16589,7 +16589,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pas De Couleur"
+            "value" : "Sans couleur"
           }
         },
         "ru" : {
@@ -16612,7 +16612,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couleur Orange"
+            "value" : "Couleur orange"
           }
         },
         "ru" : {
@@ -16704,7 +16704,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Étiquettes"
+            "value" : "Balises"
           }
         },
         "ru" : {
@@ -16727,7 +16727,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Étiquettes :"
+            "value" : "Balises :"
           }
         },
         "ru" : {
@@ -16796,7 +16796,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ce fichier n'a pas de localisation sur le disque, donc il n'y a rien à révéler."
+            "value" : "Ce fichier n’a pas d’emplacement sur le disque ; il n’y a donc rien à révéler."
           }
         },
         "ru" : {
@@ -17118,7 +17118,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'article n'est pas disponible sur n'importe quel appareil auquel iCloud peut accéder en ce moment."
+            "value" : "Cet élément n’est actuellement disponible sur aucun appareil auquel iCloud peut accéder."
           }
         },
         "ru" : {
@@ -17141,7 +17141,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'article n'existe plus."
+            "value" : "Cet élément n’existe plus."
           }
         },
         "ru" : {
@@ -17187,7 +17187,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les autres articles ont été renommés."
+            "value" : "Les autres éléments ont été renommés."
           }
         },
         "ru" : {
@@ -17348,7 +17348,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le serveur présente un certificat différent de celui dont vous aviez confiance. Supprimez le serveur enregistré et connectez-vous à nouveau uniquement si vous savez pourquoi il a changé."
+            "value" : "Le serveur présente un certificat différent de celui auquel vous faisiez confiance. Supprimez le serveur enregistré et reconnectez-vous uniquement si vous savez pourquoi il a changé."
           }
         },
         "ru" : {
@@ -17371,7 +17371,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le serveur a présenté un certificat qui n'est pas signé par une autorité de confiance. C'est normal pour un NAS ou un serveur domestique, mais cela peut aussi signifier que quelqu'un intercepte la connexion.\n\nComparez cette empreinte digitale avec celle affichée sur le serveur avant de la faire confiance."
+            "value" : "Le serveur a présenté un certificat qui n’est pas signé par une autorité de certification de confiance. C’est courant avec un NAS ou un serveur domestique, mais cela peut aussi indiquer qu’une personne intercepte la connexion.\n\nComparez cette empreinte avec celle affichée sur le serveur avant de lui faire confiance."
           }
         },
         "ru" : {
@@ -17440,7 +17440,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le certificat du serveur n'a pas pu être lu, il ne peut donc pas être trahi en toute sécurité."
+            "value" : "Le certificat du serveur n’a pas pu être lu ; il est donc impossible de lui faire confiance en toute sécurité."
           }
         },
         "ru" : {
@@ -17578,7 +17578,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La part n'a pas été trouvée sur «%@». Vérifiez le nom de la part."
+            "value" : "Le partage est introuvable sur «%@». Vérifiez son nom."
           }
         },
         "ru" : {
@@ -17624,7 +17624,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'outil Comparer par contenu (⌥F3) ouvre les deux fichiers dans. Installé : %@. L'automatique sélectionne le premier de ceux qui sont toujours installés."
+            "value" : "L’outil Comparer le contenu (⌥F3) ouvre les deux fichiers avec l’application choisie. Installées : %@. Automatique sélectionne la première application encore installée."
           }
         },
         "ru" : {
@@ -17647,7 +17647,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La poubelle est vide"
+            "value" : "La corbeille est vide"
           }
         },
         "ru" : {
@@ -17808,7 +17808,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ce Dossier («%@»)"
+            "value" : "Ce dossier («%@»)"
           }
         },
         "ru" : {
@@ -17854,7 +17854,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cet article est stocké dans iCloud. Dirnex le récupère avant de l'ouvrir."
+            "value" : "Cet élément est stocké dans iCloud. Dirnex le télécharge avant de l’ouvrir."
           }
         },
         "ru" : {
@@ -17969,7 +17969,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ce serveur présente un hôte différent %@ que celui dont vous aviez confiance auparavant. Si vous avez réinstallé le serveur ou si vous avez pointé une nouvelle application SFTP vers cette adresse, cela est normal - mais cela peut aussi signifier que quelqu'un intercepte la connexion (attaque man-in-the-middle).\n\nNouvelle empreinte digitale :\n\n%@\n\nNe continuez que si vous reconnaissez cette empreinte digitale. En la faisant confiance, vous remplacez la vieille clé, ce qui permet aux futures connexions à ce serveur de réussir."
+            "value" : "Ce serveur présente une clé d’hôte différente de celle à laquelle vous faisiez confiance. Cela peut être normal après une réinstallation du serveur ou si une nouvelle application SFTP utilise cette adresse, mais peut aussi indiquer une interception de la connexion (attaque de l’homme du milieu).\n\nNouvelle empreinte :\n%@\n\nNe continuez que si vous reconnaissez cette empreinte. Lui faire confiance remplacera l’ancienne clé et permettra les prochaines connexions à ce serveur."
           }
         },
         "ru" : {
@@ -17992,7 +17992,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Changer La Barre Latérale"
+            "value" : "Afficher ou masquer la barre latérale"
           }
         },
         "ru" : {
@@ -18039,7 +18039,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le panneau actif est la source, l'autre la destination. Copiez ou déplacez ce qui est sélectionné, créez un dossier ou envoyez des fichiers à la corbeille - à partir des boutons situés en bas, des touches fonctionnelles ou de la palette."
+            "value" : "Le panneau actif est la source, l’autre la destination. Copiez ou déplacez les éléments sélectionnés, créez un dossier ou placez des fichiers dans la corbeille depuis les boutons du bas, les touches de fonction ou la palette."
           }
         },
         "ru" : {
@@ -18087,7 +18087,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sautez directement vers un chemin, ouvrez une deuxième onglet ou fixez les dossiers dans lesquels vous vivez. L'emplacement, les onglets et les Favoris permettent de garder même un arbre de dossiers profond à portée de clavier."
+            "value" : "Accédez directement à un chemin, ouvrez un second onglet ou épinglez les dossiers que vous utilisez souvent. L’emplacement, les onglets et les favoris gardent même une arborescence profonde à une seule touche."
           }
         },
         "ru" : {
@@ -18111,7 +18111,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Allez n'importe où rapidement"
+            "value" : "Accédez rapidement à tous vos dossiers"
           }
         },
         "ru" : {
@@ -18135,7 +18135,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ouvrez la palette de commandes et commencez à taper ce que vous voulez faire - copier, emballer, vous connecter à un serveur, étiqueter. Elle correspond de manière approximative à chaque action, donc il n'y a rien à mémoriser et aucun menu à parcourir."
+            "value" : "Ouvrez la palette de commandes et saisissez ce que vous voulez faire : copier, créer une archive, vous connecter à un serveur ou ajouter une balise. Elle recherche approximativement chaque action ; rien à mémoriser, aucun menu à parcourir."
           }
         },
         "ru" : {
@@ -18159,7 +18159,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tout est à portée de recherche."
+            "value" : "Tout est accessible par une recherche"
           }
         },
         "ru" : {
@@ -18183,7 +18183,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS garde quelques dossiers privés - les dossiers personnels d'autres utilisateurs, le messagerie, les sauvegardes de Time Machine. Accordez un accès complet au disque lorsque vous en avez besoin pour la première fois. Vous pouvez rouvrir cette visite à tout moment depuis la palette de commandes."
+            "value" : "macOS protège certains dossiers, notamment les dossiers de départ d’autres utilisateurs, Mail et les sauvegardes Time Machine. Accordez l’accès complet au disque lorsque vous en avez besoin. Vous pouvez rouvrir cette visite à tout moment depuis la palette de commandes."
           }
         },
         "ru" : {
@@ -18207,7 +18207,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tu es prêt"
+            "value" : "Vous êtes prêt"
           }
         },
         "ru" : {
@@ -18255,7 +18255,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bienvenue À Dirnex"
+            "value" : "Bienvenue dans Dirnex"
           }
         },
         "ru" : {
@@ -18278,7 +18278,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Suivi De %@"
+            "value" : "Suivi de %@"
           }
         },
         "ru" : {
@@ -18301,7 +18301,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ordures"
+            "value" : "Corbeille"
           }
         },
         "ru" : {
@@ -18324,7 +18324,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Faites Confiance Et Connectez-Vous"
+            "value" : "Faire confiance et se connecter"
           }
         },
         "ru" : {
@@ -18347,7 +18347,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Faites Confiance À La Nouvelle Clé Et Connectez-Vous"
+            "value" : "Faire confiance à la nouvelle clé et se connecter"
           }
         },
         "ru" : {
@@ -18370,7 +18370,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Taper raccourci..."
+            "value" : "Saisir un raccourci…"
           }
         },
         "ru" : {
@@ -18439,7 +18439,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Annuler %@ terminé avec des problèmes"
+            "value" : "L’annulation de %@ s’est terminée avec des problèmes"
           }
         },
         "ru" : {
@@ -18462,7 +18462,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Supprimer La Sélection"
+            "value" : "Effacer la sélection"
           }
         },
         "ru" : {
@@ -18485,7 +18485,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copie"
+            "value" : "Copier"
           }
         },
         "ru" : {
@@ -18531,7 +18531,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Marque"
+            "value" : "Marquer"
           }
         },
         "ru" : {
@@ -18554,7 +18554,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bouger"
+            "value" : "Déplacer"
           }
         },
         "ru" : {
@@ -18577,7 +18577,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mettre En Poubelle"
+            "value" : "Placer dans la corbeille"
           }
         },
         "ru" : {
@@ -18600,7 +18600,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nouvelle Dossier"
+            "value" : "Nouveau dossier"
           }
         },
         "ru" : {
@@ -18623,7 +18623,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rebaptiser"
+            "value" : "Renommer"
           }
         },
         "ru" : {
@@ -18669,7 +18669,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sélectionner Des Fichiers"
+            "value" : "Sélectionner des fichiers"
           }
         },
         "ru" : {
@@ -18692,7 +18692,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sélectionner La Plage"
+            "value" : "Sélectionner une plage"
           }
         },
         "ru" : {
@@ -18715,7 +18715,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Désélectionner Les Fichiers"
+            "value" : "Désélectionner les fichiers"
           }
         },
         "ru" : {
@@ -18853,7 +18853,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "MAJUSCULE"
+            "value" : "MAJUSCULES"
           }
         },
         "ru" : {
@@ -19198,7 +19198,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Seuls les fichiers réguliers peuvent être comparés par contenu."
+            "value" : "Seuls les fichiers ordinaires peuvent être comparés par leur contenu."
           }
         },
         "ru" : {
@@ -19221,7 +19221,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cette localisation ne prend pas en charge la copie de fichiers."
+            "value" : "Cet emplacement ne prend pas en charge la copie de fichiers."
           }
         },
         "ru" : {
@@ -19244,7 +19244,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cette localisation ne prend pas en charge la création de dossiers."
+            "value" : "Cet emplacement ne prend pas en charge la création de dossiers."
           }
         },
         "ru" : {
@@ -19267,7 +19267,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cette localisation ne prend pas en charge la création de fichiers."
+            "value" : "Cet emplacement ne prend pas en charge la création de fichiers."
           }
         },
         "ru" : {
@@ -19313,7 +19313,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cette localisation ne prend pas en charge le déplacement d'objets."
+            "value" : "Cet emplacement ne prend pas en charge le déplacement d’éléments."
           }
         },
         "ru" : {
@@ -19359,7 +19359,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le chemin %@ ne appartient pas à l'archive %@."
+            "value" : "Le chemin %@ n’appartient pas à l’archive %@."
           }
         },
         "ru" : {
@@ -19382,7 +19382,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le chemin %@ ne appartient pas à %@."
+            "value" : "Le chemin %@ n’appartient pas à %@."
           }
         },
         "ru" : {
@@ -19428,7 +19428,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cette localisation ne prend pas en charge la suppression d'éléments."
+            "value" : "Cet emplacement ne prend pas en charge la suppression d’éléments."
           }
         },
         "ru" : {
@@ -19474,7 +19474,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cette localisation ne prend pas en charge les liens symboliques."
+            "value" : "Cet emplacement ne prend pas en charge les liens symboliques."
           }
         },
         "ru" : {
@@ -19520,7 +19520,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cette localisation n'a pas de poubelle."
+            "value" : "Cet emplacement ne possède pas de corbeille."
           }
         },
         "ru" : {
@@ -19588,7 +19588,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lorsque vous êtes déconnecté, chaque nouvelle fenêtre démarre à partir de votre dossier Démarrage."
+            "value" : "Lorsque cette option est désactivée, chaque nouvelle fenêtre s’ouvre dans votre dossier de départ."
           }
         },
         "ru" : {
@@ -19657,7 +19657,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Espace De Travail"
+            "value" : "Espace de travail"
           }
         },
         "ru" : {
