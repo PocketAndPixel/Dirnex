@@ -9,7 +9,54 @@ import Foundation
 @MainActor
 enum ConnectText {
     static var proto: String {
-        String(localized: "Protocol:", comment: "Connect field label: SFTP or SMB.")
+        String(localized: "Protocol:", comment: "Connect field label: SFTP, FTP or SMB.")
+    }
+
+    static var security: String {
+        String(
+            localized: "Security:",
+            comment: "Connect field label: which FTP security mode (FTPS or plain FTP)."
+        )
+    }
+
+    /// The three FTP security modes, in the order the picker shows them — the safe one first.
+    /// "FTPS" is the product-level name users see in every other client; the parenthetical says
+    /// which of the two FTPS handshakes it is.
+    static var ftpsExplicit: String {
+        String(
+            localized: "FTPS",
+            comment: "FTP security mode: TLS negotiated on the normal port (AUTH TLS). The default."
+        )
+    }
+
+    static var ftpsImplicit: String {
+        String(
+            localized: "FTPS (implicit)",
+            comment: "FTP security mode: TLS from the first byte, on its own port (usually 990)."
+        )
+    }
+
+    static var ftpPlain: String {
+        String(
+            localized: "FTP",
+            comment: "FTP security mode: no encryption at all. Deliberately last in the picker."
+        )
+    }
+
+    /// Shown under the picker only while plain FTP is selected. States the tradeoff once, where it
+    /// is actionable, rather than warning on every later connect (PLAN.md §7).
+    static var plainFTPNote: String {
+        String(
+            localized: "Plain FTP sends your password and files unencrypted.",
+            comment: "Note under the FTP security picker, shown only when plain FTP is selected."
+        )
+    }
+
+    static var anonymous: String {
+        String(
+            localized: "Anonymous",
+            comment: "Checkbox in the Connect dialog: log in to FTP as the public anonymous user."
+        )
     }
 
     static var address: String {
@@ -26,6 +73,15 @@ enum ConnectText {
 
     static var user: String {
         String(localized: "User:", comment: "Connect field label: user name.")
+    }
+
+    /// Placeholder in the SFTP and FTP user fields — a neutral hint, deliberately not the machine's
+    /// own login name (which would put a real person's account name in the field before they typed).
+    static var userHint: String {
+        String(
+            localized: "username",
+            comment: "Placeholder in the Connect dialog's user field (SFTP and FTP)."
+        )
     }
 
     static var password: String {
@@ -48,11 +104,20 @@ enum ConnectText {
         String(localized: "Save as:", comment: "Connect field label: name to save under.")
     }
 
-    /// Auth-mode label, and the SFTP password field's placeholder — both the bare word "Password".
+    /// The SFTP auth-mode label beside the switch — capitalized to parallel "Private Key". The
+    /// password *field* uses the lowercase `passwordHint` placeholder instead (see `userHint`).
     static var authPassword: String {
         String(
             localized: "Password",
-            comment: "Password field label and placeholder in the Connect dialog."
+            comment: "SFTP auth-mode label beside the switch, paired with Private Key."
+        )
+    }
+
+    /// Placeholder in the SFTP and FTP password fields — lowercase, matching `userHint`.
+    static var passwordHint: String {
+        String(
+            localized: "password",
+            comment: "Placeholder in the Connect dialog's password field (SFTP and FTP)."
         )
     }
 
@@ -72,7 +137,7 @@ enum ConnectText {
 
     static var smbPasswordHint: String {
         String(
-            localized: "Password (blank for guest)",
+            localized: "password (blank for guest)",
             comment: "Placeholder in the SMB password field: a blank password connects as guest."
         )
     }

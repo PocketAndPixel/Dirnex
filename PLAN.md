@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M11 shipped · M12 (localization) in progress · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
+Status: M0–M11 shipped · M12 (localization) Passes 1–2 done, Pass 3 parked · M13 (FTP/FTPS) shipped · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
 
 ---
 
@@ -52,7 +52,7 @@ DirnexCore
 ├── VFS
 │   ├── VFSBackend (protocol): list, stat, read, write, capabilities
 │   ├── VFSPath: backend id + path within backend (composable: zip inside sftp)
-│   ├── LocalBackend (M1) · ArchiveBackend (M4) · SFTPBackend (M5)
+│   ├── LocalBackend (M1) · ArchiveBackend (M4) · SFTPBackend (M5) · FTPBackend (M13)
 │   └── DirectoryModel: sorted/filtered snapshot a panel renders; FSEvents-driven
 ├── Operations
 │   ├── Operation (copy/move/delete/rename/pack): source set → destination
@@ -93,9 +93,10 @@ Dirnex/
 Sizes are relative (S ≈ days, M ≈ 1–2 weeks, L ≈ 3+ weeks of focused work).
 Each milestone ends in something runnable; no milestone depends on a later one.
 
-### Shipped: M0 → M11 (2026-07-05 → 2026-07-22)
+### Shipped: M0 → M11, M13 (2026-07-05 → 2026-07-25)
 
-Eleven milestones, all closed. The checklists and the full per-pass progress log —
+M0–M11 and M13 are closed; M12 (localization) is in progress — see below, which is why the
+table steps from M11 to M13. The checklists and the full per-pass progress log —
 what was probed, decided, and rejected — live in
 **[docs/HISTORY.md](docs/HISTORY.md)**; source comments citing `PLAN.md §M5` and the like
 refer to those sections.
@@ -114,6 +115,7 @@ refer to those sections.
 | M9 | iCloud Drive, for real | 07-21 | Per-item download percentage (macOS exposes none through the URL resource keys); Put Back inside the iCloud trash — the origin is an opaque provider reference with no path in it |
 | M10 | Google Drive and Docs | 07-22 | A real Drive API backend (OAuth + Drive v3, native Docs export/import) — dropped 2026-07-22; sync status in Drive's *mirror* mode, which macOS exposes to no one but Finder |
 | M11 | F4 Edit, and Quick View at full size | 07-22 | A built-in text editor (F4 hands the file to the user's own); write-back for archive and SFTP files (edit-temp-watch-repack is its own slice); a slideshow timer or thumbnail filmstrip in the preview |
+| M13 | FTP and FTPS | 07-25 | `MLSD` (`curl` cannot send it); FTP-side `DirectorySync` by timestamp (unreliable by construction — LIST stamps are year- and zone-less); write-back for files edited in place over FTP (the shared edit-temp-watch-repack slice); an opportunistic "TLS optional" client mode (a password-downgrade vector — rejected 2026-07-26) |
 
 The undone column is scope that was decided against, not forgotten — each one is argued in
 its HISTORY.md entry. The newest such call is the **built-in text editor** (2026-07-22): a
@@ -546,8 +548,13 @@ involved. Worth a lint rule keeping bare literals out of UI files afterwards.
   English by design — it is a scripting vocabulary, not prose. Next is Pass 3 — the remaining six
   languages. 
   
-**Pass 3 — the remaining six languages.** Adding one is a line in `AppLanguages.all` plus its
-column in the catalog; `LocalizationCoverageTests` fails until the column is complete.
+**Pass 3 — the remaining six languages. Parked (2026-07-25), not cancelled.** Adding one is a line in
+`AppLanguages.all` plus its column in the catalog; `LocalizationCoverageTests` fails until the column
+is complete. It is parked behind M13 deliberately: the machinery is proven by a real language, so the
+remaining six are a translation exercise with no design risk left in them, and every string M13 adds
+would have to be translated twice if the languages landed first. **That gate is now clear — M13
+shipped (2026-07-25) with its 23 strings settled in English + Russian** — so Pass 3 is unblocked
+whenever it is picked back up.
 
 **Standing rule for the function bar, in every language.** The seven F-key captions are the app's
 primary buttons and are on screen permanently, so they carry the first impression of the whole app:
@@ -569,7 +576,7 @@ names verbatim inside the sentences. App Intents titles, descriptions and phrase
 | Layer | Approach |
 |---|---|
 | DirnexCore | Unit tests against generated fixtures; every operation tested for: success, cancel mid-flight, permission denied, disk full, source mutated during op |
-| VFS backends | One shared conformance test suite run against every backend (Local, Archive, SFTP-against-docker) |
+| VFS backends | One shared conformance test suite run against every backend (Local, Archive, SFTP-against-docker, FTP/FTPS against an injected fake transport fed real captured bytes) |
 | Undo journal | Property tests: op + undo == original tree (compare via content hash) |
 | Panels/keyboard | XCUITest smoke for the keyboard core; snapshot tests for panel rendering states |
 | Performance | XCTest metrics gated in CI: 100k-dir list < 150 ms, filter keystroke < 16 ms, memory ceiling on huge dirs |
@@ -584,6 +591,7 @@ names verbatim inside the sentences. App Intents titles, descriptions and phrase
 | Archive writes corrupting user data | Always rewrite to temp + atomic swap; never in-place |
 | Full Disk Access friction kills onboarding | Dedicated flow in M7; app degrades gracefully (browse home dir) before grant |
 | Scope creep before the feel is right | M1 exit criteria are the gate; nothing from M3+ starts until M1 feels great |
+| A system-CLI quirk changes under us (M13's TLS-1.2 pin for FTPS is a workaround for `curl` 8.7.1, not a property of the protocol) | The flag lives in a pure, tested `FTPProcessArguments` with the reason in its doc comment, so it is one place to re-measure — and a listing that comes back empty is the *symptom*, so an FTPS smoke test asserts non-empty rather than merely "no error" |
 
 ## 7. Open questions
 
@@ -618,3 +626,20 @@ Opened and closed during M10:
   is useless for a file manager). Dropping the API backend drops the question with it: the Desktop
   mount browses through `LocalBackend` with no OAuth, no scope and no assessment. Reopening it means
   taking on the whole verification commitment, which is why it stays written down.
+
+Opened during M13 planning (2026-07-25) and **closed** in it (both by the user, 2026-07-25; the
+security posture revisited and re-confirmed 2026-07-26):
+
+- **How much of FTP's insecurity is Dirnex's to editorialize about?** — resolved: **default the
+  connect form to FTPS and make plain FTP the deliberate switch**, with no per-connect nagging. It
+  costs nothing when the server supports FTPS and states the tradeoff exactly once, where it is
+  actionable; the failure mode to avoid — a warning firing on every connect to a decade-old NAS — is
+  avoided. The corollary was settled 2026-07-26: **no opportunistic "TLS optional" client mode.** The
+  three explicit modes reach every server, and `--ssl`'s silent fall-back to cleartext is a
+  password-downgrade vector, so `FTPProcessArguments` requires the upgrade (`--ssl-reqd`). A mismatch
+  is surfaced as a clear, actionable error (`tlsNotAvailable` / `tlsRequired`), never guessed around.
+- **Whether `curl`'s progress output is good enough for the queue, or transfers need chunking.** —
+  resolved: **one exact byte count per file**, via `-w '%{size_download}'` / `'%{size_upload}'`, which
+  matches what `SFTPProcessTransport` ships and hands the queue its delta directly. `curl`'s live meter
+  was measured at ~1 Hz rounded to `k`/`M` — good for a bar, not for accounting — so an intra-file
+  determinate bar is deferred as a thing worth doing for both remote backends together or not at all.

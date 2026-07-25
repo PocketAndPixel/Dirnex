@@ -1252,6 +1252,23 @@
         }
       }
     },
+    "Anonymous": {
+      "comment": "Checkbox in the Connect dialog: log in to FTP as the public anonymous user.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anonymous"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Анонимно"
+          }
+        }
+      }
+    },
     "Another saved search already uses that name. Pick a different one.": {
       "comment": "Body of the saved-search rename-collision alert.",
       "localizations": {
@@ -1558,19 +1575,19 @@
         }
       }
     },
-    "Browse a remote SFTP account or an SMB share on your network.": {
+    "Browse a remote SFTP or FTP account, or an SMB share on your network.": {
       "comment": "Subtitle of the Connect to Server dialog.",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Browse a remote SFTP account or an SMB share on your network."
+            "value": "Browse a remote SFTP or FTP account, or an SMB share on your network."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Просматривайте удалённую учётную запись SFTP или сетевой ресурс SMB в вашей сети."
+            "value": "Просматривайте удалённую учётную запись SFTP или FTP либо сетевой ресурс SMB в вашей сети."
           }
         }
       }
@@ -1894,6 +1911,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не удалось синхронизировать"
+          }
+        }
+      }
+    },
+    "Can’t verify the identity of “%@”": {
+      "comment": "FTPS certificate-trust alert title; %@ is the host name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can’t verify the identity of “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось подтвердить подлинность «%@»"
           }
         }
       }
@@ -2930,6 +2964,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не удалось полностью удалить «%@»"
+          }
+        }
+      }
+    },
+    "Couldn’t launch curl.": {
+      "comment": "FTP failure: the curl binary could not be spawned.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t launch curl."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось запустить curl."
           }
         }
       }
@@ -4345,6 +4396,57 @@
         }
       }
     },
+    "FTP": {
+      "comment": "FTP security mode: no encryption at all. Deliberately last in the picker.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FTP"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FTP"
+          }
+        }
+      }
+    },
+    "FTPS": {
+      "comment": "FTP security mode: TLS negotiated on the normal port (AUTH TLS). The default.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FTPS"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FTPS"
+          }
+        }
+      }
+    },
+    "FTPS (implicit)": {
+      "comment": "FTP security mode: TLS from the first byte, on its own port (usually 990).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FTPS (implicit)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FTPS (неявный)"
+          }
+        }
+      }
+    },
     "File": {
       "comment": "Shortcuts parameter title: the file or folder to reveal.",
       "localizations": {
@@ -4426,6 +4528,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Файлы идентичны — сравнивать нечего."
+          }
+        }
+      }
+    },
+    "Fill in the required fields to connect.": {
+      "comment": "Inline error when Connect is clicked with a required field empty.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fill in the required fields to connect."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Заполните обязательные поля для подключения."
           }
         }
       }
@@ -4873,6 +4992,23 @@
         }
       }
     },
+    "Issued to: %@\nIssued by: %@\nExpires: %@\n\nSHA-256 fingerprint:\n%@": {
+      "comment": "FTPS certificate details in the trust alert: subject, issuer, expiry, and the SHA-256 fingerprint. The arguments are the certificate's own fields.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Issued to: %@\nIssued by: %@\nExpires: %@\n\nSHA-256 fingerprint:\n%@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Кому выдан: %@\nКем выдан: %@\nДействителен до: %@\n\nОтпечаток SHA-256:\n%@"
+          }
+        }
+      }
+    },
     "It will be removed from %lld files, everywhere Spotlight has indexed. The files themselves aren’t deleted.": {
       "comment": "Body of the delete-tag confirmation; %lld is how many files carry the tag.",
       "localizations": {
@@ -5125,6 +5261,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Направо"
+          }
+        }
+      }
+    },
+    "Login failed. Check the user name and password.": {
+      "comment": "FTP connect failure detail: authentication was rejected.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Login failed. Check the user name and password."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось войти. Проверьте имя пользователя и пароль."
           }
         }
       }
@@ -6357,23 +6510,6 @@
         }
       }
     },
-    "Password (blank for guest)": {
-      "comment": "Placeholder in the SMB password field: a blank password connects as guest.",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Password (blank for guest)"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Пароль (пусто для гостя)"
-          }
-        }
-      }
-    },
     "Password:": {
       "comment": "Connect field label: password.",
       "localizations": {
@@ -6542,6 +6678,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Нет прав на чтение одной из папок."
+          }
+        }
+      }
+    },
+    "Plain FTP sends your password and files unencrypted.": {
+      "comment": "Note under the FTP security picker, shown only when plain FTP is selected.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plain FTP sends your password and files unencrypted."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обычный FTP передаёт пароль и файлы без шифрования."
           }
         }
       }
@@ -7863,6 +8016,23 @@
         }
       }
     },
+    "Security:": {
+      "comment": "Connect field label: which FTP security mode (FTPS or plain FTP).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Security:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Защита:"
+          }
+        }
+      }
+    },
     "Select": {
       "comment": "Confirm button of the wildcard dialog when adding files to the selection.",
       "localizations": {
@@ -8597,6 +8767,23 @@
         }
       }
     },
+    "The FTP server reported an error.": {
+      "comment": "FTP connect failure detail when the server gave no reason.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The FTP server reported an error."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FTP-сервер сообщил об ошибке."
+          }
+        }
+      }
+    },
     "The SFTP server reported an error.": {
       "comment": "SFTP connect failure detail when the server gave no reason.",
       "localizations": {
@@ -8678,6 +8865,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Возможно, архив повреждён или объекты отсутствуют."
+          }
+        }
+      }
+    },
+    "The connection couldn’t be set up.": {
+      "comment": "Generic server-connect failure with no more specific reason.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The connection couldn’t be set up."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось установить подключение."
           }
         }
       }
@@ -8933,6 +9137,142 @@
           "stringUnit": {
             "state": "translated",
             "value": "Выделение передаётся как аргументы («$@», «$1»). Также доступны: $DIRNEX_CURRENT_DIR, $DIRNEX_OTHER_DIR, $DIRNEX_SELECTED_PATHS."
+          }
+        }
+      }
+    },
+    "The server couldn’t be reached. Check the host name and port.": {
+      "comment": "FTP connect failure detail: the host could not be resolved or connected.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server couldn’t be reached. Check the host name and port."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось связаться с сервером. Проверьте имя узла и порт."
+          }
+        }
+      }
+    },
+    "The server is presenting a different certificate than the one you trusted. Remove the saved server and connect again only if you know why it changed.": {
+      "comment": "FTP connect failure detail: the pinned public key no longer matches.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server is presenting a different certificate than the one you trusted. Remove the saved server and connect again only if you know why it changed."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер предъявляет не тот сертификат, которому вы доверились. Удалите сохранённый сервер и подключитесь снова, только если знаете, почему он изменился."
+          }
+        }
+      }
+    },
+    "The server presented a certificate that isn’t signed by a trusted authority. This is normal for a NAS or a home server, but it can also mean someone is intercepting the connection.\n\nCompare this fingerprint with the one shown on the server before trusting it.": {
+      "comment": "FTPS certificate-trust alert body, above the certificate's details.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server presented a certificate that isn’t signed by a trusted authority. This is normal for a NAS or a home server, but it can also mean someone is intercepting the connection.\n\nCompare this fingerprint with the one shown on the server before trusting it."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер предъявил сертификат, не подписанный доверенным центром сертификации. Для NAS или домашнего сервера это нормально, но может также означать, что кто-то перехватывает соединение.\n\nСравните этот отпечаток с тем, который показан на сервере, прежде чем доверять ему."
+          }
+        }
+      }
+    },
+    "The server refused access to that path.": {
+      "comment": "FTP connect failure detail: the account may not use the path.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server refused access to that path."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер отказал в доступе к этому пути."
+          }
+        }
+      }
+    },
+    "The server stopped responding.": {
+      "comment": "FTP connect failure detail: the operation exceeded its time budget.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server stopped responding."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер перестал отвечать."
+          }
+        }
+      }
+    },
+    "The server’s certificate couldn’t be read, so it can’t be trusted safely.": {
+      "comment": "FTP connect failure detail: the certificate's public key could not be parsed.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server’s certificate couldn’t be read, so it can’t be trusted safely."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось прочитать сертификат сервера, поэтому доверять ему небезопасно."
+          }
+        }
+      }
+    },
+    "The server’s certificate couldn’t be verified.": {
+      "comment": "FTP connect failure detail: TLS certificate verification failed.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server’s certificate couldn’t be verified."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось проверить сертификат сервера."
+          }
+        }
+      }
+    },
+    "The server’s certificate wasn’t trusted, so the connection was cancelled.": {
+      "comment": "FTP connect failure detail: the user declined to trust the certificate.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server’s certificate wasn’t trusted, so the connection was cancelled."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сертификат сервера не был принят, поэтому подключение отменено."
           }
         }
       }
@@ -9307,6 +9647,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Корзина"
+          }
+        }
+      }
+    },
+    "Trust & Connect": {
+      "comment": "FTPS certificate-trust alert: pin this certificate and connect.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trust & Connect"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Доверять и подключиться"
           }
         }
       }
@@ -12649,6 +13006,40 @@
         }
       }
     },
+    "password": {
+      "comment": "Placeholder in the Connect dialog's password field (SFTP and FTP).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "password"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "пароль"
+          }
+        }
+      }
+    },
+    "password (blank for guest)": {
+      "comment": "Placeholder in the SMB password field: a blank password connects as guest.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "password (blank for guest)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "пароль (пусто для гостя)"
+          }
+        }
+      }
+    },
     "replacement": {
       "comment": "Multi-rename replace field placeholder.",
       "localizations": {
@@ -13607,6 +13998,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "новая папка"
+          }
+        }
+      }
+    },
+    "username": {
+      "comment": "Placeholder in the Connect dialog's user field (SFTP and FTP).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "username"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "имя пользователя"
           }
         }
       }

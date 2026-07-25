@@ -18,8 +18,8 @@ extension PanelViewController {
 
     /// The active tab shows a virtual listing — search results or a browsed archive — with no real,
     /// writable directory behind it, the gate for the New Folder / rename / paste flows to bail out
-    /// early. A remote SFTP directory is *not* virtual: it's a real, writable, listable directory
-    /// (just over the network), so those flows run against it through the SFTP backend's write
+    /// early. A remote SFTP or FTP directory is *not* virtual: it's a real, writable, listable
+    /// directory (just over the network), so those flows run against it through that backend's write
     /// primitives; whether an individual op is offered is decided by `capabilities(for:)`.
     var isVirtualDirectory: Bool {
         isArchive || isResultsListing

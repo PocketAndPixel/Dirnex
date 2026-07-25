@@ -3,7 +3,8 @@ import Foundation
 
 /// The pane's backend: routes each `VFSPath` to the concrete backend that owns it — the
 /// real `LocalBackend` for on-disk paths, a lazily-mounted read-only `ArchiveBackend` for
-/// `archive:…` paths (PLAN.md §M4 "cash in the VFS abstraction — browse zip/tar as folders").
+/// `archive:…` paths (PLAN.md §M4 "cash in the VFS abstraction — browse zip/tar as folders"), and a
+/// connected `SFTPBackend` / `FTPBackend` for each live remote account (§M5, §M13).
 ///
 /// Composing, rather than swapping, the pane's backend keeps every existing `self.backend`
 /// call site — listing, stat, sizing, copy/move, the shared queue — working unchanged; only
@@ -22,6 +23,10 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
     /// each holds a `Process`-driven transport, so listing an SFTP pane routes here (PLAN.md §M5
     /// "browse … through the standard queue"). Guarded by `lock` like the archive mounts.
     private var sftpConnections: [String: SFTPBackend] = [:]
+    /// Live FTP/FTPS connections keyed by the account descriptor (`ftpes://user@host:port`). The
+    /// same shape as `sftpConnections` and for the same reasons — established by the connect flow
+    /// before a pane navigates onto it, guarded by `lock` because listing runs on detached tasks.
+    private var ftpConnections: [String: FTPBackend] = [:]
 
     init(local: LocalBackend) {
         self.local = local
@@ -48,6 +53,31 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         sftpConnections[location.descriptor] = backend
+        return backend
+    }
+
+    /// Establish (or replace) an FTP connection for `location`, returning its backend so the caller
+    /// can test it before navigating a pane onto it. `password` is the plaintext the transport feeds
+    /// to `curl` on stdin (held only in memory for the connection's lifetime, mirrored into the
+    /// Keychain separately); `trustedPublicKey` is the certificate pin the user accepted, which is a
+    /// public key digest rather than a secret.
+    @discardableResult
+    func connectFTP(
+        location: FTPLocation,
+        authentication: FTPAuthentication,
+        password: String = "",
+        trustedPublicKey: String? = nil
+    ) -> FTPBackend {
+        let transport = FTPCurlTransport(
+            location: location,
+            authentication: authentication,
+            password: password,
+            trustedPublicKey: trustedPublicKey
+        )
+        let backend = FTPBackend(location: location, transport: transport)
+        lock.lock()
+        defer { lock.unlock() }
+        ftpConnections[location.descriptor] = backend
         return backend
     }
 
@@ -87,6 +117,7 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
                 : local.capabilities
         }
         if path.backend.isSFTP { return sftpBackend(for: path.backend)?.capabilities ?? .read }
+        if path.backend.isFTP { return ftpBackend(for: path.backend)?.capabilities ?? .read }
         // The merged Trash listing is writable-but-Trash-less for the same reason, one level up:
         // its entries are real files that can only be deleted for good. Everything else virtual (an
         // archive browse, a search-results listing) is read-only.
@@ -148,9 +179,8 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         // source → SFTP destination) is the SFTP backend's `put`, so route on the *destination*
         // when it is remote; otherwise route on the source, which covers a download (SFTP source
         // → local destination = the SFTP backend's `get`) and a plain local-to-local copy.
-        let mover = destination.backend.isSFTP ? try backend(for: destination) : try backend(
-            for: source
-        )
+        let isRemoteDestination = destination.backend.isSFTP || destination.backend.isFTP
+        let mover = isRemoteDestination ? try backend(for: destination) : try backend(for: source)
         try mover.copyFile(
             at: source,
             to: destination,
@@ -179,7 +209,23 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         if path.backend == .local { return local }
         if let archivePath = path.backend.archivePath { return try mountedArchive(at: archivePath) }
         if path.backend.isSFTP { return try connectedSFTP(for: path.backend) }
+        if path.backend.isFTP { return try connectedFTP(for: path.backend) }
         throw VFSError.unsupported(.noBackendForPath(path: "\(path)"))
+    }
+
+    private func connectedFTP(for backendID: VFSBackendID) throws -> FTPBackend {
+        guard let backend = ftpBackend(for: backendID) else {
+            throw VFSError.unsupported(.serverNotConnected(server: "\(backendID)"))
+        }
+        return backend
+    }
+
+    /// The connected FTP backend for `backendID`, or `nil` when there's no live connection — the
+    /// non-throwing lookup `capabilities(for:)` needs (it must never throw and must stay cheap).
+    private func ftpBackend(for backendID: VFSBackendID) -> FTPBackend? {
+        lock.lock()
+        defer { lock.unlock() }
+        return ftpConnections[backendID.rawValue]
     }
 
     private func connectedSFTP(for backendID: VFSBackendID) throws -> SFTPBackend {

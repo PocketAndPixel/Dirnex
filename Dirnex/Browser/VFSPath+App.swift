@@ -16,14 +16,17 @@ extension VFSPath {
     /// put «Can't open "/"» above a body that named `broken.zip` correctly, because the navigation
     /// target is the archive's inner root. So each backend that can be *rooted* supplies its own
     /// name — the archive's on-disk filename (for a nested mount, the extracted member's, which is
-    /// the inner archive's own name), and the SFTP account as `user@host`, the same title the path
-    /// bar's root crumb carries. Everything else keeps `lastComponent`, which is already right.
+    /// the inner archive's own name), and an SFTP or FTP account as `user@host`, the same title the
+    /// path bar's root crumb carries. Everything else keeps `lastComponent`, which is already right.
     var displayName: String {
         guard isRoot else { return lastComponent }
         if let archivePath = backend.archivePath {
             return (archivePath as NSString).lastPathComponent
         }
         if let location = backend.sftpLocation {
+            return "\(location.username)@\(location.host)"
+        }
+        if let location = backend.ftpLocation {
             return "\(location.username)@\(location.host)"
         }
         return lastComponent

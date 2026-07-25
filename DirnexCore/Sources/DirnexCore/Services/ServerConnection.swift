@@ -1,19 +1,33 @@
 import Foundation
 
 /// Which remote protocol a saved server speaks — the sidebar picks an icon from it, and the
-/// connect flow branches on it (SFTP routes through a `VFSBackend`; SMB rides the OS mounter).
+/// connect flow branches on it (SFTP and FTP each route through a `VFSBackend`; SMB rides the OS
+/// mounter).
 public enum ServerKind: String, Sendable, Codable, CaseIterable {
     case sftp
+    case ftp
     case smb
 }
 
 /// A saved server's coordinates and auth *method* — everything needed to reconnect, and nothing
 /// secret. SFTP carries its `SFTPLocation` plus the chosen `SFTPAuthentication` (a key-file path or
-/// the `.password` marker; the password itself stays in the Keychain). SMB carries its `SMBLocation`
-/// (guest vs. authenticated is captured by whether `username` is set; any password stays in the
-/// Keychain). Serializing an endpoint therefore never spills a credential.
+/// the `.password` marker; the password itself stays in the Keychain). FTP carries its `FTPLocation`
+/// — which includes the security mode, so plain FTP and FTPS to the same host stay distinct saved
+/// servers — plus its `FTPAuthentication`, and the fingerprint the user trusted, if any. SMB carries
+/// its `SMBLocation` (guest vs. authenticated is captured by whether `username` is set; any password
+/// stays in the Keychain). Serializing an endpoint therefore never spills a credential.
 public enum ServerEndpoint: Sendable, Hashable, Codable {
     case sftp(location: SFTPLocation, authentication: SFTPAuthentication)
+    /// `trustedPublicKey` is the `FTPCertificate.publicKeyPin` the user accepted for this server, or
+    /// `nil` when the certificate verified normally (or the connection is plain FTP). It is a public
+    /// key digest, not a secret, so it belongs in the store rather than the Keychain — and storing
+    /// it *here*, per saved server, is what makes trust a decision about one server rather than a
+    /// global setting.
+    case ftp(
+        location: FTPLocation,
+        authentication: FTPAuthentication,
+        trustedPublicKey: String? = nil
+    )
     case smb(SMBLocation)
 }
 
@@ -43,15 +57,18 @@ public struct ServerConnection: Sendable, Hashable, Identifiable, Codable {
     public var kind: ServerKind {
         switch endpoint {
         case .sftp: return .sftp
+        case .ftp: return .ftp
         case .smb: return .smb
         }
     }
 
     /// A compact human-readable address for the sidebar subtitle / tooltip: the SFTP descriptor
-    /// (`sftp://user@host:port`) or the SMB URL (`smb://[user@]host[/share]`).
+    /// (`sftp://user@host:port`), the FTP descriptor (whose scheme names the security mode), or the
+    /// SMB URL (`smb://[user@]host[/share]`).
     public var address: String {
         switch endpoint {
         case let .sftp(location, _): return location.descriptor
+        case let .ftp(location, _, _): return location.descriptor
         case let .smb(location): return location.url
         }
     }
