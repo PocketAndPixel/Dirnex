@@ -3107,7 +3107,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Majusculé"
+            "value" : "Majuscules initiales"
           }
         },
         "ru" : {
@@ -3245,7 +3245,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Collapsé"
+            "value" : "Réduit"
           }
         },
         "ru" : {
@@ -3556,7 +3556,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copie"
+            "value" : "Copier"
           }
         },
         "ru" : {
@@ -7038,7 +7038,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copier %@"
+            "value" : "Copie de %@"
           }
         },
         "ru" : {
@@ -9636,7 +9636,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sorti avec le statut %d."
+            "value" : "Terminé avec le code de sortie %d."
           }
         },
         "ru" : {
@@ -11579,7 +11579,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Déplacer %@"
+            "value" : "Déplacement de %@"
           }
         },
         "ru" : {
@@ -13122,7 +13122,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pausé"
+            "value" : "En pause"
           }
         },
         "ru" : {
@@ -13145,7 +13145,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pausé — %@"
+            "value" : "En pause — %@"
           }
         },
         "ru" : {
@@ -13308,7 +13308,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "FTP simple envoie votre mot de passe et vos fichiers non cryptés."
+            "value" : "FTP simple envoie votre mot de passe et vos fichiers non chiffrés."
           }
         },
         "ru" : {
@@ -17900,7 +17900,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cela supprime le serveur sauvegardé de la barre latérale. Aucun fichier n'est supprimé."
+            "value" : "Cela supprime le serveur enregistré de la barre latérale. Aucun fichier n'est supprimé."
           }
         },
         "ru" : {
