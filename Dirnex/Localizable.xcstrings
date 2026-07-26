@@ -450,7 +450,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ · les tailles excluent les Git ignorés"
+            "value" : "%@ · tailles sans les fichiers ignorés par Git"
           }
         },
         "ru" : {
@@ -519,7 +519,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ disponible de %@"
+            "value" : "%@ disponibles sur %@"
           }
         },
         "ru" : {
@@ -565,7 +565,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Clé %@"
+            "value" : "clé %@"
           }
         },
         "ru" : {
@@ -611,7 +611,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ peut prendre beaucoup de temps pour les comparer, ou devenir indisponible."
+            "value" : "%@ peut mettre longtemps à les comparer ou ne plus répondre."
           }
         },
         "ru" : {
@@ -1957,7 +1957,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Propose aussi les versions préliminaires lors de la recherche de mises à jour. Les bêtas sont plus récentes, mais moins testées ; vous repasserez automatiquement à une version stable dès qu’elle sera à jour."
+            "value" : "Propose aussi les versions préliminaires lors de la recherche de mises à jour. Les bêtas sont plus récentes, mais moins testées ; vous repasserez automatiquement à une version stable du même niveau dès qu’elle sera disponible."
           }
         },
         "ru" : {
@@ -2095,7 +2095,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Une autre recherche enregistrée utilise déjà ce nom. Choisissez un autre."
+            "value" : "Une autre recherche enregistrée utilise déjà ce nom. Choisissez un autre nom."
           }
         },
         "ru" : {
@@ -2141,7 +2141,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tout type"
+            "value" : "Tous les types"
           }
         },
         "ru" : {
@@ -3700,7 +3700,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Refaire"
+            "value" : "Rétablir"
           }
         },
         "ru" : {
@@ -5908,7 +5908,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Afficher les fichiers invisibles"
+            "value" : "Afficher les fichiers cachés"
           }
         },
         "ru" : {
@@ -9128,7 +9128,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Je ne sais pas d’où vient «%@»"
+            "value" : "Origine de «%@» inconnue"
           }
         },
         "ru" : {
@@ -10517,7 +10517,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Invité (laisser vide)"
+            "value" : "invité (laisser vide)"
           }
         },
         "ru" : {
@@ -10563,7 +10563,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Masquer les fichiers invisibles"
+            "value" : "Masquer les fichiers cachés"
           }
         },
         "ru" : {
@@ -13631,7 +13631,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Refaire"
+            "value" : "Rétablir"
           }
         },
         "ru" : {
@@ -14561,7 +14561,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Affiche les fichiers invisibles comme .git et .env dans chaque panneau. Cette option est aussi disponible dans la barre d’outils et avec ⇧⌘."
+            "value" : "Affiche les fichiers cachés comme .git et .env dans chaque panneau. Cette option est aussi disponible dans la barre d’outils et avec ⇧⌘."
           }
         },
         "ru" : {
@@ -15183,7 +15183,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mois dernier"
+            "value" : "Au cours du dernier mois"
           }
         },
         "ru" : {
@@ -15229,7 +15229,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La semaine dernière"
+            "value" : "Au cours de la dernière semaine"
           }
         },
         "ru" : {
@@ -15252,7 +15252,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L’année dernière"
+            "value" : "Au cours de la dernière année"
           }
         },
         "ru" : {
@@ -15321,7 +15321,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fichiers document"
+            "value" : "Fichiers de type document"
           }
         },
         "ru" : {
@@ -15736,7 +15736,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Afficher les fichiers invisibles"
+            "value" : "Afficher les fichiers cachés"
           }
         },
         "ru" : {
@@ -16196,7 +16196,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quelque chose du même nom se trouve dans le dossier original, donc il a été laissé dans la corbeille plutôt que remplacé."
+            "value" : "Un élément portant le même nom se trouve dans le dossier d’origine ; l’élément dans la corbeille n’a donc pas été remplacé."
           }
         },
         "ru" : {
@@ -17486,7 +17486,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le certificat du serveur n’a pas été pris en compte, donc la connexion a été annulée."
+            "value" : "Le certificat du serveur n’a pas été approuvé ; la connexion a été annulée."
           }
         },
         "ru" : {
@@ -17624,7 +17624,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L’outil Comparer le contenu (⌥F3) ouvre les deux fichiers avec l’application choisie. Installées : %@. Automatique sélectionne la première application encore installée."
+            "value" : "L’outil Comparer le contenu (⌥F3) ouvre les deux fichiers dans l’application choisie. Applications installées : %@. Le réglage Automatique choisit la première encore installée."
           }
         },
         "ru" : {
@@ -17969,7 +17969,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ce serveur présente une clé %@ d’hôte différente de celle à laquelle vous faisiez confiance. Cela peut être normal après une réinstallation du serveur ou si une nouvelle app SFTP utilise cette adresse, mais peut aussi indiquer une interception de la connexion (attaque de l’homme du milieu).\n\nNouvelle empreinte :\n%@\n\nNe continuez que si vous reconnaissez cette empreinte. Lui faire confiance remplacera l’ancienne clé et permettra les prochaines connexions à ce serveur."
+            "value" : "Ce serveur présente une %@ d’hôte différente de celle à laquelle vous faisiez confiance. Cela peut être normal après une réinstallation du serveur ou si une nouvelle app SFTP utilise cette adresse, mais peut aussi indiquer une interception de la connexion (attaque de l’homme du milieu).\n\nNouvelle empreinte :\n%@\n\nNe continuez que si vous reconnaissez cette empreinte. Lui faire confiance remplacera l’ancienne clé et permettra les prochaines connexions à ce serveur."
           }
         },
         "ru" : {
@@ -18784,7 +18784,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dossier non intitulé"
+            "value" : "Dossier sans titre"
           }
         },
         "ru" : {
@@ -18807,7 +18807,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "à jour"
+            "value" : "À jour"
           }
         },
         "ru" : {
@@ -19543,7 +19543,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Attente"
+            "value" : "En attente"
           }
         },
         "ru" : {
@@ -19566,7 +19566,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "En attente de téléchargement"
+            "value" : "En attente d’envoi"
           }
         },
         "ru" : {
@@ -19611,7 +19611,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quand exécuté"
+            "value" : "Lors de l’exécution"
           }
         },
         "ru" : {
@@ -19795,7 +19795,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vos raccourcis personnalisés seront remplacés par le paramètre %@ par défaut. Toutes vos modifications seront perdues."
+            "value" : "Vos raccourcis personnalisés seront remplacés par le préréglage %@. Toutes vos modifications seront perdues."
           }
         },
         "ru" : {
