@@ -1589,7 +1589,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Une commande Dirnex"
+            "value" : "une commande Dirnex"
           }
         },
         "ru" : {
@@ -1612,7 +1612,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un raccourci macOS"
+            "value" : "un raccourci macOS"
           }
         },
         "ru" : {
@@ -3436,7 +3436,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Préférences, options, raccourcis, configuration"
+            "value" : "préférences, options, raccourcis, configuration"
           }
         },
         "ru" : {
@@ -3484,7 +3484,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Visite, accueil, guide, introduction, intégration, aide, démarrage"
+            "value" : "visite, accueil, guide, introduction, intégration, aide, démarrage"
           }
         },
         "ru" : {
@@ -3724,7 +3724,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Retourner, revenir en arrière"
+            "value" : "retourner, revenir en arrière"
           }
         },
         "ru" : {
@@ -3868,7 +3868,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "F5, duplication, transfert"
+            "value" : "f5, duplication, transfert"
           }
         },
         "ru" : {
@@ -3916,7 +3916,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Détruire, supprimer, effacer"
+            "value" : "détruire, supprimer, effacer"
           }
         },
         "ru" : {
@@ -4060,7 +4060,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Script, scripts, automatisation, shell, commande, action, utilisateur, personnalisé"
+            "value" : "script, scripts, automatisation, shell, commande, action, utilisateur, personnalisé"
           }
         },
         "ru" : {
@@ -4108,7 +4108,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "F6, transfert"
+            "value" : "f6, transfert"
           }
         },
         "ru" : {
@@ -4156,7 +4156,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lot, renommage, motif, compteur, regex, masque"
+            "value" : "lot, renommage, motif, compteur, regex, masque"
           }
         },
         "ru" : {
@@ -4204,7 +4204,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "F7, répertoire, mkdir, créer"
+            "value" : "f7, répertoire, mkdir, créer"
           }
         },
         "ru" : {
@@ -4348,7 +4348,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Compresser, archiver, zip, tar, alt+f5, packer"
+            "value" : "compresser, archiver, zip, tar, alt+f5, packer"
           }
         },
         "ru" : {
@@ -4492,7 +4492,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Partager, envoyer, airdrop, courrier, message, feuille"
+            "value" : "partager, envoyer, airdrop, courrier, message, feuille"
           }
         },
         "ru" : {
@@ -4540,7 +4540,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Synchroniser, synchroniser, comparer, miroir, diff, répertoires, dossiers"
+            "value" : "synchroniser, synchroniser, comparer, miroir, diff, répertoires, dossiers"
           }
         },
         "ru" : {
@@ -4588,7 +4588,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Finder, étiquette, balise, couleur, marquer"
+            "value" : "finder, étiquette, balise, couleur, marquer"
           }
         },
         "ru" : {
@@ -4636,7 +4636,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "F8, supprimer, retirer"
+            "value" : "f8, supprimer, retirer"
           }
         },
         "ru" : {
@@ -4780,7 +4780,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sftp, ssh, smb, partage, montage, nas, distant, réseau, serveur, connexion, hôte"
+            "value" : "sftp, ssh, smb, partage, montage, nas, distant, réseau, serveur, connexion, hôte"
           }
         },
         "ru" : {
@@ -4828,7 +4828,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chemin, adresse, type, url, saut, fréquence, flou, récent"
+            "value" : "chemin, adresse, type, url, saut, fréquence, flou, récent"
           }
         },
         "ru" : {
@@ -5020,7 +5020,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Terminal, shell, iterm, wezterm, console, commande, prompt, externe, application"
+            "value" : "terminal, shell, iterm, wezterm, console, commande, prompt, externe, application"
           }
         },
         "ru" : {
@@ -5116,7 +5116,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recherche, sauvegardé, intelligent, dossier, marque-page, barre latérale"
+            "value" : "recherche, sauvegardé, intelligent, dossier, marque-page, barre latérale"
           }
         },
         "ru" : {
@@ -5164,7 +5164,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recherche, mise en évidence, mdfind, trouver, localiser, filtrer, alt f7"
+            "value" : "recherche, mise en évidence, mdfind, trouver, localiser, filtrer, alt f7"
           }
         },
         "ru" : {
@@ -5212,7 +5212,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Marquer, tout, entier"
+            "value" : "marquer, tout, entier"
           }
         },
         "ru" : {
@@ -5260,7 +5260,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Caractère spécial, glob, marqueur"
+            "value" : "caractère spécial, glob, marqueur"
           }
         },
         "ru" : {
@@ -5308,7 +5308,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Basculer, retourner"
+            "value" : "basculer, retourner"
           }
         },
         "ru" : {
@@ -5356,7 +5356,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Caractère wildcard, glob, désélectionner, désmarquer"
+            "value" : "caractère wildcard, glob, désélectionner, désmarquer"
           }
         },
         "ru" : {
@@ -5404,7 +5404,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Actions, commandes, recherche, exécution"
+            "value" : "actions, commandes, recherche, exécution"
           }
         },
         "ru" : {
@@ -5452,7 +5452,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lieux, volumes, favoris, clavier, sélectionner, naviguer, liste des sources, déplacer le curseur"
+            "value" : "lieux, volumes, favoris, clavier, sélectionner, naviguer, liste des sources, déplacer le curseur"
           }
         },
         "ru" : {
@@ -5596,7 +5596,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aperçu, regard furtif"
+            "value" : "aperçu, regard furtif"
           }
         },
         "ru" : {
@@ -5836,7 +5836,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Shell, console, commande, ligne, zsh, bash, prompt, tiroir"
+            "value" : "shell, console, commande, ligne, zsh, bash, prompt, tiroir"
           }
         },
         "ru" : {
@@ -5884,7 +5884,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fichiers dot, invisible, point, masquer, révéler"
+            "value" : "fichiers dot, invisible, point, masquer, révéler"
           }
         },
         "ru" : {
@@ -5932,7 +5932,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lieux, volumes, masquer"
+            "value" : "lieux, volumes, masquer"
           }
         },
         "ru" : {
@@ -6028,7 +6028,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Finder, étiquettes, balises, couleurs, points, colonne"
+            "value" : "finder, étiquettes, balises, couleurs, points, colonne"
           }
         },
         "ru" : {
@@ -6268,7 +6268,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Session, basculer, restaurer, ouvrir, mise en page, fenêtres"
+            "value" : "session, basculer, restaurer, ouvrir, mise en page, fenêtres"
           }
         },
         "ru" : {
@@ -6316,7 +6316,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Session, instantané, stockage, mise en page, fenêtres"
+            "value" : "session, instantané, stockage, mise en page, fenêtres"
           }
         },
         "ru" : {
@@ -6900,7 +6900,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copier le chemin"
+            "value" : "Copier le chemin d’accès"
           }
         },
         "ru" : {
@@ -6923,7 +6923,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copier les chemins"
+            "value" : "Copier les chemins d’accès"
           }
         },
         "ru" : {
@@ -12984,7 +12984,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Une partie du nom du fichier"
+            "value" : "une partie du nom du fichier"
           }
         },
         "ru" : {
@@ -13053,7 +13053,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mot de passe (vide pour les invités)"
+            "value" : "mot de passe (vide pour les invités)"
           }
         },
         "ru" : {
@@ -16612,7 +16612,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couleur orange"
+            "value" : "Orange"
           }
         },
         "ru" : {
@@ -16750,7 +16750,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Texte à l’intérieur du fichier"
+            "value" : "texte à l’intérieur du fichier"
           }
         },
         "ru" : {
@@ -16773,7 +16773,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Texte à trouver"
+            "value" : "texte à trouver"
           }
         },
         "ru" : {
@@ -16865,7 +16865,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L’archive"
+            "value" : "l’archive"
           }
         },
         "ru" : {
@@ -18784,7 +18784,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dossier sans titre"
+            "value" : "dossier sans titre"
           }
         },
         "ru" : {
