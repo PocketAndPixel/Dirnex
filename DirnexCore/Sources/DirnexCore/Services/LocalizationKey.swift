@@ -115,6 +115,24 @@ public enum LocalizationKey {
         "archive.format.\(format.rawValue).title"
     }
 
+    /// A script template's name, e.g. `script.template.copyPaths.title` — the name the organizer's
+    /// **+** menu prints and the name the seeded script is saved under.
+    /// `UserScriptTemplate.title` is `DirnexCore` data reached through a variable
+    /// (`UserScriptTemplate.all`), so it gets the registry treatment the tour screens do.
+    /// `UserScriptTemplate.id` already carries the `script.template.` prefix, so the key forms
+    /// directly from it.
+    public static func userScriptTemplateTitle(_ templateID: String) -> String {
+        "\(templateID).title"
+    }
+
+    /// A script template's palette keywords, e.g. `script.template.copyPaths.keywords` — one
+    /// comma-separated value, split by ``splitKeywords(_:)`` and *added* to the English terms, as a
+    /// command's are. They are seeded into the script the user then owns, so this is the only
+    /// chance to give a Spanish speaker Spanish search terms for it.
+    public static func userScriptTemplateKeywords(_ templateID: String) -> String {
+        "\(templateID).keywords"
+    }
+
     /// The sentence explaining why an operation is unsupported, e.g. `vfs.unsupported.trash`.
     /// `VFSUnsupportedReason.sentence` is `DirnexCore` data reached through a *return value*
     /// (`VFSErrorText.sentence(for:)`) rather than an assignment, which is precisely why it needs

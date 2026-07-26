@@ -911,6 +911,20 @@ off a man page.
     of the two accounts is signed into this Chrome profile. Nothing on the Dirnex side can do better:
     the handoff is a URL, and which session receives it is the browser's to decide.
 
+### xattr and sips (the stock tools a user script reaches for)
+
+- **`xattr -d` exits 1 on a file that doesn't carry the attribute** ("No such xattr"), so
+  `xattr -d com.apple.quarantine "$@"` over an ordinary selection *fails* — and in Dirnex that means
+  the user-script failure alert, for a script that did exactly what was asked. **`xattr -dr` exits
+  0** on the same input. The recursive form is the one to reach for, for its exit code rather than
+  for the recursion.
+- **`sips` exits 0 and warns to stderr on a non-image** ("not a valid file - skipping"), so a
+  conversion run over a mixed selection converts the images and stays quiet instead of raising
+  anything. Useful, and not ours: it is `sips`'s choice, so anything relying on it should say so
+  before someone "fixes" it into a type-checking loop.
+- **`sips -Z 1200 "$1"` overwrites the original.** `--out "${1%.*}-1200.${1##*.}"` writes beside it
+  instead, which is what any one-click example acting on someone's photographs should do.
+
 ### git
 
 - **`git status --ignored=traditional` already collapses every ignored directory to one row**,

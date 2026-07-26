@@ -93,6 +93,39 @@ struct LocalizationCoverageTests {
         }
     }
 
+    @Test("every script template has a translated name and keywords in every shipped language")
+    func everyScriptTemplateIsTranslated() throws {
+        for language in translatedLanguages {
+            let bundle = try bundle(for: language)
+            for template in UserScriptTemplate.all {
+                let titleKey = LocalizationKey.userScriptTemplateTitle(template.id)
+                let keywordsKey = LocalizationKey.userScriptTemplateKeywords(template.id)
+                let title = translation(titleKey, in: bundle)
+                // A template's name becomes the *identity* of the script it seeds, so an English one
+                // left in place is not cosmetic — it is a script the user has to rename by hand.
+                #expect(title != nil, "\(language.code): no \(titleKey)")
+                #expect(title != template.title, "\(language.code): \(titleKey) is still English")
+                #expect(
+                    translation(keywordsKey, in: bundle) != nil,
+                    "\(language.code): \(keywordsKey)"
+                )
+            }
+        }
+    }
+
+    @Test("a seeded template keeps its English keywords searchable alongside the translated ones")
+    func templateKeywordsAreAdditive() {
+        // Same reasoning as `keywordsAreAdditive`, one step further down: these keywords are copied
+        // into a script the user then owns, so losing the English ones is permanent for that script.
+        let template = try? #require(UserScriptTemplate.all.first)
+        let script = template.map(LocalizedCatalog.script(for:))
+        #expect(script?.keywords.contains("clipboard") == true)
+        #expect(
+            script?.command == template?.command,
+            "the body is shell code and is never localized"
+        )
+    }
+
     @Test("every sidebar section header is translated in every shipped language")
     func everySidebarSectionIsTranslated() throws {
         for language in translatedLanguages {

@@ -5849,3 +5849,51 @@ mode was considered and rejected**: the three explicit modes reach every server,
 fall-back to cleartext is a password-downgrade vector — the same reason `FTPProcessArguments` emits
 `--ssl-reqd`, not `--ssl`. So the gap "I don't know which mode this server needs" is closed by a clear
 error and an explicit choice, not by guessing on the user's behalf.
+
+### Script templates in the organizer's + menu (2026-07-26, VERIFIED LIVE)
+
+A small M6 follow-on. The scripts organizer's hardest moment is the empty **Command** box: the sheet
+explains `"$@"` in a three-line help label and then leaves the user to write shell from nothing, so
+the two non-obvious parts of the mechanism (`perFile` mode, `$DIRNEX_OTHER_DIR`) were reachable only
+by reading that label carefully. **+** now opens a menu — *Blank Script*, then five ready-made
+templates — which is the standard macOS shape for a **+** that adds more than one kind of thing, and
+costs no new chrome in a sheet already at 640×460.
+
+A template is a **seed, not a built-in**: picking one saves an ordinary, fully editable `UserScript`
+through the same path as a blank one (so a second copy lands as "Copy Paths 2") and is then
+forgotten. Live built-ins would have owed the user answers — can I delete this, what happens to my
+edits on the next update — for nothing the seed does not already deliver.
+
+`UserScriptTemplate` is `DirnexCore` data with the registry treatment the tour screens get:
+`id` is the stable translation key, `title`/`keywords` are the English fallback, and
+`LocalizationKey.userScriptTemplateTitle/Keywords` + `LocalizedCatalog.script(for:)` join them, so a
+Spanish user gets a script actually *named* "Copiar rutas" rather than one they have to rename by
+hand. The **body is never translated** — it is shell code. `LocalizationCoverageTests` fails on an
+untranslated template (10 symbolic keys, fr/ru/es filled).
+
+**The bodies were probed before they were written, and three findings changed them:**
+
+1. **The runner discards stdout.** `UserScriptRunner` sends it to `/dev/null` and surfaces stderr
+   only on a non-zero exit, so a template that merely *prints* would do nothing visible — which rules
+   out the obvious `du -sh` / `shasum` demos unless they pipe. Every template has a side effect
+   instead; *Copy Paths* is `printf '%s\n' "$@" | pbcopy` precisely because the pasteboard is how a
+   script talks back.
+2. **`xattr -d` exits 1** ("No such xattr") on a file that was never quarantined, which would raise
+   the failure alert for an ordinary selection. `xattr -dr` exits **0** on the same input, so *Remove
+   Quarantine Flag* uses the recursive form — for its exit code, not for the recursion.
+3. **`$DIRNEX_OTHER_DIR` unset expands to `tar -czf /<date>.tgz`**, failing at the root of the disk
+   with a message naming a path the user never chose. The guard in *Archive to Other Panel* is
+   load-bearing rather than polite, and its `echo …>&2` is what reaches the alert.
+
+Two smaller calls, both non-destructive by choice: `sips -Z 1200 "$1"` overwrites the original, so
+*Resize Images* writes `photo-1200.heic` beside it (`${1%.*}` / `${1##*.}`); and `sips` exits **0**
+with a stderr warning on a non-image, so both image templates are quiet on a mixed selection rather
+than raising an alert — its choice, not ours, and worth knowing before anyone "fixes" it into a
+type-checking loop. Every tool used ships with macOS: a template needing Homebrew would be a broken
+demo on the machine of the person most likely to try one.
+
+Verified live: the menu drops under **+** with all six items; *Convert Images to JPEG* seeded with
+its body, its keywords and **Run once per selected file** already selected; typing `clipboard` in the
+palette found the seeded *Copy Paths* through its translated-and-additive keywords; running it put
+`/Users/oleg/swtest/DSC_0697-Панорама.jpg` on the pasteboard — a non-ASCII name arriving intact
+through argv, which is the security boundary `UserScript` documents.

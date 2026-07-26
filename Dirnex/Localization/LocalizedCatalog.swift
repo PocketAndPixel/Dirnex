@@ -123,6 +123,27 @@ enum LocalizedCatalog {
         return String(format: format, arguments: reason.arguments)
     }
 
+    /// A script template's name, translated — what the scripts organizer's **+** menu prints.
+    /// `UserScriptTemplate.title` is `DirnexCore` data reached through a variable
+    /// (`UserScriptTemplate.all`), so it is joined here by the template's stable id rather than
+    /// wrapped at the menu, which would extract nothing.
+    static func title(for template: UserScriptTemplate) -> String {
+        L10n.string(
+            LocalizationKey.userScriptTemplateTitle(template.id),
+            fallback: template.title
+        )
+    }
+
+    /// The script a template seeds, named and keyworded in the user's language.
+    ///
+    /// The name matters more here than at most display sites: it is saved into the user's list and
+    /// becomes the script's *identity*, so a Spanish user gets a script actually called "Copiar
+    /// rutas" rather than an English name they would have to rename by hand. The **body** is not
+    /// translated — it is shell code.
+    static func script(for template: UserScriptTemplate) -> UserScript {
+        template.script(name: title(for: template), keywords: keywords(for: template))
+    }
+
     /// A search's label for the tab chip and the path-bar crumb ("Results for …").
     ///
     /// `SpotlightQuery` hands over the *term* that stands for the query and no words at all, so both
@@ -168,11 +189,23 @@ enum LocalizedCatalog {
     /// docs, or who reaches for "copy" out of habit, must still find the command. Order matters only
     /// for stability — `CommandMatcher` scores terms, it does not rank by position.
     private static func keywords(for command: Command) -> [String] {
-        let translated = LocalizationKey.splitKeywords(
-            L10n.translation(LocalizationKey.commandKeywords(command.id)) ?? ""
+        merged(english: command.keywords, key: LocalizationKey.commandKeywords(command.id))
+    }
+
+    /// The same additive treatment for a script template's keywords — they are seeded into a script
+    /// the user then owns, so this is the one chance to give them searchable terms in their own
+    /// language without taking the English ones away.
+    private static func keywords(for template: UserScriptTemplate) -> [String] {
+        merged(
+            english: template.keywords,
+            key: LocalizationKey.userScriptTemplateKeywords(template.id)
         )
+    }
+
+    private static func merged(english: [String], key: String) -> [String] {
+        let translated = LocalizationKey.splitKeywords(L10n.translation(key) ?? "")
         var seen = Set<String>()
-        return (command.keywords + translated).filter { seen.insert($0.lowercased()).inserted }
+        return (english + translated).filter { seen.insert($0.lowercased()).inserted }
     }
 }
 
