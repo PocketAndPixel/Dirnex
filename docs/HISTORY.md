@@ -5897,3 +5897,51 @@ its body, its keywords and **Run once per selected file** already selected; typi
 palette found the seeded *Copy Paths* through its translated-and-additive keywords; running it put
 `/Users/oleg/swtest/DSC_0697-Панорама.jpg` on the pasteboard — a non-ASCII name arriving intact
 through argv, which is the security boundary `UserScript` documents.
+
+### Selectable text in Quick View (2026-07-27, VERIFIED LIVE)
+
+An M11 follow-on with an M11-shaped answer. A `.txt` preview could not be selected or copied — PDFs
+could, because they had already been routed away from Quick Look. `QLPreviewView` renders **out of
+process** and declines the clicks it is handed, and the surface must therefore swallow the mouse
+whole (a declined click is re-dispatched to the file table underneath, which moved the covered pane's
+cursor invisibly). So there is no version of "let Quick Look have the mouse" that is safe, and text
+took the route `PDFView` and `NSImageView` took before it: **decode it ourselves and render it
+in-process**, where a drag selects and ⌘C copies because `NSTextView` implements them itself.
+
+`TextPreview` (core, 16 tests) is the decode; `QuickViewTextView` is the view. Routing is
+`conforms(to: .text)` **minus HTML and RTF** — Quick Look renders those as the *document* they
+describe, and showing their markup instead would be a regression wearing a feature's clothes.
+
+**The decode was probed against real bytes first, and three findings shaped it:**
+
+1. **UTF-16 with no BOM is valid UTF-8** — the NULs are legal — so a UTF-8-first decode *succeeds*
+   and renders `П\0р\0и\0в…`. Nothing identifies those bytes (Foundation's detector answers
+   **nothing** for them, and nothing for 64 KiB of `/bin/ls` either), so a NUL byte is read as
+   "binary" and the file falls back to Quick Look. BOM-marked UTF-16/32 is decoded before that gate,
+   UTF-32's LE mark tested before UTF-16's because it starts with the same two bytes.
+2. **Foundation's detector is right about Windows-1251 and Latin-1, wrong about KOI8-R** (it answers
+   "Arabic (Windows)") **and lossy about MacRoman** (`Caf<?> na夫e` for `Café naïve`). A lossy answer
+   is refused rather than shown as mojibake; there is nothing better short of shipping a charset
+   detector, and this is what TextEdit would show.
+3. **TextKit 2 lays out lazily**: showing a 64 MiB document measured ~10 ms and jumping to its end
+   ~5 ms, so the 4 MiB cap is about the *read*, not the render — the preview re-runs on every cursor
+   step. Past it the file is cut and says so («Показаны первые 4 МБ файла»), which is why the notice
+   exists at all.
+
+**The live run found a bug that was already shipped, in the PDF backend.** In pane mode the preview
+covers the *inactive* pane and is a subview of it, so a backend the user can click into puts first
+responder inside that pane's hierarchy — and the responder chain then runs through the **covered**
+pane's `PanelViewController`. One F5 after a click into a text preview copied a folder out of the
+pane nobody was looking at, in the wrong direction, with no dialog. `QuickViewPreviewView` now hands
+its `nextResponder` to the **window**, which is what the two full-size modes already do structurally
+(they are siblings of the panes), so a preview holding focus makes pane commands find no target
+instead of the wrong one. Re-run afterwards: the same F5 does nothing, and ⌘C still copies the
+selection.
+
+Verified live in a Russian build: a drag selected a line and ⌘C put exactly it on the pasteboard
+(the pane's own ⌘C still copies the *file* when the table has focus); ⌘A selected the document, not
+the pane's files; a double-click selected a word in the user's own `text.txt`; a binary named
+`fake.txt` fell back to Quick Look's dump; ← / → still flipped files; images and PDFs unchanged.
+**Esc-while-the-text-has-focus is unverified** — the Esc monitor now recognizes
+`QuickViewDocumentTextView` as the one `NSText` it should not stand aside for, but synthetic Escape
+is never delivered into the app, so that path needs a physical key press.

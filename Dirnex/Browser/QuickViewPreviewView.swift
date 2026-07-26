@@ -62,6 +62,9 @@ final class QuickViewPreviewView: NSView {
     private var previewView: QLPreviewView?
     private var pdfView: PDFView?
     private var imageView: NSImageView?
+    /// Internal, not private: built and driven from `QuickViewPreviewView+Text`, and Swift's
+    /// `private` does not cross files.
+    var textSurface: QuickViewTextView?
     /// The URL currently loaded, so an unrelated refresh that re-drives the same file is skipped
     /// instead of flickering the preview.
     private var loadedURL: URL?
@@ -75,9 +78,12 @@ final class QuickViewPreviewView: NSView {
     private var headerFadeGeneration = 0
     private static let headerFadeDelay: TimeInterval = 2.5
 
-    /// Bumped by every image load, so a slow one landing after the cursor moved on is discarded
-    /// rather than replacing the file now on screen.
-    private var imageToken = 0
+    /// Bumped by every asynchronous load, so a slow one landing after the cursor moved on is
+    /// discarded rather than replacing the file now on screen. One counter across the image and text
+    /// backends, not one each: a flip from a photograph to a log has to invalidate the read it
+    /// interrupted, whichever backend started it.
+    /// Internal, not private: `QuickViewPreviewView+Text` bumps it too.
+    var loadToken = 0
 
     init(backingColor: NSColor, header: Header) {
         self.backingColor = backingColor
@@ -114,6 +120,8 @@ final class QuickViewPreviewView: NSView {
             showPDF(url)
         } else if let url, Self.isImage(url) {
             showImage(url)
+        } else if let url, Self.isText(url) {
+            showText(url)
         } else {
             showQuickLook(url)
         }
@@ -133,6 +141,7 @@ final class QuickViewPreviewView: NSView {
         // hanging off its edge with no gesture to bring it home.
         resetSwipe()
         imageView?.image = nil
+        textSurface?.clearText()
     }
 
     /// The file the header names. Ignored when this surface has no header.
@@ -148,6 +157,26 @@ final class QuickViewPreviewView: NSView {
     /// full modes the preview sits over the *focused* table, and a surface that took focus on
     /// appearing would turn ↑/↓ into document scrolling — losing the mode's whole point silently.
     override var acceptsFirstResponder: Bool { false }
+
+    /// Hand anything the preview's own backends didn't handle straight to the **window**, skipping
+    /// the view hierarchy this surface happens to sit in.
+    ///
+    /// This is load-bearing in pane mode, where the preview covers the *inactive* pane and is
+    /// therefore a subview of it. A backend the user can click into — the PDF view, and now the text
+    /// view — takes first responder, and without this the responder chain from it runs straight
+    /// through the *covered* pane's `PanelViewController`: F5 then copies from the pane nobody is
+    /// looking at, in the wrong direction, with no dialog. Measured, not theorized — one F5 after a
+    /// click into a text preview copied a folder out of the inactive pane.
+    ///
+    /// Skipping to the window is exactly what the two full-size modes already do structurally (they
+    /// are siblings of the panes, so no pane controller is in their chain — docs/NOTES.md), which
+    /// makes this consistency rather than a special case: while a preview holds focus, pane commands
+    /// find no target and do nothing, and the window's own commands still work. Anything a backend
+    /// *does* handle — a scroll, `copy:` in the text view — never reaches here.
+    override var nextResponder: NSResponder? {
+        get { window ?? super.nextResponder }
+        set { super.nextResponder = newValue }
+    }
 
     override func draw(_ dirtyRect: NSRect) {
         backingColor.setFill()
@@ -166,14 +195,15 @@ final class QuickViewPreviewView: NSView {
     /// other pane. Both are invisible while they happen. Returning `self` puts a view that *does*
     /// consume the event in front of the covered panes.
     ///
-    /// `PDFView` is the deliberate exception: scrolling and pinch-zooming a document is the entire
-    /// reason PDFs route there instead of to Quick Look, it is in-process, and it consumes what it
-    /// handles. The header keeps the mouse for the same reason — it is this surface's own chrome.
+    /// The in-process backends are the deliberate exceptions, each because the mouse is the whole
+    /// reason it exists: `PDFView` scrolls and pinch-zooms a document, and the text view is where a
+    /// drag *selects* — the thing Quick Look's preview cannot offer. Both consume what they handle,
+    /// which is what separates them from the remote view. The header keeps the mouse too — it is
+    /// this surface's own chrome.
     override func hitTest(_ point: NSPoint) -> NSView? {
         guard !isHidden, frame.contains(point) else { return nil }
         if let hit = super.hitTest(point), hit.isInteractiveQuickViewBackend(
-            pdf: pdfView,
-            header: headerView
+            among: [pdfView, textSurface?.interactiveSubtree, headerView]
         ) {
             return hit
         }
@@ -195,10 +225,12 @@ final class QuickViewPreviewView: NSView {
     // MARK: - Backends
 
     /// Show `url` in the Quick Look backend, standing the others down.
-    private func showQuickLook(_ url: URL?) {
+    /// Internal: `QuickViewPreviewView+Text` falls back here for a file that isn't text after all.
+    func showQuickLook(_ url: URL?) {
         guard let preview = ensureQuickLookPreview() else { return }
         standDownPDF()
         standDownImage()
+        standDownText()
         preview.isHidden = false
         preview.previewItem = url as NSURL?
     }
@@ -216,29 +248,33 @@ final class QuickViewPreviewView: NSView {
         let view = ensureImageView()
         standDownPDF()
         standDownQuickLook()
+        standDownText()
         view.isHidden = false
-        imageToken += 1
-        let token = imageToken
+        loadToken += 1
+        let token = loadToken
         Task { [weak self] in
             let data = await Task.detached(priority: .userInitiated) {
                 try? Data(contentsOf: url, options: .mappedIfSafe)
             }.value
-            guard let self, token == imageToken else { return }
+            guard let self, token == loadToken else { return }
             view.image = data.flatMap(NSImage.init(data:))
         }
     }
 
-    private func standDownQuickLook() {
+    // The three stand-downs are internal for the same reason `showQuickLook` is: the text backend
+    // lives in its own file and has to put the others away when it takes the surface.
+
+    func standDownQuickLook() {
         previewView?.isHidden = true
         previewView?.previewItem = nil
     }
 
-    private func standDownPDF() {
+    func standDownPDF() {
         pdfView?.isHidden = true
         pdfView?.document = nil
     }
 
-    private func standDownImage() {
+    func standDownImage() {
         imageView?.isHidden = true
         imageView?.image = nil
     }
@@ -249,6 +285,7 @@ final class QuickViewPreviewView: NSView {
         let pdfView = ensurePDFView()
         standDownQuickLook()
         standDownImage()
+        standDownText()
         pdfView.isHidden = false
         let document = PDFDocument(url: url)
         pdfView.document = document
@@ -366,9 +403,9 @@ final class QuickViewPreviewView: NSView {
         }
     }
 
-    /// Pin `subview` edge to edge inside `container`, so both backends fill the surface and stack
-    /// in the same place.
-    private func pin(_ subview: NSView, inside container: NSView) {
+    /// Pin `subview` edge to edge inside `container`, so every backend fills the surface and they
+    /// stack in the same place. Internal: the text backend builds itself from its own file.
+    func pin(_ subview: NSView, inside container: NSView) {
         subview.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(subview)
         NSLayoutConstraint.activate([
@@ -418,11 +455,12 @@ final class QuickViewPreviewView: NSView {
 }
 
 private extension NSView {
-    /// Whether this hit belongs to a Quick View backend that should keep the mouse — the PDF
-    /// document, or the surface's own header.
-    func isInteractiveQuickViewBackend(pdf: NSView?, header: NSView?) -> Bool {
-        if let pdf, !pdf.isHidden, isDescendant(of: pdf) { return true }
-        if let header, !header.isHidden, isDescendant(of: header) { return true }
-        return false
+    /// Whether this hit belongs to one of the Quick View parts that should keep the mouse — a
+    /// backend that handles it in-process, or the surface's own header.
+    func isInteractiveQuickViewBackend(among parts: [NSView?]) -> Bool {
+        parts.contains { part in
+            guard let part, !part.isHidden else { return false }
+            return isDescendant(of: part)
+        }
     }
 }

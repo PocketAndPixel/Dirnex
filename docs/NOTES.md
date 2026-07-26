@@ -186,6 +186,38 @@ at build time.
   defeats the point. Exempt only the in-process backends that genuinely need the mouse (`PDFView`
   scrolls and zooms; verified separately, since a single-page PDF fitted to the view scrolls nowhere
   and looks like a regression).
+  - **The corollary is that Quick Look can never give the user selectable text**, whatever the file.
+    A `.txt` preview cannot be dragged across because the surface has to swallow the click, and there
+    is no safe version of handing the remote view the mouse. Text therefore takes the route PDFs and
+    images already took — decode it (`TextPreview`) and render it in an in-process `NSTextView`,
+    where selection and ⌘C are the view's own. Worth stating because "just let this one through"
+    looks like the small fix and is the one thing that is not available.
+- **A backend the user can click into, inside a preview that covers the *inactive* pane, hands every
+  command to the wrong pane.** The pane-mode preview is a subview of the pane it covers, so first
+  responder lands inside that pane's hierarchy and the responder chain runs through the **covered**
+  pane's `PanelViewController` — one F5 after a click into a text preview copied a folder out of the
+  pane nobody was looking at, in the wrong direction and with no dialog. It fails silently and in the
+  expensive direction: no error, a real file operation, and the *other* pane is the one on screen. The
+  fix is one override — the surface returns the **window** as its `nextResponder` — which is what the
+  two full-size modes already do by construction (a sibling of the panes has no pane controller in its
+  chain, the note below), so a focused preview makes pane commands find no target instead of the
+  wrong one. Note the shape of the override: skip from the *surface*, not from the text view, or an
+  unhandled `scrollWheel` stops reaching the enclosing `NSScrollView` and the preview will not scroll.
+  Present since the PDF backend shipped; only the text backend made it easy enough to hit.
+- **Showing a file as text: the render is free, the *encoding* is where it goes wrong.** Measured on
+  a `NSTextView` in a real window: TextKit 2 lays out lazily, so a **64 MiB** document shows in
+  ~10 ms and scrolls to its end in ~5 ms — any read limit is about the I/O, not the layout. (Touching
+  `.layoutManager` drops the view back to TextKit 1, where forcing layout on the same document takes
+  **7 s**; don't reach for it.) Then, probed against real bytes:
+  - **UTF-16 with no BOM is valid UTF-8** — its NULs are legal — so a UTF-8-first decode *succeeds*
+    and renders `П\0р\0и\0в…` rather than failing over to the right encoding. Foundation's
+    `NSString.stringEncoding(for:)` answers **nothing** (0) for those bytes, and nothing for 64 KiB
+    of `/bin/ls`, so a NUL byte is the usable "this is not text" signal. Check the BOM (UTF-32's
+    little-endian mark *starts with* UTF-16 LE's, so test it first) before that gate.
+  - **That detector is right about Windows-1251 and Latin-1, wrong about KOI8-R** — it answers
+    "Arabic (Windows)" — **and lossy about MacRoman** (`Caf<?> na夫e` for `Café naïve`). Refuse the
+    lossy answers; take the rest. It is what TextEdit shows, and doing better means shipping a
+    charset detector.
 - **An overlay does not disable the `NSSplitView` divider it covers.** The split view keeps its drag
   region *and* its resize cursor whatever is drawn on top, so a full-window preview showed a `< | >`
   cursor over a photograph and a drag there resized two panes nobody could see — the divider was

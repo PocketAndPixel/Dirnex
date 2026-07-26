@@ -20202,6 +20202,35 @@
         }
       }
     },
+    "Showing the first %@ of this file" : {
+      "comment" : "Quick View text preview footer; %@ is a formatted size such as “4 MB”.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Showing the first %@ of this file"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Affichage des premiers %@ de ce fichier"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показаны первые %@ файла"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrando los primeros %@ de este archivo"
+          }
+        }
+      }
+    },
     "Showing the first %lld results" : {
       "comment" : "Search-results truncation title; %lld is the fixed result cap.",
       "localizations" : {

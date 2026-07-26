@@ -166,7 +166,11 @@ extension BrowserWindowController {
             else { return event }
             let responder = window?.firstResponder
             // A file table or a text edit owns Esc for its own purpose — let the event through.
-            if responder is FileTableView || responder is NSText { return event }
+            // The preview's own text view is the exception among `NSText`s: it takes focus when the
+            // user clicks in to select something, and Esc there means "out of the preview", exactly
+            // as it does with the pointer anywhere else on the surface.
+            if responder is FileTableView { return event }
+            if responder is NSText, !(responder is QuickViewDocumentTextView) { return event }
             // So does the terminal drawer, far more so: Esc is `vim`'s entire modal interface, and
             // a monitor that swallowed it to close a preview would make the drawer useless for the
             // editor most likely to be running in it.
