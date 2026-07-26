@@ -336,7 +336,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ s'exécute une fois par fichier - sélectionnez d'abord un ou plusieurs éléments."
+            "value" : "%@ s’exécute une fois par fichier — sélectionnez d’abord un ou plusieurs éléments."
           }
         },
         "ru" : {
@@ -718,13 +718,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld s'engage à tirer"
+                  "value" : "%lld commit à récupérer"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld s'engage à tirer"
+                  "value" : "%lld commits à récupérer"
                 }
               }
             }
@@ -789,13 +789,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld s'engage à pousser"
+                  "value" : "%lld commit à envoyer"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld s'engage à pousser"
+                  "value" : "%lld commits à envoyer"
                 }
               }
             }
@@ -931,7 +931,7 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Élément %lld"
+                  "value" : "%lld élément"
                 }
               },
               "other" : {
@@ -1002,13 +1002,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "L'élément %lld est déjà de retour."
+                  "value" : "%lld élément est déjà remis à sa place."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Les éléments %lld sont déjà restaurés."
+                  "value" : "%lld éléments sont déjà remis à leur place."
                 }
               }
             }
@@ -1275,13 +1275,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "L'élément %lld a écrasé les fichiers existants et ne peut pas être restauré."
+                  "value" : "%lld élément a écrasé des fichiers existants et ne peut pas être restauré."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Les éléments %lld ont écrasé les fichiers existants et ne peuvent pas être restaurés."
+                  "value" : "%lld éléments ont écrasé des fichiers existants et ne peuvent pas être restaurés."
                 }
               }
             }
@@ -1487,13 +1487,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld le script ne fonctionne plus à partir de sa touche de fonction."
+                  "value" : "%lld script ne s’exécute plus avec sa touche de fonction."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Les scripts %lld ne fonctionnent plus à partir de leurs touches de fonction."
+                  "value" : "%lld scripts ne s’exécutent plus avec leurs touches de fonction."
                 }
               }
             }
@@ -1843,7 +1843,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Toutes les balises"
+            "value" : "Toutes les étiquettes"
           }
         },
         "ru" : {
@@ -1866,7 +1866,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Toutes les balises…"
+            "value" : "Toutes les étiquettes…"
           }
         },
         "ru" : {
@@ -1889,7 +1889,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Toutes vos personnalisations de raccourcis seront supprimées et les paramètres par défaut de macOS seront restaurés. Toutes vos modifications seront perdues."
+            "value" : "Toutes vos personnalisations de raccourcis seront supprimées et les raccourcis macOS par défaut seront restaurés. Toutes vos modifications seront perdues."
           }
         },
         "ru" : {
@@ -2049,7 +2049,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Une mise à jour est disponible - cliquez pour l'installer."
+            "value" : "Une mise à jour est disponible — cliquez pour l’installer."
           }
         },
         "ru" : {
@@ -2762,7 +2762,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible d'éditer «%@»"
+            "value" : "Impossible de modifier «%@»"
           }
         },
         "ru" : {
@@ -3988,7 +3988,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Éditer"
+            "value" : "Modifier"
           }
         },
         "ru" : {
@@ -4468,7 +4468,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Renommer..."
+            "value" : "Renommer…"
           }
         },
         "ru" : {
@@ -4588,7 +4588,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Finder, balise, étiquette, couleur, marquer"
+            "value" : "Finder, étiquette, balise, couleur, marquer"
           }
         },
         "ru" : {
@@ -4612,7 +4612,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Balises…"
+            "value" : "Étiquettes…"
           }
         },
         "ru" : {
@@ -4900,7 +4900,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Favoris..."
+            "value" : "Favoris…"
           }
         },
         "ru" : {
@@ -5092,7 +5092,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Montrer"
+            "value" : "Dossier parent"
           }
         },
         "ru" : {
@@ -6028,7 +6028,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trouveur, balises, étiquettes, couleurs, couleurs, points, colonne"
+            "value" : "Finder, étiquettes, balises, couleurs, points, colonne"
           }
         },
         "ru" : {
@@ -6052,7 +6052,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Afficher les balises"
+            "value" : "Afficher les étiquettes"
           }
         },
         "ru" : {
@@ -6578,7 +6578,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Comparer par contenu (⌥F3) nécessite un outil de comparaison. Installez FileMerge (partie de Xcode), Kaleidoscope ou BBEdit, puis rouvrez Paramètres."
+            "value" : "Comparer par contenu (⌥F3) nécessite un outil de comparaison. Installez FileMerge (fourni avec Xcode), Kaleidoscope ou BBEdit, puis rouvrez Réglages."
           }
         },
         "ru" : {
@@ -6716,7 +6716,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Comparaison des dossiers..."
+            "value" : "Comparaison des dossiers…"
           }
         },
         "ru" : {
@@ -6739,7 +6739,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Conflit - laissé inchangé"
+            "value" : "Conflit — laissé inchangé"
           }
         },
         "ru" : {
@@ -7015,7 +7015,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copier..."
+            "value" : "Copier…"
           }
         },
         "ru" : {
@@ -7129,7 +7129,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible d'ajouter %#@items@ à « %2$@ »"
+            "value" : "Impossible d’ajouter %#@items@ à «%2$@»"
           },
           "substitutions" : {
             "items" : {
@@ -7208,7 +7208,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de changer les balises"
+            "value" : "Impossible de modifier les étiquettes"
           }
         },
         "ru" : {
@@ -7292,13 +7292,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Impossible de copier l'élément %lld"
+                  "value" : "Impossible de copier %lld élément"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Impossible de copier les éléments %lld"
+                  "value" : "Impossible de copier %lld éléments"
                 }
               }
             }
@@ -7409,13 +7409,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Impossible de supprimer l'élément %lld"
+                  "value" : "Impossible de supprimer %lld élément"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Impossible de supprimer les éléments %lld"
+                  "value" : "Impossible de supprimer %lld éléments"
                 }
               }
             }
@@ -7487,7 +7487,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de supprimer %#@items@ de « %2$@ »"
+            "value" : "Impossible de supprimer %#@items@ de «%2$@»"
           },
           "substitutions" : {
             "items" : {
@@ -7650,13 +7650,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Impossible d'effacer l'élément %lld"
+                  "value" : "Impossible d’effacer %lld élément"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Impossible d'effacer les éléments %lld"
+                  "value" : "Impossible d’effacer %lld éléments"
                 }
               }
             }
@@ -7905,13 +7905,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Impossible de déplacer l'élément %lld"
+                  "value" : "Impossible de déplacer %lld élément"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Impossible de déplacer les éléments %lld"
+                  "value" : "Impossible de déplacer %lld éléments"
                 }
               }
             }
@@ -7976,13 +7976,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Impossible de déplacer l'élément %lld dans la corbeille."
+                  "value" : "Impossible de placer %lld élément dans la corbeille."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Impossible de placer les éléments %lld dans la corbeille."
+                  "value" : "Impossible de placer %lld éléments dans la corbeille."
                 }
               }
             }
@@ -8162,13 +8162,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Impossible de remettre l'élément %lld en place."
+                  "value" : "Impossible de remettre %lld élément à sa place."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Impossible de remettre les éléments %lld en place."
+                  "value" : "Impossible de remettre %lld éléments à leur place."
                 }
               }
             }
@@ -8279,13 +8279,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Impossible de renommer l'élément %lld"
+                  "value" : "Impossible de renommer %lld élément"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Impossible de renommer les éléments %lld"
+                  "value" : "Impossible de renommer %lld éléments"
                 }
               }
             }
@@ -8565,7 +8565,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Supprimer \"%@\" définitivement ?"
+            "value" : "Supprimer «%@» définitivement ?"
           }
         },
         "ru" : {
@@ -8633,7 +8633,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Supprimer %#@items@ de « %2$@ » ?"
+            "value" : "Supprimer %#@items@ de «%2$@» ?"
           },
           "substitutions" : {
             "items" : {
@@ -8727,13 +8727,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Supprimer définitivement l'élément %lld ?"
+                  "value" : "Supprimer définitivement %lld élément ?"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Supprimer définitivement les éléments %lld ?"
+                  "value" : "Supprimer définitivement %lld éléments ?"
                 }
               }
             }
@@ -8806,7 +8806,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Supprimer la balise"
+            "value" : "Supprimer l’étiquette"
           }
         },
         "ru" : {
@@ -8967,7 +8967,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex %@ est disponible - cliquez pour installer"
+            "value" : "Dirnex %@ est disponible — cliquez pour l’installer"
           }
         },
         "ru" : {
@@ -9013,7 +9013,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex peut parcourir n'importe où, mais macOS garde certaines dossiers privés - les dossiers de domicile d'autres utilisateurs, Mail et Messages, les sauvegardes de Time Machine et partout où il considère que c'est sensible. Sans accès complet au disque, l'ouverture d'un de ces dossiers affiche un mur de permissions ; partout ailleurs, tout fonctionne normalement.\n\nCliquez sur Ouvrir les paramètres du système, puis activez Dirnex sous Accès complet au disque. macOS demandera à Dirnex de redémarrer afin que le nouveau accès prenne effet."
+            "value" : "Dirnex peut parcourir tous vos dossiers, mais macOS en protège certains : les dossiers de départ des autres utilisateurs, Mail et Messages, les sauvegardes Time Machine, ainsi que d’autres emplacements sensibles. Sans accès complet au disque, l’ouverture de l’un de ces dossiers affiche une alerte d’autorisation ; tout le reste fonctionne normalement.\n\nCliquez sur Ouvrir Réglages Système, puis activez Dirnex dans Accès complet au disque. macOS vous demandera de relancer Dirnex afin que l’autorisation prenne effet."
           }
         },
         "ru" : {
@@ -9166,13 +9166,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Je ne sais pas d'où vient l'élément %lld"
+                  "value" : "Impossible de déterminer l’origine de %lld élément"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Je ne sais pas d'où viennent les éléments %lld"
+                  "value" : "Impossible de déterminer l’origine de %lld éléments"
                 }
               }
             }
@@ -9337,7 +9337,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Éditer"
+            "value" : "Modifier"
           }
         },
         "ru" : {
@@ -9475,7 +9475,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Modifier..."
+            "value" : "Modifier…"
           }
         },
         "ru" : {
@@ -9820,7 +9820,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les fichiers sont identiques - rien à comparer."
+            "value" : "Les fichiers sont identiques — rien à comparer."
           }
         },
         "ru" : {
@@ -9912,7 +9912,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trouver"
+            "value" : "Rechercher"
           }
         },
         "ru" : {
@@ -9935,7 +9935,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rechercher les fichiers portant la balise «%@»"
+            "value" : "Rechercher les fichiers portant l’étiquette «%@»"
           }
         },
         "ru" : {
@@ -9958,7 +9958,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rechercher les fichiers portant une balise"
+            "value" : "Rechercher les fichiers étiquetés"
           }
         },
         "ru" : {
@@ -10096,7 +10096,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Avant"
+            "value" : "Suivant"
           }
         },
         "ru" : {
@@ -10540,7 +10540,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cacher %@"
+            "value" : "Masquer %@"
           }
         },
         "ru" : {
@@ -10563,7 +10563,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cacher les fichiers cachés"
+            "value" : "Masquer les fichiers cachés"
           }
         },
         "ru" : {
@@ -10609,7 +10609,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cacher ou afficher la barre latérale"
+            "value" : "Masquer ou afficher la barre latérale"
           }
         },
         "ru" : {
@@ -10794,7 +10794,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Modèle de recherche invalide"
+            "value" : "Motif de recherche non valide"
           }
         },
         "ru" : {
@@ -10855,13 +10855,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Il sera supprimé du fichier %lld, partout où Spotlight a indexé. Les fichiers eux-mêmes ne sont pas supprimés."
+                  "value" : "Elle sera supprimée de %lld fichier partout où Spotlight l’a indexée. Les fichiers eux-mêmes ne sont pas supprimés."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Il sera supprimé des fichiers %lld, partout où Spotlight a indexé. Les fichiers eux-mêmes ne sont pas supprimés."
+                  "value" : "Elle sera supprimée de %lld fichiers partout où Spotlight l’a indexée. Les fichiers eux-mêmes ne sont pas supprimés."
                 }
               }
             }
@@ -11049,7 +11049,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mots-Clés"
+            "value" : "Mots-clés"
           }
         },
         "ru" : {
@@ -11278,7 +11278,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS protège la corbeille. Dirnex ne peut pas l’afficher tant que vous ne lui en avez pas donné l’autorisation. Tout le reste continue de fonctionner normalement.\n\nCliquez sur Ouvrir les réglages système, puis activez Dirnex dans Accès complet au disque. macOS vous demandera de relancer Dirnex pour appliquer cette autorisation."
+            "value" : "macOS protège la corbeille. Dirnex ne peut pas l’afficher tant que vous ne lui en avez pas donné l’autorisation. Tout le reste continue de fonctionner normalement.\n\nCliquez sur Ouvrir Réglages Système, puis activez Dirnex dans Accès complet au disque. macOS vous demandera de relancer Dirnex pour appliquer cette autorisation."
           }
         },
         "ru" : {
@@ -11324,7 +11324,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS ne signale aucune application pour le texte brut. Choisissez-en une dans Paramètres ▸ Opérations."
+            "value" : "macOS ne signale aucune app pour le texte brut. Choisissez-en une dans Réglages ▸ Opérations."
           }
         },
         "ru" : {
@@ -11477,13 +11477,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Placer l’élément %lld dans la corbeille ?"
+                  "value" : "Placer %lld élément dans la corbeille ?"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Placer les éléments %lld dans la corbeille ?"
+                  "value" : "Placer %lld éléments dans la corbeille ?"
                 }
               }
             }
@@ -11694,7 +11694,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nommez la balise et choisissez sa couleur."
+            "value" : "Nommez l’étiquette et choisissez sa couleur."
           }
         },
         "ru" : {
@@ -11786,7 +11786,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nouveau (copié)"
+            "value" : "Nouvel élément (copie en cours)"
           }
         },
         "ru" : {
@@ -11809,7 +11809,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nouveau (déplacement en cours)"
+            "value" : "Nouvel élément (déplacement en cours)"
           }
         },
         "ru" : {
@@ -11947,7 +11947,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nouvelle balise"
+            "value" : "Nouvelle étiquette"
           }
         },
         "ru" : {
@@ -11970,7 +11970,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nouvelle balise…"
+            "value" : "Nouvelle étiquette…"
           }
         },
         "ru" : {
@@ -12223,7 +12223,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non téléchargé - stocké dans le cloud"
+            "value" : "Non téléchargé — stocké dans le cloud"
           }
         },
         "ru" : {
@@ -12384,7 +12384,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Seuls les fichiers sur ce Mac peuvent être modifiés - copiez-les d'abord (F5)."
+            "value" : "Seuls les fichiers sur ce Mac peuvent être modifiés — copiez-les d’abord (F5)."
           }
         },
         "ru" : {
@@ -12568,7 +12568,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ouvrir les réglages système"
+            "value" : "Ouvrir Réglages Système"
           }
         },
         "ru" : {
@@ -12637,7 +12637,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'ouverture d'un dossier à partir d'une onglet de recherche laisse les résultats en place et l'ouvre dans l'autre volet. Lorsque vous l'éteignez, l'affichage reste sur les résultats afin que vous puissiez continuer à en ouvrir d'autres."
+            "value" : "L’ouverture d’un dossier depuis un onglet de recherche conserve les résultats et ouvre le dossier dans l’autre panneau. Lorsque cette option est désactivée, le curseur reste sur les résultats pour vous permettre d’en ouvrir d’autres."
           }
         },
         "ru" : {
@@ -12729,7 +12729,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Facultatif - enregistrer dans la barre latérale"
+            "value" : "Facultatif — enregistrer dans la barre latérale"
           }
         },
         "ru" : {
@@ -12798,7 +12798,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Autre..."
+            "value" : "Autre…"
           }
         },
         "ru" : {
@@ -12882,7 +12882,7 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Emballer l'élément %lld"
+                  "value" : "Créer une archive avec %lld élément"
                 }
               },
               "other" : {
@@ -13206,13 +13206,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Supprimer définitivement l'élément %lld de la corbeille ?"
+                  "value" : "Supprimer définitivement %lld élément de la corbeille ?"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Supprimer définitivement les éléments %lld de la corbeille ?"
+                  "value" : "Supprimer définitivement %lld éléments de la corbeille ?"
                 }
               }
             }
@@ -13285,7 +13285,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La permission de lire l'un des dossiers a été refusée."
+            "value" : "L’accès en lecture à l’un des dossiers a été refusé."
           }
         },
         "ru" : {
@@ -13461,13 +13461,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Retourner l'élément %lld ?"
+                  "value" : "Remettre %lld élément à sa place ?"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Retourner les éléments %lld ?"
+                  "value" : "Remettre %lld éléments à leur place ?"
                 }
               }
             }
@@ -13792,7 +13792,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Supprimer toutes les balises"
+            "value" : "Supprimer toutes les étiquettes"
           }
         },
         "ru" : {
@@ -13861,7 +13861,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Supprimée de %lld fichiers sur %lld. %@\nLa balise reste dans la barre latérale, car certains fichiers la portent encore."
+            "value" : "Supprimée de %lld fichiers sur %lld. %@\nL’étiquette reste dans la barre latérale, car certains fichiers la portent encore."
           }
         },
         "ru" : {
@@ -13922,13 +13922,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Renommer l'élément %lld"
+                  "value" : "Renommer %lld élément"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Renommer les éléments %lld"
+                  "value" : "Renommer %lld éléments"
                 }
               }
             }
@@ -15136,7 +15136,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rechercher le nom"
+            "value" : "Nom de la recherche"
           }
         },
         "ru" : {
@@ -15529,7 +15529,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Paramètres"
+            "value" : "Réglages"
           }
         },
         "ru" : {
@@ -15667,7 +15667,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Afficher chaque balise trouvée lors de la navigation"
+            "value" : "Afficher chaque étiquette trouvée lors de la navigation"
           }
         },
         "ru" : {
@@ -15690,7 +15690,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Afficher les balises Finder"
+            "value" : "Afficher les étiquettes Finder"
           }
         },
         "ru" : {
@@ -15782,7 +15782,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Affichage des premiers résultats %lld"
+            "value" : "Affichage des %lld premiers résultats"
           }
         },
         "ru" : {
@@ -15805,7 +15805,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Affiche les couleurs des balises de chaque fichier à l'extrémité droite de son nom, comme le fait Finder. Aussi dans le menu Affichage. Les archives et les volumes distants n'ont pas de balises, donc rien n'y est dessiné."
+            "value" : "Affiche les couleurs des étiquettes de chaque fichier à droite de son nom, comme dans le Finder. Cette option est aussi disponible dans le menu Présentation. Les archives et les volumes distants n’ont pas d’étiquettes ; rien ne s’y affiche."
           }
         },
         "ru" : {
@@ -15943,7 +15943,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Balises"
+            "value" : "Étiquettes"
           }
         },
         "ru" : {
@@ -16311,7 +16311,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Placer le focus sur les dossiers ouverts depuis les résultats de recherche"
+            "value" : "Placer le curseur sur les dossiers ouverts depuis les résultats de recherche"
           }
         },
         "ru" : {
@@ -16441,13 +16441,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "La synchronisation déplacera l'élément %lld dans la corbeille."
+                  "value" : "La synchronisation placera %lld élément dans la corbeille."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "La synchronisation déplacera les éléments %lld dans la corbeille."
+                  "value" : "La synchronisation placera %lld éléments dans la corbeille."
                 }
               }
             }
@@ -16497,7 +16497,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nom de balise"
+            "value" : "Nom de l’étiquette"
           }
         },
         "ru" : {
@@ -16704,7 +16704,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Balises"
+            "value" : "Étiquettes"
           }
         },
         "ru" : {
@@ -16727,7 +16727,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Balises :"
+            "value" : "Étiquettes :"
           }
         },
         "ru" : {
@@ -17969,7 +17969,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ce serveur présente une clé d’hôte différente de celle à laquelle vous faisiez confiance. Cela peut être normal après une réinstallation du serveur ou si une nouvelle application SFTP utilise cette adresse, mais peut aussi indiquer une interception de la connexion (attaque de l’homme du milieu).\n\nNouvelle empreinte :\n%@\n\nNe continuez que si vous reconnaissez cette empreinte. Lui faire confiance remplacera l’ancienne clé et permettra les prochaines connexions à ce serveur."
+            "value" : "Ce serveur présente une clé %@ d’hôte différente de celle à laquelle vous faisiez confiance. Cela peut être normal après une réinstallation du serveur ou si une nouvelle app SFTP utilise cette adresse, mais peut aussi indiquer une interception de la connexion (attaque de l’homme du milieu).\n\nNouvelle empreinte :\n%@\n\nNe continuez que si vous reconnaissez cette empreinte. Lui faire confiance remplacera l’ancienne clé et permettra les prochaines connexions à ce serveur."
           }
         },
         "ru" : {
@@ -18135,7 +18135,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ouvrez la palette de commandes et saisissez ce que vous voulez faire : copier, créer une archive, vous connecter à un serveur ou ajouter une balise. Elle recherche approximativement chaque action ; rien à mémoriser, aucun menu à parcourir."
+            "value" : "Ouvrez la palette de commandes et saisissez ce que vous voulez faire : copier, créer une archive, vous connecter à un serveur ou ajouter une étiquette. Elle recherche approximativement chaque action ; rien à mémoriser, aucun menu à parcourir."
           }
         },
         "ru" : {
@@ -18231,7 +18231,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Deux panneaux, côte à côte, commandés depuis le clavier. L'un contient les fichiers avec lesquels vous travaillez, l'autre où ils vont - et vous ne prenez la souris que lorsque vous le souhaitez."
+            "value" : "Deux panneaux, côte à côte, commandés depuis le clavier. L’un contient les fichiers avec lesquels vous travaillez, l’autre leur destination — et vous ne prenez la souris que lorsque vous le souhaitez."
           }
         },
         "ru" : {
@@ -19497,7 +19497,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Seuls les fichiers locaux portent des balises Finder."
+            "value" : "Seuls les fichiers locaux portent des étiquettes Finder."
           }
         },
         "ru" : {
@@ -19634,7 +19634,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Travail, rouge - tout doit correspondre"
+            "value" : "Travail, rouge — tout doit correspondre"
           }
         },
         "ru" : {
@@ -19703,7 +19703,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vous pouvez parcourir tous les dossiers de ce Mac. Pour modifier cela, ouvrez l'accès complet au disque dans les paramètres système."
+            "value" : "Vous pouvez parcourir tous les dossiers de ce Mac. Pour modifier cela, ouvrez Accès complet au disque dans Réglages Système."
           }
         },
         "ru" : {
@@ -19772,7 +19772,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vous n'avez pas de permission. Dirnex peut avoir besoin d'un accès complet au disque dans les paramètres du système."
+            "value" : "Vous n’avez pas l’autorisation. Dirnex peut nécessiter l’accès complet au disque dans Réglages Système."
           }
         },
         "ru" : {
@@ -19818,7 +19818,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vos fichiers dans iCloud Drive sont listés ci-dessus. Les dossiers d'applications qu'ils gardent là-bas - Pages, Aperçu, raccourcis - sont privés pour macOS jusqu'à ce que vous autorisiez Dirnex à les lire.\n\nCliquez sur Ouvrir les paramètres du système, puis activez Dirnex sous Accès complet au disque. macOS demandera à Dirnex de redémarrer afin que le nouveau accès prenne effet."
+            "value" : "Vos fichiers iCloud Drive sont affichés ci-dessus. Les dossiers que les apps y créent — Pages, Aperçu, Raccourcis — sont privés dans macOS jusqu’à ce que vous autorisiez Dirnex à les lire.\n\nCliquez sur Ouvrir Réglages Système, puis activez Dirnex dans Accès complet au disque. macOS vous demandera de relancer Dirnex afin que l’autorisation prenne effet."
           }
         },
         "ru" : {
@@ -19841,7 +19841,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Votre recherche a donné plus de résultats. Rétrécissez-la pour voir le reste."
+            "value" : "Votre recherche a trouvé davantage de résultats. Affinez-la pour afficher les autres."
           }
         },
         "ru" : {
