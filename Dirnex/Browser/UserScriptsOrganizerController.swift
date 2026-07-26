@@ -20,7 +20,8 @@ final class UserScriptsOrganizerController: NSViewController {
 
     private let tableView = NSTableView()
     private let scrollView = NSScrollView()
-    private let addButton = NSButton()
+    /// Internal so the templates companion file can anchor the **+** menu under it.
+    let addButton = NSButton()
     private let removeButton = NSButton()
 
     private let nameField = NSTextField()
@@ -54,7 +55,7 @@ final class UserScriptsOrganizerController: NSViewController {
         scrollView.borderType = .bezelBorder
         scrollView.translatesAutoresizingMaskIntoConstraints = false
 
-        configureButton(addButton, symbol: "plus", action: #selector(addScript(_:)))
+        configureButton(addButton, symbol: "plus", action: #selector(showAddMenu(_:)))
         configureButton(removeButton, symbol: "minus", action: #selector(removeSelected(_:)))
         addButton.translatesAutoresizingMaskIntoConstraints = false
         removeButton.translatesAutoresizingMaskIntoConstraints = false
@@ -176,19 +177,36 @@ final class UserScriptsOrganizerController: NSViewController {
 
     // MARK: - Actions
 
-    @objc private func addScript(_ sender: Any?) {
-        let name = uniqueName(base: String(
+    /// The blank script the **+** menu's first item creates — the behavior the button itself had
+    /// before the templates gave it more than one thing to add.
+    @objc func addBlankScript(_ sender: Any?) {
+        let name = String(
             localized: "New Script",
             comment: "Default name for a newly created user script."
-        ))
-        scripts.save(UserScript(name: name, command: "", runMode: .combined))
+        )
+        insert(UserScript(name: name, command: "", runMode: .combined), renaming: true)
+    }
+
+    /// Add `script` under a name nothing else claims and select it. Internal so the templates
+    /// companion file seeds through this same path — unique-naming and selection must not be
+    /// written twice.
+    ///
+    /// `renaming` selects the name for typing over, which is right for a blank script (its name is
+    /// a placeholder) and wrong for a template: the next keystroke would land on top of the name
+    /// the user just picked, when what they want to read is the body.
+    func insert(_ script: UserScript, renaming: Bool) {
+        var script = script
+        script.name = uniqueName(base: script.name)
+        scripts.save(script)
         persist()
         tableView.reloadData()
-        if let index = scripts.scripts.firstIndex(where: { $0.name == name }) {
-            selectRow(index)
-            view.window?.makeFirstResponder(nameField)
-            nameField.selectText(nil)
+        guard let index = scripts.scripts.firstIndex(where: { $0.name == script.name }) else {
+            return
         }
+        selectRow(index)
+        guard renaming else { return }
+        view.window?.makeFirstResponder(nameField)
+        nameField.selectText(nil)
     }
 
     @objc private func removeSelected(_ sender: Any?) {

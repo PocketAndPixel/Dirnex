@@ -89,6 +89,35 @@
         }
       }
     },
+    "Blank Script" : {
+      "comment" : "Scripts organizer + menu: create an empty script rather than one from a template.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blank Script"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Script vierge"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пустой скрипт"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Script en blanco"
+          }
+        }
+      }
+    },
     "\"%@\" could not be run." : {
       "comment" : "AppleScript error when an operation resolved but did not dispatch; %@ is its name.",
       "localizations" : {
@@ -490,6 +519,306 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "(+%lld más)"
+          }
+        }
+      }
+    },
+    "script.template.archiveToOtherPanel.keywords" : {
+      "comment" : "Extra command-palette search terms for the script this template creates, comma-separated. Added to the English terms, not replacing them, so the English words keep working.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "archive, backup, tar, compress, panel"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "archive, sauvegarde, tar, compresser, panneau"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "архив, резервная копия, tar, сжать, панель"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "archivo, copia de seguridad, tar, comprimir, panel"
+          }
+        }
+      }
+    },
+    "script.template.archiveToOtherPanel.title" : {
+      "comment" : "Scripts organizer + menu: a ready-made script template. DirnexCore data, keyed by UserScriptTemplate.id. Also becomes the name of the script it creates.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Archive to Other Panel"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Archiver dans l’autre panneau"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Архив на другую панель"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comprimir en el otro panel"
+          }
+        }
+      }
+    },
+    "script.template.copyPaths.keywords" : {
+      "comment" : "Extra command-palette search terms for the script this template creates, comma-separated. Added to the English terms, not replacing them, so the English words keep working.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "clipboard, path, copy, pasteboard"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "presse-papiers, chemin, copier"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "буфер обмена, путь, скопировать, вставить"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "portapapeles, ruta, copiar"
+          }
+        }
+      }
+    },
+    "script.template.copyPaths.title" : {
+      "comment" : "Scripts organizer + menu: a ready-made script template. DirnexCore data, keyed by UserScriptTemplate.id. Also becomes the name of the script it creates.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy Paths"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier les chemins"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопировать пути"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar rutas"
+          }
+        }
+      }
+    },
+    "script.template.imagesToJPEG.keywords" : {
+      "comment" : "Extra command-palette search terms for the script this template creates, comma-separated. Added to the English terms, not replacing them, so the English words keep working.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "image, photo, convert, jpeg, jpg, heic"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "image, photo, convertir, jpeg, jpg, heic"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "изображение, фото, конвертировать, преобразовать, jpeg, jpg, heic"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "imagen, foto, convertir, jpeg, jpg, heic"
+          }
+        }
+      }
+    },
+    "script.template.imagesToJPEG.title" : {
+      "comment" : "Scripts organizer + menu: a ready-made script template. DirnexCore data, keyed by UserScriptTemplate.id. Also becomes the name of the script it creates.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Convert Images to JPEG"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Convertir les images en JPEG"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Конвертировать изображения в JPEG"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Convertir imágenes a JPEG"
+          }
+        }
+      }
+    },
+    "script.template.removeQuarantine.keywords" : {
+      "comment" : "Extra command-palette search terms for the script this template creates, comma-separated. Added to the English terms, not replacing them, so the English words keep working.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "quarantine, gatekeeper, unblock, download, xattr"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "quarantaine, gatekeeper, débloquer, téléchargement, xattr"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "карантин, gatekeeper, разблокировать, загрузка, xattr"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "cuarentena, gatekeeper, desbloquear, descarga, xattr"
+          }
+        }
+      }
+    },
+    "script.template.removeQuarantine.title" : {
+      "comment" : "Scripts organizer + menu: a ready-made script template. DirnexCore data, keyed by UserScriptTemplate.id. Also becomes the name of the script it creates.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove Quarantine Flag"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retirer l’indicateur de quarantaine"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Снять карантин с файлов"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar la marca de cuarentena"
+          }
+        }
+      }
+    },
+    "script.template.resizeImages.keywords" : {
+      "comment" : "Extra command-palette search terms for the script this template creates, comma-separated. Added to the English terms, not replacing them, so the English words keep working.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "image, photo, resize, scale, thumbnail"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "image, photo, redimensionner, échelle, miniature"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "изображение, фото, размер, масштаб, миниатюра, уменьшить"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "imagen, foto, redimensionar, escalar, miniatura"
+          }
+        }
+      }
+    },
+    "script.template.resizeImages.title" : {
+      "comment" : "Scripts organizer + menu: a ready-made script template. DirnexCore data, keyed by UserScriptTemplate.id. Also becomes the name of the script it creates.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resize Images to 1200 px"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redimensionner les images à 1200 px"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уменьшить изображения до 1200 px"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redimensionar imágenes a 1200 px"
           }
         }
       }
@@ -19869,6 +20198,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mostrar detalles de operaciones"
+          }
+        }
+      }
+    },
+    "Showing the first %@ of this file" : {
+      "comment" : "Quick View text preview footer; %@ is a formatted size such as “4 MB”.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Showing the first %@ of this file"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Affichage des premiers %@ de ce fichier"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показаны первые %@ файла"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrando los primeros %@ de este archivo"
           }
         }
       }

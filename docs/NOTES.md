@@ -135,6 +135,29 @@ at build time.
     and driving the window's directly undid nothing.
   - The tell that this class of bug is present is a *comment* claiming a fall-through, and it fails
     in the quiet direction: nothing logs, every menu builds, and the key just does nothing.
+- **A search field that owns a list's key handling is one click away from being cut out of it.** The
+  ⌘K palette routes ⎋, ⏎ and ↑/↓ through `control(_:doCommandBy:)`, which fires *only* while the
+  field is first responder — and a stock `NSTableView` takes first responder in `mouseDown:`. So one
+  click on a result left the palette completely keyboard-dead: typing went nowhere, ⏎ ran nothing,
+  ⎋ did not close it, and the only way out was a double-click or clicking outside. It fails in the
+  quiet direction twice over — nothing logs, and the *keystrokes are silently dropped* rather than
+  misrouted. The one visible tell reads as cosmetic: AppKit draws the same selection unemphasized
+  (grey) without focus and emphasized (blue) with it, so "the row turns blue when I click it" is not
+  a second highlight, it is the focus moving. Fix at the source — `acceptsFirstResponder = false` on
+  the list subclass. `mouseDown:` still selects, so clicking keeps working and the selection settles
+  on one appearance for mouse and keyboard alike.
+  - **`NSTableView.doubleAction` mirrors `action` and cannot be cleared** — probed: assigning it
+    `nil` reverts it to the mirror, so any table with a single-click action nominally has the same
+    selector on double-click. Measured harmless *here* for the reason that generalizes: **ordering a
+    window out during the first click swallows the remainder of that click session.** The command ran
+    once, and the second click was not re-dispatched to the window underneath — verified by putting a
+    palette row directly over a pane's `..` row, where a leaked double-click would have navigated up,
+    and it did not. Worth re-measuring rather than assuming for any panel that closes on click.
+  - A test can assert the first fact directly (`acceptsFirstResponder`) but not ⎋, since synthetic
+    Escape never reaches the app (above). The proxy that *is* verifiable: click, then type a
+    character and confirm it lands in the field — if the field kept focus it receives the whole
+    `doCommandBy:` family, Escape included. After the click-to-run change the only click that leaves
+    the panel open is one in the empty space below the last row, which is exactly where to aim it.
 - **The shared `QLPreviewPanel` (⌘Y) is key while open**, so arrows navigate its preview items,
   not the table. `QLPreviewView` is not opaque and `init(frame:style:)` is failable — an
   embedded preview needs an opaque backing or the covered view bleeds through. It also only
@@ -163,6 +186,38 @@ at build time.
   defeats the point. Exempt only the in-process backends that genuinely need the mouse (`PDFView`
   scrolls and zooms; verified separately, since a single-page PDF fitted to the view scrolls nowhere
   and looks like a regression).
+  - **The corollary is that Quick Look can never give the user selectable text**, whatever the file.
+    A `.txt` preview cannot be dragged across because the surface has to swallow the click, and there
+    is no safe version of handing the remote view the mouse. Text therefore takes the route PDFs and
+    images already took — decode it (`TextPreview`) and render it in an in-process `NSTextView`,
+    where selection and ⌘C are the view's own. Worth stating because "just let this one through"
+    looks like the small fix and is the one thing that is not available.
+- **A backend the user can click into, inside a preview that covers the *inactive* pane, hands every
+  command to the wrong pane.** The pane-mode preview is a subview of the pane it covers, so first
+  responder lands inside that pane's hierarchy and the responder chain runs through the **covered**
+  pane's `PanelViewController` — one F5 after a click into a text preview copied a folder out of the
+  pane nobody was looking at, in the wrong direction and with no dialog. It fails silently and in the
+  expensive direction: no error, a real file operation, and the *other* pane is the one on screen. The
+  fix is one override — the surface returns the **window** as its `nextResponder` — which is what the
+  two full-size modes already do by construction (a sibling of the panes has no pane controller in its
+  chain, the note below), so a focused preview makes pane commands find no target instead of the
+  wrong one. Note the shape of the override: skip from the *surface*, not from the text view, or an
+  unhandled `scrollWheel` stops reaching the enclosing `NSScrollView` and the preview will not scroll.
+  Present since the PDF backend shipped; only the text backend made it easy enough to hit.
+- **Showing a file as text: the render is free, the *encoding* is where it goes wrong.** Measured on
+  a `NSTextView` in a real window: TextKit 2 lays out lazily, so a **64 MiB** document shows in
+  ~10 ms and scrolls to its end in ~5 ms — any read limit is about the I/O, not the layout. (Touching
+  `.layoutManager` drops the view back to TextKit 1, where forcing layout on the same document takes
+  **7 s**; don't reach for it.) Then, probed against real bytes:
+  - **UTF-16 with no BOM is valid UTF-8** — its NULs are legal — so a UTF-8-first decode *succeeds*
+    and renders `П\0р\0и\0в…` rather than failing over to the right encoding. Foundation's
+    `NSString.stringEncoding(for:)` answers **nothing** (0) for those bytes, and nothing for 64 KiB
+    of `/bin/ls`, so a NUL byte is the usable "this is not text" signal. Check the BOM (UTF-32's
+    little-endian mark *starts with* UTF-16 LE's, so test it first) before that gate.
+  - **That detector is right about Windows-1251 and Latin-1, wrong about KOI8-R** — it answers
+    "Arabic (Windows)" — **and lossy about MacRoman** (`Caf<?> na夫e` for `Café naïve`). Refuse the
+    lossy answers; take the rest. It is what TextEdit shows, and doing better means shipping a
+    charset detector.
 - **An overlay does not disable the `NSSplitView` divider it covers.** The split view keeps its drag
   region *and* its resize cursor whatever is drawn on top, so a full-window preview showed a `< | >`
   cursor over a photograph and a drag there resized two panes nobody could see — the divider was
@@ -226,6 +281,26 @@ at build time.
     for a decision.** `SwipeStepper` was pure, and had 23 passing tests pinning behaviour that should
     never have been Dirnex's to define. Tests keep a decision from drifting; they cannot tell you it
     was yours to make.
+- **A preview the user can click into takes the mode's own keys away with it, and a *gesture* that
+  keeps working is what hides it.** Clicking into the Quick View text view (to select a line) or the
+  `PDFView` makes it first responder, and from there it eats the **arrows** — so ← / → stopped
+  walking the file list in all three sizes while the two-finger swipe went on flipping perfectly.
+  That asymmetry is not luck: the swipe is a *window-scoped monitor*, so no focused view can eat it,
+  and every flip it makes ends in `restoreTableFocus`, so it silently repairs the focus the click
+  moved. The keyboard had neither half, and the two read as twins, so a pass that verifies the
+  gesture proves nothing about the keys. (`PDFView` had it from the day it shipped; the text backend
+  is only what made it easy to hit — and that pass's own verification, "← / → still flipped files",
+  was run *without clicking into the text first*, which is the one input that cannot expose it.)
+  - **A local key monitor runs before responder dispatch, so moving first responder inside it
+    delivers that same event to the responder it just set.** Probed in a throwaway app (two views, a
+    posted keyDown, the monitor re-pointing focus mid-flight — the key landed in the *new* view).
+    That is what lets the fix hand focus back to the table and then **let the key travel** instead of
+    swallowing it and re-implementing the step: `FileTableView.keyDown` stays the single definition
+    of what an arrow does, ends-of-list and `..` handling included, rather than a second copy in a
+    monitor that can drift from it.
+  - Take **bare** arrows only. ⇧← must still extend the selection in the text the user is in the
+    middle of selecting; without that escape hatch, "the arrows belong to the file list" is not an
+    affordable rule.
 - **Transforming a layer that hosts an out-of-process view costs a round trip per frame.** A
   `QLPreviewView` renders in another process, so animating it judders visibly ("like 30 fps") — on
   exactly the content a preview swipe is used for. Route images to an in-process `NSImageView`
@@ -353,9 +428,30 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   nothing in the compiler notices — the English fallback renders, so an untranslated command looks
   *fine* in an English screenshot. `LocalizationCoverageTests` reads the real compiled `.lproj` and
   fails when a command, category or function-bar caption has no entry.
-- **Translated palette keywords are added to the English ones, never substituted.** A Russian user
-  who reaches for "copy" out of habit, or who followed English docs, must still find the command;
-  verified live by typing `duplicate` and getting «Копировать на другую панель».
+- **Every English name a command has must survive translation into the palette's keywords — the
+  registry keywords *and* the English title. Never take either away.** Russian and Ukrainian users
+  type on a Latin layout constantly (it is the common case, not an edge case), and English docs,
+  screenshots and habits all name commands in English. `LocalizedCatalog` therefore *adds* the
+  translated keywords to the core's English ones rather than replacing them, and folds the English
+  title in beside them.
+  - **The title is the half that was missing, and it is missing for a structural reason: it is the
+    one string a translation *replaces*.** A keyword list is merged, so nobody thinks about it; the
+    title is overwritten, so the single most obvious search term for a command is exactly the one
+    that disappears. `file.copy`'s registry keywords are `f5, duplicate, transfer` — no "copy" — so
+    in a Russian build typing `copy` matched **nothing whatsoever**, not even a bad result, while
+    the shipped comment above `commandKeywords` claimed the merge already covered this case.
+  - **The bug hid behind its own verification.** The pass that added the merge proved it by typing
+    `duplicate` and getting «Копировать на другую панель» — a genuine pass of the mechanism that was
+    built, over a *keyword*, which is precisely the input that cannot expose the missing title. When
+    checking that a translated surface stays reachable in English, type the **title** word, not a
+    keyword: the keyword is the case you just wrote code for.
+  - Fold the title in **whole**, not split into words: `CommandMatcher` matches a subsequence, so
+    "copy" still hits "Copy to Other Panel" with its prefix and boundary bonuses, while splitting
+    would add "to", "by" and "the" as terms of their own and let a stopword rank the whole registry.
+    Only add it when the displayed title actually differs, so an English build gains nothing.
+  - Two tests pin it, and they are language-agnostic on purpose — the app test target inherits
+    whatever `AppleLanguages` the developer pinned Dirnex to, so a test that only holds in English
+    is a test that fails on the machine of anyone checking a translation.
 - **String Catalogs handle multi-argument plurals, but only through `substitutions`.** A plain
   plural variation covers `"Put %lld items back?"`; a sentence with a count *and* another argument
   needs the count declared as a named substitution (`%#@items@` plus `argNum`/`formatSpecifier`) and
@@ -910,6 +1006,20 @@ off a man page.
     `?tab=t.0` on a successful open — but it could not be verified as a *fix* here, because only one
     of the two accounts is signed into this Chrome profile. Nothing on the Dirnex side can do better:
     the handoff is a URL, and which session receives it is the browser's to decide.
+
+### xattr and sips (the stock tools a user script reaches for)
+
+- **`xattr -d` exits 1 on a file that doesn't carry the attribute** ("No such xattr"), so
+  `xattr -d com.apple.quarantine "$@"` over an ordinary selection *fails* — and in Dirnex that means
+  the user-script failure alert, for a script that did exactly what was asked. **`xattr -dr` exits
+  0** on the same input. The recursive form is the one to reach for, for its exit code rather than
+  for the recursion.
+- **`sips` exits 0 and warns to stderr on a non-image** ("not a valid file - skipping"), so a
+  conversion run over a mixed selection converts the images and stays quiet instead of raising
+  anything. Useful, and not ours: it is `sips`'s choice, so anything relying on it should say so
+  before someone "fixes" it into a type-checking loop.
+- **`sips -Z 1200 "$1"` overwrites the original.** `--out "${1%.*}-1200.${1##*.}"` writes beside it
+  instead, which is what any one-click example acting on someone's photographs should do.
 
 ### git
 

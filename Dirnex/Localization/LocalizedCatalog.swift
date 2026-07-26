@@ -34,11 +34,12 @@ enum LocalizedCatalog {
     /// script's palette entry) can be passed through harmlessly — an unknown id simply keeps its
     /// own strings.
     static func localized(_ command: Command) -> Command {
-        Command(
+        let title = L10n.string(LocalizationKey.commandTitle(command.id), fallback: command.title)
+        return Command(
             id: command.id,
-            title: L10n.string(LocalizationKey.commandTitle(command.id), fallback: command.title),
+            title: title,
             category: command.category,
-            keywords: keywords(for: command),
+            keywords: keywords(for: command, displayedAs: title),
             shortcut: command.shortcut
         )
     }
@@ -123,6 +124,31 @@ enum LocalizedCatalog {
         return String(format: format, arguments: reason.arguments)
     }
 
+    /// A script template's name, translated — what the scripts organizer's **+** menu prints.
+    /// `UserScriptTemplate.title` is `DirnexCore` data reached through a variable
+    /// (`UserScriptTemplate.all`), so it is joined here by the template's stable id rather than
+    /// wrapped at the menu, which would extract nothing.
+    static func title(for template: UserScriptTemplate) -> String {
+        L10n.string(
+            LocalizationKey.userScriptTemplateTitle(template.id),
+            fallback: template.title
+        )
+    }
+
+    /// The script a template seeds, named and keyworded in the user's language.
+    ///
+    /// The name matters more here than at most display sites: it is saved into the user's list and
+    /// becomes the script's *identity*, so a Spanish user gets a script actually called "Copiar
+    /// rutas" rather than an English name they would have to rename by hand. The **body** is not
+    /// translated — it is shell code.
+    static func script(for template: UserScriptTemplate) -> UserScript {
+        let name = title(for: template)
+        return template.script(
+            name: name,
+            keywords: keywords(for: template, displayedAs: name)
+        )
+    }
+
     /// A search's label for the tab chip and the path-bar crumb ("Results for …").
     ///
     /// `SpotlightQuery` hands over the *term* that stands for the query and no words at all, so both
@@ -162,17 +188,53 @@ enum LocalizedCatalog {
         }
     }
 
-    /// English keywords plus the translated ones, English first and duplicates dropped.
+    /// English keywords plus the **English title** plus the translated ones, English first and
+    /// duplicates dropped.
     ///
-    /// Additive rather than replacing on purpose: a Russian-speaking user who has read the English
-    /// docs, or who reaches for "copy" out of habit, must still find the command. Order matters only
-    /// for stability — `CommandMatcher` scores terms, it does not rank by position.
-    private static func keywords(for command: Command) -> [String] {
-        let translated = LocalizationKey.splitKeywords(
-            L10n.translation(LocalizationKey.commandKeywords(command.id)) ?? ""
+    /// Additive rather than replacing on purpose: a Russian- or Ukrainian-speaking user typing on a
+    /// Latin layout — the common case, not the exotic one — and anyone who has read the English
+    /// docs must still reach the command by its English name. **Never make a translated keyword
+    /// value replace these.**
+    ///
+    /// Folding the English *title* in is the half that is easy to miss, because it is the half the
+    /// registry cannot supply. A translated title *replaces* the English one, so the single most
+    /// obvious search term for a command is exactly the one that disappears: `file.copy`'s keywords
+    /// are `f5, duplicate, transfer`, so with a Russian title of «Копировать на другую панель»,
+    /// typing "copy" matched **nothing at all** until the title joined the terms here.
+    private static func keywords(for command: Command, displayedAs title: String) -> [String] {
+        merged(
+            english: command.keywords + englishName(command.title, shownAs: title),
+            key: LocalizationKey.commandKeywords(command.id)
         )
+    }
+
+    /// The same additive treatment for a script template's keywords — they are seeded into a script
+    /// the user then owns, so this is the one chance to give them searchable terms in their own
+    /// language without taking the English ones away.
+    private static func keywords(
+        for template: UserScriptTemplate,
+        displayedAs name: String
+    ) -> [String] {
+        merged(
+            english: template.keywords + englishName(template.title, shownAs: name),
+            key: LocalizationKey.userScriptTemplateKeywords(template.id)
+        )
+    }
+
+    /// The English name as a search term, or nothing when it is still what the user sees.
+    ///
+    /// Kept whole rather than split into words: `CommandMatcher` matches a subsequence, so "copy"
+    /// hits "Copy to Other Panel" as a prefix and scores the boundary bonuses it would in English,
+    /// while splitting would add "to", "by" and "the" as terms of their own and make every stopword
+    /// query rank the whole registry.
+    private static func englishName(_ english: String, shownAs displayed: String) -> [String] {
+        displayed.caseInsensitiveCompare(english) == .orderedSame ? [] : [english]
+    }
+
+    private static func merged(english: [String], key: String) -> [String] {
+        let translated = LocalizationKey.splitKeywords(L10n.translation(key) ?? "")
         var seen = Set<String>()
-        return (command.keywords + translated).filter { seen.insert($0.lowercased()).inserted }
+        return (english + translated).filter { seen.insert($0.lowercased()).inserted }
     }
 }
 

@@ -74,20 +74,22 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     /// "nested archives").
     let nestedArchiveRegistry = NestedArchiveRegistry()
 
-    /// Local key monitor that lets Esc close Quick View no matter where focus sits in this
-    /// window (e.g. after the user clicked into the preview). A raw-event monitor rather than a
-    /// `cancelOperation:` override because a focused `PDFView` may never translate the Esc key
-    /// into that action, so the message would never bubble. `nonisolated(unsafe)` so the
-    /// nonisolated `deinit` can hand the token to `NSEvent.removeMonitor` — it's only ever
-    /// touched on the main actor. Installed by `installEscapeMonitor()`, which lives with the rest
-    /// of the Quick View machinery it serves (`BrowserWindowController+QuickView`) — hence internal
-    /// rather than private.
-    nonisolated(unsafe) var escapeMonitor: Any?
+    /// Local key monitor for the two keys Quick View must take back no matter where focus sits in
+    /// this window (i.e. after the user clicked into the preview): Esc, which closes the mode, and a
+    /// bare arrow, which walks the file list. A raw-event monitor rather than responder overrides
+    /// because a focused `PDFView` may never translate Esc into `cancelOperation:`, and it and the
+    /// preview's text view consume the arrows themselves. `nonisolated(unsafe)` so the nonisolated
+    /// `deinit` can hand the token to `NSEvent.removeMonitor` — it's only ever touched on the main
+    /// actor. Installed by `installQuickViewKeyMonitor()`, which lives with the rest of the Quick
+    /// View machinery it serves (`BrowserWindowController+QuickView`) — hence internal rather than
+    /// private.
+    nonisolated(unsafe) var quickViewKeyMonitor: Any?
 
     /// Local scroll monitor for the two-finger swipe that flips files while a full-size Quick View
     /// is up (PLAN.md §M11); the gesture itself is the system's `NSEvent.trackSwipeEvent`. A
-    /// raw-event monitor for the same reason as `escapeMonitor`: the preview's backends (`PDFView`,
-    /// and `QLPreviewView` out of process) sit under the pointer and eat scroll before it bubbles.
+    /// raw-event monitor for the same reason as `quickViewKeyMonitor`: the preview's backends
+    /// (`PDFView`, and `QLPreviewView` out of process) sit under the pointer and eat scroll before
+    /// it bubbles.
     /// `nonisolated(unsafe)` so the nonisolated `deinit` can hand the token back — it is only ever
     /// touched on the main actor. Installed by `installQuickViewSwipeMonitor()`.
     nonisolated(unsafe) var quickViewSwipeMonitor: Any?
@@ -262,7 +264,7 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         queueBar.onCancelJob = { [weak self] id in self?.cancelJob(id) }
         queueBar.onPreferredHeightChanged = { [weak self] in self?.updateQueueBarHeight() }
         startObservingQueue()
-        installEscapeMonitor()
+        installQuickViewKeyMonitor()
         installQuickViewSwipeMonitor()
         observeQuickViewFullScreen()
         observeVolumeUnmount()
@@ -330,7 +332,7 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         queueObservation?.cancel()
         NotificationCenter.default.removeObserver(self)
         NSWorkspace.shared.notificationCenter.removeObserver(self)
-        if let escapeMonitor { NSEvent.removeMonitor(escapeMonitor) }
+        if let quickViewKeyMonitor { NSEvent.removeMonitor(quickViewKeyMonitor) }
         if let quickViewSwipeMonitor { NSEvent.removeMonitor(quickViewSwipeMonitor) }
     }
 

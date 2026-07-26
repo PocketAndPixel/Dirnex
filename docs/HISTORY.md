@@ -5849,3 +5849,139 @@ mode was considered and rejected**: the three explicit modes reach every server,
 fall-back to cleartext is a password-downgrade vector — the same reason `FTPProcessArguments` emits
 `--ssl-reqd`, not `--ssl`. So the gap "I don't know which mode this server needs" is closed by a clear
 error and an explicit choice, not by guessing on the user's behalf.
+
+### Script templates in the organizer's + menu (2026-07-26, VERIFIED LIVE)
+
+A small M6 follow-on. The scripts organizer's hardest moment is the empty **Command** box: the sheet
+explains `"$@"` in a three-line help label and then leaves the user to write shell from nothing, so
+the two non-obvious parts of the mechanism (`perFile` mode, `$DIRNEX_OTHER_DIR`) were reachable only
+by reading that label carefully. **+** now opens a menu — *Blank Script*, then five ready-made
+templates — which is the standard macOS shape for a **+** that adds more than one kind of thing, and
+costs no new chrome in a sheet already at 640×460.
+
+A template is a **seed, not a built-in**: picking one saves an ordinary, fully editable `UserScript`
+through the same path as a blank one (so a second copy lands as "Copy Paths 2") and is then
+forgotten. Live built-ins would have owed the user answers — can I delete this, what happens to my
+edits on the next update — for nothing the seed does not already deliver.
+
+`UserScriptTemplate` is `DirnexCore` data with the registry treatment the tour screens get:
+`id` is the stable translation key, `title`/`keywords` are the English fallback, and
+`LocalizationKey.userScriptTemplateTitle/Keywords` + `LocalizedCatalog.script(for:)` join them, so a
+Spanish user gets a script actually *named* "Copiar rutas" rather than one they have to rename by
+hand. The **body is never translated** — it is shell code. `LocalizationCoverageTests` fails on an
+untranslated template (10 symbolic keys, fr/ru/es filled).
+
+**The bodies were probed before they were written, and three findings changed them:**
+
+1. **The runner discards stdout.** `UserScriptRunner` sends it to `/dev/null` and surfaces stderr
+   only on a non-zero exit, so a template that merely *prints* would do nothing visible — which rules
+   out the obvious `du -sh` / `shasum` demos unless they pipe. Every template has a side effect
+   instead; *Copy Paths* is `printf '%s\n' "$@" | pbcopy` precisely because the pasteboard is how a
+   script talks back.
+2. **`xattr -d` exits 1** ("No such xattr") on a file that was never quarantined, which would raise
+   the failure alert for an ordinary selection. `xattr -dr` exits **0** on the same input, so *Remove
+   Quarantine Flag* uses the recursive form — for its exit code, not for the recursion.
+3. **`$DIRNEX_OTHER_DIR` unset expands to `tar -czf /<date>.tgz`**, failing at the root of the disk
+   with a message naming a path the user never chose. The guard in *Archive to Other Panel* is
+   load-bearing rather than polite, and its `echo …>&2` is what reaches the alert.
+
+Two smaller calls, both non-destructive by choice: `sips -Z 1200 "$1"` overwrites the original, so
+*Resize Images* writes `photo-1200.heic` beside it (`${1%.*}` / `${1##*.}`); and `sips` exits **0**
+with a stderr warning on a non-image, so both image templates are quiet on a mixed selection rather
+than raising an alert — its choice, not ours, and worth knowing before anyone "fixes" it into a
+type-checking loop. Every tool used ships with macOS: a template needing Homebrew would be a broken
+demo on the machine of the person most likely to try one.
+
+Verified live: the menu drops under **+** with all six items; *Convert Images to JPEG* seeded with
+its body, its keywords and **Run once per selected file** already selected; typing `clipboard` in the
+palette found the seeded *Copy Paths* through its translated-and-additive keywords; running it put
+`/Users/oleg/swtest/DSC_0697-Панорама.jpg` on the pasteboard — a non-ASCII name arriving intact
+through argv, which is the security boundary `UserScript` documents.
+
+### Selectable text in Quick View (2026-07-27, VERIFIED LIVE)
+
+An M11 follow-on with an M11-shaped answer. A `.txt` preview could not be selected or copied — PDFs
+could, because they had already been routed away from Quick Look. `QLPreviewView` renders **out of
+process** and declines the clicks it is handed, and the surface must therefore swallow the mouse
+whole (a declined click is re-dispatched to the file table underneath, which moved the covered pane's
+cursor invisibly). So there is no version of "let Quick Look have the mouse" that is safe, and text
+took the route `PDFView` and `NSImageView` took before it: **decode it ourselves and render it
+in-process**, where a drag selects and ⌘C copies because `NSTextView` implements them itself.
+
+`TextPreview` (core, 16 tests) is the decode; `QuickViewTextView` is the view. Routing is
+`conforms(to: .text)` **minus HTML and RTF** — Quick Look renders those as the *document* they
+describe, and showing their markup instead would be a regression wearing a feature's clothes.
+
+**The decode was probed against real bytes first, and three findings shaped it:**
+
+1. **UTF-16 with no BOM is valid UTF-8** — the NULs are legal — so a UTF-8-first decode *succeeds*
+   and renders `П\0р\0и\0в…`. Nothing identifies those bytes (Foundation's detector answers
+   **nothing** for them, and nothing for 64 KiB of `/bin/ls` either), so a NUL byte is read as
+   "binary" and the file falls back to Quick Look. BOM-marked UTF-16/32 is decoded before that gate,
+   UTF-32's LE mark tested before UTF-16's because it starts with the same two bytes.
+2. **Foundation's detector is right about Windows-1251 and Latin-1, wrong about KOI8-R** (it answers
+   "Arabic (Windows)") **and lossy about MacRoman** (`Caf<?> na夫e` for `Café naïve`). A lossy answer
+   is refused rather than shown as mojibake; there is nothing better short of shipping a charset
+   detector, and this is what TextEdit would show.
+3. **TextKit 2 lays out lazily**: showing a 64 MiB document measured ~10 ms and jumping to its end
+   ~5 ms, so the 4 MiB cap is about the *read*, not the render — the preview re-runs on every cursor
+   step. Past it the file is cut and says so («Показаны первые 4 МБ файла»), which is why the notice
+   exists at all.
+
+**The live run found a bug that was already shipped, in the PDF backend.** In pane mode the preview
+covers the *inactive* pane and is a subview of it, so a backend the user can click into puts first
+responder inside that pane's hierarchy — and the responder chain then runs through the **covered**
+pane's `PanelViewController`. One F5 after a click into a text preview copied a folder out of the
+pane nobody was looking at, in the wrong direction, with no dialog. `QuickViewPreviewView` now hands
+its `nextResponder` to the **window**, which is what the two full-size modes already do structurally
+(they are siblings of the panes), so a preview holding focus makes pane commands find no target
+instead of the wrong one. Re-run afterwards: the same F5 does nothing, and ⌘C still copies the
+selection.
+
+Verified live in a Russian build: a drag selected a line and ⌘C put exactly it on the pasteboard
+(the pane's own ⌘C still copies the *file* when the table has focus); ⌘A selected the document, not
+the pane's files; a double-click selected a word in the user's own `text.txt`; a binary named
+`fake.txt` fell back to Quick Look's dump; ← / → still flipped files; images and PDFs unchanged.
+**Esc-while-the-text-has-focus is unverified** — the Esc monitor now recognizes
+`QuickViewDocumentTextView` as the one `NSText` it should not stand aside for, but synthetic Escape
+is never delivered into the app, so that path needs a physical key press.
+
+### The arrows a focused preview was eating (2026-07-27, VERIFIED LIVE)
+
+The half of the previous entry its own verification could not see. Selecting text in Quick View put
+first responder on the text view, and from there **the arrows stopped walking the file list** — in
+all three sizes, ⌃Q as much as ⌃⇧Q and ⌃⌥Q. The pass above did check that "← / → still flipped
+files", and it was true: it was checked without clicking into the text first, which is the one input
+that cannot expose the bug. The same shape as the palette's missing English title, one slice later.
+
+The tell that this was a *class* and not a text-backend bug: **the two-finger swipe went on
+working**, in the two modes that have one, which is what the report singled out. The gesture is a
+window-scoped monitor, so no focused view can eat it — and every flip it makes ends in
+`restoreTableFocus`, so it silently repairs the focus the click moved. The keyboard had neither half.
+`PDFView` had had the identical bug since it shipped, for the identical reason (measured: click into
+a PDF, ← does nothing).
+
+So the fix is the keyboard's copy of what the gesture already had, folded into the Esc monitor that
+was already watching `keyDown` for the same reason (a focused `PDFView` may never translate Esc into
+`cancelOperation:`) — `escapeMonitor` became `quickViewKeyMonitor`, with one branch per key. On a
+bare arrow, when first responder is inside any preview surface, it hands focus back to the
+**focused** pane's table and **lets the event travel** rather than swallowing it.
+
+That last part is the whole design, and it rests on a probed fact: **a local key monitor runs before
+responder dispatch, so moving first responder inside it delivers that same event to the responder it
+just set.** Probed in a throwaway AppKit app before any Dirnex code was written (two views, a posted
+keyDown, the monitor re-pointing focus mid-flight — the key landed in the new view). It means
+`FileTableView.keyDown` stays the single definition of what an arrow does — a flip at full size, a
+plain cursor step in pane mode, `..` handling and the ends of the list included — instead of this
+monitor carrying a second copy that could drift from it.
+
+Bare arrows only: ⇧← still extends a selection in the text the user is in the middle of selecting,
+which is the escape hatch that makes "the arrows belong to the file list" affordable.
+
+Verified live in a Russian build, all three sizes: ⌃⇧Q on `text.txt` (9 из 9) → drag-select three
+lines → ← → `fine_payment.pdf` (8 из 9); click into that PDF → ← → `dv2025.pdf` (7 из 9), the
+backend that never had this working; ⌃⌥Q full screen, select, ← → the same flip; ⌃Q pane mode, where
+the preview covers the *other* pane, select → ↑ moved the active pane's cursor and re-emphasized its
+row. And the guard: ⇧↓ ⇧↓ extended the text selection with the cursor staying put.
+**Esc-while-a-preview-has-focus stays unverified for the same reason as last time** — synthetic
+Escape is never delivered — and its logic is unchanged, only reshaped into `escapeBelongsToQuickView`.

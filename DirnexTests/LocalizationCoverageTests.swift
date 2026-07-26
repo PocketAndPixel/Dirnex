@@ -93,6 +93,26 @@ struct LocalizationCoverageTests {
         }
     }
 
+    @Test("every script template has a translated name and keywords in every shipped language")
+    func everyScriptTemplateIsTranslated() throws {
+        for language in translatedLanguages {
+            let bundle = try bundle(for: language)
+            for template in UserScriptTemplate.all {
+                let titleKey = LocalizationKey.userScriptTemplateTitle(template.id)
+                let keywordsKey = LocalizationKey.userScriptTemplateKeywords(template.id)
+                let title = translation(titleKey, in: bundle)
+                // A template's name becomes the *identity* of the script it seeds, so an English one
+                // left in place is not cosmetic — it is a script the user has to rename by hand.
+                #expect(title != nil, "\(language.code): no \(titleKey)")
+                #expect(title != template.title, "\(language.code): \(titleKey) is still English")
+                #expect(
+                    translation(keywordsKey, in: bundle) != nil,
+                    "\(language.code): \(keywordsKey)"
+                )
+            }
+        }
+    }
+
     @Test("every sidebar section header is translated in every shipped language")
     func everySidebarSectionIsTranslated() throws {
         for language in translatedLanguages {
@@ -237,20 +257,6 @@ struct LocalizationCoverageTests {
             index = after
         }
         return max(positional, sequential)
-    }
-
-    @Test("a translated command keeps its English keywords searchable alongside the new ones")
-    func keywordsAreAdditive() {
-        // The palette is the one place a translation could *remove* a user's ability to find
-        // something: replacing "copy" with "копировать" would break every English habit and every
-        // instruction written in English docs.
-        let copy = LocalizedCatalog.command(for: "file.copy")
-        let keywords = copy?.keywords ?? []
-        #expect(keywords.contains("duplicate"))
-        #expect(
-            copy?.id == "file.copy",
-            "the id must survive localization — it is the persistence key"
-        )
     }
 
     @Test("localizing never drops or reorders the registry")

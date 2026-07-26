@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M11 shipped · M12 (localization) Passes 1–2 done, Pass 3 parked · M13 (FTP/FTPS) shipped · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
+Status: M0–M11 shipped · M12 (localization) Passes 1–2 done, Pass 3 slices 1–2 done · M13 (FTP/FTPS) shipped · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
 
 ---
 
@@ -114,7 +114,7 @@ refer to those sections.
 | M8 | The sidebar as a first-class surface | 07-21 | Dragging a *remote* (SFTP) folder into the sidebar — stays menu-only; Recents ordered by modification date, not the true last-used stamp |
 | M9 | iCloud Drive, for real | 07-21 | Per-item download percentage (macOS exposes none through the URL resource keys); Put Back inside the iCloud trash — the origin is an opaque provider reference with no path in it |
 | M10 | Google Drive and Docs | 07-22 | A real Drive API backend (OAuth + Drive v3, native Docs export/import) — dropped 2026-07-22; sync status in Drive's *mirror* mode, which macOS exposes to no one but Finder |
-| M11 | F4 Edit, and Quick View at full size | 07-22 | A built-in text editor (F4 hands the file to the user's own); write-back for archive and SFTP files (edit-temp-watch-repack is its own slice); a slideshow timer or thumbnail filmstrip in the preview |
+| M11 | F4 Edit, and Quick View at full size | 07-22 (text preview 07-27) | A built-in text editor (F4 hands the file to the user's own); write-back for archive and SFTP files (edit-temp-watch-repack is its own slice); a slideshow timer or thumbnail filmstrip in the preview |
 | M13 | FTP and FTPS | 07-25 | `MLSD` (`curl` cannot send it); FTP-side `DirectorySync` by timestamp (unreliable by construction — LIST stamps are year- and zone-less); write-back for files edited in place over FTP (the shared edit-temp-watch-repack slice); an opportunistic "TLS optional" client mode (a password-downgrade vector — rejected 2026-07-26) |
 
 The undone column is scope that was decided against, not forgotten — each one is argued in
@@ -564,6 +564,16 @@ whenever it is picked back up.
   labels on their own row, sizing each segment to its localized caption so no language is cut off.
   `LocalizationCoverageTests` now checks French alongside Russian; the app bundle test confirms it
   is compiled and all registry data is translated.
+- **Slice 2 landed (2026-07-26): Spanish.** `es` / `Español` is a shipped language, listed in
+  Settings and matched from Spanish regional tags. Its complete `Localizable` column (786 entries,
+  including every plural variant) and both App Shortcut phrases are present in the catalog, so
+  `LocalizationCoverageTests` checks Spanish alongside French and Russian. A manual macOS-style pass
+  kept the Spain-style platform vocabulary (`función rápida`, `ítem`, `por omisión`, `Ajustes del
+  Sistema`) and aligned Finder/AppKit terms where they matter: `Conectarse a un servidor…`,
+  `Ocultar otras apps`, and lowercase `papelera` in actions and prose while standalone sidebar/title
+  labels remain `Papelera`. The diff-tool footer also now says it opens files in the selected app,
+  not in Dirnex itself, and the palette tour title was rewritten as natural Spanish rather than a
+  literal English calque.
 
 **Standing rule for the function bar, in every language.** The seven F-key captions are the app's
 primary buttons and are on screen permanently, so they carry the first impression of the whole app:

@@ -21,8 +21,10 @@ public enum LocalizationKey {
     ///
     /// A string catalog value is a string, not a list, so the translated terms are written as one
     /// comma-separated value ("копировать, дублировать") and split by ``splitKeywords(_:)``. The
-    /// translated terms are *added* to the core's English ones rather than replacing them, so a
-    /// Russian user can still reach a command by typing "copy".
+    /// translated terms are *added* to the core's English ones rather than replacing them, and the
+    /// app folds the English **title** in beside them (`LocalizedCatalog.keywords(for:displayedAs:)`)
+    /// — the title is the one string a translation *replaces*, so without that a Russian user typing
+    /// "copy" on a Latin layout reached nothing.
     public static func commandKeywords(_ commandID: String) -> String {
         "command.\(commandID).keywords"
     }
@@ -113,6 +115,24 @@ public enum LocalizationKey {
     /// case's raw value, which is also the persisted suffix mapping, so a rename is loud.
     public static func archiveFormat(_ format: ArchivePacking.Format) -> String {
         "archive.format.\(format.rawValue).title"
+    }
+
+    /// A script template's name, e.g. `script.template.copyPaths.title` — the name the organizer's
+    /// **+** menu prints and the name the seeded script is saved under.
+    /// `UserScriptTemplate.title` is `DirnexCore` data reached through a variable
+    /// (`UserScriptTemplate.all`), so it gets the registry treatment the tour screens do.
+    /// `UserScriptTemplate.id` already carries the `script.template.` prefix, so the key forms
+    /// directly from it.
+    public static func userScriptTemplateTitle(_ templateID: String) -> String {
+        "\(templateID).title"
+    }
+
+    /// A script template's palette keywords, e.g. `script.template.copyPaths.keywords` — one
+    /// comma-separated value, split by ``splitKeywords(_:)`` and *added* to the English terms, as a
+    /// command's are. They are seeded into the script the user then owns, so this is the only
+    /// chance to give a Spanish speaker Spanish search terms for it.
+    public static func userScriptTemplateKeywords(_ templateID: String) -> String {
+        "\(templateID).keywords"
     }
 
     /// The sentence explaining why an operation is unsupported, e.g. `vfs.unsupported.trash`.
