@@ -9,12 +9,14 @@ import DirnexCore
 /// The panel is built fresh on each open and torn down on dismiss; a palette open/close is
 /// rare enough that reuse buys nothing and a fresh field starts empty every time. The search
 /// field stays first responder and drives the list selection from `control(_:doCommandBy:)`
-/// (↑/↓ move, ⏎ runs, ⎋ closes), so the list needs no key handling of its own.
+/// (↑/↓ move, ⏎ runs, ⎋ closes), so the list needs no key handling of its own — and, because
+/// that handler fires *only* while the field has focus, `CommandPaletteTableView` refuses first
+/// responder so a click on a row cannot take the keyboard away from it.
 @MainActor
 final class CommandPaletteController: NSObject {
     private var panel: NSPanel?
     let searchField = NSTextField()
-    let tableView = NSTableView()
+    let tableView = CommandPaletteTableView()
     private let scrollView = NSScrollView()
 
     /// The current ranked results the list renders. Rebuilt on every keystroke.
@@ -222,10 +224,20 @@ final class CommandPaletteController: NSObject {
         tableView.dataSource = self
         tableView.delegate = self
         tableView.target = self
-        tableView.doubleAction = #selector(rowDoubleClicked)
+        // A single click runs the row: a palette result is a button, not a list item to select
+        // and then act on. `doubleAction` is deliberately left alone — it *mirrors* `action` and
+        // cannot be cleared (assigning nil reverts it to the mirror), so a double-click carries
+        // the same selector. Measured: it still runs the command exactly once, because the first
+        // click orders the panel out and AppKit swallows the rest of that click session rather
+        // than re-dispatching it to the window underneath.
+        tableView.action = #selector(rowClicked)
     }
 
-    @objc private func rowDoubleClicked() {
+    /// Run the clicked command. Reads `clickedRow` rather than the highlight because a click in
+    /// the empty space below the last result still sends the action, with `clickedRow == -1`.
+    @objc private func rowClicked() {
+        guard tableView.clickedRow >= 0 else { return }
+        selectedIndex = tableView.clickedRow
         runSelected()
     }
 

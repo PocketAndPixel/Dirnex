@@ -36,3 +36,34 @@ struct CommandPaletteShortcutTests {
         #expect(palette.shortcut(for: copy) == KeyBindingStore.shared.shortcut(for: "file.copy"))
     }
 }
+
+/// How the palette's result list answers the mouse (PLAN.md §M3).
+///
+/// Both facts here fail in the quiet direction and neither is visible to the compiler. The search
+/// field is the palette's only key handler — `control(_:doCommandBy:)` owns ⎋, ⏎ and ↑/↓ — so a
+/// list that accepts first responder silently kills every one of them on the first click, which is
+/// exactly what shipped: typing went nowhere, ⏎ ran nothing and ⎋ did not close the panel, with the
+/// selection turning blue as the only tell.
+@Suite("Command palette list")
+@MainActor
+struct CommandPaletteListTests {
+    @Test("the result list never takes the keyboard from the search field")
+    func listRefusesFirstResponder() {
+        #expect(CommandPaletteTableView().acceptsFirstResponder == false)
+    }
+
+    /// Opens the real panel rather than reaching for the private configuration step, so the test
+    /// fails if the wiring stops being applied as well as if it changes.
+    ///
+    /// `doubleAction` is asserted equal to `action` rather than to `nil`: `NSTableView` mirrors the
+    /// two and refuses to clear the mirror, so `nil` is unreachable and the invariant that is worth
+    /// pinning is that no *distinct* double-click behavior was ever introduced behind the click.
+    @Test("a single click runs the row, with no separate double-click behavior")
+    func singleClickRunsTheRow() {
+        let palette = CommandPaletteController()
+        palette.toggle(over: nil)
+        defer { palette.dismiss() }
+        #expect(palette.tableView.action == Selector(("rowClicked")))
+        #expect(palette.tableView.doubleAction == palette.tableView.action)
+    }
+}

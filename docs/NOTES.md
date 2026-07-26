@@ -135,6 +135,29 @@ at build time.
     and driving the window's directly undid nothing.
   - The tell that this class of bug is present is a *comment* claiming a fall-through, and it fails
     in the quiet direction: nothing logs, every menu builds, and the key just does nothing.
+- **A search field that owns a list's key handling is one click away from being cut out of it.** The
+  ⌘K palette routes ⎋, ⏎ and ↑/↓ through `control(_:doCommandBy:)`, which fires *only* while the
+  field is first responder — and a stock `NSTableView` takes first responder in `mouseDown:`. So one
+  click on a result left the palette completely keyboard-dead: typing went nowhere, ⏎ ran nothing,
+  ⎋ did not close it, and the only way out was a double-click or clicking outside. It fails in the
+  quiet direction twice over — nothing logs, and the *keystrokes are silently dropped* rather than
+  misrouted. The one visible tell reads as cosmetic: AppKit draws the same selection unemphasized
+  (grey) without focus and emphasized (blue) with it, so "the row turns blue when I click it" is not
+  a second highlight, it is the focus moving. Fix at the source — `acceptsFirstResponder = false` on
+  the list subclass. `mouseDown:` still selects, so clicking keeps working and the selection settles
+  on one appearance for mouse and keyboard alike.
+  - **`NSTableView.doubleAction` mirrors `action` and cannot be cleared** — probed: assigning it
+    `nil` reverts it to the mirror, so any table with a single-click action nominally has the same
+    selector on double-click. Measured harmless *here* for the reason that generalizes: **ordering a
+    window out during the first click swallows the remainder of that click session.** The command ran
+    once, and the second click was not re-dispatched to the window underneath — verified by putting a
+    palette row directly over a pane's `..` row, where a leaked double-click would have navigated up,
+    and it did not. Worth re-measuring rather than assuming for any panel that closes on click.
+  - A test can assert the first fact directly (`acceptsFirstResponder`) but not ⎋, since synthetic
+    Escape never reaches the app (above). The proxy that *is* verifiable: click, then type a
+    character and confirm it lands in the field — if the field kept focus it receives the whole
+    `doCommandBy:` family, Escape included. After the click-to-run change the only click that leaves
+    the panel open is one in the empty space below the last row, which is exactly where to aim it.
 - **The shared `QLPreviewPanel` (⌘Y) is key while open**, so arrows navigate its preview items,
   not the table. `QLPreviewView` is not opaque and `init(frame:style:)` is failable — an
   embedded preview needs an opaque backing or the covered view bleeds through. It also only
