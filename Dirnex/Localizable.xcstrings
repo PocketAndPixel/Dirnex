@@ -11337,7 +11337,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex puede explorar todas partes, pero macOS mantiene privadas algunas carpetas: las carpetas de inicio de otros usuarios, Mail y Messages, las copias de Time Machine y cualquier lugar que considere sensible. Sin acceso total al disco, al abrir una de esas carpetas aparece un bloqueo de permisos; todo lo demás funciona con normalidad.\n\nHaz clic en Abrir Ajustes del Sistema y activa Dirnex en Acceso total al disco. macOS pedirá reiniciar Dirnex para que el nuevo acceso surta efecto."
+            "value" : "Dirnex puede explorar todas partes, pero macOS mantiene privadas algunas carpetas: las carpetas de inicio de otros usuarios, Mail y Mensajes, las copias de Time Machine y cualquier lugar que considere sensible. Sin acceso total al disco, al abrir una de esas carpetas aparece un bloqueo de permisos; todo lo demás funciona con normalidad.\n\nHaz clic en Abrir Ajustes del Sistema y activa Dirnex en Acceso total al disco. macOS pedirá reiniciar Dirnex para que el nuevo acceso surta efecto."
           }
         }
       }
@@ -13406,7 +13406,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Host:"
+            "value" : "Servidor:"
           }
         }
       }
@@ -24954,7 +24954,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tus archivos de iCloud Drive aparecen arriba. Las carpetas que las apps guardan allí —Pages, Preview, Shortcuts— son privadas para macOS hasta que permitas que Dirnex las lea.\n\nHaz clic en Abrir Ajustes del Sistema y activa Dirnex en Acceso total al disco. macOS pedirá reiniciar Dirnex para que el nuevo acceso surta efecto."
+            "value" : "Tus archivos de iCloud Drive aparecen arriba. Las carpetas que las apps guardan allí —Pages, Vista Previa y Atajos— son privadas para macOS hasta que permitas que Dirnex las lea.\n\nHaz clic en Abrir Ajustes del Sistema y activa Dirnex en Acceso total al disco. macOS pedirá reiniciar Dirnex para que el nuevo acceso surta efecto."
           }
         }
       }
