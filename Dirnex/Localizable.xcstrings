@@ -2997,7 +2997,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Preguntar antes de trasladar ítems a la Papelera"
+            "value" : "Preguntar antes de trasladar ítems a la papelera"
           }
         }
       }
@@ -5868,7 +5868,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trasladar a la Papelera"
+            "value" : "Trasladar a la papelera"
           }
         }
       }
@@ -6048,7 +6048,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Conectar al servidor…"
+            "value" : "Conectarse a un servidor…"
           }
         }
       }
@@ -8527,7 +8527,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Conectar al servidor"
+            "value" : "Conectarse a un servidor"
           }
         }
       }
@@ -9893,7 +9893,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No se pudo trasladar «%@» a la Papelera"
+            "value" : "No se pudo trasladar «%@» a la papelera"
           }
         }
       }
@@ -10062,13 +10062,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "No se pudo trasladar %lld ítem a la Papelera"
+                  "value" : "No se pudo trasladar %lld ítem a la papelera"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "No se pudieron trasladar %lld ítems a la Papelera"
+                  "value" : "No se pudieron trasladar %lld ítems a la papelera"
                 }
               }
             }
@@ -11395,7 +11395,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex necesita acceso total al disco para mostrar la Papelera"
+            "value" : "Dirnex necesita acceso total al disco para mostrar la papelera"
           }
         }
       }
@@ -11977,7 +11977,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vaciar Papelera"
+            "value" : "Vaciar papelera"
           }
         }
       }
@@ -12006,7 +12006,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vaciar Papelera…"
+            "value" : "Vaciar papelera…"
           }
         }
       }
@@ -13377,7 +13377,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ocultar otros"
+            "value" : "Ocultar otras apps"
           }
         }
       }
@@ -14190,7 +14190,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS mantiene la Papelera privada, así que Dirnex no puede mostrarla hasta que lo permitas. Todo lo demás seguirá funcionando como hasta ahora.\n\nHaz clic en Abrir Ajustes del Sistema y activa Dirnex en Acceso total al disco. macOS pedirá reiniciar Dirnex para que el nuevo acceso surta efecto."
+            "value" : "macOS mantiene la papelera privada, así que Dirnex no puede mostrarla hasta que lo permitas. Todo lo demás seguirá funcionando como hasta ahora.\n\nHaz clic en Abrir Ajustes del Sistema y activa Dirnex en Acceso total al disco. macOS pedirá reiniciar Dirnex para que el nuevo acceso surta efecto."
           }
         }
       }
@@ -14219,7 +14219,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS registra la carpeta original cuando un ítem se traslada a la Papelera, y no hay ningún registro para este. Arrástralo fuera de la Papelera."
+            "value" : "macOS registra la carpeta original cuando un ítem se traslada a la papelera, y no hay ningún registro para este. Arrástralo fuera de la papelera."
           }
         }
       }
@@ -14364,7 +14364,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "¿Trasladar «%@» a la Papelera?"
+            "value" : "¿Trasladar «%@» a la papelera?"
           }
         }
       }
@@ -14473,13 +14473,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "¿Trasladar %lld ítem a la Papelera?"
+                  "value" : "¿Trasladar %lld ítem a la papelera?"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "¿Trasladar %lld ítems a la Papelera?"
+                  "value" : "¿Trasladar %lld ítems a la papelera?"
                 }
               }
             }
@@ -14511,7 +14511,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trasladar a la Papelera"
+            "value" : "Trasladar a la papelera"
           }
         }
       }
@@ -16652,13 +16652,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "¿Borrar permanentemente %lld ítem de la Papelera?"
+                  "value" : "¿Borrar permanentemente %lld ítem de la papelera?"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "¿Borrar permanentemente %lld ítems de la Papelera?"
+                  "value" : "¿Borrar permanentemente %lld ítems de la papelera?"
                 }
               }
             }
@@ -20390,7 +20390,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hay algo con el mismo nombre en la carpeta original, así que se dejó en la Papelera en lugar de reemplazarlo."
+            "value" : "Hay algo con el mismo nombre en la carpeta original, así que se dejó en la papelera en lugar de reemplazarlo."
           }
         }
       }
@@ -20731,13 +20731,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "La sincronización trasladará %lld ítem a la Papelera."
+                  "value" : "La sincronización trasladará %lld ítem a la papelera."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "La sincronización trasladará %lld ítems a la Papelera."
+                  "value" : "La sincronización trasladará %lld ítems a la papelera."
                 }
               }
             }
@@ -22190,7 +22190,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La herramienta Comparar por contenido (⌥F3) abre los dos archivos en esta app. Instaladas: %@. Automático elige la primera que siga instalada."
+            "value" : "La herramienta Comparar por contenido (⌥F3) abre los dos archivos en la app seleccionada. Instaladas: %@. Automático elige la primera que siga instalada."
           }
         }
       }
@@ -22219,7 +22219,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La Papelera está vacía"
+            "value" : "La papelera está vacía"
           }
         }
       }
@@ -22713,7 +22713,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El panel activo es el origen y el otro, el destino. Copia o mueve lo seleccionado, crea una carpeta o envía archivos a la Papelera desde los botones de la parte inferior, las teclas de función o la paleta."
+            "value" : "El panel activo es el origen y el otro, el destino. Copia o mueve lo seleccionado, crea una carpeta o envía archivos a la papelera desde los botones de la parte inferior, las teclas de función o la paleta."
           }
         }
       }
@@ -22863,7 +22863,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Todo está a una búsqueda"
+            "value" : "Encuentra todo con una búsqueda"
           }
         }
       }
@@ -23389,7 +23389,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trasladar a la Papelera"
+            "value" : "Trasladar a la papelera"
           }
         }
       }
@@ -23824,7 +23824,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "«%@» ya está en la Papelera."
+            "value" : "«%@» ya está en la papelera."
           }
         }
       }
@@ -24578,7 +24578,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esta ubicación no tiene Papelera."
+            "value" : "Esta ubicación no tiene papelera."
           }
         }
       }
@@ -24838,7 +24838,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Puedes restaurar los ítems desde la Papelera más tarde."
+            "value" : "Puedes restaurar los ítems desde la papelera más tarde."
           }
         }
       }
@@ -24867,7 +24867,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Puedes restaurarlos desde la Papelera más tarde."
+            "value" : "Puedes restaurarlos desde la papelera más tarde."
           }
         }
       }
