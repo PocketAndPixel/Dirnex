@@ -27,7 +27,9 @@ struct AppLanguageTests {
     func endonymsAreNotEnglish() {
         // The whole point of an endonym is that a user stranded in an unreadable UI can still find
         // their language. Pinning Russian's spelling is what keeps a future "Russian" from creeping
-        // in as a well-meaning translation. French gets the same protection.
+        // in as a well-meaning translation. Spanish and French get the same protection.
+        let spanish = AppLanguages.language(for: "es")
+        #expect(spanish?.endonym == "Español")
         let french = AppLanguages.language(for: "fr")
         #expect(french?.endonym == "Français")
         let russian = AppLanguages.language(for: "ru")
@@ -45,6 +47,7 @@ struct AppLanguageTests {
     @Test("a regional tag matches its base language")
     func regionalTagMatchesBase() {
         #expect(AppLanguages.bestMatch(forPreferred: ["ru-RU"]).code == "ru")
+        #expect(AppLanguages.bestMatch(forPreferred: ["es-MX"]).code == "es")
         #expect(AppLanguages.bestMatch(forPreferred: ["fr-CA"]).code == "fr")
         #expect(AppLanguages.bestMatch(forPreferred: ["en-GB"]).code == "en")
     }

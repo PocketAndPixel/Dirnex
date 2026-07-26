@@ -54,6 +54,7 @@ public enum AppLanguages {
     /// base, then the rest alphabetically by code.
     public static let all: [AppLanguage] = [
         english,
+        AppLanguage(code: "es", endonym: "Español"),
         AppLanguage(code: "fr", endonym: "Français"),
         AppLanguage(code: "ru", endonym: "Русский")
     ]

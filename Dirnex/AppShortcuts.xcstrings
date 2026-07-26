@@ -21,6 +21,12 @@
             "state" : "translated",
             "value" : "${applicationName} копировать выделенное"
           }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName} copiar selección"
+          }
         }
       }
     },
@@ -43,6 +49,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Копировать выделенное в ${applicationName}"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar la selección en ${applicationName}"
           }
         }
       }

@@ -147,6 +147,7 @@
 			knownRegions = (
 				en,
 				Base,
+				es,
 				fr,
 				ru,
 			);
