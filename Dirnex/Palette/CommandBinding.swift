@@ -35,8 +35,12 @@ enum CommandBinding {
         "file.trash": #selector(PanelViewController.moveSelectionToTrash(_:)),
         "file.deletePermanently": #selector(PanelViewController.deleteSelectionPermanently(_:)),
         "file.putBack": #selector(PanelViewController.putBackSelection(_:)),
-        "edit.undo": #selector(PanelViewController.undoLastOperation(_:)),
-        "edit.redo": #selector(PanelViewController.redoLastOperation(_:)),
+        // The standard `undo:` / `redo:`, like `copy:`/`paste:`/`selectAll:` below: a field
+        // editor sees ⌘Z only as a menu key equivalent, so any other selector here makes the key
+        // dead in every text field. The pane routes the text case back to the window itself
+        // (`PanelViewController+Undo`) — `NSTextView` does not implement these two.
+        "edit.undo": #selector(PanelViewController.undo(_:)),
+        "edit.redo": #selector(PanelViewController.redo(_:)),
         "edit.copy": #selector(PanelViewController.copy(_:)),
         "edit.paste": #selector(PanelViewController.paste(_:)),
         "edit.pasteMove": #selector(PanelViewController.pasteAndMoveFromClipboard(_:)),

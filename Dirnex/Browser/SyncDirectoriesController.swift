@@ -303,8 +303,11 @@ final class SyncDirectoriesController: NSViewController {
         }
     }
 
-    private func label(_ text: String) -> NSTextField {
-        NSTextField(labelWithString: text)
+    private func label(_ text: String) -> NSTextField { NSTextField(labelWithString: text) }
+
+    private func segmentWidth(for title: String, in control: NSSegmentedControl) -> CGFloat {
+        let font = control.font ?? .systemFont(ofSize: NSFont.systemFontSize)
+        return ceil((title as NSString).size(withAttributes: [.font: font]).width) + 32
     }
 
     private func spacer(width: CGFloat) -> NSView {
@@ -342,9 +345,13 @@ private extension SyncDirectoriesController {
                 comment: "Sync direction: mirror the right folder onto the left."
             )
         ]
+        directionControl.segmentCount = directions.count
         for (index, title) in directions.enumerated() {
-            directionControl.segmentCount = 3
             directionControl.setLabel(title, forSegment: index)
+            directionControl.setWidth(
+                segmentWidth(for: title, in: directionControl),
+                forSegment: index
+            )
         }
         directionControl.selectedSegment = 0
         directionControl.target = self
@@ -357,8 +364,8 @@ private extension SyncDirectoriesController {
             ),
             String(localized: "Content", comment: "Sync comparison method: compare byte-for-byte.")
         ]
+        comparisonControl.segmentCount = comparisons.count
         for (index, title) in comparisons.enumerated() {
-            comparisonControl.segmentCount = 2
             comparisonControl.setLabel(title, forSegment: index)
         }
         comparisonControl.selectedSegment = 0
@@ -372,33 +379,43 @@ private extension SyncDirectoriesController {
         hint.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         hint.textColor = .tertiaryLabelColor
         hint.lineBreakMode = .byTruncatingTail
-        // The hint is the one element that yields: a longer translation of the controls (Russian's
-        // are far wider than English's) must truncate the hint away rather than collapse the
-        // direction control to an unreadable "…". The controls keep the stock 750 resistance.
+        // The hint is the one element that yields. It must truncate before either choice control
+        // loses a word in a longer translation.
         hint.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
-        let row = NSStackView(views: [
+        let directionRow = NSStackView(views: [
             label(
                 String(
                     localized: "Direction:",
                     comment: "Sync sheet label before the direction control."
                 )
             ),
-            directionControl,
-            spacer(width: 16),
+            directionControl, spacer(width: 0)
+        ])
+        directionRow.orientation = .horizontal
+        directionRow.spacing = 8
+        directionRow.widthAnchor.constraint(equalToConstant: 680).isActive = true
+
+        let comparisonRow = NSStackView(views: [
             label(
                 String(
                     localized: "Compare by:",
                     comment: "Sync sheet label before the comparison-method control."
                 )
             ),
-            comparisonControl,
-            spacer(width: 0), hint
+            comparisonControl, spacer(width: 0)
         ])
-        row.orientation = .horizontal
-        row.spacing = 8
-        row.widthAnchor.constraint(equalToConstant: 680).isActive = true
-        return row
+        comparisonRow.orientation = .horizontal
+        comparisonRow.spacing = 8
+        comparisonRow.widthAnchor.constraint(equalToConstant: 680).isActive = true
+
+        hint.widthAnchor.constraint(equalToConstant: 680).isActive = true
+
+        let controls = NSStackView(views: [directionRow, comparisonRow, hint])
+        controls.orientation = .vertical
+        controls.alignment = .leading
+        controls.spacing = 8
+        return controls
     }
 
     func makeTable() -> NSView {

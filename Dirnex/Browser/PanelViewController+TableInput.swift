@@ -46,9 +46,7 @@ extension PanelViewController: FileTableViewInput {
             panel.clearSelection()
             recordMarkChange(since: previousMarks, label: .clearSelection)
             resetMouseSelectionAnchor()
-            tableView.reloadData()
-            updateChrome()
-            refreshQuickLookIfVisible()
+            redrawAfterSelectionChange()
         }
     }
 
@@ -92,9 +90,7 @@ extension PanelViewController: FileTableViewInput {
         let previousMarks = panel.selection
         panel.selectAll()
         recordMarkChange(since: previousMarks, label: .selectAll)
-        tableView.reloadData()
-        updateChrome()
-        refreshQuickLookIfVisible()
+        redrawAfterSelectionChange()
     }
 
     func fileTableInvertMarks(_ tableView: FileTableView) {

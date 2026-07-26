@@ -95,7 +95,7 @@ final class ConnectServerForm: NSObject {
             protocolControl, sftpHost, sftpPort, sftpUser, keyFile, sftpSecret, saveName
         ] + ftpControls + smbControls
         for control in controls {
-            control.widthAnchor.constraint(equalToConstant: 280).isActive = true
+            control.widthAnchor.constraint(equalToConstant: 364).isActive = true
         }
     }
 
@@ -339,7 +339,7 @@ enum ConnectFormFactory {
     }
 
     /// Keep an entry field to a single, horizontally-scrolling line. A long value — a full
-    /// `smb://user@host/share` address is easily wider than the 280 pt field — otherwise wraps and
+    /// `smb://user@host/share` address is easily wider than the 364 pt field — otherwise wraps and
     /// grows the row, which pushed the grid apart and made the field read as empty. Single-line mode
     /// scrolls to follow the cursor instead; `.byTruncatingHead` keeps the business end (host and
     /// share) visible when the field isn't being edited. Set the break mode *after* single-line mode,

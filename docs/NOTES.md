@@ -116,6 +116,25 @@ at build time.
 - **macOS delivers ⌘A → `selectAll:` into a field editor only via a "Select All" menu key
   equivalent.** The text system does not self-bind ⌘A, so with no such menu item ⌘A is a dead
   no-op in every text field.
+  - **The rule covers ⌘X, ⌘Z and ⇧⌘Z too, and "disable the item so the key falls through" is a
+    myth.** Dirnex shipped exactly that: ⌘Z was the file-journal Undo, and its validator returned
+    `false` while a field editor was up, on the stated assumption that `performKeyEquivalent` would
+    then hand ⌘Z to the text. Measured in a throwaway AppKit app — it does not. A disabled item
+    swallows the chord and the text is untouched; the *same* item carrying `undo:` undoes typing.
+    ⌘X was simply absent from the menu and therefore dead everywhere. There is no fall-through to
+    wait for: the menu item's **selector** is the whole mechanism.
+  - **`NSTextView` implements `cut:`/`copy:`/`paste:`/`selectAll:` but *not* `undo:`/`redo:`.**
+    Probed with `NSApp.target(forAction:to:from:)` against a live field editor: the first four
+    resolve to the `NSTextView`, and the last two walk straight past it (no supplemental target
+    either) to **`NSWindow`**, which owns text undo. So the two families need opposite designs. For
+    ⌘C the pane can implement `copy:` and let the chain decide — a focused field editor gets there
+    first. For ⌘Z it cannot: a `PanelViewController` implementing `undo:` shadows `NSWindow` in
+    *both* cases, so it must detect `firstResponder is NSText` and hand the call back with
+    `NSApp.sendAction(_:to: window, from:)`. Not to an undo manager you picked — the field editor's
+    manager is provably not `window.undoManager` (`canUndo` reads `true` and `false` respectively),
+    and driving the window's directly undid nothing.
+  - The tell that this class of bug is present is a *comment* claiming a fall-through, and it fails
+    in the quiet direction: nothing logs, every menu builds, and the key just does nothing.
 - **The shared `QLPreviewPanel` (⌘Y) is key while open**, so arrows navigate its preview items,
   not the table. `QLPreviewView` is not opaque and `init(frame:style:)` is failable — an
   embedded preview needs an opaque backing or the covered view bleeds through. It also only
@@ -275,6 +294,18 @@ at build time.
   two files that had just been erased. The real-directory refresh ends with
   `reconcileCursorFromTable` → `installSortedModel` → `reloadEverything`; a new refresh path needs
   the same tail.
+- **A bare `reloadData` drops the pane's cursor, because the cursor *is* the table's selection.**
+  Three marks-only gestures — Invert Selection, ⌘A, Esc-clear — repainted with `tableView
+  .reloadData()` and nothing else, so the blue row simply vanished while `panel.cursor` still pointed
+  at the right entry: F5/F6/F8 kept working on a target nobody could see, and the pane read as having
+  no focus at all. It fails in the quiet direction (no error, no log, and the *marks* are visibly
+  correct, which is where the eye goes), and it hid behind the mouse and keyboard paths being fine —
+  a Cmd/Shift-click goes through `reloadEverything` and Space through `redrawRow` + `syncCursorToTable`,
+  both of which re-apply the cursor. Any full reload has to be followed by `syncCursorToTable(scroll:
+  false)` — `false` because nothing moved and the reading position must not jump. One shared
+  `redrawAfterSelectionChange` now owns that tail for every marks-only gesture, which is the real fix:
+  three call sites each spelling out the same four-line sequence is how one of them ends up missing a
+  line.
 - **A filtered-out row must be omitted, not zeroed.** Rendering an excluded folder as its
   filtered total gives "Zero KB · 0.0 %", which reads as *"measured, and empty"* — a claim about
   the folder where the truth is a claim about the question. Drop such rows from the projection

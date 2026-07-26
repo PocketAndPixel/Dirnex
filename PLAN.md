@@ -556,6 +556,15 @@ would have to be translated twice if the languages landed first. **That gate is 
 shipped (2026-07-25) with its 23 strings settled in English + Russian** — so Pass 3 is unblocked
 whenever it is picked back up.
 
+- **Slice 1 landed (2026-07-26): French.** `fr` / `Français` is now a shipped language, listed in
+  Settings and matched from French regional tags such as `fr-CA`. Its complete `Localizable`
+  column (786 entries, including every plural variant) and both App Shortcut phrases are present in
+  the built `fr.lproj`. The function bar and command-category captions received a manual UI pass so
+  they use correct whole verbs and nouns. The Synchronize sheet keeps the three complete direction
+  labels on their own row, sizing each segment to its localized caption so no language is cut off.
+  `LocalizationCoverageTests` now checks French alongside Russian; the app bundle test confirms it
+  is compiled and all registry data is translated.
+
 **Standing rule for the function bar, in every language.** The seven F-key captions are the app's
 primary buttons and are on screen permanently, so they carry the first impression of the whole app:
 each is a **whole verb** — imperative or infinitive, whichever that language uses for menu commands

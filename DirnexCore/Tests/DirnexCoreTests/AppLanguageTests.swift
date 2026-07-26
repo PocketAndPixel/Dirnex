@@ -27,7 +27,11 @@ struct AppLanguageTests {
     func endonymsAreNotEnglish() {
         // The whole point of an endonym is that a user stranded in an unreadable UI can still find
         // their language. Pinning Russian's spelling is what keeps a future "Russian" from creeping
-        // in as a well-meaning translation.
+        // in as a well-meaning translation. Spanish and French get the same protection.
+        let spanish = AppLanguages.language(for: "es")
+        #expect(spanish?.endonym == "Español")
+        let french = AppLanguages.language(for: "fr")
+        #expect(french?.endonym == "Français")
         let russian = AppLanguages.language(for: "ru")
         #expect(russian?.endonym == "Русский")
     }
@@ -43,6 +47,8 @@ struct AppLanguageTests {
     @Test("a regional tag matches its base language")
     func regionalTagMatchesBase() {
         #expect(AppLanguages.bestMatch(forPreferred: ["ru-RU"]).code == "ru")
+        #expect(AppLanguages.bestMatch(forPreferred: ["es-MX"]).code == "es")
+        #expect(AppLanguages.bestMatch(forPreferred: ["fr-CA"]).code == "fr")
         #expect(AppLanguages.bestMatch(forPreferred: ["en-GB"]).code == "en")
     }
 
@@ -51,6 +57,7 @@ struct AppLanguageTests {
         // A user whose first choice is Russian gets Russian even though English sits behind it and
         // would match exactly — order of preference outranks tightness of match.
         #expect(AppLanguages.bestMatch(forPreferred: ["ru-RU", "en-US"]).code == "ru")
+        #expect(AppLanguages.bestMatch(forPreferred: ["fr-FR", "en-US"]).code == "fr")
         #expect(AppLanguages.bestMatch(forPreferred: ["en-US", "ru-RU"]).code == "en")
         // An unshipped first choice is skipped rather than falling straight to English.
         #expect(AppLanguages.bestMatch(forPreferred: ["de-DE", "ru-RU"]).code == "ru")

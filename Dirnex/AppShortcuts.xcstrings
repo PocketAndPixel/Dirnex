@@ -10,10 +10,22 @@
             "value" : "${applicationName} copy selection"
           }
         },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName} copier la sélection"
+          }
+        },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "${applicationName} копировать выделенное"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName} copiar selección"
           }
         }
       }
@@ -27,10 +39,22 @@
             "value" : "Copy the selection in ${applicationName}"
           }
         },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiez la sélection dans ${applicationName}"
+          }
+        },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Копировать выделенное в ${applicationName}"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar la selección en ${applicationName}"
           }
         }
       }
