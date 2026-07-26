@@ -33,6 +33,8 @@ enum MainMenuBuilder {
         /// that item rather than standing on its own. Purely presentational — the command,
         /// its shortcut, and its palette entry are unchanged.
         case subcommand(String)
+        /// The standard AppKit Cut item — not a registry command; see `cutItem()`.
+        case cut
         case separator
     }
 
@@ -69,7 +71,7 @@ enum MainMenuBuilder {
         ]),
         MenuSpec(category: .edit, items: [
             .command("edit.undo"), .command("edit.redo"), .separator,
-            .command("edit.copy"), .command("edit.paste"), .command("edit.pasteMove")
+            .cut, .command("edit.copy"), .command("edit.paste"), .command("edit.pasteMove")
         ]),
         MenuSpec(category: .selection, items: [
             .command("select.all"), .command("select.invert"), .separator,
@@ -120,6 +122,8 @@ enum MainMenuBuilder {
                     built.indentationLevel = 1
                     submenu.addItem(built)
                 }
+            case .cut:
+                submenu.addItem(cutItem())
             }
         }
         if spec.isWindow {
@@ -144,6 +148,29 @@ enum MainMenuBuilder {
             keyEquivalent: shortcut?.keyEquivalent ?? ""
         )
         item.keyEquivalentModifierMask = shortcut?.modifierMask ?? []
+        return item
+    }
+
+    /// The standard text Cut item (⌘X), hand-built rather than drawn from the registry — like the
+    /// app menu's About/Hide, it is AppKit's item and not a command a user searches for. It has no
+    /// file meaning (the panes have no "cut files", `edit.pasteMove` being the move half), so a
+    /// registry entry would put a dead "Cut" in the ⌘K palette.
+    ///
+    /// It has to exist at all because ⌘X reaches a field editor **only** as a menu key equivalent:
+    /// Cocoa's key bindings map no key to `cut:`, so with no such item ⌘X is a dead no-op in every
+    /// text field in the app — measured, the same trap as ⌘A (docs/NOTES.md). `NSTextView` answers
+    /// `cut:` and nothing in a pane's responder chain does, so the nil target greys it out
+    /// everywhere else on its own; ⌘C and ⌘V already work for the same reason, via `edit.copy`.
+    private static func cutItem() -> NSMenuItem {
+        let item = NSMenuItem(
+            title: String(
+                localized: "Cut",
+                comment: "Standard Edit-menu Cut item; applies to text fields, not to files."
+            ),
+            action: #selector(NSText.cut(_:)),
+            keyEquivalent: "x"
+        )
+        item.keyEquivalentModifierMask = .command
         return item
     }
 

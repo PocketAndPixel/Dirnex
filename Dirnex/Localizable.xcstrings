@@ -10660,6 +10660,35 @@
         }
       }
     },
+    "Cut" : {
+      "comment" : "Standard Edit-menu Cut item; applies to text fields, not to files.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cut"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couper"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вырезать"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cortar"
+          }
+        }
+      }
+    },
     "Date Modified" : {
       "comment" : "File-list column header: last-modified date.",
       "localizations" : {

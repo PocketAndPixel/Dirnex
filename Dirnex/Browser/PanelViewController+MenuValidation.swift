@@ -44,9 +44,9 @@ extension PanelViewController: NSMenuItemValidation {
             // from a results tab (virtual pane, real local hits) — and, like ⌃D, ⌃T must reach a
             // field editor rather than being stolen to open a popup while a name is being typed.
             return canEditTags && !(view.window?.firstResponder is NSText)
-        case #selector(undoLastOperation(_:)):
+        case #selector(undo(_:)):
             return validateUndoItem(menuItem)
-        case #selector(redoLastOperation(_:)):
+        case #selector(redo(_:)):
             return validateRedoItem(menuItem)
         default:
             return true
