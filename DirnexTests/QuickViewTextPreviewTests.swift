@@ -108,6 +108,32 @@ struct QuickViewTextPreviewTests {
         #expect(!(NSTextView() is QuickViewDocumentTextView))
     }
 
+    // MARK: - The keyboard
+
+    /// What the mouse fix left behind: a click into the text to select it puts first responder on
+    /// the text view, and from there the arrows are the text view's — so ← / → (and ↑ / ↓) stopped
+    /// walking the file list in all three sizes, while the two-finger swipe went on working because
+    /// it is a window monitor. The window's key monitor hands the arrows back to the file table, and
+    /// this is the gate it asks first: is focus *inside* one of the preview surfaces.
+    @Test("focus inside a preview is told apart from focus anywhere else")
+    func focusInsideAPreviewIsRecognized() throws {
+        let tree = try TempDirectory()
+        defer { tree.cleanup() }
+        let url = try tree.write("notes.txt", contents: "test 01\n")
+        let preview = try Self.loaded(url)
+        let other = QuickViewPreviewView(backingColor: .textBackgroundColor, header: .none)
+        // Nested `#require` expands recursively and will not compile — hoist the hit out first.
+        let hit = try #require(preview.hitTest(NSPoint(x: 200, y: 200)))
+        let textView = try #require(Self.enclosingTextView(of: hit))
+
+        #expect(QuickViewPreviewView.hasFocus(textView, among: [nil, preview]))
+        // The two cases that must not be mistaken for it: another surface (a mode change hides one
+        // without moving focus), and the file table itself, which owns the arrows already.
+        #expect(!QuickViewPreviewView.hasFocus(textView, among: [nil, other]))
+        #expect(!QuickViewPreviewView.hasFocus(FileTableView(), among: [preview, other]))
+        #expect(!QuickViewPreviewView.hasFocus(nil, among: [preview, other]))
+    }
+
     // MARK: - Helpers
 
     /// A preview surface with a window and a real frame, showing `url` — awaiting the backend's

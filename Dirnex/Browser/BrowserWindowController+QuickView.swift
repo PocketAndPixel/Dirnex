@@ -149,34 +149,78 @@ extension BrowserWindowController {
         panel.focusTable()
     }
 
-    /// Esc closes Quick View from anywhere in this window. A window-scoped local monitor sees the
-    /// raw key event ahead of responder dispatch, so it works even when the focused view (the
-    /// preview `PDFView`) would otherwise swallow the key. It deliberately stands aside for the
-    /// responders that own Esc themselves: a focused file table runs its progressive Esc (clear
-    /// filter → close Quick View → clear marks) via `fileTableCancel`, and a text field editor
-    /// cancels the edit. Only fires while this window is key, so a sheet, the ⌘K palette, or the
-    /// Settings window keep their own Esc. Installed once from `init`; torn down in `deinit`.
-    func installEscapeMonitor() {
-        escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self,
-                  event.keyCode == 53, // Esc
-                  event.modifierFlags.isDisjoint(with: [.command, .control, .option, .shift]),
-                  window?.isKeyWindow == true,
-                  isQuickViewEnabled
-            else { return event }
-            let responder = window?.firstResponder
-            // A file table or a text edit owns Esc for its own purpose — let the event through.
-            // The preview's own text view is the exception among `NSText`s: it takes focus when the
-            // user clicks in to select something, and Esc there means "out of the preview", exactly
-            // as it does with the pointer anywhere else on the surface.
-            if responder is FileTableView { return event }
-            if responder is NSText, !(responder is QuickViewDocumentTextView) { return event }
-            // So does the terminal drawer, far more so: Esc is `vim`'s entire modal interface, and
-            // a monitor that swallowed it to close a preview would make the drawer useless for the
-            // editor most likely to be running in it.
-            if isTerminalFocused { return event }
-            closeQuickView()
-            return nil
-        }
+    /// The two keys Quick View has to take back from the window while a preview is up: **Esc**,
+    /// which closes the mode from anywhere, and a bare **arrow**, which walks the file list.
+    ///
+    /// One window-scoped local monitor for both, because a monitor sees the raw key *ahead of
+    /// responder dispatch* and that is the only place either can be caught. The in-process backends
+    /// take first responder the moment the user clicks into one — the text view to select a line,
+    /// `PDFView` to scroll a document — and from there a focused `PDFView` may never translate Esc
+    /// into `cancelOperation:`, while both of them consume the arrows as caret movement or
+    /// scrolling. Only fires while this window is key, so a sheet, the ⌘K palette, or the Settings
+    /// window keep their own keys. Installed once from `init`; torn down in `deinit`.
+    func installQuickViewKeyMonitor() {
+        quickViewKeyMonitor = NSEvent
+            .addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                guard let self,
+                      event.modifierFlags.isDisjoint(with: [.command, .control, .option, .shift]),
+                      window?.isKeyWindow == true,
+                      isQuickViewEnabled
+                else { return event }
+                switch event.keyCode {
+                case 53: // Esc
+                    guard escapeBelongsToQuickView else { return event }
+                    closeQuickView()
+                    return nil
+                case 123, 124, 125, 126: // ← → ↓ ↑
+                    reclaimArrowsFromPreview()
+                    return event
+                default:
+                    return event
+                }
+            }
+    }
+
+    /// Whether Esc means "close Quick View" here, or belongs to whatever holds focus. A file table
+    /// runs its own progressive Esc (clear filter → close Quick View → clear marks) through
+    /// `fileTableCancel`, and a field editor cancels the edit it is in — the preview's own text view
+    /// being the exception among `NSText`s, since it takes focus when the user clicks in to select
+    /// something and Esc there means "out of the preview", exactly as it does with the pointer
+    /// anywhere else on the surface. The terminal drawer owns Esc far more so: it is `vim`'s entire
+    /// modal interface, and a monitor that swallowed it to close a preview would make the drawer
+    /// useless for the editor most likely to be running in it.
+    private var escapeBelongsToQuickView: Bool {
+        let responder = window?.firstResponder
+        if responder is FileTableView { return false }
+        if responder is NSText, !(responder is QuickViewDocumentTextView) { return false }
+        return !isTerminalFocused
+    }
+
+    /// Hand the arrows back to the file list once the user has clicked into a preview.
+    ///
+    /// Selecting a line of a text preview (or clicking into a PDF) makes that backend first
+    /// responder, and it then eats ← / → — and ↑ / ↓, which mean the same thing while a full-size
+    /// preview covers the list — as caret movement or document scrolling. The two-finger swipe never
+    /// lost the mode for the two reasons it works at all: it is a window monitor, and every flip
+    /// re-asserts the table (`restoreTableFocus`). This is the keyboard's half of exactly that.
+    ///
+    /// Focus goes to the **focused** pane's table — the one whose list is being walked, which in
+    /// pane mode is not the pane the preview covers — and the key is then left to travel rather than
+    /// swallowed. Probed: a local monitor runs before responder dispatch, so this very event lands
+    /// on the table set here. So the table's own `keyDown` stays the single definition of what an
+    /// arrow does (a flip at full size, a plain cursor step in pane mode) instead of this monitor
+    /// carrying a second copy of it.
+    ///
+    /// Bare arrows only, per the modifier guard above: ⇧← still extends the selection in the text
+    /// the user is in the middle of selecting.
+    private func reclaimArrowsFromPreview() {
+        let surfaces = [
+            leftPanel.quickViewPreview,
+            rightPanel.quickViewPreview,
+            fullWindowPreview,
+            fullScreenPreview
+        ]
+        guard QuickViewPreviewView.hasFocus(window?.firstResponder, among: surfaces) else { return }
+        focusedPanel.focusTable()
     }
 }

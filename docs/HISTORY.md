@@ -5945,3 +5945,43 @@ the pane's files; a double-click selected a word in the user's own `text.txt`; a
 **Esc-while-the-text-has-focus is unverified** — the Esc monitor now recognizes
 `QuickViewDocumentTextView` as the one `NSText` it should not stand aside for, but synthetic Escape
 is never delivered into the app, so that path needs a physical key press.
+
+### The arrows a focused preview was eating (2026-07-27, VERIFIED LIVE)
+
+The half of the previous entry its own verification could not see. Selecting text in Quick View put
+first responder on the text view, and from there **the arrows stopped walking the file list** — in
+all three sizes, ⌃Q as much as ⌃⇧Q and ⌃⌥Q. The pass above did check that "← / → still flipped
+files", and it was true: it was checked without clicking into the text first, which is the one input
+that cannot expose the bug. The same shape as the palette's missing English title, one slice later.
+
+The tell that this was a *class* and not a text-backend bug: **the two-finger swipe went on
+working**, in the two modes that have one, which is what the report singled out. The gesture is a
+window-scoped monitor, so no focused view can eat it — and every flip it makes ends in
+`restoreTableFocus`, so it silently repairs the focus the click moved. The keyboard had neither half.
+`PDFView` had had the identical bug since it shipped, for the identical reason (measured: click into
+a PDF, ← does nothing).
+
+So the fix is the keyboard's copy of what the gesture already had, folded into the Esc monitor that
+was already watching `keyDown` for the same reason (a focused `PDFView` may never translate Esc into
+`cancelOperation:`) — `escapeMonitor` became `quickViewKeyMonitor`, with one branch per key. On a
+bare arrow, when first responder is inside any preview surface, it hands focus back to the
+**focused** pane's table and **lets the event travel** rather than swallowing it.
+
+That last part is the whole design, and it rests on a probed fact: **a local key monitor runs before
+responder dispatch, so moving first responder inside it delivers that same event to the responder it
+just set.** Probed in a throwaway AppKit app before any Dirnex code was written (two views, a posted
+keyDown, the monitor re-pointing focus mid-flight — the key landed in the new view). It means
+`FileTableView.keyDown` stays the single definition of what an arrow does — a flip at full size, a
+plain cursor step in pane mode, `..` handling and the ends of the list included — instead of this
+monitor carrying a second copy that could drift from it.
+
+Bare arrows only: ⇧← still extends a selection in the text the user is in the middle of selecting,
+which is the escape hatch that makes "the arrows belong to the file list" affordable.
+
+Verified live in a Russian build, all three sizes: ⌃⇧Q on `text.txt` (9 из 9) → drag-select three
+lines → ← → `fine_payment.pdf` (8 из 9); click into that PDF → ← → `dv2025.pdf` (7 из 9), the
+backend that never had this working; ⌃⌥Q full screen, select, ← → the same flip; ⌃Q pane mode, where
+the preview covers the *other* pane, select → ↑ moved the active pane's cursor and re-emphasized its
+row. And the guard: ⇧↓ ⇧↓ extended the text selection with the cursor staying put.
+**Esc-while-a-preview-has-focus stays unverified for the same reason as last time** — synthetic
+Escape is never delivered — and its logic is unchanged, only reshaped into `escapeBelongsToQuickView`.

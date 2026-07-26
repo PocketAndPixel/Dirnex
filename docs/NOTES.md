@@ -281,6 +281,26 @@ at build time.
     for a decision.** `SwipeStepper` was pure, and had 23 passing tests pinning behaviour that should
     never have been Dirnex's to define. Tests keep a decision from drifting; they cannot tell you it
     was yours to make.
+- **A preview the user can click into takes the mode's own keys away with it, and a *gesture* that
+  keeps working is what hides it.** Clicking into the Quick View text view (to select a line) or the
+  `PDFView` makes it first responder, and from there it eats the **arrows** — so ← / → stopped
+  walking the file list in all three sizes while the two-finger swipe went on flipping perfectly.
+  That asymmetry is not luck: the swipe is a *window-scoped monitor*, so no focused view can eat it,
+  and every flip it makes ends in `restoreTableFocus`, so it silently repairs the focus the click
+  moved. The keyboard had neither half, and the two read as twins, so a pass that verifies the
+  gesture proves nothing about the keys. (`PDFView` had it from the day it shipped; the text backend
+  is only what made it easy to hit — and that pass's own verification, "← / → still flipped files",
+  was run *without clicking into the text first*, which is the one input that cannot expose it.)
+  - **A local key monitor runs before responder dispatch, so moving first responder inside it
+    delivers that same event to the responder it just set.** Probed in a throwaway app (two views, a
+    posted keyDown, the monitor re-pointing focus mid-flight — the key landed in the *new* view).
+    That is what lets the fix hand focus back to the table and then **let the key travel** instead of
+    swallowing it and re-implementing the step: `FileTableView.keyDown` stays the single definition
+    of what an arrow does, ends-of-list and `..` handling included, rather than a second copy in a
+    monitor that can drift from it.
+  - Take **bare** arrows only. ⇧← must still extend the selection in the text the user is in the
+    middle of selecting; without that escape hatch, "the arrows belong to the file list" is not an
+    affordable rule.
 - **Transforming a layer that hosts an out-of-process view costs a round trip per frame.** A
   `QLPreviewView` renders in another process, so animating it judders visibly ("like 30 fps") — on
   exactly the content a preview swipe is used for. Route images to an in-process `NSImageView`
