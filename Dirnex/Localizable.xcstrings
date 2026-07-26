@@ -107,7 +107,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Не удалось выполнить \"%@\"."
+            "value" : "Не удалось выполнить «%@»."
           }
         },
         "es" : {
@@ -310,7 +310,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\" — неизвестная операция Dirnex."
+            "value" : "«%@» — неизвестная операция Dirnex."
           }
         },
         "es" : {
@@ -339,7 +339,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\" — не абсолютный POSIX-путь."
+            "value" : "«%@» — не абсолютный POSIX-путь."
           }
         },
         "es" : {
@@ -570,7 +570,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ · размеры без игнорируемого Git"
+            "value" : "%@ · без файлов, игнорируемых Git"
           }
         },
         "es" : {
@@ -715,7 +715,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ключ %@"
+            "value" : "%@-ключ"
           }
         },
         "es" : {
@@ -3194,7 +3194,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Обе"
+            "value" : "В обе стороны"
           }
         },
         "es" : {
@@ -3484,7 +3484,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Нельзя изменить «%@»"
+            "value" : "Нельзя править «%@»"
           }
         },
         "es" : {
@@ -3919,7 +3919,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "С заглавной"
+            "value" : "С заглавной буквы"
           }
         },
         "es" : {
@@ -14097,7 +14097,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Направо"
+            "value" : "Слева направо"
           }
         },
         "es" : {
@@ -16013,7 +16013,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Необязательно — в боковой панели"
+            "value" : "Необязательно — сохранить в боковой панели"
           }
         },
         "es" : {
@@ -18352,7 +18352,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Налево"
+            "value" : "Справа налево"
           }
         },
         "es" : {
@@ -20297,7 +20297,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Части iCloud Drive нужен полный доступ к диску"
+            "value" : "Для части iCloud Drive нужен полный доступ к диску"
           }
         },
         "es" : {
@@ -21517,7 +21517,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Идентификация «%@» изменилась"
+            "value" : "Идентификационные данные «%@» изменились"
           }
         },
         "es" : {
@@ -24108,7 +24108,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Облачными могут быть только локальные файлы."
+            "value" : "Статус облачной синхронизации доступен только для локальных файлов."
           }
         },
         "es" : {
