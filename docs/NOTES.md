@@ -376,9 +376,30 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   nothing in the compiler notices — the English fallback renders, so an untranslated command looks
   *fine* in an English screenshot. `LocalizationCoverageTests` reads the real compiled `.lproj` and
   fails when a command, category or function-bar caption has no entry.
-- **Translated palette keywords are added to the English ones, never substituted.** A Russian user
-  who reaches for "copy" out of habit, or who followed English docs, must still find the command;
-  verified live by typing `duplicate` and getting «Копировать на другую панель».
+- **Every English name a command has must survive translation into the palette's keywords — the
+  registry keywords *and* the English title. Never take either away.** Russian and Ukrainian users
+  type on a Latin layout constantly (it is the common case, not an edge case), and English docs,
+  screenshots and habits all name commands in English. `LocalizedCatalog` therefore *adds* the
+  translated keywords to the core's English ones rather than replacing them, and folds the English
+  title in beside them.
+  - **The title is the half that was missing, and it is missing for a structural reason: it is the
+    one string a translation *replaces*.** A keyword list is merged, so nobody thinks about it; the
+    title is overwritten, so the single most obvious search term for a command is exactly the one
+    that disappears. `file.copy`'s registry keywords are `f5, duplicate, transfer` — no "copy" — so
+    in a Russian build typing `copy` matched **nothing whatsoever**, not even a bad result, while
+    the shipped comment above `commandKeywords` claimed the merge already covered this case.
+  - **The bug hid behind its own verification.** The pass that added the merge proved it by typing
+    `duplicate` and getting «Копировать на другую панель» — a genuine pass of the mechanism that was
+    built, over a *keyword*, which is precisely the input that cannot expose the missing title. When
+    checking that a translated surface stays reachable in English, type the **title** word, not a
+    keyword: the keyword is the case you just wrote code for.
+  - Fold the title in **whole**, not split into words: `CommandMatcher` matches a subsequence, so
+    "copy" still hits "Copy to Other Panel" with its prefix and boundary bonuses, while splitting
+    would add "to", "by" and "the" as terms of their own and let a stopword rank the whole registry.
+    Only add it when the displayed title actually differs, so an English build gains nothing.
+  - Two tests pin it, and they are language-agnostic on purpose — the app test target inherits
+    whatever `AppleLanguages` the developer pinned Dirnex to, so a test that only holds in English
+    is a test that fails on the machine of anyone checking a translation.
 - **String Catalogs handle multi-argument plurals, but only through `substitutions`.** A plain
   plural variation covers `"Put %lld items back?"`; a sentence with a count *and* another argument
   needs the count declared as a named substitution (`%#@items@` plus `argNum`/`formatSpecifier`) and

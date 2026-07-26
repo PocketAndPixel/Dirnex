@@ -21,8 +21,10 @@ public enum LocalizationKey {
     ///
     /// A string catalog value is a string, not a list, so the translated terms are written as one
     /// comma-separated value ("копировать, дублировать") and split by ``splitKeywords(_:)``. The
-    /// translated terms are *added* to the core's English ones rather than replacing them, so a
-    /// Russian user can still reach a command by typing "copy".
+    /// translated terms are *added* to the core's English ones rather than replacing them, and the
+    /// app folds the English **title** in beside them (`LocalizedCatalog.keywords(for:displayedAs:)`)
+    /// — the title is the one string a translation *replaces*, so without that a Russian user typing
+    /// "copy" on a Latin layout reached nothing.
     public static func commandKeywords(_ commandID: String) -> String {
         "command.\(commandID).keywords"
     }

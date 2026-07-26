@@ -113,19 +113,6 @@ struct LocalizationCoverageTests {
         }
     }
 
-    @Test("a seeded template keeps its English keywords searchable alongside the translated ones")
-    func templateKeywordsAreAdditive() {
-        // Same reasoning as `keywordsAreAdditive`, one step further down: these keywords are copied
-        // into a script the user then owns, so losing the English ones is permanent for that script.
-        let template = try? #require(UserScriptTemplate.all.first)
-        let script = template.map(LocalizedCatalog.script(for:))
-        #expect(script?.keywords.contains("clipboard") == true)
-        #expect(
-            script?.command == template?.command,
-            "the body is shell code and is never localized"
-        )
-    }
-
     @Test("every sidebar section header is translated in every shipped language")
     func everySidebarSectionIsTranslated() throws {
         for language in translatedLanguages {
@@ -270,20 +257,6 @@ struct LocalizationCoverageTests {
             index = after
         }
         return max(positional, sequential)
-    }
-
-    @Test("a translated command keeps its English keywords searchable alongside the new ones")
-    func keywordsAreAdditive() {
-        // The palette is the one place a translation could *remove* a user's ability to find
-        // something: replacing "copy" with "копировать" would break every English habit and every
-        // instruction written in English docs.
-        let copy = LocalizedCatalog.command(for: "file.copy")
-        let keywords = copy?.keywords ?? []
-        #expect(keywords.contains("duplicate"))
-        #expect(
-            copy?.id == "file.copy",
-            "the id must survive localization — it is the persistence key"
-        )
     }
 
     @Test("localizing never drops or reorders the registry")
