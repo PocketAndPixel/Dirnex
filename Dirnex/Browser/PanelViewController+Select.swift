@@ -123,8 +123,16 @@ extension PanelViewController {
     /// Marks changed but the cursor and row set did not — repaint the rows (so the
     /// bold-red mark styling updates), refresh the status summary, and keep any live
     /// Quick Look preview in step with the new marked set.
-    private func redrawAfterSelectionChange() {
+    ///
+    /// `reloadData` drops the table's own selection, which *is* the visible cursor, so the
+    /// cursor has to be pushed back in afterwards or the blue row simply vanishes — the pane
+    /// then looks like it has no cursor at all while `panel.cursor` still points at the right
+    /// entry (F5/F6/F8 keep working on an invisible target). Without scrolling: nothing moved,
+    /// so the user's reading position must not jump. Internal so every marks-only gesture
+    /// (Invert, ⌘A, Esc-clear, `+`/`-` patterns) shares the one correct tail.
+    func redrawAfterSelectionChange() {
         tableView.reloadData()
+        syncCursorToTable(scroll: false)
         updateChrome()
         refreshQuickLookIfVisible()
     }
