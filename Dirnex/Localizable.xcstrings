@@ -37,7 +37,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ existe déjà"
+            "value" : "«%@» existe déjà"
           }
         },
         "ru" : {
@@ -83,7 +83,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\" n'a pas pu être exécuté."
+            "value" : "«%@» n’a pas pu être exécuté."
           }
         },
         "ru" : {
@@ -106,7 +106,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ n'a pas pu être exécuté."
+            "value" : "«%@» n’a pas pu être exécuté."
           }
         },
         "ru" : {
@@ -129,7 +129,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ a échoué"
+            "value" : "«%@» a échoué"
           }
         },
         "ru" : {
@@ -152,7 +152,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ a échoué sur %lld de %lld"
+            "value" : "«%@» a échoué sur %lld de %lld"
           }
         },
         "ru" : {
@@ -221,7 +221,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ n'est pas un fichier que Dirnex peut révéler."
+            "value" : "«%@» n’est pas un fichier que Dirnex peut révéler."
           }
         },
         "ru" : {
@@ -244,7 +244,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\" n'est pas une opération Dirnex connue."
+            "value" : "«%@» n’est pas une opération Dirnex connue."
           }
         },
         "ru" : {
@@ -267,7 +267,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\" n'est pas un chemin POSIX absolu."
+            "value" : "«%@» n’est pas un chemin POSIX absolu."
           }
         },
         "ru" : {
@@ -290,7 +290,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ n'est pas disponible"
+            "value" : "«%@» n’est pas disponible"
           }
         },
         "ru" : {
@@ -336,7 +336,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ s’exécute une fois par fichier — sélectionnez d’abord un ou plusieurs éléments."
+            "value" : "«%@» s’exécute une fois par fichier — sélectionnez d’abord un ou plusieurs éléments."
           }
         },
         "ru" : {
@@ -542,7 +542,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ est installé mais n'a pas pu être lancé."
+            "value" : "%@ est installé mais n’a pas pu être lancé."
           }
         },
         "ru" : {
@@ -1080,7 +1080,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%#@items@ ne pouvait pas être remis en place : %2$@"
+            "value" : "Impossible de remettre %#@items@ à leur emplacement : %2$@"
           },
           "substitutions" : {
             "items" : {
@@ -1091,13 +1091,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg élément"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg éléments"
                     }
                   }
                 }
@@ -1181,7 +1181,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%#@items@ n'a pas pu être réappliqué : %2$@"
+            "value" : "Impossible de réappliquer %#@items@ : %2$@"
           },
           "substitutions" : {
             "items" : {
@@ -1192,13 +1192,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg élément"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg éléments"
                     }
                   }
                 }
@@ -2026,7 +2026,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un élément portant le même nom est déjà dans l'archive. La réécriture remplace l'archive et ne peut pas être annulée."
+            "value" : "Un élément portant le même nom est déjà dans l’archive. La réécriture remplace l’archive et ne peut pas être annulée."
           }
         },
         "ru" : {
@@ -2118,7 +2118,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "N'importe quelle date"
+            "value" : "N’importe quelle date"
           }
         },
         "ru" : {
@@ -2233,7 +2233,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nom de l'archive"
+            "value" : "Nom de l’archive"
           }
         },
         "ru" : {
@@ -2417,7 +2417,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'authentification a échoué. Vérifiez le nom d'utilisateur et le mot de passe, ou essayez une connexion d'invité."
+            "value" : "L’authentification a échoué. Vérifiez le nom d’utilisateur et le mot de passe, ou essayez une connexion d’invité."
           }
         },
         "ru" : {
@@ -2601,7 +2601,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ouvre le dossier du fichier ou dossier indiqué dans le panneau actif de Dirnex et le sélectionne, comme la commande Révéler du Finder."
+            "value" : "Ouvre le dossier du fichier ou dossier indiqué dans le panneau actif de Dirnex et le sélectionne, comme la commande Afficher dans le Finder."
           }
         },
         "ru" : {
@@ -2785,7 +2785,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible d'extraire ici"
+            "value" : "Impossible d’extraire ici"
           }
         },
         "ru" : {
@@ -2854,7 +2854,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible d'ouvrir «%@»"
+            "value" : "Impossible d’ouvrir «%@»"
           }
         },
         "ru" : {
@@ -2877,7 +2877,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible d'ouvrir %@"
+            "value" : "Impossible d’ouvrir %@"
           }
         },
         "ru" : {
@@ -2992,7 +2992,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de vérifier l'identité de «%@»"
+            "value" : "Impossible de vérifier l’identité de «%@»"
           }
         },
         "ru" : {
@@ -3340,7 +3340,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Permis, confidentialité, sécurité, accès, disque, accord, intégration"
+            "value" : "autorisation, confidentialité, sécurité, accès, disque, accorder, configuration"
           }
         },
         "ru" : {
@@ -3820,7 +3820,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Comparer, différer, contenu, fusion de fichiers, kaleidoscope, bbedit"
+            "value" : "comparer, comparaison, diff, différences, contenu, filemerge, kaleidoscope, bbedit"
           }
         },
         "ru" : {
@@ -4972,7 +4972,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Récent, visité, sentier, alt bas"
+            "value" : "récent, visité, historique, option bas"
           }
         },
         "ru" : {
@@ -5068,7 +5068,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Parent, dehors"
+            "value" : "parent, remonter, niveau supérieur"
           }
         },
         "ru" : {
@@ -5500,7 +5500,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fonction, touches, touches f, fkeys, f5, f6, f7, f8, barre d'outils, barre, boutons, commande totale, tc"
+            "value" : "fonction, touches, touches f, fkeys, f5, f6, f7, f8, barre d’outils, barre, boutons, total commander, tc"
           }
         },
         "ru" : {
@@ -5644,7 +5644,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "aperçu, jeter un coup d'œil, fenêtre, inactif, ctrl q"
+            "value" : "aperçu, jeter un coup d’œil, fenêtre, inactif, ctrl q"
           }
         },
         "ru" : {
@@ -5692,7 +5692,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "aperçu, jeter un coup d'œil, plein écran, photo, image, présenter, option ctrl q"
+            "value" : "aperçu, jeter un coup d’œil, plein écran, photo, image, présenter, option ctrl q"
           }
         },
         "ru" : {
@@ -5740,7 +5740,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "aperçu, jeter un coup d'œil, complet, fenêtre, grand, lire, gros, ctrl shift q"
+            "value" : "aperçu, jeter un coup d’œil, complet, fenêtre, grand, lire, gros, ctrl shift q"
           }
         },
         "ru" : {
@@ -6854,7 +6854,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copie la sélection du panneau actif dans l'autre panneau, comme le fait F5."
+            "value" : "Copie la sélection du panneau actif dans l’autre panneau, comme le fait F5."
           }
         },
         "ru" : {
@@ -7084,7 +7084,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible d'ajouter «%@»"
+            "value" : "Impossible d’ajouter «%@»"
           }
         },
         "ru" : {
@@ -7140,13 +7140,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg élément"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg éléments"
                     }
                   }
                 }
@@ -7348,7 +7348,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de créer l'archive"
+            "value" : "Impossible de créer l’archive"
           }
         },
         "ru" : {
@@ -7498,13 +7498,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg élément"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg éléments"
                     }
                   }
                 }
@@ -7589,7 +7589,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible d'éjecter «%@»"
+            "value" : "Impossible d’éjecter «%@»"
           }
         },
         "ru" : {
@@ -7612,7 +7612,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible d'effacer «%@»"
+            "value" : "Impossible d’effacer «%@»"
           }
         },
         "ru" : {
@@ -7706,7 +7706,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible d'extraire de l'archive"
+            "value" : "Impossible d’extraire de l’archive"
           }
         },
         "ru" : {
@@ -7729,7 +7729,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible d'extraire les éléments sélectionnés."
+            "value" : "Impossible d’extraire les éléments sélectionnés."
           }
         },
         "ru" : {
@@ -8032,7 +8032,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible d'ouvrir «%@»"
+            "value" : "Impossible d’ouvrir «%@»"
           }
         },
         "ru" : {
@@ -8055,7 +8055,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible d'ouvrir %@"
+            "value" : "Impossible d’ouvrir %@"
           }
         },
         "ru" : {
@@ -8078,7 +8078,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible d'ouvrir l'archive imbriquée."
+            "value" : "Impossible d’ouvrir l’archive imbriquée."
           }
         },
         "ru" : {
@@ -8101,7 +8101,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible d'ouvrir avec «%@»."
+            "value" : "Impossible d’ouvrir avec «%@»."
           }
         },
         "ru" : {
@@ -8218,7 +8218,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible d'atteindre «%@». Vérifiez l'adresse et assurez-vous que le serveur est en ligne."
+            "value" : "Impossible d’atteindre «%@». Vérifiez l’adresse et assurez-vous que le serveur est en ligne."
           }
         },
         "ru" : {
@@ -8427,7 +8427,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Créez un fichier d'archive dans «%@»."
+            "value" : "Créez un fichier d’archive dans «%@»."
           }
         },
         "ru" : {
@@ -8644,13 +8644,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg élément"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg éléments"
                     }
                   }
                 }
@@ -8829,7 +8829,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Supprimer l'étiquette «%@» ?"
+            "value" : "Supprimer l’étiquette «%@» ?"
           }
         },
         "ru" : {
@@ -8990,7 +8990,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex dispose déjà d'un accès complet au disque."
+            "value" : "Dirnex dispose déjà d’un accès complet au disque."
           }
         },
         "ru" : {
@@ -9036,7 +9036,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex n'a pas de fenêtre de navigateur ouverte sur laquelle agir."
+            "value" : "Dirnex n’a pas de fenêtre de navigateur ouverte sur laquelle agir."
           }
         },
         "ru" : {
@@ -9059,7 +9059,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex a besoin d'un accès complet au disque pour afficher la corbeille."
+            "value" : "Dirnex a besoin d’un accès complet au disque pour afficher la corbeille."
           }
         },
         "ru" : {
@@ -9128,7 +9128,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Je ne sais pas d'où vient «%@»"
+            "value" : "Je ne sais pas d’où vient «%@»"
           }
         },
         "ru" : {
@@ -9613,7 +9613,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Éliminé de la synchronisation"
+            "value" : "Exclu de la synchronisation"
           }
         },
         "ru" : {
@@ -10563,7 +10563,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Masquer les fichiers cachés"
+            "value" : "Masquer les fichiers invisibles"
           }
         },
         "ru" : {
@@ -10586,7 +10586,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Masquer les détails de l'opération"
+            "value" : "Masquer les détails de l’opération"
           }
         },
         "ru" : {
@@ -10702,7 +10702,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iCloud n'a pas commencé le téléchargement. Vérifiez votre connexion réseau et réessayez."
+            "value" : "iCloud n’a pas commencé le téléchargement. Vérifiez votre connexion réseau et réessayez."
           }
         },
         "ru" : {
@@ -11232,7 +11232,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Connexion échouée. Vérifiez le nom d'utilisateur et le mot de passe."
+            "value" : "Connexion échouée. Vérifiez le nom d’utilisateur et le mot de passe."
           }
         },
         "ru" : {
@@ -12453,7 +12453,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ouvrez d'abord un dossier différent dans l'autre panneau."
+            "value" : "Ouvrez d’abord un dossier différent dans l’autre panneau."
           }
         },
         "ru" : {
@@ -12499,7 +12499,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ouvrez d'abord un dossier sur le disque dans l'autre panneau."
+            "value" : "Ouvrez d’abord un dossier sur le disque dans l’autre panneau."
           }
         },
         "ru" : {
@@ -12522,7 +12522,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ouvrez un dossier sur le disque dans l'autre panneau pour stocker le nouveau fichier d'archive."
+            "value" : "Ouvrez un dossier sur le disque dans l’autre panneau pour stocker le nouveau fichier d’archive."
           }
         },
         "ru" : {
@@ -12961,7 +12961,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Panels"
+            "value" : "Panneaux"
           }
         },
         "ru" : {
@@ -13262,7 +13262,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Autorisation refusée. Vérifiez le nom d'utilisateur et assurez-vous que la clé est autorisée sur le serveur."
+            "value" : "Autorisation refusée. Vérifiez le nom d’utilisateur et assurez-vous que la clé est autorisée sur le serveur."
           }
         },
         "ru" : {
@@ -14171,13 +14171,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg élément"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg éléments"
                     }
                   }
                 }
@@ -14262,7 +14262,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Remplacer l'archive existante dans «%@» ?"
+            "value" : "Remplacer l’archive existante dans «%@» ?"
           }
         },
         "ru" : {
@@ -14492,7 +14492,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Révéler ${file} dans Dirnex"
+            "value" : "Afficher ${file} dans Dirnex"
           }
         },
         "ru" : {
@@ -14515,7 +14515,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Révéler dans Dirnex"
+            "value" : "Afficher dans Dirnex"
           }
         },
         "ru" : {
@@ -14538,7 +14538,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "reveal a besoin d'un chemin POSIX, par exemple reveal \"\/Users\/me\"."
+            "value" : "reveal a besoin d’un chemin POSIX, par exemple reveal \"\/Users\/me\"."
           }
         },
         "ru" : {
@@ -15252,7 +15252,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'année dernière"
+            "value" : "L’année dernière"
           }
         },
         "ru" : {
@@ -15598,7 +15598,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Shortcuts"
+            "value" : "Raccourcis"
           }
         },
         "ru" : {
@@ -15644,7 +15644,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Afficher l'état de synchronisation du nuage"
+            "value" : "Afficher l’état de synchronisation du nuage"
           }
         },
         "ru" : {
@@ -15736,7 +15736,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Afficher les fichiers cachés"
+            "value" : "Afficher les fichiers invisibles"
           }
         },
         "ru" : {
@@ -15759,7 +15759,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Afficher les détails de l'opération"
+            "value" : "Afficher les détails de l’opération"
           }
         },
         "ru" : {
@@ -16173,7 +16173,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "quelque chose d'autre"
+            "value" : "quelque chose d’autre"
           }
         },
         "ru" : {
@@ -16750,7 +16750,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Texte à l'intérieur du fichier"
+            "value" : "Texte à l’intérieur du fichier"
           }
         },
         "ru" : {
@@ -16819,7 +16819,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cet élément n'est pas un dossier."
+            "value" : "Cet élément n’est pas un dossier."
           }
         },
         "ru" : {
@@ -16842,7 +16842,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le panneau actif n'est pas un dossier sur ce disque."
+            "value" : "Le panneau actif n’est pas un dossier sur ce disque."
           }
         },
         "ru" : {
@@ -16865,7 +16865,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'archive"
+            "value" : "L’archive"
           }
         },
         "ru" : {
@@ -16888,7 +16888,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'archive peut être endommagée ou les éléments peuvent être manquants."
+            "value" : "L’archive peut être endommagée ou les éléments peuvent être manquants."
           }
         },
         "ru" : {
@@ -16911,7 +16911,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La connexion n'a pas pu être établie."
+            "value" : "La connexion n’a pas pu être établie."
           }
         },
         "ru" : {
@@ -16980,7 +16980,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'éditeur F4 ouvre le fichier sous le curseur. ⇧F4 nomme d'abord un nouveau fichier, le créant s'il n'existe pas encore."
+            "value" : "L’éditeur F4 ouvre le fichier sous le curseur. ⇧F4 nomme d’abord un nouveau fichier, le créant s’il n’existe pas encore."
           }
         },
         "ru" : {
@@ -17095,7 +17095,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'identité de «%@» a changé."
+            "value" : "L’identité de «%@» a changé."
           }
         },
         "ru" : {
@@ -17164,7 +17164,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'ancienne clé d'hôte ne pouvait pas être supprimée automatiquement. Supprimez-la de %@ et essayez de vous reconnecter."
+            "value" : "L’ancienne clé d’hôte ne pouvait pas être supprimée automatiquement. Supprimez-la de %@ et essayez de vous reconnecter."
           }
         },
         "ru" : {
@@ -17210,7 +17210,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'autre panneau n'est pas un dossier dans lequel vous pouvez copier."
+            "value" : "L’autre panneau n’est pas un dossier dans lequel vous pouvez copier."
           }
         },
         "ru" : {
@@ -17256,7 +17256,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le chemin distant n'a pas été trouvé."
+            "value" : "Le chemin distant n’a pas été trouvé."
           }
         },
         "ru" : {
@@ -17279,7 +17279,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le script n'a pas pu être lancé."
+            "value" : "Le script n’a pas pu être lancé."
           }
         },
         "ru" : {
@@ -17302,7 +17302,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La sélection est transmise en tant qu'arguments (\"$@\", \"$1\"). Disponible également : $DIRNEX_CURRENT_DIR, $DIRNEX_OTHER_DIR, $DIRNEX_SELECTED_PATHS."
+            "value" : "La sélection est transmise en tant qu’arguments (\"$@\", \"$1\"). Disponible également : $DIRNEX_CURRENT_DIR, $DIRNEX_OTHER_DIR, $DIRNEX_SELECTED_PATHS."
           }
         },
         "ru" : {
@@ -17325,7 +17325,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le serveur n'a pas pu être atteint. Vérifiez le nom d'hôte et le port."
+            "value" : "Le serveur n’a pas pu être atteint. Vérifiez le nom d’hôte et le port."
           }
         },
         "ru" : {
@@ -17394,7 +17394,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le serveur a refusé l'accès à ce chemin."
+            "value" : "Le serveur a refusé l’accès à ce chemin."
           }
         },
         "ru" : {
@@ -17463,7 +17463,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le certificat du serveur n'a pas pu être vérifié."
+            "value" : "Le certificat du serveur n’a pas pu être vérifié."
           }
         },
         "ru" : {
@@ -17486,7 +17486,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le certificat du serveur n'a pas été pris en compte, donc la connexion a été annulée."
+            "value" : "Le certificat du serveur n’a pas été pris en compte, donc la connexion a été annulée."
           }
         },
         "ru" : {
@@ -17509,7 +17509,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La clé d'hôte du serveur a changé (nouvelle empreinte digitale %@)."
+            "value" : "La clé d’hôte du serveur a changé (nouvelle empreinte digitale %@)."
           }
         },
         "ru" : {
@@ -17670,7 +17670,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Il n'y a rien à effacer."
+            "value" : "Il n’y a rien à effacer."
           }
         },
         "ru" : {
@@ -17693,7 +17693,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Il n'y a rien à remettre."
+            "value" : "Il n’y a rien à remettre."
           }
         },
         "ru" : {
@@ -17716,7 +17716,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Il n'y a pas assez de stockage iCloud pour terminer cela."
+            "value" : "Il n’y a pas assez de stockage iCloud pour terminer cela."
           }
         },
         "ru" : {
@@ -17877,7 +17877,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cela supprime la recherche enregistrée de la barre latérale. Aucun fichier n'est supprimé."
+            "value" : "Cela supprime la recherche enregistrée de la barre latérale. Aucun fichier n’est supprimé."
           }
         },
         "ru" : {
@@ -17900,7 +17900,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cela supprime le serveur enregistré de la barre latérale. Aucun fichier n'est supprimé."
+            "value" : "Cela supprime le serveur enregistré de la barre latérale. Aucun fichier n’est supprimé."
           }
         },
         "ru" : {
@@ -17923,7 +17923,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cela renomme la ligne de la barre latérale. Le dossier lui-même n'est pas renommé."
+            "value" : "Cela renomme la ligne de la barre latérale. Le dossier lui-même n’est pas renommé."
           }
         },
         "ru" : {
@@ -17946,7 +17946,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cela réécrit l'archive et ne peut pas être annulé."
+            "value" : "Cela réécrit l’archive et ne peut pas être annulé."
           }
         },
         "ru" : {
@@ -18899,7 +18899,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "nom d'utilisateur"
+            "value" : "nom d’utilisateur"
           }
         },
         "ru" : {
@@ -18945,7 +18945,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible d'ajouter «%@» à l'archive «%@»."
+            "value" : "Impossible d’ajouter «%@» à l’archive «%@»."
           }
         },
         "ru" : {
@@ -18968,7 +18968,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de créer l'archive «%@»."
+            "value" : "Impossible de créer l’archive «%@»."
           }
         },
         "ru" : {
@@ -18991,7 +18991,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible d'extraire de l'archive «%@»."
+            "value" : "Impossible d’extraire de l’archive «%@»."
           }
         },
         "ru" : {
@@ -19014,7 +19014,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de réécrire l'archive «%@»."
+            "value" : "Impossible de réécrire l’archive «%@»."
           }
         },
         "ru" : {
@@ -19037,7 +19037,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de lancer bsdtar pour créer l'archive."
+            "value" : "Impossible de lancer bsdtar pour créer l’archive."
           }
         },
         "ru" : {
@@ -19060,7 +19060,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de lancer bsdtar pour l'extraire de l'archive."
+            "value" : "Impossible de lancer bsdtar pour l’extraire de l’archive."
           }
         },
         "ru" : {
@@ -19083,7 +19083,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de lancer bsdtar pour ouvrir l'archive."
+            "value" : "Impossible de lancer bsdtar pour ouvrir l’archive."
           }
         },
         "ru" : {
@@ -19106,7 +19106,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de lire l'archive «%@»."
+            "value" : "Impossible de lire l’archive «%@»."
           }
         },
         "ru" : {
@@ -19129,7 +19129,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de mettre à jour l'archive «%@»."
+            "value" : "Impossible de mettre à jour l’archive «%@»."
           }
         },
         "ru" : {
@@ -19175,7 +19175,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La comparaison de contenu n'est disponible que pour les fichiers locaux."
+            "value" : "La comparaison de contenu n’est disponible que pour les fichiers locaux."
           }
         },
         "ru" : {
@@ -19405,7 +19405,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La copie directe entre des emplacements distants n'est pas prise en charge."
+            "value" : "La copie directe entre des emplacements distants n’est pas prise en charge."
           }
         },
         "ru" : {
@@ -19680,7 +19680,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nom de l'espace de travail"
+            "value" : "Nom de l’espace de travail"
           }
         },
         "ru" : {
