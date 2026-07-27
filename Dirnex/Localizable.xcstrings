@@ -14998,7 +14998,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "filtern"
+            "value" : "Filtern"
           }
         },
         "en" : {
@@ -19736,7 +19736,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "teil des Dateinamens"
+            "value" : "Teil des Dateinamens"
           }
         },
         "en" : {
@@ -19771,7 +19771,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "passwort"
+            "value" : "Passwort"
           }
         },
         "en" : {
@@ -19841,7 +19841,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "passwort (leer für Gast)"
+            "value" : "Passwort (leer für Gast)"
           }
         },
         "en" : {
@@ -21752,7 +21752,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ersetzung"
+            "value" : "Ersetzung"
           }
         },
         "en" : {
