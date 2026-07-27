@@ -672,7 +672,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ · Größen ohne Git-ignorierte Dateien"
+            "value" : "%@ · Größen ohne von Git ignorierte Dateien"
           }
         },
         "en" : {
@@ -2191,7 +2191,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld von %lld werden umbenannt"
+            "value" : "%lld von %lld zum Umbenennen"
           }
         },
         "en" : {
@@ -7369,7 +7369,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zum Ort gehen …"
+            "value" : "Zum Pfad gehen …"
           }
         },
         "en" : {
@@ -8305,7 +8305,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Seitenleiste fokussieren"
+            "value" : "Seitenleiste aktivieren"
           }
         },
         "en" : {
@@ -8881,7 +8881,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Terminal-Einschub"
+            "value" : "Terminalbereich"
           }
         },
         "en" : {
@@ -10064,7 +10064,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dateien mit vergleichen"
+            "value" : "Dateien vergleichen mit"
           }
         },
         "en" : {
@@ -12278,7 +12278,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mit „%@“ konnte nicht geöffnet werden."
+            "value" : "Öffnen mit „%@“ fehlgeschlagen."
           }
         },
         "en" : {
@@ -13736,7 +13736,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex hat kein geöffnetes Browserfenster, auf das man reagieren kann."
+            "value" : "Dirnex hat kein geöffnetes Browserfenster für diesen Befehl."
           }
         },
         "en" : {
@@ -14018,7 +14018,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "abgemacht!"
+            "value" : "Fertig"
           }
         },
         "en" : {
@@ -14543,7 +14543,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Geben Sie ein Wildcard-Muster ein (zum Beispiel „*.jpg“)."
+            "value" : "Geben Sie ein Platzhaltermuster ein (zum Beispiel „*.jpg“)."
           }
         },
         "en" : {
@@ -14858,7 +14858,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dateinamen dürfen nicht den Zeichen \"\/\" enthalten."
+            "value" : "Dateinamen dürfen das Zeichen \"\/\" nicht enthalten."
           }
         },
         "en" : {
@@ -15278,7 +15278,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ordnernamen dürfen nicht den Zeichen \"\/\" enthalten."
+            "value" : "Ordnernamen dürfen das Zeichen \"\/\" nicht enthalten."
           }
         },
         "en" : {
@@ -16196,7 +16196,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gastgeber:"
+            "value" : "Host:"
           }
         },
         "en" : {
@@ -16266,7 +16266,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iCloud hat den Download nicht gestartet. Überprüfen Sie Ihre Netzwerkverbindung und versuchen Sie es erneut."
+            "value" : "iCloud hat den Download nicht gestartet. Prüfen Sie Ihre Netzwerkverbindung und versuchen Sie es erneut."
           }
         },
         "en" : {
@@ -16583,7 +16583,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Element"
+            "value" : "Objekt"
           }
         },
         "en" : {
@@ -18229,7 +18229,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "nächster"
+            "value" : "Weiter"
           }
         },
         "en" : {
@@ -18544,7 +18544,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "keiner"
+            "value" : "Keine"
           }
         },
         "en" : {
@@ -18719,7 +18719,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "in Ordnung"
+            "value" : "OK"
           }
         },
         "en" : {
@@ -18754,7 +18754,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eine der Ordner existiert nicht mehr."
+            "value" : "Einer der Ordner existiert nicht mehr."
           }
         },
         "en" : {
@@ -19279,7 +19279,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vorgang"
+            "value" : "Befehl"
           }
         },
         "en" : {
@@ -19349,7 +19349,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Optional – in Seitenleiste sichern"
+            "value" : "Optional – in der Seitenleiste sichern"
           }
         },
         "en" : {
@@ -19419,7 +19419,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Originalfall"
+            "value" : "Originale Groß-\/Kleinschreibung"
           }
         },
         "en" : {
@@ -19981,7 +19981,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pausiert — %@"
+            "value" : "Pausiert – %@"
           }
         },
         "en" : {
@@ -20016,7 +20016,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Endgültiges Löschen fragt unabhängig von dieser Einstellung immer nach Bestätigung."
+            "value" : "Beim endgültigen Löschen wird unabhängig von dieser Einstellung immer nach einer Bestätigung gefragt."
           }
         },
         "en" : {
@@ -20193,7 +20193,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Erlaubnis zum Lesen einer der Ordner wurde verweigert."
+            "value" : "Beim Lesen eines Ordners wurde die Berechtigung verweigert."
           }
         },
         "en" : {
@@ -20263,7 +20263,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hafen:"
+            "value" : "Port:"
           }
         },
         "en" : {
@@ -20824,7 +20824,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Regelmäßige Ausdrücke"
+            "value" : "Regulärer Ausdruck"
           }
         },
         "en" : {
@@ -21069,7 +21069,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aus %lld von %lld Dateien entfernt. %@\n\nDas Etikett bleibt in der Seitenleiste, weil die Dateien es immer noch tragen."
+            "value" : "Aus %lld von %lld Dateien entfernt. %@\n\nDas Tag bleibt in der Seitenleiste, weil Dateien es noch verwenden."
           }
         },
         "en" : {
@@ -22207,7 +22207,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Klicken Sie bei gedrückter Ctrl-Taste auf eine Zeile, um deren Aktion zu ändern"
+            "value" : "Klicken Sie bei gedrückter Control-Taste auf eine Zeile, um deren Aktion zu ändern"
           }
         },
         "en" : {
@@ -22312,7 +22312,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex-Vorgang ausführen"
+            "value" : "Dirnex-Befehl ausführen"
           }
         },
         "en" : {
@@ -22487,7 +22487,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Führt einen Dirnex-Befehl oder ein Benutzerskript aus, ausgewählt aus einer Liste."
+            "value" : "Führt einen Dirnex-Befehl oder ein Benutzerskript aus einer Liste aus."
           }
         },
         "en" : {
@@ -23443,7 +23443,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Letzter Monat"
+            "value" : "Letzte 30 Tage"
           }
         },
         "en" : {
@@ -23513,7 +23513,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Letzte Woche"
+            "value" : "Letzte 7 Tage"
           }
         },
         "en" : {
@@ -23548,7 +23548,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Letztes Jahr"
+            "value" : "Letzte 365 Tage"
           }
         },
         "en" : {
@@ -24004,7 +24004,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Anteil an diesem Ordner"
+            "value" : "Anteil an der Ordnergröße"
           }
         },
         "en" : {
@@ -25019,7 +25019,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Etwas mit demselben Namen befindet sich im ursprünglichen Ordner, daher wurde es im Papierkorb gelassen und nicht ersetzt."
+            "value" : "Im ursprünglichen Ordner befindet sich bereits ein Objekt mit demselben Namen. Daher wurde es im Papierkorb gelassen und nicht ersetzt."
           }
         },
         "en" : {
@@ -25194,7 +25194,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fokus auf aus Suchergebnissen geöffnete Ordner wechseln"
+            "value" : "Zu aus Suchergebnissen geöffneten Ordnern wechseln"
           }
         },
         "en" : {
@@ -25931,7 +25931,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Diese Datei hat keinen Ort auf dem Laufwerk, daher gibt es nichts anzuzeigen."
+            "value" : "Diese Datei hat keinen Speicherort auf dem Laufwerk, daher gibt es nichts anzuzeigen."
           }
         },
         "en" : {
@@ -26211,7 +26211,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Der Editor für F4 öffnet die Datei unter dem Cursor. Mit ⇧F4 geben Sie zuerst einen neuen Dateinamen ein; die Datei wird erstellt, falls sie noch nicht existiert."
+            "value" : "Mit F4 wird die Datei unter dem Cursor im Editor geöffnet. Mit ⇧F4 geben Sie zuerst einen neuen Dateinamen ein; die Datei wird erstellt, falls sie noch nicht existiert."
           }
         },
         "en" : {
@@ -28181,7 +28181,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Verfolgung %@"
+            "value" : "Verfolgt %@"
           }
         },
         "en" : {
