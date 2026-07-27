@@ -2,7 +2,7 @@ import Foundation
 
 /// A language Dirnex ships strings for.
 ///
-/// `code` is the tag as it appears in the built bundle (`en`, `fr`, `ru`, and later `zh-Hans` and
+/// `code` is the tag as it appears in the built bundle (`en`, `de`, `fr`, and later `zh-Hans` and
 /// friends) — the same spelling that goes into `AppleLanguages` to override the app's language.
 ///
 /// `endonym` is the language's name *in itself* ("Русский", "日本語"), which is deliberately **not**
@@ -54,6 +54,7 @@ public enum AppLanguages {
     /// base, then the rest alphabetically by code.
     public static let all: [AppLanguage] = [
         english,
+        AppLanguage(code: "de", endonym: "Deutsch"),
         AppLanguage(code: "es", endonym: "Español"),
         AppLanguage(code: "fr", endonym: "Français"),
         AppLanguage(code: "ru", endonym: "Русский")

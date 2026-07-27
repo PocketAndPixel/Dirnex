@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M11 shipped · M12 (localization) Passes 1–2 done, Pass 3 slices 1–2 done · M13 (FTP/FTPS) shipped · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
+Status: M0–M11 shipped · M12 (localization) Passes 1–2 done, Pass 3 slices 1–3 done · M13 (FTP/FTPS) shipped · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
 
 ---
 
@@ -574,6 +574,15 @@ whenever it is picked back up.
   labels remain `Papelera`. The diff-tool footer also now says it opens files in the selected app,
   not in Dirnex itself, and the palette tour title was rewritten as natural Spanish rather than a
   literal English calque.
+- **Slice 3 landed (2026-07-27): German.** `de` / `Deutsch` is a shipped language, listed in
+  Settings and matched from German regional tags such as `de-AT`. Its complete `Localizable` column
+  (799 entries, including every plural variant) and both App Shortcut phrases are present in the
+  catalog and compiled into `de.lproj`, so `LocalizationCoverageTests` now checks German alongside
+  Spanish, French and Russian. A manual macOS-style pass kept product and platform terms unchanged
+  where they should stay unchanged (`Dirnex`, `macOS`, `Git`, `Zip`, `7-Zip`) and corrected the
+  file-manager vocabulary the automatic pass got wrong: `Papierkorb`, `Datei`, `Ordner`,
+  `Laufwerke`, `Befehl`, `Kopieren`, and `Verschieben`. The same pass preserved existing casing
+  rules for lowercase keyword/search terms and kept the function bar on whole German verbs.
 
 **Standing rule for the function bar, in every language.** The seven F-key captions are the app's
 primary buttons and are on screen permanently, so they carry the first impression of the whole app:
