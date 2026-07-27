@@ -10,7 +10,9 @@ struct ArchivePackingTests {
         let argv = ArchivePacking.packingArguments(
             archiveOnDiskPath: "/Users/me/out.zip",
             sourceDirectory: "/Users/me/src",
-            sourceNames: ["alpha.txt", "a file with spaces.txt", "sub"]
+            sourceNames: ["alpha.txt", "a file with spaces.txt", "sub"],
+            format: .zip,
+            level: .normal
         )
         #expect(argv == [
             "-a", "-c", "-f", "/Users/me/out.zip", "-C", "/Users/me/src",
@@ -25,9 +27,78 @@ struct ArchivePackingTests {
         let argv = ArchivePacking.packingArguments(
             archiveOnDiskPath: "/p/out.zip",
             sourceDirectory: "/p/src",
-            sourceNames: ["weird[1].txt", "*.log"]
+            sourceNames: ["weird[1].txt", "*.log"],
+            format: .zip,
+            level: .normal
         )
         #expect(argv.suffix(2) == ["weird[1].txt", "*.log"])
+    }
+
+    // MARK: - Compression level
+
+    @Test("a non-default level becomes an unprefixed --options before -C")
+    func levelBecomesOptions() {
+        // Unprefixed on purpose: a module prefix has to name the running writer (`zip:`, `gzip:`,
+        // `bzip2:`, `7zip:`), so one prefixed string would fail as soon as the format changed.
+        for (level, value) in [(ArchivePacking.CompressionLevel.fast, "1"), (.maximum, "9")] {
+            let argv = ArchivePacking.packingArguments(
+                archiveOnDiskPath: "/p/out.zip",
+                sourceDirectory: "/p/src",
+                sourceNames: ["a.txt"],
+                format: .zip,
+                level: level
+            )
+            #expect(argv == [
+                "-a", "-c", "-f", "/p/out.zip",
+                "--options", "compression-level=\(value)",
+                "-C", "/p/src", "a.txt"
+            ])
+        }
+    }
+
+    @Test("normal passes no option at all — libarchive's own per-format default")
+    func normalPassesNoOption() {
+        for format in ArchivePacking.Format.allCases {
+            let argv = ArchivePacking.packingArguments(
+                archiveOnDiskPath: "/p/out\(format.suffix)",
+                sourceDirectory: "/p/src",
+                sourceNames: ["a.txt"],
+                format: format,
+                level: .normal
+            )
+            #expect(!argv.contains("--options"), "\(format) got an option for .normal")
+        }
+    }
+
+    @Test("tar takes no compression level — the option would fail the pack, not be ignored")
+    func tarTakesNoLevel() {
+        #expect(!ArchivePacking.Format.tar.supportsCompressionLevel)
+        for format in ArchivePacking.Format.allCases where format != .tar {
+            #expect(format.supportsCompressionLevel, "\(format) should accept a level")
+        }
+        for level in ArchivePacking.CompressionLevel.allCases {
+            let argv = ArchivePacking.packingArguments(
+                archiveOnDiskPath: "/p/out.tar",
+                sourceDirectory: "/p/src",
+                sourceNames: ["a.txt"],
+                format: .tar,
+                level: level
+            )
+            #expect(argv == ["-a", "-c", "-f", "/p/out.tar", "-C", "/p/src", "a.txt"])
+        }
+    }
+
+    @Test("every level maps to a value bsdtar accepts, and Normal is preselected")
+    func levelValuesAreInRange() {
+        // Out of range is not clamped by libarchive: it exits 1 with "Undefined option", so the
+        // offered values must stay inside 1…9. Level 0 is deliberately not offered — it means
+        // three different things across the five formats.
+        for level in ArchivePacking.CompressionLevel.allCases {
+            guard let value = level.optionValue else { continue }
+            #expect((1...9).contains(value), "\(level) maps to \(value)")
+        }
+        #expect(ArchivePacking.CompressionLevel.normal.optionValue == nil)
+        #expect(ArchivePacking.CompressionLevel.allCases.contains(.normal))
     }
 
     @Test("each format's suffix drives bsdtar -a inference and round-trips as browsable")

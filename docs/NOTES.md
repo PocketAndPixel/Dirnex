@@ -713,6 +713,27 @@ against a fake.
 - **`-tvf`'s date column omits the year for recent files**, so a `MMM d HH:mm` parse yields year
   2000. Set `defaultDate = now` on year-less formats and roll the year back if the result is in
   the future.
+- **`--options compression-level=N` must go in *unprefixed*.** A module prefix has to name the
+  writer actually running (`zip:`, `gzip:`, `bzip2:`, `7zip:`), so one prefixed string breaks the
+  moment the user picks another format — `bsdtar: Unknown module name: 'zip'`, exit 1, no archive.
+  Unprefixed, libarchive offers the option to whichever module is running. Two more sharp edges:
+  a value outside 0–9 fails with the *misleading* `Undefined option: 'compression-level'` (it is
+  defined; the value is out of range), and plain `.tar` rejects the option outright with the same
+  message — so the flag has to be **withheld** for an uncompressed format rather than passed and
+  hoped over. All three fail the whole pack, not the setting.
+  - **The dial has almost no range above the default, which is not what the numbers suggest.**
+    Measured on 980 KB of Swift source: zip 314 221 → 313 960 at level 9 (0.08 %), 7z 193 706 →
+    193 704 (**2 bytes**), and bzip2 *identical*, because libarchive's bzip2 default already **is**
+    9 — only gzip gains anything (261 253 → 259 482, 0.7 %). Level 1 is where the real difference
+    lives: +9.7 % size on zip and **+16 % on 7z for a 4× speedup** (0.20 s → 0.05 s). Deflate can
+    even invert — on one 840 KB text file level 1 beat level 9 by 1 087 bytes. So a
+    compression-level control is a *fast* switch, not a *smaller* one, and "Maximum" is honest
+    about intent while delivering ~0 %.
+  - **Level 0 means three different things**, so it is not offerable as one "Store" item: a true
+    stored container for zip and gzip (output larger than the input), silently clamped to 1 by
+    bzip2, and still compressing for the 7z writer (540 259 — *smaller* than its own level 1).
+  - `.normal` is therefore modelled as **passing no option at all**, not as an explicit `6`:
+    libarchive's per-format defaults are not all 6, and the default is what "normal" means.
 
 ### sftp / ssh
 

@@ -117,6 +117,14 @@ public enum LocalizationKey {
         "archive.format.\(format.rawValue).title"
     }
 
+    /// A pack-dialog compression-level label, e.g. `archive.level.maximum.title`. Same shape and
+    /// same reason as ``archiveFormat(_:)`` — `ArchivePacking.CompressionLevel.displayName` is
+    /// core data reached through `allCases` at the popup, so it is joined by raw value here rather
+    /// than wrapped at the display site, where it would extract nothing.
+    public static func archiveCompressionLevel(_ level: ArchivePacking.CompressionLevel) -> String {
+        "archive.level.\(level.rawValue).title"
+    }
+
     /// A script template's name, e.g. `script.template.copyPaths.title` — the name the organizer's
     /// **+** menu prints and the name the seeded script is saved under.
     /// `UserScriptTemplate.title` is `DirnexCore` data reached through a variable

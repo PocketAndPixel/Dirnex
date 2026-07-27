@@ -191,6 +191,21 @@ struct LocalizationCoverageTests {
         }
     }
 
+    @Test("every pack-dialog compression level is translated in every shipped language")
+    func everyCompressionLevelIsTranslated() throws {
+        for language in translatedLanguages {
+            let bundle = try bundle(for: language)
+            for level in ArchivePacking.CompressionLevel.allCases {
+                let key = LocalizationKey.archiveCompressionLevel(level)
+                let value = translation(key, in: bundle)
+                #expect(value != nil, "\(language.code): no \(key)")
+                // No still-English check here: every level's label is a single word, and "Normal"
+                // is genuinely itself in German and Spanish — the same carve-out the formats and
+                // the command titles make, which here would exclude all three cases.
+            }
+        }
+    }
+
     @Test("every undo/redo action label is translated in every shipped language")
     func everyUndoActionLabelIsTranslated() throws {
         for language in translatedLanguages {
