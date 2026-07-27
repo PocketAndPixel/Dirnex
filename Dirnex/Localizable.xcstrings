@@ -43,7 +43,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„%@“ existiert bereits"
+            "value" : "„%@“ ist bereits vorhanden"
           }
         },
         "en" : {
@@ -78,7 +78,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„%@“ existiert bereits in „%@“"
+            "value" : "„%@“ ist bereits in „%@“ vorhanden"
           }
         },
         "en" : {
@@ -253,7 +253,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„%@“ ist bereits zurückgelegt"
+            "value" : "„%@“ wurde bereits zurückgelegt"
           }
         },
         "en" : {
@@ -532,7 +532,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„Wie System“ folgt der macOS-Sprache und verwendet Englisch als Ersatzsprache."
+            "value" : "„Wie System“ verwendet die macOS-Sprache und greift auf Englisch zurück."
           }
         },
         "en" : {
@@ -672,7 +672,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ · Größen ohne von Git ignorierte Dateien"
+            "value" : "%@ · Größen ohne Git-ignorierte Dateien"
           }
         },
         "en" : {
@@ -917,7 +917,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ kann für den Vergleich großer Dateien lange brauchen oder kurz nicht reagieren."
+            "value" : "%@ kann für den Vergleich großer Dateien lange brauchen oder zeitweise nicht reagieren."
           }
         },
         "en" : {
@@ -1488,13 +1488,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Objekt ist bereits zurückgelegt"
+                  "value" : "%lld Objekt wurde bereits zurückgelegt"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Objekte sind bereits zurückgelegt"
+                  "value" : "%lld Objekte wurden bereits zurückgelegt"
                 }
               }
             }
@@ -2191,7 +2191,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Umbenennen: %lld von %lld"
+            "value" : "%lld von %lld werden umbenannt"
           }
         },
         "en" : {
@@ -2368,7 +2368,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "• %@ — %@ führt jetzt %@ aus."
+            "value" : "• %@ – %@ führt jetzt %@ aus."
           }
         },
         "en" : {
@@ -2473,7 +2473,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eine Reihe von Funktionstasten unten im Fenster: Umbenennen, Ansehen, Kopieren, Verschieben, Neuer Ordner, Löschen. Das ist die Funktionsleiste nach Art von Total Commander. Auch im Menü „Ansicht“; die Tasten funktionieren mit und ohne sichtbare Leiste."
+            "value" : "Eine Reihe von Funktionstasten unten im Fenster: Umbenennen, Anzeigen, Kopieren, Verschieben, Neuer Ordner, Löschen. Das ist die Funktionsleiste im Stil von Total Commander. Auch im Menü „Ansicht“; die Tasten funktionieren mit und ohne sichtbare Leiste."
           }
         },
         "en" : {
@@ -2508,7 +2508,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eine gespeicherte Suche mit dem Namen „%@“ gibt es bereits. Ersetzen?"
+            "value" : "Eine gespeicherte Suche mit dem Namen „%@“ ist bereits vorhanden. Ersetzen?"
           }
         },
         "en" : {
@@ -2543,7 +2543,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ein Arbeitsbereich mit dem Namen „%@“ gibt es bereits. Durch das aktuelle Layout ersetzen?"
+            "value" : "Ein Arbeitsbereich mit dem Namen „%@“ ist bereits vorhanden. Durch das aktuelle Layout ersetzen?"
           }
         },
         "en" : {
@@ -2963,7 +2963,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bietet beim Suchen nach Updates auch Vorabversionen an. Betas sind neuer, aber weniger getestet; Dirnex wechselt automatisch zurück zu einer stabilen Version, sobald eine verfügbar ist."
+            "value" : "Bietet beim Suchen nach Updates auch Vorabversionen an. Betas sind neuer, aber weniger getestet. Dirnex wechselt automatisch zurück zu einer stabilen Version, sobald eine verfügbar ist."
           }
         },
         "en" : {
@@ -2998,7 +2998,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hier gibt es bereits ein Objekt mit diesem Namen."
+            "value" : "Hier ist bereits ein Objekt mit diesem Namen vorhanden."
           }
         },
         "en" : {
@@ -3033,7 +3033,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hier gibt es bereits ein Objekt mit diesem Namen. Wählen Sie aus, wie der Konflikt gelöst wird."
+            "value" : "Hier ist bereits ein Objekt mit diesem Namen vorhanden. Wählen Sie aus, wie der Konflikt gelöst werden soll."
           }
         },
         "en" : {
@@ -3068,7 +3068,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Im Archiv gibt es bereits ein Objekt mit diesem Namen. Beim Ersetzen wird das Archiv neu geschrieben. Das kann nicht rückgängig gemacht werden."
+            "value" : "Im Archiv ist bereits ein Objekt mit diesem Namen vorhanden. Beim Ersetzen wird das Archiv neu geschrieben. Dies kann nicht rückgängig gemacht werden."
           }
         },
         "en" : {
@@ -3593,7 +3593,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vor dem Legen in den Papierkorb fragen"
+            "value" : "Vor dem Bewegen von Objekten in den Papierkorb fragen"
           }
         },
         "en" : {
@@ -3628,7 +3628,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Anmeldung:"
+            "value" : "Authentifizierung:"
           }
         },
         "en" : {
@@ -3803,7 +3803,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zeigt rechts am Dateinamen ein Symbol, wenn Daten noch in iCloud oder bei einem anderen Anbieter liegen, hoch- oder heruntergeladen werden oder ein Konflikt besteht – wie im Finder. Ordner außerhalb eines Cloud-Anbieters werden nicht geprüft. Vollständig synchronisierte Dateien zeigen nichts. Auch im Menü „Ansicht“."
+            "value" : "Zeigt rechts neben dem Dateinamen ein Symbol, wenn Daten noch in iCloud oder bei einem anderen Anbieter liegen, hoch- oder heruntergeladen werden oder ein Konflikt besteht – wie im Finder. Ordner außerhalb eines Cloud-Anbieters werden nicht geprüft. Für vollständig synchronisierte Dateien wird nichts angezeigt. Auch im Menü „Ansicht“."
           }
         },
         "en" : {
@@ -4153,7 +4153,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kann die Datei nicht erstellen"
+            "value" : "Datei kann nicht erstellt werden"
           }
         },
         "en" : {
@@ -4398,7 +4398,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kann %@ nicht öffnen"
+            "value" : "%@ kann nicht geöffnet werden"
           }
         },
         "en" : {
@@ -4538,7 +4538,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kann nicht synchronisieren"
+            "value" : "Synchronisieren nicht möglich"
           }
         },
         "en" : {
@@ -5029,7 +5029,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "aktualisieren, Upgrade, Glanz, Version, Veröffentlichung, neu"
+            "value" : "update, aktualisieren, upgrade, version, release, veröffentlichung, neu"
           }
         },
         "en" : {
@@ -5101,7 +5101,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "erlaubnis, Privatsphäre, Sicherheit, Zugriff, Festplatte, Erteilung, Einarbeitung"
+            "value" : "berechtigung, datenschutz, sicherheit, zugriff, festplatte, erlauben, festplattenvollzugriff"
           }
         },
         "en" : {
@@ -5137,7 +5137,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Voller Festplattenzugriff …"
+            "value" : "Festplattenvollzugriff …"
           }
         },
         "en" : {
@@ -5173,7 +5173,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ausgang"
+            "value" : "beenden, verlassen, schließen"
           }
         },
         "en" : {
@@ -5317,7 +5317,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "tour, Willkommen, Führer, Einführung, Einarbeitung, Hilfe, Einstieg"
+            "value" : "tour, willkommen, anleitung, einführung, hilfe, erste schritte"
           }
         },
         "en" : {
@@ -5389,7 +5389,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "clipboard, Duplizieren, Pasteboard"
+            "value" : "zwischenablage, kopieren, duplizieren, pasteboard, clipboard"
           }
         },
         "en" : {
@@ -5461,7 +5461,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "klipboard, Pasteboard"
+            "value" : "zwischenablage, einfügen, pasteboard, clipboard"
           }
         },
         "en" : {
@@ -5497,7 +5497,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Einsetzen"
+            "value" : "Einfügen"
           }
         },
         "en" : {
@@ -5533,7 +5533,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "clipboard, Einfügen, Klippern, Klebebrett"
+            "value" : "zwischenablage, einfügen, ausschneiden, verschieben, pasteboard, clipboard"
           }
         },
         "en" : {
@@ -5605,7 +5605,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "wiederholen, weiterleiten, noch einmal, erneut anwenden"
+            "value" : "wiederholen, erneut, erneut anwenden"
           }
         },
         "en" : {
@@ -5677,7 +5677,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "zurücksetzen, zurückkehren"
+            "value" : "widerrufen, rückgängig, zurück"
           }
         },
         "en" : {
@@ -5821,7 +5821,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "vergleichen, Differenzieren, Inhalte, Dateimergieren, Kaleidoskop, bbedit"
+            "value" : "vergleichen, diff, unterschiede, inhalt, filemerge, kaleidoscope, bbedit"
           }
         },
         "en" : {
@@ -5893,7 +5893,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "f5, Duplizieren, Übertragen"
+            "value" : "f5, kopieren, duplizieren, übertragen"
           }
         },
         "en" : {
@@ -6037,7 +6037,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "f4, editor, text, öffnen, ändern, bbedit, vs code, textedit"
+            "value" : "f4, editor, text, öffnen, bearbeiten, ändern, bbedit, vs code, textedit"
           }
         },
         "en" : {
@@ -6109,7 +6109,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "f4, neu, erstellen, Editor, Text, Touch, leer, Datei"
+            "value" : "f4, neu, erstellen, editor, text, touch, leer, datei"
           }
         },
         "en" : {
@@ -6253,7 +6253,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "f6, Übertragung"
+            "value" : "f6, verschieben, übertragen"
           }
         },
         "en" : {
@@ -6325,7 +6325,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "batch, Umbenennung, Muster, Zähler, Regex, Maske"
+            "value" : "stapel, umbenennen, muster, zähler, regex, maske"
           }
         },
         "en" : {
@@ -6541,7 +6541,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "öffnen, Anwendung, App, Starten, Editor, Standard"
+            "value" : "öffnen, app, programm, starten, editor, standard"
           }
         },
         "en" : {
@@ -6613,7 +6613,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "komprimieren, archivieren, zipen, tar, alt+f5, packen"
+            "value" : "komprimieren, archivieren, zip, tar, alt+f5, packen"
           }
         },
         "en" : {
@@ -6685,7 +6685,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "wiederherstellen, Löschen rückgängig machen, Papierkorb, Wiederherstellen, Original, Löschen rückgängig machen"
+            "value" : "wiederherstellen, zurücklegen, papierkorb, original, löschen rückgängig machen"
           }
         },
         "en" : {
@@ -6829,7 +6829,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "teilen, senden, airdropen, per Post, Nachricht, Blatt"
+            "value" : "teilen, senden, airdrop, mail, nachricht, freigabe"
           }
         },
         "en" : {
@@ -6901,7 +6901,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "synchronisieren, synchronisieren, vergleichen, spiegeln, Differenzieren, Verzeichnisse, Ordner"
+            "value" : "synchronisieren, vergleichen, spiegeln, diff, verzeichnisse, ordner"
           }
         },
         "en" : {
@@ -6973,7 +6973,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "finder, Etikett, Kennzeichnung, Farbe, Farbe, Markierung"
+            "value" : "finder, tag, tags, etikett, farbe, markieren"
           }
         },
         "en" : {
@@ -7117,7 +7117,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "pinnen, Lesezeichen setzen, Favorit"
+            "value" : "anheften, lesezeichen, favorit, favoriten"
           }
         },
         "en" : {
@@ -7189,7 +7189,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "geschichte, vorherige, rückwärts"
+            "value" : "verlauf, vorherige, zurück"
           }
         },
         "en" : {
@@ -7261,7 +7261,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "sftp, ssh, smb, teilen, mounten, nas, remote, Netzwerk, Server, verbinden, Host"
+            "value" : "sftp, ssh, smb, freigabe, verbinden, mounten, nas, remote, netzwerk, server, host"
           }
         },
         "en" : {
@@ -7333,7 +7333,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "pfad, Adresse, Typ, URL, Sprung, Frequenz, fließend, aktuell"
+            "value" : "pfad, adresse, eingeben, url, springen, zuletzt, suchen"
           }
         },
         "en" : {
@@ -7369,7 +7369,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zu Ort gehen …"
+            "value" : "Zum Ort gehen …"
           }
         },
         "en" : {
@@ -7405,7 +7405,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "favoriten, Lesezeichen, gesichert, springen, ctrl d"
+            "value" : "favoriten, lesezeichen, angeheftet, springen, ctrl d"
           }
         },
         "en" : {
@@ -7477,7 +7477,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "geschichte, nächstes"
+            "value" : "verlauf, nächste, vorwärts"
           }
         },
         "en" : {
@@ -7549,7 +7549,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "kürzlich, besucht, Wanderweg, alt herunter"
+            "value" : "zuletzt, besucht, verlauf, pfad, alt runter"
           }
         },
         "en" : {
@@ -7621,7 +7621,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "terminal, Shell, iterm, wezterm, Konsole, Befehl, Eingabeaufforderung, extern, App"
+            "value" : "terminal, shell, iterm, wezterm, konsole, befehl, prompt, extern, app"
           }
         },
         "en" : {
@@ -7693,7 +7693,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "übergeordnet, hoch"
+            "value" : "übergeordnet, nach oben, hoch"
           }
         },
         "en" : {
@@ -7765,7 +7765,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "suche, gespeichert, intelligent, Ordner, Lesezeichen, Seitenleiste"
+            "value" : "suche, sichern, gespeichert, intelligent, ordner, lesezeichen, seitenleiste"
           }
         },
         "en" : {
@@ -7837,7 +7837,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "suchen, Fokus, mdfind, finden, lokalisieren, filtern, Alt f7"
+            "value" : "suchen, spotlight, mdfind, finden, lokalisieren, filtern, alt f7"
           }
         },
         "en" : {
@@ -7909,7 +7909,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "markieren, alles, ganz"
+            "value" : "auswählen, markieren, alles, ganz"
           }
         },
         "en" : {
@@ -7981,7 +7981,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "wildcard, Glob, Markierung"
+            "value" : "platzhalter, wildcard, glob, muster, markieren"
           }
         },
         "en" : {
@@ -8053,7 +8053,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "schalten, umdrehen"
+            "value" : "umkehren, umschalten, invertieren"
           }
         },
         "en" : {
@@ -8125,7 +8125,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "wildcard, Glob, Ungeselect, Ungemarkieren"
+            "value" : "platzhalter, wildcard, glob, muster, abwählen, markierung entfernen"
           }
         },
         "en" : {
@@ -8197,7 +8197,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "aktionen, Befehle, Suche, Ausführen"
+            "value" : "aktionen, befehle, suche, ausführen"
           }
         },
         "en" : {
@@ -8269,7 +8269,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "orte, Volumes, Favoriten, Tastatur, auswählen, navigieren, Quellliste, Fokus verschieben"
+            "value" : "orte, volumes, favoriten, tastatur, auswählen, navigieren, seitenleiste, fokus verschieben"
           }
         },
         "en" : {
@@ -8341,7 +8341,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "funktion, tasten, f-tasten, fkeys, f5, f6, f7, f8, symbolleiste, leiste, tasten, Total Commander, tc"
+            "value" : "funktion, tasten, funktionstasten, f-tasten, fkeys, f5, f6, f7, f8, symbolleiste, leiste, buttons, total commander, tc"
           }
         },
         "en" : {
@@ -8413,7 +8413,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "git, gitignore, ignoriert, ignorieren, Größen, Größe, Ordner, Build, node_modules, Artefakte, Quelle, Repo, Repository, sauber"
+            "value" : "git, gitignore, ignoriert, ignorieren, größen, größe, ordner, build, node_modules, artefakte, quelle, repo, repository, sauber"
           }
         },
         "en" : {
@@ -8485,7 +8485,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "vorschau, Ausschau"
+            "value" : "vorschau, quick look, schnellansicht"
           }
         },
         "en" : {
@@ -8521,7 +8521,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Schnellübersicht"
+            "value" : "Übersicht"
           }
         },
         "en" : {
@@ -8557,7 +8557,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "vorschau, Ausschau, Fenster, inaktiv, ctrl q"
+            "value" : "vorschau, schnellansicht, bereich, inaktiv, ctrl q"
           }
         },
         "en" : {
@@ -8629,7 +8629,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "vorschau, Ausschau, Vollbild, Bildschirm, Foto, Bild, Präsentation, Ctrl-Option q"
+            "value" : "vorschau, schnellansicht, vollbild, bildschirm, foto, bild, präsentieren, ctrl option q"
           }
         },
         "en" : {
@@ -8665,7 +8665,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Schnellansicht im Vollbild"
+            "value" : "Schnellansicht im Vollbildmodus"
           }
         },
         "en" : {
@@ -8701,7 +8701,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "vorschau, Ausschau, voll, Fenster, groß, lesen, groß, ctrl shift q"
+            "value" : "vorschau, schnellansicht, ganzes fenster, groß, lesen, ctrl shift q"
           }
         },
         "en" : {
@@ -8737,7 +8737,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Schnellansicht in ganzem Fenster"
+            "value" : "Schnellansicht im ganzen Fenster"
           }
         },
         "en" : {
@@ -8773,7 +8773,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ncdu, Balken, Grafik, Diagramm, Festplatte, Nutzung, Speicherplatz, du, größtes, größte, was nimmt ein"
+            "value" : "ncdu, balken, grafik, diagramm, festplatte, nutzung, speicherplatz, du, größte, belegt"
           }
         },
         "en" : {
@@ -8845,7 +8845,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "shell, konsole, befehl, zeile, zsh, bash, prompt, einschub"
+            "value" : "shell, konsole, befehl, zeile, zsh, bash, prompt, einschub, terminal"
           }
         },
         "en" : {
@@ -8917,7 +8917,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "dotfiles, unsichtbar, Punkt, verstecken, enthüllen"
+            "value" : "dotfiles, unsichtbar, punktdateien, ausblenden, einblenden, anzeigen"
           }
         },
         "en" : {
@@ -8989,7 +8989,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "orte, Volumes, verstecken"
+            "value" : "orte, volumes, seitenleiste, ausblenden, anzeigen"
           }
         },
         "en" : {
@@ -9061,7 +9061,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "icloud, Cloud, Synchronisierung, Dropbox, Drive, OneDrive, Download, heruntergeladen, Offline, Platzhalter, Badge"
+            "value" : "icloud, cloud, sync, synchronisierung, dropbox, drive, onedrive, download, heruntergeladen, offline, platzhalter, badge, status"
           }
         },
         "en" : {
@@ -9133,7 +9133,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "finder, Tags, Etiketten, Farben, Farben, Punkte, Spalte"
+            "value" : "finder, tags, etiketten, farben, punkte, spalte"
           }
         },
         "en" : {
@@ -9313,7 +9313,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "minimieren"
+            "value" : "Minimieren"
           }
         },
         "en" : {
@@ -9493,7 +9493,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "sitzung, Wechsel, Wiederherstellung, Öffnen, Layout, Tabs"
+            "value" : "sitzung, wechseln, wiederherstellen, öffnen, layout, bereiche"
           }
         },
         "en" : {
@@ -9565,7 +9565,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "sitzung, Snapshot, Speicher, Layout, Tabs"
+            "value" : "sitzung, snapshot, sichern, speichern, layout, bereiche"
           }
         },
         "en" : {
@@ -9959,7 +9959,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nach Inhalt vergleichen (⌥F3) benötigt ein Diff-Tool. Installieren Sie FileMerge (Teil von Xcode), Kaleidoscope oder BBEdit und öffnen Sie die Einstellungen erneut."
+            "value" : "„Nach Inhalt vergleichen“ (⌥F3) benötigt ein Diff-Tool. Installieren Sie FileMerge (Teil von Xcode), Kaleidoscope oder BBEdit und öffnen Sie die Einstellungen erneut."
           }
         },
         "en" : {
@@ -13666,7 +13666,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex hat bereits vollen Festplattenzugriff"
+            "value" : "Dirnex hat bereits Festplattenvollzugriff"
           }
         },
         "en" : {
@@ -13701,7 +13701,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex kann überall suchen, aber macOS schützt einige Ordner: die Benutzerordner anderer Personen, Mail und Nachrichten, Time Machine-Backups und andere sensible Orte. Ohne Festplattenvollzugriff zeigt Dirnex dort einen Hinweis zu fehlenden Rechten. Überall sonst funktioniert alles normal.\n\nKlicken Sie auf „Systemeinstellungen öffnen“ und aktivieren Sie Dirnex unter „Festplattenvollzugriff“. macOS fordert dann einen Neustart von Dirnex an, damit der neue Zugriff wirksam wird."
+            "value" : "Dirnex kann alle Ordner durchsuchen, aber macOS schützt einige Orte: Benutzerordner anderer Personen, Mail und Nachrichten, Time Machine-Backups und andere sensible Orte. Ohne Festplattenvollzugriff zeigt Dirnex dort einen Hinweis zu fehlenden Rechten. Überall sonst funktioniert es normal.\n\nKlicken Sie auf „Systemeinstellungen öffnen“ und aktivieren Sie Dirnex unter „Festplattenvollzugriff“. macOS fordert dann einen Neustart von Dirnex an, damit der neue Zugriff wirksam wird."
           }
         },
         "en" : {
@@ -13771,7 +13771,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex benötigt vollen Festplattenzugriff, um den Papierkorb anzuzeigen"
+            "value" : "Dirnex benötigt Festplattenvollzugriff, um den Papierkorb anzuzeigen"
           }
         },
         "en" : {
@@ -15915,7 +15915,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex vollen Festplattenzugriff geben"
+            "value" : "Dirnex Festplattenvollzugriff gewähren"
           }
         },
         "en" : {
@@ -16479,13 +16479,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Es wird aus der Datei %lld entfernt, wo immer Spotlight indexiert hat. Die Dateien selbst werden nicht gelöscht."
+                  "value" : "Das Tag wird aus %lld Datei entfernt, überall dort, wo Spotlight sie indexiert hat. Die Datei selbst wird nicht gelöscht."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Es wird aus %lld-Dateien entfernt, wo immer Spotlight indexiert hat. Die Dateien selbst werden nicht gelöscht."
+                  "value" : "Das Tag wird aus %lld Dateien entfernt, überall dort, wo Spotlight sie indexiert hat. Die Dateien selbst werden nicht gelöscht."
                 }
               }
             }
@@ -17142,7 +17142,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS schützt den Papierkorb, daher kann Dirnex ihn erst anzeigen, wenn Sie es erlauben. Alles andere funktioniert weiter wie bisher.\n\nKlicken Sie auf „Systemeinstellungen öffnen“ und aktivieren Sie Dirnex unter „Festplattenvollzugriff“. macOS fordert dann einen Neustart von Dirnex an, damit der neue Zugriff wirksam wird."
+            "value" : "macOS schützt den Papierkorb, sodass Dirnex ihn erst anzeigen kann, wenn Sie dies erlauben. Alles andere funktioniert weiterhin wie bisher.\n\nKlicken Sie auf „Systemeinstellungen öffnen“ und aktivieren Sie Dirnex unter „Festplattenvollzugriff“. macOS fordert dann einen Neustart von Dirnex an, damit der neue Zugriff wirksam wird."
           }
         },
         "en" : {
@@ -22137,7 +22137,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zeigt Dotfiles wie .git und .env in jedem Fenster an. Auch in der Symbolleiste und ⇧⌘."
+            "value" : "Zeigt Dotfiles wie .git und .env in jedem Bereich an. Auch in der Symbolleiste und mit ⇧⌘."
           }
         },
         "en" : {
@@ -22207,7 +22207,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Klicken Sie mit der rechten Maustaste auf eine Zeile, um deren Aktion zu ändern"
+            "value" : "Klicken Sie bei gedrückter Ctrl-Taste auf eine Zeile, um deren Aktion zu ändern"
           }
         },
         "en" : {
@@ -22487,7 +22487,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Führt jeden Dirnex-Befehl oder Benutzerskript aus, das aus einer Liste ausgewählt wurde."
+            "value" : "Führt einen Dirnex-Befehl oder ein Benutzerskript aus, ausgewählt aus einer Liste."
           }
         },
         "en" : {
@@ -22592,7 +22592,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Speichern als:"
+            "value" : "Sichern unter:"
           }
         },
         "en" : {
@@ -22627,7 +22627,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sichern Sie beide Bereiche und alle Tabs, damit Sie später zu dieser Anordnung zurückkehren können."
+            "value" : "Sichern Sie beide Bereiche und alle Tabs, damit Sie später zu diesem Layout zurückkehren können."
           }
         },
         "en" : {
@@ -22838,7 +22838,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "archivieren, Sicherung, Tar, komprimieren, Bereich"
+            "value" : "archivieren, backup, sicherung, tar, komprimieren, bereich"
           }
         },
         "en" : {
@@ -22910,7 +22910,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "clipboard, Pfad, Kopieren, Einfügen"
+            "value" : "zwischenablage, pfad, kopieren, pasteboard, clipboard"
           }
         },
         "en" : {
@@ -22982,7 +22982,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bild, Foto, konvertieren, jpeg, jpg, heic"
+            "value" : "bild, foto, konvertieren, jpeg, jpg, heic"
           }
         },
         "en" : {
@@ -23054,7 +23054,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "quarantäne, Torwächter, Blockieren entfernen, herunterladen, xattr"
+            "value" : "quarantäne, gatekeeper, entsperren, download, xattr"
           }
         },
         "en" : {
@@ -23126,7 +23126,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bild, Foto, Größenänderung, Skalierung, Miniaturansicht"
+            "value" : "bild, foto, größe ändern, skalieren, miniatur"
           }
         },
         "en" : {
@@ -23934,7 +23934,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dienstleistung"
+            "value" : "Dienste"
           }
         },
         "en" : {
@@ -24004,7 +24004,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Teilnahme an diesem Ordner"
+            "value" : "Anteil an diesem Ordner"
           }
         },
         "en" : {
@@ -24039,7 +24039,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Teilen:"
+            "value" : "Freigabe:"
           }
         },
         "en" : {
@@ -24109,7 +24109,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zeigen %@"
+            "value" : "%@ anzeigen"
           }
         },
         "en" : {
@@ -24354,7 +24354,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zeigt die erste %@ dieser Datei an"
+            "value" : "Die ersten %@ dieser Datei werden angezeigt"
           }
         },
         "en" : {
@@ -24389,7 +24389,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zeigt die ersten %lld Ergebnisse an"
+            "value" : "Die ersten %lld Ergebnisse werden angezeigt"
           }
         },
         "en" : {
@@ -24914,7 +24914,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Einige Bereiche von iCloud Drive benötigen vollen Festplattenzugriff"
+            "value" : "Einige Bereiche von iCloud Drive benötigen Festplattenvollzugriff"
           }
         },
         "en" : {
@@ -25054,7 +25054,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Beginn"
+            "value" : "Start"
           }
         },
         "en" : {
@@ -25124,7 +25124,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pause"
+            "value" : "Stoppen"
           }
         },
         "en" : {
@@ -25194,7 +25194,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fokus zu aus Suchergebnissen geöffneten Ordnern wechseln"
+            "value" : "Fokus auf aus Suchergebnissen geöffnete Ordner wechseln"
           }
         },
         "en" : {
@@ -25229,7 +25229,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Voreingestellter Schalter?"
+            "value" : "Voreinstellung wechseln?"
           }
         },
         "en" : {
@@ -25651,7 +25651,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Orangefarben"
+            "value" : "Orange"
           }
         },
         "en" : {
@@ -25861,7 +25861,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "text in der Datei"
+            "value" : "Text in der Datei"
           }
         },
         "en" : {
@@ -25896,7 +25896,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "suchtext"
+            "value" : "Suchtext"
           }
         },
         "en" : {
@@ -26211,7 +26211,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Der Editor F4 öffnet die Datei unter dem Cursor. ⇧F4 gibt zuerst eine neue Datei an und erstellt sie, wenn sie noch nicht existiert."
+            "value" : "Der Editor für F4 öffnet die Datei unter dem Cursor. Mit ⇧F4 geben Sie zuerst einen neuen Dateinamen ein; die Datei wird erstellt, falls sie noch nicht existiert."
           }
         },
         "en" : {
@@ -26771,7 +26771,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Der Server präsentiert ein anderes Zertifikat als das, dem Sie vertraut haben. Entfernen Sie den gespeicherten Server und verbinden Sie sich nur dann erneut, wenn Sie wissen, warum es sich geändert hat."
+            "value" : "Der Server zeigt ein anderes Zertifikat als das, dem Sie vertraut haben. Entfernen Sie den gespeicherten Server und verbinden Sie sich nur dann erneut, wenn Sie wissen, warum es sich geändert hat."
           }
         },
         "en" : {
@@ -26806,7 +26806,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Der Server hat ein Zertifikat präsentiert, das nicht von einer vertrauenswürdigen Stelle signiert ist. Das ist bei einem NAS oder Heimserver normal, kann aber auch bedeuten, dass jemand die Verbindung abfängt.\n\nVergleichen Sie diesen Fingerabdruck mit dem auf dem Server angezeigten Fingerabdruck, bevor Sie ihm vertrauen."
+            "value" : "Der Server hat ein Zertifikat vorgelegt, das nicht von einer vertrauenswürdigen Stelle signiert ist. Das ist bei einem NAS oder Heimserver normal, kann aber auch bedeuten, dass jemand die Verbindung abfängt.\n\nVergleichen Sie diesen Fingerabdruck mit dem auf dem Server angezeigten Fingerabdruck, bevor Sie ihm vertrauen."
           }
         },
         "en" : {
@@ -26911,7 +26911,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das Zertifikat des Servers konnte nicht gelesen werden, daher kann es nicht sicher vertraut werden."
+            "value" : "Das Zertifikat des Servers konnte nicht gelesen werden und kann daher nicht sicher als vertrauenswürdig eingestuft werden."
           }
         },
         "en" : {
@@ -26946,7 +26946,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das Zertifikat des Servers konnte nicht verifiziert werden."
+            "value" : "Das Zertifikat des Servers konnte nicht überprüft werden."
           }
         },
         "en" : {
@@ -26981,7 +26981,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das Zertifikat des Servers wurde nicht vertraut, daher wurde die Verbindung abgebrochen."
+            "value" : "Dem Zertifikat des Servers wurde nicht vertraut, daher wurde die Verbindung abgebrochen."
           }
         },
         "en" : {
@@ -27191,7 +27191,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das Tool \"Nach Inhalt vergleichen\" (⌥F3) öffnet die beiden Dateien in. Installiert: %@. Automatisch wählt es das erste davon aus, das noch installiert ist."
+            "value" : "Das Werkzeug „Nach Inhalt vergleichen“ (⌥F3) öffnet die beiden Dateien in einem Diff-Tool. Installiert: %@. „Automatisch“ wählt das erste noch installierte Tool aus."
           }
         },
         "en" : {
@@ -27296,7 +27296,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Es gibt nichts, was zurückgelegt werden muss."
+            "value" : "Es gibt nichts zurückzulegen."
           }
         },
         "en" : {
@@ -27331,7 +27331,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Es gibt nicht genug iCloud-Speicherplatz, um dies zu vervollständigen."
+            "value" : "Es gibt nicht genug iCloud-Speicherplatz, um dies abzuschließen."
           }
         },
         "en" : {
@@ -27646,7 +27646,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dies gibt der Seitenleiste-Zeile einen neuen Namen. Der Ordner selbst wird nicht umbenannt."
+            "value" : "Dadurch wird die Zeile in der Seitenleiste umbenannt. Der Ordner selbst wird nicht umbenannt."
           }
         },
         "en" : {
@@ -27681,7 +27681,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dies schreibt das Archiv neu und kann nicht rückgängig gemacht werden."
+            "value" : "Dadurch wird das Archiv neu geschrieben. Dies kann nicht rückgängig gemacht werden."
           }
         },
         "en" : {
@@ -27716,7 +27716,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieser Server präsentiert einen anderen Host-%@ als den, dem Sie zuvor vertraut haben. Wenn Sie den Server neu installiert oder eine neue SFTP-App auf diese Adresse gerichtet haben, ist das erwartbar. Es kann aber auch bedeuten, dass jemand die Verbindung abfängt (Man-in-the-Middle-Angriff).\n\nNeuer Fingerabdruck:\n%@\n\nFahren Sie nur fort, wenn Sie diesen Fingerabdruck wiedererkennen. Wenn Sie ihm vertrauen, wird der alte Schlüssel ersetzt, sodass zukünftige Verbindungen zu diesem Server funktionieren."
+            "value" : "Dieser Server zeigt einen anderen Host-%@ als den, dem Sie zuvor vertraut haben. Wenn Sie den Server neu installiert oder eine neue SFTP-App auf diese Adresse verwiesen haben, ist das erwartbar. Es kann aber auch bedeuten, dass jemand die Verbindung abfängt (Man-in-the-Middle-Angriff).\n\nNeuer Fingerabdruck:\n%@\n\nFahren Sie nur fort, wenn Sie diesen Fingerabdruck wiedererkennen. Wenn Sie ihm vertrauen, wird der alte Schlüssel ersetzt, sodass zukünftige Verbindungen zu diesem Server funktionieren."
           }
         },
         "en" : {
@@ -27930,7 +27930,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Komme schnell überall hin"
+            "value" : "Schnell überall hin"
           }
         },
         "en" : {
@@ -28251,7 +28251,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vertrauen & verbinden"
+            "value" : "Vertrauen und verbinden"
           }
         },
         "en" : {
@@ -29056,7 +29056,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "SCHWEIFKAPITAL"
+            "value" : "GROSSBUCHSTABEN"
           }
         },
         "en" : {
@@ -29126,7 +29126,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "benutzername"
+            "value" : "Benutzername"
           }
         },
         "en" : {
@@ -29336,7 +29336,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Konnte bsdtar nicht ausführen, um das Archiv zu erstellen."
+            "value" : "bsdtar konnte nicht ausgeführt werden, um das Archiv zu erstellen."
           }
         },
         "en" : {
@@ -29371,7 +29371,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Konnte bsdtar nicht aus dem Archiv extrahieren."
+            "value" : "bsdtar konnte nicht ausgeführt werden, um aus dem Archiv zu extrahieren."
           }
         },
         "en" : {
@@ -29406,7 +29406,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Konnte bsdtar nicht ausführen, um das Archiv zu öffnen."
+            "value" : "bsdtar konnte nicht ausgeführt werden, um das Archiv zu öffnen."
           }
         },
         "en" : {
@@ -29511,7 +29511,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nur lokale Dateien können Cloud-Anbieter-Objekte sein."
+            "value" : "Der Cloud-Status ist nur für lokale Dateien verfügbar."
           }
         },
         "en" : {
@@ -29756,7 +29756,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieser Ort unterstützt das Bewegen von Objekten nicht."
+            "value" : "Dieser Ort unterstützt das Verschieben von Objekten nicht."
           }
         },
         "en" : {
@@ -30106,7 +30106,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Warten"
+            "value" : "Wartet"
           }
         },
         "en" : {
@@ -30141,7 +30141,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wartet auf Hochladen"
+            "value" : "Wartet auf das Hochladen"
           }
         },
         "en" : {
@@ -30175,7 +30175,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wenn ausgeschaltet, beginnt jedes neue Fenster in Ihrem Ordner Heim."
+            "value" : "Wenn deaktiviert, beginnt jedes neue Fenster in Ihrem Benutzerordner."
           }
         },
         "en" : {
@@ -30525,7 +30525,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ihre Dateien in iCloud Drive sind oben aufgeführt. Die Ordner, die Apps dort behalten – Pages, Vorschau, Kurzbefehle – sind für macOS privat, bis Sie Dirnex den Lesezugriff erlauben.\n\nKlicken Sie auf „Systemeinstellungen öffnen“ und aktivieren Sie Dirnex unter „Festplattenvollzugriff“. macOS fordert dann einen Neustart von Dirnex an, damit der neue Zugriff wirksam wird."
+            "value" : "Ihre Dateien in iCloud Drive sind oben aufgeführt. Die Ordner, die Apps dort ablegen – Pages, Vorschau, Kurzbefehle – sind für macOS privat, bis Sie Dirnex den Lesezugriff erlauben.\n\nKlicken Sie auf „Systemeinstellungen öffnen“ und aktivieren Sie Dirnex unter „Festplattenvollzugriff“. macOS fordert dann einen Neustart von Dirnex an, damit der neue Zugriff wirksam wird."
           }
         },
         "en" : {
@@ -30560,7 +30560,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ihre Suche hat mehr Ergebnisse ergeben. Verfeinern Sie sie, um den Rest zu sehen."
+            "value" : "Ihre Suche hat weitere Objekte gefunden. Grenzen Sie sie ein, um die restlichen Objekte zu sehen."
           }
         },
         "en" : {
