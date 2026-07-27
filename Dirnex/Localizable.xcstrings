@@ -113,7 +113,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\" konnte nicht ausgeführt werden."
+            "value" : "„%@“ konnte nicht ausgeführt werden."
           }
         },
         "en" : {
@@ -148,7 +148,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\" konnte nicht ausgeführt werden."
+            "value" : "„%@“ konnte nicht ausgeführt werden."
           }
         },
         "en" : {
@@ -218,7 +218,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\" ist bei %lld von %lld fehlgeschlagen"
+            "value" : "„%@“ ist bei %lld von %lld fehlgeschlagen"
           }
         },
         "en" : {
@@ -358,7 +358,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\" ist kein bekannter Dirnex-Vorgang."
+            "value" : "„%@“ ist kein bekannter Dirnex-Befehl."
           }
         },
         "en" : {
@@ -393,7 +393,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\" ist kein absoluter POSIX-Pfad."
+            "value" : "„%@“ ist kein absoluter POSIX-Pfad."
           }
         },
         "en" : {
@@ -428,7 +428,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\" ist nicht verfügbar"
+            "value" : "„%@“ ist nicht verfügbar"
           }
         },
         "en" : {
@@ -463,7 +463,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\" läuft nicht mehr über seine Funktionstaste."
+            "value" : "„%@“ ist dieser Funktionstaste nicht mehr zugewiesen."
           }
         },
         "en" : {
@@ -498,7 +498,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„%@“ wird einmal pro Datei ausgeführt - wählen Sie zuerst ein oder mehrere Objekte aus."
+            "value" : "„%@“ wird einmal pro Datei ausgeführt. Wählen Sie zuerst ein oder mehrere Objekte aus."
           }
         },
         "en" : {
@@ -532,7 +532,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„Wie System“ folgt Ihrer macOS-Sprache und fällt auf Englisch zurück."
+            "value" : "„Wie System“ folgt der macOS-Sprache und verwendet Englisch als Ersatzsprache."
           }
         },
         "en" : {
@@ -847,7 +847,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@-Taste"
+            "value" : "%@-Schlüssel"
           }
         },
         "en" : {
@@ -882,7 +882,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ übrig"
+            "value" : "%@ verbleibend"
           }
         },
         "en" : {
@@ -917,7 +917,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Der Vergleich großer Dateien (%@) kann lange dauern oder die App kurz blockieren."
+            "value" : "%@ kann für den Vergleich großer Dateien lange brauchen oder kurz nicht reagieren."
           }
         },
         "en" : {
@@ -1592,7 +1592,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%#@items@ konnten nicht zurückgelegt werden: %2$@"
+            "value" : "Zurücklegen von %#@items@ fehlgeschlagen: %2$@"
           },
           "substitutions" : {
             "items" : {
@@ -1603,13 +1603,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg Objekt"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg Objekte"
                     }
                   }
                 }
@@ -1749,7 +1749,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%#@items@ konnten nicht erneut angewendet werden: %2$@"
+            "value" : "Erneutes Anwenden von %#@items@ fehlgeschlagen: %2$@"
           },
           "substitutions" : {
             "items" : {
@@ -1760,13 +1760,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg Objekt"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg Objekte"
                     }
                   }
                 }
@@ -2191,7 +2191,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld von %lld wird umbenannt"
+            "value" : "Umbenennen: %lld von %lld"
           }
         },
         "en" : {
@@ -2368,7 +2368,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "• %@ — %@ läuft jetzt %@."
+            "value" : "• %@ — %@ führt jetzt %@ aus."
           }
         },
         "en" : {
@@ -2438,7 +2438,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ein macOS-Kurzbefehl"
+            "value" : "ein macOS-Tastaturkurzbefehl"
           }
         },
         "en" : {
@@ -2473,7 +2473,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eine Reihe von Funktionstasten unten im Fenster: Umbenennen, Ansehen, Kopieren, Verschieben, Neuer Ordner, Löschen. Das ist die Funktionsleiste nach Total Commander-Art. Auch im Menü Ansicht; die Tasten funktionieren mit und ohne sichtbare Leiste."
+            "value" : "Eine Reihe von Funktionstasten unten im Fenster: Umbenennen, Ansehen, Kopieren, Verschieben, Neuer Ordner, Löschen. Das ist die Funktionsleiste nach Art von Total Commander. Auch im Menü „Ansicht“; die Tasten funktionieren mit und ohne sichtbare Leiste."
           }
         },
         "en" : {
@@ -2719,7 +2719,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kurzbefehl hinzufügen"
+            "value" : "Tastaturkurzbefehl hinzufügen"
           }
         },
         "en" : {
@@ -2859,7 +2859,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alle angepassten Kurzbefehle werden entfernt und die macOS-Standardwerte wiederhergestellt. Alle Änderungen gehen verloren."
+            "value" : "Alle angepassten Tastaturkurzbefehle werden entfernt und die macOS-Standardwerte wiederhergestellt. Alle Änderungen gehen verloren."
           }
         },
         "en" : {
@@ -3103,7 +3103,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ein Update ist verfügbar - zum Installieren klicken"
+            "value" : "Ein Update ist verfügbar – zum Installieren klicken"
           }
         },
         "en" : {
@@ -3593,7 +3593,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vor dem Bewegen in den Papierkorb fragen"
+            "value" : "Vor dem Legen in den Papierkorb fragen"
           }
         },
         "en" : {
@@ -3663,7 +3663,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Authentifizierung fehlgeschlagen. Überprüfen Sie den Benutzernamen und das Passwort oder versuchen Sie eine Gastverbindung."
+            "value" : "Authentifizierung fehlgeschlagen. Prüfen Sie Benutzername und Passwort oder versuchen Sie eine Gastverbindung."
           }
         },
         "en" : {
@@ -3803,7 +3803,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zeigt rechts am Dateinamen ein Symbol, wenn Daten noch in iCloud oder bei einem anderen Anbieter liegen, hoch- oder heruntergeladen werden oder ein Konflikt besteht - wie im Finder. Ordner außerhalb eines Cloud-Anbieters werden nicht geprüft. Vollständig synchronisierte Dateien zeigen nichts. Auch im Menü Ansicht."
+            "value" : "Zeigt rechts am Dateinamen ein Symbol, wenn Daten noch in iCloud oder bei einem anderen Anbieter liegen, hoch- oder heruntergeladen werden oder ein Konflikt besteht – wie im Finder. Ordner außerhalb eines Cloud-Anbieters werden nicht geprüft. Vollständig synchronisierte Dateien zeigen nichts. Auch im Menü „Ansicht“."
           }
         },
         "en" : {
@@ -3908,7 +3908,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Beide Panels müssen einen echten Ordner auf der Festplatte anzeigen."
+            "value" : "Beide Bereiche müssen einen echten Ordner auf dem Laufwerk anzeigen."
           }
         },
         "en" : {
@@ -3978,7 +3978,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Öffnet im aktiven Panel den Ordner einer Datei oder eines Ordners und wählt das Objekt aus, ähnlich wie „Im Finder anzeigen“."
+            "value" : "Öffnet den Ordner einer Datei oder eines Ordners im aktiven Bereich und wählt das Objekt aus, ähnlich wie „Im Finder anzeigen“."
           }
         },
         "en" : {
@@ -4013,7 +4013,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Durchsucht ein entferntes SFTP- oder FTP-Konto oder eine SMB-Freigabe im Netzwerk."
+            "value" : "Durchsuchen Sie ein entferntes SFTP- oder FTP-Konto oder eine SMB-Freigabe in Ihrem Netzwerk."
           }
         },
         "en" : {
@@ -4118,7 +4118,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kann \"%@\" nicht erstellen"
+            "value" : "„%@“ kann nicht erstellt werden"
           }
         },
         "en" : {
@@ -4223,7 +4223,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kann \"%@\" nicht bearbeiten"
+            "value" : "„%@“ kann nicht bearbeitet werden"
           }
         },
         "en" : {
@@ -4258,7 +4258,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kann hier nicht extrahieren"
+            "value" : "Hier kann nicht extrahiert werden"
           }
         },
         "en" : {
@@ -4293,7 +4293,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bewegen hier nicht möglich"
+            "value" : "Verschieben hier nicht möglich"
           }
         },
         "en" : {
@@ -4328,7 +4328,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bewegen in denselben Ordner nicht möglich"
+            "value" : "Verschieben in denselben Ordner nicht möglich"
           }
         },
         "en" : {
@@ -4363,7 +4363,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kann \"%@\" nicht öffnen"
+            "value" : "„%@“ kann nicht geöffnet werden"
           }
         },
         "en" : {
@@ -4433,7 +4433,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kann hier nicht packen"
+            "value" : "Hier kann nicht gepackt werden"
           }
         },
         "en" : {
@@ -4468,7 +4468,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kann \"%@\" nicht umbenennen"
+            "value" : "„%@“ kann nicht umbenannt werden"
           }
         },
         "en" : {
@@ -4503,7 +4503,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kann \"%@\" nicht ausführen"
+            "value" : "„%@“ kann nicht ausgeführt werden"
           }
         },
         "en" : {
@@ -4573,7 +4573,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Identität von \"%@\" kann nicht überprüft werden"
+            "value" : "Die Identität von „%@“ kann nicht überprüft werden"
           }
         },
         "en" : {
@@ -4678,7 +4678,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Diese Operation abbrechen"
+            "value" : "Diesen Vorgang abbrechen"
           }
         },
         "en" : {
@@ -4853,7 +4853,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Programm auswählen"
+            "value" : "App auswählen"
           }
         },
         "en" : {
@@ -5929,7 +5929,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ins andere Panel kopieren"
+            "value" : "In den anderen Bereich kopieren"
           }
         },
         "en" : {
@@ -6289,7 +6289,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ins andere Panel verschieben"
+            "value" : "In den anderen Bereich verschieben"
           }
         },
         "en" : {
@@ -7081,7 +7081,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "In den Papierkorb bewegen"
+            "value" : "In den Papierkorb legen"
           }
         },
         "en" : {
@@ -8593,7 +8593,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Schnellansicht-Panel"
+            "value" : "Schnellansichtsbereich"
           }
         },
         "en" : {
@@ -9493,7 +9493,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "sitzung, Wechsel, Wiederherstellung, Öffnen, Layout, Registerkarten"
+            "value" : "sitzung, Wechsel, Wiederherstellung, Öffnen, Layout, Tabs"
           }
         },
         "en" : {
@@ -9565,7 +9565,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "sitzung, Snapshot, Speicher, Layout, Registerkarten"
+            "value" : "sitzung, Snapshot, Speicher, Layout, Tabs"
           }
         },
         "en" : {
@@ -10204,7 +10204,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Konflikt - unverändert gelassen"
+            "value" : "Konflikt – unverändert gelassen"
           }
         },
         "en" : {
@@ -10379,7 +10379,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kopiert die Auswahl des aktiven Panels ins andere Panel, wie mit F5."
+            "value" : "Kopiert die Auswahl des aktiven Bereichs in den anderen Bereich, wie mit F5."
           }
         },
         "en" : {
@@ -10554,7 +10554,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Auswahl ins andere Panel kopieren"
+            "value" : "Auswahl in den anderen Bereich kopieren"
           }
         },
         "en" : {
@@ -10729,7 +10729,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Konnte \"%@\" nicht hinzufügen"
+            "value" : "„%@“ konnte nicht hinzugefügt werden"
           }
         },
         "en" : {
@@ -10764,7 +10764,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%#@items@ konnte nicht zu \"%2$@\" hinzugefügt werden"
+            "value" : "Hinzufügen von %#@items@ zu „%2$@“ fehlgeschlagen"
           },
           "substitutions" : {
             "items" : {
@@ -10775,13 +10775,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg Objekt"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg Objekte"
                     }
                   }
                 }
@@ -10991,7 +10991,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Konnte \"%@\" nicht kopieren"
+            "value" : "„%@“ konnte nicht kopiert werden"
           }
         },
         "en" : {
@@ -11133,7 +11133,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Archiv konnte nicht erstellt werden"
+            "value" : "Das Archiv konnte nicht erstellt werden"
           }
         },
         "en" : {
@@ -11168,7 +11168,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Konnte \"%@\" nicht löschen"
+            "value" : "„%@“ konnte nicht gelöscht werden"
           }
         },
         "en" : {
@@ -11310,7 +11310,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%#@items@ konnte nicht aus \"%2$@\" gelöscht werden"
+            "value" : "Löschen von %#@items@ aus „%2$@“ fehlgeschlagen"
           },
           "substitutions" : {
             "items" : {
@@ -11321,13 +11321,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg Objekt"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg Objekte"
                     }
                   }
                 }
@@ -11467,7 +11467,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Konnte \"%@\" nicht herunterladen"
+            "value" : "„%@“ konnte nicht geladen werden"
           }
         },
         "en" : {
@@ -11537,7 +11537,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Konnte \"%@\" nicht löschen"
+            "value" : "„%@“ konnte nicht gelöscht werden"
           }
         },
         "en" : {
@@ -11679,7 +11679,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Konnte nicht aus dem Archiv extrahiert werden"
+            "value" : "Aus dem Archiv konnte nicht extrahiert werden"
           }
         },
         "en" : {
@@ -11714,7 +11714,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Es konnte keine ausgewählten Elemente extrahiert werden"
+            "value" : "Die ausgewählten Objekte konnten nicht extrahiert werden"
           }
         },
         "en" : {
@@ -11749,7 +11749,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Konnte \"%@\" nicht vollständig löschen"
+            "value" : "„%@“ konnte nicht vollständig gelöscht werden"
           }
         },
         "en" : {
@@ -11784,7 +11784,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Konnte curl nicht starten."
+            "value" : "curl konnte nicht gestartet werden."
           }
         },
         "en" : {
@@ -11819,7 +11819,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Konnte sftp nicht starten."
+            "value" : "sftp konnte nicht gestartet werden."
           }
         },
         "en" : {
@@ -11854,7 +11854,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Freigabe konnte nicht aktiviert werden (Fehler %d)."
+            "value" : "Die Freigabe konnte nicht verbunden werden (Fehler %d)."
           }
         },
         "en" : {
@@ -11889,7 +11889,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„%@“ konnte nicht bewegt werden"
+            "value" : "„%@“ konnte nicht verschoben werden"
           }
         },
         "en" : {
@@ -11924,7 +11924,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Konnte \"%@\" nicht in den Papierkorb verschieben"
+            "value" : "„%@“ konnte nicht in den Papierkorb gelegt werden"
           }
         },
         "en" : {
@@ -11962,13 +11962,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Objekt konnte nicht bewegt werden"
+                  "value" : "%lld Objekt konnte nicht verschoben werden"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Objekte konnten nicht bewegt werden"
+                  "value" : "%lld Objekte konnten nicht verschoben werden"
                 }
               }
             }
@@ -12069,13 +12069,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Objekt konnte nicht in den Papierkorb bewegt werden"
+                  "value" : "%lld Objekt konnte nicht in den Papierkorb gelegt werden"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Objekte konnten nicht in den Papierkorb bewegt werden"
+                  "value" : "%lld Objekte konnten nicht in den Papierkorb gelegt werden"
                 }
               }
             }
@@ -12173,7 +12173,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Konnte \"%@\" nicht öffnen"
+            "value" : "„%@“ konnte nicht geöffnet werden"
           }
         },
         "en" : {
@@ -12278,7 +12278,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Konnte nicht mit \"%@\" geöffnet werden."
+            "value" : "Mit „%@“ konnte nicht geöffnet werden."
           }
         },
         "en" : {
@@ -12490,7 +12490,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Konnte \"%@\" nicht umbenennen"
+            "value" : "„%@“ konnte nicht umbenannt werden"
           }
         },
         "en" : {
@@ -12528,13 +12528,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld-Element konnte nicht umbenannt werden"
+                  "value" : "%lld Objekt konnte nicht umbenannt werden"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Elemente konnten nicht umbenannt werden"
+                  "value" : "%lld Objekte konnten nicht umbenannt werden"
                 }
               }
             }
@@ -13098,13 +13098,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg Objekt"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg Objekte"
                     }
                   }
                 }
@@ -13631,7 +13631,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex %@ ist verfügbar - zum Installieren klicken"
+            "value" : "Dirnex %@ ist verfügbar – zum Installieren klicken"
           }
         },
         "en" : {
@@ -13841,7 +13841,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex-Operation"
+            "value" : "Dirnex-Befehl"
           }
         },
         "en" : {
@@ -14158,7 +14158,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Jedes Skript läuft immer noch aus der Palette ⌘K und dem Untermenü Skripte. Geben Sie es eine kostenlose Taste in Verwalten von Skripten, um den Tastendruck zurückzugewinnen."
+            "value" : "Jedes Skript ist weiterhin über die ⌘K-Palette und das Untermenü „Skripte“ verfügbar. Weisen Sie ihm unter „Skripte verwalten“ eine freie Taste zu, um den Tastaturkurzbefehl wiederherzustellen."
           }
         },
         "en" : {
@@ -14543,7 +14543,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Geben Sie ein Wildcard-Muster ein (zum Beispiel \"*.jpg\")."
+            "value" : "Geben Sie ein Wildcard-Muster ein (zum Beispiel „*.jpg“)."
           }
         },
         "en" : {
@@ -14928,7 +14928,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Dateien sind identisch - nichts zum Vergleich."
+            "value" : "Die Dateien sind identisch – nichts zu vergleichen."
           }
         },
         "en" : {
@@ -14963,7 +14963,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Füllen Sie die erforderlichen Felder aus, um sich anzuschließen."
+            "value" : "Füllen Sie die erforderlichen Felder aus, um eine Verbindung herzustellen."
           }
         },
         "en" : {
@@ -15950,7 +15950,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Geben Sie dieser Suche einen Namen, um sie in der Seitenleiste zu behalten und sie später erneut auszuführen."
+            "value" : "Geben Sie dieser Suche einen Namen, um sie in der Seitenleiste zu behalten und später erneut auszuführen."
           }
         },
         "en" : {
@@ -17212,7 +17212,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS meldet kein Programm für reinen Text. Wählen Sie eines unter Einstellungen ▸ Vorgänge."
+            "value" : "macOS meldet keine App für reinen Text. Wählen Sie eine unter „Einstellungen“ ▸ „Vorgänge“."
           }
         },
         "en" : {
@@ -17352,7 +17352,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„%@“ in den Papierkorb bewegen?"
+            "value" : "„%@“ in den Papierkorb legen?"
           }
         },
         "en" : {
@@ -17387,7 +17387,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bewegen %@"
+            "value" : "%@ verschieben"
           }
         },
         "en" : {
@@ -17425,13 +17425,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Objekt in den Papierkorb bewegen?"
+                  "value" : "%lld Objekt in den Papierkorb legen?"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Objekte in den Papierkorb bewegen?"
+                  "value" : "%lld Objekte in den Papierkorb legen?"
                 }
               }
             }
@@ -17529,7 +17529,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "In den Papierkorb bewegen"
+            "value" : "In den Papierkorb legen"
           }
         },
         "en" : {
@@ -17599,7 +17599,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ wird bewegt"
+            "value" : "%@ wird verschoben"
           }
         },
         "en" : {
@@ -17634,7 +17634,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bewegen …"
+            "value" : "Verschieben …"
           }
         },
         "en" : {
@@ -17949,7 +17949,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Neu (wird bewegt)"
+            "value" : "Neu (wird verschoben)"
           }
         },
         "en" : {
@@ -18299,7 +18299,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keine Programme"
+            "value" : "Keine Apps"
           }
         },
         "en" : {
@@ -18579,7 +18579,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nicht geladen - in der Cloud gespeichert"
+            "value" : "Nicht geladen – in der Cloud gespeichert"
           }
         },
         "en" : {
@@ -18789,7 +18789,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eine Seite ist ein Ordner - lösen Sie dies manuell"
+            "value" : "Eine Seite ist ein Ordner – manuell lösen"
           }
         },
         "en" : {
@@ -18824,7 +18824,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nur Dateien auf diesem Mac können bearbeitet werden - kopieren Sie sie zuerst heraus (F5)."
+            "value" : "Nur Dateien auf diesem Mac können bearbeitet werden. Kopieren Sie die Datei zuerst heraus (F5)."
           }
         },
         "en" : {
@@ -18894,7 +18894,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Öffnen Sie zum Vergleichen in einem Panel einen anderen Ordner."
+            "value" : "Öffnen Sie zum Vergleichen in einem Bereich einen anderen Ordner."
           }
         },
         "en" : {
@@ -18929,7 +18929,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Öffnen Sie zunächst einen anderen Ordner im anderen Fenster."
+            "value" : "Öffnen Sie zuerst einen anderen Ordner im anderen Bereich."
           }
         },
         "en" : {
@@ -18999,7 +18999,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Öffnen Sie zunächst eine Ordnerstruktur auf der Festplatte im anderen Fenster."
+            "value" : "Öffnen Sie zuerst einen Ordner auf dem Laufwerk im anderen Bereich."
           }
         },
         "en" : {
@@ -19034,7 +19034,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Öffnen Sie im anderen Fenster ein Ordner auf der Festplatte, um den neuen Archiv zu speichern."
+            "value" : "Öffnen Sie im anderen Bereich einen Ordner auf dem Laufwerk, um das neue Archiv dort zu speichern."
           }
         },
         "en" : {
@@ -19349,7 +19349,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Optional - in Seitenleiste sichern"
+            "value" : "Optional – in Seitenleiste sichern"
           }
         },
         "en" : {
@@ -19701,7 +19701,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Panels"
+            "value" : "Bereiche"
           }
         },
         "en" : {
@@ -20158,7 +20158,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zugriff verweigert. Prüfen Sie den Benutzernamen und ob der Schlüssel auf dem Server autorisiert ist."
+            "value" : "Zugriff verweigert. Prüfen Sie den Benutzernamen und ob der Schlüssel auf dem Server zugelassen ist."
           }
         },
         "en" : {
@@ -20228,7 +20228,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Einfaches FTP sendet Ihr Passwort und Ihre Dateien unverschlüsselt."
+            "value" : "FTP ohne Verschlüsselung sendet Ihr Passwort und Ihre Dateien unverschlüsselt."
           }
         },
         "en" : {
@@ -20545,7 +20545,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Legen Sie eine Datei unter den Cursor in jedes Panel und vergleichen Sie sie dann."
+            "value" : "Platzieren Sie in jedem Bereich eine Datei unter dem Cursor und vergleichen Sie sie dann."
           }
         },
         "en" : {
@@ -21490,7 +21490,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ersetzen Sie %#@items@ in \"%2$@\"?"
+            "value" : "%#@items@ in „%2$@“ ersetzen?"
           },
           "substitutions" : {
             "items" : {
@@ -21501,13 +21501,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg Objekt"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg Objekte"
                     }
                   }
                 }
@@ -21857,7 +21857,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Standard-Schnellzugriffe wiederherstellen?"
+            "value" : "Standard-Tastaturkurzbefehle wiederherstellen?"
           }
         },
         "en" : {
@@ -22627,7 +22627,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Speichern Sie beide Registerkarten und alle ihre Registerkarten, damit Sie wieder zu dieser Anordnung wechseln können."
+            "value" : "Sichern Sie beide Bereiche und alle Tabs, damit Sie später zu dieser Anordnung zurückkehren können."
           }
         },
         "en" : {
@@ -22838,7 +22838,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "archivieren, Sicherung, Tar, Komprimieren, Panel"
+            "value" : "archivieren, Sicherung, Tar, komprimieren, Bereich"
           }
         },
         "en" : {
@@ -22874,7 +22874,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Archivieren in ein anderes Panel"
+            "value" : "In den anderen Bereich archivieren"
           }
         },
         "en" : {
@@ -24074,7 +24074,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kurzbefehle"
+            "value" : "Tastaturkurzbefehle"
           }
         },
         "en" : {
@@ -24424,7 +24424,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zeigt die Tagfarben jeder Datei am rechten Rand ihres Namens an, wie der Finder es tut. Auch im Menü Ansicht. Archiv- und entfernte Volumes haben keine Tags, so dass dort nichts gezeichnet wird."
+            "value" : "Zeigt die Tagfarben jeder Datei am rechten Rand ihres Namens an, wie im Finder. Auch im Menü „Ansicht“. Archive und entfernte Volumes haben keine Tags, daher wird dort nichts angezeigt."
           }
         },
         "en" : {
@@ -24949,7 +24949,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Einige Tastenkombinationen sind mehr als einem Befehl zugeordnet."
+            "value" : "Einige Tastaturkurzbefehle sind mehr als einem Befehl zugeordnet."
           }
         },
         "en" : {
@@ -25264,7 +25264,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Synchronisierungskonflikt - in Finder lösen"
+            "value" : "Synchronisierungskonflikt – im Finder lösen"
           }
         },
         "en" : {
@@ -25372,13 +25372,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Beim Synchronisieren wird %lld Objekt in den Papierkorb bewegt."
+                  "value" : "Beim Synchronisieren wird %lld Objekt in den Papierkorb gelegt."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Beim Synchronisieren werden %lld Objekte in den Papierkorb bewegt."
+                  "value" : "Beim Synchronisieren werden %lld Objekte in den Papierkorb gelegt."
                 }
               }
             }
@@ -25931,7 +25931,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Diese Datei hat keinen Standort auf der Festplatte, also gibt es nichts zu enthüllen."
+            "value" : "Diese Datei hat keinen Ort auf dem Laufwerk, daher gibt es nichts anzuzeigen."
           }
         },
         "en" : {
@@ -26001,7 +26001,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das aktive Panel ist keine Ordner auf dieser Festplatte."
+            "value" : "Der aktive Bereich ist kein Ordner auf diesem Laufwerk."
           }
         },
         "en" : {
@@ -26176,7 +26176,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das Dirnex-Befehl oder das Benutzerskript, das ausgeführt werden soll."
+            "value" : "Der auszuführende Dirnex-Befehl oder das auszuführende Benutzerskript."
           }
         },
         "en" : {
@@ -26246,7 +26246,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Datei oder das Ordner, das angezeigt werden soll."
+            "value" : "Die anzuzeigende Datei oder der anzuzeigende Ordner."
           }
         },
         "en" : {
@@ -26351,7 +26351,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Der FTP-Server meldete einen Fehler."
+            "value" : "Der FTP-Server hat einen Fehler gemeldet."
           }
         },
         "en" : {
@@ -26386,7 +26386,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Identität von \"%@\" hat sich geändert"
+            "value" : "Die Identität von „%@“ hat sich geändert"
           }
         },
         "en" : {
@@ -26491,7 +26491,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Der alte Host-Schlüssel konnte nicht automatisch entfernt werden. Entfernen Sie ihn von %@ und versuchen Sie es erneut, sich anzuschließen."
+            "value" : "Der alte Host-Schlüssel konnte nicht automatisch entfernt werden. Entfernen Sie ihn aus %@ und stellen Sie die Verbindung erneut her."
           }
         },
         "en" : {
@@ -26561,7 +26561,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das andere Panel ist kein Ordner, in den Sie kopieren können."
+            "value" : "Der andere Bereich ist kein Ordner, in den Sie kopieren können."
           }
         },
         "en" : {
@@ -26596,7 +26596,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Panels zeigen den gleichen Ordner"
+            "value" : "Die Bereiche zeigen denselben Ordner"
           }
         },
         "en" : {
@@ -26736,7 +26736,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Der Server konnte nicht erreicht werden. Überprüfen Sie den Hostnamen und den Port."
+            "value" : "Der Server konnte nicht erreicht werden. Prüfen Sie Hostname und Port."
           }
         },
         "en" : {
@@ -26771,7 +26771,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Der Server stellt ein anderes Zertifikat vor als das, das Sie vertraut haben. Entfernen Sie den gespeicherten Server und verbinden Sie sich nur erneut, wenn Sie wissen, warum es sich geändert hat."
+            "value" : "Der Server präsentiert ein anderes Zertifikat als das, dem Sie vertraut haben. Entfernen Sie den gespeicherten Server und verbinden Sie sich nur dann erneut, wenn Sie wissen, warum es sich geändert hat."
           }
         },
         "en" : {
@@ -26806,7 +26806,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Der Server präsentierte ein Zertifikat, das nicht von einer vertrauenswürdigen Behörde unterzeichnet ist. Dies ist normal für einen NAS oder einen Heimserver, kann aber auch bedeuten, dass jemand die Verbindung abfängt.\n\nVergleichen Sie diese Fingerabdruck mit dem auf dem Server angezeigten, bevor Sie ihn vertrauen."
+            "value" : "Der Server hat ein Zertifikat präsentiert, das nicht von einer vertrauenswürdigen Stelle signiert ist. Das ist bei einem NAS oder Heimserver normal, kann aber auch bedeuten, dass jemand die Verbindung abfängt.\n\nVergleichen Sie diesen Fingerabdruck mit dem auf dem Server angezeigten Fingerabdruck, bevor Sie ihm vertrauen."
           }
         },
         "en" : {
@@ -26876,7 +26876,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Der Server hat aufgehört zu antworten."
+            "value" : "Der Server antwortet nicht mehr."
           }
         },
         "en" : {
@@ -27016,7 +27016,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Der Host-Schlüssel des Servers wurde geändert (neue Fingerabdruck %@)."
+            "value" : "Der Host-Schlüssel des Servers wurde geändert (neuer Fingerabdruck: %@)."
           }
         },
         "en" : {
@@ -27051,7 +27051,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Der SFTP-Server meldete einen Fehler."
+            "value" : "Der SFTP-Server hat einen Fehler gemeldet."
           }
         },
         "en" : {
@@ -27086,7 +27086,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Der SFTP-Server hat aufgehört zu antworten."
+            "value" : "Der SFTP-Server antwortet nicht mehr."
           }
         },
         "en" : {
@@ -27121,7 +27121,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Der Anteil wurde auf \"%@\" nicht gefunden. Überprüfen Sie den Anteilsnamen."
+            "value" : "Die Freigabe wurde auf „%@“ nicht gefunden. Prüfen Sie den Namen der Freigabe."
           }
         },
         "en" : {
@@ -27471,7 +27471,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Diese Ordner (\"%@\")"
+            "value" : "Dieser Ordner („%@“)"
           }
         },
         "en" : {
@@ -27506,7 +27506,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Diese Ordner wurde verschoben oder gelöscht. Entfernen Sie ihn aus den Favoriten?"
+            "value" : "Dieser Ordner wurde verschoben oder gelöscht. Aus den Favoriten entfernen?"
           }
         },
         "en" : {
@@ -27611,7 +27611,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dadurch wird der gespeicherte Server aus der Seitenleiste entfernt. Keine Dateien werden gelöscht."
+            "value" : "Dadurch wird der gespeicherte Server aus der Seitenleiste entfernt. Es werden keine Dateien gelöscht."
           }
         },
         "en" : {
@@ -27716,7 +27716,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieser Server stellt einen anderen Host %@ vor als den, den Sie zuvor vertraut haben. Wenn Sie den Server neu installiert oder eine neue SFTP-App auf diese Adresse verweisen, ist dies normal - aber es kann auch bedeuten, dass jemand die Verbindung abfängt (ein Man-in-the-Middle-Angriff).\n\nNeue Fingerabdruck:\n\n%@\n\nFahren Sie nur fort, wenn Sie diesen Fingerabdruck erkennen. Das Vertrauen in ihn ersetzt den alten Schlüssel, so dass zukünftige Verbindungen zu diesem Server erfolgreich sind."
+            "value" : "Dieser Server präsentiert einen anderen Host-%@ als den, dem Sie zuvor vertraut haben. Wenn Sie den Server neu installiert oder eine neue SFTP-App auf diese Adresse gerichtet haben, ist das erwartbar. Es kann aber auch bedeuten, dass jemand die Verbindung abfängt (Man-in-the-Middle-Angriff).\n\nNeuer Fingerabdruck:\n%@\n\nFahren Sie nur fort, wenn Sie diesen Fingerabdruck wiedererkennen. Wenn Sie ihm vertrauen, wird der alte Schlüssel ersetzt, sodass zukünftige Verbindungen zu diesem Server funktionieren."
           }
         },
         "en" : {
@@ -27822,7 +27822,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das aktive Panel ist die Quelle, das andere das Ziel. Kopieren oder verschieben Sie das ausgewählte Element, erstellen Sie einen Ordner oder senden Sie Dateien in den Papierkorb - über die Schaltflächen entlang der unteren Seite, die Funktionstasten oder die Palette."
+            "value" : "Der aktive Bereich ist die Quelle, der andere das Ziel. Kopieren oder verschieben Sie die Auswahl, erstellen Sie einen Ordner oder legen Sie Dateien in den Papierkorb – über die Tasten unten, die Funktionstasten oder die Palette."
           }
         },
         "en" : {
@@ -27858,7 +27858,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dateien zwischen Panels bewegen"
+            "value" : "Dateien zwischen Bereichen verschieben"
           }
         },
         "en" : {
@@ -27894,7 +27894,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Springen Sie direkt zu einem Pfad, öffnen Sie eine zweite Registerkarte oder fügen Sie die Ordner, in denen Sie sich befinden, ein. Standort, Registerkarten und Favoriten halten selbst einen tiefen Ordnerbaum nur einen Tastendruck entfernt."
+            "value" : "Springen Sie direkt zu einem Pfad, öffnen Sie einen zweiten Tab oder heften Sie häufig genutzte Ordner an. Orte, Tabs und Favoriten halten auch tiefe Verzeichnisbäume nur einen Tastendruck entfernt."
           }
         },
         "en" : {
@@ -27966,7 +27966,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Öffnen Sie die Befehlspalette und fangen Sie an, zu tippen, was Sie tun möchten - kopieren, packen, mit einem Server verbinden, markieren. Es passt alle Aktionen grob ab, so dass Sie nichts lernen müssen und kein Menü durchforsten müssen."
+            "value" : "Öffnen Sie die Befehlspalette und geben Sie ein, was Sie tun möchten: kopieren, packen, mit einem Server verbinden, taggen. Alle Aktionen werden unscharf abgeglichen, sodass Sie nichts auswendig lernen und kein Menü durchsuchen müssen."
           }
         },
         "en" : {
@@ -28038,7 +28038,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS behält einige Ordner privat - die Startseiten anderer Benutzer, Mail, Time Machine-Sicherungen. Gib bei Bedarf sofort Vollzugriff auf die Festplatte. Sie können diese Tour jederzeit aus der Befehlsleiste wieder öffnen."
+            "value" : "macOS schützt einige Ordner: die Benutzerordner anderer Personen, Mail und Time Machine-Backups. Gewähren Sie Festplattenvollzugriff, wenn Sie ihn zum ersten Mal brauchen. Sie können diese Tour jederzeit über die Befehlspalette erneut öffnen."
           }
         },
         "en" : {
@@ -28074,7 +28074,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Du bist bereit"
+            "value" : "Alles bereit"
           }
         },
         "en" : {
@@ -28110,7 +28110,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zwei Panels, nebeneinander, werden von der Tastatur gesteuert. Das eine hält die Dateien, mit denen Sie arbeiten, das andere, wohin sie gehen sollen - und Sie greifen nur zum Maus, wenn Sie möchten."
+            "value" : "Zwei Bereiche nebeneinander, gesteuert über die Tastatur. Einer enthält die Dateien, mit denen Sie arbeiten; der andere zeigt, wohin sie gehen. Zur Maus greifen Sie nur, wenn Sie möchten."
           }
         },
         "en" : {
@@ -28286,7 +28286,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Neuem Schlüssel vertrauen & verbinden"
+            "value" : "Neuem Schlüssel vertrauen und verbinden"
           }
         },
         "en" : {
@@ -28321,7 +28321,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kurzbefehl eingeben …"
+            "value" : "Tastaturkurzbefehl eingeben …"
           }
         },
         "en" : {
@@ -28636,7 +28636,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "In den Papierkorb bewegen"
+            "value" : "In den Papierkorb legen"
           }
         },
         "en" : {
@@ -29266,7 +29266,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Es konnte nicht aus dem Archiv \"%@\" extrahiert werden."
+            "value" : "Extrahieren aus dem Archiv „%@“ fehlgeschlagen."
           }
         },
         "en" : {
@@ -29441,7 +29441,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das Archiv \"%@\" konnte nicht gelesen werden."
+            "value" : "Das Archiv „%@“ konnte nicht gelesen werden."
           }
         },
         "en" : {
@@ -29476,7 +29476,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Es konnte das Archiv \"%@\" nicht aktualisieren."
+            "value" : "Das Archiv „%@“ konnte nicht aktualisiert werden."
           }
         },
         "en" : {
@@ -30001,7 +30001,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieser Standort unterstützt keine symbolischen Links."
+            "value" : "Dieser Ort unterstützt keine symbolischen Links."
           }
         },
         "en" : {
@@ -30245,7 +30245,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Arbeit, Rot - alles muss passen"
+            "value" : "Arbeit, Rot – alles muss passen"
           }
         },
         "en" : {
@@ -30350,7 +30350,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sie können jede Ordner auf diesem Mac durchsuchen. Um dies zu ändern, öffnen Sie den Volldiskussionszugriff in den Systemeinstellungen."
+            "value" : "Sie können jeden Ordner auf diesem Mac durchsuchen. Um dies zu ändern, öffnen Sie „Festplattenvollzugriff“ in den Systemeinstellungen."
           }
         },
         "en" : {
@@ -30455,7 +30455,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sie haben keine Berechtigung. Dirnex benötigt möglicherweise den vollständigen Zugriff auf die Festplatte in den Systemeinstellungen."
+            "value" : "Sie haben keine Berechtigung. Dirnex benötigt möglicherweise Festplattenvollzugriff in den Systemeinstellungen."
           }
         },
         "en" : {
@@ -30490,7 +30490,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ihre benutzerdefinierten Schnellzugriffe werden durch die %@-Voreinstellung ersetzt. Alle Ihre Änderungen werden verloren gehen."
+            "value" : "Ihre angepassten Tastaturkurzbefehle werden durch die Voreinstellung „%@“ ersetzt. Alle Änderungen gehen verloren."
           }
         },
         "en" : {
@@ -30525,7 +30525,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ihre Dateien im iCloud Drive sind oben aufgeführt. Die Ordner, die Apps dort behalten - Seiten, Vorschau, Schnellzugriffe - sind macOS-spezifisch, bis Sie Dirnex erlauben, sie zu lesen.\n\nKlicken Sie auf Systemeinstellungen öffnen und schalten Sie dann Dirnex unter Vollständiger Festplattenzugriff ein. macOS wird Dirnex bitten, neu zu starten, damit der neue Zugriff wirksam wird."
+            "value" : "Ihre Dateien in iCloud Drive sind oben aufgeführt. Die Ordner, die Apps dort behalten – Pages, Vorschau, Kurzbefehle – sind für macOS privat, bis Sie Dirnex den Lesezugriff erlauben.\n\nKlicken Sie auf „Systemeinstellungen öffnen“ und aktivieren Sie Dirnex unter „Festplattenvollzugriff“. macOS fordert dann einen Neustart von Dirnex an, damit der neue Zugriff wirksam wird."
           }
         },
         "en" : {
