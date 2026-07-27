@@ -161,10 +161,12 @@ struct LocalizationCoverageTests {
                 let key = LocalizationKey.tagColor(color)
                 let value = translation(key, in: bundle)
                 #expect(value != nil, "\(language.code): no \(key)")
-                // French "Orange" keeps the same spelling as English. The other names must not
-                // silently fall back to English.
+                // French and German "Orange" keep the same spelling as English. The other names
+                // must not silently fall back to English.
                 if let value { #expect(
-                    value != color.title || (language.code == "fr" && color == .orange),
+                    value != color.title || (
+                        ["de", "fr"].contains(language.code) && color == .orange
+                    ),
                     "\(language.code): \(key) is still English"
                 ) }
             }

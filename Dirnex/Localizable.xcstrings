@@ -1060,13 +1060,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Commit zum Pullen"
+                  "value" : "%lld Commit zum Abrufen"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Commits zum Pullen"
+                  "value" : "%lld Commits zum Abrufen"
                 }
               }
             }
@@ -1167,13 +1167,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Commit zum Pushen"
+                  "value" : "%lld Commit zum Senden"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Commits zum Pushen"
+                  "value" : "%lld Commits zum Senden"
                 }
               }
             }
@@ -8557,7 +8557,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "vorschau, schnellansicht, bereich, inaktiv, ctrl q"
+            "value" : "vorschau, übersicht, schnellansicht, bereich, inaktiv, ctrl q"
           }
         },
         "en" : {
@@ -8593,7 +8593,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Schnellansichtsbereich"
+            "value" : "Übersichtsbereich"
           }
         },
         "en" : {
@@ -8629,7 +8629,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "vorschau, schnellansicht, vollbild, bildschirm, foto, bild, präsentieren, ctrl option q"
+            "value" : "vorschau, übersicht, schnellansicht, vollbild, bildschirm, foto, bild, präsentieren, ctrl option q"
           }
         },
         "en" : {
@@ -8665,7 +8665,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Schnellansicht im Vollbildmodus"
+            "value" : "Übersicht im Vollbildmodus"
           }
         },
         "en" : {
@@ -8701,7 +8701,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "vorschau, schnellansicht, ganzes fenster, groß, lesen, ctrl shift q"
+            "value" : "vorschau, übersicht, schnellansicht, ganzes fenster, groß, lesen, ctrl shift q"
           }
         },
         "en" : {
@@ -8737,7 +8737,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Schnellansicht im ganzen Fenster"
+            "value" : "Übersicht im ganzen Fenster"
           }
         },
         "en" : {
