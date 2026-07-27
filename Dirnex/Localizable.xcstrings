@@ -5569,7 +5569,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Objekte hierherbewegen"
+            "value" : "Objekte hierher bewegen"
           }
         },
         "en" : {
@@ -8305,7 +8305,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Seitenleiste aktivieren"
+            "value" : "Zur Seitenleiste wechseln"
           }
         },
         "en" : {
@@ -13456,7 +13456,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gelöschte Objekte von allen Volumes"
+            "value" : "Gelöschte Objekte auf allen Volumes"
           }
         },
         "en" : {
@@ -21822,7 +21822,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alle wiederherstellen"
+            "value" : "Alle zurücklegen"
           }
         },
         "en" : {
