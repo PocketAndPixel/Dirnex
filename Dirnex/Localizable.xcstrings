@@ -2473,7 +2473,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eine Reihe von Funktionstasten unten im Fenster: Umbenennen, Anzeigen, Kopieren, Verschieben, Neuer Ordner, Löschen. Das ist die Funktionsleiste im Stil von Total Commander. Auch im Menü „Ansicht“; die Tasten funktionieren mit und ohne sichtbare Leiste."
+            "value" : "Eine Reihe von Funktionstasten unten im Fenster: Umbenennen, Anzeigen, Kopieren, Verschieben, Neuer Ordner, Löschen. Das ist die Funktionsleiste im Stil von Total Commander. Auch im Menü „Darstellung“; die Tasten funktionieren mit und ohne sichtbare Leiste."
           }
         },
         "en" : {
@@ -3803,7 +3803,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zeigt rechts neben dem Dateinamen ein Symbol, wenn Daten noch in iCloud oder bei einem anderen Anbieter liegen, hoch- oder heruntergeladen werden oder ein Konflikt besteht – wie im Finder. Ordner außerhalb eines Cloud-Anbieters werden nicht geprüft. Für vollständig synchronisierte Dateien wird nichts angezeigt. Auch im Menü „Ansicht“."
+            "value" : "Zeigt rechts neben dem Dateinamen ein Symbol, wenn Daten noch in iCloud oder bei einem anderen Anbieter liegen, hoch- oder heruntergeladen werden oder ein Konflikt besteht – wie im Finder. Ordner außerhalb eines Cloud-Anbieters werden nicht geprüft. Für vollständig synchronisierte Dateien wird nichts angezeigt. Auch im Menü „Darstellung“."
           }
         },
         "en" : {
@@ -5569,7 +5569,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Objekte hierher bewegen"
+            "value" : "Objekte hierherbewegen"
           }
         },
         "en" : {
@@ -6649,7 +6649,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Packen …"
+            "value" : "Komprimieren …"
           }
         },
         "en" : {
@@ -7369,7 +7369,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zum Pfad gehen …"
+            "value" : "Gehe zu Ordner …"
           }
         },
         "en" : {
@@ -9709,7 +9709,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Datei"
+            "value" : "Ablage"
           }
         },
         "en" : {
@@ -9817,7 +9817,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ansicht"
+            "value" : "Darstellung"
           }
         },
         "en" : {
@@ -14473,7 +14473,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Papierkorb leeren"
+            "value" : "Papierkorb entleeren"
           }
         },
         "en" : {
@@ -14508,7 +14508,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Papierkorb leeren …"
+            "value" : "Papierkorb entleeren …"
           }
         },
         "en" : {
@@ -16723,7 +16723,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Taste"
+            "value" : "Schlüssel"
           }
         },
         "en" : {
@@ -19489,7 +19489,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Packen"
+            "value" : "Komprimieren"
           }
         },
         "en" : {
@@ -19524,7 +19524,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„%@“ packen"
+            "value" : "„%@“ komprimieren"
           }
         },
         "en" : {
@@ -19562,13 +19562,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Objekt packen"
+                  "value" : "%lld Objekt komprimieren"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Objekte packen"
+                  "value" : "%lld Objekte komprimieren"
                 }
               }
             }
@@ -24424,7 +24424,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zeigt die Tagfarben jeder Datei am rechten Rand ihres Namens an, wie im Finder. Auch im Menü „Ansicht“. Archive und entfernte Volumes haben keine Tags, daher wird dort nichts angezeigt."
+            "value" : "Zeigt die Tagfarben jeder Datei am rechten Rand ihres Namens an, wie im Finder. Auch im Menü „Darstellung“. Archive und entfernte Volumes haben keine Tags, daher wird dort nichts angezeigt."
           }
         },
         "en" : {
@@ -27966,7 +27966,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Öffnen Sie die Befehlspalette und geben Sie ein, was Sie tun möchten: kopieren, packen, mit einem Server verbinden, taggen. Die Suche findet auch ähnliche Aktionstitel, sodass Sie nichts auswendig lernen und kein Menü durchsuchen müssen."
+            "value" : "Öffnen Sie die Befehlspalette und geben Sie ein, was Sie tun möchten: kopieren, komprimieren, mit einem Server verbinden, taggen. Die Suche findet auch ähnliche Aktionstitel, sodass Sie nichts auswendig lernen und kein Menü durchsuchen müssen."
           }
         },
         "en" : {
