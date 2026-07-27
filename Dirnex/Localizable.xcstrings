@@ -2191,7 +2191,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld von %lld zum Umbenennen"
+            "value" : "%lld von %lld werden umbenannt"
           }
         },
         "en" : {
@@ -3908,7 +3908,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Beide Bereiche müssen einen echten Ordner auf dem Laufwerk anzeigen."
+            "value" : "Beide Bereiche müssen einen lokalen Ordner anzeigen."
           }
         },
         "en" : {
@@ -3943,7 +3943,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Branch %@"
+            "value" : "Branch: %@"
           }
         },
         "en" : {
@@ -4048,7 +4048,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kopieren hier nicht möglich"
+            "value" : "Hier kann nicht kopiert werden"
           }
         },
         "en" : {
@@ -4258,7 +4258,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hier kann nicht extrahiert werden"
+            "value" : "Hier kann nicht entpackt werden"
           }
         },
         "en" : {
@@ -4293,7 +4293,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Verschieben hier nicht möglich"
+            "value" : "Hier kann nicht verschoben werden"
           }
         },
         "en" : {
@@ -4433,7 +4433,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hier kann nicht gepackt werden"
+            "value" : "Hier kann kein Archiv erstellt werden"
           }
         },
         "en" : {
@@ -18999,7 +18999,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Öffnen Sie zuerst einen Ordner auf dem Laufwerk im anderen Bereich."
+            "value" : "Öffnen Sie zuerst einen lokalen Ordner im anderen Bereich."
           }
         },
         "en" : {
@@ -19034,7 +19034,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Öffnen Sie im anderen Bereich einen Ordner auf dem Laufwerk, um das neue Archiv dort zu speichern."
+            "value" : "Öffnen Sie im anderen Bereich einen lokalen Ordner, um das neue Archiv dort zu speichern."
           }
         },
         "en" : {
@@ -20754,7 +20754,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ wiederholen"
+            "value" : "Wiederholen: %@"
           }
         },
         "en" : {
@@ -20789,7 +20789,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„%@“ wiederholen mit Problemen beendet"
+            "value" : "Beim Wiederholen von „%@“ sind Probleme aufgetreten"
           }
         },
         "en" : {
@@ -24354,7 +24354,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die ersten %@ dieser Datei werden angezeigt"
+            "value" : "Die ersten %@ der Datei werden angezeigt"
           }
         },
         "en" : {
@@ -24389,7 +24389,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die ersten %lld Ergebnisse werden angezeigt"
+            "value" : "Die ersten %lld Suchergebnisse werden angezeigt"
           }
         },
         "en" : {
@@ -25931,7 +25931,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Diese Datei hat keinen Speicherort auf dem Laufwerk, daher gibt es nichts anzuzeigen."
+            "value" : "Diese Datei hat keinen lokalen Speicherort, daher gibt es nichts anzuzeigen."
           }
         },
         "en" : {
@@ -26001,7 +26001,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Der aktive Bereich ist kein Ordner auf diesem Laufwerk."
+            "value" : "Der aktive Bereich ist kein lokaler Ordner."
           }
         },
         "en" : {
@@ -27966,7 +27966,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Öffnen Sie die Befehlspalette und geben Sie ein, was Sie tun möchten: kopieren, packen, mit einem Server verbinden, taggen. Alle Aktionen werden unscharf abgeglichen, sodass Sie nichts auswendig lernen und kein Menü durchsuchen müssen."
+            "value" : "Öffnen Sie die Befehlspalette und geben Sie ein, was Sie tun möchten: kopieren, packen, mit einem Server verbinden, taggen. Die Suche findet auch ähnliche Aktionstitel, sodass Sie nichts auswendig lernen und kein Menü durchsuchen müssen."
           }
         },
         "en" : {
@@ -28181,7 +28181,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Verfolgt %@"
+            "value" : "Folgt %@"
           }
         },
         "en" : {
@@ -28391,7 +28391,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ widerrufen"
+            "value" : "Widerrufen: %@"
           }
         },
         "en" : {
@@ -28426,7 +28426,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„%@“ widerrufen mit Problemen beendet"
+            "value" : "Beim Widerrufen von „%@“ sind Probleme aufgetreten"
           }
         },
         "en" : {
@@ -28461,7 +28461,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Auswahl löschen"
+            "value" : "Auswahl aufheben"
           }
         },
         "en" : {
@@ -28846,7 +28846,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dateien abwählen"
+            "value" : "Dateiauswahl aufheben"
           }
         },
         "en" : {
@@ -28916,7 +28916,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dateien abwählen"
+            "value" : "Dateiauswahl aufheben"
           }
         },
         "en" : {
@@ -29056,7 +29056,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "GROSSBUCHSTABEN"
+            "value" : "GROẞBUCHSTABEN"
           }
         },
         "en" : {
@@ -29616,7 +29616,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieser Ort unterstützt das Kopieren von Dateien nicht."
+            "value" : "An diesem Speicherort können keine Dateien kopiert werden."
           }
         },
         "en" : {
@@ -29651,7 +29651,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieser Ort unterstützt das Erstellen von Ordnern nicht."
+            "value" : "An diesem Speicherort können keine Ordner erstellt werden."
           }
         },
         "en" : {
@@ -29686,7 +29686,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieser Ort unterstützt das Erstellen von Dateien nicht."
+            "value" : "An diesem Speicherort können keine Dateien erstellt werden."
           }
         },
         "en" : {
@@ -29721,7 +29721,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Verbindungswurzel kann nicht gelöscht werden."
+            "value" : "Der oberste Ordner der Verbindung kann nicht gelöscht werden."
           }
         },
         "en" : {
@@ -29756,7 +29756,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieser Ort unterstützt das Verschieben von Objekten nicht."
+            "value" : "An diesem Speicherort können keine Objekte verschoben werden."
           }
         },
         "en" : {
@@ -29896,7 +29896,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Direktes Kopieren zwischen entfernten Orten wird nicht unterstützt."
+            "value" : "Direktes Kopieren zwischen entfernten Speicherorten wird nicht unterstützt."
           }
         },
         "en" : {
@@ -29931,7 +29931,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieser Ort unterstützt das Löschen von Objekten nicht."
+            "value" : "An diesem Speicherort können keine Objekte gelöscht werden."
           }
         },
         "en" : {
@@ -30001,7 +30001,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieser Ort unterstützt keine symbolischen Links."
+            "value" : "An diesem Speicherort können keine symbolischen Links erstellt werden."
           }
         },
         "en" : {
@@ -30071,7 +30071,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieser Ort hat keinen Papierkorb."
+            "value" : "Dieser Speicherort hat keinen Papierkorb."
           }
         },
         "en" : {
