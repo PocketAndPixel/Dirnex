@@ -8,7 +8,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@”"
+            "value" : "„%@“"
           }
         },
         "en" : {
@@ -7369,7 +7369,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gehe zu Ordner …"
+            "value" : "Gehe zum Ordner …"
           }
         },
         "en" : {
@@ -14858,7 +14858,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dateinamen dürfen das Zeichen \"\/\" nicht enthalten."
+            "value" : "Dateinamen dürfen das Zeichen „\/“ nicht enthalten."
           }
         },
         "en" : {
@@ -15278,7 +15278,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ordnernamen dürfen das Zeichen \"\/\" nicht enthalten."
+            "value" : "Ordnernamen dürfen das Zeichen „\/“ nicht enthalten."
           }
         },
         "en" : {
@@ -15632,13 +15632,13 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "NeuerOrdner"
+            "value" : "Neuer Ordner"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "NewFolder"
+            "value" : "New Folder"
           }
         },
         "es" : {
