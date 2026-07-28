@@ -3499,7 +3499,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Também oferece builds de pré-lançamento quando o Dirnex busca atualizações. Betas são mais novos, mas menos testados; você volta automaticamente para uma versão estável quando ela alcançar o beta."
+            "value" : "Também oferece versões de pré-lançamento quando o Dirnex busca atualizações. As versões beta são mais novas, mas menos testadas; você volta automaticamente para uma versão estável quando ela alcançar a versão beta."
           }
         }
       }
@@ -7848,7 +7848,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abrir Com"
+            "value" : "Abrir com"
           }
         }
       }
@@ -22587,7 +22587,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abrir Com"
+            "value" : "Abrir com"
           }
         }
       }
@@ -35061,7 +35061,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nenhum backend pode lidar com %@."
+            "value" : "Nenhum serviço pode lidar com %@."
           }
         }
       }
@@ -35266,7 +35266,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Não conectado a %@. Reconecte-se ao servidor."
+            "value" : "Sem conexão com %@. Reconecte-se ao servidor."
           }
         }
       }
