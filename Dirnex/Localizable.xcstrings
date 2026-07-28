@@ -4682,7 +4682,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "地址："
+            "value" : "位址："
           }
         }
       }
@@ -8874,7 +8874,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "完整磁碟取用權限…"
+            "value" : "完全取用磁碟…"
           }
         }
       }
@@ -10854,7 +10854,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "批量, 重新命名, 模式, 計數器, 正則表達式, 掩碼"
+            "value" : "批量, 重新命名, 模式, 計數器, 規則運算式, 正則, 遮罩"
           }
         }
       }
@@ -11694,7 +11694,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "共享, 傳送, airdrop, 郵件, 訊息, 共享表單"
+            "value" : "分享, 傳送, airdrop, 郵件, 訊息, 分享表單"
           }
         }
       }
@@ -11754,7 +11754,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "共享…"
+            "value" : "分享…"
           }
         }
       }
@@ -12474,7 +12474,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "連線伺服器…"
+            "value" : "連接伺服器…"
           }
         }
       }
@@ -12534,7 +12534,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "路徑, 地址, 輸入, url, 跳轉, 模糊, 最近"
+            "value" : "路徑, 位址, 輸入, url, 跳轉, 模糊, 最近"
           }
         }
       }
@@ -14094,7 +14094,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "位置, 卷宗, 喜好項目, 鍵盤, 選取, 導航, 來源列表, 移動焦點"
+            "value" : "位置, 卷宗, 喜好項目, 鍵盤, 選取, 導覽, 來源列表, 移動焦點"
           }
         }
       }
@@ -14454,7 +14454,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "預覽, 快速檢視"
+            "value" : "預覽, 快速查看"
           }
         }
       }
@@ -14514,7 +14514,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "快速檢視"
+            "value" : "快速查看"
           }
         }
       }
@@ -14574,7 +14574,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "預覽, 快速檢視, 面板, 非目前, ctrl q"
+            "value" : "預覽, 快速查看, 面板, 非目前, ctrl q"
           }
         }
       }
@@ -14634,7 +14634,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "快速檢視面板"
+            "value" : "快速查看面板"
           }
         }
       }
@@ -14694,7 +14694,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "預覽, 快速檢視, 全屏, 照片, 圖像, ctrl option q"
+            "value" : "預覽, 快速查看, 全螢幕, 照片, 圖像, ctrl option q"
           }
         }
       }
@@ -14754,7 +14754,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "全屏快速檢視"
+            "value" : "全螢幕快速查看"
           }
         }
       }
@@ -14814,7 +14814,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "預覽, 快速檢視, 整窗, 大, 閱讀, ctrl shift q"
+            "value" : "預覽, 快速查看, 整個視窗, 大, 閱讀, ctrl shift q"
           }
         }
       }
@@ -14874,7 +14874,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "整窗快速檢視"
+            "value" : "整個視窗快速查看"
           }
         }
       }
@@ -14934,7 +14934,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ncdu, 條形圖, 圖表, 磁碟, 使用量, 空間, du, 最大, 占用"
+            "value" : "ncdu, 條形圖, 圖表, 磁碟, 使用量, 空間, du, 最大, 佔用"
           }
         }
       }
@@ -15414,7 +15414,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "icloud, 雲, 同步, dropbox, drive, onedrive, 下載, 離線, 占位符, 標記"
+            "value" : "icloud, 雲, 同步, dropbox, drive, onedrive, 下載, 離線, 佔位符, 標記"
           }
         }
       }
@@ -16554,7 +16554,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "導航"
+            "value" : "導覽"
           }
         }
       }
@@ -17502,7 +17502,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "連線伺服器"
+            "value" : "連接伺服器"
           }
         }
       }
@@ -20823,7 +20823,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法開啟嵌套壓縮檔"
+            "value" : "無法開啟巢狀壓縮檔"
           }
         }
       }
@@ -21179,7 +21179,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法取用「%@」。請檢查地址，並確認伺服器已上線。"
+            "value" : "無法取用「%@」。請檢查位址，並確認伺服器已上線。"
           }
         }
       }
@@ -23222,7 +23222,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex 已擁有完整磁碟取用權限"
+            "value" : "Dirnex 已具備「完全取用磁碟」權限"
           }
         }
       }
@@ -23281,7 +23281,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex 可以瀏覽各處，但 macOS 會保護一些檔案夾，例如其他使用者的個人檔案夾、「郵件」和「訊息」、Time Machine 備份，以及系統認為敏感的任何位置。沒有完整磁碟取用權限時，開啟這些位置會看到權限提示；其他位置會照常工作。\n\n按一下「開啟系統設定」，然後在「完整磁碟取用權限」中開啟 Dirnex。macOS 會要求重新啟動 Dirnex，讓新的取用權限生效。"
+            "value" : "Dirnex 可以瀏覽各處，但 macOS 會保護一些檔案夾，例如其他使用者的個人檔案夾、「郵件」和「訊息」、Time Machine 備份，以及系統認為敏感的任何位置。沒有「完全取用磁碟」權限時，開啟這些位置會看到權限提示；其他位置會照常工作。\n\n按一下「開啟系統設定」，然後在「完全取用磁碟」中開啟 Dirnex。macOS 會要求重新啟動 Dirnex，讓新的取用權限生效。"
           }
         }
       }
@@ -23399,7 +23399,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex 需要完整磁碟取用權限才能顯示垃圾桶"
+            "value" : "Dirnex 需要「完全取用磁碟」權限才能顯示垃圾桶"
           }
         }
       }
@@ -24581,7 +24581,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "清倒垃圾桶"
+            "value" : "清空垃圾桶"
           }
         }
       }
@@ -24640,7 +24640,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "清倒垃圾桶…"
+            "value" : "清空垃圾桶…"
           }
         }
       }
@@ -27007,7 +27007,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "授予 Dirnex 完整磁碟取用權限"
+            "value" : "授予 Dirnex「完全取用磁碟」權限"
           }
         }
       }
@@ -27598,7 +27598,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iCloud Drive"
+            "value" : "iCloud雲碟"
           }
         }
       }
@@ -29015,7 +29015,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS 會保護垃圾桶，所以在您允許之前，Dirnex 無法列出其中的項目。其他位置會繼續照常工作。\n\n按一下「開啟系統設定」，然後在「完整磁碟取用權限」中開啟 Dirnex。macOS 會要求重新啟動 Dirnex，讓新的取用權限生效。"
+            "value" : "macOS 會保護垃圾桶，所以在您允許之前，Dirnex 無法列出其中的項目。其他位置會繼續照常工作。\n\n按一下「開啟系統設定」，然後在「完全取用磁碟」中開啟 Dirnex。macOS 會要求重新啟動 Dirnex，讓新的取用權限生效。"
           }
         }
       }
@@ -30020,7 +30020,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "名稱掩碼："
+            "value" : "名稱遮罩："
           }
         }
       }
@@ -30256,7 +30256,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "導航"
+            "value" : "導覽"
           }
         }
       }
@@ -31082,7 +31082,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "未找到比較工具"
+            "value" : "找不到比較工具"
           }
         }
       }
@@ -31318,7 +31318,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "未找到文字編輯器"
+            "value" : "找不到文字編輯器"
           }
         }
       }
@@ -35217,7 +35217,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正則表達式"
+            "value" : "規則運算式"
           }
         }
       }
@@ -39923,7 +39923,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "音頻"
+            "value" : "音訊"
           }
         }
       }
@@ -41399,7 +41399,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iCloud Drive"
+            "value" : "iCloud雲碟"
           }
         }
       }
@@ -42107,7 +42107,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iCloud Drive 的部分內容需要完整磁碟取用權限"
+            "value" : "iCloud雲碟的部分內容需要「完全取用磁碟」權限"
           }
         }
       }
@@ -45000,7 +45000,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "未找到遠端路徑。"
+            "value" : "找不到遠端路徑。"
           }
         }
       }
@@ -46829,7 +46829,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此伺服器提供的主機 %@ 與您之前信任的不同。如果您重新安裝了伺服器，或將新的 SFTP App 指向此地址，這是正常情況；但也可能表示有人正在攔截連線（中間人攻擊）。\n\n新指紋：\n%@\n\n只有在您認得此指紋時才繼續。信任它會替換舊金鑰，以後即可連線到此伺服器。"
+            "value" : "此伺服器提供的主機 %@ 與您之前信任的不同。如果您重新安裝了伺服器，或將新的 SFTP App 指向此位址，這是正常情況；但也可能表示有人正在攔截連線（中間人攻擊）。\n\n新指紋：\n%@\n\n只有在您認得此指紋時才繼續。信任它會替換舊金鑰，以後即可連線到此伺服器。"
           }
         }
       }
@@ -47247,7 +47247,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "開啟指令面板，然後輸入想做的事：拷貝、壓縮、連線伺服器、標記。它會模糊比對每個操作，所以不需要記憶，也不用在選單裡尋找。"
+            "value" : "開啟指令面板，然後輸入想做的事：拷貝、壓縮、連接伺服器、標記。它會模糊比對每個操作，所以不需要記憶，也不用在選單裡尋找。"
           }
         }
       }
@@ -47367,7 +47367,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS 會保護少數檔案夾，例如其他使用者的個人檔案夾、郵件和 Time Machine 備份。首次需要取用時，請授予完整磁碟取用權限。您隨時可以從指令面板重新開啟此導覽。"
+            "value" : "macOS 會保護少數檔案夾，例如其他使用者的個人檔案夾、郵件和 Time Machine 備份。首次需要取用時，請授予「完全取用磁碟」權限。您隨時可以從指令面板重新開啟此導覽。"
           }
         }
       }
@@ -50615,7 +50615,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "未連線到 %@。請重新連線伺服器。"
+            "value" : "未連線到 %@。請重新連接伺服器。"
           }
         }
       }
@@ -51263,7 +51263,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "您可以瀏覽此 Mac 上的每個檔案夾。要變更此設定，請在「系統設定」中開啟「完整磁碟取用權限」。"
+            "value" : "您可以瀏覽此 Mac 上的每個檔案夾。要變更此設定，請在「系統設定」中開啟「完全取用磁碟」。"
           }
         }
       }
@@ -51440,7 +51440,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "您沒有權限。Dirnex 可能需要在「系統設定」中獲得完整磁碟取用權限。"
+            "value" : "您沒有權限。Dirnex 可能需要在「系統設定」中獲得「完全取用磁碟」權限。"
           }
         }
       }
@@ -51558,7 +51558,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "您在 iCloud Drive 中的檔案已列在上方。App 存放在那裡的檔案夾，例如 Pages、「預覽」和「捷徑」，在您允許 Dirnex 讀取之前由 macOS 保護。\n\n按一下「開啟系統設定」，然後在「完整磁碟取用權限」中開啟 Dirnex。macOS 會要求重新啟動 Dirnex，讓新的取用權限生效。"
+            "value" : "您在 iCloud雲碟中的檔案已列在上方。App 存放在那裡的檔案夾，例如 Pages、「預覽」和「捷徑」，在您允許 Dirnex 讀取之前由 macOS 保護。\n\n按一下「開啟系統設定」，然後在「完全取用磁碟」中開啟 Dirnex。macOS 會要求重新啟動 Dirnex，讓新的取用權限生效。"
           }
         }
       }
