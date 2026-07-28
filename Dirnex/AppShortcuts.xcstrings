@@ -31,7 +31,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "${applicationName} 選択項目をコピー"
+            "value" : "${applicationName}で選択項目をコピー"
           }
         },
         "ru" : {
