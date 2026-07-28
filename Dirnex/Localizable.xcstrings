@@ -8772,7 +8772,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ir para Localização…"
+            "value" : "Ir para o Local…"
           }
         }
       }
@@ -9822,7 +9822,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "locais, volumes, favoritos, teclado, selecionar, navegar, lista de fontes, mover foco"
+            "value" : "barra lateral, locais, volumes, favoritos, teclado, selecionar, navegar, mover foco"
           }
         }
       }
@@ -9864,7 +9864,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Focar Barra Lateral"
+            "value" : "Mover Foco para a Barra Lateral"
           }
         }
       }
@@ -16754,7 +16754,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cada script ainda roda pela paleta ⌘K e pelo submenu Scripts. Defina uma tecla livre em Gerenciar Scripts para recuperar o atalho."
+            "value" : "Cada script ainda é executado pela paleta ⌘K e pelo submenu Scripts. Atribua uma tecla livre em Gerenciar Scripts para recuperar o atalho de teclado."
           }
         }
       }
@@ -30541,7 +30541,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esse arquivo não tem localização no disco, então não há nada para revelar."
+            "value" : "Esse arquivo não tem um local no disco, então não há nada para revelar."
           }
         }
       }
@@ -32673,7 +32673,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alternar Barra Lateral"
+            "value" : "Mostrar ou ocultar a barra lateral"
           }
         }
       }
@@ -32840,7 +32840,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vá direto para um caminho, abra uma segunda aba ou fixe as pastas em que você vive. Localização, abas e Favoritos deixam até uma árvore de pastas profunda a uma tecla de distância."
+            "value" : "Vá direto para um caminho, abra uma segunda aba ou fixe as pastas que você mais usa. Local, abas e Favoritos deixam até uma árvore de pastas profunda a um atalho de distância."
           }
         }
       }
@@ -34856,7 +34856,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esta localização não aceita copiar arquivos."
+            "value" : "Este local não permite copiar arquivos."
           }
         }
       }
@@ -34897,7 +34897,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esta localização não aceita criar pastas."
+            "value" : "Este local não permite criar pastas."
           }
         }
       }
@@ -34938,7 +34938,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esta localização não aceita criar arquivos."
+            "value" : "Este local não permite criar arquivos."
           }
         }
       }
@@ -35020,7 +35020,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esta localização não aceita mover itens."
+            "value" : "Este local não permite mover itens."
           }
         }
       }
@@ -35184,7 +35184,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Não há suporte para copiar diretamente entre localizações remotas."
+            "value" : "Não há suporte para copiar diretamente entre locais remotos."
           }
         }
       }
@@ -35225,7 +35225,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esta localização não aceita apagar itens."
+            "value" : "Este local não permite apagar itens."
           }
         }
       }
@@ -35266,7 +35266,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Não conectado a %@. Reconecte ao servidor."
+            "value" : "Não conectado a %@. Reconecte-se ao servidor."
           }
         }
       }
@@ -35307,7 +35307,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esta localização não aceita links simbólicos."
+            "value" : "Este local não permite links simbólicos."
           }
         }
       }
@@ -35389,7 +35389,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esta localização não tem Lixo."
+            "value" : "Este local não tem Lixo."
           }
         }
       }
