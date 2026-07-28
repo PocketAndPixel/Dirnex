@@ -2541,7 +2541,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld of %lld"
+            "value" : "%lld de %lld"
           }
         }
       }
@@ -4802,7 +4802,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Branch %@"
+            "value" : "Branch: %@"
           }
         }
       }
@@ -5868,7 +5868,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Escolher um Aplicativo"
+            "value" : "Escolher um app"
           }
         }
       }
@@ -10904,7 +10904,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostrar Tags"
+            "value" : "Mostrar Etiquetas"
           }
         }
       }
@@ -16037,7 +16037,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "detached HEAD"
+            "value" : "HEAD desanexado"
           }
         }
       }
@@ -16078,7 +16078,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Detached HEAD"
+            "value" : "HEAD desanexado"
           }
         }
       }
@@ -17519,7 +17519,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "F%lld (unavailable)"
+            "value" : "F%lld (indisponível)"
           }
         }
       }
@@ -18339,7 +18339,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "FTPS (implicit)"
+            "value" : "FTPS (implícito)"
           }
         }
       }
@@ -18797,7 +18797,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Branch Git"
+            "value" : "Branch do Git"
           }
         }
       }
@@ -20402,7 +20402,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O macOS não informa nenhum aplicativo para texto simples. Escolha um em Ajustes ▸ Operações."
+            "value" : "O macOS não informa nenhum app para texto simples. Escolha um em Ajustes ▸ Operações."
           }
         }
       }
@@ -21679,7 +21679,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nenhum Aplicativo"
+            "value" : "Nenhum app"
           }
         }
       }
