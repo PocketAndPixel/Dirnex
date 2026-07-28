@@ -12114,7 +12114,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "移至垃圾桶"
+            "value" : "丟到垃圾桶"
           }
         }
       }
@@ -15654,7 +15654,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : ""
+            "value" : "關閉, 視窗"
           }
         }
       }
@@ -15774,7 +15774,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : ""
+            "value" : "最小化, 縮到最小, 視窗"
           }
         }
       }
@@ -29666,7 +29666,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "移至垃圾桶"
+            "value" : "丟到垃圾桶"
           }
         }
       }
