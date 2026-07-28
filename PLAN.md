@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M11 shipped · M12 (localization) Passes 1–2 done, Pass 3 slices 1–3 done · M13 (FTP/FTPS) shipped · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
+Status: M0–M11 shipped · M12 (localization) Passes 1–2 done, Pass 3 slices 1–4 done · M13 (FTP/FTPS) shipped · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
 
 ---
 
@@ -583,6 +583,15 @@ whenever it is picked back up.
   file-manager vocabulary the automatic pass got wrong: `Papierkorb`, `Datei`, `Ordner`,
   `Laufwerke`, `Befehl`, `Kopieren`, and `Verschieben`. The same pass preserved existing casing
   rules for lowercase keyword/search terms and kept the function bar on whole German verbs.
+- **Slice 4 landed (2026-07-28): Portuguese (Brazil).** `pt-BR` / `Português (Brasil)` is a
+  shipped language, listed in Settings and matched from Brazilian Portuguese regional tags. Its
+  complete `Localizable` column (803 entries, including every plural variant) and both App Shortcut
+  phrases are present in the catalog and compiled into `pt-BR.lproj`, so
+  `LocalizationCoverageTests` now checks Portuguese alongside German, Spanish, French and Russian.
+  The manual macOS-style pass kept names and common technical terms unchanged (`Dirnex`, `Apple`,
+  `macOS`, `Git`, `Zip`, `7-Zip`) and used natural Brazilian Portuguese for app UI (`Ajustes`,
+  `Lixo`, `arquivo`, `pasta`, `etiqueta`) while preserving the same casing pattern as the existing
+  languages. The function bar keeps whole Portuguese verbs.
 
 **Standing rule for the function bar, in every language.** The seven F-key captions are the app's
 primary buttons and are on screen permanently, so they carry the first impression of the whole app:

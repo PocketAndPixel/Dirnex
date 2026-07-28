@@ -33,6 +33,12 @@
             "state" : "translated",
             "value" : "${applicationName} копировать выделенное"
           }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName} copiar seleção"
+          }
         }
       }
     },
@@ -67,6 +73,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Копировать выделенное в ${applicationName}"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar a seleção no ${applicationName}"
           }
         }
       }

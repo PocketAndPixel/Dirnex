@@ -150,6 +150,7 @@
 				de,
 				es,
 				fr,
+				pt-BR,
 				ru,
 			);
 			mainGroup = 1000000000000000000000A2;
