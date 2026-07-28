@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M11 shipped · M12 (localization) Passes 1–2 done, Pass 3 slices 1–4 done · M13 (FTP/FTPS) shipped · M14 (checksums + attributes) planned · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
+Status: M0–M11 shipped · M12 (localization) Passes 1–2 done, Pass 3 slices 1–7 done · M13 (FTP/FTPS) shipped · M14 (checksums + attributes) planned · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
 
 ---
 
@@ -140,7 +140,7 @@ non-empty folder, which hid three folders Finder shows.
 
 ### In progress: M12 — Localization (started 2026-07-22)
 
-Eight languages eventually; English is the source and Russian is the first translation, added
+Nine languages now; English is the source and Russian is the first translation, added
 alongside the machinery so the machinery is proven by a real language rather than by a
 pseudolanguage. No RTL in the planned set — CJK is, so input-method behaviour in the inline rename
 field and the palette needs a live check when those land.
@@ -545,14 +545,14 @@ involved. Worth a lint rule keeping bare literals out of UI files afterwards.
   Russian-filled across Slices 1–13, the automation surface included. One documented non-goal stays
   English: the stock Finder-tag *names* in the ⌃T menu, which are `DirnexCore` `systemTagName` data
   with the localization caveat already in `FinderTag`. The AppleScript `.sdef` terminology stays
-  English by design — it is a scripting vocabulary, not prose. Next is Pass 3 — the remaining six
-  languages. 
-  
-**Pass 3 — the remaining six languages. Parked (2026-07-25), not cancelled.** Adding one is a line in
+  English by design — it is a scripting vocabulary, not prose. Next is Pass 3 — the additional
+  languages.
+
+**Pass 3 — the additional languages. Parked (2026-07-25), not cancelled.** Adding one is a line in
 `AppLanguages.all` plus its column in the catalog; `LocalizationCoverageTests` fails until the column
-is complete. It is parked behind M13 deliberately: the machinery is proven by a real language, so the
-remaining six are a translation exercise with no design risk left in them, and every string M13 adds
-would have to be translated twice if the languages landed first. **That gate is now clear — M13
+is complete. It is parked behind M13 deliberately: the machinery is proven by a real language, so
+the remaining languages are a translation exercise with no design risk left in them, and every
+string M13 adds would have to be translated twice if the languages landed first. **That gate is now clear — M13
 shipped (2026-07-25) with its 23 strings settled in English + Russian** — so Pass 3 is unblocked
 whenever it is picked back up.
 
@@ -593,9 +593,8 @@ whenever it is picked back up.
   `Lixo`, `arquivo`, `pasta`, `etiqueta`) while preserving the same casing pattern as the existing
   languages. The function bar keeps whole Portuguese verbs.
 - **Slice 5 landed (2026-07-28): Simplified Chinese.** `zh-Hans` / `简体中文` is a shipped language,
-  listed in Settings and matched from Simplified Chinese regional tags such as `zh-CN`; Traditional
-  Chinese regional tags fall through the primary `zh` match to this bundle instead of English. Its
-  complete `Localizable` column (803 entries, including every plural variant) and both App Shortcut
+  listed in Settings and matched from Simplified Chinese regional tags such as `zh-CN` and `zh-SG`.
+  Its complete `Localizable` column (803 entries, including every plural variant) and both App Shortcut
   phrases are present in the catalog and compiled into `zh-Hans.lproj`. A manual macOS-style pass
   kept product names unchanged (`Dirnex`, `Finder`, `iCloud Drive`, `Git`, `Zip`, `7-Zip`) and used
   platform wording such as `设置`, `废纸篓`, `完全磁盘访问权限`, `快速查看`, `边栏`, `宗卷`, `标签`,
@@ -607,6 +606,14 @@ whenever it is picked back up.
   `Finder`, `iCloud Drive`, `Git`, `Zip`, `7-Zip`) and used platform wording such as `設定`,
   `ゴミ箱`, `フルディスクアクセス`, `クイックルック`, `サイドバー`, `ボリューム`, `タグ`,
   `コピー`, `移動`, and `名前を変更`. The function bar keeps whole Japanese command verbs.
+- **Slice 7 landed (2026-07-29): Traditional Chinese.** `zh-Hant` / `繁體中文` is now a shipped
+  language, listed in Settings and matched from Traditional Chinese regional tags such as `zh-TW`,
+  `zh-HK`, and `zh-MO`; `zh-CN` and `zh-SG` still resolve to Simplified Chinese. Its complete
+  `Localizable` column (803 entries, including every plural variant) and both App Shortcut phrases
+  are present in the catalog and compile into `zh-Hant.lproj`. The manual macOS-style pass kept
+  product names unchanged (`Dirnex`, `Finder`, `iCloud Drive`, `Git`, `Zip`, `7-Zip`) and used
+  natural Traditional Chinese macOS wording such as `設定`, `垃圾桶`, `完整磁碟取用權限`, `側邊欄`,
+  `卷宗`, `標籤`, `拷貝`, `移動`, and `重新命名`. The function bar keeps whole Chinese command verbs.
 
 **Standing rule for the function bar, in every language.** The seven F-key captions are the app's
 primary buttons and are on screen permanently, so they carry the first impression of the whole app:
