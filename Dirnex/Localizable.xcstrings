@@ -7646,7 +7646,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "移动项目到这里"
+            "value" : "将项目移到这里"
           }
         }
       }
@@ -8318,7 +8318,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "编辑文件…"
+            "value" : "编辑"
           }
         }
       }
@@ -8414,7 +8414,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "编辑文件"
+            "value" : "编辑文件…"
           }
         }
       }
@@ -17606,7 +17606,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "要从“%@”删除“%@”吗？"
+            "value" : "要从“%2$@”中删除“%1$@”吗？"
           }
         }
       }
@@ -28932,7 +28932,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在“%@”中替换“%@”？"
+            "value" : "要替换“%2$@”中的“%1$@”吗？"
           }
         }
       }
