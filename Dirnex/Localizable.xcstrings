@@ -3212,7 +3212,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "• %@ — %@现在运行%@。"
+            "value" : "• %@ — %@ 现在运行 %@。"
           }
         }
       }
@@ -14772,7 +14772,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无法将%#@items@添加到“%2$@”中"
+            "value" : "无法将 %#@items@ 添加到“%2$@”中"
           },
           "substitutions" : {
             "items" : {
@@ -15306,13 +15306,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "无法删除%lld项目"
+                  "value" : "无法删除 %lld 个项目"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "无法删除%lld项目"
+                  "value" : "无法删除 %lld 个项目"
                 }
               }
             }
@@ -15506,7 +15506,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无法从“%2$@”中删除%#@items@"
+            "value" : "无法从“%2$@”中删除 %#@items@"
           },
           "substitutions" : {
             "items" : {
@@ -15803,13 +15803,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "无法删除%lld项目"
+                  "value" : "无法删除 %lld 个项目"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "无法删除%lld项目"
+                  "value" : "无法删除 %lld 个项目"
                 }
               }
             }
@@ -16322,13 +16322,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "无法移动%lld项目"
+                  "value" : "无法移动 %lld 个项目"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "无法移动%lld项目"
+                  "value" : "无法移动 %lld 个项目"
                 }
               }
             }
@@ -16465,13 +16465,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "无法将%lld项目移动到废纸篓"
+                  "value" : "无法将 %lld 个项目移到废纸篓"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "无法将%lld项目移至废纸篓"
+                  "value" : "无法将 %lld 个项目移到废纸篓"
                 }
               }
             }
@@ -16843,13 +16843,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "无法将%lld物品放回原处"
+                  "value" : "无法将 %lld 个项目放回原处"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "无法将%lld物品放回原处"
+                  "value" : "无法将 %lld 个项目放回原处"
                 }
               }
             }
@@ -17080,13 +17080,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "无法重命名%lld项目"
+                  "value" : "无法重命名 %lld 个项目"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "无法重命名%lld项目"
+                  "value" : "无法重命名 %lld 个项目"
                 }
               }
             }
@@ -17891,7 +17891,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "从“%2$@”中删除%#@items@？"
+            "value" : "从“%2$@”中删除 %#@items@？"
           },
           "substitutions" : {
             "items" : {
@@ -18047,13 +18047,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "永久删除%lld项目？"
+                  "value" : "永久删除 %lld 个项目？"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "永久删除%lld项目？"
+                  "value" : "永久删除 %lld 个项目？"
                 }
               }
             }
@@ -18942,13 +18942,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "不知道%lld物品来自哪里"
+                  "value" : "不知道 %lld 个项目来自哪里"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "不知道%lld物品来自哪里"
+                  "value" : "不知道 %lld 个项目来自哪里"
                 }
               }
             }
@@ -19186,7 +19186,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "每个脚本仍然从⌘K命令面板和脚本子菜单中运行。在“管理脚本”中输入一个免费键来恢复键盘输入。"
+            "value" : "每个脚本仍可从 ⌘K 命令面板和“脚本”子菜单运行。在“管理脚本”中分配一个未使用的按键，即可恢复快捷键。"
           }
         }
       }
@@ -22249,7 +22249,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "发给：%@\n\n发行人：%@\n\n到期：%@\n\nSHA-256指纹：\n\n%@"
+            "value" : "发给：%@\n发行人：%@\n到期：%@\n\nSHA-256 指纹：\n%@"
           }
         }
       }
@@ -23284,7 +23284,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS 没有报告用于纯文本的应用程序。请在“设置”>“操作”中选择一个。"
+            "value" : "macOS 未报告用于纯文本的 App。请在“设置”>“操作”中选择一个。"
           }
         }
       }
@@ -23653,13 +23653,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "将%lld项目移到废纸篓吗？"
+                  "value" : "将 %lld 个项目移到废纸篓吗？"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "将%lld项目移到废纸篓吗？"
+                  "value" : "将 %lld 个项目移到废纸篓吗？"
                 }
               }
             }
@@ -24743,7 +24743,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "没有应用程序"
+            "value" : "没有 App"
           }
         }
       }
@@ -26522,13 +26522,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "打包%lld项目"
+                  "value" : "打包 %lld 个项目"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "打包%lld物品"
+                  "value" : "打包 %lld 个项目"
                 }
               }
             }
@@ -27182,13 +27182,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "从废纸篓永久删除%lld项目？"
+                  "value" : "从废纸篓永久删除 %lld 个项目？"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "从废纸篓永久删除%lld项目？"
+                  "value" : "从废纸篓永久删除 %lld 个项目？"
                 }
               }
             }
@@ -27701,13 +27701,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "把%lld物品放回去吗？"
+                  "value" : "放回 %lld 个项目吗？"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "把%lld物品放回去吗？"
+                  "value" : "放回 %lld 个项目吗？"
                 }
               }
             }
@@ -27757,7 +27757,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在每个面板的游标下方放置一个文件，然后比较它们。"
+            "value" : "在每个面板中将光标放在一个文件上，然后比较它们。"
           }
         }
       }
@@ -28642,13 +28642,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "重命名%lld项目"
+                  "value" : "重命名 %lld 个项目"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "重命名%lld项目"
+                  "value" : "重命名 %lld 个项目"
                 }
               }
             }
@@ -29170,7 +29170,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在“%2$@”中替换%#@items@？"
+            "value" : "在“%2$@”中替换 %#@items@？"
           },
           "substitutions" : {
             "items" : {
@@ -29897,7 +29897,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在每个面板上显示像.git和.env这样的点文件。也出现在工具栏和⇧⌘上。"
+            "value" : "在每个面板中显示 .git 和 .env 等点文件。也可在工具栏和 ⇧⌘ 快捷键中使用。"
           }
         }
       }
@@ -30273,7 +30273,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "运行操作需要一个命令ID或标题。"
+            "value" : "run operation 需要命令 ID 或标题。"
           }
         }
       }
@@ -34320,13 +34320,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "同步将将%lld项目移动到废纸篓。"
+                  "value" : "同步会将 %lld 个项目移到废纸篓。"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "同步将将%lld项目移至废纸篓。"
+                  "value" : "同步会将 %lld 个项目移到废纸篓。"
                 }
               }
             }
@@ -34987,7 +34987,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "该文件在磁盘上没有位置，所以没有什么可揭示的。"
+            "value" : "该文件在磁盘上没有位置，所以没有可显示的内容。"
           }
         }
       }
@@ -35363,7 +35363,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "编辑器F4在游标下打开文件。⇧F4首先命名一个新文件，如果该文件还不存在，则创建它。"
+            "value" : "编辑器设置决定 F4 用哪个 App 打开光标所在的文件。⇧F4 会先让你命名一个新文件；如果该文件尚不存在，则会创建它。"
           }
         }
       }
@@ -35739,7 +35739,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "旧的主机密钥无法自动删除。请从%@中删除它，然后再尝试连接。"
+            "value" : "旧的主机密钥无法自动删除。请从 %@ 中删除它，然后再尝试连接。"
           }
         }
       }
@@ -36021,7 +36021,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "选择作为参数传递（“$@”、“$1”）。还有：$DIRNEX_CURRENT_DIR、$DIRNEX_OTHER_DIR、$DIRNEX_SELECTED_PATHS。"
+            "value" : "所选项目会作为参数传递（“$@”、“$1”）。另有：$DIRNEX_CURRENT_DIR、$DIRNEX_OTHER_DIR、$DIRNEX_SELECTED_PATHS。"
           }
         }
       }
@@ -36162,7 +36162,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "服务器呈现了一个未由受信任的权威签名的证书。对于NAS或家庭服务器来说，这是正常的，但这也可能意味着有人正在拦截连接。\n\n在信任此指纹之前，请将其与服务器上显示的指纹进行比较。"
+            "value" : "服务器提供了一个未由受信任机构签名的证书。对于 NAS 或家庭服务器来说，这是正常的，但也可能表示有人正在拦截连接。\n\n信任此指纹之前，请将其与服务器上显示的指纹进行比较。"
           }
         }
       }
@@ -36444,7 +36444,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "服务器的主机密钥已更改（新的指纹%@）。"
+            "value" : "服务器的主机密钥已更改（新指纹 %@）。"
           }
         }
       }
@@ -40167,7 +40167,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "没有后端可以处理%@。"
+            "value" : "没有后端可以处理 %@。"
           }
         }
       }
@@ -40214,7 +40214,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "路径%@不属于压缩包%@。"
+            "value" : "路径 %@ 不属于压缩包 %@。"
           }
         }
       }
@@ -40261,7 +40261,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "路径%@不属于%@。"
+            "value" : "路径 %@ 不属于 %@。"
           }
         }
       }
@@ -40402,7 +40402,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "未连接到%@。重新连接到服务器。"
+            "value" : "未连接到 %@。请重新连接服务器。"
           }
         }
       }
@@ -40683,7 +40683,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "关闭后，每个新窗口都从你的“主页”文件夹开始。"
+            "value" : "关闭后，每个新窗口都从你的个人文件夹开始。"
           }
         }
       }
@@ -41106,7 +41106,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "你的自定义快捷键将被%@预设替换。你所有的更改将丢失。"
+            "value" : "你的自定义快捷键将被 %@ 预设替换。你所有的更改将丢失。"
           }
         }
       }
