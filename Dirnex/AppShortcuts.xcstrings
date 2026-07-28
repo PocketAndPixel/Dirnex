@@ -51,6 +51,12 @@
             "state" : "translated",
             "value" : "${applicationName} 拷贝所选项目"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName} 拷貝所選項目"
+          }
         }
       }
     },
@@ -103,6 +109,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "在 ${applicationName} 中拷贝所选项目"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 ${applicationName} 中拷貝所選項目"
           }
         }
       }

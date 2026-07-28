@@ -41,6 +41,8 @@ struct AppLanguageTests {
         #expect(russian?.endonym == "Русский")
         let chinese = AppLanguages.language(for: "zh-Hans")
         #expect(chinese?.endonym == "简体中文")
+        let traditionalChinese = AppLanguages.language(for: "zh-Hant")
+        #expect(traditionalChinese?.endonym == "繁體中文")
     }
 
     @Test("lookup by code is case-insensitive and rejects unshipped languages")
@@ -60,6 +62,10 @@ struct AppLanguageTests {
         #expect(AppLanguages.bestMatch(forPreferred: ["fr-CA"]).code == "fr")
         #expect(AppLanguages.bestMatch(forPreferred: ["pt-BR"]).code == "pt-BR")
         #expect(AppLanguages.bestMatch(forPreferred: ["zh-CN"]).code == "zh-Hans")
+        #expect(AppLanguages.bestMatch(forPreferred: ["zh-SG"]).code == "zh-Hans")
+        #expect(AppLanguages.bestMatch(forPreferred: ["zh-TW"]).code == "zh-Hant")
+        #expect(AppLanguages.bestMatch(forPreferred: ["zh-HK"]).code == "zh-Hant")
+        #expect(AppLanguages.bestMatch(forPreferred: ["zh-MO"]).code == "zh-Hant")
         #expect(AppLanguages.bestMatch(forPreferred: ["en-GB"]).code == "en")
     }
 
@@ -77,7 +83,7 @@ struct AppLanguageTests {
     @Test("a script-tagged language falls back through its primary subtag")
     func scriptTagFallsBackToPrimarySubtag() {
         #expect(AppLanguages.bestMatch(forPreferred: ["zh-Hans-CN"]).code == "zh-Hans")
-        #expect(AppLanguages.bestMatch(forPreferred: ["zh-Hant-TW"]).code == "zh-Hans")
+        #expect(AppLanguages.bestMatch(forPreferred: ["zh-Hant-TW"]).code == "zh-Hant")
         #expect(AppLanguages.bestMatch(forPreferred: ["ru-Cyrl-RU"]).code == "ru")
         #expect(AppLanguages.bestMatch(forPreferred: ["ru-Latn"]).code == "ru")
     }
