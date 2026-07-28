@@ -600,6 +600,13 @@ whenever it is picked back up.
   kept product names unchanged (`Dirnex`, `Finder`, `iCloud Drive`, `Git`, `Zip`, `7-Zip`) and used
   platform wording such as `设置`, `废纸篓`, `完全磁盘访问权限`, `快速查看`, `边栏`, `宗卷`, `标签`,
   `拷贝`, `移动`, and `重新命名`. The function bar keeps whole Chinese command verbs.
+- **Slice 6 landed (2026-07-28): Japanese.** `ja` / `日本語` is now a shipped language, listed in
+  Settings and matched from Japanese regional tags. Its complete `Localizable` column (803 entries,
+  including every plural variant) and both App Shortcut phrases are present in the catalog and
+  compile into `ja.lproj`. The manual macOS-style pass kept product names unchanged (`Dirnex`,
+  `Finder`, `iCloud Drive`, `Git`, `Zip`, `7-Zip`) and used platform wording such as `設定`,
+  `ゴミ箱`, `フルディスクアクセス`, `クイックルック`, `サイドバー`, `ボリューム`, `タグ`,
+  `コピー`, `移動`, and `名前を変更`. The function bar keeps whole Japanese command verbs.
 
 **Standing rule for the function bar, in every language.** The seven F-key captions are the app's
 primary buttons and are on screen permanently, so they carry the first impression of the whole app:

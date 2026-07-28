@@ -2,7 +2,7 @@
   "sourceLanguage" : "en",
   "strings" : {
     "${applicationName} copy selection" : {
-      "comment" : "Spotlight\/Siri phrase for Copy Selection to Other Panel. Must contain ${applicationName}, which stands for “Dirnex”.",
+      "comment" : "Spotlight/Siri phrase for Copy Selection to Other Panel. Must contain ${applicationName}, which stands for “Dirnex”.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -28,6 +28,12 @@
             "value" : "${applicationName} copier la sélection"
           }
         },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName}で選択項目をコピー"
+          }
+        },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
@@ -49,7 +55,7 @@
       }
     },
     "Copy the selection in ${applicationName}" : {
-      "comment" : "Spotlight\/Siri phrase for Copy Selection to Other Panel. Must contain ${applicationName}, which stands for “Dirnex”.",
+      "comment" : "Spotlight/Siri phrase for Copy Selection to Other Panel. Must contain ${applicationName}, which stands for “Dirnex”.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -73,6 +79,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copiez la sélection dans ${applicationName}"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName}で選択項目をコピー"
           }
         },
         "ru" : {
