@@ -1412,7 +1412,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ 已安裝，但無法開啟。"
+            "value" : "%@ 已安裝，但無法打開。"
           }
         }
       }
@@ -4859,7 +4859,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "您的所有快速鍵自訂都會被移除，並復原 macOS 預設設定。所有變更都會遺失。"
+            "value" : "你的所有快速鍵自訂都會被移除，並復原 macOS 預設設定。所有變更都會遺失。"
           }
         }
       }
@@ -5035,7 +5035,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex 檢查更新時也會提供預發佈版本。Beta 版本較新，但測試較少；當穩定版本趕上後，您會自動回到穩定版本。"
+            "value" : "Dirnex 檢查更新時也會提供預發佈版本。Beta 版本較新，但測試較少；當穩定版本趕上後，你會自動回到穩定版本。"
           }
         }
       }
@@ -5212,7 +5212,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "壓縮檔中已存在同名項目。替換會重寫壓縮檔，且無法還原。"
+            "value" : "封存檔中已存在同名項目。替換會重寫封存檔，且無法還原。"
           }
         }
       }
@@ -5743,7 +5743,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "壓縮檔名稱"
+            "value" : "封存檔名稱"
           }
         }
       }
@@ -6274,7 +6274,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "移到垃圾桶前先詢問"
+            "value" : "移至垃圾桶前先詢問"
           }
         }
       }
@@ -6982,7 +6982,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "瀏覽遠端 SFTP 或 FTP 帳號，或網路中的 SMB 共享。"
+            "value" : "瀏覽遠端 SFTP 或 FTP 帳號，或網路上的 SMB 共享檔案夾。"
           }
         }
       }
@@ -7572,7 +7572,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法開啟「%@」"
+            "value" : "無法打開「%@」"
           }
         }
       }
@@ -7631,7 +7631,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法開啟 %@"
+            "value" : "無法打開 %@"
           }
         }
       }
@@ -10374,7 +10374,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "f4, 編輯器, 文字, 開啟, 修改, bbedit, vs code, textedit"
+            "value" : "f4, 編輯器, 文字, 打開, 修改, bbedit, vs code, textedit"
           }
         }
       }
@@ -11214,7 +11214,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "開啟, 應用程式, app, 啟動, 編輯器, 預設"
+            "value" : "打開, 應用程式, app, 啟動, 編輯器, 預設"
           }
         }
       }
@@ -11274,7 +11274,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "開啟方式"
+            "value" : "打開檔案的應用程式"
           }
         }
       }
@@ -11334,7 +11334,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "壓縮, 壓縮檔, zip, tar, alt+f5, 打包"
+            "value" : "壓縮, 封存檔, zip, tar, alt+f5, 打包"
           }
         }
       }
@@ -12114,7 +12114,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "移到垃圾桶"
+            "value" : "移至垃圾桶"
           }
         }
       }
@@ -13014,7 +13014,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "終端, shell, iterm, wezterm, 控制台, 指令, 提示符, 外部, app"
+            "value" : "終端機, 終端, shell, iterm, wezterm, 控制台, 指令, 提示符, 外部, app"
           }
         }
       }
@@ -13074,7 +13074,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在終端中開啟"
+            "value" : "在「終端機」中打開"
           }
         }
       }
@@ -15114,7 +15114,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "終端抽屜"
+            "value" : "終端機抽屜"
           }
         }
       }
@@ -16134,7 +16134,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "會話, 切換, 復原, 開啟, 佈局, 面板"
+            "value" : "作業階段, 切換, 復原, 打開, 佈局, 面板"
           }
         }
       }
@@ -16254,7 +16254,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "會話, 快照, 儲存, 佈局, 面板"
+            "value" : "作業階段, 快照, 儲存, 佈局, 面板"
           }
         }
       }
@@ -16912,7 +16912,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "「按內容比較」（⌥F3）需要差異比較工具。請安裝 FileMerge（Xcode 的一部分）、Kaleidoscope 或 BBEdit，然後重新開啟「設定」。"
+            "value" : "「按內容比較」（⌥F3）需要差異比較工具。請安裝 FileMerge（Xcode 的一部分）、Kaleidoscope 或 BBEdit，然後重新打開「設定」。"
           }
         }
       }
@@ -18953,7 +18953,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法建立壓縮檔"
+            "value" : "無法建立封存檔"
           }
         }
       }
@@ -19875,7 +19875,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法從壓縮檔解壓縮"
+            "value" : "無法從封存檔解壓縮"
           }
         }
       }
@@ -20288,7 +20288,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法將「%@」移到垃圾桶"
+            "value" : "無法將「%@」移至垃圾桶"
           }
         }
       }
@@ -20637,13 +20637,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "無法將 %lld 個項目移到垃圾桶"
+                  "value" : "無法將 %lld 個項目移至垃圾桶"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "無法將 %lld 個項目移到垃圾桶"
+                  "value" : "無法將 %lld 個項目移至垃圾桶"
                 }
               }
             }
@@ -20705,7 +20705,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法開啟「%@」"
+            "value" : "無法打開「%@」"
           }
         }
       }
@@ -20764,7 +20764,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法開啟 %@"
+            "value" : "無法打開 %@"
           }
         }
       }
@@ -20823,7 +20823,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法開啟巢狀壓縮檔"
+            "value" : "無法打開巢狀封存檔"
           }
         }
       }
@@ -20882,7 +20882,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法用「%@」開啟。"
+            "value" : "無法用「%@」打開。"
           }
         }
       }
@@ -21712,7 +21712,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在「%@」中建立壓縮檔。"
+            "value" : "在「%@」中建立封存檔。"
           }
         }
       }
@@ -23281,7 +23281,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex 可以瀏覽各處，但 macOS 會保護一些檔案夾，例如其他使用者的個人檔案夾、「郵件」和「訊息」、Time Machine 備份，以及系統認為敏感的任何位置。沒有「完全取用磁碟」權限時，開啟這些位置會看到權限提示；其他位置會照常工作。\n\n按一下「開啟系統設定」，然後在「完全取用磁碟」中開啟 Dirnex。macOS 會要求重新啟動 Dirnex，讓新的取用權限生效。"
+            "value" : "Dirnex 可以瀏覽各處，但 macOS 會保護一些檔案夾，例如其他使用者的個人檔案夾、「郵件」和「訊息」、Time Machine 備份，以及系統認為敏感的任何位置。沒有「完全取用磁碟」權限時，打開這些位置會看到權限提示；其他位置會照常工作。\n\n按一下「打開系統設定」，然後在「完全取用磁碟」中啟用 Dirnex。macOS 會要求重新啟動 Dirnex，讓新的取用權限生效。"
           }
         }
       }
@@ -23340,7 +23340,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex 沒有可操作的開啟瀏覽器視窗。"
+            "value" : "Dirnex 沒有可操作的瀏覽器視窗。"
           }
         }
       }
@@ -27539,7 +27539,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iCloud 未開始下載。請檢查您的網路連線，然後重試。"
+            "value" : "iCloud 未開始下載。請檢查你的網路連線，然後重試。"
           }
         }
       }
@@ -29015,7 +29015,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS 會保護垃圾桶，所以在您允許之前，Dirnex 無法列出其中的項目。其他位置會繼續照常工作。\n\n按一下「開啟系統設定」，然後在「完全取用磁碟」中開啟 Dirnex。macOS 會要求重新啟動 Dirnex，讓新的取用權限生效。"
+            "value" : "macOS 會保護垃圾桶，所以在你允許之前，Dirnex 無法列出其中的項目。其他位置會繼續照常工作。\n\n按一下「打開系統設定」，然後在「完全取用磁碟」中啟用 Dirnex。macOS 會要求重新啟動 Dirnex，讓新的取用權限生效。"
           }
         }
       }
@@ -29074,7 +29074,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "項目移到垃圾桶時，macOS 會記錄原始檔案夾；但這個項目沒有記錄。請改為將它從垃圾桶中拖出。"
+            "value" : "項目移至垃圾桶時，macOS 會記錄原始檔案夾；但這個項目沒有記錄。請改為將它從垃圾桶中拖出。"
           }
         }
       }
@@ -29369,7 +29369,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "要將「%@」移到垃圾桶嗎？"
+            "value" : "要將「%@」移至垃圾桶嗎？"
           }
         }
       }
@@ -29598,13 +29598,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "將 %lld 個項目移到垃圾桶嗎？"
+                  "value" : "將 %lld 個項目移至垃圾桶嗎？"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "將 %lld 個項目移到垃圾桶嗎？"
+                  "value" : "將 %lld 個項目移至垃圾桶嗎？"
                 }
               }
             }
@@ -29666,7 +29666,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "移到垃圾桶"
+            "value" : "移至垃圾桶"
           }
         }
       }
@@ -31908,7 +31908,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "開啟"
+            "value" : "打開"
           }
         }
       }
@@ -31967,7 +31967,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在一個面板中開啟一個不同的檔案夾來比較它們。"
+            "value" : "在其中一個面板打開不同的檔案夾來比較。"
           }
         }
       }
@@ -32026,7 +32026,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "首先在另一個面板中開啟一個不同的檔案夾。"
+            "value" : "請先在另一個面板打開不同的檔案夾。"
           }
         }
       }
@@ -32085,7 +32085,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "開啟一個檔案，或輸入一個新名稱來建立一個檔案。"
+            "value" : "打開檔案，或輸入新名稱來建立檔案。"
           }
         }
       }
@@ -32144,7 +32144,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "首先在另一個面板上開啟磁碟上的一個檔案夾。"
+            "value" : "請先在另一個面板打開磁碟上的檔案夾。"
           }
         }
       }
@@ -32203,7 +32203,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在另一個面板中在磁碟上開啟一個檔案夾，以儲存新壓縮檔。"
+            "value" : "在另一個面板打開磁碟上的檔案夾，以儲存新封存檔。"
           }
         }
       }
@@ -32262,7 +32262,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "開啟指令面板"
+            "value" : "打開指令面板"
           }
         }
       }
@@ -32321,7 +32321,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "開啟系統設定"
+            "value" : "打開系統設定"
           }
         }
       }
@@ -32380,7 +32380,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "開啟方式"
+            "value" : "打開檔案的應用程式"
           }
         }
       }
@@ -32439,7 +32439,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在開啟 %@…"
+            "value" : "正在打開 %@…"
           }
         }
       }
@@ -32498,7 +32498,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "從搜尋標籤頁開啟一個檔案夾時，結果會留在原處，並在另一個面板中開啟。關閉後，焦點會保持在結果上，因此您可以繼續開啟更多結果。"
+            "value" : "從搜尋標籤頁打開一個檔案夾時，結果會留在原處，並在另一個面板中打開。關閉後，焦點會保持在結果上，因此你可以繼續打開更多結果。"
           }
         }
       }
@@ -32557,7 +32557,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在用 %@ 開啟…"
+            "value" : "正在用 %@ 打開…"
           }
         }
       }
@@ -34213,7 +34213,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "一般 FTP 會以未加密方式傳送您的密碼和檔案。"
+            "value" : "一般 FTP 會以未加密方式傳送你的密碼和檔案。"
           }
         }
       }
@@ -36103,7 +36103,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "重新開啟上次會話中的標籤頁"
+            "value" : "重新打開上次作業階段中的標籤頁"
           }
         }
       }
@@ -36667,7 +36667,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在「%@」中替換現有壓縮檔？"
+            "value" : "在「%@」中替換現有封存檔？"
           }
         }
       }
@@ -38260,7 +38260,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "儲存兩個面板和所有標籤頁，以便您可以返回此佈局。"
+            "value" : "儲存兩個面板和所有標籤頁，以便你可以返回此佈局。"
           }
         }
       }
@@ -38615,7 +38615,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "壓縮檔, 備份, tar, 壓縮, 面板"
+            "value" : "封存檔, 備份, tar, 壓縮, 面板"
           }
         }
       }
@@ -39864,7 +39864,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "壓縮檔"
+            "value" : "封存檔"
           }
         }
       }
@@ -40573,7 +40573,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此檔案夾的共享"
+            "value" : "此檔案夾的佔比"
           }
         }
       }
@@ -41281,7 +41281,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "像 Finder 一樣，在每個檔案名稱右側顯示標籤顏色。也可在「顯示」選單中使用。壓縮檔和遠端卷宗沒有標籤，因此不會顯示任何內容。"
+            "value" : "像 Finder 一樣，在每個檔案名稱右側顯示標籤顏色。也可在「顯示」選單中使用。封存檔和遠端卷宗沒有標籤，因此不會顯示任何內容。"
           }
         }
       }
@@ -42579,7 +42579,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "從搜尋結果開啟檔案夾時切換焦點"
+            "value" : "從搜尋結果打開檔案夾時切換焦點"
           }
         }
       }
@@ -42985,13 +42985,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "同步會將 %lld 個項目移到垃圾桶。"
+                  "value" : "同步會將 %lld 個項目移至垃圾桶。"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "同步會將 %lld 個項目移到垃圾桶。"
+                  "value" : "同步會將 %lld 個項目移至垃圾桶。"
                 }
               }
             }
@@ -43997,7 +43997,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "壓縮檔"
+            "value" : "封存檔"
           }
         }
       }
@@ -44056,7 +44056,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "壓縮檔可能損壞或項目可能遺失。"
+            "value" : "封存檔可能損壞或項目可能遺失。"
           }
         }
       }
@@ -44292,7 +44292,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "編輯器設定決定 F4 用哪個 App 開啟游標所在的檔案。⇧F4 會先讓您命名一個新檔案；如果該檔案尚不存在，則會建立它。"
+            "value" : "編輯器設定決定 F4 用哪個 App 打開游標所在的檔案。⇧F4 會先讓你命名一個新檔案；如果該檔案尚不存在，則會建立它。"
           }
         }
       }
@@ -45236,7 +45236,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "伺服器正在顯示與您信任的憑證不同的憑證。只有在您知道原因時，才刪除已儲存的伺服器並重新連線。"
+            "value" : "伺服器正在顯示與你信任的憑證不同的憑證。只有在你知道原因時，才刪除已儲存的伺服器並重新連線。"
           }
         }
       }
@@ -45944,7 +45944,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "「按內容比較」工具（⌥F3）會開啟兩個檔案。已安裝：%@。自動選取其中仍安裝的第一個。"
+            "value" : "「按內容比較」工具（⌥F3）會打開兩個檔案。已安裝：%@。自動選取其中仍安裝的第一個。"
           }
         }
       }
@@ -46534,7 +46534,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此項目儲存在 iCloud 中。Dirnex 正在獲取它，然後再開啟。"
+            "value" : "此項目儲存在 iCloud 中。Dirnex 正在獲取它，然後再打開。"
           }
         }
       }
@@ -46770,7 +46770,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "這會重寫壓縮檔，且無法還原。"
+            "value" : "這會重寫封存檔，且無法還原。"
           }
         }
       }
@@ -46829,7 +46829,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此伺服器提供的主機 %@ 與您之前信任的不同。如果您重新安裝了伺服器，或將新的 SFTP App 指向此位址，這是正常情況；但也可能表示有人正在攔截連線（中間人攻擊）。\n\n新指紋：\n%@\n\n只有在您認得此指紋時才繼續。信任它會替換舊金鑰，以後即可連線到此伺服器。"
+            "value" : "此伺服器提供的主機 %@ 與你之前信任的不同。如果你重新安裝了伺服器，或將新的 SFTP App 指向此位址，這是正常情況；但也可能表示有人正在攔截連線（中間人攻擊）。\n\n新指紋：\n%@\n\n只有在你認得此指紋時才繼續。信任它會替換舊金鑰，以後即可連線到此伺服器。"
           }
         }
       }
@@ -47007,7 +47007,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "目前面板是來源，另一面板是目的地。您可以用底部按鈕、功能鍵或指令面板拷貝或移動所選項目、建立檔案夾，或將檔案移到垃圾桶。"
+            "value" : "目前面板是來源，另一面板是目的地。你可以用底部按鈕、功能鍵或指令面板拷貝或移動所選項目、建立檔案夾，或將檔案移至垃圾桶。"
           }
         }
       }
@@ -47127,7 +47127,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "直接跳到路徑、開啟第二個標籤頁，或固定常用檔案夾。位置、標籤頁和喜好項目讓很深的檔案夾也只需一次按鍵即可到達。"
+            "value" : "直接跳到路徑、打開第二個標籤頁，或固定常用檔案夾。位置、標籤頁和喜好項目讓很深的檔案夾也只需一次按鍵即可到達。"
           }
         }
       }
@@ -47247,7 +47247,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "開啟指令面板，然後輸入想做的事：拷貝、壓縮、連接伺服器、標記。它會模糊比對每個操作，所以不需要記憶，也不用在選單裡尋找。"
+            "value" : "打開指令面板，然後輸入想做的事：拷貝、壓縮、連接伺服器、標記。它會模糊比對每個操作，所以不需要記憶，也不用在選單裡尋找。"
           }
         }
       }
@@ -47367,7 +47367,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS 會保護少數檔案夾，例如其他使用者的個人檔案夾、郵件和 Time Machine 備份。首次需要取用時，請授予「完全取用磁碟」權限。您隨時可以從指令面板重新開啟此導覽。"
+            "value" : "macOS 會保護少數檔案夾，例如其他使用者的個人檔案夾、郵件和 Time Machine 備份。首次需要取用時，請授予「完全取用磁碟」權限。你隨時可以從指令面板重新打開此導覽。"
           }
         }
       }
@@ -47487,7 +47487,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "兩個面板並排顯示，並以鍵盤驅動。一個放您正在處理的檔案，另一個放它們要去的位置；只有需要時才使用滑鼠。"
+            "value" : "兩個面板並排顯示，並以鍵盤驅動。一個放你正在處理的檔案，另一個放它們要去的位置；只有需要時才使用滑鼠。"
           }
         }
       }
@@ -47842,7 +47842,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "鍵入快速鍵…"
+            "value" : "輸入快速鍵…"
           }
         }
       }
@@ -48373,7 +48373,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "移到垃圾桶"
+            "value" : "移至垃圾桶"
           }
         }
       }
@@ -49317,7 +49317,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法將「%@」加入到「%@」壓縮檔中。"
+            "value" : "無法將「%@」加入到「%@」封存檔中。"
           }
         }
       }
@@ -49376,7 +49376,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法建立「%@」壓縮檔。"
+            "value" : "無法建立「%@」封存檔。"
           }
         }
       }
@@ -49435,7 +49435,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法從「%@」壓縮檔中解壓縮。"
+            "value" : "無法從「%@」封存檔中解壓縮。"
           }
         }
       }
@@ -49494,7 +49494,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法重寫壓縮檔「%@」。"
+            "value" : "無法重寫封存檔「%@」。"
           }
         }
       }
@@ -49553,7 +49553,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法執行 bsdtar 來建立壓縮檔。"
+            "value" : "無法執行 bsdtar 來建立封存檔。"
           }
         }
       }
@@ -49612,7 +49612,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法執行 bsdtar 從壓縮檔中解壓縮。"
+            "value" : "無法執行 bsdtar 從封存檔中解壓縮。"
           }
         }
       }
@@ -49671,7 +49671,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法執行 bsdtar 來開啟壓縮檔。"
+            "value" : "無法執行 bsdtar 來打開封存檔。"
           }
         }
       }
@@ -49730,7 +49730,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法讀取壓縮檔「%@」。"
+            "value" : "無法讀取封存檔「%@」。"
           }
         }
       }
@@ -49789,7 +49789,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法更新壓縮檔「%@」。"
+            "value" : "無法更新封存檔「%@」。"
           }
         }
       }
@@ -50379,7 +50379,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "路徑 %@ 不屬於壓縮檔 %@。"
+            "value" : "路徑 %@ 不屬於封存檔 %@。"
           }
         }
       }
@@ -50968,7 +50968,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "關閉後，每個新視窗都從您的個人檔案夾開始。"
+            "value" : "關閉後，每個新視窗都從你的個人檔案夾開始。"
           }
         }
       }
@@ -51263,7 +51263,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "您可以瀏覽此 Mac 上的每個檔案夾。要變更此設定，請在「系統設定」中開啟「完全取用磁碟」。"
+            "value" : "你可以瀏覽此 Mac 上的每個檔案夾。要變更此設定，請在「系統設定」中打開「完全取用磁碟」。"
           }
         }
       }
@@ -51322,7 +51322,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "您可以稍後從垃圾桶復原項目。"
+            "value" : "你可以稍後從垃圾桶復原項目。"
           }
         }
       }
@@ -51381,7 +51381,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "您可以稍後從垃圾桶復原它們。"
+            "value" : "你可以稍後從垃圾桶復原它們。"
           }
         }
       }
@@ -51440,7 +51440,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "您沒有權限。Dirnex 可能需要在「系統設定」中獲得「完全取用磁碟」權限。"
+            "value" : "你沒有權限。Dirnex 可能需要在「系統設定」中獲得「完全取用磁碟」權限。"
           }
         }
       }
@@ -51499,7 +51499,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "您的自訂快速鍵將被 %@ 預設替換。您所有的變更將遺失。"
+            "value" : "你的自訂快速鍵將被 %@ 預設替換。你所有的變更將遺失。"
           }
         }
       }
@@ -51558,7 +51558,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "您在 iCloud雲碟中的檔案已列在上方。App 存放在那裡的檔案夾，例如 Pages、「預覽」和「捷徑」，在您允許 Dirnex 讀取之前由 macOS 保護。\n\n按一下「開啟系統設定」，然後在「完全取用磁碟」中開啟 Dirnex。macOS 會要求重新啟動 Dirnex，讓新的取用權限生效。"
+            "value" : "你在 iCloud雲碟中的檔案已列在上方。App 存放在那裡的檔案夾，例如 Pages、「預覽」和「捷徑」，在你允許 Dirnex 讀取之前由 macOS 保護。\n\n按一下「打開系統設定」，然後在「完全取用磁碟」中啟用 Dirnex。macOS 會要求重新啟動 Dirnex，讓新的取用權限生效。"
           }
         }
       }
@@ -51617,7 +51617,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "您的搜尋結果符合了更多項目。縮小範圍以檢視其餘內容。"
+            "value" : "你的搜尋結果符合了更多項目。縮小範圍以檢視其餘內容。"
           }
         }
       }
