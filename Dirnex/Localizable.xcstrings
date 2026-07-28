@@ -1021,7 +1021,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "chave %@"
+            "value" : "chave de host %@"
           }
         }
       }
@@ -3007,7 +3007,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uma área de trabalho chamada “%@” já existe. Substituir pelo layout atual?"
+            "value" : "Um espaço de trabalho chamado “%@” já existe. Substituir pelo layout atual?"
           }
         }
       }
@@ -7638,7 +7638,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "f7, diretório, mkdir, criar"
+            "value" : "f7, pasta, diretório, mkdir, criar"
           }
         }
       }
@@ -8226,7 +8226,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "sincronizar, comparar, espelhar, diff, diretórios, pastas"
+            "value" : "sincronizar, comparar, espelhar, diff, pastas, diretórios"
           }
         }
       }
@@ -8268,7 +8268,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sincronizar Diretórios…"
+            "value" : "Sincronizar Pastas…"
           }
         }
       }
@@ -9024,7 +9024,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Histórico de Diretórios…"
+            "value" : "Histórico de Pastas…"
           }
         }
       }
@@ -11292,7 +11292,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Áreas de Trabalho…"
+            "value" : "Espaços de Trabalho…"
           }
         }
       }
@@ -11376,7 +11376,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Salvar Área de Trabalho…"
+            "value" : "Salvar Espaço de Trabalho…"
           }
         }
       }
@@ -11712,7 +11712,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Área de Trabalho"
+            "value" : "Espaço de Trabalho"
           }
         }
       }
@@ -19140,7 +19140,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Host:"
+            "value" : "Servidor:"
           }
         }
       }
@@ -19757,7 +19757,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "chave"
+            "value" : "chave de host"
           }
         }
       }
@@ -20412,7 +20412,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gerenciar Áreas de Trabalho…"
+            "value" : "Gerenciar Espaços de Trabalho…"
           }
         }
       }
@@ -21726,7 +21726,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nenhuma Pasta Fixada"
+            "value" : "Nenhuma pasta fixada"
           }
         }
       }
@@ -21767,7 +21767,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nenhuma Área de Trabalho Salva"
+            "value" : "Nenhum espaço de trabalho salvo"
           }
         }
       }
@@ -21808,7 +21808,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nenhum Script"
+            "value" : "Nenhum script"
           }
         }
       }
@@ -22874,7 +22874,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Organizar Áreas de Trabalho"
+            "value" : "Organizar Espaços de Trabalho"
           }
         }
       }
@@ -26755,7 +26755,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Salvar Área de Trabalho"
+            "value" : "Salvar Espaço de Trabalho"
           }
         }
       }
@@ -26796,7 +26796,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Salvar Área de Trabalho…"
+            "value" : "Salvar Espaço de Trabalho…"
           }
         }
       }
@@ -32632,7 +32632,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Este servidor está apresentando uma %@ de host diferente daquela em que você confiou antes. Se você reinstalou o servidor ou apontou um novo app SFTP para este endereço, isso é esperado — mas também pode significar que alguém está interceptando a conexão (ataque man-in-the-middle).\n\nNova impressão digital:\n%@\n\nContinue somente se reconhecer esta impressão digital. Confiar nela substitui a chave antiga para que futuras conexões com este servidor funcionem."
+            "value" : "Este servidor está apresentando uma %@ diferente daquela em que você confiou antes. Se você reinstalou o servidor ou apontou um novo app SFTP para este endereço, isso é esperado — mas também pode significar que alguém está interceptando a conexão (ataque man-in-the-middle).\n\nNova impressão digital:\n%@\n\nContinue somente se reconhecer esta impressão digital. Confiar nela substitui a chave antiga para que futuras conexões com este servidor funcionem."
           }
         }
       }
@@ -32924,7 +32924,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abra a paleta de comandos e comece a digitar o que você quer fazer: copiar, compactar, conectar a um servidor, adicionar tag. Ela encontra ações de forma aproximada, então não há nada para memorizar nem menu para procurar."
+            "value" : "Abra a paleta de comandos e comece a digitar o que você quer fazer: copiar, compactar, conectar a um servidor, adicionar etiqueta. Ela encontra ações de forma aproximada, então não há nada para memorizar nem menu para procurar."
           }
         }
       }
@@ -34200,7 +34200,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "UPPERCASE"
+            "value" : "MAIÚSCULAS"
           }
         }
       }
@@ -35348,7 +35348,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Somente arquivos locais têm tags do Finder."
+            "value" : "Somente arquivos locais têm etiquetas do Finder."
           }
         }
       }
@@ -35634,7 +35634,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Área de Trabalho"
+            "value" : "Espaço de Trabalho"
           }
         }
       }
@@ -35675,7 +35675,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nome da área de trabalho"
+            "value" : "Nome do espaço de trabalho"
           }
         }
       }
@@ -35921,7 +35921,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Seus arquivos no iCloud Drive estão listados acima. As pastas que os apps mantêm ali — Pages, Preview, Shortcuts — são privadas para o macOS até você permitir que o Dirnex as leia.\n\nClique em Abrir Ajustes do Sistema e ative o Dirnex em Acesso Total ao Disco. O macOS pedirá para o Dirnex reiniciar para que o novo acesso tenha efeito."
+            "value" : "Seus arquivos no iCloud Drive estão listados acima. As pastas que os apps mantêm ali — Pages, Pré-Visualização, Atalhos — são privadas para o macOS até você permitir que o Dirnex as leia.\n\nClique em Abrir Ajustes do Sistema e ative o Dirnex em Acesso Total ao Disco. O macOS pedirá para o Dirnex reiniciar para que o novo acesso tenha efeito."
           }
         }
       }
