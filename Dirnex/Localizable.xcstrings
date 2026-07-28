@@ -2919,13 +2919,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg 個項目"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg 個項目"
                     }
                   }
                 }
@@ -3177,7 +3177,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法重新應用 %#@items@：%2$@"
+            "value" : "無法重做 %#@items@：%2$@"
           },
           "substitutions" : {
             "items" : {
@@ -3188,13 +3188,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg 個項目"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg 個項目"
                     }
                   }
                 }
@@ -5625,7 +5625,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "應用到所有剩餘衝突"
+            "value" : "套用到所有剩餘衝突"
           }
         }
       }
@@ -5684,7 +5684,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "應用到所有剩餘錯誤"
+            "value" : "套用到所有剩餘錯誤"
           }
         }
       }
@@ -9654,7 +9654,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "重做, 重複, 再次, 重新應用"
+            "value" : "重做, 重複, 再次, 重新套用"
           }
         }
       }
@@ -17443,7 +17443,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "連接"
+            "value" : "連線"
           }
         }
       }
@@ -18527,13 +18527,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg 個項目"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg 個項目"
                     }
                   }
                 }
@@ -19449,13 +19449,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg 個項目"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg 個項目"
                     }
                   }
                 }
@@ -22442,13 +22442,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg 個項目"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg 個項目"
                     }
                   }
                 }
@@ -25407,7 +25407,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "填寫必填欄位以連接。"
+            "value" : "填寫必填欄位以連線。"
           }
         }
       }
@@ -28897,7 +28897,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "登錄失敗。請檢查使用者名稱和密碼。"
+            "value" : "登入失敗。請檢查使用者名稱和密碼。"
           }
         }
       }
@@ -36538,13 +36538,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg 個項目"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg 個項目"
                     }
                   }
                 }
@@ -44115,7 +44115,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法設定連接。"
+            "value" : "無法設定連線。"
           }
         }
       }
@@ -44764,7 +44764,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "舊的主機金鑰無法自動刪除。請從 %@ 中刪除它，然後再嘗試連接。"
+            "value" : "舊的主機金鑰無法自動刪除。請從 %@ 中刪除它，然後再嘗試連線。"
           }
         }
       }
@@ -46947,7 +46947,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "令牌：[N]名稱 [E]副檔名 [C]計數器 [Y] [M] [D]日期 [h] [n] [s]時間"
+            "value" : "代號：[N]名稱 [E]副檔名 [C]計數器 [Y] [M] [D]日期 [h] [n] [s]時間"
           }
         }
       }
@@ -47724,7 +47724,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "信任並連接"
+            "value" : "信任並連線"
           }
         }
       }
@@ -47783,7 +47783,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "信任新金鑰並連接"
+            "value" : "信任新金鑰並連線"
           }
         }
       }
