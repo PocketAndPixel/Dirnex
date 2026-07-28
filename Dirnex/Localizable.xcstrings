@@ -2525,13 +2525,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg項目"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg項目"
                     }
                   }
                 }
@@ -2766,13 +2766,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg項目"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg項目"
                     }
                   }
                 }
@@ -16559,13 +16559,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg項目"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg項目"
                     }
                   }
                 }
@@ -17387,13 +17387,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg項目"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg項目"
                     }
                   }
                 }
@@ -20076,13 +20076,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg項目"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg項目"
                     }
                   }
                 }
@@ -32793,13 +32793,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg項目"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg項目"
                     }
                   }
                 }
