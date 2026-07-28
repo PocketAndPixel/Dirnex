@@ -4268,7 +4268,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "已存在名為「%@」的儲存的搜尋。要替換嗎？"
+            "value" : "已存在名為「%@」的已儲存搜尋。要取代嗎？"
           }
         }
       }
@@ -4327,7 +4327,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "已存在名為「%@」的工作區。要用目前佈局替換它嗎？"
+            "value" : "已存在名為「%@」的工作區。要用目前佈局取代它嗎？"
           }
         }
       }
@@ -5212,7 +5212,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "封存檔中已存在同名項目。替換會重寫封存檔，且無法還原。"
+            "value" : "封存檔中已存在同名項目。取代會重寫封存檔，且無法還原。"
           }
         }
       }
@@ -7926,7 +7926,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法驗證「%@」的身份"
+            "value" : "無法驗證「%@」的身分"
           }
         }
       }
@@ -9294,7 +9294,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "剪貼板, 拷貝, 拷貝, 貼上板"
+            "value" : "剪貼板, 拷貝, 複製"
           }
         }
       }
@@ -9414,7 +9414,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "剪貼板, 貼上, 剪下, 貼上板"
+            "value" : "剪貼板, 貼上, 剪下"
           }
         }
       }
@@ -9534,7 +9534,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "剪貼板, 貼上, 剪下, 貼上板, 移動"
+            "value" : "剪貼板, 貼上, 剪下, 移動"
           }
         }
       }
@@ -12174,7 +12174,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "固定, 書簽, 喜好項目"
+            "value" : "固定, 書籤, 喜好項目"
           }
         }
       }
@@ -12654,7 +12654,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "喜好項目, 書簽, 固定, 跳轉"
+            "value" : "喜好項目, 書籤, 固定, 跳轉"
           }
         }
       }
@@ -13254,7 +13254,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "搜尋, 已存, 智慧型, 檔案夾, 書簽, 側邊欄"
+            "value" : "搜尋, 已儲存, 智慧型, 檔案夾, 書籤, 側邊欄"
           }
         }
       }
@@ -14154,7 +14154,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "聚焦側邊欄"
+            "value" : "將焦點移至側邊欄"
           }
         }
       }
@@ -14694,7 +14694,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "預覽, 快速查看, 全螢幕, 照片, 圖像, ctrl option q"
+            "value" : "預覽, 快速查看, 全螢幕, 照片, 影像, ctrl option q"
           }
         }
       }
@@ -27598,7 +27598,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iCloud雲碟"
+            "value" : "iCloud 雲碟"
           }
         }
       }
@@ -36162,7 +36162,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "替換"
+            "value" : "取代"
           }
         }
       }
@@ -36221,7 +36221,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "要替換「%2$@」中的「%1$@」嗎？"
+            "value" : "要取代「%2$@」中的「%1$@」嗎？"
           }
         }
       }
@@ -36280,7 +36280,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "替換「%@」？"
+            "value" : "取代「%@」？"
           }
         }
       }
@@ -36527,7 +36527,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在「%2$@」中替換 %#@items@？"
+            "value" : "要取代「%2$@」中的 %#@items@嗎？"
           },
           "substitutions" : {
             "items" : {
@@ -36608,7 +36608,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "較新則替換"
+            "value" : "較新則取代"
           }
         }
       }
@@ -36667,7 +36667,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在「%@」中替換現有封存檔？"
+            "value" : "要取代「%@」中的現有封存檔嗎？"
           }
         }
       }
@@ -36726,7 +36726,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "替換為："
+            "value" : "取代為："
           }
         }
       }
@@ -36785,7 +36785,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "替換文字"
+            "value" : "取代文字"
           }
         }
       }
@@ -38735,7 +38735,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "剪貼板, 路徑, 拷貝, 貼上板"
+            "value" : "剪貼板, 路徑, 拷貝, 複製"
           }
         }
       }
@@ -38855,7 +38855,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "圖像, 照片, 轉換, jpeg, jpg, heic"
+            "value" : "影像, 照片, 轉換, jpeg, jpg, heic"
           }
         }
       }
@@ -38915,7 +38915,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "將圖像轉換為 JPEG"
+            "value" : "將影像轉換為 JPEG"
           }
         }
       }
@@ -39095,7 +39095,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "圖像, 照片, 調整大小, 縮放, 縮略圖"
+            "value" : "影像, 照片, 調整大小, 縮放, 縮圖"
           }
         }
       }
@@ -39155,7 +39155,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "將圖像調整為 1200 px"
+            "value" : "將影像調整為 1200 px"
           }
         }
       }
@@ -40100,7 +40100,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "圖像"
+            "value" : "影像"
           }
         }
       }
@@ -40632,7 +40632,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "共享："
+            "value" : "共享檔案夾："
           }
         }
       }
@@ -41399,7 +41399,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iCloud雲碟"
+            "value" : "iCloud 雲碟"
           }
         }
       }
@@ -42107,7 +42107,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iCloud雲碟的部分內容需要「完全取用磁碟」權限"
+            "value" : "「iCloud 雲碟」的部分內容需要「完全取用磁碟」權限"
           }
         }
       }
@@ -42284,7 +42284,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "原始檔案夾中有一個同名檔案，所以它被留在垃圾桶中，而不是被替換。"
+            "value" : "原始檔案夾中有一個同名檔案，所以它被留在垃圾桶中，而不是被取代。"
           }
         }
       }
@@ -44587,7 +44587,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "「%@」的身份已變更"
+            "value" : "「%@」的身分已變更"
           }
         }
       }
@@ -44646,7 +44646,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iCloud 目前無法取用任何可提供此項目的設備。"
+            "value" : "iCloud 目前無法取用任何可提供此項目的裝置。"
           }
         }
       }
@@ -45885,7 +45885,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "系統報告了一個錯誤（代碼 %d）。"
+            "value" : "系統回報錯誤（錯誤碼 %d）。"
           }
         }
       }
@@ -46829,7 +46829,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此伺服器提供的主機 %@ 與你之前信任的不同。如果你重新安裝了伺服器，或將新的 SFTP App 指向此位址，這是正常情況；但也可能表示有人正在攔截連線（中間人攻擊）。\n\n新指紋：\n%@\n\n只有在你認得此指紋時才繼續。信任它會替換舊金鑰，以後即可連線到此伺服器。"
+            "value" : "此伺服器提供的主機 %@ 與你之前信任的不同。如果你重新安裝了伺服器，或將新的 SFTP App 指向此位址，這是正常情況；但也可能表示有人正在攔截連線（中間人攻擊）。\n\n新指紋：\n%@\n\n只有在你認得此指紋時才繼續。信任它會取代舊金鑰，以後即可連線到此伺服器。"
           }
         }
       }
@@ -47606,7 +47606,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "跟蹤 %@"
+            "value" : "正在追蹤 %@"
           }
         }
       }
@@ -50202,7 +50202,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法刪除連接根。"
+            "value" : "無法刪除連線根目錄。"
           }
         }
       }
@@ -50615,7 +50615,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "未連線到 %@。請重新連接伺服器。"
+            "value" : "未連線到 %@。請重新連線伺服器。"
           }
         }
       }
@@ -51499,7 +51499,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "你的自訂快速鍵將被 %@ 預設替換。你所有的變更將遺失。"
+            "value" : "你的自訂快速鍵將由 %@ 預設取代。你所有的變更將遺失。"
           }
         }
       }
@@ -51558,7 +51558,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "你在 iCloud雲碟中的檔案已列在上方。App 存放在那裡的檔案夾，例如 Pages、「預覽」和「捷徑」，在你允許 Dirnex 讀取之前由 macOS 保護。\n\n按一下「打開系統設定」，然後在「完全取用磁碟」中啟用 Dirnex。macOS 會要求重新啟動 Dirnex，讓新的取用權限生效。"
+            "value" : "你在「iCloud 雲碟」中的檔案已列在上方。App 存放在那裡的檔案夾，例如 Pages、「預覽」和「捷徑」，在你允許 Dirnex 讀取之前由 macOS 保護。\n\n按一下「打開系統設定」，然後在「完全取用磁碟」中啟用 Dirnex。macOS 會要求重新啟動 Dirnex，讓新的取用權限生效。"
           }
         }
       }
