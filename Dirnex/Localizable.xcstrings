@@ -15069,13 +15069,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "无法复制%lld项目"
+                  "value" : "无法拷贝 %lld 个项目"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "无法复制%lld项目"
+                  "value" : "无法拷贝 %lld 个项目"
                 }
               }
             }
@@ -21967,7 +21967,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iCloud无法提供此商品。"
+            "value" : "iCloud 无法提供此项目。"
           }
         }
       }
@@ -22014,7 +22014,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iCloud没有开始下载。请检查你的网络连接，然后重试。"
+            "value" : "iCloud 未开始下载。请检查你的网络连接，然后重试。"
           }
         }
       }
@@ -22383,13 +22383,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "它将从%lld文件中删除，Spotlight在任何地方都有索引。文件本身不会被删除。"
+                  "value" : "将在 Spotlight 已编入索引的位置，从 %lld 个文件中移除该标签。文件本身不会被删除。"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "它将从%lld文件中删除，Spotlight在任何地方都有索引。文件本身不会被删除。"
+                  "value" : "将在 Spotlight 已编入索引的位置，从 %lld 个文件中移除该标签。文件本身不会被删除。"
                 }
               }
             }
@@ -25448,7 +25448,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "只能编辑此 Mac 上的文件——先将其复制出来（F5）。"
+            "value" : "只能编辑此 Mac 上的文件——先将其拷贝出来（F5）。"
           }
         }
       }
@@ -27332,7 +27332,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "普通FTP将你的密码和文件发送时不加密。"
+            "value" : "普通 FTP 会以未加密方式发送你的密码和文件。"
           }
         }
       }
@@ -28461,7 +28461,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "从%lld文件的%lld中移除。%@\n\n标签保留在边栏中，因为文件仍然携带它。"
+            "value" : "已从 %lld/%lld 个文件中移除。%@\n\n标签保留在边栏中，因为仍有文件带有它。"
           }
         }
       }
@@ -29850,7 +29850,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "reveal需要一个POSIX路径，例如reveal \"\/Users\/me\"。"
+            "value" : "reveal 需要 POSIX 路径，例如 reveal \"\/Users\/me\"。"
           }
         }
       }
@@ -30367,7 +30367,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "运行从列表中选择的任何Dirnex命令或用户脚本。"
+            "value" : "运行从列表中选择的任意 Dirnex 命令或用户脚本。"
           }
         }
       }
@@ -32964,7 +32964,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "像Finder一样，在每个文件名称的右边缘显示每个文件的标签颜色。在“查看”菜单中也有。归档和远程卷没有标签，所以那里没有任何内容绘制。"
+            "value" : "像 Finder 一样，在每个文件名右侧显示标签颜色。也可在“显示”菜单中使用。压缩包和远程宗卷没有标签，因此不会显示任何内容。"
           }
         }
       }
@@ -35316,7 +35316,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "要执行的Dirnex命令或用户脚本。"
+            "value" : "要执行的 Dirnex 命令或用户脚本。"
           }
         }
       }
@@ -35551,7 +35551,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "FTP服务器报告了一个错误。"
+            "value" : "FTP 服务器报告了一个错误。"
           }
         }
       }
@@ -35645,7 +35645,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "该商品目前无法在任何设备上使用，iCloud无法访问。"
+            "value" : "iCloud 目前无法访问任何可提供此项目的设备。"
           }
         }
       }
@@ -35786,7 +35786,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "其他项目被重新命名为。"
+            "value" : "其他项目已重新命名。"
           }
         }
       }
@@ -35833,7 +35833,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "另一个面板不是一个你可以复制到中的文件夹。"
+            "value" : "另一个面板不是可拷贝到其中的文件夹。"
           }
         }
       }
@@ -36491,7 +36491,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "SFTP服务器报告了一个错误。"
+            "value" : "SFTP 服务器报告了一个错误。"
           }
         }
       }
@@ -36538,7 +36538,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "SFTP服务器停止响应。"
+            "value" : "SFTP 服务器停止响应。"
           }
         }
       }
@@ -36632,7 +36632,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "系统报告了一个错误（代码%d）。"
+            "value" : "系统报告了一个错误（代码 %d）。"
           }
         }
       }
@@ -36679,7 +36679,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“按内容比较”工具（⌥F3）打开两个文件夹。已安装：%@。自动选择其中仍然安装的第一个。"
+            "value" : "“按内容比较”工具（⌥F3）会打开两个文件。已安装：%@。自动选择其中仍安装的第一个。"
           }
         }
       }
@@ -36867,7 +36867,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "没有足够的iCloud存储空间来完成此操作。"
+            "value" : "没有足够的 iCloud 储存空间来完成此操作。"
           }
         }
       }
@@ -37149,7 +37149,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此项目存储在iCloud中。Dirnex在打开之前正在获取它。"
+            "value" : "此项目储存在 iCloud 中。Dirnex 正在获取它，然后再打开。"
           }
         }
       }
@@ -37384,7 +37384,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此服务器呈现的不同的主机%@与你之前信任的主机不同。如果你重新安装了服务器或将新的SFTP应用程序指向此地址，这是可以预期的——但这也可能意味着有人正在拦截连接（中间人攻击）。\n\n新指纹：\n\n%@\n\n只有在你识别到此指纹时才能继续。信任它将替换旧密钥，以便以后与此服务器的连接成功。"
+            "value" : "此服务器提供的主机 %@ 与你之前信任的不同。如果你重新安装了服务器，或将新的 SFTP App 指向此地址，这是正常情况；但也可能表示有人正在拦截连接（中间人攻击）。\n\n新指纹：\n%@\n\n只有在你认得此指纹时才继续。信任它会替换旧密钥，以后即可连接到此服务器。"
           }
         }
       }
@@ -38005,7 +38005,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "跟踪%@"
+            "value" : "跟踪 %@"
           }
         }
       }
@@ -39556,7 +39556,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无法运行bsdtar来创建压缩包。"
+            "value" : "无法运行 bsdtar 来创建压缩包。"
           }
         }
       }
@@ -39603,7 +39603,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无法运行bsdtar从压缩包中提取。"
+            "value" : "无法运行 bsdtar 从压缩包中提取。"
           }
         }
       }
@@ -39650,7 +39650,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无法运行bsdtar来打开压缩包。"
+            "value" : "无法运行 bsdtar 来打开压缩包。"
           }
         }
       }
@@ -39932,7 +39932,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此位置不支持复制文件。"
+            "value" : "此位置不支持拷贝文件。"
           }
         }
       }
@@ -40308,7 +40308,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "不支持在远程位置之间直接复制。"
+            "value" : "不支持在远程位置之间直接拷贝。"
           }
         }
       }
@@ -40496,7 +40496,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "只有本地文件才有Finder标签。"
+            "value" : "只有本地文件才有 Finder 标签。"
           }
         }
       }
