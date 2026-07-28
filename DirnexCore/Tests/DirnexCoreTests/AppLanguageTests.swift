@@ -27,8 +27,8 @@ struct AppLanguageTests {
     func endonymsAreNotEnglish() {
         // The whole point of an endonym is that a user stranded in an unreadable UI can still find
         // their language. Pinning Russian's spelling is what keeps a future "Russian" from creeping
-        // in as a well-meaning translation. German, Spanish, French, and Portuguese get the same
-        // protection.
+        // in as a well-meaning translation. German, Spanish, French, Portuguese, and Chinese get
+        // the same protection.
         let german = AppLanguages.language(for: "de")
         #expect(german?.endonym == "Deutsch")
         let spanish = AppLanguages.language(for: "es")
@@ -39,6 +39,8 @@ struct AppLanguageTests {
         #expect(portuguese?.endonym == "Português (Brasil)")
         let russian = AppLanguages.language(for: "ru")
         #expect(russian?.endonym == "Русский")
+        let chinese = AppLanguages.language(for: "zh-Hans")
+        #expect(chinese?.endonym == "简体中文")
     }
 
     @Test("lookup by code is case-insensitive and rejects unshipped languages")
@@ -57,6 +59,7 @@ struct AppLanguageTests {
         #expect(AppLanguages.bestMatch(forPreferred: ["es-MX"]).code == "es")
         #expect(AppLanguages.bestMatch(forPreferred: ["fr-CA"]).code == "fr")
         #expect(AppLanguages.bestMatch(forPreferred: ["pt-BR"]).code == "pt-BR")
+        #expect(AppLanguages.bestMatch(forPreferred: ["zh-CN"]).code == "zh-Hans")
         #expect(AppLanguages.bestMatch(forPreferred: ["en-GB"]).code == "en")
     }
 
@@ -73,9 +76,8 @@ struct AppLanguageTests {
 
     @Test("a script-tagged language falls back through its primary subtag")
     func scriptTagFallsBackToPrimarySubtag() {
-        // Not reachable today (no zh is shipped yet), so exercise the rule against the languages
-        // that are: a made-up script subtag on Russian must still land on Russian rather than
-        // dropping all the way to English.
+        #expect(AppLanguages.bestMatch(forPreferred: ["zh-Hans-CN"]).code == "zh-Hans")
+        #expect(AppLanguages.bestMatch(forPreferred: ["zh-Hant-TW"]).code == "zh-Hans")
         #expect(AppLanguages.bestMatch(forPreferred: ["ru-Cyrl-RU"]).code == "ru")
         #expect(AppLanguages.bestMatch(forPreferred: ["ru-Latn"]).code == "ru")
     }

@@ -39,6 +39,12 @@
             "state" : "translated",
             "value" : "${applicationName} copiar seleção"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName} 拷贝所选项目"
+          }
         }
       }
     },
@@ -79,6 +85,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copiar a seleção no ${applicationName}"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 ${applicationName} 中拷贝所选项目"
           }
         }
       }

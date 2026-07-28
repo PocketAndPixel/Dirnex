@@ -152,6 +152,7 @@
 				fr,
 				pt-BR,
 				ru,
+				zh-Hans,
 			);
 			mainGroup = 1000000000000000000000A2;
 			minimizedProjectReferenceProxies = 1;

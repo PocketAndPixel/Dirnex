@@ -58,7 +58,8 @@ public enum AppLanguages {
         AppLanguage(code: "es", endonym: "Español"),
         AppLanguage(code: "fr", endonym: "Français"),
         AppLanguage(code: "pt-BR", endonym: "Português (Brasil)"),
-        AppLanguage(code: "ru", endonym: "Русский")
+        AppLanguage(code: "ru", endonym: "Русский"),
+        AppLanguage(code: "zh-Hans", endonym: "简体中文")
     ]
 
     /// The shipped language with `code`, matched case-insensitively, or `nil` when we don't ship it.

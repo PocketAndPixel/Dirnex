@@ -592,6 +592,14 @@ whenever it is picked back up.
   `macOS`, `Git`, `Zip`, `7-Zip`) and used natural Brazilian Portuguese for app UI (`Ajustes`,
   `Lixo`, `arquivo`, `pasta`, `etiqueta`) while preserving the same casing pattern as the existing
   languages. The function bar keeps whole Portuguese verbs.
+- **Slice 5 landed (2026-07-28): Simplified Chinese.** `zh-Hans` / `简体中文` is a shipped language,
+  listed in Settings and matched from Simplified Chinese regional tags such as `zh-CN`; Traditional
+  Chinese regional tags fall through the primary `zh` match to this bundle instead of English. Its
+  complete `Localizable` column (803 entries, including every plural variant) and both App Shortcut
+  phrases are present in the catalog and compiled into `zh-Hans.lproj`. A manual macOS-style pass
+  kept product names unchanged (`Dirnex`, `Finder`, `iCloud Drive`, `Git`, `Zip`, `7-Zip`) and used
+  platform wording such as `设置`, `废纸篓`, `完全磁盘访问权限`, `快速查看`, `边栏`, `宗卷`, `标签`,
+  `拷贝`, `移动`, and `重新命名`. The function bar keeps whole Chinese command verbs.
 
 **Standing rule for the function bar, in every language.** The seven F-key captions are the app's
 primary buttons and are on screen permanently, so they carry the first impression of the whole app:
