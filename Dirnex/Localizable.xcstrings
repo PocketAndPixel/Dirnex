@@ -1021,7 +1021,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "tecla %@"
+            "value" : "chave %@"
           }
         }
       }
@@ -1342,20 +1342,16 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld commit to pull"
+                  "value" : "%lld commit para baixar"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld commits to pull"
+                  "value" : "%lld commits para baixar"
                 }
               }
             }
-          },
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld commits para baixar"
           }
         }
       }
@@ -1471,20 +1467,16 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld commit to push"
+                  "value" : "%lld commit para enviar"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld commits to push"
+                  "value" : "%lld commits para enviar"
                 }
               }
             }
-          },
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld commits para enviar"
           }
         }
       }
@@ -1600,20 +1592,16 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld conflict skipped"
+                  "value" : "%lld conflito ignorado"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld conflicts skipped"
+                  "value" : "%lld conflitos ignorados"
                 }
               }
             }
-          },
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld conflitos ignorados"
           }
         }
       }
@@ -1735,14 +1723,10 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld items"
+                  "value" : "%lld itens"
                 }
               }
             }
-          },
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld itens"
           }
         }
       }
@@ -1858,20 +1842,16 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld item is already back"
+                  "value" : "%lld item já foi colocado de volta"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld items are already back"
+                  "value" : "%lld itens já foram colocados de volta"
                 }
               }
             }
-          },
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld itens já foram colocados de volta"
           }
         }
       }
@@ -2357,20 +2337,16 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld item overwrote existing files and can’t be restored."
+                  "value" : "%lld item substituiu arquivos existentes e não pode ser restaurado."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld items overwrote existing files and can’t be restored."
+                  "value" : "%lld itens substituíram arquivos existentes e não podem ser restaurados."
                 }
               }
             }
-          },
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld itens substituíram arquivos existentes e não podem ser restaurados."
           }
         }
       }
@@ -2486,20 +2462,16 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld name conflict"
+                  "value" : "%lld conflito de nome"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld name conflicts"
+                  "value" : "%lld conflitos de nome"
                 }
               }
             }
-          },
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld conflitos de nome"
           }
         }
       }
@@ -2739,20 +2711,16 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld script no longer runs from its function key"
+                  "value" : "%lld script não é mais executado por sua tecla de função"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld scripts no longer run from their function keys"
+                  "value" : "%lld scripts não são mais executados por suas teclas de função"
                 }
               }
             }
-          },
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld scripts não são mais executados por suas teclas de função"
           }
         }
       }
@@ -13193,20 +13161,16 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Couldn’t copy %lld item"
+                  "value" : "Não foi possível copiar %lld item"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Couldn’t copy %lld items"
+                  "value" : "Não foi possível copiar %lld itens"
                 }
               }
             }
-          },
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Não foi possível copiar %lld itens"
           }
         }
       }
@@ -13404,20 +13368,16 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Couldn’t delete %lld item"
+                  "value" : "Não foi possível apagar %lld item"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Couldn’t delete %lld items"
+                  "value" : "Não foi possível apagar %lld itens"
                 }
               }
             }
-          },
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Não foi possível apagar %lld itens"
           }
         }
       }
@@ -13841,20 +13801,16 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Couldn’t erase %lld item"
+                  "value" : "Não foi possível apagar %lld item"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Couldn’t erase %lld items"
+                  "value" : "Não foi possível apagar %lld itens"
                 }
               }
             }
-          },
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Não foi possível apagar %lld itens"
           }
         }
       }
@@ -14298,20 +14254,16 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Couldn’t move %lld item"
+                  "value" : "Não foi possível mover %lld item"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Couldn’t move %lld items"
+                  "value" : "Não foi possível mover %lld itens"
                 }
               }
             }
-          },
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Não foi possível mover %lld itens"
           }
         }
       }
@@ -14427,20 +14379,16 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Couldn’t move %lld item to the Trash"
+                  "value" : "Não foi possível mover %lld item para o Lixo"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Couldn’t move %lld items to the Trash"
+                  "value" : "Não foi possível mover %lld itens para o Lixo"
                 }
               }
             }
-          },
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Não foi possível mover %lld itens para o Lixo"
           }
         }
       }
@@ -14761,20 +14709,16 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Couldn’t put %lld item back"
+                  "value" : "Não foi possível colocar %lld item de volta"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Couldn’t put %lld items back"
+                  "value" : "Não foi possível colocar %lld itens de volta"
                 }
               }
             }
-          },
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Não foi possível colocar %lld itens de volta"
           }
         }
       }
@@ -14972,20 +14916,16 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Couldn’t rename %lld item"
+                  "value" : "Não foi possível renomear %lld item"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Couldn’t rename %lld items"
+                  "value" : "Não foi possível renomear %lld itens"
                 }
               }
             }
-          },
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Não foi possível renomear %lld itens"
           }
         }
       }
@@ -15819,20 +15759,16 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Delete %lld item permanently?"
+                  "value" : "Apagar %lld item permanentemente?"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Delete %lld items permanently?"
+                  "value" : "Apagar %lld itens permanentemente?"
                 }
               }
             }
-          },
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Apagar %lld itens permanentemente?"
           }
         }
       }
@@ -16604,20 +16540,16 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Don’t know where %lld item came from"
+                  "value" : "Não foi possível saber de onde veio %lld item"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Don’t know where %lld items came from"
+                  "value" : "Não foi possível saber de onde vieram %lld itens"
                 }
               }
             }
-          },
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Não sei de onde %lld itens vieram"
           }
         }
       }
@@ -19611,20 +19543,16 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "It will be removed from %lld file, everywhere Spotlight has indexed. The files themselves aren’t deleted."
+                  "value" : "Ela será removida de %lld arquivo, em todos os locais indexados pelo Spotlight. O arquivo em si não será apagado."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "It will be removed from %lld files, everywhere Spotlight has indexed. The files themselves aren’t deleted."
+                  "value" : "Ela será removida de %lld arquivos, em todos os locais indexados pelo Spotlight. Os arquivos em si não serão apagados."
                 }
               }
             }
-          },
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ela será removida de %lld arquivos, em todos os lugares indexados pelo Spotlight. Os arquivos em si não serão apagados."
           }
         }
       }
@@ -19829,7 +19757,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "tecla"
+            "value" : "chave"
           }
         }
       }
@@ -20723,20 +20651,16 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Move %lld item to the Trash?"
+                  "value" : "Mover %lld item para o Lixo?"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Move %lld items to the Trash?"
+                  "value" : "Mover %lld itens para o Lixo?"
                 }
               }
             }
-          },
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mover %lld itens para o Lixo?"
           }
         }
       }
@@ -23230,20 +23154,16 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Pack %lld item"
+                  "value" : "Compactar %lld item"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Pack %lld items"
+                  "value" : "Compactar %lld itens"
                 }
               }
             }
-          },
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Compactar %lld itens"
           }
         }
       }
@@ -23810,20 +23730,16 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Permanently erase %lld item from the Trash?"
+                  "value" : "Apagar permanentemente %lld item do Lixo?"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Permanently erase %lld items from the Trash?"
+                  "value" : "Apagar permanentemente %lld itens do Lixo?"
                 }
               }
             }
-          },
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Apagar permanentemente %lld itens do Lixo?"
           }
         }
       }
@@ -24267,20 +24183,16 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Put %lld item back?"
+                  "value" : "Colocar %lld item de volta?"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Put %lld items back?"
+                  "value" : "Colocar %lld itens de volta?"
                 }
               }
             }
-          },
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Colocar %lld itens de volta?"
           }
         }
       }
@@ -25092,20 +25004,16 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Rename %lld Item"
+                  "value" : "Renomear %lld Item"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Rename %lld Items"
+                  "value" : "Renomear %lld Itens"
                 }
               }
             }
-          },
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Renomear %lld Itens"
           }
         }
       }
@@ -30050,20 +29958,16 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Synchronizing will move %lld item to the Trash."
+                  "value" : "A sincronização moverá %lld item para o Lixo."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Synchronizing will move %lld items to the Trash."
+                  "value" : "A sincronização moverá %lld itens para o Lixo."
                 }
               }
             }
-          },
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A sincronização moverá %lld itens para o Lixo."
           }
         }
       }
@@ -32728,7 +32632,7 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Este servidor está apresentando um host %@ diferente daquele em que você confiou antes. Se você reinstalou o servidor ou apontou um novo app SFTP para este endereço, isso é esperado — mas também pode significar que alguém está interceptando a conexão (ataque man-in-the-middle).\n\nNova impressão digital:\n%@\n\nContinue somente se reconhecer esta impressão digital. Confiar nela substitui a chave antiga para que futuras conexões com este servidor funcionem."
+            "value" : "Este servidor está apresentando uma %@ de host diferente daquela em que você confiou antes. Se você reinstalou o servidor ou apontou um novo app SFTP para este endereço, isso é esperado — mas também pode significar que alguém está interceptando a conexão (ataque man-in-the-middle).\n\nNova impressão digital:\n%@\n\nContinue somente se reconhecer esta impressão digital. Confiar nela substitui a chave antiga para que futuras conexões com este servidor funcionem."
           }
         }
       }
