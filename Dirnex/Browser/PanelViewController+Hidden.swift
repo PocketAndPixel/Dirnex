@@ -4,8 +4,8 @@ import DirnexCore
 /// Show/hide hidden (dot) files. Unlike sort or filter, this is a single app-wide toggle
 /// (`AppPreferences.showHidden`), not a per-tab one — flipping it re-filters *every* pane and
 /// tab at once (PLAN.md §M3 "Settings ▸ Panels"). The pane only observes the shared value and
-/// re-renders; the toggle itself lives on `AppPreferences` so the header button, the ⇧⌘.
-/// command, and the Settings toggle all funnel through the same state.
+/// re-renders; the toggle itself lives on `AppPreferences` so the ⇧⌘. command and the Settings
+/// toggle both funnel through the same state.
 extension PanelViewController {
     /// Subscribe to `showHiddenDidChange` so this pane re-filters live when any surface flips
     /// the app-wide toggle. Called once from `viewDidLoad`; the observer is torn down by the
@@ -19,7 +19,7 @@ extension PanelViewController {
         )
     }
 
-    /// ⇧⌘. / View ▸ Show Hidden Files / the header eye button — flip the one app-wide value.
+    /// ⇧⌘. / View ▸ Show Hidden Files — flip the one app-wide value.
     /// The actual re-filter happens in every pane via the notification, including this one, so
     /// the two panes and all their tabs stay in lockstep.
     @objc func toggleShowHidden(_ sender: Any?) {
