@@ -403,7 +403,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@”はすでに戻っています"
+            "value" : "“%@”はすでに元の場所に戻っています"
           }
         },
         "ru" : {
@@ -721,7 +721,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@”はファンクションキーから実行されなくなりました"
+            "value" : "“%@”はこのファンクションキーから実行されなくなりました"
           }
         },
         "ru" : {
@@ -2316,13 +2316,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld項目はすでに戻っています"
+                  "value" : "%lld項目はすでに元の場所に戻っています"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld項目はすでに戻っています"
+                  "value" : "%lld項目はすでに元の場所に戻っています"
                 }
               }
             }
@@ -3604,7 +3604,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "• %@ — %@は現在%@を実行します。"
+            "value" : "• %@ - %@では現在%@が実行されます。"
           }
         },
         "ru" : {
@@ -6201,7 +6201,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnexのアクティブなパネルをファイルまたはフォルダへ移動し、Finderの“表示”のように選択します。"
+            "value" : "Dirnexのアクティブなパネルでファイルまたはフォルダの場所を表示し、Finderの“Finderに表示”のように選択します。"
           }
         },
         "ru" : {
@@ -11248,7 +11248,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "パス, アドレス, 入力, url, 移動, フリーセンシー, あいまい, 最近"
+            "value" : "パス, アドレス, 入力, URL, 移動, 使用頻度, あいまい検索, 最近"
           }
         },
         "ru" : {
@@ -31633,7 +31633,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@のやり直しは問題ありで完了しました"
+            "value" : "%@のやり直しは完了しましたが、問題がありました"
           }
         },
         "ru" : {
@@ -43188,7 +43188,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@の取り消しは問題ありで完了しました"
+            "value" : "%@の取り消しは完了しましたが、問題がありました"
           }
         },
         "ru" : {
