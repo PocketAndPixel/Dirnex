@@ -2641,6 +2641,18 @@
         "pl" : {
           "variations" : {
             "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld commity do pobrania"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld commitów do pobrania"
+                }
+              },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -2892,6 +2904,18 @@
         "pl" : {
           "variations" : {
             "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld commity do wypchnięcia"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld commitów do wypchnięcia"
+                }
+              },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -3143,6 +3167,18 @@
         "pl" : {
           "variations" : {
             "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Pominięto %lld konflikty"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Pominięto %lld konfliktów"
+                }
+              },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -3645,16 +3681,28 @@
         "pl" : {
           "variations" : {
             "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld rzeczy zostały już odłożone"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld rzeczy zostało już odłożonych"
+                }
+              },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld rzecz już jest z powrotem"
+                  "value" : "%lld rzecz została już odłożona"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld rzeczy już jest z powrotem"
+                  "value" : "%lld rzeczy zostało już odłożonych"
                 }
               }
             }
@@ -4658,6 +4706,18 @@
         "pl" : {
           "variations" : {
             "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld rzeczy zastąpiły istniejące pliki i nie można ich przywrócić."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld rzeczy zastąpiło istniejące pliki i nie można ich przywrócić."
+                }
+              },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -4909,6 +4969,18 @@
         "pl" : {
           "variations" : {
             "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld konflikty nazw"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld konfliktów nazw"
+                }
+              },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -5410,6 +5482,18 @@
         "pl" : {
           "variations" : {
             "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld skrypty nie uruchamiają się już klawiszami funkcyjnymi"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld skryptów nie uruchamia się już klawiszami funkcyjnymi"
+                }
+              },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -11790,7 +11874,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wybierz program"
+            "value" : "Wybierz aplikację"
           }
         },
         "ru" : {
@@ -15818,7 +15902,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Otwórz w programie"
+            "value" : "Otwórz w aplikacji"
           }
         },
         "ru" : {
@@ -26433,7 +26517,7 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Nie można skopiować %lld rzeczy"
+                  "value" : "Nie można skopiować %lld rzecz"
                 }
               },
               "other" : {
@@ -26850,7 +26934,7 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Nie można usunąć %lld rzeczy"
+                  "value" : "Nie można usunąć %lld rzecz"
                 }
               },
               "other" : {
@@ -27731,7 +27815,7 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Nie można wymazać %lld rzeczy"
+                  "value" : "Nie można wymazać %lld rzecz"
                 }
               },
               "other" : {
@@ -28646,7 +28730,7 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Nie można przenieść %lld rzeczy"
+                  "value" : "Nie można przenieść %lld rzecz"
                 }
               },
               "other" : {
@@ -28897,7 +28981,7 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Nie można przenieść %lld rzeczy do Kosza"
+                  "value" : "Nie można przenieść %lld rzecz do Kosza"
                 }
               },
               "other" : {
@@ -29563,7 +29647,7 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Nie można odłożyć %lld rzeczy"
+                  "value" : "Nie można odłożyć %lld rzecz"
                 }
               },
               "other" : {
@@ -33267,6 +33351,18 @@
         "pl" : {
           "variations" : {
             "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Nie wiadomo, skąd pochodzą %lld rzeczy"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Nie wiadomo, skąd pochodzi %lld rzeczy"
+                }
+              },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -40901,7 +40997,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS nie zgłasza żadnej aplikacji dla zwykłego tekstu. Wybierz ją w Ustawienia ▸ Operacje."
+            "value" : "macOS nie zgłasza żadnej aplikacji dla zwykłego tekstu. Wybierz ją w Ustawieniach ▸ Operacje."
           }
         },
         "ru" : {
@@ -43476,7 +43572,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Brak programów"
+            "value" : "Brak aplikacji"
           }
         },
         "ru" : {
@@ -45468,7 +45564,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Otwórz w programie"
+            "value" : "Otwórz w aplikacji"
           }
         },
         "ru" : {
@@ -50300,6 +50396,18 @@
         "pl" : {
           "variations" : {
             "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Zmień nazwy %lld rzeczy"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Zmień nazwy %lld rzeczy"
+                }
+              },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -64046,7 +64154,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Certyfikat serwera nie został zaufany, więc połączenie anulowano."
+            "value" : "Certyfikatowi serwera nie zaufano, więc połączenie anulowano."
           }
         },
         "ru" : {
@@ -64544,7 +64652,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Narzędzie Porównaj zawartość (⌥F3) otwiera dwa pliki w wybranym programie. Zainstalowane: %@. Automatycznie wybiera pierwszy nadal zainstalowany."
+            "value" : "Narzędzie Porównaj zawartość (⌥F3) otwiera dwa pliki w wybranej aplikacji. Zainstalowane: %@. Automatycznie wybiera pierwszą nadal zainstalowaną."
           }
         },
         "ru" : {
@@ -65789,7 +65897,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ten serwer przedstawia inny %@ hosta niż ten, któremu wcześniej zaufano. Jeśli serwer został zainstalowany ponownie albo pod tym adresem działa nowa aplikacja SFTP, to jest oczekiwane — ale może też oznaczać, że ktoś przechwytuje połączenie (atak man-in-the-middle).\n\nNowy odcisk:\n%@\n\nKontynuuj tylko wtedy, gdy rozpoznajesz ten odcisk. Zaufanie mu zastąpi stary klucz, aby przyszłe połączenia z tym serwerem działały."
+            "value" : "Ten serwer przedstawia inny %@ niż ten, któremu wcześniej zaufano. Jeśli serwer został zainstalowany ponownie albo pod tym adresem działa nowa aplikacja SFTP, jest to oczekiwane — ale może też oznaczać, że ktoś przechwytuje połączenie (atak man-in-the-middle).\n\nNowy odcisk:\n%@\n\nKontynuuj tylko wtedy, gdy rozpoznajesz ten odcisk. Zaufanie mu zastąpi stary klucz, aby przyszłe połączenia z tym serwerem działały."
           }
         },
         "ru" : {
@@ -65872,7 +65980,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Przełącz pasek boczny"
+            "value" : "Pokaż/ukryj pasek boczny"
           }
         },
         "ru" : {
