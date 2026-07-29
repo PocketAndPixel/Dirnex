@@ -16,13 +16,20 @@ struct OpenWithLauncherTests {
         // The trap this pins: `localizedName` and `FileManager.displayName` both answer
         // "TextEdit.app" whenever the user has Finder's hide-extensions off, so a menu built from
         // either reads ".app" down the whole list. The bundle's own name never carries it.
-        let reference = OpenWithLauncher.reference(
-            to: URL(fileURLWithPath: "/System/Applications/TextEdit.app")
-        )
-        #expect(reference.displayName == "TextEdit")
+        let url = URL(fileURLWithPath: "/System/Applications/TextEdit.app")
+        let reference = OpenWithLauncher.reference(to: url)
+        #expect(!reference.displayName.isEmpty)
         #expect(!reference.displayName.hasSuffix(".app"))
         #expect(reference.bundleIdentifier == "com.apple.TextEdit")
         #expect(reference.bundlePath == "/System/Applications/TextEdit.app")
+        // The name is the *localized* one, and the test target inherits whatever `AppleLanguages`
+        // Dirnex is pinned to (docs/NOTES.md) — Apple ships TextEdit as «Мініредактор» in
+        // Ukrainian. So pin the English literal under exactly the condition that makes it the
+        // right answer: the bundle resolving to its English localization.
+        let isEnglish = Bundle(url: url)?.preferredLocalizations.first?.hasPrefix("en") == true
+        if isEnglish {
+            #expect(reference.displayName == "TextEdit")
+        }
     }
 
     @Test("a bundle with no Info.plist name falls back to its filename without the extension")

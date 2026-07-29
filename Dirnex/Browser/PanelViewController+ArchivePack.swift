@@ -64,11 +64,12 @@ extension PanelViewController {
         alert.accessoryView = accessory.view
         alert.window.initialFirstResponder = accessory.nameField
 
+        // `accessory` is captured (and so kept alive) by this closure for the sheet's lifetime,
+        // which is what keeps the format popup's target — the accessory itself — from being
+        // deallocated under it: `NSControl.target` is weak.
         let apply: (NSApplication.ModalResponse) -> Void = { [weak self] response in
             guard response == .alertFirstButtonReturn else { return }
-            let format = ArchivePacking.Format.allCases[
-                max(0, accessory.formatPopup.indexOfSelectedItem)
-            ]
+            let format = accessory.format
             let name = ArchivePacking.archiveFileName(
                 baseName: accessory.nameField.stringValue,
                 format: format
@@ -76,6 +77,8 @@ extension PanelViewController {
             self?.confirmAndPack(
                 sources: sources,
                 archiveName: name,
+                format: format,
+                level: accessory.level,
                 destinationPane: destinationPane
             )
         }
@@ -87,49 +90,57 @@ extension PanelViewController {
         }
     }
 
-    /// The pack sheet's accessory controls the completion handler reads back — a name field over a
-    /// format popup. Boxed in a struct rather than a tuple to stay within SwiftLint's limits.
-    private struct PackAccessory {
-        let view: NSView
-        let nameField: NSTextField
-        let formatPopup: NSPopUpButton
-    }
-
-    /// Build the sheet's accessory: a name field over a format popup. The label column is sized to
-    /// the wider of the two localized captions rather than a fixed width — the 48 pt that "Name:" /
-    /// "Format:" fit in English clipped Russian "Формат:", and a translation's fit is a live concern.
+    /// Build the sheet's accessory: a name field over a format popup over a compression popup. The
+    /// label column is sized to the widest of the three localized captions rather than a fixed
+    /// width — the 48 pt that "Name:" / "Format:" fit in English clipped Russian "Формат:", and a
+    /// translation's fit is a live concern.
+    ///
+    /// Rows are laid out bottom-up on a 30 pt pitch: compression at y = 0, format at 30, name at
+    /// 60, each label centred on its control.
     private func makePackAccessory(baseName: String) -> PackAccessory {
         let width: CGFloat = 340
-        let nameLabel = packLabel(String(localized: "Name:"), y: 32)
-        let formatLabel = packLabel(String(localized: "Format:"), y: 4)
-        let labelWidth = ceil(max(
-            nameLabel.intrinsicContentSize.width,
-            formatLabel.intrinsicContentSize.width
-        ))
+        let nameLabel = packLabel(String(localized: "Name:"), y: 62)
+        let formatLabel = packLabel(String(localized: "Format:"), y: 34)
+        let levelLabel = packLabel(String(localized: "Compression:"), y: 4)
+        let labels = [nameLabel, formatLabel, levelLabel]
+        let labelWidth = ceil(labels.map(\.intrinsicContentSize.width).reduce(0, max))
         let fieldX = labelWidth + 8
-        for label in [nameLabel, formatLabel] {
+        for label in labels {
             label.frame = NSRect(x: 0, y: label.frame.minY, width: labelWidth, height: 18)
         }
 
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: width, height: 56))
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: width, height: 86))
 
-        let field = NSTextField(frame: NSRect(x: fieldX, y: 30, width: width - fieldX, height: 24))
+        let field = NSTextField(frame: NSRect(x: fieldX, y: 60, width: width - fieldX, height: 24))
         field.stringValue = baseName
         field.placeholderString = String(localized: "Archive name")
 
-        let popup = NSPopUpButton(frame: NSRect(x: fieldX, y: 0, width: 220, height: 26))
+        // Both popups draw through the catalog, not through `displayName`: the core's English is
+        // data here, and a literal at a variable-driven call site would extract nothing.
+        let formatPopup = NSPopUpButton(frame: NSRect(x: fieldX, y: 30, width: 220, height: 26))
         for format in ArchivePacking.Format.allCases {
-            // Through the catalog, not `format.displayName`: the core's English is data here, and a
-            // literal at this variable-driven call site would extract nothing (`LocalizationKey`).
-            popup.addItem(withTitle: LocalizedCatalog.title(for: format))
+            formatPopup.addItem(withTitle: LocalizedCatalog.title(for: format))
         }
-        popup.selectItem(at: 0)
+        formatPopup.selectItem(at: 0)
 
-        container.addSubview(nameLabel)
-        container.addSubview(field)
-        container.addSubview(formatLabel)
-        container.addSubview(popup)
-        return PackAccessory(view: container, nameField: field, formatPopup: popup)
+        let levelPopup = NSPopUpButton(frame: NSRect(x: fieldX, y: 0, width: 220, height: 26))
+        for level in ArchivePacking.CompressionLevel.allCases {
+            levelPopup.addItem(withTitle: LocalizedCatalog.title(for: level))
+        }
+        levelPopup.selectItem(
+            at: ArchivePacking.CompressionLevel.allCases.firstIndex(of: .normal) ?? 0
+        )
+
+        for subview in labels + [field, formatPopup, levelPopup] {
+            container.addSubview(subview)
+        }
+        return PackAccessory(
+            view: container,
+            nameField: field,
+            formatPopup: formatPopup,
+            levelPopup: levelPopup,
+            levelLabel: levelLabel
+        )
     }
 
     private func packLabel(_ text: String, y: CGFloat) -> NSTextField {
@@ -146,6 +157,8 @@ extension PanelViewController {
     private func confirmAndPack(
         sources: [FileEntry],
         archiveName: String,
+        format: ArchivePacking.Format,
+        level: ArchivePacking.CompressionLevel,
         destinationPane: PanelViewController
     ) {
         let target = destinationPane.panel.path.appending(archiveName)
@@ -160,7 +173,13 @@ extension PanelViewController {
             alert.addButton(withTitle: String(localized: "Cancel"))
             let proceed: (NSApplication.ModalResponse) -> Void = { [weak self] response in
                 guard response == .alertFirstButtonReturn else { return }
-                self?.runPack(sources: sources, target: target, destinationPane: destinationPane)
+                self?.runPack(
+                    sources: sources,
+                    target: target,
+                    format: format,
+                    level: level,
+                    destinationPane: destinationPane
+                )
             }
             if let window = view.window {
                 alert.beginSheetModal(for: window, completionHandler: proceed)
@@ -169,7 +188,13 @@ extension PanelViewController {
             }
             return
         }
-        runPack(sources: sources, target: target, destinationPane: destinationPane)
+        runPack(
+            sources: sources,
+            target: target,
+            format: format,
+            level: level,
+            destinationPane: destinationPane
+        )
     }
 
     /// Spawn `bsdtar` off-main to create the archive, then re-list the destination pane with the
@@ -177,6 +202,8 @@ extension PanelViewController {
     private func runPack(
         sources: [FileEntry],
         target: VFSPath,
+        format: ArchivePacking.Format,
+        level: ArchivePacking.CompressionLevel,
         destinationPane: PanelViewController
     ) {
         let sourceNames = sources.map(\.name)
@@ -188,7 +215,9 @@ extension PanelViewController {
                     try ArchivePacker.pack(
                         sourceNames: sourceNames,
                         inDirectory: sourceDirectory,
-                        toArchiveAt: archivePath
+                        toArchiveAt: archivePath,
+                        format: format,
+                        level: level
                     )
                 }.value
                 destinationPane.refreshCurrentDirectory(selecting: target)

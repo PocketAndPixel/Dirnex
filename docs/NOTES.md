@@ -464,8 +464,8 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   reads as a cramped app rather than as a considered one, and a trailing period reads as a
   truncation bug. The rule, with its rationale, lives in the `comment` of every
   `functionBar.*.label` entry — a translator reads the catalog, not this file — and is restated in
-  PLAN.md §M12. Russian is the worked example: `Переименовать · Просмотр · Править · Копировать ·
-  Переместить · Новая папка · Удалить`.
+  [HISTORY.md](HISTORY.md) §M12. Russian is the worked example: `Переименовать · Просмотр ·
+  Править · Копировать · Переместить · Новая папка · Удалить`.
 - **A String Catalog key with no value for the *source* language compiles to the key itself.**
   Not to "absent" — `xcstringstool` writes `functionBar.file.copy.shortLabel` as its own value into
   `en.lproj`, so a lookup succeeds and puts a dotted key on screen. An entry translated for `ru` and
@@ -519,6 +519,23 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   segmented controls) and the cheapest to prevent: give such a label the same width constraint the
   fields get, and measure the layout's reserved height with it *visible* so the second line is
   already accounted for. As with the other two, only the live Russian run showed it.
+- **When a control's width is fixed by what it lines up with, the text has to leave — put a glyph in
+  it and the words in the tooltip.** The Shortcuts tab's recorder pill is 148 pt because it forms a
+  column with the shortcuts themselves (`⌥F5`, `⌘⇧N`), so none of the three fixes above applies:
+  there is nothing to widen, nothing to compress, and the placeholder is the *only* thing in the
+  pill. Measured in the pill's own font, "Add Shortcut" is 89 pt and its translations reach 215 pt
+  (uk, de) and **252 pt** (it) — 7 of the 14 shipped languages over budget, and "Type shortcut…"
+  another 5 — and because the label was merely centred with no width constraint it *overran* on both
+  sides rather than truncating, so the words spilled outside the rounded rect. A `plus` symbol
+  (recording: `keyboard`) fits every language by construction, and the tooltip has no width to
+  overrun: the existing keys were reused, so all 14 translations carried over unchanged and their
+  fuller phrasing ("Додати клавіатурне скорочення") now reads as an improvement rather than a
+  clipped label. Set the same string as the accessibility label — a glyph-only pill is otherwise
+  silent to VoiceOver. The general rule: prose belongs where its length is free; a fixed-width
+  control is not that place, whatever the English happens to measure.
+  - The one thing a glyph cannot say is *which* state you are in, so the two placeholder states must
+    stay visually distinct without words — here the accent ring and tint already carried recording,
+    and the glyph change is a second, redundant signal rather than the only one.
 - **Resizing a window for a probe: `defaults write "NSWindow Frame <autosave>"` then relaunch.**
   `System Events` needs assistive access that `osascript` does not have (`-1719`), Dirnex's `.sdef`
   exposes no windows (`-1728`), and a synthetic corner drag misses the resize edge. The frame
@@ -529,6 +546,15 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   Panel"` when what it meant was "the Shortcuts entity draws its name from the registry". Assert
   against `LocalizedCatalog`, not against literals, and the suite passes in either language (both
   were run to prove it).
+  - **It bites for a *system* framework's strings too, not just our own.**
+    `OpenWithLauncherTests` asserted `"TextEdit"` and, under a Ukrainian pin, read
+    «Мініредактор» — Apple localizes that app's `CFBundleDisplayName`, in `uk` but **not** in `en`
+    or `ru`, so the literal held through every earlier language check and failed on the first
+    Ukrainian run. There is no catalog of ours to assert against, so the shape that works is to
+    guard the literal by the condition that makes it true —
+    `Bundle(url:)?.preferredLocalizations.first?.hasPrefix("en")` — and keep the
+    language-independent claims (no `.app` suffix, the bundle id) unconditional. Those are the
+    claims the test existed for anyway; the app name was the incidental part.
 - **Endonyms are data, not strings.** The language picker lists each language in its own language
   ("Русский", not "Russian"), because a user stranded in a UI they cannot read has to be able to
   find the way back. They live in `AppLanguages` beside the codes and are never translated.
@@ -713,6 +739,27 @@ against a fake.
 - **`-tvf`'s date column omits the year for recent files**, so a `MMM d HH:mm` parse yields year
   2000. Set `defaultDate = now` on year-less formats and roll the year back if the result is in
   the future.
+- **`--options compression-level=N` must go in *unprefixed*.** A module prefix has to name the
+  writer actually running (`zip:`, `gzip:`, `bzip2:`, `7zip:`), so one prefixed string breaks the
+  moment the user picks another format — `bsdtar: Unknown module name: 'zip'`, exit 1, no archive.
+  Unprefixed, libarchive offers the option to whichever module is running. Two more sharp edges:
+  a value outside 0–9 fails with the *misleading* `Undefined option: 'compression-level'` (it is
+  defined; the value is out of range), and plain `.tar` rejects the option outright with the same
+  message — so the flag has to be **withheld** for an uncompressed format rather than passed and
+  hoped over. All three fail the whole pack, not the setting.
+  - **The dial has almost no range above the default, which is not what the numbers suggest.**
+    Measured on 980 KB of Swift source: zip 314 221 → 313 960 at level 9 (0.08 %), 7z 193 706 →
+    193 704 (**2 bytes**), and bzip2 *identical*, because libarchive's bzip2 default already **is**
+    9 — only gzip gains anything (261 253 → 259 482, 0.7 %). Level 1 is where the real difference
+    lives: +9.7 % size on zip and **+16 % on 7z for a 4× speedup** (0.20 s → 0.05 s). Deflate can
+    even invert — on one 840 KB text file level 1 beat level 9 by 1 087 bytes. So a
+    compression-level control is a *fast* switch, not a *smaller* one, and "Maximum" is honest
+    about intent while delivering ~0 %.
+  - **Level 0 means three different things**, so it is not offerable as one "Store" item: a true
+    stored container for zip and gzip (output larger than the input), silently clamped to 1 by
+    bzip2, and still compressing for the 7z writer (540 259 — *smaller* than its own level 1).
+  - `.normal` is therefore modelled as **passing no option at all**, not as an explicit `6`:
+    libarchive's per-format defaults are not all 6, and the default is what "normal" means.
 
 ### sftp / ssh
 

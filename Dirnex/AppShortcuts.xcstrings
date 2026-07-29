@@ -4,10 +4,22 @@
     "${applicationName} copy selection" : {
       "comment" : "Spotlight/Siri phrase for Copy Selection to Other Panel. Must contain ${applicationName}, which stands for “Dirnex”.",
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName} Auswahl kopieren"
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "${applicationName} copy selection"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName} copiar selección"
           }
         },
         "fr" : {
@@ -16,16 +28,64 @@
             "value" : "${applicationName} copier la sélection"
           }
         },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName} copia selezione"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName}で選択項目をコピー"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName} 선택 항목 복사"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName} kopieer de selectie"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName} kopiuj zaznaczenie"
+          }
+        },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "${applicationName} копировать выделенное"
           }
         },
-        "es" : {
+        "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "${applicationName} copiar selección"
+            "value" : "${applicationName} копіювати вибране"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName} copiar seleção"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName} 拷贝所选项目"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName} 拷貝所選項目"
           }
         }
       }
@@ -33,10 +93,22 @@
     "Copy the selection in ${applicationName}" : {
       "comment" : "Spotlight/Siri phrase for Copy Selection to Other Panel. Must contain ${applicationName}, which stands for “Dirnex”.",
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auswahl in ${applicationName} kopieren"
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copy the selection in ${applicationName}"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar la selección en ${applicationName}"
           }
         },
         "fr" : {
@@ -45,16 +117,64 @@
             "value" : "Copiez la sélection dans ${applicationName}"
           }
         },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia la selezione in ${applicationName}"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName}で選択項目をコピー"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName}에서 선택 항목 복사"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopieer de selectie in ${applicationName}"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopiuj zaznaczenie w ${applicationName}"
+          }
+        },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Копировать выделенное в ${applicationName}"
           }
         },
-        "es" : {
+        "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copiar la selección en ${applicationName}"
+            "value" : "Копіювати вибране в ${applicationName}"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar a seleção no ${applicationName}"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 ${applicationName} 中拷贝所选项目"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 ${applicationName} 中拷貝所選項目"
           }
         }
       }

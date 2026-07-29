@@ -8,7 +8,7 @@ undo.
 See [PLAN.md](PLAN.md) for architecture decisions and what's planned next, and
 [docs/HISTORY.md](docs/HISTORY.md) for the milestone-by-milestone build log.
 
-**Status:** M0–M11 shipped — dual-pane browsing, the queued/undoable operation
+**Status:** M0–M13 shipped — dual-pane browsing, the queued/undoable operation
 engine, the ⌘K palette, archive and SFTP/SMB backends, the Mac-native layer
 (Finder tags, Git awareness, Quick Look, AppleScript + Shortcuts), a notarized
 Developer ID release pipeline with Sparkle beta/stable channels, a
@@ -20,7 +20,11 @@ Drive, Dropbox, OneDrive, Box) browsed as a folder, with its own trash, sync
 badges, and Google Docs that open in the browser — plus F4 Edit, which hands a
 file to the editor you already use, and a Quick View that grows to fill both
 panes or the whole display, flipped through with the arrows or a two-finger
-swipe.
+swipe. FTP and FTPS join SFTP and SMB in the Servers sidebar, certificates
+trusted by fingerprint rather than by disabling verification. The whole UI
+speaks **14 languages** — English, Deutsch, Español, Français, Italiano, 日本語,
+한국어, Nederlands, Polski, Português (Brasil), Русский, Українська, 简体中文 and
+繁體中文 — matched from your system settings or pinned in Settings ▸ General.
 
 ## Requirements
 

@@ -1,16 +1,14 @@
 import AppKit
 import DirnexCore
 
-/// The trailing titlebar Back/Forward controls, sitting beside the hidden-files toggle: the
-/// ⌘[ / ⌘] history commands (View ▸ Go) as two borderless chevron buttons — bare glyphs with no
-/// bezel behind them, matching the neighbouring eye toggle. The click routes through the
+/// The trailing titlebar Back/Forward controls: the ⌘[ / ⌘] history commands (View ▸ Go) as two
+/// borderless chevron buttons — bare glyphs with no bezel behind them. The click routes through the
 /// responder chain (like the Go menu items) so it steps *the focused* pane's per-tab trail; each
 /// button's enabled state mirrors that pane's `canGoBack`/`canGoForward`, refreshed on every
 /// navigation, tab switch, and focus change (`updateNavigationButtons`).
 extension BrowserWindowController {
-    /// The single `.trailing` accessory for the right-hand control cluster — hidden-files toggle,
-    /// Back, Forward — evenly spaced in the otherwise empty transparent title bar. Assumes
-    /// `installHiddenToggle` has already prepared the eye button (behaviour + size); this places it.
+    /// The single `.trailing` accessory for the right-hand control cluster — Back, Forward —
+    /// evenly spaced in the otherwise empty transparent title bar.
     func installNavigationButtons() {
         let back = String(
             localized: "Back",
@@ -35,12 +33,11 @@ extension BrowserWindowController {
             tooltip: navTooltip(forward, "go.forward")
         )
 
-        // One evenly-spaced cluster: the hidden-files eye toggle, then Back/Forward. The eye button
-        // is behaviour-configured and tight-sized by `installHiddenToggle`; it just joins the row
-        // here so the three glyphs read as a single control panel rather than separate accessories.
+        // One evenly-spaced cluster, so the glyphs read as a single control panel rather than
+        // separate accessories.
         let spacing: CGFloat = 12
         let glyphWidth: CGFloat = 16
-        let buttons = [hiddenToggleButton, backButton, forwardButton]
+        let buttons = [backButton, forwardButton]
         let stack = NSStackView(views: buttons)
         stack.orientation = .horizontal
         stack.spacing = spacing

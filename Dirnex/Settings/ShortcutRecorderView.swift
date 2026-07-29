@@ -25,17 +25,26 @@ struct ShortcutRecorder: NSViewRepresentable {
         view.update(shortcut: shortcut, conflicting: isConflicting)
     }
 
-    /// The AppKit key-capture control. Idle it shows the current shortcut (or "Add Shortcut");
-    /// clicked, it enters recording mode, becomes first responder, and turns the next resolvable
-    /// key combination into a `CommandShortcut`. Esc cancels, Delete clears the binding.
+    /// The AppKit key-capture control. Idle it shows the current shortcut, or a `+` glyph when
+    /// there is none; clicked, it enters recording mode, becomes first responder, and turns the
+    /// next resolvable key combination into a `CommandShortcut`. Esc cancels, Delete clears the
+    /// binding.
+    ///
+    /// Both placeholder states are drawn as a **glyph with the words in the tooltip**, never as
+    /// prose in the pill: the pill is a fixed 148 pt (it lines up with the shortcut column), and
+    /// measured in its own font "Aggiungi abbreviazione da tastiera" is 252 pt, "Додати
+    /// клавіатурне скорочення" 215 pt — and a centred label with no width constraint overruns
+    /// rather than truncating, so the text spilled out of the rounded rect on both sides in 7 of
+    /// the 14 shipped languages. A glyph fits every language by construction.
     final class RecorderView: NSView {
         var onRecord: ((CommandShortcut?) -> Void)?
 
         private let label = NSTextField(labelWithString: "")
+        private let glyph = NSImageView()
         private var shortcut: CommandShortcut?
         private var isConflicting = false
         private var isRecording = false {
-            didSet { needsDisplay = true; refreshLabel() }
+            didSet { needsDisplay = true; refreshContent() }
         }
 
         override init(frame frameRect: NSRect) {
@@ -44,12 +53,17 @@ struct ShortcutRecorder: NSViewRepresentable {
             label.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
             label.alignment = .center
             label.translatesAutoresizingMaskIntoConstraints = false
+            glyph.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 11, weight: .medium)
+            glyph.translatesAutoresizingMaskIntoConstraints = false
             addSubview(label)
+            addSubview(glyph)
             NSLayoutConstraint.activate([
                 label.centerXAnchor.constraint(equalTo: centerXAnchor),
-                label.centerYAnchor.constraint(equalTo: centerYAnchor)
+                label.centerYAnchor.constraint(equalTo: centerYAnchor),
+                glyph.centerXAnchor.constraint(equalTo: centerXAnchor),
+                glyph.centerYAnchor.constraint(equalTo: centerYAnchor)
             ])
-            refreshLabel()
+            refreshContent()
         }
 
         @available(*, unavailable)
@@ -61,7 +75,7 @@ struct ShortcutRecorder: NSViewRepresentable {
         func update(shortcut: CommandShortcut?, conflicting: Bool) {
             self.shortcut = shortcut
             isConflicting = conflicting
-            refreshLabel()
+            refreshContent()
             needsDisplay = true
         }
 
@@ -115,17 +129,52 @@ struct ShortcutRecorder: NSViewRepresentable {
 
         // MARK: - Appearance
 
-        private func refreshLabel() {
+        private func refreshContent() {
             if isRecording {
-                label.stringValue = String(localized: "Type shortcut…")
-                label.textColor = .secondaryLabelColor
+                showGlyph(
+                    named: "keyboard",
+                    tint: .controlAccentColor,
+                    description: String(
+                        localized: "Type shortcut…",
+                        comment: """
+                        Tooltip on the shortcut recorder while it captures keys; the pill itself \
+                        shows a keyboard glyph. A tooltip, not text in the pill, so its length \
+                        is free — translate it as a full phrase.
+                        """
+                    )
+                )
             } else if let shortcut {
+                glyph.isHidden = true
+                label.isHidden = false
                 label.stringValue = shortcut.display
                 label.textColor = isConflicting ? .systemRed : .labelColor
+                toolTip = nil
+                setAccessibilityLabel(shortcut.display)
             } else {
-                label.stringValue = String(localized: "Add Shortcut")
-                label.textColor = .tertiaryLabelColor
+                showGlyph(
+                    named: "plus",
+                    tint: .tertiaryLabelColor,
+                    description: String(
+                        localized: "Add Shortcut",
+                        comment: """
+                        Tooltip on the shortcut recorder when no shortcut is set; the pill itself \
+                        shows a + glyph. A tooltip, not text in the pill, so its length is free \
+                        — translate it as a full phrase.
+                        """
+                    )
+                )
             }
+        }
+
+        /// Put a placeholder glyph in the pill and the words in the tooltip (and in the
+        /// accessibility label, which is the only thing VoiceOver has to read here).
+        private func showGlyph(named name: String, tint: NSColor, description: String) {
+            label.isHidden = true
+            glyph.isHidden = false
+            glyph.image = NSImage(systemSymbolName: name, accessibilityDescription: description)
+            glyph.contentTintColor = tint
+            toolTip = description
+            setAccessibilityLabel(description)
         }
 
         override func draw(_ dirtyRect: NSRect) {

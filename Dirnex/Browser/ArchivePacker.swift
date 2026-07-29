@@ -11,19 +11,24 @@ import Foundation
 /// overwrites any existing file, so the caller resolves a name collision before calling here.
 enum ArchivePacker {
     /// Pack `sourceNames` (bare names under `sourceDirectory`) into a new archive at
-    /// `archiveOnDiskPath`, whose suffix selects the format. Throws when `bsdtar` can't run,
-    /// exits non-zero, or produced no file. Blocks on `bsdtar`, so call it off-main.
+    /// `archiveOnDiskPath`, whose suffix selects the format — `format` says which one that is, so
+    /// the argv can decide whether a compression level is legal for it. Throws when `bsdtar` can't
+    /// run, exits non-zero, or produced no file. Blocks on `bsdtar`, so call it off-main.
     static func pack(
         sourceNames: [String],
         inDirectory sourceDirectory: String,
-        toArchiveAt archiveOnDiskPath: String
+        toArchiveAt archiveOnDiskPath: String,
+        format: ArchivePacking.Format,
+        level: ArchivePacking.CompressionLevel
     ) throws {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/bsdtar")
         process.arguments = ArchivePacking.packingArguments(
             archiveOnDiskPath: archiveOnDiskPath,
             sourceDirectory: sourceDirectory,
-            sourceNames: sourceNames
+            sourceNames: sourceNames,
+            format: format,
+            level: level
         )
         // Nothing here reads bsdtar's streams; discarding both avoids a full-pipe stall and keeps
         // a libarchive warning off the console. A real failure shows up as a non-zero exit.

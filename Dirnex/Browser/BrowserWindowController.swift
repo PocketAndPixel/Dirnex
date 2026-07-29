@@ -130,10 +130,6 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     /// wins on subsequent launches.
     private var shouldCenterPanesDivider = false
 
-    /// The trailing titlebar button that toggles hidden files app-wide (the ⇧⌘. command in
-    /// button form). Held so `showHiddenDidChange` can restyle it to track the current state.
-    let hiddenToggleButton = NSButton()
-
     /// The trailing titlebar back/forward controls — the ⌘[ / ⌘] history commands (View ▸ Go) as
     /// two borderless chevron buttons, no bezel behind them. Held so a navigation, tab switch, or
     /// focus change can re-validate each button's enabled state against the active pane's trail
@@ -251,11 +247,9 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         }
         window.setFrameAutosaveName("MainWindow")
 
-        // Each of these three only prepares its button; the two accessory installers below place
-        // them — the update indicator into the leading accessory beside the sidebar toggle, the eye
-        // into the trailing cluster (eye · Back · Forward).
+        // `installUpdateIndicator` only prepares its button; the two accessory installers below
+        // place it — into the leading accessory beside the sidebar toggle.
         installUpdateIndicator()
-        installHiddenToggle()
         installSidebarToggle()
         installNavigationButtons()
 

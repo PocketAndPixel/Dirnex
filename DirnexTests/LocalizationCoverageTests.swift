@@ -44,6 +44,16 @@ struct LocalizationCoverageTests {
         }
     }
 
+    /// The command titles a language genuinely renders as its English spelling, by language code.
+    ///
+    /// Dutch keeps Apple's own app name "Terminal" and forms the imperative as "Open", so the whole
+    /// title coincides with the English word for word. The alternative — padding it to
+    /// "Open in Terminal-app" so the check below sees a difference — is a translation written for
+    /// the test rather than for the user, which is the one thing a coverage guard must not cause.
+    private let titlesThatCoincideWithEnglish: [String: Set<String>] = [
+        "nl": ["go.openInTerminal"]
+    ]
+
     @Test("every command has a translated title in every shipped language")
     func everyCommandTitleIsTranslated() throws {
         for language in translatedLanguages {
@@ -54,8 +64,11 @@ struct LocalizationCoverageTests {
                 #expect(value != nil, "\(language.code): no title for \(command.id)")
                 // A translation that is byte-identical to the English is almost always a key that
                 // was copied in and never translated. Not universally true — "Dirnex" is the same
-                // in every language — so this only fires for multi-word titles.
-                if let value, command.title.contains(" ") {
+                // in every language — so this only fires for multi-word titles, minus the handful
+                // of coincidences named above.
+                let coincides = titlesThatCoincideWithEnglish[language.code]?
+                    .contains(command.id) ?? false
+                if let value, command.title.contains(" "), !coincides {
                     #expect(
                         value != command.title,
                         "\(language.code): \(command.id) is still English"
@@ -161,10 +174,12 @@ struct LocalizationCoverageTests {
                 let key = LocalizationKey.tagColor(color)
                 let value = translation(key, in: bundle)
                 #expect(value != nil, "\(language.code): no \(key)")
-                // French "Orange" keeps the same spelling as English. The other names must not
-                // silently fall back to English.
+                // French and German "Orange" keep the same spelling as English. The other names
+                // must not silently fall back to English.
                 if let value { #expect(
-                    value != color.title || (language.code == "fr" && color == .orange),
+                    value != color.title || (
+                        ["de", "fr"].contains(language.code) && color == .orange
+                    ),
                     "\(language.code): \(key) is still English"
                 ) }
             }
@@ -185,6 +200,21 @@ struct LocalizationCoverageTests {
                 if let value, format.displayName.contains(" ") {
                     #expect(value != format.displayName, "\(language.code): \(key) is still English")
                 }
+            }
+        }
+    }
+
+    @Test("every pack-dialog compression level is translated in every shipped language")
+    func everyCompressionLevelIsTranslated() throws {
+        for language in translatedLanguages {
+            let bundle = try bundle(for: language)
+            for level in ArchivePacking.CompressionLevel.allCases {
+                let key = LocalizationKey.archiveCompressionLevel(level)
+                let value = translation(key, in: bundle)
+                #expect(value != nil, "\(language.code): no \(key)")
+                // No still-English check here: every level's label is a single word, and "Normal"
+                // is genuinely itself in German and Spanish — the same carve-out the formats and
+                // the command titles make, which here would exclude all three cases.
             }
         }
     }

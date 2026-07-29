@@ -11,7 +11,7 @@ import DirnexCore
 /// carries one's values, or one's defaults, into another.
 @MainActor
 final class ConnectServerSMBFields: NSObject, NSTextFieldDelegate {
-    let address = ConnectFormFactory.textField(placeholder: "smb://host/share")
+    let address = ConnectFormFactory.textField(placeholder: "smb://nas.local/Media")
     let host = ConnectFormFactory.textField(placeholder: "nas.local")
     let share = ConnectFormFactory.textField(placeholder: "Media")
     let user = ConnectFormFactory.textField(placeholder: ConnectText.smbUserHint)

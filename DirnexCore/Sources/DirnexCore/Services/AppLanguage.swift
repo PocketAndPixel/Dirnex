@@ -2,8 +2,8 @@ import Foundation
 
 /// A language Dirnex ships strings for.
 ///
-/// `code` is the tag as it appears in the built bundle (`en`, `fr`, `ru`, and later `zh-Hans` and
-/// friends) — the same spelling that goes into `AppleLanguages` to override the app's language.
+/// `code` is the tag as it appears in the built bundle (`en`, `de`, `fr`, `zh-Hans`, and friends)
+/// — the same spelling that goes into `AppleLanguages` to override the app's language.
 ///
 /// `endonym` is the language's name *in itself* ("Русский", "日本語"), which is deliberately **not**
 /// a localized string: a language picker lists every entry in its own language, so a user who has
@@ -54,9 +54,19 @@ public enum AppLanguages {
     /// base, then the rest alphabetically by code.
     public static let all: [AppLanguage] = [
         english,
+        AppLanguage(code: "de", endonym: "Deutsch"),
         AppLanguage(code: "es", endonym: "Español"),
         AppLanguage(code: "fr", endonym: "Français"),
-        AppLanguage(code: "ru", endonym: "Русский")
+        AppLanguage(code: "it", endonym: "Italiano"),
+        AppLanguage(code: "ja", endonym: "日本語"),
+        AppLanguage(code: "ko", endonym: "한국어"),
+        AppLanguage(code: "nl", endonym: "Nederlands"),
+        AppLanguage(code: "pl", endonym: "Polski"),
+        AppLanguage(code: "pt-BR", endonym: "Português (Brasil)"),
+        AppLanguage(code: "ru", endonym: "Русский"),
+        AppLanguage(code: "uk", endonym: "Українська"),
+        AppLanguage(code: "zh-Hans", endonym: "简体中文"),
+        AppLanguage(code: "zh-Hant", endonym: "繁體中文")
     ]
 
     /// The shipped language with `code`, matched case-insensitively, or `nil` when we don't ship it.
@@ -72,11 +82,11 @@ public enum AppLanguages {
     ///
     /// 1. the whole tag (`pt-BR` finds a shipped `pt-BR`),
     /// 2. the tag with trailing subtags dropped one at a time (`zh-Hans-CN` → `zh-Hans` → `zh`),
-    /// 3. primary-subtag equality (`zh-Hant-TW` finds a shipped `zh-Hans`).
+    /// 3. Chinese region tags without a script (`zh-TW`) infer the usual script,
+    /// 4. primary-subtag equality (`zh` finds a shipped `zh-Hans`).
     ///
-    /// Rule 3 is the one that earns its keep for CJK: a Traditional-Chinese user is better served
-    /// by Simplified than by English, which is what the OS does too, and without it a script tag we
-    /// don't ship silently drops all the way to English.
+    /// Rule 3 is the one that earns its keep for CJK: some systems hand us `zh-TW` or `zh-HK`
+    /// rather than an explicit `zh-Hant-*` tag, and those users should get Traditional Chinese.
     public static func bestMatch(forPreferred preferred: [String]) -> AppLanguage {
         for tag in preferred {
             var subtags = tag.split(separator: "-").map(String.init)
@@ -84,10 +94,31 @@ public enum AppLanguages {
                 if let match = language(for: subtags.joined(separator: "-")) { return match }
                 subtags.removeLast()
             }
+            if let chinese = chineseRegionalMatch(for: tag) {
+                return chinese
+            }
             guard let primary = tag.split(separator: "-").first?.lowercased() else { continue }
             if let match = all.first(where: { $0.primarySubtag == primary }) { return match }
         }
         return english
+    }
+
+    private static func chineseRegionalMatch(for tag: String) -> AppLanguage? {
+        let subtags = tag.split(separator: "-").map { $0.lowercased() }
+        guard subtags.first == "zh" else { return nil }
+        if subtags.contains("hant") {
+            return language(for: "zh-Hant")
+        }
+        if subtags.contains("hans") {
+            return language(for: "zh-Hans")
+        }
+        if subtags.contains(where: { ["tw", "hk", "mo"].contains($0) }) {
+            return language(for: "zh-Hant")
+        }
+        if subtags.contains(where: { ["cn", "sg"].contains($0) }) {
+            return language(for: "zh-Hans")
+        }
+        return nil
     }
 
     /// The language actually in force: the pinned one, or the best match for `systemPreferred`.

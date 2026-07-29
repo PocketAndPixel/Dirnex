@@ -47,6 +47,52 @@ public enum ArchivePacking {
             case .tar: return "Tar (uncompressed)"
             }
         }
+
+        /// Whether this format's writer accepts `--options compression-level=N`. Plain `.tar`
+        /// compresses nothing, and handing it the option is not ignored — `bsdtar` exits 1 with
+        /// "Undefined option: `compression-level'" and writes no archive (measured, libarchive
+        /// 3.7.4), so the flag has to be withheld rather than passed and hoped over.
+        public var supportsCompressionLevel: Bool {
+            switch self {
+            case .zip, .tarGz, .tarBz2, .sevenZip: return true
+            case .tar: return false
+            }
+        }
+    }
+
+    /// How hard `bsdtar` should work, as the pack dialog offers it: three named steps rather than
+    /// libarchive's 0–9, because the dial has far less range than the numbers suggest. Measured on
+    /// a 2.1 MB text file (libarchive 3.7.4): zip and 7z are *byte-identical* at 6 and 9, gzip
+    /// differs by 10 bytes, and only bzip2 gains anything real (367 581 → 362 527, 1.4 %). The
+    /// useful end is the fast one.
+    ///
+    /// Level 0 is deliberately not offered. It is a true "store" only for zip and gzip — bzip2
+    /// clamps it to 1 and the 7z writer still compresses — so a "Store" item would mean three
+    /// different things across five formats. Users who want a stored container pick Tar.
+    public enum CompressionLevel: String, CaseIterable, Sendable, Hashable {
+        case fast
+        case normal
+        case maximum
+
+        /// The `compression-level` value to pass, or `nil` to pass nothing at all. `.normal` is
+        /// the absent option rather than an explicit `6`: libarchive's per-format default is what
+        /// "normal" means, and the defaults are not all 6 (the 7z writer's is its own).
+        var optionValue: Int? {
+            switch self {
+            case .fast: return 1
+            case .normal: return nil
+            case .maximum: return 9
+            }
+        }
+
+        /// The label the pack dialog's compression popup shows.
+        public var displayName: String {
+            switch self {
+            case .fast: return "Fast"
+            case .normal: return "Normal"
+            case .maximum: return "Maximum"
+            }
+        }
     }
 
     /// The `bsdtar` argv that packs `sourceNames` (bare names under `sourceDirectory`) into a new
@@ -54,12 +100,25 @@ public enum ArchivePacking {
     /// creates (overwriting any existing file — the app resolves that collision first), and `-C`
     /// makes the names archive-relative. Names are passed verbatim: `bsdtar` reads them as literal
     /// filesystem paths on create, so a name with glob metacharacters needs no escaping.
+    ///
+    /// `format` is passed alongside the path it already determines because the *level* is only
+    /// legal for some formats, and getting that wrong fails the whole pack rather than degrading
+    /// (see ``Format/supportsCompressionLevel``). The option is written **unprefixed**: a module
+    /// prefix has to name the actual writer (`zip:`, `gzip:`, `bzip2:`, `7zip:`), so a single
+    /// prefixed string breaks the moment the format changes — `bsdtar: Unknown module name: zip`.
+    /// Unprefixed, libarchive offers it to whichever module is running.
     public static func packingArguments(
         archiveOnDiskPath: String,
         sourceDirectory: String,
-        sourceNames: [String]
+        sourceNames: [String],
+        format: Format,
+        level: CompressionLevel
     ) -> [String] {
-        ["-a", "-c", "-f", archiveOnDiskPath, "-C", sourceDirectory] + sourceNames
+        var argv = ["-a", "-c", "-f", archiveOnDiskPath]
+        if format.supportsCompressionLevel, let value = level.optionValue {
+            argv += ["--options", "compression-level=\(value)"]
+        }
+        return argv + ["-C", sourceDirectory] + sourceNames
     }
 
     /// The archive base name the pack dialog pre-fills: a single source's name minus its extension
