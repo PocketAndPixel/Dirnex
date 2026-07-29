@@ -5783,7 +5783,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "업데이트 사용 가능 - 설치하려면 클릭"
+            "value" : "업데이트 사용 가능 — 설치하려면 클릭"
           }
         },
         "ru" : {
@@ -12062,7 +12062,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "f7, 디렉토리, mkdir, 생성"
+            "value" : "f7, 폴더, mkdir, 생성"
           }
         },
         "ru" : {
@@ -12986,7 +12986,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "동기화, 동기화, 비교, 미러링, 차이점, 디렉토리, 폴더"
+            "value" : "동기화, 비교, 미러링, 차이점, 폴더"
           }
         },
         "ru" : {
@@ -13052,7 +13052,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "디렉토리 동기화…"
+            "value" : "폴더 동기화…"
           }
         },
         "ru" : {
@@ -14240,7 +14240,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "디렉토리 기록…"
+            "value" : "폴더 기록…"
           }
         },
         "ru" : {
@@ -19114,7 +19114,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "충돌 - 변경하지 않음"
+            "value" : "충돌 — 변경하지 않음"
           }
         },
         "ru" : {
@@ -20089,7 +20089,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\"를 추가할 수 없음"
+            "value" : "“%@”를 추가할 수 없음"
           }
         },
         "ru" : {
@@ -20581,7 +20581,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\"를 복사할 수 없음"
+            "value" : "“%@”를 복사할 수 없음"
           }
         },
         "ru" : {
@@ -20908,7 +20908,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\"를 삭제할 수 없음"
+            "value" : "“%@”를 삭제할 수 없음"
           }
         },
         "ru" : {
@@ -21467,7 +21467,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\"를 다운로드할 수 없음"
+            "value" : "“%@”를 다운로드할 수 없음"
           }
         },
         "ru" : {
@@ -21532,7 +21532,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\"를 배출할 수 없음"
+            "value" : "“%@”를 배출할 수 없음"
           }
         },
         "ru" : {
@@ -21597,7 +21597,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\"를 지울 수 없음"
+            "value" : "“%@”를 지울 수 없음"
           }
         },
         "ru" : {
@@ -21989,7 +21989,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\"를 완전히 삭제할 수 없음"
+            "value" : "“%@”를 완전히 삭제할 수 없음"
           }
         },
         "ru" : {
@@ -22968,7 +22968,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\"로 열 수 없었습니다."
+            "value" : "“%@”로 열 수 없었습니다."
           }
         },
         "ru" : {
@@ -23622,7 +23622,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\"에 대한 알려진 호스트를 업데이트할 수 없습니다."
+            "value" : "“%@”에 대한 알려진 호스트를 업데이트할 수 없습니다."
           }
         },
         "ru" : {
@@ -24272,7 +24272,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\"에서 \"%@\"를 삭제합니까?"
+            "value" : "“%@”에서 “%@”를 삭제하겠습니까?"
           }
         },
         "ru" : {
@@ -25481,7 +25481,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex %@ 사용 가능 - 설치하려면 클릭"
+            "value" : "Dirnex %@ 사용 가능 — 설치하려면 클릭"
           }
         },
         "ru" : {
@@ -30626,7 +30626,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "발급받은 사람: %@\n\n발행자: %@\n\n만료일: %@\n\nSHA-256 지문:\n\n%@"
+            "value" : "발급 대상: %@\n\n발급자: %@\n\n만료일: %@\n\nSHA-256 지문:\n\n%@"
           }
         },
         "ru" : {
@@ -31148,7 +31148,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "열쇠"
+            "value" : "키"
           }
         },
         "ru" : {
@@ -34594,7 +34594,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "다운로드되지 않음 - 클라우드에 저장됨"
+            "value" : "다운로드되지 않음 — 클라우드에 저장됨"
           }
         },
         "ru" : {
@@ -36024,7 +36024,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "선택 사항 - 사이드바에 저장"
+            "value" : "선택 사항 — 사이드바에 저장"
           }
         },
         "ru" : {
@@ -38954,7 +38954,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\" 제거?"
+            "value" : "“%@”을(를) 제거하겠습니까?"
           }
         },
         "ru" : {
@@ -39865,7 +39865,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\"에서 \"%@\"를 대체합니까?"
+            "value" : "“%@”에서 “%@”를 대치하겠습니까?"
           }
         },
         "ru" : {
@@ -46999,7 +46999,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "동기화 충돌 - Finder에서 해결"
+            "value" : "동기화 충돌 — Finder에서 해결"
           }
         },
         "ru" : {
@@ -49081,7 +49081,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\"의 신원은 변경되었습니다."
+            "value" : "“%@”의 신원이 변경되었습니다."
           }
         },
         "ru" : {
@@ -49146,7 +49146,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이 항목은 현재 iCloud가 사용할 수 있는 어떤 기기에서도 사용할 수 없습니다."
+            "value" : "현재 iCloud에서 접근할 수 있는 어느 기기에서도 이 항목을 사용할 수 없습니다."
           }
         },
         "ru" : {
@@ -49796,7 +49796,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "서버가 신뢰하는 인증서와 다른 인증서를 제시하고 있습니다. 저장된 서버를 제거하고 변경된 이유를 알 수 있는 경우에만 다시 연결하십시오."
+            "value" : "서버가 이전에 신뢰한 인증서와 다른 인증서를 제시하고 있습니다. 저장된 서버를 제거하고 변경된 이유를 알 수 있는 경우에만 다시 연결하십시오."
           }
         },
         "ru" : {
@@ -50056,7 +50056,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "서버의 인증서가 읽을 수 없으므로 안전하게 신뢰할 수 없습니다."
+            "value" : "서버의 인증서를 읽을 수 없으므로 안전하게 신뢰할 수 없습니다."
           }
         },
         "ru" : {
@@ -51551,7 +51551,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이 서버가 이전에 신뢰한 호스트와 다른 호스트 %@을(를) 표시하고 있습니다. 서버를 다시 설치했거나 이 주소에 새 SFTP 앱을 연결했다면 정상일 수 있지만, 누군가 연결을 가로채고 있다는 의미일 수도 있습니다(중간자 공격).\n\n새 지문:\n%@\n\n이 지문을 알아볼 수 있는 경우에만 계속하십시오. 신뢰하면 이전 키가 교체되어 앞으로 이 서버에 연결할 수 있습니다."
+            "value" : "이 서버가 이전에 신뢰한 것과 다른 호스트 %@을(를) 제시하고 있습니다. 서버를 다시 설치했거나 이 주소에 새 SFTP 앱을 연결했다면 정상일 수 있지만, 누군가 연결을 가로채고 있다는 의미일 수도 있습니다(중간자 공격).\n\n새 지문:\n%@\n\n이 지문을 알아볼 수 있는 경우에만 계속하십시오. 신뢰하면 이전 키가 교체되어 앞으로 이 서버에 연결할 수 있습니다."
           }
         },
         "ru" : {
@@ -54291,7 +54291,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\"를 아카이브 \"%@\"에 추가할 수 없습니다."
+            "value" : "“%@”를 아카이브 “%@”에 추가할 수 없습니다."
           }
         },
         "ru" : {
@@ -54356,7 +54356,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "아카이브 \"%@\"를 생성할 수 없습니다."
+            "value" : "아카이브 “%@”를 생성할 수 없습니다."
           }
         },
         "ru" : {
@@ -54421,7 +54421,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "아카이브에서 \"%@\"를 추출할 수 없습니다."
+            "value" : "아카이브에서 “%@”를 추출할 수 없습니다."
           }
         },
         "ru" : {
@@ -54486,7 +54486,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "아카이브 \"%@\"를 다시 작성할 수 없습니다."
+            "value" : "아카이브 “%@”를 다시 작성할 수 없습니다."
           }
         },
         "ru" : {
@@ -54746,7 +54746,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "아카이브 \"%@\"를 읽을 수 없습니다."
+            "value" : "아카이브 “%@”를 읽을 수 없습니다."
           }
         },
         "ru" : {
@@ -54811,7 +54811,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "아카이브 \"%@\"를 업데이트할 수 없습니다."
+            "value" : "아카이브 “%@”를 업데이트할 수 없습니다."
           }
         },
         "ru" : {
@@ -56240,7 +56240,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "작업, 레드 - 모두 일치해야 합니다."
+            "value" : "작업, 레드 — 모두 일치해야 합니다."
           }
         },
         "ru" : {
