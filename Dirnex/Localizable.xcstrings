@@ -17016,7 +17016,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Open in terminal"
+            "value" : "Open in Terminal"
           }
         },
         "ru" : {
@@ -19979,7 +19979,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Toon/verberg navigatiekolom",
+            "value" : "Toon navigatiekolom",
             "state" : "translated"
           }
         },
@@ -39956,7 +39956,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Nieuwe tab (⌘T)",
+            "value" : "Nieuw tabblad (⌘T)",
             "state" : "translated"
           }
         },
@@ -46352,7 +46352,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Verwijder uit navigatiekolom",
+            "value" : "Verwijder uit de navigatiekolom",
             "state" : "translated"
           }
         },
@@ -47123,7 +47123,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "vervangen",
+            "value" : "Vervang",
             "state" : "translated"
           }
         },
@@ -50094,7 +50094,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Werkruimte opslaan…",
+            "value" : "Bewaar werkruimte…",
             "state" : "translated"
           }
         },
@@ -52955,7 +52955,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Share:",
+            "value" : "Sharenaam:",
             "state" : "translated"
           }
         },
