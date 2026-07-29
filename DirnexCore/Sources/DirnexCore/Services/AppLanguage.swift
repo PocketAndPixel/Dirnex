@@ -60,6 +60,7 @@ public enum AppLanguages {
         AppLanguage(code: "it", endonym: "Italiano"),
         AppLanguage(code: "ja", endonym: "日本語"),
         AppLanguage(code: "ko", endonym: "한국어"),
+        AppLanguage(code: "nl", endonym: "Nederlands"),
         AppLanguage(code: "pt-BR", endonym: "Português (Brasil)"),
         AppLanguage(code: "ru", endonym: "Русский"),
         AppLanguage(code: "zh-Hans", endonym: "简体中文"),

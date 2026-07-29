@@ -46,6 +46,12 @@
             "value" : "${applicationName} 선택 항목 복사"
           }
         },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName} kopieer selectie"
+          }
+        },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
@@ -115,6 +121,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "${applicationName}에서 선택 항목 복사"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopieer de selectie in ${applicationName}"
           }
         },
         "ru" : {
