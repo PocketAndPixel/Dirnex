@@ -637,7 +637,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„%@” już jest z powrotem"
+            "value" : "„%@” już przywrócono"
           }
         },
         "ru" : {
@@ -3684,25 +3684,25 @@
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld rzeczy zostały już odłożone"
+                  "value" : "%lld rzeczy zostały już przywrócone"
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld rzeczy zostało już odłożonych"
+                  "value" : "%lld rzeczy zostało już przywróconych"
                 }
               },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld rzecz została już odłożona"
+                  "value" : "%lld rzecz została już przywrócona"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld rzeczy zostało już odłożonych"
+                  "value" : "%lld rzeczy zostało już przywróconych"
                 }
               }
             }
@@ -4024,7 +4024,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%#@items@ nie można było odłożyć: %2$@"
+            "value" : "Nie można przywrócić %#@items@ z Kosza: %2$@"
           },
           "substitutions" : {
             "items" : {
@@ -4035,7 +4035,7 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg rzecz"
+                      "value" : "%arg rzeczy"
                     }
                   },
                   "other" : {
@@ -15398,7 +15398,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Narzędzie wielu nazw…"
+            "value" : "Narzędzie wielokrotnej zmiany nazw…"
           }
         },
         "ru" : {
@@ -16238,7 +16238,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odłóż"
+            "value" : "Przywróć z Kosza"
           }
         },
         "ru" : {
@@ -20354,7 +20354,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "podgląd, szybki podgląd"
+            "value" : "podgląd, szybki przegląd"
           }
         },
         "ru" : {
@@ -20438,7 +20438,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Szybki podgląd"
+            "value" : "Szybki przegląd"
           }
         },
         "ru" : {
@@ -20606,7 +20606,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Panel szybkiego widoku"
+            "value" : "Panel szybkiego przeglądu"
           }
         },
         "ru" : {
@@ -20774,7 +20774,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Szybki widok na pełnym ekranie"
+            "value" : "Szybki przegląd na pełnym ekranie"
           }
         },
         "ru" : {
@@ -20942,7 +20942,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Szybki widok w całym oknie"
+            "value" : "Szybki przegląd w całym oknie"
           }
         },
         "ru" : {
@@ -26517,7 +26517,7 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Nie można skopiować %lld rzecz"
+                  "value" : "Nie można skopiować %lld rzeczy"
                 }
               },
               "other" : {
@@ -26934,7 +26934,7 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Nie można usunąć %lld rzecz"
+                  "value" : "Nie można usunąć %lld rzeczy"
                 }
               },
               "other" : {
@@ -27815,7 +27815,7 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Nie można wymazać %lld rzecz"
+                  "value" : "Nie można wymazać %lld rzeczy"
                 }
               },
               "other" : {
@@ -28730,7 +28730,7 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Nie można przenieść %lld rzecz"
+                  "value" : "Nie można przenieść %lld rzeczy"
                 }
               },
               "other" : {
@@ -28981,7 +28981,7 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Nie można przenieść %lld rzecz do Kosza"
+                  "value" : "Nie można przenieść %lld rzeczy do Kosza"
                 }
               },
               "other" : {
@@ -29465,7 +29465,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nie można odłożyć „%@”"
+            "value" : "Nie można przywrócić „%@” z Kosza"
           }
         },
         "ru" : {
@@ -29647,13 +29647,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Nie można odłożyć %lld rzecz"
+                  "value" : "Nie można przywrócić %lld rzeczy z Kosza"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Nie można odłożyć %lld rzeczy"
+                  "value" : "Nie można przywrócić %lld rzeczy z Kosza"
                 }
               }
             }
@@ -45730,7 +45730,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Otwarcie folderu z karty wyszukiwania zostawia wyniki na miejscu i otwiera folder w drugim panelu. Gdy wyłączone, fokus zostaje na wynikach, aby można było otwierać kolejne."
+            "value" : "Otwarcie folderu z karty wyszukiwania zostawia wyniki na miejscu i otwiera folder w drugim panelu. Gdy wyłączone, aktywne pozostają wyniki, aby można było otwierać kolejne."
           }
         },
         "ru" : {
@@ -48738,13 +48738,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Odłożyć %lld rzecz?"
+                  "value" : "Przywrócić %lld rzecz z Kosza?"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Odłożyć %lld rzeczy?"
+                  "value" : "Przywrócić %lld rzeczy z Kosza?"
                 }
               }
             }
@@ -48973,7 +48973,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odłóż"
+            "value" : "Przywróć z Kosza"
           }
         },
         "ru" : {
@@ -51939,7 +51939,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odłóż wszystko"
+            "value" : "Przywróć wszystko"
           }
         },
         "ru" : {
@@ -59919,7 +59919,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Przenoś fokus do folderów otwartych z wyników wyszukiwania"
+            "value" : "Uaktywniaj foldery otwarte z wyników wyszukiwania"
           }
         },
         "ru" : {
@@ -64901,7 +64901,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nie ma nic do odłożenia."
+            "value" : "Nie ma nic do przywrócenia."
           }
         },
         "ru" : {
