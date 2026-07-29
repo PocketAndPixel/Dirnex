@@ -16834,7 +16834,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Palette comandi…"
+            "value" : "Palette dei comandi…"
           }
         },
         "ja" : {
@@ -38758,7 +38758,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apri palette comandi"
+            "value" : "Apri la palette dei comandi"
           }
         },
         "ja" : {
@@ -50674,7 +50674,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alcuni tasti rapidi sono assegnati a più di un comando."
+            "value" : "Alcune abbreviazioni da tastiera sono assegnate a più di un comando."
           }
         },
         "ja" : {
@@ -54368,7 +54368,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Il server sta presentando un certificato diverso da quello di cui ti eri fidato. Rimuovi il server salvato e connettiti di nuovo solo se sai perché è cambiato."
+            "value" : "Il server presenta un certificato diverso da quello che avevi considerato attendibile. Rimuovi il server salvato e connettiti di nuovo solo se sai perché è cambiato."
           }
         },
         "ja" : {
@@ -56285,7 +56285,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Questo server presenta un host %@ diverso da quello autorizzato in precedenza. Se hai reinstallato il server o hai indirizzato una nuova app SFTP a questo indirizzo, è previsto; ma potrebbe anche indicare che qualcuno sta intercettando la connessione (attacco man-in-the-middle).\n\nNuova impronta:\n%@\n\nContinua solo se riconosci questa impronta. Autorizzarla sostituisce la vecchia chiave, così le connessioni future a questo server riusciranno."
+            "value" : "Questo server presenta una chiave host %@ diversa da quella considerata attendibile in precedenza. Se hai reinstallato il server o hai indirizzato una nuova app SFTP a questo indirizzo, è previsto; ma potrebbe anche indicare che qualcuno sta intercettando la connessione (attacco man-in-the-middle).\n\nNuova impronta:\n%@\n\nContinua solo se riconosci questa impronta. Considerarla attendibile sostituisce la vecchia chiave, così le connessioni future a questo server riusciranno."
           }
         },
         "ja" : {
@@ -57360,7 +57360,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Autorizza e connetti"
+            "value" : "Considera attendibile e connetti"
           }
         },
         "ja" : {
@@ -57431,7 +57431,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Autorizza nuova chiave e connetti"
+            "value" : "Considera attendibile la nuova chiave e connetti"
           }
         },
         "ja" : {
