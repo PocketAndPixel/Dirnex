@@ -2050,13 +2050,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld는 푸스에 대한 약속을 한다"
+                  "value" : "가져올 커밋 %lld개"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld는 당첨을 위해 노력할 것을 약속합니다."
+                  "value" : "가져올 커밋 %lld개"
                 }
               }
             }
@@ -2247,13 +2247,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 푸시에 대한 약속"
+                  "value" : "푸시할 커밋 %lld개"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld는 푸시를 약속합니다"
+                  "value" : "푸시할 커밋 %lld개"
                 }
               }
             }
@@ -2444,7 +2444,7 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 충돌 건너뛰기"
+                  "value" : "%lld개 충돌 건너뜀"
                 }
               },
               "other" : {
@@ -2641,13 +2641,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 항목"
+                  "value" : "%lld개 항목"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 아이템들"
+                  "value" : "%lld개 항목"
                 }
               }
             }
@@ -2838,13 +2838,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 항목은 이미 반품되었습니다."
+                  "value" : "%lld개 항목이 이미 원래 위치에 있습니다."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 아이템은 이미 돌아왔다"
+                  "value" : "%lld개 항목이 이미 원래 위치에 있습니다."
                 }
               }
             }
@@ -3629,13 +3629,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 항목이 기존 파일을 덮어쓰고 복원할 수 없습니다."
+                  "value" : "%lld개 항목이 기존 파일을 덮어써 복원할 수 없습니다."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 항목은 기존 파일을 덮어쓰고 복원할 수 없습니다."
+                  "value" : "%lld개 항목이 기존 파일을 덮어써 복원할 수 없습니다."
                 }
               }
             }
@@ -3826,13 +3826,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 이름 충돌"
+                  "value" : "%lld개 이름 충돌"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 이름 충돌"
+                  "value" : "%lld개 이름 충돌"
                 }
               }
             }
@@ -4219,13 +4219,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 스크립트는 더 이상 기능 키에서 실행되지 않습니다."
+                  "value" : "%lld개 스크립트는 더 이상 기능 키에서 실행되지 않습니다."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 스크립트는 더 이상 기능 키에서 실행되지 않습니다."
+                  "value" : "%lld개 스크립트는 더 이상 기능 키에서 실행되지 않습니다."
                 }
               }
             }
@@ -11534,7 +11534,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "f4, 새, 생성, 편집자, 텍스트, 터치, 비어 있음, 파일"
+            "value" : "f4, 새로 만들기, 생성, 편집기, 텍스트, touch, 빈 파일"
           }
         },
         "ru" : {
@@ -12326,7 +12326,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "열기, 응용 프로그램, 앱, 시작, 편집자, 기본값"
+            "value" : "열기, 앱, 응용 프로그램, 실행, 편집기, 기본값"
           }
         },
         "ru" : {
@@ -12854,7 +12854,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "공유, 보내기, 에어드롭, 우편, 메시지, 시트"
+            "value" : "공유, 보내기, AirDrop, Mail, 메시지, 시트"
           }
         },
         "ru" : {
@@ -13778,7 +13778,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "경로, 주소, 유형, url, 점프, 빈도, 흐릿함, 최근"
+            "value" : "경로, 주소, 입력, URL, 이동, 빠른 이동, 퍼지, 최근"
           }
         },
         "ru" : {
@@ -14174,7 +14174,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "최근, 방문, 트레일, 대체로 다운"
+            "value" : "최근, 방문, 기록, 뒤로, 앞으로"
           }
         },
         "ru" : {
@@ -15626,7 +15626,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "기능, 키, f키, f키, f5, f6, f7, f8, 도구 모음, 막대, 버튼, 총 지휘관, tc"
+            "value" : "기능, 키, f키, f5, f6, f7, f8, 도구 막대, 막대, 버튼, Total Commander, tc"
           }
         },
         "ru" : {
@@ -16154,7 +16154,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "미리보기, 훑어보기, 전체, 화면, 사진, 이미지, 선물, ctrl 옵션 q"
+            "value" : "미리보기, 훑어보기, 전체 화면, 사진, 이미지, gif, ctrl 옵션 q"
           }
         },
         "ru" : {
@@ -16550,7 +16550,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "쉘, 콘솔, 명령, 라인, zsh, bash, 프롬프트, 서랍"
+            "value" : "셸, 콘솔, 명령, 줄, zsh, bash, 프롬프트, 드로어"
           }
         },
         "ru" : {
@@ -16616,7 +16616,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "터미널 서랍"
+            "value" : "터미널 드로어"
           }
         },
         "ru" : {
@@ -18200,7 +18200,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "가다"
+            "value" : "이동"
           }
         },
         "ru" : {
@@ -18266,7 +18266,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "선택하다"
+            "value" : "선택"
           }
         },
         "ru" : {
@@ -18398,7 +18398,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "창문"
+            "value" : "윈도우"
           }
         },
         "ru" : {
@@ -20709,13 +20709,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 항목을 복사할 수 없음"
+                  "value" : "%lld개 항목을 복사할 수 없음"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 항목을 복사할 수 없음"
+                  "value" : "%lld개 항목을 복사할 수 없음"
                 }
               }
             }
@@ -21036,13 +21036,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 항목을 삭제할 수 없습니다."
+                  "value" : "%lld개 항목을 삭제할 수 없음"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 항목을 삭제할 수 없음"
+                  "value" : "%lld개 항목을 삭제할 수 없음"
                 }
               }
             }
@@ -21725,13 +21725,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 항목을 지울 수 없음"
+                  "value" : "%lld개 항목을 지울 수 없음"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 항목을 지울 수 없음"
+                  "value" : "%lld개 항목을 지울 수 없음"
                 }
               }
             }
@@ -22249,7 +22249,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\"를 옮길 수 없었다"
+            "value" : "“%@”을(를) 이동할 수 없음"
           }
         },
         "ru" : {
@@ -22442,13 +22442,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 항목을 이동할 수 없음"
+                  "value" : "%lld개 항목을 이동할 수 없음"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 항목을 옮길 수 없었다"
+                  "value" : "%lld개 항목을 이동할 수 없음"
                 }
               }
             }
@@ -22773,7 +22773,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\"를 열 수 없었다"
+            "value" : "“%@”을(를) 열 수 없음"
           }
         },
         "ru" : {
@@ -23033,7 +23033,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\"를 다시 넣을 수 없었다"
+            "value" : "“%@”을(를) 되돌려 놓을 수 없음"
           }
         },
         "ru" : {
@@ -23161,13 +23161,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 항목을 다시 넣을 수 없었다"
+                  "value" : "%lld개 항목을 되돌려 놓을 수 없음"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 아이템을 다시 넣을 수 없었다"
+                  "value" : "%lld개 항목을 되돌려 놓을 수 없음"
                 }
               }
             }
@@ -23295,7 +23295,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\"에 도달할 수 없습니다. 주소를 확인하고 서버가 온라인인지 확인하세요."
+            "value" : "“%@”에 연결할 수 없습니다. 주소와 서버의 온라인 상태를 확인하십시오."
           }
         },
         "ru" : {
@@ -23360,7 +23360,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\"의 이름을 변경할 수 없습니다."
+            "value" : "“%@”의 이름을 변경할 수 없음"
           }
         },
         "ru" : {
@@ -23488,13 +23488,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 항목을 이름을 변경할 수 없습니다."
+                  "value" : "%lld개 항목의 이름을 변경할 수 없음"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 항목을 이름을 변경할 수 없음"
+                  "value" : "%lld개 항목의 이름을 변경할 수 없음"
                 }
               }
             }
@@ -24337,7 +24337,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\"를 영구적으로 삭제하시겠습니까?"
+            "value" : "“%@”을(를) 영구적으로 삭제하겠습니까?"
           }
         },
         "ru" : {
@@ -24402,7 +24402,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\"를 삭제할까요?"
+            "value" : "“%@”을(를) 삭제하겠습니까?"
           }
         },
         "ru" : {
@@ -24827,13 +24827,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 항목을 영구적으로 삭제하시겠습니까?"
+                  "value" : "%lld개 항목을 영구적으로 삭제하겠습니까?"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 항목을 영구적으로 삭제하시겠습니까?"
+                  "value" : "%lld개 항목을 영구적으로 삭제하겠습니까?"
                 }
               }
             }
@@ -25611,7 +25611,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex는 대부분의 위치를 탐색할 수 있지만 macOS는 다른 사용자의 홈 폴더, Mail 및 메시지, Time Machine 백업처럼 민감한 폴더를 비공개로 유지합니다. 전체 디스크 접근 권한이 없으면 해당 폴더를 열 때 권한 안내가 표시됩니다. 다른 위치는 계속 정상적으로 작동합니다.\n\n시스템 설정 열기를 클릭한 다음 전체 디스크 접근 권한에서 Dirnex를 켜십시오. macOS가 새 권한을 적용하기 위해 Dirnex를 다시 실행하라고 요청합니다."
+            "value" : "Dirnex는 대부분의 위치를 탐색할 수 있지만 macOS는 다른 사용자의 홈 폴더, Mail, Messages, Time Machine 백업처럼 민감한 폴더를 비공개로 유지합니다. 전체 디스크 접근 권한이 없으면 해당 폴더를 열 때 권한 안내가 표시됩니다. 다른 위치는 계속 정상적으로 작동합니다.\n\n시스템 설정 열기를 클릭한 다음 전체 디스크 접근 권한에서 Dirnex를 켜십시오. macOS가 새 권한을 적용하기 위해 Dirnex를 다시 실행하라고 요청합니다."
           }
         },
         "ru" : {
@@ -25936,7 +25936,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\"가 어디에서 왔는지 모르겠어"
+            "value" : "“%@”의 원래 위치를 알 수 없음"
           }
         },
         "ru" : {
@@ -26064,13 +26064,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 아이템이 어디에서 왔는지 모르겠어"
+                  "value" : "%lld개 항목의 원래 위치를 알 수 없음"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 아이템이 어디서 왔는지 모르겠어"
+                  "value" : "%lld개 항목의 원래 위치를 알 수 없음"
                 }
               }
             }
@@ -26458,7 +26458,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "각 스크립트는 여전히 ⌘K 팔레트와 스크립트 하위 메뉴에서 실행됩니다. 스크립트를 관리하는에서 무료 키를 입력하여 키 입력을 다시 얻으십시오."
+            "value" : "각 스크립트는 ⌘K 팔레트와 스크립트 하위 메뉴에서 계속 실행할 수 있습니다. 키 입력을 다시 사용하려면 스크립트 관리에서 비어 있는 키를 지정하십시오."
           }
         },
         "ru" : {
@@ -26978,7 +26978,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "추출"
+            "value" : "꺼내기"
           }
         },
         "ru" : {
@@ -29780,7 +29780,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이 검색을 이름을 붙여 사이드바에 저장하고 나중에 다시 실행하세요."
+            "value" : "이 검색에 이름을 지정하여 사이드바에 저장하고 나중에 다시 실행하십시오."
           }
         },
         "ru" : {
@@ -30754,13 +30754,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 파일에서 Spotlight가 인덱싱된 모든 곳에서 제거됩니다. 파일 자체는 삭제되지 않습니다."
+                  "value" : "%lld개 파일에서 제거됩니다. Spotlight가 인덱싱한 모든 위치에 적용됩니다. 파일 자체는 삭제되지 않습니다."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 파일에서, Spotlight가 인덱싱된 모든 곳에서 제거될 것입니다. 파일 자체는 삭제되지 않습니다."
+                  "value" : "%lld개 파일에서 제거됩니다. Spotlight가 인덱싱한 모든 위치에 적용됩니다. 파일 자체는 삭제되지 않습니다."
                 }
               }
             }
@@ -31797,7 +31797,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "로그인 실패했습니다. 사용자 이름과 암호를 확인하세요."
+            "value" : "로그인에 실패했습니다. 사용자 이름과 암호를 확인하십시오."
           }
         },
         "ru" : {
@@ -31927,7 +31927,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS는 휴지통을 비공개로 유지하므로, 권한을 허용하기 전까지 Dirnex가 휴지통을 표시할 수 없습니다. 다른 기능은 지금처럼 계속 작동합니다.\n\n시스템 설정 열기를 클릭한 다음 전체 디스크 접근 권한에서 Dirnex를 켜십시오. macOS가 새 권한을 적용하기 위해 Dirnex를 다시 실행하라고 요청합니다."
+            "value" : "macOS는 휴지통을 비공개로 유지하므로 권한을 허용하기 전까지 Dirnex가 휴지통을 표시할 수 없습니다. 다른 기능은 지금처럼 계속 작동합니다.\n\n시스템 설정 열기를 클릭한 다음 전체 디스크 접근 권한에서 Dirnex를 켜십시오. macOS가 새 권한을 적용하기 위해 Dirnex를 다시 실행하라고 요청합니다."
           }
         },
         "ru" : {
@@ -33099,7 +33099,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "태그 이름을 지정하고 도입될 색상을 선택하세요."
+            "value" : "태그 이름을 입력하고 표시할 색상을 선택하십시오."
           }
         },
         "ru" : {
@@ -36477,13 +36477,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 품목을 포장하다"
+                  "value" : "%lld개 항목 압축"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 아이템을 포장하다"
+                  "value" : "%lld개 항목 압축"
                 }
               }
             }
@@ -37523,7 +37523,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "권한이 거부되었습니다. 사용자 이름과 키가 서버에서 권한이 부여되었는지 확인하세요."
+            "value" : "권한이 거부되었습니다. 사용자 이름과 키가 서버에서 허용되었는지 확인하십시오."
           }
         },
         "ru" : {
@@ -38106,13 +38106,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 항목을 다시 넣으세요?"
+                  "value" : "%lld개 항목을 되돌려 놓겠습니까?"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 아이템들을 다시 넣을래?"
+                  "value" : "%lld개 항목을 되돌려 놓겠습니까?"
                 }
               }
             }
@@ -38694,7 +38694,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@를 다시 실행하여 문제가 발생했습니다."
+            "value" : "%@ 다시 실행에 문제가 있음"
           }
         },
         "ru" : {
@@ -39214,7 +39214,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld 파일의 %lld에서 제거되었습니다. %@\n\n태그는 여전히 파일을 가지고 있기 때문에 사이드바에 남아 있습니다."
+            "value" : "%lld/%lld개 파일에서 제거되었습니다. %@\n\n아직 이 태그가 지정된 파일이 있어 태그가 사이드바에 남아 있습니다."
           }
         },
         "ru" : {
@@ -39407,13 +39407,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 품목의 이름을 변경하다"
+                  "value" : "%lld개 항목 이름 변경"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 항목을 이름 변경하기"
+                  "value" : "%lld개 항목 이름 변경"
                 }
               }
             }
@@ -39930,7 +39930,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\"를 대체하세요?"
+            "value" : "“%@”을(를) 대치하겠습니까?"
           }
         },
         "ru" : {
@@ -40357,7 +40357,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\"에서 기존 아카이브를 교체합니까?"
+            "value" : "“%@”의 기존 아카이브를 대치하겠습니까?"
           }
         },
         "ru" : {
@@ -41722,7 +41722,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "운영을 실행하려면 명령 ID 또는 제목이 필요합니다."
+            "value" : "작업 실행에는 명령 ID 또는 제목이 필요합니다."
           }
         },
         "ru" : {
@@ -43097,7 +43097,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이미지를 1200 px로 크기 조정하세요."
+            "value" : "이미지를 1200 px로 크기 조정"
           }
         },
         "ru" : {
@@ -44984,7 +44984,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "블로깅을 하면서 찾은 모든 태그를 표시합니다."
+            "value" : "탐색 중 찾은 모든 태그를 표시합니다."
           }
         },
         "ru" : {
@@ -48171,7 +48171,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "찾으려면 텍스트를"
+            "value" : "찾을 텍스트"
           }
         },
         "ru" : {
@@ -48236,7 +48236,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "그 파일은 디스크에 위치하지 않으므로 공개할 내용이 없습니다."
+            "value" : "해당 파일에는 디스크 위치가 없어 표시할 항목이 없습니다."
           }
         },
         "ru" : {
@@ -49536,7 +49536,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "원격 경로가 찾을 수 없습니다."
+            "value" : "원격 경로를 찾을 수 없습니다."
           }
         },
         "ru" : {
@@ -49731,7 +49731,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "서버에 연결할 수 없습니다. 호스트 이름과 포트를 확인하세요."
+            "value" : "서버에 연결할 수 없습니다. 호스트 이름과 포트를 확인하십시오."
           }
         },
         "ru" : {
@@ -49926,7 +49926,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "서버가 해당 경로에 대한 액세스를 거부했습니다."
+            "value" : "서버가 해당 경로에 대한 접근을 거부했습니다."
           }
         },
         "ru" : {
@@ -50446,7 +50446,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\"에서 공유를 찾을 수 없습니다. 공유 이름을 확인하세요."
+            "value" : "“%@”에서 공유를 찾을 수 없습니다. 공유 이름을 확인하십시오."
           }
         },
         "ru" : {
@@ -51031,7 +51031,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이것은 되돌릴 수 없습니다."
+            "value" : "이 작업은 실행 취소할 수 없습니다."
           }
         },
         "ru" : {
@@ -51291,7 +51291,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이것은 저장된 검색을 사이드바에서 제거합니다. 파일은 삭제되지 않습니다."
+            "value" : "저장된 검색을 사이드바에서 제거합니다. 파일은 삭제되지 않습니다."
           }
         },
         "ru" : {
@@ -51356,7 +51356,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이것은 저장된 서버를 사이드바에서 제거합니다. 파일은 삭제되지 않습니다."
+            "value" : "저장된 서버를 사이드바에서 제거합니다. 파일은 삭제되지 않습니다."
           }
         },
         "ru" : {
@@ -51421,7 +51421,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이것은 사이드바 행을 이름을 변경합니다. 폴더 자체는 이름이 변경되지 않습니다."
+            "value" : "사이드바 행의 이름만 변경합니다. 폴더 자체의 이름은 변경되지 않습니다."
           }
         },
         "ru" : {
@@ -51486,7 +51486,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이것은 아카이브를 다시 작성하므로 되돌릴 수 없습니다."
+            "value" : "아카이브를 다시 작성하며 이 작업은 실행 취소할 수 없습니다."
           }
         },
         "ru" : {
@@ -52143,7 +52143,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS는 다른 사용자의 홈 폴더, Mail, Time Machine 백업 같은 일부 폴더를 비공개로 유지합니다. 처음 필요할 때 전체 디스크 접근 권한을 허용하십시오. 이 둘러보기는 명령 팔레트에서 언제든 다시 열 수 있습니다."
+            "value" : "macOS는 다른 사용자의 홈 폴더, Mail, Time Machine 백업 같은 일부 폴더를 비공개로 유지합니다. 처음 필요할 때 전체 디스크 접근 권한을 허용하십시오. 이 둘러보기는 명령 팔레트에서 언제든지 다시 열 수 있습니다."
           }
         },
         "ru" : {
@@ -52861,7 +52861,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@를 문제 없이 완료한 후 되돌리기"
+            "value" : "%@ 실행 취소에 문제가 있음"
           }
         },
         "ru" : {
@@ -56695,7 +56695,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "귀하의 사용자 정의한 바로 가기는 %@ 미리 설정으로 대체됩니다. 귀하의 모든 변경 사항은 손실됩니다."
+            "value" : "사용자화한 단축키가 %@ 프리셋으로 대치됩니다. 모든 변경 사항이 사라집니다."
           }
         },
         "ru" : {
