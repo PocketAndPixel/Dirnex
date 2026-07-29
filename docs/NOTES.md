@@ -519,6 +519,23 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   segmented controls) and the cheapest to prevent: give such a label the same width constraint the
   fields get, and measure the layout's reserved height with it *visible* so the second line is
   already accounted for. As with the other two, only the live Russian run showed it.
+- **When a control's width is fixed by what it lines up with, the text has to leave — put a glyph in
+  it and the words in the tooltip.** The Shortcuts tab's recorder pill is 148 pt because it forms a
+  column with the shortcuts themselves (`⌥F5`, `⌘⇧N`), so none of the three fixes above applies:
+  there is nothing to widen, nothing to compress, and the placeholder is the *only* thing in the
+  pill. Measured in the pill's own font, "Add Shortcut" is 89 pt and its translations reach 215 pt
+  (uk, de) and **252 pt** (it) — 7 of the 14 shipped languages over budget, and "Type shortcut…"
+  another 5 — and because the label was merely centred with no width constraint it *overran* on both
+  sides rather than truncating, so the words spilled outside the rounded rect. A `plus` symbol
+  (recording: `keyboard`) fits every language by construction, and the tooltip has no width to
+  overrun: the existing keys were reused, so all 14 translations carried over unchanged and their
+  fuller phrasing ("Додати клавіатурне скорочення") now reads as an improvement rather than a
+  clipped label. Set the same string as the accessibility label — a glyph-only pill is otherwise
+  silent to VoiceOver. The general rule: prose belongs where its length is free; a fixed-width
+  control is not that place, whatever the English happens to measure.
+  - The one thing a glyph cannot say is *which* state you are in, so the two placeholder states must
+    stay visually distinct without words — here the accent ring and tint already carried recording,
+    and the glyph change is a second, redundant signal rather than the only one.
 - **Resizing a window for a probe: `defaults write "NSWindow Frame <autosave>"` then relaunch.**
   `System Events` needs assistive access that `osascript` does not have (`-1719`), Dirnex's `.sdef`
   exposes no windows (`-1728`), and a synthetic corner drag misses the resize edge. The frame
@@ -529,6 +546,15 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   Panel"` when what it meant was "the Shortcuts entity draws its name from the registry". Assert
   against `LocalizedCatalog`, not against literals, and the suite passes in either language (both
   were run to prove it).
+  - **It bites for a *system* framework's strings too, not just our own.**
+    `OpenWithLauncherTests` asserted `"TextEdit"` and, under a Ukrainian pin, read
+    «Мініредактор» — Apple localizes that app's `CFBundleDisplayName`, in `uk` but **not** in `en`
+    or `ru`, so the literal held through every earlier language check and failed on the first
+    Ukrainian run. There is no catalog of ours to assert against, so the shape that works is to
+    guard the literal by the condition that makes it true —
+    `Bundle(url:)?.preferredLocalizations.first?.hasPrefix("en")` — and keep the
+    language-independent claims (no `.app` suffix, the bundle id) unconditional. Those are the
+    claims the test existed for anyway; the app name was the incidental part.
 - **Endonyms are data, not strings.** The language picker lists each language in its own language
   ("Русский", not "Russian"), because a user stranded in a UI they cannot read has to be able to
   find the way back. They live in `AppLanguages` beside the codes and are never translated.

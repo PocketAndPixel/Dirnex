@@ -7094,7 +7094,7 @@
       }
     },
     "Add Shortcut" : {
-      "comment" : "Shortcut recorder placeholder when no shortcut is set.",
+      "comment" : "Tooltip on the shortcut recorder when no shortcut is set; the pill itself shows a + glyph. A tooltip, not text in the pill, so its length is free — translate it as a full phrase.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -72467,7 +72467,7 @@
       }
     },
     "Type shortcut…" : {
-      "comment" : "Shortcut recorder while capturing keys.",
+      "comment" : "Tooltip on the shortcut recorder while it captures keys; the pill itself shows a keyboard glyph. A tooltip, not text in the pill, so its length is free — translate it as a full phrase.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
