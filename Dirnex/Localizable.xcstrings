@@ -16742,7 +16742,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Synchronizuj katalogi…"
+            "value" : "Synchronizuj foldery…"
           }
         },
         "ru" : {
@@ -18254,7 +18254,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Historia katalogów…"
+            "value" : "Historia folderów…"
           }
         },
         "ru" : {
@@ -32757,7 +32757,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex może przeglądać wszystko, ale macOS trzyma niektóre foldery prywatnie — katalogi domowe innych użytkowników, Mail i Wiadomości, kopie Time Machine oraz inne wrażliwe miejsca. Bez Pełnego dostępu do dysku otwarcie takiego miejsca pokaże blokadę uprawnień; wszędzie indziej wszystko działa normalnie.\n\nKliknij Otwórz Ustawienia systemowe, a potem włącz Dirnex w sekcji Pełny dostęp do dysku. macOS poprosi o ponowne uruchomienie Dirnex, aby nowy dostęp zaczął działać."
+            "value" : "Dirnex może przeglądać wszystko, ale macOS trzyma niektóre foldery prywatnie — foldery domowe innych użytkowników, Mail i Wiadomości, kopie Time Machine oraz inne wrażliwe miejsca. Bez Pełnego dostępu do dysku otwarcie takiego miejsca pokaże blokadę uprawnień; wszędzie indziej wszystko działa normalnie.\n\nKliknij Otwórz Ustawienia systemowe, a potem włącz Dirnex w sekcji Pełny dostęp do dysku. macOS poprosi o ponowne uruchomienie Dirnex, aby nowy dostęp zaczął działać."
           }
         },
         "ru" : {
@@ -32840,7 +32840,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex nie ma otwartego okna przeglądarki, na którym może działać."
+            "value" : "Dirnex nie ma otwartego okna, na którym może działać."
           }
         },
         "ru" : {
@@ -66651,7 +66651,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS trzyma kilka folderów prywatnie — katalogi domowe innych użytkowników, Mail, kopie Time Machine. Przyznaj Pełny dostęp do dysku, gdy pierwszy raz go potrzebujesz. Do tego wprowadzenia możesz wrócić z palety poleceń."
+            "value" : "macOS trzyma kilka folderów prywatnie — foldery domowe innych użytkowników, Mail, kopie Time Machine. Przyznaj Pełny dostęp do dysku, gdy pierwszy raz go potrzebujesz. Do tego wprowadzenia możesz wrócić z palety poleceń."
           }
         },
         "ru" : {
@@ -70638,7 +70638,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nie można usunąć katalogu głównego połączenia."
+            "value" : "Nie można usunąć folderu głównego połączenia."
           }
         },
         "ru" : {
