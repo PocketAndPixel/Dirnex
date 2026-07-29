@@ -2902,7 +2902,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld коміта для отримання"
+                  "value" : "%lld коміту для отримання"
                 }
               }
             }
@@ -3195,7 +3195,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld коміта для надсилання"
+                  "value" : "%lld коміту для надсилання"
                 }
               }
             }
@@ -3488,7 +3488,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld конфлікта пропущено"
+                  "value" : "%lld конфлікту пропущено"
                 }
               }
             }
@@ -5490,7 +5490,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld конфлікта назв"
+                  "value" : "%lld конфлікту назв"
                 }
               }
             }
@@ -6051,7 +6051,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld скрипта більше не запускаються функціональними клавішами"
+                  "value" : "%lld скрипту більше не запускаються функціональними клавішами"
                 }
               }
             }
@@ -21850,7 +21850,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Розміри з урахуванням Git"
+            "value" : "Не враховувати ігнороване Git у розмірах"
           }
         },
         "pt-BR" : {
@@ -42256,7 +42256,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Кому видан: %@\nКем видан: %@\nДействителен до: %@\n\nВідбиток SHA-256:\n%@"
+            "value" : "Кому видано: %@\nКим видано: %@\nДійсний до: %@\n\nВідбиток SHA-256:\n%@"
           }
         },
         "pt-BR" : {
@@ -57099,7 +57099,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Виполнить ${operation} в Dirnex"
+            "value" : "Виконати ${operation} у Dirnex"
           }
         },
         "pt-BR" : {
