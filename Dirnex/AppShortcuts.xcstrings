@@ -52,6 +52,12 @@
             "value" : "${applicationName} kopieer de selectie"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName} kopiuj zaznaczenie"
+          }
+        },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
@@ -127,6 +133,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kopieer de selectie in ${applicationName}"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopiuj zaznaczenie w ${applicationName}"
           }
         },
         "ru" : {

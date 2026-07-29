@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M11 shipped · M12 (localization) Passes 1–2 done, Pass 3 slices 1–10 done · M13 (FTP/FTPS) shipped · M14 (checksums + attributes) planned · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
+Status: M0–M11 shipped · M12 (localization) Passes 1–2 done, Pass 3 slices 1–11 done · M13 (FTP/FTPS) shipped · M14 (checksums + attributes) planned · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
 
 ---
 
@@ -140,7 +140,7 @@ non-empty folder, which hid three folders Finder shows.
 
 ### In progress: M12 — Localization (started 2026-07-22)
 
-Twelve languages now; English is the source and Russian is the first translation, added
+Thirteen languages now; English is the source and Russian is the first translation, added
 alongside the machinery so the machinery is proven by a real language rather than by a
 pseudolanguage. No RTL in the planned set — CJK is, so input-method behaviour in the inline rename
 field and the palette needs a live check when those land.
@@ -639,6 +639,15 @@ whenever it is picked back up.
   `Hernoem`.
   The catalog keeps Dutch ordered between Korean and Russian, and the function bar keeps whole Dutch
   command labels.
+- **Slice 11 landed (2026-07-29): Polish.** `pl` / `Polski` is now a shipped language, listed in
+  Settings and matched from Polish regional tags such as `pl-PL`. Its complete `Localizable` column
+  (802 entries, including every plural variant) and both App Shortcut phrases are present in the
+  catalog and compile into `pl.lproj`. The manual macOS-style pass kept product names unchanged
+  (`Dirnex`, `Finder`, `iCloud Drive`, `Git`, `Zip`, `7-Zip`) and used natural Polish macOS wording
+  such as `Ustawienia systemowe`, `Pełny dostęp do dysku`, `Kosz`, `Szybki podgląd`, `pasek boczny`,
+  `woluminy`, `tagi Findera`, `Kopiuj`, `Przenieś`, and `Zmień nazwę`. The catalog keeps Polish
+  ordered between Dutch and Brazilian Portuguese, and the function bar keeps whole Polish command
+  labels.
 
 **Standing rule for the function bar, in every language.** The seven F-key captions are the app's
 primary buttons and are on screen permanently, so they carry the first impression of the whole app:
