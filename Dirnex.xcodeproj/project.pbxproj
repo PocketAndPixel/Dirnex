@@ -153,6 +153,7 @@
 				it,
 				ja,
 				ko,
+				nl,
 				pt-BR,
 				ru,
 				zh-Hans,
