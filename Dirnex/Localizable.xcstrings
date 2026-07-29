@@ -7163,7 +7163,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Elk type"
+            "value" : "Elke soort"
           }
         },
         "ru" : {
@@ -18809,7 +18809,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "voorproefje, kijkje",
+            "value" : "voorvertoning, snelle weergave",
             "state" : "translated"
           }
         },
@@ -18966,7 +18966,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "voorbeeld bekijken, gluren, paneel, inactief, ctrl q"
+            "value" : "voorvertoning, snelle weergave, paneel, inactief, ctrl q"
           }
         },
         "ru" : {
@@ -19044,7 +19044,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Snelweergavepaneel"
+            "value" : "Paneel voor Snelle weergave"
           }
         },
         "ru" : {
@@ -19121,7 +19121,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "voorbeeld, kijkje, vol, scherm, foto, afbeelding, presenteren, ctrl-optie q",
+            "value" : "voorvertoning, snelle weergave, schermvullend, foto, afbeelding, presenteren, ctrl option q",
             "state" : "translated"
           }
         },
@@ -19200,7 +19200,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Snelweergave volledig scherm"
+            "value" : "Snelle weergave in schermvullende weergave"
           }
         },
         "ru" : {
@@ -19278,7 +19278,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "voorbeeld, kijkje, vol, venster, groot, lezen, groot, ctrl shift q"
+            "value" : "voorvertoning, snelle weergave, volledig venster, groot, lezen, ctrl shift q"
           }
         },
         "ru" : {
@@ -19355,7 +19355,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Snelweergave volledig venster",
+            "value" : "Snelle weergave in volledig venster",
             "state" : "translated"
           }
         },
@@ -20994,7 +20994,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sessie, schakelen, herstellen, openen, lay-out, velden"
+            "value" : "sessie, schakelen, herstellen, openen, lay-out, panelen"
           }
         },
         "ru" : {
@@ -21149,7 +21149,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Sessie, snaphot, opslag, lay-out, velden",
+            "value" : "sessie, momentopname, bewaren, lay-out, panelen",
             "state" : "translated"
           }
         },
@@ -37106,7 +37106,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Type:",
+            "value" : "Soort:",
             "state" : "translated"
           }
         },
@@ -45130,7 +45130,7 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld-onderdeel terugzetten?"
+                  "value" : "%lld onderdeel terugzetten?"
                 }
               },
               "other" : {
@@ -50794,7 +50794,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "quarantaine, poortwachter, blokkeren verwijderen, downloaden, xattr",
+            "value" : "quarantaine, gatekeeper, blokkering opheffen, download, xattr",
             "state" : "translated"
           }
         },
@@ -50950,7 +50950,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Afbeelding, foto, hergrootte, schaal, miniatuur",
+            "value" : "afbeelding, foto, grootte wijzigen, schalen, miniatuur",
             "state" : "translated"
           }
         },
