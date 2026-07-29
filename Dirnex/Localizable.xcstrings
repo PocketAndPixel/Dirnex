@@ -1735,7 +1735,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "tasto %@"
+            "value" : "chiave %@"
           }
         },
         "ja" : {
@@ -1806,7 +1806,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ a sinistra"
+            "value" : "%@ rimanenti"
           }
         },
         "ja" : {
@@ -6236,7 +6236,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un elemento con lo stesso nome è già nell'archivio. La sostituzione riscrive l'archivio e non può essere annullata."
+            "value" : "Un elemento con lo stesso nome è già nell’archivio. La sostituzione riscrive l’archivio e non può essere annullata."
           }
         },
         "ja" : {
@@ -6378,7 +6378,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "anonimo"
+            "value" : "Anonimo"
           }
         },
         "ja" : {
@@ -6449,7 +6449,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un'altra ricerca salvata utilizza già quel nome. Scegli uno diverso."
+            "value" : "Un’altra ricerca salvata utilizza già quel nome. Scegli un altro nome."
           }
         },
         "ja" : {
@@ -6875,7 +6875,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nome dell'archivio"
+            "value" : "Nome dell’archivio"
           }
         },
         "ja" : {
@@ -7656,7 +7656,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Autenticazione fallita. Controlla il nome utente e la password o prova una connessione come ospite."
+            "value" : "Autenticazione non riuscita. Controlla il nome utente e la password o prova una connessione come ospite."
           }
         },
         "ja" : {
@@ -10283,7 +10283,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Compresso"
+            "value" : "Contratto"
           }
         },
         "ja" : {
@@ -11578,7 +11578,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ripetere, inoltrare, di nuovo, riapplicare"
+            "value" : "ripeti, di nuovo, riapplica"
           }
         },
         "ja" : {
@@ -11722,7 +11722,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Riportare indietro, tornare indietro"
+            "value" : "annulla, indietro, ripristina"
           }
         },
         "ja" : {
@@ -12298,7 +12298,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Distruggere, rimuovere, cancellare"
+            "value" : "elimina, rimuovi, cancella"
           }
         },
         "ja" : {
@@ -12586,7 +12586,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "f4, nuovo, creare, editor, testo, tocco, vuoto, file"
+            "value" : "f4, nuovo, crea, editor, testo, vuoto, file"
           }
         },
         "ja" : {
@@ -13738,7 +13738,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ripristina, annulla cancellazione, Cestino, recupera, originale, annulla cancellazione"
+            "value" : "ripristina, cestino, recupera, originale"
           }
         },
         "ja" : {
@@ -14314,7 +14314,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trova, etichetta, etichetta, colore, colore, segno"
+            "value" : "trova, tag, etichetta, colore, contrassegno"
           }
         },
         "ja" : {
@@ -14746,7 +14746,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Storia, precedente, indietro"
+            "value" : "cronologia, precedente, indietro"
           }
         },
         "ja" : {
@@ -15322,7 +15322,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Storia, prossimo"
+            "value" : "cronologia, successivo, avanti"
           }
         },
         "ja" : {
@@ -15466,7 +15466,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recente, visitato, sentiero, alt down"
+            "value" : "recenti, visitati, percorso, alt down"
           }
         },
         "ja" : {
@@ -15754,7 +15754,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Genitore, fuori"
+            "value" : "cartella superiore, su, fuori"
           }
         },
         "ja" : {
@@ -15898,7 +15898,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ricerca, salvato, intelligente, cartella, segnalibro, barra laterale"
+            "value" : "ricerca, salvata, intelligente, cartella, segnalibro, barra laterale"
           }
         },
         "ja" : {
@@ -16186,7 +16186,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Segna, tutto, intero"
+            "value" : "seleziona, tutto, intero"
           }
         },
         "ja" : {
@@ -16474,7 +16474,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Accendere/spegnere, ruotare"
+            "value" : "inverti, alterna, selezione"
           }
         },
         "ja" : {
@@ -16690,7 +16690,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Disseleziona per modello…"
+            "value" : "Deseleziona per modello…"
           }
         },
         "ja" : {
@@ -16762,7 +16762,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Azioni, comandi, ricerca, esecuzione"
+            "value" : "azioni, comandi, ricerca, esegui"
           }
         },
         "ja" : {
@@ -18346,7 +18346,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Luoghi, volumi, nascondi"
+            "value" : "posizioni, volumi, nascondi"
           }
         },
         "ja" : {
@@ -18634,7 +18634,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trova, tag, etichette, colori, colori, punti, colonna"
+            "value" : "trova, tag, etichette, colori, punti, colonna"
           }
         },
         "ja" : {
@@ -19354,7 +19354,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sessione, interruttore, ripristino, aprire, layout, finestre"
+            "value" : "sessione, cambia, ripristina, apri, layout, finestre"
           }
         },
         "ja" : {
@@ -19498,7 +19498,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sessione, istantanea, archivio, layout, finestre"
+            "value" : "sessione, istantanea, salva, layout, finestre"
           }
         },
         "ja" : {
@@ -21069,7 +21069,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "contenuto"
+            "value" : "Contenuto"
           }
         },
         "ja" : {
@@ -21211,7 +21211,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copia la selezione del pannello attivo nell'altro pannello, come fa F5."
+            "value" : "Copia la selezione del pannello attivo nell’altro pannello, come fa F5."
           }
         },
         "ja" : {
@@ -22317,7 +22317,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile cambiare le etichette"
+            "value" : "Non è stato possibile modificare i tag"
           }
         },
         "ja" : {
@@ -22745,7 +22745,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile creare l'archivio"
+            "value" : "Non è stato possibile creare l’archivio"
           }
         },
         "ja" : {
@@ -23855,7 +23855,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile estrarre dall'archivio"
+            "value" : "Non è stato possibile estrarre dall’archivio"
           }
         },
         "ja" : {
@@ -23997,7 +23997,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile cancellare completamente “%@”"
+            "value" : "Non è stato possibile rimuovere completamente “%@”"
           }
         },
         "ja" : {
@@ -27882,7 +27882,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex ha già l'accesso completo al disco"
+            "value" : "Dirnex ha già Accesso completo al disco"
           }
         },
         "ja" : {
@@ -27953,7 +27953,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex può esplorare quasi ovunque, ma macOS tiene private alcune cartelle: le cartelle Inizio di altri utenti, Mail e Messaggi, i backup di Time Machine e tutte le posizioni che considera sensibili. Senza Accesso completo al disco, aprirne una mostra un blocco di autorizzazione; tutto il resto funziona normalmente.\n\nFai clic su Apri Impostazioni di Sistema, poi attiva Dirnex in Accesso completo al disco. macOS chiederà a Dirnex di riaprirsi perché il nuovo accesso abbia effetto."
+            "value" : "Dirnex può sfogliare quasi ovunque, ma macOS tiene private alcune cartelle: le cartelle Inizio di altri utenti, Mail e Messaggi, i backup di Time Machine e tutte le posizioni che considera sensibili. Senza Accesso completo al disco, quando apri una di queste cartelle viene mostrato un avviso di autorizzazione; tutto il resto funziona normalmente.\n\nFai clic su Apri Impostazioni di Sistema, poi attiva Dirnex in Accesso completo al disco. macOS chiederà a Dirnex di riavviarsi perché il nuovo accesso abbia effetto."
           }
         },
         "ja" : {
@@ -28166,7 +28166,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex deve riavviare per passare a %@."
+            "value" : "Dirnex deve riavviarsi per passare a %@."
           }
         },
         "ja" : {
@@ -31292,7 +31292,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "avanti"
+            "value" : "Avanti"
           }
         },
         "ja" : {
@@ -32151,7 +32151,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "generale"
+            "value" : "Generali"
           }
         },
         "ja" : {
@@ -32506,7 +32506,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dà a questa ricerca un nome per tenerla nella barra laterale e eseguila di nuovo più tardi."
+            "value" : "Dai un nome a questa ricerca per tenerla nella barra laterale ed eseguirla di nuovo più tardi."
           }
         },
         "ja" : {
@@ -32719,7 +32719,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nascondi i dettagli dell'operazione"
+            "value" : "Nascondi i dettagli dell’operazione"
           }
         },
         "ja" : {
@@ -33288,7 +33288,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Installa FileMerge (parte di Xcode), Kaleidoscope o BBEdit per confrontare i file uno accanto all'altro."
+            "value" : "Installa FileMerge (parte di Xcode), Kaleidoscope o BBEdit per confrontare i file uno accanto all’altro."
           }
         },
         "ja" : {
@@ -33430,7 +33430,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Emesso a: %@\n\nEmesso da: %@\n\nScade: %@\n\nImpressione digitale SHA-256:\n\n%@"
+            "value" : "Emesso a: %@\nEmesso da: %@\nScade: %@\n\nImpronta digitale SHA-256:\n%@"
           }
         },
         "ja" : {
@@ -33552,13 +33552,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Sarà rimosso da %lld file, in tutte le posizioni indicizzate da Spotlight. Il file non verrà eliminato."
+                  "value" : "Il tag verrà rimosso da %lld file, in tutte le posizioni indicizzate da Spotlight. Il file non verrà eliminato."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Sarà rimosso da %lld file, in tutte le posizioni indicizzate da Spotlight. I file non verranno eliminati."
+                  "value" : "Il tag verrà rimosso da %lld file, in tutte le posizioni indicizzate da Spotlight. I file non verranno eliminati."
                 }
               }
             }
@@ -33787,7 +33787,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "È la chiave"
+            "value" : "il suo tasto"
           }
         },
         "ja" : {
@@ -34851,7 +34851,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS tiene privato il Cestino, quindi Dirnex non può mostrarlo finché non glielo consenti. Tutto il resto continua a funzionare come ora.\n\nFai clic su Apri Impostazioni di Sistema, poi attiva Dirnex in Accesso completo al disco. macOS chiederà a Dirnex di riaprirsi perché il nuovo accesso abbia effetto."
+            "value" : "macOS tiene privato il Cestino, quindi Dirnex non può mostrarlo finché non glielo consenti. Tutto il resto continua a funzionare come ora.\n\nFai clic su Apri Impostazioni di Sistema, poi attiva Dirnex in Accesso completo al disco. macOS chiederà a Dirnex di riavviarsi perché il nuovo accesso abbia effetto."
           }
         },
         "ja" : {
@@ -34922,7 +34922,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS registra la cartella originale quando un elemento viene eliminato dal Cestino e non c'è alcun registro per questo. Invece trascinalo dal Cestino."
+            "value" : "macOS registra la cartella originale quando un elemento viene spostato nel Cestino, ma per questo elemento non c’è alcuna registrazione. Trascinalo fuori dal Cestino."
           }
         },
         "ja" : {
@@ -34993,7 +34993,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS non segnala alcuna applicazione per il testo semplice. Scegli uno nelle Impostazioni ▸ Operazioni."
+            "value" : "macOS non segnala alcuna app per il testo semplice. Scegline una in Impostazioni ▸ Operazioni."
           }
         },
         "ja" : {
@@ -35918,7 +35918,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "nome"
+            "value" : "Nome"
           }
         },
         "ja" : {
@@ -36131,7 +36131,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nomina l'etichetta e scegli il colore in cui verrà introdotta."
+            "value" : "Dai un nome al tag e scegli il colore con cui verrà creato."
           }
         },
         "ja" : {
@@ -38474,7 +38474,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apri prima una cartella diversa nell'altro pannello."
+            "value" : "Apri prima una cartella diversa nell’altro pannello."
           }
         },
         "ja" : {
@@ -38616,7 +38616,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apri prima una cartella sul disco nell'altro pannello."
+            "value" : "Apri prima una cartella sul disco nell’altro pannello."
           }
         },
         "ja" : {
@@ -38687,7 +38687,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apri una cartella sul disco nell'altro pannello per contenere il nuovo archivio."
+            "value" : "Apri una cartella sul disco nell’altro pannello per contenere il nuovo archivio."
           }
         },
         "ja" : {
@@ -39184,7 +39184,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "operazione"
+            "value" : "Operazione"
           }
         },
         "ja" : {
@@ -40322,7 +40322,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Password (vuota per gli ospiti)"
+            "value" : "Password (lascia vuota per ospite)"
           }
         },
         "ja" : {
@@ -40464,7 +40464,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "pausa"
+            "value" : "Pausa"
           }
         },
         "ja" : {
@@ -41105,7 +41105,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "FTP semplice invia la tua password e i tuoi file non crittografati."
+            "value" : "FTP non protetto invia la password e i file senza crittografia."
           }
         },
         "ja" : {
@@ -41746,7 +41746,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Metti un file sotto il cursore in ogni pannello, quindi confrontali."
+            "value" : "Seleziona un file in ogni pannello, poi confrontali."
           }
         },
         "ja" : {
@@ -42242,7 +42242,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ripeti %@ completato con problemi"
+            "value" : "Ripetizione di %@ completata con problemi"
           }
         },
         "ja" : {
@@ -42384,7 +42384,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Riapri"
+            "value" : "Riavvia"
           }
         },
         "ja" : {
@@ -42455,7 +42455,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "rimuovere"
+            "value" : "Rimuovi"
           }
         },
         "ja" : {
@@ -42810,7 +42810,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rimosso da %lld dei file %lld. %@\n\nIl tag rimane nella barra laterale perché i file lo portano ancora."
+            "value" : "Rimosso da %lld file su %lld. %@\n\nIl tag rimane nella barra laterale perché alcuni file lo hanno ancora."
           }
         },
         "ja" : {
@@ -43167,7 +43167,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rinnomina preferito"
+            "value" : "Rinomina preferito"
           }
         },
         "ja" : {
@@ -43238,7 +43238,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rinnomina la ricerca salvata"
+            "value" : "Rinomina la ricerca salvata"
           }
         },
         "ja" : {
@@ -43450,7 +43450,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "sostituire"
+            "value" : "Sostituisci"
           }
         },
         "ja" : {
@@ -45408,7 +45408,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esegui una volta per l'intera selezione"
+            "value" : "Esegui una volta per l’intera selezione"
           }
         },
         "ja" : {
@@ -45550,7 +45550,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "l'operazione di esecuzione richiede un ID o un titolo del comando."
+            "value" : "run operation richiede un ID o un titolo del comando."
           }
         },
         "ja" : {
@@ -46475,7 +46475,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Archiviare in altro pannello"
+            "value" : "Archivia nell’altro pannello"
           }
         },
         "ja" : {
@@ -46547,7 +46547,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "appunti, percorso, copia, foglio di appunti"
+            "value" : "appunti, percorso, copia, clipboard"
           }
         },
         "ja" : {
@@ -46907,7 +46907,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rimuovi il flag di quarantena"
+            "value" : "Rimuovi l’attributo di quarantena"
           }
         },
         "ja" : {
@@ -49396,7 +49396,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostra i dettagli dell'operazione"
+            "value" : "Mostra i dettagli dell’operazione"
           }
         },
         "ja" : {
@@ -50603,7 +50603,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alcuni di iCloud Drive necessitano di Accesso completo al disco"
+            "value" : "Alcune cartelle di iCloud Drive richiedono Accesso completo al disco"
           }
         },
         "ja" : {
@@ -50958,7 +50958,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Passo"
+            "value" : "Incremento"
           }
         },
         "ja" : {
@@ -51171,7 +51171,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cambia l'attenzione alle cartelle aperte dai risultati della ricerca"
+            "value" : "Sposta il focus sulle cartelle aperte dai risultati della ricerca"
           }
         },
         "ja" : {
@@ -52522,7 +52522,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Testo all'interno del file"
+            "value" : "testo nel file"
           }
         },
         "ja" : {
@@ -52593,7 +52593,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Testo da trovare"
+            "value" : "testo da trovare"
           }
         },
         "ja" : {
@@ -52664,7 +52664,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quel file non ha una posizione sul disco, quindi non c'è niente da mostrare."
+            "value" : "Quel file non ha una posizione sul disco, quindi non c’è niente da mostrare."
           }
         },
         "ja" : {
@@ -52735,7 +52735,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quello non è una cartella."
+            "value" : "L’elemento non è una cartella."
           }
         },
         "ja" : {
@@ -52877,7 +52877,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'archivio"
+            "value" : "questo archivio"
           }
         },
         "ja" : {
@@ -52948,7 +52948,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'archivio potrebbe essere danneggiato o gli elementi potrebbero mancare."
+            "value" : "L’archivio potrebbe essere danneggiato o gli elementi potrebbero mancare."
           }
         },
         "ja" : {
@@ -53942,7 +53942,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'altro pannello non è una cartella in cui puoi copiare."
+            "value" : "L’altro pannello non è una cartella in cui puoi copiare."
           }
         },
         "ja" : {
@@ -54297,7 +54297,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile raggiungere il server. Controlla il nome dell'host e la porta."
+            "value" : "Non è stato possibile raggiungere il server. Controlla il nome dell’host e la porta."
           }
         },
         "ja" : {
@@ -54510,7 +54510,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Il server ha rifiutato l'accesso a quel percorso."
+            "value" : "Il server ha rifiutato l’accesso a quel percorso."
           }
         },
         "ja" : {
@@ -54723,7 +54723,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Il certificato del server non è stato verificato."
+            "value" : "Non è stato possibile verificare il certificato del server."
           }
         },
         "ja" : {
@@ -55362,7 +55362,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non c'è niente da cancellare."
+            "value" : "Non c’è niente da cancellare."
           }
         },
         "ja" : {
@@ -55504,7 +55504,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non c'è abbastanza spazio di archiviazione iCloud per completare questo."
+            "value" : "Non c’è abbastanza spazio di archiviazione iCloud per completare questa operazione."
           }
         },
         "ja" : {
@@ -55575,7 +55575,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "C'è già una cartella con quel nome."
+            "value" : "C’è già una cartella con quel nome."
           }
         },
         "ja" : {
@@ -55717,7 +55717,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Questo non può essere annullato."
+            "value" : "Questa azione non può essere annullata."
           }
         },
         "ja" : {
@@ -56214,7 +56214,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Questo riscrive l'archivio e non può essere annullato."
+            "value" : "Questo riscrive l’archivio e non può essere annullato."
           }
         },
         "ja" : {
@@ -56499,7 +56499,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Il pannello attivo è l’origine, l’altro è la destinazione. Copia o sposta gli elementi selezionati, crea una cartella o sposta i file nel Cestino: dai pulsanti in basso, dai tasti funzione o dalla palette."
+            "value" : "Il pannello attivo è l’origine, l’altro è la destinazione. Copia o sposta gli elementi selezionati, crea una cartella o sposta i file nel Cestino usando i pulsanti in basso, i tasti funzione o la palette."
           }
         },
         "ja" : {
@@ -56643,7 +56643,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Salta direttamente su un percorso, apri una seconda scheda o incolla le cartelle in cui vivi. Posizione, schede e Preferiti mantengono anche un albero di cartelle profondo a portata di un singolo tasto premuto."
+            "value" : "Vai direttamente a un percorso, apri una seconda scheda o aggiungi le cartelle che usi spesso. Posizione, schede e Preferiti tengono anche alberi di cartelle profondi a portata di tasto."
           }
         },
         "ja" : {
@@ -56787,7 +56787,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apri la palette dei comandi e inizia a digitare ciò che vuoi fare: copia, archivia, connettiti a un server, tagga. Abbina ogni azione in modo impreciso, quindi non c'è niente da memorizzare e nessun menu da cercare."
+            "value" : "Apri la palette dei comandi e inizia a digitare ciò che vuoi fare: copia, archivia, connettiti a un server, aggiungi tag. La ricerca trova le azioni anche con parole simili, quindi non c’è niente da memorizzare e nessun menu da cercare."
           }
         },
         "ja" : {
@@ -56931,7 +56931,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS tiene alcune cartelle private: le home degli altri utenti, la posta, i backup di Time Machine. Concedi l'accesso completo al disco quando ne hai bisogno per la prima volta. Puoi riaprire questa guida in qualsiasi momento dalla palette dei comandi."
+            "value" : "macOS tiene private alcune cartelle: le cartelle Inizio di altri utenti, Mail e i backup di Time Machine. Concedi Accesso completo al disco quando ne hai bisogno per la prima volta. Puoi riaprire questa guida in qualsiasi momento dalla palette dei comandi."
           }
         },
         "ja" : {
@@ -57147,7 +57147,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Benvenuto su Dirnex"
+            "value" : "Benvenuto in Dirnex"
           }
         },
         "ja" : {
@@ -57218,7 +57218,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tracciamento %@"
+            "value" : "Traccia %@"
           }
         },
         "ja" : {
@@ -57715,7 +57715,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Annulla %@ finito con problemi"
+            "value" : "Annullamento di %@ completato con problemi"
           }
         },
         "ja" : {
@@ -59561,7 +59561,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile eseguire bsdtar per creare l'archivio."
+            "value" : "Non è stato possibile eseguire bsdtar per creare l’archivio."
           }
         },
         "ja" : {
@@ -59632,7 +59632,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile eseguire bsdtar per estrarre dall'archivio."
+            "value" : "Non è stato possibile eseguire bsdtar per estrarre dall’archivio."
           }
         },
         "ja" : {
@@ -59703,7 +59703,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile eseguire bsdtar per aprire l'archivio."
+            "value" : "Non è stato possibile eseguire bsdtar per aprire l’archivio."
           }
         },
         "ja" : {
@@ -60555,7 +60555,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Il percorso %@ non appartiene all'archivio %@."
+            "value" : "Il percorso %@ non appartiene all’archivio %@."
           }
         },
         "ja" : {
@@ -61123,7 +61123,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "in attesa"
+            "value" : "In attesa"
           }
         },
         "ja" : {
@@ -61619,7 +61619,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Puoi navigare in ogni cartella su questo Mac. Per modificare ciò, apri l'accesso completo al disco nel menu Impostazioni di Sistema."
+            "value" : "Puoi sfogliare ogni cartella su questo Mac. Per cambiarlo, apri Accesso completo al disco in Impostazioni di Sistema."
           }
         },
         "ja" : {
@@ -61974,7 +61974,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "I file in iCloud Drive sono elencati sopra. Le cartelle che le app conservano lì — Pages, Anteprima, Comandi Rapidi — restano private per macOS finché non consenti a Dirnex di leggerle.\n\nFai clic su Apri Impostazioni di Sistema, poi attiva Dirnex in Accesso completo al disco. macOS chiederà a Dirnex di riaprirsi perché il nuovo accesso abbia effetto."
+            "value" : "I file in iCloud Drive sono elencati sopra. Le cartelle che le app conservano lì, come Pages, Anteprima e Comandi Rapidi, restano private per macOS finché non autorizzi Dirnex a leggerle.\n\nFai clic su Apri Impostazioni di Sistema, poi attiva Dirnex in Accesso completo al disco. macOS chiederà a Dirnex di riavviarsi perché il nuovo accesso abbia effetto."
           }
         },
         "ja" : {
