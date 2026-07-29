@@ -28,6 +28,12 @@
             "value" : "${applicationName} copier la sélection"
           }
         },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName} copia selezione"
+          }
+        },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
@@ -91,6 +97,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copiez la sélection dans ${applicationName}"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia la selezione in ${applicationName}"
           }
         },
         "ja" : {
