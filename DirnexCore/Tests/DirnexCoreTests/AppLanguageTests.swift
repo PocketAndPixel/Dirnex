@@ -27,14 +27,16 @@ struct AppLanguageTests {
     func endonymsAreNotEnglish() {
         // The whole point of an endonym is that a user stranded in an unreadable UI can still find
         // their language. Pinning Russian's spelling is what keeps a future "Russian" from creeping
-        // in as a well-meaning translation. German, Spanish, French, Portuguese, and Chinese get
-        // the same protection.
+        // in as a well-meaning translation. German, Spanish, French, Korean, Portuguese, and
+        // Chinese get the same protection.
         let german = AppLanguages.language(for: "de")
         #expect(german?.endonym == "Deutsch")
         let spanish = AppLanguages.language(for: "es")
         #expect(spanish?.endonym == "Español")
         let french = AppLanguages.language(for: "fr")
         #expect(french?.endonym == "Français")
+        let korean = AppLanguages.language(for: "ko")
+        #expect(korean?.endonym == "한국어")
         let portuguese = AppLanguages.language(for: "pt-BR")
         #expect(portuguese?.endonym == "Português (Brasil)")
         let russian = AppLanguages.language(for: "ru")
@@ -60,6 +62,7 @@ struct AppLanguageTests {
         #expect(AppLanguages.bestMatch(forPreferred: ["de-AT"]).code == "de")
         #expect(AppLanguages.bestMatch(forPreferred: ["es-MX"]).code == "es")
         #expect(AppLanguages.bestMatch(forPreferred: ["fr-CA"]).code == "fr")
+        #expect(AppLanguages.bestMatch(forPreferred: ["ko-KR"]).code == "ko")
         #expect(AppLanguages.bestMatch(forPreferred: ["pt-BR"]).code == "pt-BR")
         #expect(AppLanguages.bestMatch(forPreferred: ["zh-CN"]).code == "zh-Hans")
         #expect(AppLanguages.bestMatch(forPreferred: ["zh-SG"]).code == "zh-Hans")
