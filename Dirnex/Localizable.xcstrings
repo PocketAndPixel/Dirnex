@@ -884,7 +884,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\" non è disponibile"
+            "value" : "“%@” non è disponibile"
           }
         },
         "ja" : {
@@ -1026,7 +1026,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\" viene eseguito una volta per file: seleziona prima uno o più elementi."
+            "value" : "“%@” viene eseguito una volta per file: seleziona prima uno o più elementi."
           }
         },
         "ja" : {
@@ -1096,7 +1096,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“Come il sistema” usa la lingua di macOS e ripiega sull’inglese."
+            "value" : "“Come il sistema” usa la lingua di macOS e, se serve, l’inglese."
           }
         },
         "ja" : {
@@ -1877,7 +1877,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ potrebbe richiedere molto tempo per confrontarli o diventare irrispondibile."
+            "value" : "%@ potrebbe richiedere molto tempo per confrontarli o smettere di rispondere."
           }
         },
         "ja" : {
@@ -2642,7 +2642,7 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld conflitti ignorati"
+                  "value" : "%lld conflitto ignorato"
                 }
               },
               "other" : {
@@ -4152,7 +4152,7 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld conflitti di nome"
+                  "value" : "%lld conflitto di nome"
                 }
               },
               "other" : {
@@ -4581,7 +4581,7 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld script non vengono più eseguiti dai loro tasti funzione"
+                  "value" : "%lld script non viene più eseguito dal suo tasto funzione"
                 }
               },
               "other" : {
@@ -4958,7 +4958,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "un'abbreviazione macOS"
+            "value" : "un’abbreviazione da tastiera di macOS"
           }
         },
         "ja" : {
@@ -5029,7 +5029,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Una fila di pulsanti F nella parte inferiore della finestra: Rinomina, Vista, Copia, Sposta, Nuova cartella, Elimina. È la barra funzioni in stile Total Commander. È anche nel menu Vista; i tasti funzionano anche quando la barra è nascosta."
+            "value" : "Una fila di pulsanti dei tasti funzione nella parte inferiore della finestra: Rinomina, Visualizza, Copia, Sposta, Nuova cartella, Elimina. È la barra delle funzioni in stile Total Commander. È disponibile anche nel menu Vista; i tasti funzionano anche quando la barra è nascosta."
           }
         },
         "ja" : {
@@ -5527,7 +5527,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aggiungi abbreviazione"
+            "value" : "Aggiungi abbreviazione da tastiera"
           }
         },
         "ja" : {
@@ -5811,7 +5811,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tutte le abbreviazioni personalizzate verranno rimosse e saranno ripristinate le impostazioni predefinite di macOS. Tutte le modifiche andranno perse."
+            "value" : "Tutte le abbreviazioni da tastiera personalizzate verranno rimosse e saranno ripristinate le impostazioni predefinite di macOS. Tutte le modifiche andranno perse."
           }
         },
         "ja" : {
@@ -6023,7 +6023,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Offre anche build di pre-rilascio quando Dirnex controlla gli aggiornamenti. Le beta sono più recenti ma meno testate; si torna automaticamente a una versione stabile una volta che una delle beta si avvicina."
+            "value" : "Offre anche versioni preliminari quando Dirnex controlla gli aggiornamenti. Le beta sono più recenti ma meno testate; Dirnex torna automaticamente a una versione stabile quando questa raggiunge la beta."
           }
         },
         "ja" : {
@@ -6307,7 +6307,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "È disponibile un aggiornamento: clicca per installarlo"
+            "value" : "È disponibile un aggiornamento: fai clic per installarlo"
           }
         },
         "ja" : {
@@ -7940,7 +7940,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Etichettare un file i cui byte sono ancora in iCloud (o in un altro fornitore), in transito verso l'alto o il basso, o in conflitto: all'estremità destra del suo nome, come fa Finder. Le cartelle al di fuori di un fornitore di cloud non vengono mai scansionate e i file completamente sincronizzati non mostrano nulla. Anche nel menu Visualizza."
+            "value" : "Aggiunge un badge a un file i cui dati sono ancora in iCloud (o in un altro provider cloud), in caricamento o download, oppure in conflitto, all’estremità destra del nome, come in Finder. Le cartelle fuori da un provider cloud non vengono mai analizzate e i file completamente sincronizzati non mostrano nulla. Disponibile anche nel menu Vista."
           }
         },
         "ja" : {
@@ -8295,7 +8295,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Porta il pannello attivo di Dirnex in un file o una cartella e lo seleziona, come fa Reveal di Finder."
+            "value" : "Porta il pannello attivo di Dirnex su un file o una cartella e lo seleziona, come Mostra in Finder."
           }
         },
         "ja" : {
@@ -8579,7 +8579,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è possibile creare \"%@\""
+            "value" : "Non è possibile creare “%@”"
           }
         },
         "ja" : {
@@ -8792,7 +8792,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossibile modificare \"%@\""
+            "value" : "Non è possibile modificare “%@”"
           }
         },
         "ja" : {
@@ -9289,7 +9289,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è possibile rinominare \"%@\""
+            "value" : "Non è possibile rinominare “%@”"
           }
         },
         "ja" : {
@@ -9502,7 +9502,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è possibile verificare l'identità di \"%@\""
+            "value" : "Non è possibile verificare l’identità di “%@”"
           }
         },
         "ja" : {
@@ -10426,7 +10426,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aggiornamento, aggiornamento, scintillio, versione, rilascio, nuovo"
+            "value" : "aggiornamento, update, sparkle, versione, rilascio, nuovo"
           }
         },
         "ja" : {
@@ -10858,7 +10858,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "preferenze, opzioni, abbreviazioni, configurazione"
+            "value" : "preferenze, opzioni, abbreviazioni da tastiera, configurazione"
           }
         },
         "ja" : {
@@ -11434,7 +11434,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "appunti, incolla, dimensione, appunti"
+            "value" : "appunti, incolla, sposta, taglia"
           }
         },
         "ja" : {
@@ -15034,7 +15034,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Percorso, indirizzo, tipo, url, salto, frequenza, sfocato, recente"
+            "value" : "percorso, indirizzo, digita, url, vai, posizione, recente"
           }
         },
         "ja" : {
@@ -17050,7 +17050,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Funzione, tasti, tasti F, tasti F, f5, f6, f7, f8, barra degli strumenti, barra, pulsanti, comando totale, tc"
+            "value" : "funzione, tasti funzione, tasti F, f5, f6, f7, f8, barra strumenti, barra, pulsanti, total commander, tc"
           }
         },
         "ja" : {
@@ -17338,7 +17338,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Anteprima, scorcio"
+            "value" : "anteprima, visualizzazione rapida, quick look"
           }
         },
         "ja" : {
@@ -17410,7 +17410,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vista rapida"
+            "value" : "Visualizzazione rapida"
           }
         },
         "ja" : {
@@ -17482,7 +17482,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "anteprima, scorcio, finestra, inattivo, ctrl q"
+            "value" : "anteprima, pannello, rapido, inattivo, ctrl q"
           }
         },
         "ja" : {
@@ -17554,7 +17554,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pannello anteprima rapida"
+            "value" : "Pannello di anteprima rapida"
           }
         },
         "ja" : {
@@ -17626,7 +17626,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Anteprima, scorcio, intero, schermo, foto, immagine, presente, opzione ctrl q"
+            "value" : "anteprima, schermo intero, foto, immagine, presentazione, opzione ctrl q"
           }
         },
         "ja" : {
@@ -17770,7 +17770,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "anteprima, scorcio, completo, finestra, grande, leggere, grande, ctrl shift q"
+            "value" : "anteprima, finestra intera, grande, lettura, ctrl shift q"
           }
         },
         "ja" : {
@@ -17986,7 +17986,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Visualizzazione dimensioni"
+            "value" : "Visualizzazione delle dimensioni"
           }
         },
         "ja" : {
@@ -21921,7 +21921,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile aggiungere \"%@\""
+            "value" : "Non è stato possibile aggiungere “%@”"
           }
         },
         "ja" : {
@@ -22388,7 +22388,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile connettersi a \"%@\"."
+            "value" : "Non è stato possibile connettersi a “%@”."
           }
         },
         "ja" : {
@@ -22459,7 +22459,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile copiare \"%@\""
+            "value" : "Non è stato possibile copiare “%@”"
           }
         },
         "ja" : {
@@ -22816,7 +22816,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile eliminare \"%@\""
+            "value" : "Non è stato possibile eliminare “%@”"
           }
         },
         "ja" : {
@@ -23427,7 +23427,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile scaricare \"%@\""
+            "value" : "Non è stato possibile scaricare “%@”"
           }
         },
         "ja" : {
@@ -23569,7 +23569,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile cancellare \"%@\""
+            "value" : "Non è stato possibile cancellare “%@”"
           }
         },
         "ja" : {
@@ -23997,7 +23997,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile cancellare completamente \"%@\""
+            "value" : "Non è stato possibile cancellare completamente “%@”"
           }
         },
         "ja" : {
@@ -24068,7 +24068,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile lanciare curl."
+            "value" : "Non è stato possibile avviare curl."
           }
         },
         "ja" : {
@@ -24139,7 +24139,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile lanciare sftp."
+            "value" : "Non è stato possibile avviare sftp."
           }
         },
         "ja" : {
@@ -24281,7 +24281,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile spostare \"%@\""
+            "value" : "Non è stato possibile spostare “%@”"
           }
         },
         "ja" : {
@@ -24352,7 +24352,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile spostare \"%@\" nel Cestino"
+            "value" : "Non è stato possibile spostare “%@” nel Cestino"
           }
         },
         "ja" : {
@@ -24853,7 +24853,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile aprire \"%@\""
+            "value" : "Non è stato possibile aprire “%@”"
           }
         },
         "ja" : {
@@ -25066,7 +25066,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile aprirlo con \"%@\"."
+            "value" : "Non è stato possibile aprirlo con “%@”."
           }
         },
         "ja" : {
@@ -25423,7 +25423,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile raggiungere \"%@\". Controlla l'indirizzo e assicurati che il server sia online."
+            "value" : "Non è stato possibile raggiungere “%@”. Controlla l’indirizzo e assicurati che il server sia online."
           }
         },
         "ja" : {
@@ -25494,7 +25494,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile rinominare \"%@\""
+            "value" : "Non è stato possibile rinominare “%@”"
           }
         },
         "ja" : {
@@ -25780,7 +25780,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile aggiornare gli host noti per \"%@\"."
+            "value" : "Non è stato possibile aggiornare gli host noti per “%@”."
           }
         },
         "ja" : {
@@ -25993,7 +25993,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Crea una cartella in \"%@\"."
+            "value" : "Crea una cartella in “%@”."
           }
         },
         "ja" : {
@@ -26064,7 +26064,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Crea un archivio in \"%@\"."
+            "value" : "Crea un archivio in “%@”."
           }
         },
         "ja" : {
@@ -26490,7 +26490,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eliminare \"%@\" da \"%@\"?"
+            "value" : "Eliminare “%@” da “%@”?"
           }
         },
         "ja" : {
@@ -26561,7 +26561,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eliminare \"%@\" in modo permanente?"
+            "value" : "Eliminare “%@” definitivamente?"
           }
         },
         "ja" : {
@@ -26632,7 +26632,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Elimina \"%@\"?"
+            "value" : "Eliminare “%@”?"
           }
         },
         "ja" : {
@@ -27385,7 +27385,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Elimina il tag \"%@\"?"
+            "value" : "Eliminare il tag “%@”?"
           }
         },
         "ja" : {
@@ -27811,7 +27811,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dirnex %@ è disponibile — clicca per installare"
+            "value" : "Dirnex %@ è disponibile — fai clic per installarlo"
           }
         },
         "ja" : {
@@ -28665,7 +28665,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scaricamento di \"%@\"…"
+            "value" : "Scaricamento di “%@”…"
           }
         },
         "ja" : {
@@ -28878,7 +28878,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ogni script viene ancora eseguito dalla palette ⌘K e dal sottomenu Script. Assegnagli un tasto libero in Gestisci script per ripristinare l’abbreviazione."
+            "value" : "Ogni script può ancora essere eseguito dalla palette ⌘K e dal sottomenu Script. Assegnagli un tasto libero in Gestisci script per ripristinare l’abbreviazione da tastiera."
           }
         },
         "ja" : {
@@ -29659,7 +29659,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Inserisci un modello di wildcard (ad esempio \"*.jpg\")."
+            "value" : "Inserisci un modello wildcard (ad esempio “*.jpg”)."
           }
         },
         "ja" : {
@@ -30298,7 +30298,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "I nomi dei file non possono contenere il carattere \"/\"."
+            "value" : "I nomi dei file non possono contenere il carattere “/”."
           }
         },
         "ja" : {
@@ -30653,7 +30653,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Filtra \"%1$@\" · %2$@"
+            "value" : "Filtra “%1$@” · %2$@"
           }
         },
         "ja" : {
@@ -30795,7 +30795,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trova file taggati \"%@\""
+            "value" : "Trova file con il tag “%@”"
           }
         },
         "ja" : {
@@ -31150,7 +31150,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "I nomi delle cartelle non possono contenere il carattere \"/\"."
+            "value" : "I nomi delle cartelle non possono contenere il carattere “/”."
           }
         },
         "ja" : {
@@ -33552,13 +33552,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Sarà rimosso dal file %lld, ovunque Spotlight sia stato indice. I file stessi non vengono cancellati."
+                  "value" : "Sarà rimosso da %lld file, in tutte le posizioni indicizzate da Spotlight. Il file non verrà eliminato."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Sarà rimosso dai file %lld, ovunque Spotlight abbia indiceggiato. I file stessi non vengono cancellati."
+                  "value" : "Sarà rimosso da %lld file, in tutte le posizioni indicizzate da Spotlight. I file non verranno eliminati."
                 }
               }
             }
@@ -35277,7 +35277,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spostare \"%@\" nel Cestino?"
+            "value" : "Spostare “%@” nel Cestino?"
           }
         },
         "ja" : {
@@ -36273,7 +36273,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "I nomi non possono contenere il carattere \"/\"."
+            "value" : "I nomi non possono contenere il carattere “/”."
           }
         },
         "ja" : {
@@ -39042,7 +39042,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aprire una cartella da una scheda di ricerca lascia i risultati in posizione e la apre nell'altro pannello. Quando è spento, la messa a fuoco rimane sui risultati in modo da poter continuare ad aprirne altri."
+            "value" : "Quando apri una cartella da una scheda di ricerca, i risultati restano al loro posto e la cartella si apre nell’altro pannello. Quando questa opzione è disattivata, il focus resta sui risultati, così puoi continuare ad aprirne altri."
           }
         },
         "ja" : {
@@ -42526,7 +42526,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rimuovi \"%@\"?"
+            "value" : "Rimuovere “%@”?"
           }
         },
         "ja" : {
@@ -43521,7 +43521,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sostituire \"%@\" in \"%@\"?"
+            "value" : "Sostituire “%@” in “%@”?"
           }
         },
         "ja" : {
@@ -43592,7 +43592,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sostituisci \"%@\"?"
+            "value" : "Sostituire “%@”?"
           }
         },
         "ja" : {
@@ -44059,7 +44059,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sostituire l'archivio esistente in \"%@\"?"
+            "value" : "Sostituire l’archivio esistente in “%@”?"
           }
         },
         "ja" : {
@@ -44414,7 +44414,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ripristinare le abbreviazioni predefinite?"
+            "value" : "Ripristinare le abbreviazioni da tastiera predefinite?"
           }
         },
         "ja" : {
@@ -44627,7 +44627,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "riprendere"
+            "value" : "Riprendi"
           }
         },
         "ja" : {
@@ -44911,7 +44911,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "reveal necessita di un percorso POSIX, ad esempio reveal \"/Users/me\"."
+            "value" : "reveal richiede un percorso POSIX, ad esempio reveal “/Users/me”."
           }
         },
         "ja" : {
@@ -44982,7 +44982,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rivela i file puntiformi come .git e .env in ogni pannello. Anche nella barra degli strumenti e ⇧⌘."
+            "value" : "Mostra i file nascosti come .git e .env in ogni pannello. Disponibile anche nella barra degli strumenti e con ⇧⌘."
           }
         },
         "ja" : {
@@ -46835,7 +46835,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "quarantena, guardiano del cancello, sblocca, scarica, xattr"
+            "value" : "quarantena, gatekeeper, sblocca, download, xattr"
           }
         },
         "ja" : {
@@ -46907,7 +46907,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rimuovi la bandiera di quarantena"
+            "value" : "Rimuovi il flag di quarantena"
           }
         },
         "ja" : {
@@ -47335,7 +47335,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cerca in \"%@\""
+            "value" : "Cerca in “%@”"
           }
         },
         "ja" : {
@@ -48757,7 +48757,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Condivisione di questa cartella"
+            "value" : "Quota di questa cartella"
           }
         },
         "ja" : {
@@ -48828,7 +48828,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Condividi:"
+            "value" : "Condivisione:"
           }
         },
         "ja" : {
@@ -48899,7 +48899,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abbreviazioni"
+            "value" : "Abbreviazioni da tastiera"
           }
         },
         "ja" : {
@@ -49609,7 +49609,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostra i colori delle tag di ogni file all'estremità destra del suo nome, come fa Finder. Anche nel menu Visualizza. Gli archivi e i volumi remoti non hanno tag, quindi non viene disegnato nulla lì."
+            "value" : "Mostra i colori dei tag di ogni file all’estremità destra del nome, come in Finder. Disponibile anche nel menu Vista. Gli archivi e i volumi remoti non hanno tag, quindi non viene mostrato nulla."
           }
         },
         "ja" : {
@@ -50745,7 +50745,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "qualcos'altro"
+            "value" : "qualcos’altro"
           }
         },
         "ja" : {
@@ -50816,7 +50816,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Qualcosa con lo stesso nome è nella cartella originale, quindi è stato lasciato nel Cestino piuttosto che sostituito."
+            "value" : "Un elemento con lo stesso nome si trova nella cartella originale, quindi è stato lasciato nel Cestino invece di essere sostituito."
           }
         },
         "ja" : {
@@ -50887,7 +50887,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iniziare"
+            "value" : "Inizio"
           }
         },
         "ja" : {
@@ -50958,7 +50958,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "passo"
+            "value" : "Passo"
           }
         },
         "ja" : {
@@ -51029,7 +51029,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "stop"
+            "value" : "Interrompi"
           }
         },
         "ja" : {
@@ -53587,7 +53587,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'identità di \"%@\" è cambiata"
+            "value" : "L’identità di “%@” è cambiata"
           }
         },
         "ja" : {
@@ -54226,7 +54226,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La selezione viene passata come argomenti (\"$@\", \"$1\"). Disponibile anche: $DIRNEX_CURRENT_DIR, $DIRNEX_OTHER_DIR, $DIRNEX_SELECTED_PATHS."
+            "value" : "La selezione viene passata come argomenti (“$@”, “$1”). Disponibili anche: $DIRNEX_CURRENT_DIR, $DIRNEX_OTHER_DIR, $DIRNEX_SELECTED_PATHS."
           }
         },
         "ja" : {
@@ -55078,7 +55078,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La condivisione non è stata trovata su \"%@\". Controlla il nome della condivisione."
+            "value" : "La condivisione non è stata trovata su “%@”. Controlla il nome della condivisione."
           }
         },
         "ja" : {
@@ -55788,7 +55788,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Questa cartella (\"%@\")"
+            "value" : "Questa cartella (“%@”)"
           }
         },
         "ja" : {
@@ -56499,7 +56499,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Il pannello attivo è la sorgente, l'altro la destinazione. Copia o sposta ciò che è selezionato, crea una cartella o invia i file nel Cestino: dai pulsanti in basso, dalle tasti Funzione o dalla palette."
+            "value" : "Il pannello attivo è l’origine, l’altro è la destinazione. Copia o sposta gli elementi selezionati, crea una cartella o sposta i file nel Cestino: dai pulsanti in basso, dai tasti funzione o dalla palette."
           }
         },
         "ja" : {
@@ -57075,7 +57075,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Due pannelli, uno accanto all'altro, gestiti dal tastierino. Uno contiene i file con cui stai lavorando, l'altro dove vanno e tu raggiungi il mouse solo quando vuoi."
+            "value" : "Due pannelli, uno accanto all’altro, gestiti dalla tastiera. Uno contiene i file con cui stai lavorando, l’altro la loro destinazione. Usa il mouse solo quando vuoi."
           }
         },
         "ja" : {
@@ -57502,7 +57502,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Digita abbreviazione…"
+            "value" : "Digita abbreviazione da tastiera…"
           }
         },
         "ja" : {
@@ -59206,7 +59206,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\" è già nel Cestino."
+            "value" : "“%@” è già nel Cestino."
           }
         },
         "ja" : {
@@ -59277,7 +59277,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile aggiungere \"%@\" all'archivio \"%@\"."
+            "value" : "Non è stato possibile aggiungere “%@” all’archivio “%@”."
           }
         },
         "ja" : {
@@ -59348,7 +59348,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile creare l'archivio \"%@\"."
+            "value" : "Non è stato possibile creare l’archivio “%@”."
           }
         },
         "ja" : {
@@ -59419,7 +59419,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile estrarre da archivio \"%@\"."
+            "value" : "Non è stato possibile estrarre dall’archivio “%@”."
           }
         },
         "ja" : {
@@ -59490,7 +59490,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile riscrivere l'archivio \"%@\"."
+            "value" : "Non è stato possibile riscrivere l’archivio “%@”."
           }
         },
         "ja" : {
@@ -59774,7 +59774,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile leggere l'archivio \"%@\"."
+            "value" : "Non è stato possibile leggere l’archivio “%@”."
           }
         },
         "ja" : {
@@ -59845,7 +59845,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non è stato possibile aggiornare l'archivio \"%@\"."
+            "value" : "Non è stato possibile aggiornare l’archivio “%@”."
           }
         },
         "ja" : {
@@ -59916,7 +59916,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Solo i file locali possono essere elementi del fornitore di cloud."
+            "value" : "Solo i file locali possono appartenere a un provider cloud."
           }
         },
         "ja" : {
@@ -60413,7 +60413,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Questa posizione non supporta il movimento degli oggetti."
+            "value" : "Questa posizione non supporta lo spostamento degli elementi."
           }
         },
         "ja" : {
@@ -61264,7 +61264,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quando è spento, ogni nuova finestra inizia dalla cartella Home."
+            "value" : "Quando è disattivata, ogni nuova finestra si apre nella cartella Inizio."
           }
         },
         "ja" : {
@@ -61832,7 +61832,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non hai il permesso. Dirnex potrebbe aver bisogno di accesso completo al disco nel sistema delle impostazioni."
+            "value" : "Non hai il permesso. Dirnex potrebbe richiedere Accesso completo al disco in Impostazioni di Sistema."
           }
         },
         "ja" : {
@@ -61903,7 +61903,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "I tuoi abbreviazioni personalizzate saranno sostituite dalla preimpostazione %@. Tutte le tue modifiche verranno persa."
+            "value" : "Le tue abbreviazioni da tastiera personalizzate verranno sostituite dalla preimpostazione %@. Tutte le modifiche andranno perse."
           }
         },
         "ja" : {
@@ -62045,7 +62045,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La tua ricerca ha trovato più risultati. Rinnovo la ricerca per vedere il resto."
+            "value" : "La tua ricerca ha trovato altri risultati. Restringi la ricerca per vedere il resto."
           }
         },
         "ja" : {
