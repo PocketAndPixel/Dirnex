@@ -44,6 +44,16 @@ struct LocalizationCoverageTests {
         }
     }
 
+    /// The command titles a language genuinely renders as its English spelling, by language code.
+    ///
+    /// Dutch keeps Apple's own app name "Terminal" and forms the imperative as "Open", so the whole
+    /// title coincides with the English word for word. The alternative — padding it to
+    /// "Open in Terminal-app" so the check below sees a difference — is a translation written for
+    /// the test rather than for the user, which is the one thing a coverage guard must not cause.
+    private let titlesThatCoincideWithEnglish: [String: Set<String>] = [
+        "nl": ["go.openInTerminal"]
+    ]
+
     @Test("every command has a translated title in every shipped language")
     func everyCommandTitleIsTranslated() throws {
         for language in translatedLanguages {
@@ -54,8 +64,11 @@ struct LocalizationCoverageTests {
                 #expect(value != nil, "\(language.code): no title for \(command.id)")
                 // A translation that is byte-identical to the English is almost always a key that
                 // was copied in and never translated. Not universally true — "Dirnex" is the same
-                // in every language — so this only fires for multi-word titles.
-                if let value, command.title.contains(" ") {
+                // in every language — so this only fires for multi-word titles, minus the handful
+                // of coincidences named above.
+                let coincides = titlesThatCoincideWithEnglish[language.code]?
+                    .contains(command.id) ?? false
+                if let value, command.title.contains(" "), !coincides {
                     #expect(
                         value != command.title,
                         "\(language.code): \(command.id) is still English"
