@@ -464,8 +464,8 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   reads as a cramped app rather than as a considered one, and a trailing period reads as a
   truncation bug. The rule, with its rationale, lives in the `comment` of every
   `functionBar.*.label` entry — a translator reads the catalog, not this file — and is restated in
-  PLAN.md §M12. Russian is the worked example: `Переименовать · Просмотр · Править · Копировать ·
-  Переместить · Новая папка · Удалить`.
+  [HISTORY.md](HISTORY.md) §M12. Russian is the worked example: `Переименовать · Просмотр ·
+  Править · Копировать · Переместить · Новая папка · Удалить`.
 - **A String Catalog key with no value for the *source* language compiles to the key itself.**
   Not to "absent" — `xcstringstool` writes `functionBar.file.copy.shortLabel` as its own value into
   `en.lproj`, so a lookup succeeds and puts a dotted key on screen. An entry translated for `ru` and
