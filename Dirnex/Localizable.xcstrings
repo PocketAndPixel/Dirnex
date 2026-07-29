@@ -820,7 +820,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” is geen bekende Dirnex-opdracht."
+            "value" : "“%@” is geen bekend Dirnex-commando."
           }
         },
         "ru" : {
@@ -5314,7 +5314,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "een Dirnex-opdracht",
+            "value" : "een Dirnex-commando",
             "state" : "translated"
           }
         },
@@ -5545,7 +5545,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Er bestaat al een bewaarde zoekopdracht met de naam “%@”. Wil je deze vervangen?",
+            "value" : "Er bestaat al een opgeslagen zoekopdracht met de naam “%@”. Wil je deze vervangen?",
             "state" : "translated"
           }
         },
@@ -7009,7 +7009,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Een andere opgeslagen zoekopdracht gebruikt al die naam. Kies er een andere."
+            "value" : "Een andere opgeslagen zoekopdracht gebruikt die naam al. Kies een andere naam."
           }
         },
         "ru" : {
@@ -8163,7 +8163,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Vraag om bevestiging voordat onderdelen naar de Prullenmand worden verplaatst",
+            "value" : "Vraag om bevestiging voordat onderdelen naar de prullenmand worden verplaatst",
             "state" : "translated"
           }
         },
@@ -11633,7 +11633,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "uitgang",
+            "value" : "afsluiten",
             "state" : "translated"
           }
         },
@@ -13817,7 +13817,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Script, scripts, automatisering, shell, opdracht, actie, gebruiker, aangepast",
+            "value" : "script, scripts, automatisering, shell, commando, actie, gebruiker, aangepast",
             "state" : "translated"
           }
         },
@@ -14597,7 +14597,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Openen, applicatie, app, lanceren, bewerker, standaard",
+            "value" : "openen, programma, app, starten, editor, standaard",
             "state" : "translated"
           }
         },
@@ -14754,7 +14754,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "compress, archief, zip, tar, alt+f5, pakket"
+            "value" : "comprimeren, archief, zip, tar, alt+f5, inpakken"
           }
         },
         "ru" : {
@@ -14909,7 +14909,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "herstel, verwijder niet, Prullenmand, herstel, origineel, ongedaan maken verwijderen",
+            "value" : "herstellen, terugzetten, prullenmand, terughalen, origineel, verwijderen ongedaan maken",
             "state" : "translated"
           }
         },
@@ -15377,7 +15377,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "synchroniseren, synchroniseren, vergelijken, spiegelen, diff, mappen, bestanden",
+            "value" : "synchroniseren, vergelijken, spiegelen, diff, mappen, directories",
             "state" : "translated"
           }
         },
@@ -15768,7 +15768,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Verplaats naar Prullenmand"
+            "value" : "Verplaats naar prullenmand"
           }
         },
         "ru" : {
@@ -16938,7 +16938,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Terminal, shell, iterm, wezterm, console, opdracht, prompt, extern, app"
+            "value" : "terminal, shell, iterm, wezterm, console, commando, prompt, extern, app"
           }
         },
         "ru" : {
@@ -17250,7 +17250,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "zoeken, opgeslagen, slim, map, bladwijzer, zijbalk"
+            "value" : "zoeken, opgeslagen, slim, map, bladwijzer, navigatiekolom"
           }
         },
         "ru" : {
@@ -18185,7 +18185,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Acties, opdrachten, zoeken, uitvoeren",
+            "value" : "acties, commando's, zoeken, uitvoeren",
             "state" : "translated"
           }
         },
@@ -18420,7 +18420,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Focus op zijbalk"
+            "value" : "Focus op navigatiekolom"
           }
         },
         "ru" : {
@@ -19590,7 +19590,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Shell, console, opdracht, regel, zsh, bash, prompt, lade"
+            "value" : "shell, console, commando, regel, zsh, bash, prompt, lade"
           }
         },
         "ru" : {
@@ -19979,7 +19979,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Toon/verberg zijbalk",
+            "value" : "Toon/verberg navigatiekolom",
             "state" : "translated"
           }
         },
@@ -21461,7 +21461,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Bestand",
+            "value" : "Archief",
             "state" : "translated"
           }
         },
@@ -26413,7 +26413,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Kon “%@” niet naar de Prullenmand verplaatsen",
+            "value" : "Kon “%@” niet naar de prullenmand verplaatsen",
             "state" : "translated"
           }
         },
@@ -26811,12 +26811,12 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Kon %lld onderdelen niet naar de Prullenmand verplaatsen"
+                  "value" : "Kon %lld onderdelen niet naar de prullenmand verplaatsen"
                 }
               },
               "one" : {
                 "stringUnit" : {
-                  "value" : "Kon %lld onderdeel niet naar de Prullenmand verplaatsen",
+                  "value" : "Kon %lld onderdeel niet naar de prullenmand verplaatsen",
                   "state" : "translated"
                 }
               }
@@ -30472,7 +30472,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Dirnex heeft Volledige schijftoegang nodig om de Prullenmand te tonen",
+            "value" : "Dirnex heeft Volledige schijftoegang nodig om de prullenmand te tonen",
             "state" : "translated"
           }
         },
@@ -30626,7 +30626,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Dirnex-opdracht",
+            "value" : "Dirnex-commando",
             "state" : "translated"
           }
         },
@@ -32014,7 +32014,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Leeg Prullenmand",
+            "value" : "Leeg prullenmand",
             "state" : "translated"
           }
         },
@@ -32091,7 +32091,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Leeg Prullenmand…",
+            "value" : "Leeg prullenmand…",
             "state" : "translated"
           }
         },
@@ -35255,7 +35255,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Geef deze zoekopdracht een naam om deze in de zijbalk te houden en deze later opnieuw uit te voeren.",
+            "value" : "Geef deze zoekopdracht een naam om deze in de navigatiekolom te bewaren en later opnieuw uit te voeren.",
             "state" : "translated"
           }
         },
@@ -35487,7 +35487,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bedrijfsdetails verbergen"
+            "value" : "Bewerkingsdetails verbergen"
           }
         },
         "ru" : {
@@ -35564,7 +35564,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Verberg of toon de zijbalk"
+            "value" : "Verberg of toon de navigatiekolom"
           }
         },
         "ru" : {
@@ -37799,7 +37799,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS houdt de Prullenmand privé, dus Dirnex kan deze pas tonen nadat je toestemming geeft. De rest blijft werken zoals nu.\n\nKlik op Open Systeeminstellingen en schakel Dirnex in bij Volledige schijftoegang. macOS vraagt Dirnex opnieuw te starten zodat de nieuwe toegang actief wordt."
+            "value" : "macOS houdt de prullenmand privé, dus Dirnex kan deze pas tonen nadat je toestemming geeft. De rest blijft werken zoals nu.\n\nKlik op Open Systeeminstellingen en schakel Dirnex in onder Volledige schijftoegang. macOS vraagt Dirnex opnieuw te starten zodat de nieuwe toegang actief wordt."
           }
         },
         "ru" : {
@@ -37875,7 +37875,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "macOS bewaart de oorspronkelijke map wanneer een onderdeel naar de Prullenmand wordt verplaatst. Voor dit onderdeel is er geen vermelding. Sleep het daarom uit de Prullenmand.",
+            "value" : "macOS bewaart de oorspronkelijke map wanneer een onderdeel naar de prullenmand wordt verplaatst. Voor dit onderdeel is er geen vermelding. Sleep het daarom uit de prullenmand.",
             "state" : "translated"
           }
         },
@@ -38260,7 +38260,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Verplaats “%@” naar de Prullenmand?",
+            "value" : "Verplaats “%@” naar de prullenmand?",
             "state" : "translated"
           }
         },
@@ -38501,13 +38501,13 @@
             "plural" : {
               "other" : {
                 "stringUnit" : {
-                  "value" : "Verplaats %lld onderdelen naar de Prullenmand?",
+                  "value" : "Verplaats %lld onderdelen naar de prullenmand?",
                   "state" : "translated"
                 }
               },
               "one" : {
                 "stringUnit" : {
-                  "value" : "Verplaats %lld onderdeel naar de Prullenmand?",
+                  "value" : "Verplaats %lld onderdeel naar de prullenmand?",
                   "state" : "translated"
                 }
               }
@@ -38647,7 +38647,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Verplaats naar Prullenmand",
+            "value" : "Verplaats naar prullenmand",
             "state" : "translated"
           }
         },
@@ -39186,7 +39186,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Geef de tag een naam en kies de kleur waarin deze wordt geïntroduceerd.",
+            "value" : "Geef de tag een naam en kies de kleur waarmee deze wordt aangemaakt.",
             "state" : "translated"
           }
         },
@@ -42035,7 +42035,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Open opdrachtenpalet",
+            "value" : "Open het opdrachtenpalet",
             "state" : "translated"
           }
         },
@@ -42651,7 +42651,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Optioneel — opslaan in zijbalk",
+            "value" : "Optioneel — opslaan in navigatiekolom",
             "state" : "translated"
           }
         },
@@ -44280,14 +44280,14 @@
             "plural" : {
               "other" : {
                 "stringUnit" : {
-                  "value" : "%lld onderdelen permanent uit de Prullenmand wissen?",
+                  "value" : "%lld onderdelen permanent uit de prullenmand wissen?",
                   "state" : "translated"
                 }
               },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld onderdeel permanent uit de Prullenmand wissen?"
+                  "value" : "%lld onderdeel permanent uit de prullenmand wissen?"
                 }
               }
             }
@@ -46352,7 +46352,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Verwijder uit zijbalk",
+            "value" : "Verwijder uit navigatiekolom",
             "state" : "translated"
           }
         },
@@ -46429,7 +46429,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Verwijderd uit %lld van %lld-bestanden. %@\n\nDe tag blijft in de zijbalk staan omdat bestanden het nog steeds dragen.",
+            "value" : "Verwijderd uit %lld van %lld bestanden. %@\n\nDe tag blijft in de navigatiekolom staan omdat bestanden deze nog steeds hebben.",
             "state" : "translated"
           }
         },
@@ -49094,7 +49094,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Voer een opdracht uit…"
+            "value" : "Voer een commando uit…"
           }
         },
         "ru" : {
@@ -49170,7 +49170,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Voer Dirnex-opdracht uit",
+            "value" : "Voer Dirnex-commando uit",
             "state" : "translated"
           }
         },
@@ -49401,7 +49401,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "het uitvoeren van een bewerking vereist een opdracht-id of titel.",
+            "value" : "Voor het uitvoeren van een bewerking is een commando-id of titel nodig.",
             "state" : "translated"
           }
         },
@@ -49556,7 +49556,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Voert een Dirnex-opdracht of gebruikersscript uit dat je uit een lijst kiest."
+            "value" : "Voert een Dirnex-commando of gebruikersscript uit dat je uit een lijst kiest."
           }
         },
         "ru" : {
@@ -54264,7 +54264,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Labels",
+            "value" : "Finder-tags",
             "state" : "translated"
           }
         },
@@ -54957,7 +54957,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Sommige toetscombinaties zijn toegewezen aan meer dan één opdracht.",
+            "value" : "Sommige toetscombinaties zijn toegewezen aan meer dan één commando.",
             "state" : "translated"
           }
         },
@@ -55112,7 +55112,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Iets met dezelfde naam staat in de originele map, dus het werd in de Prullenmand achtergelaten in plaats van vervangen."
+            "value" : "Iets met dezelfde naam staat in de oorspronkelijke map, dus het blijft in de prullenmand staan in plaats van te worden vervangen."
           }
         },
         "ru" : {
@@ -55968,13 +55968,13 @@
             "plural" : {
               "other" : {
                 "stringUnit" : {
-                  "value" : "Synchroniseren verplaatst %lld onderdelen naar de Prullenmand.",
+                  "value" : "Synchroniseren verplaatst %lld onderdelen naar de prullenmand.",
                   "state" : "translated"
                 }
               },
               "one" : {
                 "stringUnit" : {
-                  "value" : "Synchroniseren verplaatst %lld onderdeel naar de Prullenmand.",
+                  "value" : "Synchroniseren verplaatst %lld onderdeel naar de prullenmand.",
                   "state" : "translated"
                 }
               }
@@ -57655,7 +57655,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Het Dirnex-opdracht of gebruikersscript om uit te voeren."
+            "value" : "Het Dirnex-commando of gebruikersscript dat moet worden uitgevoerd."
           }
         },
         "ru" : {
@@ -59965,7 +59965,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "De Prullenmand is leeg"
+            "value" : "De prullenmand is leeg"
           }
         },
         "ru" : {
@@ -60734,7 +60734,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Dit verwijdert de opgeslagen zoekopdracht uit de zijbalk. Er worden geen bestanden verwijderd.",
+            "value" : "Dit verwijdert de opgeslagen zoekopdracht uit de navigatiekolom. Er worden geen bestanden verwijderd.",
             "state" : "translated"
           }
         },
@@ -60811,7 +60811,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Dit verwijdert de opgeslagen server uit de zijbalk. Er worden geen bestanden verwijderd.",
+            "value" : "Dit verwijdert de opgeslagen server uit de navigatiekolom. Er worden geen bestanden verwijderd.",
             "state" : "translated"
           }
         },
@@ -60889,7 +60889,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dit hernoemt de zijbalkrij. De map zelf wordt niet hernoemd."
+            "value" : "Dit hernoemt de rij in de navigatiekolom. De map zelf wordt niet hernoemd."
           }
         },
         "ru" : {
@@ -61119,7 +61119,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Toon/verberg zijbalk",
+            "value" : "Toon/verberg navigatiekolom",
             "state" : "translated"
           }
         },
@@ -61274,7 +61274,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Het actieve paneel is de bron, het andere paneel is het doel. Kopieer of verplaats de selectie naar de andere kant, maak een map of verplaats bestanden naar de Prullenmand — via de knoppen onderaan, de functietoetsen of het palet.",
+            "value" : "Het actieve paneel is de bron, het andere paneel is het doel. Kopieer of verplaats de selectie naar de andere kant, maak een map of verplaats bestanden naar de prullenmand — via de knoppen onderaan, de functietoetsen of het palet.",
             "state" : "translated"
           }
         },
@@ -61587,7 +61587,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Open het opdrachtenpalet en begin te typen wat je wilt doen — kopiëren, inpakken, verbinding maken met een server, taggen. Het zoekt fuzzy in alle acties, dus je hoeft niets te onthouden en geen menu door te zoeken."
+            "value" : "Open het opdrachtenpalet en begin te typen wat je wilt doen — kopiëren, inpakken, verbinding maken met een server, taggen. Het zoekt flexibel in alle acties, dus je hoeft niets te onthouden en geen menu te doorzoeken."
           }
         },
         "ru" : {
@@ -61665,7 +61665,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alles is één zoekopdracht verwijderd"
+            "value" : "Alles is met één zoekopdracht bereikbaar"
           }
         },
         "ru" : {
@@ -63054,7 +63054,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Verplaatsen naar Prullenmand",
+            "value" : "Verplaatsen naar prullenmand",
             "state" : "translated"
           }
         },
@@ -64210,7 +64210,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” staat al in de Prullenmand."
+            "value" : "“%@” staat al in de prullenmand."
           }
         },
         "ru" : {
@@ -66211,7 +66211,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Deze locatie heeft geen Prullenmand.",
+            "value" : "Deze locatie heeft geen prullenmand.",
             "state" : "translated"
           }
         },
@@ -66903,7 +66903,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Je kunt onderdelen later herstellen uit de Prullenmand.",
+            "value" : "Je kunt onderdelen later herstellen uit de prullenmand.",
             "state" : "translated"
           }
         },
@@ -66981,7 +66981,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Je kunt ze later herstellen uit de Prullenmand."
+            "value" : "Je kunt ze later herstellen uit de prullenmand."
           }
         },
         "ru" : {

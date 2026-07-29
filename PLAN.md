@@ -634,8 +634,9 @@ whenever it is picked back up.
   `Localizable` column (802 entries, including every plural variant) and both App Shortcut phrases
   are present in the catalog and compile into `nl.lproj`. The manual macOS-style pass kept product
   names unchanged (`Dirnex`, `Finder`, `iCloud Drive`, `Git`, `Zip`, `7-Zip`) and used natural Dutch
-  macOS wording such as `Systeeminstellingen`, `Volledige schijftoegang`, `Prullenmand`,
-  `Snelle weergave`, `zijbalk`, `schijven`, `labels`, `Kopieer`, `Verplaats`, and `Hernoem`.
+  macOS wording such as `Systeeminstellingen`, `Volledige schijftoegang`, `prullenmand`,
+  `Snelle weergave`, `navigatiekolom`, `schijven`, `Finder-tags`, `Kopieer`, `Verplaats`, and
+  `Hernoem`.
   The catalog keeps Dutch ordered between Korean and Russian, and the function bar keeps whole Dutch
   command labels.
 
