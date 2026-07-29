@@ -648,6 +648,15 @@ whenever it is picked back up.
   `woluminy`, `tagi Findera`, `Kopiuj`, `Przenieś`, and `Zmień nazwę`. The catalog keeps Polish
   ordered between Dutch and Brazilian Portuguese, and the function bar keeps whole Polish command
   labels.
+- **Slice 12 landed (2026-07-29): Ukrainian.** `uk` / `Українська` is now a shipped language,
+  listed in Settings and matched from Ukrainian regional tags such as `uk-UA`. Its complete
+  `Localizable` column (802 entries, including every plural variant) and both App Shortcut phrases
+  are present in the catalog and compile into `uk.lproj`. The manual macOS-style pass kept product
+  names unchanged (`Dirnex`, `Finder`, `iCloud Drive`, `Git`, `Zip`, `7-Zip`) and used Ukrainian
+  platform wording such as `Системні параметри`, `Повний доступ до диска`, `Кошик`,
+  `Швидкий перегляд`, `бічна панель`, `томи`, `теги Finder`, `Копіювати`, `Перемістити`, and
+  `Перейменувати`. The catalog keeps Ukrainian ordered between Russian and Simplified Chinese, and
+  the function bar keeps whole Ukrainian command labels.
 
 **Standing rule for the function bar, in every language.** The seven F-key captions are the app's
 primary buttons and are on screen permanently, so they carry the first impression of the whole app:
