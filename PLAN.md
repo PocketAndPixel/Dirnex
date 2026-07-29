@@ -614,6 +614,13 @@ whenever it is picked back up.
   product names unchanged (`Dirnex`, `Finder`, `iCloud Drive`, `Git`, `Zip`, `7-Zip`) and used
   natural Traditional Chinese macOS wording such as `設定`, `垃圾桶`, `完整磁碟取用權限`, `側邊欄`,
   `卷宗`, `標籤`, `拷貝`, `移動`, and `重新命名`. The function bar keeps whole Chinese command verbs.
+- **Slice 8 landed (2026-07-29): Korean.** `ko` / `한국어` is now a shipped language, listed in
+  Settings and matched from Korean regional tags such as `ko-KR`. Its complete `Localizable` column
+  (803 entries, including every plural variant) and both App Shortcut phrases are present in the
+  catalog and compile into `ko.lproj`. The manual macOS-style pass kept product names unchanged
+  (`Dirnex`, `Finder`, `iCloud Drive`, `Git`, `Zip`, `7-Zip`) and used natural Korean macOS wording
+  such as `설정`, `시스템 설정`, `전체 디스크 접근 권한`, `휴지통`, `훑어보기`, `사이드바`,
+  `볼륨`, `태그`, `복사`, `이동`, and `이름 변경`. The function bar keeps whole Korean command labels.
 
 **Standing rule for the function bar, in every language.** The seven F-key captions are the app's
 primary buttons and are on screen permanently, so they carry the first impression of the whole app:

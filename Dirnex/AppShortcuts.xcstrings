@@ -34,6 +34,12 @@
             "value" : "${applicationName}で選択項目をコピー"
           }
         },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName} 선택 항목 복사"
+          }
+        },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
@@ -91,6 +97,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "${applicationName}で選択項目をコピー"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName}에서 선택 항목 복사"
           }
         },
         "ru" : {
