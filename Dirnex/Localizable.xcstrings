@@ -11002,7 +11002,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tour, benvenuto, guida, introduzione, onboarding, aiuto, come iniziare"
+            "value" : "tour, benvenuto, guida, introduzione, onboarding, aiuto, come iniziare"
           }
         },
         "ja" : {
@@ -11074,7 +11074,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Benvenuto su Dirnex…"
+            "value" : "Benvenuto in Dirnex…"
           }
         },
         "ja" : {
@@ -12010,7 +12010,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "confronta, differenzia, contenuti, filemerge, kaleidoscopio, bbedit"
+            "value" : "confronta, differenze, contenuti, FileMerge, Kaleidoscope, BBEdit"
           }
         },
         "ja" : {
@@ -12370,7 +12370,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Elimina immediatamente…"
+            "value" : "Elimina adesso…"
           }
         },
         "ja" : {
@@ -14314,7 +14314,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "trova, tag, etichetta, colore, contrassegno"
+            "value" : "finder, tag, etichetta, colore, contrassegno"
           }
         },
         "ja" : {
@@ -14962,7 +14962,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Connetti al server…"
+            "value" : "Connessione al server…"
           }
         },
         "ja" : {
@@ -15178,7 +15178,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Preferiti, segnalibri, fissati, salta, ctrl d"
+            "value" : "preferiti, segnalibri, fissati, vai, ctrl d"
           }
         },
         "ja" : {
@@ -16042,7 +16042,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "cerca, riflettore, mdfind, trova, localizza, filtra, alt f7"
+            "value" : "cerca, Spotlight, mdfind, trova, localizza, filtra, alt f7"
           }
         },
         "ja" : {
@@ -16618,7 +16618,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "wildcard, glob, deseleziona, sblocca"
+            "value" : "wildcard, glob, deseleziona, rimuovi selezione"
           }
         },
         "ja" : {
@@ -18490,7 +18490,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "icloud, cloud, sincronizzazione, dropbox, drive, onedrive, download, scaricato, offline, spazio vuoto, badge"
+            "value" : "iCloud, cloud, sincronizzazione, Dropbox, Drive, OneDrive, download, scaricato, offline, segnaposto, badge"
           }
         },
         "ja" : {
@@ -18634,7 +18634,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "trova, tag, etichette, colori, punti, colonna"
+            "value" : "finder, tag, etichette, colori, punti, colonna"
           }
         },
         "ja" : {
@@ -20998,7 +20998,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Connetti al server"
+            "value" : "Connessione al server"
           }
         },
         "ja" : {
