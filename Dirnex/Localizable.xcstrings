@@ -126,7 +126,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "\"%@\" bestaat al",
+            "value" : "“%@” bestaat al",
             "state" : "translated"
           }
         },
@@ -203,7 +203,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "\"%@\" bestaat al in \"%@\"",
+            "value" : "“%@” bestaat al in “%@”",
             "state" : "translated"
           }
         },
@@ -280,7 +280,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "\"%@\" kon niet worden uitgevoerd.",
+            "value" : "“%@” kon niet worden uitgevoerd.",
             "state" : "translated"
           }
         },
@@ -357,7 +357,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "\"%@\" kon niet worden uitgevoerd.",
+            "value" : "“%@” kon niet worden uitgevoerd.",
             "state" : "translated"
           }
         },
@@ -434,7 +434,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "\"%@\" mislukte",
+            "value" : "“%@” is mislukt",
             "state" : "translated"
           }
         },
@@ -512,7 +512,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\" mislukte op %lld van %lld"
+            "value" : "“%@” is mislukt bij %lld van %lld"
           }
         },
         "ru" : {
@@ -589,7 +589,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\" is al terug"
+            "value" : "“%@” is al teruggezet"
           }
         },
         "ru" : {
@@ -820,7 +820,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\" is geen bekende Dirnex-opdracht."
+            "value" : "“%@” is geen bekende Dirnex-opdracht."
           }
         },
         "ru" : {
@@ -896,7 +896,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "\"%@\" is geen absoluut POSIX-pad.",
+            "value" : "“%@” is geen absoluut POSIX-pad.",
             "state" : "translated"
           }
         },
@@ -973,7 +973,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "\"%@\" is niet beschikbaar",
+            "value" : "“%@” is niet beschikbaar",
             "state" : "translated"
           }
         },
@@ -3685,13 +3685,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg onderdeel"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg onderdelen"
                     }
                   }
                 }
@@ -3699,7 +3699,7 @@
             }
           },
           "stringUnit" : {
-            "value" : "%#@items@ kon niet teruggezet worden: %2$@",
+            "value" : "Kon %#@items@ niet terugzetten: %2$@",
             "state" : "translated"
           }
         },
@@ -4030,7 +4030,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "%#@items@ kon niet opnieuw worden toegepast: %2$@",
+            "value" : "Kon %#@items@ niet opnieuw toepassen: %2$@",
             "state" : "translated"
           },
           "substitutions" : {
@@ -4042,13 +4042,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg onderdeel"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg onderdelen"
                     }
                   }
                 }
@@ -6008,7 +6008,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Snelkoppeling toevoegen",
+            "value" : "Toetscombinatie toevoegen",
             "state" : "translated"
           }
         },
@@ -6624,7 +6624,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Een item met die naam bestaat hier al."
+            "value" : "Er bestaat hier al een onderdeel met die naam."
           }
         },
         "ru" : {
@@ -9088,7 +9088,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Blader door een externe SFTP- of FTP-account, of een SMB-share op je netwerk."
+            "value" : "Blader door een extern SFTP- of FTP-account of een SMB-share op je netwerk."
           }
         },
         "ru" : {
@@ -9318,7 +9318,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Kan \"%@\" niet maken",
+            "value" : "Kan “%@” niet maken",
             "state" : "translated"
           }
         },
@@ -9549,7 +9549,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Kan \"%@\" niet bewerken",
+            "value" : "Kan “%@” niet bewerken",
             "state" : "translated"
           }
         },
@@ -9858,7 +9858,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kan \"%@\" niet openen"
+            "value" : "Kan “%@” niet openen"
           }
         },
         "ru" : {
@@ -10089,7 +10089,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kan \"%@\" niet hernoemen"
+            "value" : "Kan “%@” niet hernoemen"
           }
         },
         "ru" : {
@@ -10165,7 +10165,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Kan \"%@\" niet uitvoeren",
+            "value" : "Kan “%@” niet uitvoeren",
             "state" : "translated"
           }
         },
@@ -10319,7 +10319,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Kan de identiteit van \"%@\" niet verifiëren",
+            "value" : "Kan de identiteit van “%@” niet verifiëren",
             "state" : "translated"
           }
         },
@@ -11322,7 +11322,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Update, upgraden, glinsteren, versie, release, nieuw"
+            "value" : "update, bijwerken, upgraden, versie, release, nieuw"
           }
         },
         "ru" : {
@@ -11477,7 +11477,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Toestemming, privacy, beveiliging, toegang, schijf, verleening, onboarding",
+            "value" : "toestemming, privacy, beveiliging, toegang, schijf, verlenen, onboarding",
             "state" : "translated"
           }
         },
@@ -11790,7 +11790,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "voorkeuren, opties, toetscombinatieen, configuratie"
+            "value" : "voorkeuren, opties, toetscombinaties, configuratie"
           }
         },
         "ru" : {
@@ -12491,7 +12491,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Verplaats items hierheen",
+            "value" : "Verplaats onderdelen hierheen",
             "state" : "translated"
           }
         },
@@ -12570,7 +12570,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "herhalen, doorsturen, opnieuw, opnieuw toepassen"
+            "value" : "herhalen, vooruit, opnieuw, opnieuw toepassen"
           }
         },
         "ru" : {
@@ -13662,7 +13662,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "f4, nieuw, maken, bewerker, tekst, aanraken, leeg, bestand"
+            "value" : "f4, nieuw, maken, editor, tekst, leeg, bestand"
           }
         },
         "ru" : {
@@ -15222,7 +15222,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "delen, verzenden, airdrop, posten, bericht, bladzijde"
+            "value" : "delen, verzenden, airdrop, mail, bericht, deelvenster"
           }
         },
         "ru" : {
@@ -15455,7 +15455,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Bestanden synchroniseren…",
+            "value" : "Mappen synchroniseren…",
             "state" : "translated"
           }
         },
@@ -15534,7 +15534,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vinder, tag, label, kleur, kleur, teken"
+            "value" : "Finder, tag, label, kleur, markering"
           }
         },
         "ru" : {
@@ -16314,7 +16314,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pad, adres, type, url, sprong, frequentie, wazig, recent"
+            "value" : "pad, adres, typen, url, springen, frecency, fuzzy, recent"
           }
         },
         "ru" : {
@@ -18497,7 +18497,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "functie, toetsen, f-toetsen, fkeys, f5, f6, f7, f8, werkbalk, balk, knoppen, totale commandant, tc",
+            "value" : "functie, toetsen, f-toetsen, fkeys, f5, f6, f7, f8, werkbalk, balk, knoppen, Total Commander, tc",
             "state" : "translated"
           }
         },
@@ -20213,7 +20213,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Vinder, tags, labels, kleuren, kleuren, stippen, kolom",
+            "value" : "Finder, tags, labels, kleuren, stippen, kolom",
             "state" : "translated"
           }
         },
@@ -23777,7 +23777,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kon \"%@\" niet toevoegen"
+            "value" : "Kon “%@” niet toevoegen"
           }
         },
         "ru" : {
@@ -24015,13 +24015,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg onderdeel"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg onderdelen"
                     }
                   }
                 }
@@ -24030,7 +24030,7 @@
           },
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kon %#@items@ niet toevoegen aan \"%2$@\""
+            "value" : "Kon %#@items@ niet toevoegen aan “%2$@”"
           }
         },
         "ru" : {
@@ -24361,7 +24361,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kon \"%@\" niet kopiëren"
+            "value" : "Kon “%@” niet kopiëren"
           }
         },
         "ru" : {
@@ -24524,13 +24524,13 @@
             "plural" : {
               "other" : {
                 "stringUnit" : {
-                  "value" : "%lld-items konden niet worden gekopieerd",
+                  "value" : "Kon %lld onderdelen niet kopiëren",
                   "state" : "translated"
                 }
               },
               "one" : {
                 "stringUnit" : {
-                  "value" : "%lld-item kon niet kopiëren",
+                  "value" : "Kon %lld onderdeel niet kopiëren",
                   "state" : "translated"
                 }
               }
@@ -24747,7 +24747,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Kon \"%@\" niet verwijderen",
+            "value" : "Kon “%@” niet verwijderen",
             "state" : "translated"
           }
         },
@@ -24912,12 +24912,12 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld-item kon niet verwijderen"
+                  "value" : "Kon %lld onderdeel niet verwijderen"
                 }
               },
               "other" : {
                 "stringUnit" : {
-                  "value" : "%lld-items konden niet worden verwijderd",
+                  "value" : "Kon %lld onderdelen niet verwijderen",
                   "state" : "translated"
                 }
               }
@@ -25211,7 +25211,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "%#@items@ kon niet worden verwijderd uit \"%2$@\"",
+            "value" : "Kon %#@items@ niet verwijderen uit “%2$@”",
             "state" : "translated"
           },
           "substitutions" : {
@@ -25223,13 +25223,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg onderdeel"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg onderdelen"
                     }
                   }
                 }
@@ -25411,7 +25411,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kon \"%@\" niet downloaden"
+            "value" : "Kon “%@” niet downloaden"
           }
         },
         "ru" : {
@@ -25488,7 +25488,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kon \"%@\" niet uitschuiven"
+            "value" : "Kon “%@” niet uitwerpen"
           }
         },
         "ru" : {
@@ -25564,7 +25564,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Kon \"%@\" niet wissen",
+            "value" : "Kon “%@” niet wissen",
             "state" : "translated"
           }
         },
@@ -25728,13 +25728,13 @@
             "plural" : {
               "other" : {
                 "stringUnit" : {
-                  "value" : "%lld-items konden niet wissen",
+                  "value" : "Kon %lld onderdelen niet wissen",
                   "state" : "translated"
                 }
               },
               "one" : {
                 "stringUnit" : {
-                  "value" : "%lld-item kon niet wissen",
+                  "value" : "Kon %lld onderdeel niet wissen",
                   "state" : "translated"
                 }
               }
@@ -25951,7 +25951,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Kon de geselecteerde items niet extraheren",
+            "value" : "Kon de geselecteerde onderdelen niet extraheren",
             "state" : "translated"
           }
         },
@@ -26028,7 +26028,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Kon \"%@\" niet volledig verwijderen",
+            "value" : "Kon “%@” niet volledig verwijderen",
             "state" : "translated"
           }
         },
@@ -26337,7 +26337,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kon \"%@\" niet verplaatsen"
+            "value" : "Kon “%@” niet verplaatsen"
           }
         },
         "ru" : {
@@ -26413,7 +26413,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Kon \"%@\" niet naar de Prullenmand verplaatsen",
+            "value" : "Kon “%@” niet naar de Prullenmand verplaatsen",
             "state" : "translated"
           }
         },
@@ -26577,13 +26577,13 @@
             "plural" : {
               "one" : {
                 "stringUnit" : {
-                  "value" : "%lld-item kon niet verplaatsen",
+                  "value" : "Kon %lld onderdeel niet verplaatsen",
                   "state" : "translated"
                 }
               },
               "other" : {
                 "stringUnit" : {
-                  "value" : "%lld-items konden niet verplaatst worden",
+                  "value" : "Kon %lld onderdelen niet verplaatsen",
                   "state" : "translated"
                 }
               }
@@ -26811,12 +26811,12 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld-items konden niet naar de Prullenmand worden verplaatst"
+                  "value" : "Kon %lld onderdelen niet naar de Prullenmand verplaatsen"
                 }
               },
               "one" : {
                 "stringUnit" : {
-                  "value" : "%lld-item kon niet naar de Prullenmand worden verplaatst",
+                  "value" : "Kon %lld onderdeel niet naar de Prullenmand verplaatsen",
                   "state" : "translated"
                 }
               }
@@ -26957,7 +26957,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kon \"%@\" niet openen"
+            "value" : "Kon “%@” niet openen"
           }
         },
         "ru" : {
@@ -27187,7 +27187,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Kon niet openen met \"%@\".",
+            "value" : "Kon niet openen met “%@”.",
             "state" : "translated"
           }
         },
@@ -27264,7 +27264,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Kon \"%@\" niet terugzetten",
+            "value" : "Kon “%@” niet terugzetten",
             "state" : "translated"
           }
         },
@@ -27651,7 +27651,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Kon \"%@\" niet hernoemen",
+            "value" : "Kon “%@” niet hernoemen",
             "state" : "translated"
           }
         },
@@ -27816,13 +27816,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld-item kon niet hernoemd worden"
+                  "value" : "Kon %lld onderdeel niet hernoemen"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld-items kon niet hernoemd worden"
+                  "value" : "Kon %lld onderdelen niet hernoemen"
                 }
               }
             }
@@ -27961,7 +27961,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Kon de bekende hosts voor \"%@\" niet bijwerken.",
+            "value" : "Kon de bekende hosts voor “%@” niet bijwerken.",
             "state" : "translated"
           }
         },
@@ -28193,7 +28193,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Maak een map aan in \"%@\"."
+            "value" : "Maak een map aan in “%@”."
           }
         },
         "ru" : {
@@ -28270,7 +28270,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Maak een archief in \"%@\"."
+            "value" : "Maak een archief in “%@”."
           }
         },
         "ru" : {
@@ -28731,7 +28731,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Verwijder \"%@\" van \"%@\"?",
+            "value" : "Verwijder “%@” uit “%@”?",
             "state" : "translated"
           }
         },
@@ -28885,7 +28885,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Verwijder \"%@\"?",
+            "value" : "Verwijder “%@”?",
             "state" : "translated"
           }
         },
@@ -29116,7 +29116,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Verwijder %#@items@ van \"%2$@\"?",
+            "value" : "Verwijder %#@items@ uit “%2$@”?",
             "state" : "translated"
           },
           "substitutions" : {
@@ -29128,13 +29128,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg onderdeel"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg onderdelen"
                     }
                   }
                 }
@@ -29702,7 +29702,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Verwijder de tag \"%@\"?",
+            "value" : "Verwijder de tag “%@”?",
             "state" : "translated"
           }
         },
@@ -31244,7 +31244,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Elk item keert terug naar de map waaruit het is verwijderd.",
+            "value" : "Elk onderdeel gaat terug naar de map waaruit het is verwijderd.",
             "state" : "translated"
           }
         },
@@ -33246,7 +33246,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Filter \"%1$@\" · %2$@",
+            "value" : "Filter “%1$@” · %2$@",
             "state" : "translated"
           }
         },
@@ -35872,7 +35872,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "iCloud heeft de download niet gestart. Controleer uw netwerkverbinding en probeer het opnieuw.",
+            "value" : "iCloud heeft de download niet gestart. Controleer je netwerkverbinding en probeer het opnieuw.",
             "state" : "translated"
           }
         },
@@ -38260,7 +38260,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Verplaats \"%@\" naar de Prullenmand?",
+            "value" : "Verplaats “%@” naar de Prullenmand?",
             "state" : "translated"
           }
         },
@@ -38501,13 +38501,13 @@
             "plural" : {
               "other" : {
                 "stringUnit" : {
-                  "value" : "Verplaats %lld-items naar de Prullenmand?",
+                  "value" : "Verplaats %lld onderdelen naar de Prullenmand?",
                   "state" : "translated"
                 }
               },
               "one" : {
                 "stringUnit" : {
-                  "value" : "Verplaats %lld-item naar de Prullenmand?",
+                  "value" : "Verplaats %lld onderdeel naar de Prullenmand?",
                   "state" : "translated"
                 }
               }
@@ -40649,7 +40649,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Geen opgeslagen werkruimtes",
+            "value" : "Geen opgeslagen werkruimten",
             "state" : "translated"
           }
         },
@@ -41805,7 +41805,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Open een bestand, of typ een nieuw naam om er een te maken."
+            "value" : "Open een bestand of typ een nieuwe naam om er een te maken."
           }
         },
         "ru" : {
@@ -41959,7 +41959,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Open een map op de schijf in het andere paneel om de nieuwe archief te bewaren."
+            "value" : "Open een map op de schijf in het andere paneel om het nieuwe archief te bewaren."
           }
         },
         "ru" : {
@@ -42343,7 +42343,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Het openen van een map vanuit een zoekvak laat de resultaten op hun plaats staan en opent deze in het andere venster. Wanneer uitgeschakeld, blijft de focus op de resultaten, zodat u meer kunt blijven openen.",
+            "value" : "Wanneer je een map vanuit een zoektabblad opent, blijven de resultaten staan en wordt de map in het andere paneel geopend. Als dit uit staat, blijft de focus op de resultaten zodat je meer mappen kunt openen.",
             "state" : "translated"
           }
         },
@@ -44280,14 +44280,14 @@
             "plural" : {
               "other" : {
                 "stringUnit" : {
-                  "value" : "%lld-items permanent wissen uit de Prullenmand?",
+                  "value" : "%lld onderdelen permanent uit de Prullenmand wissen?",
                   "state" : "translated"
                 }
               },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld-item permanent wissen uit de Prullenmand?"
+                  "value" : "%lld onderdeel permanent uit de Prullenmand wissen?"
                 }
               }
             }
@@ -44580,7 +44580,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Plain FTP stuurt uw wachtwoord en bestanden zonder versleuteling.",
+            "value" : "FTP zonder versleuteling verstuurt je wachtwoord en bestanden leesbaar.",
             "state" : "translated"
           }
         },
@@ -45136,7 +45136,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld-items terugzetten?"
+                  "value" : "%lld onderdelen terugzetten?"
                 }
               }
             }
@@ -46122,7 +46122,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Verwijder \"%@\"?"
+            "value" : "Verwijder “%@”?"
           }
         },
         "ru" : {
@@ -46670,13 +46670,13 @@
             "plural" : {
               "one" : {
                 "stringUnit" : {
-                  "value" : "Naam wijzigen van %lld-item",
+                  "value" : "Naam van %lld onderdeel wijzigen",
                   "state" : "translated"
                 }
               },
               "other" : {
                 "stringUnit" : {
-                  "value" : "Hernoem %lld-items",
+                  "value" : "Naam van %lld onderdelen wijzigen",
                   "state" : "translated"
                 }
               }
@@ -47201,7 +47201,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vervang \"%@\" in \"%@\"?"
+            "value" : "Vervang “%@” in “%@”?"
           }
         },
         "ru" : {
@@ -47277,7 +47277,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Vervang \"%@\"?",
+            "value" : "Vervang “%@”?",
             "state" : "translated"
           }
         },
@@ -47508,7 +47508,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Vervang %#@items@ in \"%2$@\"?",
+            "value" : "Vervang %#@items@ in “%2$@”?",
             "state" : "translated"
           },
           "substitutions" : {
@@ -47520,13 +47520,13 @@
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg item"
+                      "value" : "%arg onderdeel"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg items"
+                      "value" : "%arg onderdelen"
                     }
                   }
                 }
@@ -47785,7 +47785,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vervang het bestaande archief in \"%@\"?"
+            "value" : "Vervang het bestaande archief in “%@”?"
           }
         },
         "ru" : {
@@ -48170,7 +48170,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Standaard toetscombinatieen herstellen?"
+            "value" : "Standaardtoetscombinaties herstellen?"
           }
         },
         "ru" : {
@@ -49863,7 +49863,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Sla beide panelen en alle tabbladen op, zodat u terug kunt schakelen naar deze lay-out.",
+            "value" : "Sla beide panelen en alle tabbladen op, zodat je terug kunt schakelen naar deze lay-out.",
             "state" : "translated"
           }
         },
@@ -52879,7 +52879,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Share van deze map"
+            "value" : "Aandeel van deze map"
           }
         },
         "ru" : {
@@ -54957,7 +54957,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Sommige toetscombinatieen zijn toegewezen aan meer dan één opdracht.",
+            "value" : "Sommige toetscombinaties zijn toegewezen aan meer dan één opdracht.",
             "state" : "translated"
           }
         },
@@ -57423,7 +57423,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Het archief kan beschadigd zijn of de items kunnen ontbreken.",
+            "value" : "Het archief kan beschadigd zijn of de onderdelen kunnen ontbreken.",
             "state" : "translated"
           }
         },
@@ -58116,7 +58116,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "De identiteit van \"%@\" is veranderd",
+            "value" : "De identiteit van “%@” is gewijzigd",
             "state" : "translated"
           }
         },
@@ -58194,7 +58194,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Het item is momenteel niet beschikbaar op een apparaat dat iCloud nu kan bereiken."
+            "value" : "Het onderdeel is momenteel niet beschikbaar op een apparaat dat iCloud kan bereiken."
           }
         },
         "ru" : {
@@ -58271,7 +58271,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Het item bestaat niet langer."
+            "value" : "Het onderdeel bestaat niet meer."
           }
         },
         "ru" : {
@@ -58347,7 +58347,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "De oude hostkey kon niet automatisch worden verwijderd. Verwijder deze uit %@ en probeer opnieuw verbinding te maken.",
+            "value" : "De oude hostsleutel kon niet automatisch worden verwijderd. Verwijder deze uit %@ en probeer opnieuw verbinding te maken.",
             "state" : "translated"
           }
         },
@@ -58424,7 +58424,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "De andere items zijn hernoemd.",
+            "value" : "De andere onderdelen zijn hernoemd.",
             "state" : "translated"
           }
         },
@@ -58964,7 +58964,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "De server presenteert een ander certificaat dan het certificaat dat je hebt vertrouwd. Verwijder de bewaarde server en verbind alleen opnieuw als je weet waarom dit is gewijzigd."
+            "value" : "De server toont een ander certificaat dan het certificaat dat je hebt vertrouwd. Verwijder de bewaarde server en maak alleen opnieuw verbinding als je weet waarom dit is gewijzigd."
           }
         },
         "ru" : {
@@ -59040,7 +59040,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "De server presenteerde een certificaat dat niet is ondertekend door een vertrouwde instantie. Dit is normaal voor een NAS of thuisserver, maar het kan ook betekenen dat iemand de verbinding onderschept.\n\nVergelijk deze vingerafdruk met de vingerafdruk op de server voordat je deze vertrouwt.",
+            "value" : "De server heeft een certificaat getoond dat niet is ondertekend door een vertrouwde instantie. Dit is normaal voor een NAS of thuisserver, maar het kan ook betekenen dat iemand de verbinding onderschept.\n\nVergelijk deze vingerafdruk met de vingerafdruk op de server voordat je deze vertrouwt.",
             "state" : "translated"
           }
         },
@@ -59272,7 +59272,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Het certificaat van de server kon niet worden gelezen, dus het kan niet veilig worden vertrouwd."
+            "value" : "Het certificaat van de server kon niet worden gelezen en kan daarom niet veilig worden vertrouwd."
           }
         },
         "ru" : {
@@ -59425,7 +59425,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Het certificaat van de server werd niet vertrouwd, dus de verbinding werd geannuleerd.",
+            "value" : "Het certificaat van de server werd niet vertrouwd. Daarom is de verbinding geannuleerd.",
             "state" : "translated"
           }
         },
@@ -59502,7 +59502,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "De hostkey van de server is gewijzigd (nieuwe vingerafdruk %@).",
+            "value" : "De hostsleutel van de server is gewijzigd (nieuwe vingerafdruk %@).",
             "state" : "translated"
           }
         },
@@ -60657,7 +60657,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Dit item wordt opgeslagen in iCloud. Dirnex haalt het op voordat het wordt geopend.",
+            "value" : "Dit onderdeel is opgeslagen in iCloud. Dirnex haalt het op voordat het wordt geopend.",
             "state" : "translated"
           }
         },
@@ -61042,7 +61042,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Deze server presenteert een andere host %@ dan de host die je eerder hebt vertrouwd. Als je de server opnieuw hebt geïnstalleerd of een nieuwe SFTP-app naar dit adres hebt verwezen, is dit verwacht — maar het kan ook betekenen dat iemand de verbinding onderschept (een man-in-the-middle-aanval).\n\nNieuwe vingerafdruk:\n%@\n\nGa alleen verder als je deze vingerafdruk herkent. Als je deze vertrouwt, wordt de oude sleutel vervangen zodat toekomstige verbindingen met deze server slagen.",
+            "value" : "Deze server toont een andere host %@ dan de host die je eerder hebt vertrouwd. Als je de server opnieuw hebt geïnstalleerd of een nieuwe SFTP-app naar dit adres hebt verwezen, is dat te verwachten — maar het kan ook betekenen dat iemand de verbinding onderschept (een man-in-the-middle-aanval).\n\nNieuwe vingerafdruk:\n%@\n\nGa alleen verder als je deze vingerafdruk herkent. Als je deze vertrouwt, wordt de oude sleutel vervangen zodat toekomstige verbindingen met deze server werken.",
             "state" : "translated"
           }
         },
@@ -61274,7 +61274,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Het actieve paneel is de bron, de andere het doel. Kopieer of sleep wat geselecteerd is naar de andere kant, maak een map of stuur bestanden naar de Prullenmand — vanaf de knoppen langs de onderkant, de functietoetsen of de palet.",
+            "value" : "Het actieve paneel is de bron, het andere paneel is het doel. Kopieer of verplaats de selectie naar de andere kant, maak een map of verplaats bestanden naar de Prullenmand — via de knoppen onderaan, de functietoetsen of het palet.",
             "state" : "translated"
           }
         },
@@ -61742,7 +61742,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "macOS houdt een paar mappen privé — de thuiscomputers van andere gebruikers, e-mail, Time Machine-back-ups. Geef Volledige schijftoegang toe wanneer je er voor het eerst een nodig hebt. Je kunt deze tour op elk moment heropenen vanuit de opdrachtbalk.",
+            "value" : "macOS houdt een paar mappen privé — de thuismappen van andere gebruikers, Mail en Time Machine-back-ups. Geef Volledige schijftoegang wanneer je er voor het eerst een nodig hebt. Je kunt deze tour op elk moment opnieuw openen vanuit het opdrachtenpalet.",
             "state" : "translated"
           }
         },
@@ -62207,7 +62207,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Vertrouw en verbind",
+            "value" : "Vertrouw en maak verbinding",
             "state" : "translated"
           }
         },
@@ -62284,7 +62284,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Vertrouw nieuwe sleutel en verbind",
+            "value" : "Vertrouw nieuwe sleutel en maak verbinding",
             "state" : "translated"
           }
         },
@@ -64286,7 +64286,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Kon \"%@\" niet toevoegen aan het archief \"%@\".",
+            "value" : "Kon “%@” niet toevoegen aan het archief “%@”.",
             "state" : "translated"
           }
         },
@@ -64364,7 +64364,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kon het archief \"%@\" niet maken."
+            "value" : "Kon het archief “%@” niet maken."
           }
         },
         "ru" : {
@@ -64440,7 +64440,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Kon niet extraheren uit het archief \"%@\".",
+            "value" : "Kon niet extraheren uit het archief “%@”.",
             "state" : "translated"
           }
         },
@@ -64517,7 +64517,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Kon het archief \"%@\" niet herschrijven.",
+            "value" : "Kon het archief “%@” niet herschrijven.",
             "state" : "translated"
           }
         },
@@ -64826,7 +64826,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kon het archief \"%@\" niet lezen."
+            "value" : "Kon het archief “%@” niet lezen."
           }
         },
         "ru" : {
@@ -64903,7 +64903,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kon het archief \"%@\" niet bijwerken."
+            "value" : "Kon het archief “%@” niet bijwerken."
           }
         },
         "ru" : {
@@ -64980,7 +64980,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alleen lokale bestanden kunnen cloud-provider-items zijn."
+            "value" : "Alleen lokale bestanden kunnen onderdelen van een cloudprovider zijn."
           }
         },
         "ru" : {
@@ -65518,7 +65518,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Deze locatie ondersteunt het verplaatsen van items niet.",
+            "value" : "Deze locatie ondersteunt het verplaatsen van onderdelen niet.",
             "state" : "translated"
           }
         },
@@ -65903,7 +65903,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Deze locatie ondersteunt het verwijderen van items niet.",
+            "value" : "Deze locatie ondersteunt het verwijderen van onderdelen niet.",
             "state" : "translated"
           }
         },
@@ -65980,7 +65980,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Niet verbonden met %@. Verbind opnieuw met de server.",
+            "value" : "Niet verbonden met %@. Maak opnieuw verbinding met de server.",
             "state" : "translated"
           }
         },
@@ -66365,7 +66365,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Wachten op uploaden",
+            "value" : "Wachten op upload",
             "state" : "translated"
           }
         },
@@ -66903,7 +66903,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Je kunt items later herstellen uit de Prullenmand.",
+            "value" : "Je kunt onderdelen later herstellen uit de Prullenmand.",
             "state" : "translated"
           }
         },
@@ -67211,7 +67211,7 @@
         },
         "nl" : {
           "stringUnit" : {
-            "value" : "Uw bestanden in iCloud Drive staan hierboven vermeld. De mappen die apps daar bewaren — Pages, Preview, Shortcuts — zijn privé voor macOS totdat u Dirnex toestemming geeft om ze te lezen.\n\nKlik op Open Systeeminstellingen en schakel vervolgens Dirnex in onder Volledige schijftoegang. macOS vraagt Dirnex om opnieuw op te starten zodat de nieuwe toegang van kracht wordt.",
+            "value" : "Je bestanden in iCloud Drive staan hierboven. De mappen die apps daar bewaren — Pages, Voorvertoning, Opdrachten — zijn privé voor macOS totdat je Dirnex toestemming geeft om ze te lezen.\n\nKlik op Open Systeeminstellingen en schakel Dirnex in onder Volledige schijftoegang. macOS vraagt Dirnex om opnieuw te starten zodat de nieuwe toegang actief wordt.",
             "state" : "translated"
           }
         },
@@ -67289,7 +67289,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uw zoekopdracht heeft meer resultaten opgeleverd. Verklein de resultaten om de rest te bekijken."
+            "value" : "Je zoekopdracht heeft meer onderdelen gevonden. Verfijn de zoekopdracht om de rest te zien."
           }
         },
         "ru" : {
