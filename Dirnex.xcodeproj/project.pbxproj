@@ -157,6 +157,7 @@
 				pl,
 				pt-BR,
 				ru,
+				uk,
 				zh-Hans,
 				zh-Hant,
 			);
