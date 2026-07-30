@@ -16090,6 +16090,95 @@
         }
       }
     },
+    "Connected to “%@”, but couldn’t find a shared folder to open. Enter the name of a folder shared on that computer in the Share field.": {
+      "comment": "SMB mount failure: authenticated but no share to mount; %@ is the host name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbindung zu „%@“ hergestellt, aber es wurde kein freigegebener Ordner zum Öffnen gefunden. Geben Sie im Feld „Freigabe“ den Namen eines auf diesem Computer freigegebenen Ordners ein."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connected to “%@”, but couldn’t find a shared folder to open. Enter the name of a folder shared on that computer in the Share field."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se conectó a «%@», pero no se encontró ninguna carpeta compartida que abrir. Introduce en el campo Recurso compartido el nombre de una carpeta compartida en ese ordenador."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connexion à «%@» établie, mais aucun dossier partagé à ouvrir n’a été trouvé. Saisissez dans le champ Partage le nom d’un dossier partagé sur cet ordinateur."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connessione a “%@” riuscita, ma non è stata trovata alcuna cartella condivisa da aprire. Inserisci nel campo Condivisione il nome di una cartella condivisa su quel computer."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”に接続しましたが、開ける共有フォルダが見つかりませんでした。そのコンピュータで共有されているフォルダの名前を「共有」フィールドに入力してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”에 연결했지만 열 수 있는 공유 폴더를 찾을 수 없습니다. 해당 컴퓨터에서 공유된 폴더의 이름을 공유 필드에 입력하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbonden met “%@”, maar er is geen gedeelde map gevonden om te openen. Voer in het veld Sharenaam de naam in van een map die op die computer is gedeeld."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Połączono z „%@”, ale nie znaleziono żadnego udostępnionego folderu do otwarcia. Wpisz w polu Udział nazwę folderu udostępnionego na tym komputerze."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подключение к «%@» выполнено, но не найдено ни одной общей папки для открытия. Укажите в поле «Ресурс» имя папки, открытой для общего доступа на этом компьютере."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "З’єднання з «%@» встановлено, але не знайдено жодної спільної папки для відкриття. Укажіть у полі «Спільна папка» назву папки, відкритої для спільного доступу на цьому комп’ютері."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conectado a “%@”, mas nenhuma pasta compartilhada foi encontrada para abrir. Digite no campo Compartilhamento o nome de uma pasta compartilhada nesse computador."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已连接到“%@”，但找不到可打开的共享文件夹。请在“共享”字段中输入该电脑上已共享的文件夹名称。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已連接「%@」，但找不到可打開的共享檔案夾。請在「共享檔案夾」欄位中輸入該電腦上已共享的檔案夾名稱。"
+          }
+        }
+      }
+    },
     "Content": {
       "comment": "Sync comparison method: compare byte-for-byte.",
       "localizations": {
@@ -59954,6 +60043,95 @@
         }
       }
     },
+    "This server doesn’t offer encryption on this port. Choose plain FTP, or connect on the port that provides FTPS.": {
+      "comment": "FTP connect failure detail: explicit FTPS asked for but no TLS on this port.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Server bietet auf diesem Port keine Verschlüsselung an. Wählen Sie FTP ohne Verschlüsselung oder verbinden Sie sich über den Port, der FTPS bereitstellt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This server doesn’t offer encryption on this port. Choose plain FTP, or connect on the port that provides FTPS."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este servidor no ofrece cifrado en este puerto. Elige FTP sin cifrar o conéctate por el puerto que ofrece FTPS."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce serveur ne propose pas de chiffrement sur ce port. Choisissez FTP simple, ou connectez-vous sur le port qui fournit FTPS."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo server non offre la crittografia su questa porta. Scegli FTP non protetto oppure connettiti alla porta che fornisce FTPS."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このサーバは、このポートでは暗号化に対応していません。通常のFTPを選択するか、FTPSを提供しているポートで接続してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 서버는 이 포트에서 암호화를 제공하지 않습니다. 일반 FTP를 선택하거나 FTPS를 제공하는 포트로 연결하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze server biedt geen versleuteling op deze poort. Kies FTP zonder versleuteling of maak verbinding via de poort die FTPS levert."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten serwer nie oferuje szyfrowania na tym porcie. Wybierz zwykłe FTP albo połącz się przez port, który udostępnia FTPS."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот сервер не предлагает шифрование на этом порту. Выберите обычный FTP или подключитесь к порту, на котором доступен FTPS."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цей сервер не пропонує шифрування на цьому порту. Виберіть звичайний FTP або з’єднайтеся через порт, на якому доступний FTPS."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este servidor não oferece criptografia nesta porta. Escolha FTP simples ou conecte-se pela porta que oferece FTPS."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此服务器在该端口上不提供加密。请选择普通 FTP，或改用提供 FTPS 的端口连接。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此伺服器在該連接埠上不提供加密。請選擇一般 FTP，或改用提供 FTPS 的連接埠連線。"
+          }
+        }
+      }
+    },
     "This server is presenting a different host %@ than the one you trusted before. If you reinstalled the server or pointed a new SFTP app at this address, this is expected — but it can also mean someone is intercepting the connection (a man-in-the-middle attack).\n\nNew fingerprint:\n%@\n\nOnly continue if you recognize this fingerprint. Trusting it replaces the old key so future connections to this server succeed.": {
       "comment": "Host-key-change alert body; first %@ is the key label, second %@ the fingerprint.",
       "localizations": {
@@ -60039,6 +60217,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "此伺服器提供的主機 %@ 與你之前信任的不同。如果你重新安裝了伺服器，或將新的 SFTP App 指向此位址，這是正常情況；但也可能表示有人正在攔截連線（中間人攻擊）。\n\n新指紋：\n%@\n\n只有在你認得此指紋時才繼續。信任它會取代舊金鑰，以後即可連線到此伺服器。"
+          }
+        }
+      }
+    },
+    "This server requires an encrypted connection. Choose FTPS (explicit or implicit) instead of plain FTP.": {
+      "comment": "FTP connect failure detail: the server requires TLS and refused a plain login.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Server erfordert eine verschlüsselte Verbindung. Wählen Sie FTPS (explizit oder implizit) statt FTP ohne Verschlüsselung."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This server requires an encrypted connection. Choose FTPS (explicit or implicit) instead of plain FTP."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este servidor requiere una conexión cifrada. Elige FTPS (explícito o implícito) en lugar de FTP sin cifrar."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce serveur exige une connexion chiffrée. Choisissez FTPS (explicite ou implicite) au lieu de FTP simple."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo server richiede una connessione crittografata. Scegli FTPS (esplicito o implicito) invece di FTP non protetto."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このサーバには暗号化された接続が必要です。通常のFTPではなく、FTPS（明示的または暗黙）を選択してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 서버에는 암호화된 연결이 필요합니다. 일반 FTP 대신 FTPS(명시적 또는 암시적)를 선택하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze server vereist een versleutelde verbinding. Kies FTPS (expliciet of impliciet) in plaats van FTP zonder versleuteling."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten serwer wymaga połączenia szyfrowanego. Wybierz FTPS (jawny lub niejawny) zamiast zwykłego FTP."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот сервер требует зашифрованного подключения. Выберите FTPS (явный или неявный) вместо обычного FTP."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цей сервер вимагає зашифрованого з’єднання. Виберіть FTPS (явний або неявний) замість звичайного FTP."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este servidor exige uma conexão criptografada. Escolha FTPS (explícito ou implícito) em vez de FTP simples."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此服务器要求使用加密连接。请选择 FTPS（显式或隐含），而不是普通 FTP。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此伺服器要求使用加密連線。請選擇 FTPS（顯式或隱含），而不是一般 FTP。"
           }
         }
       }
@@ -89726,6 +89993,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "無法執行「%@」。"
+          }
+        }
+      }
+    },
+    "“%@” doesn’t allow guest access. Enter a username and password.": {
+      "comment": "SMB mount failure: the server refused a guest mount; %@ is the host name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ erlaubt keinen Gastzugriff. Geben Sie einen Benutzernamen und ein Passwort ein."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” doesn’t allow guest access. Enter a username and password."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» no permite el acceso como invitado. Introduce un nombre de usuario y una contraseña."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» n’autorise pas l’accès invité. Saisissez un nom d’utilisateur et un mot de passe."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” non consente l’accesso come ospite. Inserisci un nome utente e una password."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”はゲストアクセスを許可していません。ユーザ名とパスワードを入力してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”은(는) 게스트 접근을 허용하지 않습니다. 사용자 이름과 암호를 입력하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” staat gasttoegang niet toe. Voer een gebruikersnaam en wachtwoord in."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@” nie zezwala na dostęp gościa. Wpisz nazwę użytkownika i hasło."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» не разрешает гостевой доступ. Введите имя пользователя и пароль."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» не дозволяє гостьовий доступ. Введіть ім’я користувача й пароль."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” não permite acesso como convidado. Digite um nome de usuário e uma senha."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”不允许访客访问。请输入用户名和密码。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」不允許訪客取用。請輸入使用者名稱和密碼。"
           }
         }
       }
