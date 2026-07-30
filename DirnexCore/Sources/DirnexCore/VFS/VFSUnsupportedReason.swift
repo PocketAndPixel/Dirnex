@@ -48,6 +48,11 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
     case alreadyInTrash(name: String)
     case contentComparisonNeedsLocalFiles
     case contentComparisonNeedsRegularFile
+    /// The file's bytes are not on this disk (`SF_DATALESS`): reading one to compare it would make
+    /// the cloud provider materialize the whole file and block until it lands (docs/NOTES.md,
+    /// measured 1.1 s for 200 KB). Named rather than silently downloaded, so a caller acting on a
+    /// file the user pointed at can ask, and a caller sweeping a tree can stop.
+    case contentComparisonWouldDownload(name: String)
     case tagsNeedLocalFile
     case cloudStatusNeedsLocalFile
 
@@ -83,6 +88,7 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
         case .alreadyInTrash: return "alreadyInTrash"
         case .contentComparisonNeedsLocalFiles: return "contentComparisonNeedsLocalFiles"
         case .contentComparisonNeedsRegularFile: return "contentComparisonNeedsRegularFile"
+        case .contentComparisonWouldDownload: return "contentComparisonWouldDownload"
         case .tagsNeedLocalFile: return "tagsNeedLocalFile"
         case .cloudStatusNeedsLocalFile: return "cloudStatusNeedsLocalFile"
         case .noBackendForPath: return "noBackendForPath"
@@ -149,6 +155,11 @@ public extension VFSUnsupportedReason {
             return ("Content comparison is only available for local files.", [])
         case .contentComparisonNeedsRegularFile:
             return ("Only regular files can be compared by content.", [])
+        case let .contentComparisonWouldDownload(name):
+            return (
+                "“%@” isn’t downloaded yet. Comparing it by content would download it first.",
+                [name]
+            )
         case .tagsNeedLocalFile:
             return ("Only local files carry Finder tags.", [])
         case .cloudStatusNeedsLocalFile:
@@ -197,6 +208,7 @@ public extension VFSUnsupportedReason {
             .alreadyInTrash(name: ""),
             .contentComparisonNeedsLocalFiles,
             .contentComparisonNeedsRegularFile,
+            .contentComparisonWouldDownload(name: ""),
             .tagsNeedLocalFile,
             .cloudStatusNeedsLocalFile,
             .noBackendForPath(path: ""),

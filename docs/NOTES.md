@@ -938,6 +938,38 @@ off a man page.
   already does, so knowing costs nothing — but **reading one byte materializes the file and blocks**
   (measured 1.1 s for 200 KB), so every byte-touching sweep (recursive sizer, content grep,
   byte-compare) has to check it or it silently downloads the user's whole cloud drive.
+  - **`FileManager.attributesOfItem` cannot see the flag at all**, which is what makes a sweep built
+    on it *structurally* blind rather than merely missing a check. Probed against the real evicted
+    file: it hands back nineteen keys, `NSFileType` = regular and `NSFileSize` = the real 1 151 048,
+    and **nothing** for `st_flags` — there is no key to add. `ByteComparator` was written on it and
+    was the last sweep still reading through placeholders; the fix is a raw `stat`, where the type,
+    the size and `SF_DATALESS` all come out of one syscall, so the guard costs nothing over the type
+    check that had to happen anyway (`ChecksumEngine` had already made the same move). Watch the
+    real flags word: it came back `0x40000060`, `SF_DATALESS` plus `UF_COMPRESSED|UF_TRACKED`, so
+    the test is a mask and never an equality.
+  - **No test can produce a placeholder**, so the gate needs a seam. Probed: `chflags` with
+    `SF_DATALESS` **returns success** and the kernel silently drops it — the flag belongs to the file
+    provider, not to the file's owner — and a following `stat` reads `0x00000000`. That is why
+    `ChecksumEngine`'s own guard shipped with no coverage. `ByteComparator` splits at the syscall
+    instead: the decision half takes a `ComparisonSubject` (path, is-regular, size, is-dataless) and
+    only the thin reader supplies real ones, so every rule is testable and one live run against an
+    actual evicted file covers the syscall. Add the `Bool` where an existing bare trailing closure
+    binds to `isCancelled` and nothing re-points, but a second *closure* parameter would (above).
+  - **The guard belongs immediately before the first read, not at the top of the function.** It
+    exists to stop a *download*, and a placeholder carries its real size — so a size mismatch, two
+    empty files, and `prescan`'s `tooLargeToScan` are all correct answers that cost nothing, and
+    refusing them would abort a content sync over pairs it had already classified. The verification
+    that matters is the one that reads *no* bytes: assert the file is **still** `SF_DATALESS`
+    afterwards.
+  - **Who asks and who refuses is a per-caller decision, and the split is "did the user point at
+    this file".** A compare of two files under the cursors downloads them — the same explicit
+    request Enter and F4 already answer that way, through the same `CloudDownloadPrompt` (silent
+    start, sheet after 400 ms, Stop) — while `DirectorySync`'s tree sweep stops and names the first
+    placeholder, because a folder is not a file anybody pointed at. Checksums will meet the same
+    fork. The trap is on the *asking* side: an app that catches the refusal and then hands the pair
+    to an external diff tool has merely moved the blocking read into FileMerge, where nothing on
+    screen says why — so the materialize has to sit at the launch, covering the outcomes that reach
+    a tool without the comparator ever having read a byte.
 - **Finder's iCloud Drive is two directories, not one.** `com~apple~CloudDocs` holds the loose files;
   every iCloud-enabled app's `Documents` folder is a **sibling** under `~/Library/Mobile Documents`,
   not a child. Only the CloudDocs leaf is TCC-carved-out — the parent and the app containers need

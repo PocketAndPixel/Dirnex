@@ -323,6 +323,34 @@ files (`ChecksumAlgorithm`, `CRC32`, `ChecksumError`, `ChecksumEngine`, `Checksu
   not a `String` payload — the M12 Slice 11 lesson applied ahead of the display site. Its catalog
   entries and coverage test are **Slice 2's**, since the core ships no resources.
 
+**Follow-on (2026-07-30): `ByteComparator` gated the same way, which settles the policy Slice 2
+inherits.** NOTES.md named byte-compare among the sweeps that must check `SF_DATALESS`, and it was
+the one that did not — `FileManager.attributesOfItem` **cannot see `st_flags` at all** (probed: 19
+keys, no flags among them), so the check could not have been added without moving to a raw `stat`,
+exactly as `ChecksumEngine` had. Now one `lstat` answers regular-file, size and dataless together,
+and `allowDataless` is the same escape hatch under the same name.
+
+- **The policy, and it is the one Slice 2 should copy: pointed-at file downloads, tree sweep
+  refuses.** Compare By Contents fetches both sides through the shipped `CloudDownloadPrompt` — the
+  same answer Enter and F4 already give the same request — while `DirectorySync`'s `.content` scan
+  stops and names the first placeholder rather than pulling a folder nobody pointed at. So checksum
+  *one selected file* asks and proceeds; *verify a manifest over a tree* refuses.
+- **The gate sits immediately before the first read, not at the top.** A placeholder carries its
+  real size, so a size mismatch, two empty files and `prescan`'s `tooLargeToScan` stay free correct
+  answers; refusing them would abort a content sync over pairs already classified. `ChecksumEngine`
+  guards at the top because it has no free answer — the two are consistent, not divergent.
+- **The app half is a second, separate hole**: catching the refusal and then handing the pair to
+  FileMerge just moves the blocking read into FileMerge. The materialize therefore sits at the
+  launch, covering the outcomes that reach a tool without the comparator having read a byte.
+- **`SF_DATALESS` cannot be produced in a test** — `chflags` reports success and the kernel drops it
+  — which is why Slice 1's guard shipped uncovered. The comparator splits at the syscall
+  (`ComparisonSubject`) so every rule is tested, and one live run against a real evicted iCloud file
+  proved the syscall half: it refused, named the file, and left it **still dataless**. Worth
+  retrofitting to `ChecksumEngine` in Slice 2.
+- `VFSUnsupportedReason.contentComparisonWouldDownload(name:)` carries the sentence, translated in
+  all 14 languages, so `LocalizationCoverageTests` covers it now rather than in Slice 2 — the
+  comparator's errors were already in the `VFSError` vocabulary the app renders.
+
 #### Slice 2 — checksum app
 
 - Two commands, `file.checksumCreate` and `file.checksumVerify`. `Command.id` is a translation key

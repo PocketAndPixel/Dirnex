@@ -44,6 +44,49 @@ final class CloudDownloadPrompt {
         CloudDownloadPrompt(entry: entry, backend: backend, window: window, proceed: proceed).start()
     }
 
+    /// Ensure every one of `paths` has its bytes on this Mac, then run `proceed`.
+    ///
+    /// The multi-file form, for a command that needs *all* of its inputs readable before it can
+    /// start — comparing two files by content, where either side may be an evicted placeholder and
+    /// reading one is what `ByteComparator` refuses to do behind the user's back.
+    ///
+    /// Sequential rather than concurrent, deliberately: one sheet at a time is what a user can
+    /// actually read, and Stop on any of them cancels the whole command by construction, because
+    /// `proceed` simply never runs. Paths that are already local cost one `stat` each and no sheet,
+    /// so this is safe to put in front of an operation that will usually need nothing.
+    ///
+    /// A path that can't be statted is passed over rather than reported: the operation that follows
+    /// describes a vanished file better than a second alert from here would.
+    static func materialize(
+        _ paths: [VFSPath],
+        using backend: any VFSBackend,
+        over window: NSWindow?,
+        then proceed: @escaping () -> Void
+    ) {
+        Task {
+            let evicted = await Task.detached(priority: .userInitiated) {
+                paths.compactMap { try? backend.stat(at: $0) }.filter(\.isDataless)
+            }.value
+            materialize(evicted[...], using: backend, over: window, then: proceed)
+        }
+    }
+
+    /// Walk the evicted entries one at a time, running `proceed` only once all of them have landed.
+    private static func materialize(
+        _ entries: ArraySlice<FileEntry>,
+        using backend: any VFSBackend,
+        over window: NSWindow?,
+        then proceed: @escaping () -> Void
+    ) {
+        guard let next = entries.first else {
+            proceed()
+            return
+        }
+        materialize(next, using: backend, over: window) {
+            materialize(entries.dropFirst(), using: backend, over: window, then: proceed)
+        }
+    }
+
     private let entry: FileEntry
     private let backend: any VFSBackend
     private weak var window: NSWindow?

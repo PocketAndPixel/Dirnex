@@ -66,7 +66,18 @@ extension PanelViewController {
     /// files too large to scan ask first, and everything else launches. A pre-flight *failure*
     /// (permission, vanished mid-read) launches anyway — this is an optimization, not a gate, and
     /// the diff tool reports an unreadable file better than a second alert here would.
-    func launchExternalDiff(comparing left: VFSPath, with right: VFSPath) {
+    ///
+    /// **One failure is not "launch anyway": the comparator refusing to download a cloud
+    /// placeholder.** Falling through there would hand the placeholder to the diff tool, which
+    /// blocks *it* on the same materializing read `ByteComparator` declined to make — the identical
+    /// beachball, one process over and with nothing on screen saying why. So that one is caught,
+    /// the bytes are fetched where the user can see it happening and stop it, and the compare is
+    /// re-run. `downloadingPlaceholders` marks that second run, so it can never loop.
+    func launchExternalDiff(
+        comparing left: VFSPath,
+        with right: VFSPath,
+        downloadingPlaceholders: Bool = false
+    ) {
         guard let tool = ExternalDiffLauncher.preferredTool() else {
             presentDiffFailure(.noToolInstalled)
             return
@@ -79,23 +90,55 @@ extension PanelViewController {
         )
         Task { [weak self] in
             let outcome = await Task.detached(priority: .userInitiated) {
-                try? ByteComparator.prescan(left, right)
+                Result { try ByteComparator.prescan(
+                    left,
+                    right,
+                    allowDataless: downloadingPlaceholders
+                ) }
             }.value
             guard let self else { return }
-            // `nil` is a pre-flight that threw — fall through to the launch, as documented above.
-            switch outcome ?? .different {
-            case .identical:
+            switch outcome {
+            case .success(.identical):
                 reportComparisonResult(
                     String(
                         localized: "Files are identical — nothing to compare.",
                         comment: "Compare result when the two files match byte for byte."
                     )
                 )
-            case let .tooLargeToScan(largestByteSize):
+            case let .success(.tooLargeToScan(largestByteSize)):
                 confirmOversizedCompare(left, right, tool: tool, byteSize: largestByteSize)
-            case .different:
+            case .success(.different):
                 spawn(tool, comparing: left, with: right)
+            case let .failure(error) where Self.wouldDownloadPlaceholder(error):
+                downloadThenCompare(left, with: right)
+            case .failure:
+                spawn(tool, comparing: left, with: right) // an optimization that failed, not a gate
             }
+        }
+    }
+
+    /// Whether a pre-flight failure is the comparator declining to materialize an evicted cloud
+    /// file — the one failure whose fall-through would cause exactly the block it prevented.
+    private static func wouldDownloadPlaceholder(_ error: any Error) -> Bool {
+        guard case let .unsupported(reason) = error as? VFSError,
+              case .contentComparisonWouldDownload = reason else { return false }
+        return true
+    }
+
+    /// Fetch both sides, then compare again.
+    ///
+    /// No extra confirmation: the user put these two files under the cursors and asked what is in
+    /// them, which is the same explicit request Enter and F4 already answer by downloading — and by
+    /// the time the refusal fires the sizes have matched, so there is no free answer left to give.
+    /// What they get is what those two give: a silent start, a sheet if it takes longer than a
+    /// moment, and a Stop button that abandons the compare.
+    private func downloadThenCompare(_ left: VFSPath, with right: VFSPath) {
+        CloudDownloadPrompt.materialize(
+            [left, right],
+            using: backend,
+            over: alertHostWindow
+        ) { [weak self] in
+            self?.launchExternalDiff(comparing: left, with: right, downloadingPlaceholders: true)
         }
     }
 
@@ -136,9 +179,26 @@ extension PanelViewController {
         }
     }
 
-    /// Spawn the tool and say so. The launch is detached and a cold FileMerge takes seconds to draw
-    /// its first window, so without this line the app looks like it swallowed the keystroke.
+    /// Hand the pair to the tool, fetching either side's bytes first if it hasn't got any.
+    ///
+    /// This is the choke point that guarantees the *tool* never gets a placeholder, and it has to be
+    /// here rather than only on the refusal path: the two outcomes that reach a launch without the
+    /// comparator ever having read a byte — `tooLargeToScan`, and a pre-flight that threw for some
+    /// other reason — would otherwise walk a dataless file straight into FileMerge. Both sides are
+    /// already local on every ordinary compare, so the common case is one `stat` each and no sheet.
     private func spawn(_ tool: ExternalDiffTool, comparing left: VFSPath, with right: VFSPath) {
+        CloudDownloadPrompt.materialize(
+            [left, right],
+            using: backend,
+            over: alertHostWindow
+        ) { [weak self] in
+            self?.launch(tool, comparing: left, with: right)
+        }
+    }
+
+    /// Launch the tool and say so. The launch is detached and a cold FileMerge takes seconds to draw
+    /// its first window, so without this line the app looks like it swallowed the keystroke.
+    private func launch(_ tool: ExternalDiffTool, comparing left: VFSPath, with right: VFSPath) {
         showComparisonProgress(
             String(
                 localized: "Opening in \(tool.displayName)…",

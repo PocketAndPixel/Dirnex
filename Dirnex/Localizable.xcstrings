@@ -75759,6 +75759,95 @@
         }
       }
     },
+    "vfs.unsupported.contentComparisonWouldDownload" : {
+      "comment" : "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. %@ is the name of the un-downloaded cloud file.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "„%@“ ist noch nicht geladen. Ein Vergleich nach Inhalt würde die Datei zuerst herunterladen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” isn’t downloaded yet. Comparing it by content would download it first."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» aún no se ha descargado. Compararlo por contenido lo descargaría primero."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» n’est pas encore téléchargé. Le comparer par contenu le téléchargerait d’abord."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” non è ancora stato scaricato. Confrontarlo per contenuto lo scaricherebbe prima."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@”はまだダウンロードされていません。内容で比較すると先にダウンロードされます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@”이(가) 아직 다운로드되지 않았습니다. 내용으로 비교하면 먼저 다운로드됩니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” is nog niet gedownload. Vergelijken op inhoud zou het eerst downloaden."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "„%@” nie został jeszcze pobrany. Porównanie zawartości najpierw go pobierze."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Объект «%@» ещё не загружен. Сравнение по содержимому сначала загрузит его."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Об’єкт «%@» ще не завантажено. Порівняння за вмістом спершу завантажить його."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” ainda não foi baixado. Compará-lo por conteúdo o baixaria primeiro."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@”尚未下载。按内容比较会先下载它。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」尚未下載。依內容比較會先下載它。"
+          }
+        }
+      }
+    },
     "vfs.unsupported.copyFile" : {
       "comment" : "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure.",
       "localizations" : {
