@@ -21,6 +21,24 @@ public enum ACLIdentity {
         resolve(groupID, symbol: "mbr_gid_to_uuid")
     }
 
+    /// The complete ``ACLSubject`` for an account the picker chose — the one place a name becomes an
+    /// identity, since `acl_from_text` needs the GUID, the name *and* the numeric id (probed: an
+    /// entry missing either of the last two is `EINVAL`).
+    ///
+    /// `nil` only when the id has no GUID at all. It is **not** an existence check: `mbr_*_to_uuid`
+    /// synthesizes a GUID for an id with no account behind it (probed — uid 31337 answers
+    /// `FFFFEEEE-…-AAAA00007A69`), so a picker that must reject an unknown account asks
+    /// ``IdentityDirectory/userName(for:)`` instead.
+    public static func subject(for record: IdentityRecord, kind: ACLSubjectKind) -> ACLSubject? {
+        let guid = kind == .user
+            ? guid(forUserID: record.numericID)
+            : guid(forGroupID: record.numericID)
+        guard let guid else { return nil }
+        return ACLSubject(
+            kind: kind, guid: guid, name: record.name, numericID: record.numericID
+        )
+    }
+
     // MARK: - dlsym plumbing
 
     private typealias MembershipToUUID = @convention(c) (UInt32, UnsafeMutablePointer<UInt8>) -> Int32

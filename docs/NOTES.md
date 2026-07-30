@@ -381,6 +381,21 @@ at build time.
   `redrawAfterSelectionChange` now owns that tail for every marks-only gesture, which is the real fix:
   three call sites each spelling out the same four-line sequence is how one of them ends up missing a
   line.
+- **An `NSStackView` that cannot fit its arranged views does not overflow — it *compresses* them**,
+  and a checkbox squeezed to nothing is a row that silently disappears. The Get Info panel's
+  Permissions tab wants ~384 pt of rows in a ~320 pt tab, and the result was "Locked" overlapping
+  "Hidden" with the Locked checkbox gone entirely — a missing row in a *permissions* panel, which is
+  the worst possible direction for that surface to fail in. Nothing logs; there is no Auto Layout
+  complaint, because the constraints are all satisfiable once something has been squashed. The fix
+  is to let the pane scroll rather than to make the sheet taller: a taller sheet hides it in English
+  and brings it straight back in a language whose captions and notes are longer (the same family as
+  the pack sheet's clipped label column and the sync sheet's crushed segmented control).
+  - **A scroll view's document must be flipped and pinned to the *clip view*.** An ordinary `NSView`
+    document is bottom-origin, so the first row lands at the bottom of the clip view and everything
+    above it is out of sight — the tab comes up **completely blank**, which is what the first attempt
+    did. And a document under Auto Layout is not positioned by the scroll view: constrain its top and
+    leading to `scrollView.contentView`, or it keeps whatever frame it was born with. Both failures
+    look identical from outside (an empty pane), so check the flip before hunting the constraints.
 - **A filtered-out row must be omitted, not zeroed.** Rendering an excluded folder as its
   filtered total gives "Zero KB · 0.0 %", which reads as *"measured, and empty"* — a claim about
   the folder where the truth is a claim about the question. Drop such rows from the projection
@@ -1179,6 +1194,54 @@ written. Several results changed the model, not just confirmed it.
   import and act on the link itself, matching Finder's Get Info.
 - **`FileManager.removeItem` fails on a `UF_IMMUTABLE` file**, so a test that locks one must unlock it
   before teardown or it strands the temp tree.
+- **`mbr_uid_to_uuid` *synthesizes* a GUID for an id with no account behind it, so it can never be an
+  existence check.** Probed: uid 31337 — no such user — answers
+  `FFFFEEEE-DDDD-CCCC-BBBB-AAAA00007A69`, the well-known prefix with the id in the tail (groups take
+  `ABCDEFAB-CDEF-ABCD-EFAB-CDEF` + gid the same way; that is where `everyone`'s
+  `…CDEF0000000C` comes from). A real Open Directory record gets a random GUID instead — `oleg`(501)
+  does, `root`(0) does not — so *which* form comes back says nothing usable either. A subject picker
+  validating its input has to ask `getpwuid`/`getgrgid`, which return `nil` for the ghost. Nothing
+  fails loudly here: the ACL would be written with a GUID naming nobody.
+
+### Enumerating users and groups (`getpwent` / `getgrent`)
+
+The subject picker and the owner/group fields both need the machine's accounts by name. Probed live
+(2026-07-31) before the picker was designed, and both findings are invisible until measured.
+
+- **The enumerators return every record twice.** Measured on this Mac: **265** `getpwent` records for
+  133 distinct accounts, **322** `getgrent` records for **161** groups — Open Directory answering
+  from both the local node and the search path, with identical `(name, id)` pairs. `dscl . list
+  /Users` and `/Groups` independently report exactly 133 and 161, which is the OS agreeing with the
+  de-duplicated set and is what makes it a usable test oracle. De-duplicate on the **whole record**,
+  not the name: two accounts legitimately sharing a name with different ids must both survive.
+- **Filter service accounts by the leading underscore, never by a numeric floor.** "Real accounts
+  start at 500" is the tempting rule and it is wrong in the direction that matters: after
+  de-duplication the underscore rule leaves **4 users and 34 groups**, including `wheel`(0),
+  `everyone`(12), `staff`(20) and `admin`(80) — which are precisely the groups an ACL entry names. A
+  `gid >= 500` filter hides all four and leaves the picker unable to express the common case.
+
+### Extended attributes (`listxattr` / `getxattr` / `removexattr`)
+
+- **Pass `XATTR_NOFOLLOW` everywhere, for the same reason the rest of the attributes machinery uses
+  the `l*` syscalls.** Probed on a real symlink: following returned the *target's* attributes and the
+  link's own set was different, so a panel that followed would list — and delete — the wrong file's.
+  A symlink does carry its own (`com.apple.provenance`, at minimum).
+- **`removexattr` on an attribute the file does not carry fails with `ENOATTR` (93).** This is the
+  syscall behind the `xattr -d` exit-1 trap below, so the core's remove swallows `ENOATTR` and
+  succeeds: the caller's intent — "this must not be here" — is already satisfied, and idempotence is
+  what keeps a multi-selection "Remove Quarantine" from failing on the files that were already clean.
+- **One ordinary download carries all three value shapes**, so a viewer cannot assume any of them:
+  `com.apple.quarantine` is plain UTF-8 (`0281;6a5c94dc;Chrome;<UUID>`),
+  `com.apple.metadata:kMDItemWhereFroms` and the Finder tags are **binary property lists** (`bplist`
+  magic), and `com.apple.macl` / `com.apple.lastuseddate#PS` / `com.apple.provenance` are opaque
+  bytes. Classify by **inspection, not by name**, or an attribute this build has never heard of
+  renders as garbage.
+  - **A UTF-8 decode alone is not the text test.** Short binary values decode as UTF-8 surprisingly
+    often — the real 11-byte `com.apple.provenance` does — so the result must also be *printable*, or
+    control characters go straight into the panel.
+- `XATTR_MAXNAMELEN` is 127. `listxattr` hands back a NUL-separated buffer; `XATTR_SHOWCOMPRESSION`
+  made no difference on any real file probed, and neither `com.apple.FinderInfo` nor
+  `com.apple.ResourceFork` appeared.
 
 ### xattr and sips (the stock tools a user script reaches for)
 

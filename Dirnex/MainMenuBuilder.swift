@@ -57,7 +57,10 @@ enum MainMenuBuilder {
     private static let layout: [MenuSpec] = [
         MenuSpec(category: .file, items: [
             .command("file.newTab"), .command("file.closeTab"), .separator,
-            .command("file.openWith"), .command("file.share"), .separator,
+            // Get Info sits with Open With and Share: all three are about the item under the
+            // cursor rather than about moving bytes around.
+            .command("file.openWith"), .command("file.share"), .command("file.attributes"),
+            .separator,
             .command("file.copy"), .command("file.move"), .command("file.pack"),
             .command("file.syncDirectories"), .command("file.compareByContents"),
             // The checksum pair sits with Compare By Contents: all three answer "are these bytes

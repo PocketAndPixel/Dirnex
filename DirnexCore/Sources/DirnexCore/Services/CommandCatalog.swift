@@ -51,6 +51,23 @@ public enum CommandCatalog {
             keywords: ["share", "send", "airdrop", "mail", "message", "sheet"]
         ),
         Command(
+            id: "file.attributes",
+            title: "Get Info",
+            category: .file,
+            // Named for the platform, because ⌘I is the gesture a Mac user already has. The
+            // keywords carry the Total Commander vocabulary for the same panel ("attributes",
+            // "properties") and the words for each thing it shows — someone looking for this is
+            // usually after one row of it, and "chmod" or "quarantine" is what they would type.
+            keywords: [
+                "info", "information", "attributes", "properties", "permissions", "chmod", "mode",
+                "owner", "group", "acl", "access control", "flags", "locked", "immutable",
+                "quarantine", "xattr", "extended attributes", "metadata"
+            ],
+            // ⌘I, Finder's own. Free on both presets, and the only inspection command with a claim
+            // to it.
+            shortcut: CommandShortcut(key: "i", modifiers: .command)
+        ),
+        Command(
             id: "file.copy",
             title: "Copy to Other Panel",
             category: .file,

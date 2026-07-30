@@ -138,6 +138,10 @@ extension PanelViewController: NSMenuItemValidation {
             } ?? LocalizedCatalog.command(for: "file.compareByContents")?.title ?? menuItem.title
             // Diffs the two panes' cursor files — needs a real file under each cursor.
             return canCompareByContents
+        case #selector(showAttributes(_:)):
+            // Needs a real item on disk under the cursor: a mode, a flags word and an ACL are
+            // things an inode has, which an archive member and an SFTP listing are not.
+            return canShowAttributes
         case #selector(verifyChecksums(_:)):
             // Lights up only on a recognized checksum file under the cursor.
             return canVerifyChecksums

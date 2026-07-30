@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M13 shipped (14 languages) · M14 (checksums + attributes) in progress — Slices 1–3 landed · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
+Status: M0–M13 shipped (14 languages) · M14 (checksums + attributes) in progress — Slices 1–3 landed, Slice 4 read-only panel landed · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
 
 ---
 
@@ -477,6 +477,76 @@ change compiles.
   editor is its own controller from the start — on the M12 Slice 8 evidence that a panel this
   dense arrives at all three SwiftLint ceilings at once, and on the §"Lint ceilings" rule that a
   type at the ceiling splits by *concept*.
+
+**Slice 4 opens core-first (2026-07-31), because two things the panel needs did not exist yet.** The
+xattr list and the ACL subject picker are both byte/metadata-touching, so per §2 they land as tested
+core before any AppKit. Three files — `ExtendedAttribute` (the pure value model and its display
+classification), `ExtendedAttributeIO` (the syscalls), `IdentityDirectory` (+ the pure
+`IdentityRoster`) — plus `ACLIdentity.subject(for:kind:)`. 29 new tests (1403 core total), both
+suites green, both linters clean, app untouched.
+
+- **Two probe findings reshaped the identity half before it was written**, both invisible until
+  measured (details in NOTES.md). `getpwent`/`getgrent` return **every record twice** — 322 raw group
+  records for 161 real groups — so the enumerator de-duplicates on the whole record, and `dscl . list`
+  independently reporting exactly 161 is the OS agreeing, which is what the test asserts against. And
+  the service-account filter has to be the **leading underscore, not a numeric floor**: after
+  de-duplication that leaves 4 users and 34 groups including `wheel`(0), `everyone`(12), `staff`(20)
+  and `admin`(80) — the exact groups an ACL names, all four of which a `gid >= 500` rule would hide.
+- **`mbr_uid_to_uuid` cannot validate a picker's input**, which is a trap for the code Slice 4 is
+  about to write: it *synthesizes* a GUID for an id with no account (uid 31337 answers
+  `FFFFEEEE-…-AAAA00007A69`), so a non-`nil` GUID proves nothing and the ACL would be written naming
+  nobody. `IdentityDirectory.userName(for:)` is the call that actually answers, and a test pins the
+  asymmetry so nobody later reaches for the GUID.
+- **Every xattr call takes `XATTR_NOFOLLOW`**, matching the `l*` syscalls the rest of the attributes
+  machinery uses — probed on a real symlink, following returned the *target's* attributes, so a panel
+  that followed would list and delete the wrong file's. `removexattr`'s `ENOATTR` is swallowed, which
+  is the `xattr -d` vs `xattr -dr` lesson at the syscall: a multi-selection "Remove Quarantine" must
+  not fail on the files that were already clean.
+- **Values are classified by inspection, not by name**, because one ordinary download carries all
+  three shapes at once — UTF-8 (`quarantine`), a binary plist (`kMDItemWhereFroms`) and opaque bytes
+  (`macl`, `provenance`). The sharp edge: a UTF-8 decode alone is not the text test, since the real
+  11-byte `provenance` value decodes cleanly and would put control characters on screen.
+- The stock tools are the independent judge on both halves: a test reads back what Dirnex wrote with
+  `/usr/bin/xattr -p`, and the roster count is checked against `dscl`.
+
+**The read-only panel landed (2026-07-31), and it is verified against the OS in every tab.** Decided
+with Oleg up front: a **sheet** (matching Sync, Multi-Rename and the checksum report — every dense
+dialog here is one) and **display before editing**, since PLAN.md already argued the visibility is
+most of the value and it makes the whole surface checkable before any write path exists. Eight app
+files — `AttributesSnapshot`, `AttributesController` + its General/Permissions tabs,
+`AttributeFormatting`, `AttributeRow`, the two table controllers, and
+`PanelViewController+Attributes` — plus the `file.attributes` command (**Get Info**, ⌘I) and 69
+catalog keys across all 14 languages.
+
+- **Four tabs, because the panel is dense enough that one scroll buries the ACL** — General
+  (location, the three timestamps), Permissions (owner, group, the mode grid, flags), Sharing (the
+  ordered ACL), Attributes (xattrs). The split also keeps each tab's construction in its own file
+  under the SwiftLint ceilings, and each table has its own controller object — the ACL's is the one
+  the editor grows from, as this slice required from the start.
+- **The OS was the independent judge on a fixture built to exercise every row at once** (setuid +
+  a group-denied ACL + an allow ACL + quarantine + `UF_HIDDEN`, a directory with inheritance flags,
+  and a symlink). Against `ls -le@` and `stat -f`: owner `oleg (501)`, group `wheel (0)`, mode
+  `rwsr-x--- (4750)` — the panel shows the setuid digit `stat -f %Lp` truncates — `set-user-ID`,
+  Hidden checked, quarantine 30 bytes exactly.
+- **The ACL exit criterion is met in the order that matters.** `ls -le`'s `0: group:staff deny
+  delete` / `1: group:everyone allow read,readattr` renders as rows 1 and 2 in that order, deny in
+  red. On the directory, `list,search,file_inherit,directory_inherit` renders as "List, Traverse —
+  files inherit, folders inherit", so the four aliased bits are relabelled per kind exactly as
+  `ls -le` spells them.
+- **The mode-vs-ACL criterion is met too**: whenever an ACL is present the Permissions tab says so
+  in orange and points at the Sharing tab, because an ACL does not change the mode and the nine
+  `rwx` bits alone are a false claim on precisely the files where it matters.
+- **The `l*` path is proven end to end by the symlink**: the link shows its own `rwxr-xr-x (755)`
+  and *no* ACL, while its target shows `rwsr-x--- (4750)` and two entries. Everything reads through
+  `lstat`/`XATTR_NOFOLLOW`/`acl_get_link_np`, and the tab says so in words.
+- **One real bug was found only by looking**, and it is in NOTES.md as the general lesson: an
+  `NSStackView` too small for its rows *compresses* them rather than overflowing, which crushed the
+  first flag row until "Locked" overlapped "Hidden" and its checkbox vanished — a missing row in a
+  permissions panel, with nothing logged. Fixed by letting each form tab scroll, which is also what
+  keeps a longer translation from reintroducing it.
+
+Still ahead in this slice: editing (POSIX, flags, owner, dates) with undo, the ACL editor and its
+subject picker, multi-selection, and the recursive apply.
 
 #### Slice 5 — the narrow privileged case
 
