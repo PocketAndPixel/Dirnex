@@ -198,6 +198,11 @@ public struct LocalBackend: VFSBackend {
             creationDate: Self.date(from: st.st_birthtimespec),
             isHidden: hidden,
             permissions: UInt16(st.st_mode & 0o777),
+            // Free here too — owner, group and the raw flags word all rode in on the same `stat` the
+            // listing already did, so the attributes panel (PLAN.md §M14) costs no extra syscall.
+            ownerID: st.st_uid,
+            groupID: st.st_gid,
+            flags: st.st_flags,
             inode: UInt64(st.st_ino),
             symlinkDestination: dest,
             symlinkTargetKind: targetKind,

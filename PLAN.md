@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M13 shipped (14 languages) · M14 (checksums + attributes) planned · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
+Status: M0–M13 shipped (14 languages) · M14 (checksums + attributes) in progress — Slices 1–3 landed · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
 
 ---
 
@@ -422,6 +422,35 @@ linters clean.
 - `AttributePrivilege` — pure, from the probed matrix: given an entry's owner and the requested
   diff, does this need root? It is what greys the panel and decides whether Slice 5 is reachable
   at all, and it is a table, so it is a test.
+
+**Slice 3 landed (2026-07-30), as designed, plus what a fresh probe changed.** Twelve core files —
+the pure models (`POSIXPermissions`, `BSDFileFlags`, `FileAttributes`+`AttributeDiff`,
+`AttributeChangePlan`, `AttributePrivilege`, `AccessControlRight`, `AccessControlEntry`,
+`AccessControlList`) and the metadata-touching I/O behind them (`FileAttributeIO`,
+`AccessControlListIO`, `ACLIdentity`) — plus the `FileEntry` fields. ~55 new tests (1373 core total),
+both suites green, both linters clean, app untouched but rebuilt to confirm the additive `FileEntry`
+change compiles.
+
+- **The ACL C API was probed live first, and three findings reshaped the model** (all now in
+  NOTES.md). `acl_to_text` **wraps lines** at ~column 60 with a trailing `\`, so the parser un-wraps
+  before splitting. `acl_to_text` and `ls -le` **disagree on token names**: four rights are aliased
+  bits the kernel prints with their file names even on a directory (`list`≡`read`, `add_file`≡`write`,
+  `search`≡`execute`, `add_subdirectory`≡`append`), so the parser only ever sees
+  `read/write/execute/append` and the model is the **13 canonical bits**, not `chmod(1)`'s 17 input
+  tokens — the "17 for a directory" is 13 rights relabelled per kind + 4 inheritance flags. And the
+  canonical form `acl_from_text` accepts needs **GUID + name + numeric id**, all three.
+- **Order is proven live in both directions, which is the exit criterion.** An ACL Dirnex writes
+  reads back — through `acl_get_file` *and* `ls -le` — with deny-before-allow in the order written;
+  `acl_set_file` preserves entry order and re-canonicalizes only the rights within an entry. Unknown
+  tokens are kept verbatim, so writing an ACL back never strips a right a later macOS adds.
+- **The locked-file exit criterion is met live.** `AttributeChangePlan` encodes unlock → apply →
+  relock as a pure, ordering-tested value, and `FileAttributeIO` applied it to a real
+  `UF_IMMUTABLE` file: the mode changed in one gesture, unprivileged, and the file stayed locked.
+  `chown`-before-`chmod` is encoded and tested for the same "invisible in a screenshot" reason.
+- **`AttributePrivilege` is the probe matrix as a table**, and `ACLIdentity` resolves uid/gid → GUID
+  through a `dlsym`'d `mbr_*` (no module map, so no ripple into the app build), pinned against the
+  GUID the OS itself writes into an ACL. Two fixtures are **real** captures — a file's ACL and a
+  directory's, wrapping and inheritance flags included.
 
 #### Slice 4 — attributes app
 

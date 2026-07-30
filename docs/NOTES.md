@@ -1124,6 +1124,62 @@ next to a download has no stock way to check it.
   is 274 MiB/s, which is what makes "compute everything while the bytes are in hand" affordable.
   Chunk size is irrelevant between 64 KiB and 4 MiB.
 
+### ACLs and file attributes (`acl_*`, `chmod`/`chflags`, `mbr_*`)
+
+The M14 attributes work rests on syscalls and the ACL C API, probed live before any Swift was
+written. Several results changed the model, not just confirmed it.
+
+- **`acl_to_text` wraps its output at ~column 60 with a trailing `\`** — a single logical entry can
+  span several physical lines (`...:deny\` ⏎ `:delete`). So the parser's *first* step is to un-wrap
+  (drop every backslash-before-newline); only then is each remaining non-header line one entry. A
+  line-oriented parser that skips this reads garbage. `acl_from_text` **accepts** the un-wrapped
+  single-line form, so Dirnex writes one line per entry and never re-wraps.
+- **`acl_to_text` and `ls -le` disagree on the token names, and this reshaped the model.** Four ACL
+  rights are aliased bits the kernel prints with their *file* names even on a directory —
+  `list`≡`read`, `add_file`≡`write`, `search`≡`execute`, `add_subdirectory`≡`append`. `ls -le`
+  shows the directory spellings; `acl_to_text` (what the parser consumes) **only ever** emits
+  `read/write/execute/append`. Only `delete_child` is a genuinely directory-only token in canonical
+  text. So model the **13 bits** `acl_to_text` produces, not `chmod(1)`'s 17 input tokens, or a
+  directory ACL carries the same bit twice under two names. The UI count still holds: a file offers
+  12, a directory 13 rights + 4 inheritance flags = 17 checkboxes, with the four data bits
+  *relabelled* per kind at the display layer.
+- **The canonical entry form `acl_from_text` accepts needs GUID + name + numeric id, all three.**
+  Probed: `user:GUID:oleg:501:allow:read` round-trips, but `user:GUID::allow:read` (empty name) and
+  `user:GUID:allow:read` (no id) are both `EINVAL`. So the serializer must carry the resolved name
+  and id, not just the GUID.
+- **`acl_set_file` preserves entry order exactly** — write deny-then-allow, read back with both
+  `acl_get_file` and `ls -le`, and the order survives. Order is meaning (a deny before an allow is a
+  different ACL), so the model is an ordered list that is never silently canonicalized. The kernel
+  *does* re-canonicalize the rights *within* an entry, so serialize rights in any fixed order.
+- **`acl_get_file` returns `nil` + `ENOENT` to mean "this file has no ACL"** — a normal answer,
+  mapped to an empty list, not an error. Writing an empty list (`acl_init(0)` → `acl_set_file`)
+  removes the ACL — the "deleted the last entry" case.
+- **The ACL C API imports from Swift with no module map** (`acl_get_file/_link_np`, `acl_to_text`,
+  `acl_from_text`, `acl_set_file/_link_np`, `acl_init`, `acl_free`) — the opposite of libarchive.
+  But **`mbr_uid_to_uuid` / `mbr_gid_to_uuid` do not** (they live in `membership.h`, outside the
+  Darwin module map). Resolve them through `dlsym(RTLD_DEFAULT, …)` — the pseudo-handle is
+  `UnsafeMutableRawPointer(bitPattern: -2)`, and it cannot be a stored `static let` under strict
+  concurrency (`UnsafeMutableRawPointer?` is not `Sendable`); recompute it per call. The GUID they
+  return is byte-identical to the one `acl_to_text` prints for the same id — pin that against the OS's
+  own answer, not against your own formatter.
+- **`chmod` fails with `EPERM` while `UF_IMMUTABLE` is set, and that EPERM is indistinguishable from
+  the one that needs root.** So a change to anything but the flags on a locked file must clear the
+  immutable bit, apply, then restore it — proven live, unprivileged, in one gesture. Encode the
+  ordering as a pure, tested plan (`AttributeChangePlan`): the bug is invisible in any dialog
+  screenshot, so only a test that pins the *step order* catches a regression.
+- **`chown(2)` clears the set-uid/set-gid bits for an unprivileged caller**, so a plan that changes
+  both owner and mode must `chown` **before** `chmod`, or the set-uid the user just asked for is
+  silently dropped.
+- **The BSD flags word splits at the 16-bit line**: the low 16 bits are owner-settable (`UF_*`), the
+  high 16 (`0xFFFF0000`) are super-user only (`SF_*`). Read "does this flag change need root?" off
+  that mask, not a per-flag table, and a flag macOS adds later lands on the right side for free.
+- **`setattrlist(ATTR_CMN_CRTIME)` sets the birth time `utimes` cannot** (pass `FSOPT_NOFOLLOW` for a
+  symlink); the `setattrlist` `options` argument is `UInt32` on this SDK, and `timeval`'s field is
+  `tv_usec`, not `tv_suseconds`. The `l*` variants (`lchmod`, `lchown`, `lchflags`, `lutimes`) all
+  import and act on the link itself, matching Finder's Get Info.
+- **`FileManager.removeItem` fails on a `UF_IMMUTABLE` file**, so a test that locks one must unlock it
+  before teardown or it strands the temp tree.
+
 ### xattr and sips (the stock tools a user script reaches for)
 
 - **`xattr -d` exits 1 on a file that doesn't carry the attribute** ("No such xattr"), so
