@@ -45,7 +45,8 @@ final class ChecksumReportController: NSViewController {
     // MARK: - View
 
     override func loadView() {
-        let container = NSView()
+        let container = EscapeDismissingView()
+        container.onEscape = { [weak self] in self?.close(nil) }
         let stack = NSStackView(views: [makeHeader(), makeTable(), makeFooter()])
         stack.orientation = .vertical
         stack.spacing = 12
