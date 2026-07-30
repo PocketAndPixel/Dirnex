@@ -109,29 +109,10 @@ final class QueueJobRowView: NSView {
     /// tracks every snapshot; only the fast-moving byte readout is coalesced (see below).
     func update(with job: JobSnapshot) {
         jobID = job.id
-        // Whole sentences per branch rather than a spliced verb (docs/NOTES.md).
-        let name = job.progress?.currentItem?.lastComponent
-        if let name {
-            nameLabel.stringValue = job.kind == .copy
-                ? String(
-                    localized: "Copy \(name)",
-                    comment: "Queue row label; %@ is the file being copied."
-                )
-                : String(
-                    localized: "Move \(name)",
-                    comment: "Queue row label; %@ is the file being moved."
-                )
-        } else {
-            nameLabel.stringValue = job.kind == .copy
-                ? String(
-                    localized: "Copy…",
-                    comment: "Queue row label for a copy job with no current item yet."
-                )
-                : String(
-                    localized: "Move…",
-                    comment: "Queue row label for a move job with no current item yet."
-                )
-        }
+        nameLabel.stringValue = Self.label(
+            kind: job.kind,
+            name: job.progress?.currentItem?.lastComponent
+        )
 
         switch job.status {
         case .waiting: bar.doubleValue = 0
@@ -190,5 +171,49 @@ final class QueueJobRowView: NSView {
     @objc private func cancelClicked() {
         guard let jobID else { return }
         onCancel?(jobID)
+    }
+
+    /// This row's name, by kind — a whole sentence per branch rather than a verb spliced into a
+    /// template, since a language that inflects the object cannot build one from the other
+    /// (docs/NOTES.md). `name` is `nil` before the job reaches its first item.
+    private static func label(kind: FileOperation.Kind, name: String?) -> String {
+        guard let name else { return pendingLabel(kind: kind) }
+        switch kind {
+        case .copy:
+            return String(
+                localized: "Copy \(name)",
+                comment: "Queue row label; %@ is the file being copied."
+            )
+        case .move:
+            return String(
+                localized: "Move \(name)",
+                comment: "Queue row label; %@ is the file being moved."
+            )
+        case .checksum:
+            return String(
+                localized: "Checksum \(name)",
+                comment: "Queue row label; %@ is the file being hashed."
+            )
+        }
+    }
+
+    private static func pendingLabel(kind: FileOperation.Kind) -> String {
+        switch kind {
+        case .copy:
+            return String(
+                localized: "Copy…",
+                comment: "Queue row label for a copy job with no current item yet."
+            )
+        case .move:
+            return String(
+                localized: "Move…",
+                comment: "Queue row label for a move job with no current item yet."
+            )
+        case .checksum:
+            return String(
+                localized: "Checksum…",
+                comment: "Queue row label for a checksum job with no current item yet."
+            )
+        }
     }
 }

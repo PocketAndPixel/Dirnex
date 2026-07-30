@@ -11,9 +11,17 @@ public enum ChecksumEntryStatus: Sendable, Equatable {
     case mismatch(expected: String, actual: String)
     /// The manifest lists this name and the directory does not have it.
     case missing
-    /// The file is there and could not be read — permission, a vanished file, an undownloaded
-    /// cloud placeholder. **Not** a pass and not a failure: nothing was compared.
+    /// The file is there and could not be read — permission, or a file that vanished mid-run.
+    /// **Not** a pass and not a failure: nothing was compared.
     case unreadable
+    /// The file is there and its bytes are not on this disk (`SF_DATALESS`), so reading it would
+    /// have made the cloud provider materialize it and block (docs/NOTES.md).
+    ///
+    /// Its own case rather than ``unreadable`` because it is the one non-answer the user can *act*
+    /// on — the file is intact, it simply has to be fetched first — and because saying so is what
+    /// keeps "does not download it without saying so" (PLAN.md §M14 exit criteria) visible in the
+    /// report rather than buried in a generic failure.
+    case notDownloaded
     /// The directory has this file and the manifest says nothing about it.
     ///
     /// Worth its own case rather than silence: a manifest that omits a file is a different answer
@@ -24,7 +32,8 @@ public enum ChecksumEntryStatus: Sendable, Equatable {
 
 // MARK: - Entry
 
-/// One row of the verification report.
+/// One row of a checksum report — a verification's verdict on a name, and also the shape
+/// ``ChecksumCreationSummary`` uses to name a file it could not hash.
 public struct ChecksumVerificationEntry: Sendable, Equatable, Identifiable {
     /// The name as the manifest spells it, or — for ``ChecksumEntryStatus/extra`` — as the
     /// directory does.
@@ -60,6 +69,7 @@ public struct ChecksumVerificationReport: Sendable, Equatable {
     public var okCount: Int { count(of: .ok) }
     public var missingCount: Int { count(of: .missing) }
     public var unreadableCount: Int { count(of: .unreadable) }
+    public var notDownloadedCount: Int { count(of: .notDownloaded) }
     public var extraCount: Int { count(of: .extra) }
 
     public var mismatchCount: Int {
@@ -70,9 +80,11 @@ public struct ChecksumVerificationReport: Sendable, Equatable {
     /// claim about the files it names, and the directory being larger is not that claim failing —
     /// the app shows the count and lets the user judge.
     ///
-    /// An unreadable file *does* spoil it: nothing was compared, so nothing may be asserted.
+    /// An unreadable or undownloaded file *does* spoil it: nothing was compared, so nothing may be
+    /// asserted. This is the load-bearing half of the cloud gate — a run that skipped an evicted
+    /// placeholder must never come back reading "verified".
     public var isVerified: Bool {
-        mismatchCount == 0 && missingCount == 0 && unreadableCount == 0
+        mismatchCount == 0 && missingCount == 0 && unreadableCount == 0 && notDownloadedCount == 0
     }
 }
 
@@ -93,6 +105,8 @@ public enum ChecksumVerification {
         case digest(String)
         /// The file was found but could not be read.
         case unreadable
+        /// The file was found and deliberately not read, because its bytes are not on this disk.
+        case notDownloaded
     }
 
     /// Judge a manifest against a directory.
@@ -140,10 +154,18 @@ public enum ChecksumVerification {
         computed: [String: Computation]
     ) -> ChecksumEntryStatus {
         guard present.contains(entry.name) else { return .missing }
-        guard case let .digest(actual)? = computed[entry.name] else { return .unreadable }
-        let expected = normalized(entry.digest)
-        let found = normalized(actual)
-        return expected == found ? .ok : .mismatch(expected: expected, actual: found)
+        switch computed[entry.name] {
+        case let .digest(actual):
+            let expected = normalized(entry.digest)
+            let found = normalized(actual)
+            return expected == found ? .ok : .mismatch(expected: expected, actual: found)
+        case .notDownloaded:
+            return .notDownloaded
+        // A name the caller never reported on is treated as unreadable rather than passed: a
+        // tolerant "assume it was fine" is the one answer a checksum must never give.
+        case .unreadable, nil:
+            return .unreadable
+        }
     }
 
     private static func normalized(_ digest: String) -> String {

@@ -159,16 +159,31 @@ public actor FileOperationQueue {
         // The engine is synchronous and blocks its thread; run it detached so the actor
         // stays responsive. `isCancelled` is the job's control hook — it reports
         // cancellation *and* blocks the copy while the queue is paused.
+        //
+        // Which engine is the *only* thing the kind decides here. Everything else the queue does —
+        // the volume rule, pause, cancel, the aggregate bar — is engine-agnostic by construction,
+        // which is why a checksum could join without a scheduler of its own.
         let runTask = Task.detached(priority: .userInitiated) { () -> OperationReport in
-            let report = CopyEngine.run(
-                operation,
-                using: backend,
-                conflictPolicy: policy,
-                resolveConflict: resolveConflict,
-                onError: onError,
-                onProgress: { progressContinuation.yield($0) },
-                isCancelled: { control.checkpoint() }
-            )
+            let report: OperationReport
+            switch operation.kind {
+            case .copy, .move:
+                report = CopyEngine.run(
+                    operation,
+                    using: backend,
+                    conflictPolicy: policy,
+                    resolveConflict: resolveConflict,
+                    onError: onError,
+                    onProgress: { progressContinuation.yield($0) },
+                    isCancelled: { control.checkpoint() }
+                )
+            case .checksum:
+                report = ChecksumRunner.run(
+                    operation,
+                    using: backend,
+                    onProgress: { progressContinuation.yield($0) },
+                    isCancelled: { control.checkpoint() }
+                )
+            }
             progressContinuation.finish()
             return report
         }

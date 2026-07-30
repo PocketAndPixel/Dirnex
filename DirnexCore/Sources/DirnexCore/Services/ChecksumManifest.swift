@@ -134,6 +134,24 @@ public struct ChecksumManifest: Sendable, Equatable {
         "\(base).\(algorithm.fileExtension)"
     }
 
+    /// The extensions Dirnex recognizes a checksum file by — `sfv · md5 · sha1 · sha256`, plus
+    /// `crc` for Total Commander's bare-digest companion.
+    ///
+    /// One constant so ``isManifestFileName(_:)`` and ``impliedName(forManifestFileName:)`` cannot
+    /// drift: a file the menu offers to verify must be one the parser knows what to do with.
+    public static let manifestExtensions: Set<String> =
+        Set(ChecksumAlgorithm.allCases.map(\.fileExtension) + ["crc"])
+
+    /// Whether a file name looks like a checksum manifest — what decides if Verify Checksums lights
+    /// up for the item under the cursor.
+    ///
+    /// Named by extension rather than by sniffing the contents, because the menu has to answer
+    /// before anything is read. A false positive costs one clear "no checksum lines were found in
+    /// this file"; reading every cursor file to find out would cost an I/O per keystroke.
+    public static func isManifestFileName(_ fileName: String) -> Bool {
+        manifestExtensions.contains((fileName as NSString).pathExtension.lowercased())
+    }
+
     /// The name a bare-digest manifest is about, inferred from its own file name — `disk.iso.crc`
     /// describes `disk.iso`.
     ///
@@ -142,9 +160,7 @@ public struct ChecksumManifest: Sendable, Equatable {
     /// exists is the manifest's own name. Returns `nil` when the name carries no recognized
     /// checksum extension, which is the caller's signal not to guess.
     public static func impliedName(forManifestFileName fileName: String) -> String? {
-        let known = Set(ChecksumAlgorithm.allCases.map(\.fileExtension) + ["crc"])
-        let suffix = (fileName as NSString).pathExtension.lowercased()
-        guard known.contains(suffix) else { return nil }
+        guard isManifestFileName(fileName) else { return nil }
         let base = (fileName as NSString).deletingPathExtension
         return base.isEmpty ? nil : base
     }

@@ -1,10 +1,9 @@
 import Foundation
 
-/// A single queued file operation: move a set of source entries into a destination
-/// directory, by copy or move (PLAN.md §2 "Operations"). The "instant" operations
+/// A single queued file operation (PLAN.md §2 "Operations"). The "instant" operations
 /// (new folder, delete) don't need this shape — they finish immediately and live in
-/// the `VFSBackend` write primitives; this models the byte-moving work that the
-/// `CopyEngine` runs with progress, cancellation, and conflict handling.
+/// the `VFSBackend` write primitives; this models the long, byte-touching work that runs
+/// with progress, cancellation, and a place in the queue bar.
 public struct FileOperation: Sendable {
     public enum Kind: Sendable, Equatable {
         /// Duplicate the sources into the destination, leaving the originals in place.
@@ -12,6 +11,15 @@ public struct FileOperation: Sendable {
         /// Relocate the sources into the destination — a same-volume rename where
         /// possible, else a copy-then-delete across volumes.
         case move
+        /// Hash bytes rather than move them — write a checksum manifest, or verify one
+        /// (PLAN.md §M14 Slice 2). The first kind that produces no `outcomes` and nothing
+        /// to undo; its answer rides home on ``OperationReport/checksum``.
+        ///
+        /// It is here rather than in a queue of its own because everything the queue offers is
+        /// exactly what hashing needs: one job per volume so two runs don't thrash the same disk,
+        /// pause, cancel, and a determinate bar. A 50 GB SHA-256 is ~25 s and a CRC32 of the same
+        /// file ~100 s, so "run it modally and hope" was never available.
+        case checksum(ChecksumJob)
     }
 
     public let kind: Kind
@@ -201,6 +209,14 @@ public struct OperationReport: Sendable, Equatable {
     /// Per-item disposition for the sources that completed, in the order they finished —
     /// the raw material the undo journal turns into a reversal (see `UndoRecord.transfer`).
     public let outcomes: [OperationItemOutcome]
+    /// What a `.checksum` job produced — the digests it wrote, or its verdict on a manifest.
+    /// `nil` for every other kind.
+    ///
+    /// The answer rides home on the report rather than through a completion closure so it arrives
+    /// by the one path the app already watches: `FileOperationQueue`'s snapshot stream, where the
+    /// window already notices a job reaching a terminal state. A second result channel would be a
+    /// second place for a finished job to be missed.
+    public let checksum: ChecksumOutcome?
 
     public init(
         completedItems: Int,
@@ -208,7 +224,8 @@ public struct OperationReport: Sendable, Equatable {
         skipped: [VFSPath],
         failures: [OperationItemFailure],
         wasCancelled: Bool,
-        outcomes: [OperationItemOutcome] = []
+        outcomes: [OperationItemOutcome] = [],
+        checksum: ChecksumOutcome? = nil
     ) {
         self.completedItems = completedItems
         self.completedBytes = completedBytes
@@ -216,7 +233,18 @@ public struct OperationReport: Sendable, Equatable {
         self.failures = failures
         self.wasCancelled = wasCancelled
         self.outcomes = outcomes
+        self.checksum = checksum
     }
 
     public var succeeded: Bool { failures.isEmpty && !wasCancelled }
+
+    /// A report for a job that did nothing — the safe answer when a dispatch cannot match a kind,
+    /// so a routing bug degrades to "nothing happened" rather than a trap.
+    public static let empty = OperationReport(
+        completedItems: 0,
+        completedBytes: 0,
+        skipped: [],
+        failures: [],
+        wasCancelled: false
+    )
 }

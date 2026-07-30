@@ -370,6 +370,33 @@ and `allowDataless` is the same escape hatch under the same name.
   server, so a checksum over SFTP/FTP is a full download. Genuinely useful (M13 shipped with no
   way to confirm an upload arrived intact) but it has to be stated, not discovered.
 
+**Slice 2 landed (2026-07-30), as designed, and both exit criteria are met live.** Core: the pure
+`ChecksumScope` (walk/scope rules, its own tests) and the queued `ChecksumRunner` in `CopyEngine`'s
+shape, split into `ChecksumCreateRun` / `ChecksumVerifyRun` / `ChecksumRunContext` at the lint
+ceiling by concept, not by shaving. `FileOperation.Kind` grew its first case beyond `.copy`/`.move`
+(a `.checksum` kind carrying the report payload, with its `QueueSnapshot` status strings). App: the
+two commands in File as *Create Checksum File…* and *Verify Checksums…*, the report sheet modelled
+on the Sync diff table, and 40 extracted literals + the registry and `ChecksumError` keys across all
+13 languages, with `LocalizationErrorCoverageTests` added. 1319 core tests, both suites green, both
+linters clean.
+
+- **The interop exit criterion is now proven through the UI, not just a harness.** Driving the real
+  app: *Create Checksum File…* over a folder wrote a `sub.sha256` that is **byte-identical** to
+  `shasum -a 256` and passes `shasum -c` ("OK"), with the entry spelled `sub/gamma.txt` relative to
+  the manifest's own directory. The Slice-1 harness had proven the bytes; this proves the button.
+- **The report has four verdicts and each was forced live.** `verified` → green "Everything checks
+  out"; `mismatch` → red ✗ "Doesn't match — expected <hex>…" (the *expected* digest, from the
+  manifest); `missing` → amber ? "Not in this folder"; and an *unlisted* file present on disk but
+  absent from the manifest → grey + "Here, but not in the checksum file", with directories and the
+  manifest file itself correctly excluded from that scan. The header flips red the moment any entry
+  fails or goes missing; extras alone keep it green, since an unlisted file is an FYI, not a failure.
+- **Verify's menu item gates on a manifest being the cursor row**, greyed otherwise — validated
+  live by watching it enable only once `sub.sha256` was selected.
+- **The dataless gate was retrofitted to the runner** (the Slice-1 follow-on's "worth doing in Slice
+  2"), so a verify over a tree refuses the first placeholder and a pointed-at file asks — the
+  `ByteComparator` policy, unchanged. Confirmed last pass against a real evicted iCloud file:
+  reported `notDownloaded`, verdict false, file **still dataless** — no bytes fetched.
+
 #### Slice 3 — attributes core (additive, app untouched)
 
 - `FileEntry` gains `ownerID`, `groupID` and `flags`. **This is free at the syscall level** — the

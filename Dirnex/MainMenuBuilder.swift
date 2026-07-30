@@ -59,7 +59,10 @@ enum MainMenuBuilder {
             .command("file.newTab"), .command("file.closeTab"), .separator,
             .command("file.openWith"), .command("file.share"), .separator,
             .command("file.copy"), .command("file.move"), .command("file.pack"),
-            .command("file.syncDirectories"), .command("file.compareByContents"), .separator,
+            .command("file.syncDirectories"), .command("file.compareByContents"),
+            // The checksum pair sits with Compare By Contents: all three answer "are these bytes
+            // the ones I expect", differing only in what they are compared against.
+            .command("file.checksumVerify"), .command("file.checksumCreate"), .separator,
             .command("file.edit"), .command("file.editNew"), .separator,
             .command("file.tags"), .command("file.manageScripts"), .separator,
             .command("file.rename"), .command("file.multiRename"), .separator,

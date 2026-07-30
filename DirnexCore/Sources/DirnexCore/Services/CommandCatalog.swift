@@ -78,6 +78,30 @@ public enum CommandCatalog {
             keywords: ["sync", "synchronize", "compare", "mirror", "diff", "directories", "folders"]
         ),
         Command(
+            id: "file.checksumVerify",
+            title: "Verify Checksums…",
+            category: .file,
+            // The primary half of the pair: most people never author a checksum file, they
+            // download one next to an ISO and want to know whether the bytes survived. The
+            // spellings a user would actually type for that are here — including the file
+            // extensions, because the thing under the cursor is usually named `.sha256`.
+            keywords: [
+                "checksum", "verify", "check", "hash", "sha", "sha256", "md5", "crc", "sfv",
+                "integrity", "digest"
+            ]
+            // No shortcut: the F-key row is full, and this is a deliberate, occasional act rather
+            // than something done by reflex. The palette and the File menu are where it belongs.
+        ),
+        Command(
+            id: "file.checksumCreate",
+            title: "Create Checksum File…",
+            category: .file,
+            keywords: [
+                "checksum", "create", "hash", "sha", "sha256", "md5", "crc", "sfv", "digest",
+                "sign", "manifest"
+            ]
+        ),
+        Command(
             id: "file.compareByContents",
             title: "Compare By Contents…",
             category: .file,

@@ -75,6 +75,10 @@ extension BrowserWindowController {
             if let record = UndoRecord.transfer(kind: job.kind, outcomes: report.outcomes) {
                 undoController.record(record)
             }
+            // A checksum job's answer arrives here rather than through a completion closure, so it
+            // reaches the user by the one path a finished job already travels — even if the pane
+            // that started it has since changed tabs.
+            presentChecksumOutcome(of: report, kind: job.kind)
             if !report.failures.isEmpty {
                 reportFailures(report, kind: job.kind)
             }
@@ -93,7 +97,15 @@ extension BrowserWindowController {
         let name = report.failures[0].path.lastComponent
         let count = report.failures.count
         let single = count == 1
-        if kind == .copy {
+        if case .checksum = kind {
+            // A checksum's only failure path is the manifest file itself — it moves nothing, so
+            // there is never a list of items here, and `presentChecksumOutcome` has already said
+            // what the job produced.
+            alert.messageText = String(
+                localized: "Couldn’t write “\(name)”",
+                comment: "Checksum failure title when the manifest can't be written; %@ is its name."
+            )
+        } else if kind == .copy {
             alert.messageText = single
                 ? String(
                     localized: "Couldn’t copy “\(name)”",

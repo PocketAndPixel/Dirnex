@@ -130,6 +130,22 @@ enum LocalizedCatalog {
         return String(format: format, arguments: reason.arguments)
     }
 
+    /// Why a checksum couldn't be computed or a checksum file couldn't be read, translated — the
+    /// same join as ``sentence(for:)`` above and for the same reason: `ChecksumError.sentence` is
+    /// `DirnexCore` data reached through a *return value*, where a literal extracts nothing and
+    /// renders English under a translated alert title, at the moment something has failed.
+    ///
+    /// The arguments are spliced *after* the lookup, so a translation may reorder them positionally
+    /// (`%1$@`) — which is why the error carries its format and its arguments separately rather than
+    /// a finished sentence.
+    static func sentence(for error: ChecksumError) -> String {
+        guard let format = L10n.translation(LocalizationKey.checksumError(error)) else {
+            return error.sentence
+        }
+        guard !error.arguments.isEmpty else { return format }
+        return String(format: format, arguments: error.arguments)
+    }
+
     /// A script template's name, translated — what the scripts organizer's **+** menu prints.
     /// `UserScriptTemplate.title` is `DirnexCore` data reached through a variable
     /// (`UserScriptTemplate.all`), so it is joined here by the template's stable id rather than

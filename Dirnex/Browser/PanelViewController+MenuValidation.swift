@@ -138,6 +138,13 @@ extension PanelViewController: NSMenuItemValidation {
             } ?? LocalizedCatalog.command(for: "file.compareByContents")?.title ?? menuItem.title
             // Diffs the two panes' cursor files — needs a real file under each cursor.
             return canCompareByContents
+        case #selector(verifyChecksums(_:)):
+            // Lights up only on a recognized checksum file under the cursor.
+            return canVerifyChecksums
+        case #selector(createChecksumFile(_:)):
+            // Needs a real writable folder on disk and something selected. Remote panes stay grey:
+            // neither `sftp` nor `curl` can hash server-side (PLAN.md §M14 Slice 2).
+            return canCreateChecksumFile
         default:
             return nil
         }

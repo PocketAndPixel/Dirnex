@@ -111,11 +111,20 @@ public extension UndoRecord {
     /// - A **move** is undone by moving each item back to its source (`restore`).
     /// - An item that **overwrote** an existing file is counted in `nonReversibleCount`, not
     ///   reversed: deleting the replacement wouldn't bring back the original it clobbered.
+    /// - A **checksum** job has nothing to reverse — it reads bytes and, at most, writes one new
+    ///   file the user can delete — so it never enters the journal. Handled explicitly rather than
+    ///   through a `default`, so the next kind added is a compile error here and gets thought about.
     static func transfer(
         kind: FileOperation.Kind,
         outcomes: [OperationItemOutcome],
         date: Date = Date()
     ) -> UndoRecord? {
+        let label: UndoActionLabel
+        switch kind {
+        case .copy: label = .copy
+        case .move: label = .move
+        case .checksum: return nil
+        }
         var steps: [UndoStep] = []
         var nonReversible = 0
         for outcome in outcomes {
@@ -124,14 +133,15 @@ public extension UndoRecord {
                 nonReversible += 1
                 continue
             }
-            switch kind {
-            case .copy: steps.append(.removeCopy(source: outcome.source, copy: landed))
-            case .move: steps.append(.restore(from: landed, to: outcome.source))
+            if label == .copy {
+                steps.append(.removeCopy(source: outcome.source, copy: landed))
+            } else {
+                steps.append(.restore(from: landed, to: outcome.source))
             }
         }
         guard !steps.isEmpty else { return nil }
         return UndoRecord(
-            label: kind == .copy ? .copy : .move,
+            label: label,
             date: date,
             steps: steps,
             nonReversibleCount: nonReversible
