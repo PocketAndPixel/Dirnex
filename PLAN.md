@@ -295,6 +295,34 @@ style (now natively produced on macOS too), with `.sfv` for CRC32.
   missing / unreadable / extra`. "Extra" matters — a manifest that omits a file is a different
   answer from one that fails it.
 
+**Slice 1 landed (2026-07-30), as designed, plus three things the probe changed.** Seven core
+files (`ChecksumAlgorithm`, `CRC32`, `ChecksumError`, `ChecksumEngine`, `ChecksumManifest`,
+`ChecksumManifestParser`, `ChecksumVerification`), 73 tests, app untouched.
+
+- **The interop claim is proven live in both directions, which is the exit criterion.** A harness
+  compiled against the real core read 11 manifests written by the actual tools on this Mac —
+  `shasum` (text, binary, SHA-1), `/sbin/sha256sum`, `/sbin/md5sum`, BSD `md5`, `md5 -r`,
+  `openssl dgst` (SHA-256 and MD5), an `.sfv`, and a UTF-8-BOM + CRLF Windows-shaped file — and
+  verified every one against the real bytes. Going the other way, `shasum -c`, `/sbin/sha256sum -c`
+  and `/sbin/md5sum -c` all verify what Dirnex writes, and `shasum -c` correctly fails it after one
+  byte is changed.
+- **Escaping is narrower than planned, because the two checkers Apple ships disagree.** `shasum`
+  escapes a name containing a backslash (leading `\` on the line, `\\` inside) and Apple's
+  `/sbin/sha256sum` writes it raw — and the raw form is read correctly by *both*, while the escaped
+  form makes `/sbin/sha256sum -c` skip the line ("improperly formatted") and silently check one file
+  fewer. So Dirnex escapes only a name containing a **newline**, which has no raw form at all. Read
+  side stays tolerant of both. Details in NOTES.md.
+- **The dataless gate is in the core, not deferred to Slice 2.** `ChecksumEngine` already `stat`s
+  for the regular-file check, so `SF_DATALESS` is free in the same call; a placeholder throws
+  `wouldDownloadPlaceholder` unless the caller passes `allowDataless`, which is the app's cue to ask
+  first. Putting it at the byte-touching layer is what makes it unforgettable.
+- Measured on the real engine over 256 MiB, reproducing the probe: SHA-256 2245 MiB/s, SHA-1 2287,
+  MD5 778, CRC32 550, **all four in one pass 274** — so the accumulator adds no per-chunk cost, and
+  "compute everything while the bytes are in hand" stands.
+- `ChecksumError` is a named vocabulary with a stable `key` (`LocalizationKey.checksumError(_:)`),
+  not a `String` payload — the M12 Slice 11 lesson applied ahead of the display site. Its catalog
+  entries and coverage test are **Slice 2's**, since the core ships no resources.
+
 #### Slice 2 — checksum app
 
 - Two commands, `file.checksumCreate` and `file.checksumVerify`. `Command.id` is a translation key

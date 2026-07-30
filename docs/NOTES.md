@@ -1054,6 +1054,44 @@ off a man page.
     of the two accounts is signed into this Chrome profile. Nothing on the Dirnex side can do better:
     the handoff is a URL, and which session receives it is the browser's to decide.
 
+### shasum, md5sum and the checksum-file formats
+
+macOS 26 ships more producers than expected — `/sbin/md5sum`, `/sbin/sha1sum` and `/sbin/sha256sum`
+(hardlinks of one Darwin binary) alongside BSD `md5`, the Perl `shasum`, `openssl` and
+`/usr/bin/crc32` — and **they do not agree with each other**, which is what makes a tolerant parser
+the actual feature rather than gold-plating. `shasum -c` refuses the `openssl` and BSD forms
+outright ("no properly formatted SHA checksum lines found"), so a user with an `openssl dgst` output
+next to a download has no stock way to check it.
+
+- **The two Apple-shipped *checkers* disagree about escaping, and the disagreement is silent.**
+  For a name containing a backslash, `shasum` writes `\<hex>␣␣back\\slash.txt` — a leading `\` marks
+  the line and the name is escaped, the GNU coreutils convention — while `/sbin/sha256sum` (Darwin
+  1.0) writes `<hex>␣␣back\slash.txt` raw. Measured on both checkers: **the raw form is read
+  correctly by both**, while the escaped form makes `/sbin/sha256sum -c` and `/sbin/md5sum -c` print
+  "WARNING: 1 line is improperly formatted", **exit 0 anyway**, and check one file fewer. So a
+  writer must escape *only* a name containing a newline, which has no raw form any parser can split;
+  escaping a backslash costs compatibility and buys nothing. The reader has to accept both, and the
+  leading marker is the only thing that says which it is looking at. This flipped a decision that
+  was already written and tested — the design read as obviously right until both checkers were
+  actually run against it.
+- **`crc32` prints a bare digest with no name at all**, so a `.crc`/`.sfv` companion's subject can
+  only come from the manifest's own file name (`disk.iso.crc` → `disk.iso`). A parser for that form
+  needs the name passed in; there is nothing in the file to recover it from.
+- `-Q`-style ambiguity in the *other* direction: a `.sfv` line is `<name>␣<hex>` and a `md5 -r` line
+  is `<hex>␣<name>`, so a line whose name happens to be all hex (`deadbeef 4dbf2cc1`) parses either
+  way. Prefer the leading-digest reading — that is what every GNU-family tool emits — and say so.
+- **Cross-check a digest against the system tool, never against your own implementation.** Every
+  expected value in `ChecksumEngineTests` came from `/usr/bin/crc32`, `md5 -q` and `shasum` over the
+  same bytes; a fixture the engine computed would only prove it agrees with itself. The published
+  CRC-32 check vector (`"123456789"` → `0xCBF43926`) is worth its own test for the same reason: it
+  pins the polynomial, the reflection, the initial value and the final XOR all at once, and nothing
+  else will tell you which one is wrong.
+- **The speed intuition is inverted on Apple Silicon.** Measured over 256 MiB through the real
+  engine: SHA-256 2245 MiB/s and SHA-1 2287 (ARMv8 crypto instructions) against MD5 778 and CRC32
+  550 (ordinary code) — **CRC32 is the slowest of the four, not the cheapest.** All four in one pass
+  is 274 MiB/s, which is what makes "compute everything while the bytes are in hand" affordable.
+  Chunk size is irrelevant between 64 KiB and 4 MiB.
+
 ### xattr and sips (the stock tools a user script reaches for)
 
 - **`xattr -d` exits 1 on a file that doesn't carry the attribute** ("No such xattr"), so
@@ -1150,6 +1188,13 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   `size(of:using:) { true }` rebound to a new `excluding:` rather than the existing
   `isCancelled:`; only the differing arity made it fail loudly instead of inverting behavior.
   Label both at every call site.
+- **A Swift `Character` is a grapheme cluster, so CRLF is *one* `Character` that equals neither
+  `"\n"` nor `"\r"`.** `split(whereSeparator: { $0 == "\n" || $0 == "\r" })` therefore does not
+  split a Windows-written file **at all** — the whole file comes back as a single unparseable line,
+  which reads as "the parser rejects this format" and sends you into the parser. `\.isNewline` is
+  the right predicate and is also more honest about line *numbers*, since it counts CRLF as one
+  separator rather than two. The same trap sits behind any hand-rolled scan that compares against
+  `"\r"`; anything splitting text a user's other OS produced should use `isNewline` on principle.
 - **A notification that says "go re-read the cache" can lose results already computed.** One
   pane's FSEvents watcher invalidating every total on its root-to-leaf line produced a measured
   546 invalidations in two minutes — faster than a scan publishes — wiping freshly walked results
