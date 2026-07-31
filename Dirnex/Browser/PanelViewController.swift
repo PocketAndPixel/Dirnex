@@ -225,12 +225,13 @@ final class PanelViewController: NSViewController {
     ) {
         self.backend = backend
         self.restorationKey = restorationKey
-        let restored = PanelViewController.restoredTabs(from: restoration)
-        let showHidden = AppPreferences.shared.showHidden
-        tabs = restored.isEmpty ? [PanelTab(path: defaultPath, showHidden: showHidden)] : restored
-        activeTabIndex = restored.isEmpty
-            ? 0
-            : min(max(restoration?.activeIndex ?? 0, 0), restored.count - 1)
+        let layout = PanelViewController.restoredLayout(
+            from: restoration,
+            defaultPath: defaultPath,
+            showHidden: AppPreferences.shared.showHidden
+        )
+        tabs = layout.tabs
+        activeTabIndex = layout.activeIndex
         super.init(nibName: nil, bundle: nil)
     }
 

@@ -25,6 +25,16 @@ struct PersistedTab: Codable {
 struct PersistedPane: Codable {
     var tabs: [PersistedTab]
     var activeIndex: Int
+
+    /// The column layout of the tab that was active when this pane was saved, clamped to the stored
+    /// tabs. Used to seed the fallback Home tab when every persisted tab pointed at a directory that
+    /// can't be restored at launch — a remote (FTP/SFTP/SMB) folder needing reconnection, or a
+    /// since-deleted local path — so the pane keeps the column widths the user set instead of
+    /// snapping back to the defaults. See `PanelViewController.restoredLayout`.
+    var activeTabColumns: [ColumnLayout]? {
+        guard tabs.indices.contains(activeIndex) else { return tabs.first?.columns }
+        return tabs[activeIndex].columns
+    }
 }
 
 /// Load/save per-pane tab state keyed by a stable pane identifier ("left"/"right").

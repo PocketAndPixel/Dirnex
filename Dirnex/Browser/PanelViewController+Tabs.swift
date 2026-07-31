@@ -248,6 +248,31 @@ extension PanelViewController {
         )
     }
 
+    /// The tabs and active index a pane opens with, given its persisted state — what `init` installs.
+    /// Wraps `restoredTabs` with the empty-fallback: when every persisted tab was dropped (a pane
+    /// whose only tab was a remote FTP/SFTP/SMB folder is the common case — those can't be listed at
+    /// launch without reconnecting), open a fresh tab at `defaultPath`, but carry the last-active
+    /// tab's column layout forward. A dropped remote tab is still where the user set those widths, and
+    /// a bare default layout snapped the Date column back to its default 150 on every relaunch of a
+    /// pane whose only tab was remote — while a plain local folder, whose tab *is* restored, kept its
+    /// widths, which is exactly the asymmetry that read as a bug.
+    static func restoredLayout(
+        from restoration: PersistedPane?,
+        defaultPath: VFSPath,
+        showHidden: Bool
+    ) -> (tabs: [PanelTab], activeIndex: Int) {
+        let restored = restoredTabs(from: restoration)
+        guard !restored.isEmpty else {
+            let fallback = PanelTab(
+                path: defaultPath,
+                showHidden: showHidden,
+                columns: restoration?.activeTabColumns
+            )
+            return ([fallback], 0)
+        }
+        return (restored, min(max(restoration?.activeIndex ?? 0, 0), restored.count - 1))
+    }
+
     /// Rebuild tabs from a persisted pane, dropping any whose directory has since
     /// vanished so a relaunch never opens onto a dead path or an error sheet.
     static func restoredTabs(from restoration: PersistedPane?) -> [PanelTab] {
