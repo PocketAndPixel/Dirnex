@@ -36,6 +36,25 @@ extension AttributesController {
             if entry.box.state == .on { flags.insert(entry.flag) } else { flags.remove(entry.flag) }
         }
         working.flags = flags
+
+        if let tag = groupPopup?.selectedItem?.tag { working.groupID = UInt32(tag) }
+
+        for field in dateFields {
+            // An untouched picker hands back the *original* value, not its own — see `DateField`.
+            // Without this the sub-second remainder every real timestamp carries would show up as an
+            // edit on all three dates the moment the sheet opened.
+            let edited = field.picker.dateValue != field.initial
+            switch field.kind {
+            case .access:
+                working.accessDate = edited ? field.picker.dateValue : snapshot.attributes.accessDate
+            case .modification:
+                working.modificationDate = edited
+                    ? field.picker.dateValue : snapshot.attributes.modificationDate
+            case .creation:
+                working.creationDate = edited
+                    ? field.picker.dateValue : snapshot.attributes.creationDate
+            }
+        }
     }
 
     func refreshModeEcho() {
@@ -57,12 +76,8 @@ extension AttributesController {
         let diff = AttributeDiff(from: old, to: working)
         guard !diff.isEmpty else { dismiss(sender); return }
 
-        let reasons = AttributePrivilege.reasons(
-            for: diff,
-            current: old,
-            actor: UserContext.current()
-        )
-        guard reasons.isEmpty else { presentNeedsAdministrator(); return }
+        let reasons = AttributePrivilege.reasons(for: diff, current: old, actor: actor)
+        guard reasons.isEmpty else { presentNeedsAdministrator(reasons); return }
 
         do {
             let plan = AttributeChangePlan(diff: diff, current: old, actsOnLink: snapshot.isSymlink)
@@ -81,21 +96,21 @@ extension AttributesController {
 
     // MARK: - Alerts
 
-    /// The narrow root-only case an owner can still reach — a system-immutable file — until Slice 5
-    /// adds the escalation. Stated rather than papered over: an `SF_*` `EPERM` is indistinguishable
-    /// from the "you need root" one, so the panel says which it is instead of showing a raw error.
-    private func presentNeedsAdministrator() {
+    /// The narrow root-only cases an owner can still reach, until Slice 5 adds the escalation. Stated
+    /// rather than papered over: an `SF_*` `EPERM` is indistinguishable from the "you need root" one,
+    /// so the panel says which it is instead of showing a raw error.
+    ///
+    /// The sentence is built from the reasons the core actually gave rather than assuming the
+    /// system-flag case, which is the only one the controls could reach before dates and the group
+    /// picker existed. That is also the seam Slice 5 slots into: it escalates exactly these reasons.
+    private func presentNeedsAdministrator(_ reasons: [AttributePrivilege.Reason]) {
         let alert = NSAlert()
         alert.messageText = String(
             localized: "This change needs an administrator",
             comment: "Attributes save alert title: the change requires root privileges."
         )
-        alert.informativeText = String(
-            localized: """
-            “\(snapshot.entry.name)” carries a system flag that only an administrator can change, \
-            and Dirnex can’t ask for those privileges yet.
-            """,
-            comment: "Attributes save alert body when a change is root-only; %@ is the item name."
+        alert.informativeText = AttributeFormatting.privilegeExplanation(
+            reasons.first, name: snapshot.entry.name
         )
         alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))
         alert.enableEscapeToCancel()

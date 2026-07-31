@@ -1185,6 +1185,36 @@ written. Several results changed the model, not just confirmed it.
 - **`chown(2)` clears the set-uid/set-gid bits for an unprivileged caller**, so a plan that changes
   both owner and mode must `chown` **before** `chmod`, or the set-uid the user just asked for is
   silently dropped.
+  - **And a plain `chgrp` is a `chown`, so a *group-only* edit drops the bits with no `chmod` in the
+    plan to be ordered.** Measured: `0o6755` handed from `staff` to `admin` came back `0o755`. The
+    ordering rule above reads as if it covered this and does not — it only fires when the user is also
+    changing the mode. Both bits go; the fix is to re-write the *current* mode after the chown
+    whenever the file carries either. This is the general shape worth carrying: **a syscall that
+    rewrites a neighbouring field breaks the diff-based contract** ("a field left alone is never
+    written"), so the plan owes a repair step, not just an ordering.
+- **Setting `st_mtime` earlier than `st_birthtime` drags the birth time back to match** — the same
+  family, found in the same probe. A file born today, given an mtime of 2001, reports a *creation*
+  date of 2001 afterwards; files and directories alike on APFS. Three details make it tractable: it
+  is **mtime alone** (an atime in the same past leaves the birth time untouched), re-setting the
+  birth time afterwards **repairs it exactly**, and `setattrlist(ATTR_CMN_CRTIME)` was measured *not*
+  to disturb either of the other two times — so a plan that already sequences `utimes` before the
+  crtime write can repair without undoing the edit that provoked it. Without the repair, "change
+  Modified" quietly changes "Created" too, and the panel that re-reads afterwards shows a date the
+  user never typed.
+  - Both repairs need a **negative control** in the test suite — one test asserting the OS really
+    does the damage with no plan involved. Otherwise a macOS that stopped doing it would leave the
+    repair vestigial with every other test still green.
+- **An undo can need privileges the change it reverses did not, and the asymmetry is invisible until
+  someone undoes.** A file's group is inherited from its parent, so an item can sit in a group its
+  owner is not in (`/private/tmp` children are `wheel`). Moving it *out* is legal — `chgrp` to a
+  group you belong to — and moving it *back* is `EPERM`, so a perfectly ordinary edit is a one-way
+  door. Shipped, that surfaced as the generic errno sentence: **"You don't have permission. Dirnex
+  may need Full Disk Access in System Settings."** — true of the errno, wrong about the cause, and
+  pointing the user at a settings pane that cannot help. Check `AttributePrivilege` at the *start* of
+  the undo and name the reason (`VFSUnsupportedReason.attributeRestoreNeedsAdministrator`), which
+  also means refusing before touching the file rather than half-applying. Same "an EPERM that needs
+  root is indistinguishable from one that does not" trap as the immutable-flag case, arriving from
+  the other direction — and only a live undo of a real edit exposes it.
 - **The BSD flags word splits at the 16-bit line**: the low 16 bits are owner-settable (`UF_*`), the
   high 16 (`0xFFFF0000`) are super-user only (`SF_*`). Read "does this flag change need root?" off
   that mask, not a per-flag table, and a flag macOS adds later lands on the right side for free.
@@ -1194,6 +1224,16 @@ written. Several results changed the model, not just confirmed it.
   import and act on the link itself, matching Finder's Get Info.
 - **`FileManager.removeItem` fails on a `UF_IMMUTABLE` file**, so a test that locks one must unlock it
   before teardown or it strands the temp tree.
+- **`utimes` and `setattrlist(CRTIME)` are both `EPERM` on a locked file**, like `chmod` and `chown`
+  — so date editing needs the same unlock/relock dance, not a separate design. Dates otherwise have
+  no range to defend: a 2096 mtime and a pre-epoch 1938 one both applied cleanly, and a `Date`
+  round-trips through `utimes` at microsecond fidelity.
+- **An `NSDatePicker` resolves to whole seconds and a real timestamp does not**, which is a live bug
+  and not a rounding nicety: read `dateValue` back unconditionally and the sub-second remainder every
+  `st_mtime` carries makes all three fields differ from what was read *the moment the sheet opens* —
+  Save lights up with nothing edited, and committing writes three dates nobody touched. Compare
+  against the value the control was **given** (`picker.dateValue` right after assigning it), not
+  against the model, so "untouched" means untouched at the control's own granularity.
 - **`mbr_uid_to_uuid` *synthesizes* a GUID for an id with no account behind it, so it can never be an
   existence check.** Probed: uid 31337 — no such user — answers
   `FFFFEEEE-DDDD-CCCC-BBBB-AAAA00007A69`, the well-known prefix with the id in the tail (groups take

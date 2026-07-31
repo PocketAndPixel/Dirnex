@@ -50,6 +50,25 @@ final class AttributesController: NSViewController {
         let access: POSIXPermissions.Access
     }
 
+    /// One editable timestamp: the control, which of the three it is, and **the value the control was
+    /// born with**.
+    ///
+    /// That last field is not bookkeeping — it is what keeps an untouched picker from writing.
+    /// `NSDatePicker` resolves to whole seconds while a real `st_mtime` carries microseconds, so
+    /// reading `dateValue` back unconditionally makes every field differ from what was read the moment
+    /// the sheet opens: Save lights up with nothing edited and a `utimes` runs on Save for three dates
+    /// nobody touched. Comparing against the value the picker was *given* is what makes "a field left
+    /// alone is never written" true at this control's granularity.
+    struct DateField {
+        let picker: NSDatePicker
+        let kind: DateFieldKind
+        let initial: Date
+    }
+
+    /// Which of the three timestamps a ``DateField`` drives. A sibling of `DateField` rather than a
+    /// type nested inside it — SwiftLint allows one level of nesting, not two.
+    enum DateFieldKind { case access, modification, creation }
+
     /// The live checkboxes, kept so one `editChanged` handler can rebuild ``working`` from all of them
     /// at once (simpler and less error-prone than each button carrying its own bit) and so Save's
     /// enablement and the Mode echo can refresh together.
@@ -58,15 +77,23 @@ final class AttributesController: NSViewController {
     var setGroupIDBox: NSButton?
     var stickyBox: NSButton?
     var flagBoxes: [(box: NSButton, flag: BSDFileFlags)] = []
+    /// The group picker, whose items carry their gid as `tag`.
+    var groupPopup: NSPopUpButton?
+    /// The three timestamp controls, in whatever order the General tab built them.
+    var dateFields: [DateField] = []
     /// The `Mode:` value field, updated live as the boxes change so the octal echo never disagrees
     /// with the grid.
     var modeValueField: NSTextField?
     weak var saveButton: NSButton?
 
+    /// Who is making the change. Stored rather than re-read so the group the picker offers and the
+    /// privilege check Save runs can never disagree about the caller's memberships.
+    let actor: UserContext
+
     init(snapshot: AttributesSnapshot) {
         self.snapshot = snapshot
         working = snapshot.attributes
-        let actor = UserContext.current()
+        actor = UserContext.current()
         canEdit = actor.isSuperUser || snapshot.attributes.ownerID == actor.userID
         super.init(nibName: nil, bundle: nil)
     }
@@ -109,6 +136,20 @@ final class AttributesController: NSViewController {
     static let contentWidth = AttributesControllerLayout.contentWidth
 
     @objc private func close(_ sender: Any?) { dismiss(sender) }
+
+    /// The note every tab with controls shows when the item is not the user's to change.
+    ///
+    /// One site on purpose: `String(localized:comment:)` takes a `StaticString`, so a shared comment
+    /// cannot be hoisted into a constant and two call sites would have to repeat it *verbatim* or
+    /// hand the translator whichever one `xcstringstool` happened to keep (docs/NOTES.md).
+    func makeNotOwnerNote() -> NSView {
+        AttributeRow.note(String(
+            localized: """
+            You can view these, but only the item’s owner or an administrator can change them.
+            """,
+            comment: "Info panel note when the user does not own the item, so editing is off."
+        ))
+    }
 }
 
 // MARK: - Construction

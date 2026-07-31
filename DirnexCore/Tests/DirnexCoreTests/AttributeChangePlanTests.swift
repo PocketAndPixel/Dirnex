@@ -132,6 +132,117 @@ struct AttributeChangePlanTests {
         ])
     }
 
+    // MARK: - Repairing a syscall's side effects (Slice 4 probe, 2026-07-31)
+
+    /// A `chgrp` is a `chown`, and `chown(2)` clears set-uid/gid — so a *group-only* edit on a
+    /// set-uid file silently strips the bit. Measured: `0o6755` staff → admin came back `0o755`.
+    /// The chown-before-chmod ordering cannot help here, because with no mode change in the diff
+    /// there is no chmod to order.
+    @Test("a group-only change re-writes the mode so set-uid survives the chown")
+    func groupChangePreservesSpecialBits() {
+        let current = attributes(mode: 0o6755, group: 20)
+        var desired = current; desired.groupID = 80
+        let result = plan(from: current, to: desired)
+        #expect(result.steps == [
+            .setOwnership(userID: nil, groupID: 80),
+            .setPermissions(POSIXPermissions(rawValue: 0o6755))
+        ])
+    }
+
+    /// The repair is only worth a syscall when there is something to lose.
+    @Test("a group-only change on a file with no special bits is one chown")
+    func groupChangeWithoutSpecialBitsIsOneStep() {
+        let current = attributes(mode: 0o644, group: 20)
+        var desired = current; desired.groupID = 80
+        let result = plan(from: current, to: desired)
+        #expect(result.steps == [.setOwnership(userID: nil, groupID: 80)])
+    }
+
+    /// The user's own mode wins — the repair must never override what they actually asked for.
+    @Test("an explicit mode change is not overwritten by the preserved one")
+    func explicitModeBeatsPreservedMode() {
+        let current = attributes(mode: 0o6755, group: 20)
+        var desired = current
+        desired.groupID = 80
+        desired.permissions = POSIXPermissions(rawValue: 0o600)
+        let result = plan(from: current, to: desired)
+        #expect(result.steps == [
+            .setOwnership(userID: nil, groupID: 80),
+            .setPermissions(POSIXPermissions(rawValue: 0o600))
+        ])
+    }
+
+    /// Setting an mtime earlier than the birth time drags the birth time back with it, so a plan that
+    /// changes only the modification date has to put the creation date back — otherwise "change
+    /// Modified" quietly changes "Created" too, which the diff-based contract forbids.
+    @Test("an mtime moved before the birth time re-writes the creation date")
+    func earlierModificationPreservesCreationDate() {
+        let current = attributes()
+        var desired = current
+        desired.modificationDate = epoch.addingTimeInterval(-3600)
+        let result = plan(from: current, to: desired)
+        #expect(result.steps == [
+            .setTimes(access: epoch, modification: epoch.addingTimeInterval(-3600)),
+            .setCreationDate(epoch)
+        ])
+    }
+
+    /// Only a *backwards* mtime pulls the birth time; a later one leaves it alone, so no repair.
+    @Test("an mtime moved after the birth time needs no repair")
+    func laterModificationLeavesCreationDateAlone() {
+        let current = attributes()
+        var desired = current
+        desired.modificationDate = epoch.addingTimeInterval(3600)
+        let result = plan(from: current, to: desired)
+        #expect(
+            result.steps == [.setTimes(access: epoch, modification: epoch.addingTimeInterval(3600))]
+        )
+    }
+
+    /// Measured: an *atime* in the same past does not disturb the birth time. Only mtime does.
+    @Test("an earlier access date alone needs no repair")
+    func earlierAccessDateLeavesCreationDateAlone() {
+        let current = attributes()
+        var desired = current
+        desired.accessDate = epoch.addingTimeInterval(-3600)
+        let result = plan(from: current, to: desired)
+        #expect(
+            result.steps == [.setTimes(access: epoch.addingTimeInterval(-3600), modification: epoch)]
+        )
+    }
+
+    /// The user's own creation date wins over the repair, exactly as their own mode does.
+    @Test("an explicit creation date is not overwritten by the preserved one")
+    func explicitCreationDateBeatsPreservedOne() {
+        let current = attributes()
+        var desired = current
+        desired.modificationDate = epoch.addingTimeInterval(-3600)
+        desired.creationDate = epoch.addingTimeInterval(-7200)
+        let result = plan(from: current, to: desired)
+        #expect(result.steps == [
+            .setTimes(access: epoch, modification: epoch.addingTimeInterval(-3600)),
+            .setCreationDate(epoch.addingTimeInterval(-7200))
+        ])
+    }
+
+    /// Both repairs at once, on a locked file, still in the one order that works.
+    @Test("the repairs compose with the unlock dance in the right order")
+    func repairsComposeWithUnlock() {
+        let current = attributes(mode: 0o6755, flags: .userImmutable, group: 20)
+        var desired = current
+        desired.groupID = 80
+        desired.modificationDate = epoch.addingTimeInterval(-3600)
+        let result = plan(from: current, to: desired)
+        #expect(result.steps == [
+            .setFlags([]),
+            .setOwnership(userID: nil, groupID: 80),
+            .setPermissions(POSIXPermissions(rawValue: 0o6755)),
+            .setTimes(access: epoch, modification: epoch.addingTimeInterval(-3600)),
+            .setCreationDate(epoch),
+            .setFlags(.userImmutable)
+        ])
+    }
+
     @Test("actsOnLink is carried through for the applier")
     func actsOnLink() {
         let current = attributes(mode: 0o644)

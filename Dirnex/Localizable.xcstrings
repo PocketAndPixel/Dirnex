@@ -39248,6 +39248,184 @@
         }
       }
     },
+    "Only an administrator can change an item’s owner, and the groups offered are the ones you belong to.": {
+      "comment": "Info panel note: why Owner is fixed and the group list is short.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur ein Administrator kann den Eigentümer ändern; angeboten werden die Gruppen, denen Sie angehören."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only an administrator can change an item’s owner, and the groups offered are the ones you belong to."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo un administrador puede cambiar el propietario; los grupos que se ofrecen son aquellos a los que perteneces."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seul un administrateur peut changer le propriétaire ; les groupes proposés sont ceux dont vous êtes membre."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo un amministratore può cambiare il proprietario; i gruppi proposti sono quelli di cui fai parte."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "所有者を変更できるのは管理者だけです。表示されるのは自分が所属するグループです。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "소유자는 관리자만 변경할 수 있으며, 제시되는 그룹은 사용자가 속한 그룹입니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alleen een beheerder kan de eigenaar wijzigen; de aangeboden groepen zijn de groepen waartoe u behoort."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Właściciela może zmienić tylko administrator, a proponowane grupy to te, do których należysz."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Só um administrador pode alterar o proprietário; os grupos oferecidos são aqueles aos quais você pertence."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Владельца может изменить только администратор, а в списке — группы, в которых вы состоите."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Власника може змінити лише адміністратор, а в списку — групи, до яких ви належите."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只有管理员才能更改所有者；此处列出的是您所属的群组。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只有管理者才能更改擁有者；此處列出的是您所屬的群組。"
+          }
+        }
+      }
+    },
+    "Only an administrator can give “%@” to another user, and Dirnex can’t ask for those privileges yet.": {
+      "comment": "Root-only save alert body: a chown across users; %@ is the item name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur ein Administrator kann „%@“ an einen anderen Benutzer übergeben, und Dirnex kann diese Rechte noch nicht anfordern."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only an administrator can give “%@” to another user, and Dirnex can’t ask for those privileges yet."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo un administrador puede ceder “%@” a otro usuario, y Dirnex aún no puede solicitar esos privilegios."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seul un administrateur peut céder « %@ » à un autre utilisateur, et Dirnex ne peut pas encore demander ces privilèges."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo un amministratore può assegnare “%@” a un altro utente e Dirnex non può ancora richiedere quei privilegi."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”を別のユーザーに譲渡できるのは管理者だけで、Dirnex はまだその権限を要求できません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”을(를) 다른 사용자에게 넘길 수 있는 것은 관리자뿐이며, Dirnex는 아직 해당 권한을 요청할 수 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alleen een beheerder kan ‘%@’ aan een andere gebruiker geven, en Dirnex kan die rechten nog niet aanvragen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tylko administrator może przekazać „%@” innemu użytkownikowi, a Dirnex nie może jeszcze poprosić o te uprawnienia."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Só um administrador pode passar “%@” para outro usuário, e o Dirnex ainda não pode solicitar esses privilégios."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Передать «%@» другому пользователю может только администратор, а Dirnex пока не может запросить эти права."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Передати «%@» іншому користувачеві може лише адміністратор, а Dirnex поки що не може запитати ці права."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只有管理员才能将“%@”转交给其他用户，Dirnex 暂时无法请求这些权限。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只有管理者才能將「%@」轉交給其他使用者，Dirnex 暫時無法請求這些權限。"
+          }
+        }
+      }
+    },
     "Only files on this Mac can be edited — copy it out first (F5).": {
       "comment": "Status when F4 is pressed on an archive member or remote file.",
       "localizations": {
@@ -39333,6 +39511,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "只能編輯此 Mac 上的檔案——先將其拷貝出來（F5）。"
+          }
+        }
+      }
+    },
+    "Only the owner of “%@” or an administrator can change it, and Dirnex can’t ask for those privileges yet.": {
+      "comment": "Root-only save alert body: the item belongs to somebody else; %@ is its name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur der Eigentümer von „%@“ oder ein Administrator kann das Objekt ändern, und Dirnex kann diese Rechte noch nicht anfordern."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only the owner of “%@” or an administrator can change it, and Dirnex can’t ask for those privileges yet."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo el propietario de “%@” o un administrador puede cambiarlo, y Dirnex aún no puede solicitar esos privilegios."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seul le propriétaire de « %@ » ou un administrateur peut le modifier, et Dirnex ne peut pas encore demander ces privilèges."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo il proprietario di “%@” o un amministratore può modificarlo e Dirnex non può ancora richiedere quei privilegi."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”を変更できるのは所有者か管理者だけで、Dirnex はまだその権限を要求できません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”을(를) 변경할 수 있는 것은 소유자나 관리자뿐이며, Dirnex는 아직 해당 권한을 요청할 수 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alleen de eigenaar van ‘%@’ of een beheerder kan dit wijzigen, en Dirnex kan die rechten nog niet aanvragen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tylko właściciel „%@” lub administrator może to zmienić, a Dirnex nie może jeszcze poprosić o te uprawnienia."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Só o proprietário de “%@” ou um administrador pode alterá-lo, e o Dirnex ainda não pode solicitar esses privilégios."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Изменить «%@» может только владелец или администратор, а Dirnex пока не может запросить эти права."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Змінити «%@» може лише власник або адміністратор, а Dirnex поки що не може запитати ці права."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只有“%@”的所有者或管理员才能更改它，Dirnex 暂时无法请求这些权限。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只有「%@」的擁有者或管理者才能更改它，Dirnex 暫時無法請求這些權限。"
           }
         }
       }
@@ -88661,6 +88928,95 @@
         }
       }
     },
+    "vfs.unsupported.attributeRestoreNeedsAdministrator": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown when undoing an attribute change would need root — the item's previous owner, group or system flags cannot be restored unprivileged. %@ is the item name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur ein Administrator kann den vorherigen Eigentümer, die Gruppe oder die Systemmarkierungen von „%@“ wiederherstellen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only an administrator can put back the previous owner, group or system flags of “%@”."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo un administrador puede restaurar el propietario, el grupo o los indicadores de sistema anteriores de «%@»."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seul un administrateur peut rétablir le propriétaire, le groupe ou les indicateurs système précédents de «%@»."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo un amministratore può ripristinare il proprietario, il gruppo o i contrassegni di sistema precedenti di “%@”."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”の以前の所有者・グループ・システムフラグを戻せるのは管理者だけです。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”의 이전 소유자, 그룹 또는 시스템 플래그를 되돌릴 수 있는 것은 관리자뿐입니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alleen een beheerder kan de vorige eigenaar, groep of systeemvlaggen van “%@” terugzetten."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tylko administrator może przywrócić poprzedniego właściciela, grupę lub flagi systemowe „%@”."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Só um administrador pode restaurar o proprietário, o grupo ou os sinalizadores de sistema anteriores de “%@”."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вернуть прежнего владельца, группу или системные флаги объекта «%@» может только администратор."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повернути попереднього власника, групу або системні прапорці об’єкта «%@» може лише адміністратор."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只有管理员才能恢复“%@”之前的所有者、群组或系统标志。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只有管理者才能還原「%@」先前的擁有者、群組或系統旗標。"
+          }
+        }
+      }
+    },
     "vfs.unsupported.cloudStatusNeedsLocalFile": {
       "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure.",
       "localizations": {
@@ -90527,6 +90883,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "「%@」已存在於「%@」中"
+          }
+        }
+      }
+    },
+    "“%@” can only be moved to a group you belong to, unless you are an administrator.": {
+      "comment": "Root-only save alert body: a chgrp to a foreign group; %@ is the item name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ kann nur einer Gruppe zugewiesen werden, der Sie angehören – es sei denn, Sie sind Administrator."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” can only be moved to a group you belong to, unless you are an administrator."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” solo puede pasar a un grupo al que pertenezcas, a menos que seas administrador."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« %@ » ne peut être attribué qu’à un groupe dont vous êtes membre, sauf si vous êtes administrateur."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” può passare solo a un gruppo di cui fai parte, a meno che tu non sia un amministratore."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”を移せるのは自分が所属するグループだけです（管理者を除く）。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "관리자가 아니라면 “%@”은(는) 자신이 속한 그룹으로만 옮길 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‘%@’ kan alleen naar een groep waartoe u behoort, tenzij u beheerder bent."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@” można przenieść tylko do grupy, do której należysz — chyba że jesteś administratorem."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” só pode ir para um grupo ao qual você pertence, a menos que você seja administrador."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» можно передать только группе, в которой вы состоите, — если вы не администратор."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» можна передати лише групі, до якої ви належите, — якщо ви не адміністратор."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "除非您是管理员，否则“%@”只能移至您所属的群组。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "除非您是管理者，否則「%@」只能移至您所屬的群組。"
           }
         }
       }

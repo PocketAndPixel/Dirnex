@@ -20,12 +20,7 @@ extension AttributesController {
         var rows: [NSView] = []
 
         if !canEdit {
-            rows.append(AttributeRow.note(String(
-                localized: """
-                You can view these, but only the item’s owner or an administrator can change them.
-                """,
-                comment: "Info panel note when the user does not own the item, so editing is off."
-            )))
+            rows.append(makeNotOwnerNote())
         }
 
         rows.append(contentsOf: [
@@ -41,8 +36,21 @@ extension AttributesController {
                     localized: "Group:",
                     comment: "Info panel field label: the owning group (st_gid)."
                 ),
-                value: snapshot.groupDescription
-            ),
+                view: makeGroupPicker()
+            )
+        ])
+
+        if canEdit {
+            rows.append(AttributeRow.note(String(
+                localized: """
+                Only an administrator can change an item’s owner, and the groups offered are the \
+                ones you belong to.
+                """,
+                comment: "Info panel note: why Owner is fixed and the group list is short."
+            )))
+        }
+
+        rows.append(contentsOf: [
             AttributeRow.separator(),
             AttributeRow.make(
                 label: String(
@@ -93,6 +101,42 @@ extension AttributesController {
         }
 
         return AttributeRow.pane(rows, width: AttributesController.contentWidth)
+    }
+
+    // MARK: - Ownership
+
+    /// The group popup, offering only what a `chgrp` can actually do.
+    ///
+    /// **Owner has no popup beside it, and that is the finding rather than an omission.** `chown` to
+    /// another user is `EPERM` even on your own file (re-measured 2026-07-31), so a user picker could
+    /// never succeed unprivileged — and this panel's own precedent for that is the `SF_*` flags, which
+    /// are reported as a note rather than offered as a checkbox because "offering one as a toggle
+    /// would promise something the panel cannot do". Slice 5's escalation is what makes owner
+    /// reachable; until then the row states the fact.
+    ///
+    /// The group list is ``IdentityRoster/selectableGroups(from:memberOf:current:)``, which is the
+    /// same rule stated as a tested core function: your own groups, plus whatever the item is in now.
+    private func makeGroupPicker() -> NSView {
+        let popup = NSPopUpButton(frame: .zero, pullsDown: false)
+        let groups = IdentityRoster.selectableGroups(
+            from: IdentityDirectory.groups(),
+            memberOf: actor.groupIDs,
+            current: snapshot.attributes.groupID
+        )
+        for group in groups {
+            popup.addItem(withTitle: AttributesSnapshot.describe(group.name, id: group.numericID))
+            popup.lastItem?.tag = Int(group.numericID)
+        }
+        popup.selectItem(withTag: Int(snapshot.attributes.groupID))
+        popup.isEnabled = canEdit && groups.count > 1
+        popup.target = self
+        popup.action = #selector(editChanged(_:))
+        groupPopup = popup
+
+        // A popup defends its widest item's width; the sheet's width is fixed, so it gives way like
+        // every other value in these rows rather than pushing the layout wider.
+        popup.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        return popup
     }
 
     // MARK: - The mode grid

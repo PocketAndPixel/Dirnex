@@ -51,6 +51,38 @@ public enum IdentityRoster {
     public static func visible(_ records: [IdentityRecord]) -> [IdentityRecord] {
         deduplicated(records).filter { !$0.isServiceAccount }.sorted()
     }
+
+    /// The groups a **group picker** can honestly offer for an unprivileged change: the ones the
+    /// actor belongs to, plus whichever group the item is in right now (PLAN.md §M14 Slice 4).
+    ///
+    /// Two rules, both from the probe matrix rather than from taste:
+    ///
+    /// - **Only a group the caller belongs to.** `chgrp` to any other group is `EPERM` even on your
+    ///   own file (measured: gid 1 → EPERM, gid 80 → OK), so listing the machine's other ~150 groups
+    ///   would be offering choices that can only fail. This is the same call the panel makes about the
+    ///   `SF_*` flags, which are a note rather than a checkbox for exactly this reason.
+    /// - **The current group is always included, even when the actor is not in it.** A file's group is
+    ///   inherited from its parent directory, so an item sitting in `wheel` while the user is only in
+    ///   `staff` is entirely ordinary — and a popup that cannot display the value it currently holds
+    ///   would show the wrong group as selected. It is offered so the truth is visible; re-picking it
+    ///   is a no-op that never reaches a syscall, because the diff is empty.
+    ///
+    /// Service accounts are dropped as everywhere else, *except* when the current group is one — the
+    /// popup still has to be able to name what the item actually is.
+    public static func selectableGroups(
+        from groups: [IdentityRecord],
+        memberOf membership: Set<UInt32>,
+        current: UInt32
+    ) -> [IdentityRecord] {
+        var offered = deduplicated(groups)
+            .filter { membership.contains($0.numericID) && !$0.isServiceAccount }
+        if !offered.contains(where: { $0.numericID == current }) {
+            let currentRecord = deduplicated(groups).first { $0.numericID == current }
+                ?? IdentityRecord(name: String(current), numericID: current)
+            offered.append(currentRecord)
+        }
+        return offered.sorted()
+    }
 }
 
 /// Enumerates the machine's users and groups and resolves ids to names — the thin, non-pure half

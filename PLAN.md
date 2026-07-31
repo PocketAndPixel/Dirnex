@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M13 shipped (14 languages) · M14 (checksums + attributes) in progress — Slices 1–3 landed, Slice 4 read-only panel + mode/flags editing (with undo) landed · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
+Status: M0–M13 shipped (14 languages) · M14 (checksums + attributes) in progress — Slices 1–3 landed, Slice 4 read-only panel, mode/flags editing, and owner/group/dates (all with undo) landed · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
 
 ---
 
@@ -573,8 +573,45 @@ missing halves — the app wiring and *undo* — and nothing else touches bytes.
   file — is refused at Save with a stated reason rather than the bare `EPERM` it is indistinguishable
   from, which is exactly the seam Slice 5's escalation slots into.
 
-Still ahead in this slice: owner/group and the three dates (the same commit pipeline, plus a subject
-picker and date fields), the ACL editor and its subject picker, multi-selection, and the recursive
+**Owner, group and the three dates landed (2026-07-31), and the probe changed the core twice before
+any AppKit was written.** Decided with Oleg: **offer only what works.** `chown` to another user is
+`EPERM` even on your own file (re-measured), so Owner stays a stated fact with a note — this panel's
+own precedent, since the `SF_*` flags are a note rather than a checkbox for the same reason — while
+Group becomes a popup of `IdentityRoster.selectableGroups`, the groups the caller belongs to plus
+whatever the item is in now. All three dates are editable, through the plan that was already tested.
+
+- **Two syscall side effects were found by probing and are now repair *steps* in
+  `AttributeChangePlan`, not just orderings.** A plain `chgrp` is a `chown`, so it clears set-uid and
+  set-gid — and the shipped chown-before-chmod rule does **not** cover a group-only edit, because with
+  no mode change in the diff there is no `chmod` to order (`0o6755` staff → admin came back `0o755`).
+  And setting an mtime earlier than the birth time drags the birth time back with it, on files and
+  directories alike, so "change Modified" quietly changed "Created". Both break the contract the whole
+  diff-based design rests on — a field left alone is never written — so the plan puts each back. Nine
+  new plan tests plus three live ones, including a **negative control** asserting the OS really does
+  the damage, so a macOS that stopped would not leave the repairs vestigial and green.
+- **The OS was the judge on both, live in the app.** A `wheel` file moved to `staff` read back
+  `-rwsr-xr-x gid=20` — the set-uid survived — and `dates.txt` given a 2001 modification date kept
+  `birth = 2026-07-31` while `mtime` went to 2001, with the access date untouched. ⌘Z restored the
+  date exactly.
+- **One real bug was found only by undoing, and it is the slice's lesson.** The group rule makes a
+  change reversible in one direction only: moving a file *out of* a group you are not in is legal and
+  moving it *back* is `EPERM`. Shipped, the undo surfaced the generic errno — *"Dirnex may need Full
+  Disk Access"* — true of the errno, wrong about the cause, and pointing at a settings pane that
+  cannot help. `UndoJournal.restoreAttributes` now asks `AttributePrivilege` first and names the
+  reason (`VFSUnsupportedReason.attributeRestoreNeedsAdministrator`, translated in all 14 languages),
+  refusing before it touches the file. Same "an EPERM that needs root is indistinguishable from one
+  that does not" trap as the immutable flag, arriving from the other direction.
+- **The one trap on the AppKit side is the control, not the syscalls.** `NSDatePicker` resolves to
+  whole seconds and a real `st_mtime` does not, so reading `dateValue` back unconditionally makes all
+  three fields differ the instant the sheet opens — Save enabled with nothing edited, and a `utimes`
+  on commit for three dates nobody touched. `DateField.initial` holds what the control was *given*,
+  which is what makes "untouched" mean untouched at the control's granularity. Verified live: the
+  sheet opens with Save greyed.
+- The root-only alert now builds its sentence from the reason the core gave rather than assuming the
+  system-flag case — four whole sentences, not one frame with a clause spliced in, because a clause's
+  grammar depends on the sentence around it. That is the seam Slice 5 escalates from.
+
+Still ahead in this slice: the ACL editor and its subject picker, multi-selection, and the recursive
 apply.
 
 #### Slice 5 — the narrow privileged case

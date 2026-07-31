@@ -136,6 +136,37 @@ struct AttributeUndoTests {
         )
     }
 
+    /// Undo is not symmetric with the change it reverses, and this is the case that proves it.
+    ///
+    /// A file's group is inherited from its parent, so an item can sit in a group its owner does not
+    /// belong to. The panel lets them move it *out* of that group — legal, `chgrp` to a group you are
+    /// in — and moving it *back* is `EPERM`. Found by undoing a real edit in the app; before the
+    /// guard it surfaced as the raw errno, which the app renders as "Dirnex may need Full Disk
+    /// Access": true of the errno, wrong about the cause, and pointing at a settings pane that cannot
+    /// help. The named reason is what the user can act on.
+    @Test("undoing a move out of a foreign group names the privilege, not a bare errno")
+    func undoIntoAForeignGroupIsNamed() throws {
+        let actor = UserContext.current()
+        // A gid nobody is in. Skipping rather than asserting keeps this honest if run as root.
+        let foreign: UInt32 = 1 // daemon
+        guard !actor.isSuperUser, !actor.groupIDs.contains(foreign) else { return }
+
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        let path = VFSPath.local(try tree.writeFile("f.txt", contents: "hi"))
+
+        // The undo half only: put the file back into a group the caller cannot join.
+        var diff = AttributeDiff()
+        diff.groupID = foreign
+        var failures: [OperationItemFailure] = []
+        UndoJournal.restoreAttributes(diff, at: path, actsOnLink: false, failures: &failures)
+
+        let failure = try #require(failures.first)
+        #expect(failure.error == .unsupported(.attributeRestoreNeedsAdministrator(name: "f.txt")))
+        // And it refused *before* touching the file, rather than half-applying.
+        #expect(try read(path).groupID != foreign)
+    }
+
     @Test("the attribute step survives the journal's JSON round-trip")
     func stepSurvivesJSONRoundTrip() throws {
         let path = VFSPath.local("/tmp/f.txt")

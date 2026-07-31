@@ -62,6 +62,78 @@ struct IdentityDirectoryTests {
         #expect(IdentityRoster.visible(raw).map(\.name) == ["Alpha", "mike", "zulu"])
     }
 
+    // MARK: - What a group picker may offer
+
+    private var machineGroups: [IdentityRecord] {
+        [
+            IdentityRecord(name: "wheel", numericID: 0),
+            IdentityRecord(name: "daemon", numericID: 1),
+            IdentityRecord(name: "everyone", numericID: 12),
+            IdentityRecord(name: "staff", numericID: 20),
+            IdentityRecord(name: "admin", numericID: 80),
+            IdentityRecord(name: "_windowserver", numericID: 88)
+        ]
+    }
+
+    /// `chgrp` to a group the caller is not in is `EPERM` even on their own file, so the picker
+    /// offers only what will actually apply rather than the machine's other ~150 groups.
+    @Test("only the actor's own groups are offered")
+    func offersOnlyOwnGroups() {
+        let offered = IdentityRoster.selectableGroups(
+            from: machineGroups, memberOf: [12, 20, 80], current: 20
+        )
+        #expect(offered.map(\.name) == ["admin", "everyone", "staff"])
+    }
+
+    /// A file's group is inherited from its parent, so sitting in a group the user is not in is
+    /// ordinary — and a popup that cannot name its own current value would show the wrong one.
+    @Test("the item's current group is offered even when the actor is not in it")
+    func alwaysOffersTheCurrentGroup() {
+        let offered = IdentityRoster.selectableGroups(
+            from: machineGroups, memberOf: [20], current: 0
+        )
+        #expect(offered.map(\.name) == ["staff", "wheel"])
+    }
+
+    /// Same rule when the current group is a service account: it is what the item *is*, so it shows.
+    @Test("a service account is offered when it is the current group")
+    func offersTheCurrentServiceGroup() {
+        let offered = IdentityRoster.selectableGroups(
+            from: machineGroups, memberOf: [20], current: 88
+        )
+        #expect(offered.map(\.name) == ["_windowserver", "staff"])
+    }
+
+    /// A gid that resolves to no group at all still has to be displayable — the panel already
+    /// renders a bare number in that case, and the popup must agree with it.
+    @Test("a current gid with no group behind it becomes a numeric row")
+    func offersAnUnknownCurrentGroupAsANumber() {
+        let offered = IdentityRoster.selectableGroups(
+            from: machineGroups, memberOf: [20], current: 4242
+        )
+        #expect(offered.map(\.name) == ["4242", "staff"])
+    }
+
+    @Test("service accounts the actor belongs to are still hidden when they are not current")
+    func hidesServiceGroupsTheActorIsIn() {
+        let offered = IdentityRoster.selectableGroups(
+            from: machineGroups, memberOf: [20, 88], current: 20
+        )
+        #expect(offered.map(\.name) == ["staff"])
+    }
+
+    /// The live pairing the panel actually runs: whatever the machine reports, the running user's
+    /// own group is offered and every offered group is one they are really in.
+    @Test("the live roster offers the running user's own group")
+    func liveRosterIncludesTheCurrentGroup() {
+        let actor = UserContext.current()
+        let offered = IdentityRoster.selectableGroups(
+            from: IdentityDirectory.groups(), memberOf: actor.groupIDs, current: getgid()
+        )
+        #expect(offered.contains { $0.numericID == getgid() })
+        #expect(offered.allSatisfy { actor.groupIDs.contains($0.numericID) })
+    }
+
     // MARK: - The live enumeration
 
     @Test("the enumeration returns no duplicates, whatever Open Directory hands back")

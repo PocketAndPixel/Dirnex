@@ -58,7 +58,9 @@ struct AttributesSnapshot {
 
     var groupDescription: String { Self.describe(groupName, id: attributes.groupID) }
 
-    private static func describe(_ name: String?, id: UInt32) -> String {
+    /// Shared with the group picker, so a popup row and the row above it spell an account the same
+    /// way in every language.
+    static func describe(_ name: String?, id: UInt32) -> String {
         guard let name else { return String(id) }
         return String(
             localized: "\(name) (\(Int(id)))",

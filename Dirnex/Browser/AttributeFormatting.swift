@@ -92,6 +92,54 @@ enum AttributeFormatting {
         ))
     ]
 
+    /// Why a change needs root, as a **whole sentence** naming the item.
+    ///
+    /// The core names the *reason*; this names it in the user's language — the same split the rest of
+    /// this file makes, and the reason ``AttributePrivilege/Reason`` is a vocabulary rather than a
+    /// `String` payload (docs/NOTES.md — a free-form payload is an untranslatable string with extra
+    /// steps).
+    ///
+    /// A whole sentence per reason, rather than one frame with a clause spliced into it: a clause's
+    /// grammar depends on the sentence around it, so a shared frame would be translatable only into
+    /// languages that happen to share English's word order. Four sentences cost four catalog entries
+    /// and each one can be rewritten freely.
+    static func privilegeExplanation(_ reason: AttributePrivilege.Reason?, name: String) -> String {
+        switch reason {
+        case .systemFlags, .none:
+            return String(
+                localized: """
+                “\(name)” carries a system flag that only an administrator can change, and Dirnex \
+                can’t ask for those privileges yet.
+                """,
+                comment: "Attributes save alert body when a change is root-only; %@ is the item name."
+            )
+        case .changeOwner:
+            return String(
+                localized: """
+                Only an administrator can give “\(name)” to another user, and Dirnex can’t ask for \
+                those privileges yet.
+                """,
+                comment: "Root-only save alert body: a chown across users; %@ is the item name."
+            )
+        case .changeToForeignGroup:
+            return String(
+                localized: """
+                “\(name)” can only be moved to a group you belong to, unless you are an \
+                administrator.
+                """,
+                comment: "Root-only save alert body: a chgrp to a foreign group; %@ is the item name."
+            )
+        case .notOwner:
+            return String(
+                localized: """
+                Only the owner of “\(name)” or an administrator can change it, and Dirnex can’t ask \
+                for those privileges yet.
+                """,
+                comment: "Root-only save alert body: the item belongs to somebody else; %@ is its name."
+            )
+        }
+    }
+
     /// The root-only flags currently set, named — or `nil` when none are. Never a checkbox: an owner
     /// gets `EPERM` on every `SF_*` flag even for their own file (M14 probe), so offering one as a
     /// toggle would promise something the panel cannot do.

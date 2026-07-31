@@ -140,4 +140,69 @@ struct FileAttributeIOTests {
             #expect(reading.isSymlink)
         }
     }
+
+    // MARK: - The side effects the plan repairs (Slice 4 probe, 2026-07-31)
+
+    /// The negative control, and the reason the two tests below exist at all: this asserts that the
+    /// **OS really does** drag the birth time back when the mtime moves before it. Without it, a
+    /// macOS that stopped doing so would leave the repair vestigial and every other test still green.
+    @Test("the OS drags the birth time back when an mtime is set before it")
+    func kernelPullsBirthTimeBack() throws {
+        try withTree { tree in
+            let path = VFSPath.local(try tree.writeFile("f.txt", contents: "hi"))
+            let born = try FileAttributeIO.read(at: path).attributes.creationDate
+            // A bare utimes, with no plan involved — exactly what the repair is there to catch.
+            let past = Date(timeIntervalSince1970: 1_000_000_000)
+            var times = [
+                timeval(tv_sec: Int(past.timeIntervalSince1970), tv_usec: 0),
+                timeval(tv_sec: Int(past.timeIntervalSince1970), tv_usec: 0)
+            ]
+            #expect(utimes(path.path, &times) == 0)
+            let after = try FileAttributeIO.read(at: path).attributes
+            #expect(after.creationDate < born)
+        }
+    }
+
+    /// And with the plan in charge, the creation date the user never touched survives.
+    @Test("a modification date moved into the past leaves the creation date alone")
+    func preservesCreationDateUnderTheDrag() throws {
+        try withTree { tree in
+            let path = VFSPath.local(try tree.writeFile("f.txt", contents: "hi"))
+            let current = try FileAttributeIO.read(at: path).attributes
+            var desired = current
+            desired.modificationDate = Date(timeIntervalSince1970: 1_000_000_000)
+            try applyChange(from: current, to: desired, on: path)
+
+            let after = try FileAttributeIO.read(at: path).attributes
+            #expect(Int(after.modificationDate.timeIntervalSince1970) == 1_000_000_000)
+            #expect(
+                Int(after.creationDate.timeIntervalSince1970)
+                    == Int(current.creationDate.timeIntervalSince1970)
+            )
+        }
+    }
+
+    /// `chgrp` is a `chown`, and `chown(2)` clears set-uid for an unprivileged caller — so a
+    /// group-only change has to re-write the mode. Runs against two groups the caller really belongs
+    /// to, since a `chgrp` to any other is `EPERM`.
+    @Test("a group-only change keeps the set-uid bit the user never touched")
+    func preservesSetUserIDAcrossAChgrp() throws {
+        let actor = UserContext.current()
+        guard let other = actor.groupIDs.first(where: { $0 != getgid() }) else { return }
+        try withTree { tree in
+            let file = try tree.writeFile("f.txt", contents: "hi")
+            let path = VFSPath.local(file)
+            #expect(chmod(file, 0o4755) == 0)
+
+            let current = try FileAttributeIO.read(at: path).attributes
+            #expect(current.permissions.setUserID)
+            var desired = current
+            desired.groupID = other
+            try applyChange(from: current, to: desired, on: path)
+
+            let after = try FileAttributeIO.read(at: path).attributes
+            #expect(after.groupID == other)
+            #expect(after.permissions.setUserID)
+        }
+    }
 }
