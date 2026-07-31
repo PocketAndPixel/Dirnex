@@ -4,6 +4,12 @@ import DirnexCore
 /// The Permissions tab: owner, group, the twelve mode bits and the BSD file flags
 /// (PLAN.md §M14 Slice 4).
 ///
+/// **Editable in this pass for the item's owner** (mode bits and `UF_*` flags — the commit and undo
+/// live in `AttributesController+Editing.swift`). A file the user does not own shows the same grid,
+/// disabled, until Slice 5 adds the privileged path; owner and group stay read-only until their own
+/// pass. Every checkbox is wired to one `editChanged` handler that rebuilds the working copy, so this
+/// file only lays them out and records which bit each one is.
+///
 /// **The ACL note here is an M14 exit criterion, not decoration.** Adding an ACL does not change the
 /// mode bits — probed: a file with an ACL still reads 0644 — so a panel that shows `rw-r--r--` and
 /// says nothing else makes a *false* claim about the file's permissions on precisely the files where
@@ -11,7 +17,18 @@ import DirnexCore
 /// that lists it.
 extension AttributesController {
     func makePermissionsTab() -> NSView {
-        var rows: [NSView] = [
+        var rows: [NSView] = []
+
+        if !canEdit {
+            rows.append(AttributeRow.note(String(
+                localized: """
+                You can view these, but only the item’s owner or an administrator can change them.
+                """,
+                comment: "Info panel note when the user does not own the item, so editing is off."
+            )))
+        }
+
+        rows.append(contentsOf: [
             AttributeRow.make(
                 label: String(
                     localized: "Owner:",
@@ -34,27 +51,14 @@ extension AttributesController {
                 ),
                 view: makePermissionGrid()
             ),
+            makeModeRow(),
             AttributeRow.make(
-                label: String(
-                    localized: "Mode:",
-                    comment: "Info panel field label: the mode as ls and chmod spell it."
-                ),
-                value: modeDescription(),
-                monospaced: true
-            )
-        ]
-
-        if let special = specialBitsDescription() {
-            rows.append(AttributeRow.make(
                 label: String(
                     localized: "Special:",
                     comment: "Info panel field label: set-uid, set-gid and the sticky bit."
                 ),
-                value: special
-            ))
-        }
-
-        rows.append(contentsOf: [
+                view: makeSpecialBitsRow()
+            ),
             AttributeRow.separator(),
             AttributeRow.make(
                 label: String(
@@ -93,10 +97,7 @@ extension AttributesController {
 
     // MARK: - The mode grid
 
-    /// A read/write/execute column per class, as disabled checkboxes.
-    ///
-    /// Disabled rather than absent because this is the shape the editor becomes: the next pass makes
-    /// the same grid live, so the layout is settled here where nothing can be misapplied yet.
+    /// A read/write/execute column per class of checkboxes — live for the owner, disabled otherwise.
     private func makePermissionGrid() -> NSView {
         let columns: [NSView] = POSIXPermissions.Class.allCases.map { cls in
             var views: [NSView] = [classHeading(cls)]
@@ -155,57 +156,68 @@ extension AttributesController {
                 comment: "Mode bit: permission to run a file, or to traverse a folder."
             )
         }
-        let box = NSButton(checkboxWithTitle: title, target: nil, action: nil)
-        box.state = snapshot.attributes.permissions[cls, access] ? .on : .off
-        box.isEnabled = false
+        let box = editableCheckbox(title: title, isOn: snapshot.attributes.permissions[cls, access])
+        modeBoxes.append(ModeCheckbox(box: box, cls: cls, access: access))
         return box
     }
 
-    /// `rw-r--r--  (644)` — both spellings, because one is what `ls` shows and the other is what a
-    /// user types at `chmod`.
-    private func modeDescription() -> String {
-        // Hoisted so the literal stays on one line and under the 120-column ceiling. The *literal*
-        // has to remain single — a concatenation would extract nothing (docs/NOTES.md) — but the
-        // values it interpolates need not be spelled out inside it.
-        let symbolic = snapshot.attributes.permissions.symbolicString
-        let octal = snapshot.attributes.permissions.octalString
-        return String(
-            localized: "\(symbolic)  (\(octal))",
-            comment: "Info panel mode: %1$@ is the rwx string, %2$@ the octal digits."
+    /// The `Mode:` row, whose value field is retained so ``refreshModeEcho`` can update it live.
+    private func makeModeRow() -> NSView {
+        let field = AttributeRow.valueField(
+            AttributeFormatting.modeDescription(snapshot.attributes.permissions), monospaced: true
+        )
+        modeValueField = field
+        return AttributeRow.make(
+            label: String(
+                localized: "Mode:",
+                comment: "Info panel field label: the mode as ls and chmod spell it."
+            ),
+            field: field
         )
     }
 
-    private func specialBitsDescription() -> String? {
+    // MARK: - Special bits
+
+    /// Set-UID / Set-GID / Sticky as a row of checkboxes — the other three of the twelve mode bits,
+    /// which the read-only grid hid in a text line. Editable for the owner; a `chown` would clear
+    /// set-uid/gid, but owner editing is a later pass, so nothing here re-orders around it yet.
+    private func makeSpecialBitsRow() -> NSView {
         let permissions = snapshot.attributes.permissions
-        var names: [String] = []
-        if permissions.setUserID {
-            names.append(String(
-                localized: "set-user-ID",
-                comment: "Mode special bit 4000, listed in a sentence."
-            ))
-        }
-        if permissions.setGroupID {
-            names.append(String(
-                localized: "set-group-ID",
-                comment: "Mode special bit 2000, listed in a sentence."
-            ))
-        }
-        if permissions.sticky {
-            names.append(String(
-                localized: "sticky",
-                comment: "Mode special bit 1000, listed in a sentence."
-            ))
-        }
-        return names.isEmpty ? nil : names.joined(separator: ", ")
+        let setUID = editableCheckbox(
+            title: String(
+                localized: "Set-UID", comment: "Mode special bit 4000, as a checkbox label."
+            ),
+            isOn: permissions.setUserID
+        )
+        setUserIDBox = setUID
+        let setGID = editableCheckbox(
+            title: String(
+                localized: "Set-GID", comment: "Mode special bit 2000, as a checkbox label."
+            ),
+            isOn: permissions.setGroupID
+        )
+        setGroupIDBox = setGID
+        let sticky = editableCheckbox(
+            title: String(
+                localized: "Sticky", comment: "Mode special bit 1000, as a checkbox label."
+            ),
+            isOn: permissions.sticky
+        )
+        stickyBox = sticky
+
+        let row = NSStackView(views: [setUID, setGID, sticky])
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.spacing = 20
+        return row
     }
 
     // MARK: - Flags
 
     private func makeFlagsColumn() -> NSView {
         let boxes: [NSView] = AttributeFormatting.editableFlags.map { flag, title in
-            let box = NSButton(checkboxWithTitle: title, target: nil, action: nil)
-            box.state = snapshot.attributes.flags.contains(flag) ? .on : .off
-            box.isEnabled = false
+            let box = editableCheckbox(title: title, isOn: snapshot.attributes.flags.contains(flag))
+            flagBoxes.append((box, flag))
             return box
         }
         let column = NSStackView(views: boxes)
@@ -213,5 +225,20 @@ extension AttributesController {
         column.alignment = .leading
         column.spacing = 2
         return column
+    }
+
+    // MARK: - Shared
+
+    /// A checkbox that drives the working copy when the item is editable, and is a plain disabled
+    /// indicator when it is not — one place so every editable box is wired the same way.
+    private func editableCheckbox(title: String, isOn: Bool) -> NSButton {
+        let box = NSButton(
+            checkboxWithTitle: title,
+            target: canEdit ? self : nil,
+            action: canEdit ? #selector(editChanged(_:)) : nil
+        )
+        box.state = isOn ? .on : .off
+        box.isEnabled = canEdit
+        return box
     }
 }

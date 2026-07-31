@@ -43,6 +43,20 @@ enum AttributeFormatting {
         dateFormatter.string(from: date)
     }
 
+    /// `rw-r--r--  (644)` — both spellings, because one is what `ls` shows and the other is what a
+    /// user types at `chmod`. Shared by the initial render and the live echo the editable grid drives,
+    /// so the octal never disagrees with the checkboxes.
+    static func modeDescription(_ permissions: POSIXPermissions) -> String {
+        // The literal must stay single (a concatenation extracts nothing — docs/NOTES.md); the values
+        // it interpolates need not be spelled out inside it.
+        let symbolic = permissions.symbolicString
+        let octal = permissions.octalString
+        return String(
+            localized: "\(symbolic)  (\(octal))",
+            comment: "Info panel mode: %1$@ is the rwx string, %2$@ the octal digits."
+        )
+    }
+
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium

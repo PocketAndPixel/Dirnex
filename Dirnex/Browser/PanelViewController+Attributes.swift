@@ -26,7 +26,14 @@ extension PanelViewController {
         }
         do {
             let snapshot = try AttributesSnapshot.read(entry)
-            presentAsSheet(AttributesController(snapshot: snapshot))
+            let controller = AttributesController(snapshot: snapshot)
+            // Two hooks the controller needs but should not own: journaling a commit is the window's
+            // job (⌘Z spans both panes), and re-listing after one lands is this pane's.
+            controller.recordUndo = { [weak self] record in
+                self?.host?.recordUndoableAction(record)
+            }
+            controller.onApplied = { [weak self] in self?.refreshCurrentDirectory() }
+            presentAsSheet(controller)
         } catch {
             presentOperationFailure(
                 message: String(

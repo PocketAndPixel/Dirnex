@@ -1,0 +1,125 @@
+import AppKit
+import DirnexCore
+
+/// The editable half of the Permissions tab (PLAN.md §M14 Slice 4): mode bits and BSD flags, applied
+/// on **Save** as one undoable gesture, discarded on Cancel.
+///
+/// Every byte-touching decision is already in the tested core — ``AttributeDiff`` says what changed,
+/// ``AttributePrivilege`` says whether it needs root, ``AttributeChangePlan`` orders the syscalls
+/// (the immutable unlock/relock included), and ``FileAttributeIO`` runs them. This file is the thin
+/// AppKit shell: it turns the live checkboxes into a ``working`` copy, echoes the mode, and commits.
+extension AttributesController {
+    // MARK: - Live editing
+
+    /// Any checkbox changed: rebuild ``working`` from *all* of them at once, then refresh the Mode
+    /// echo and Save's enablement together, so the three never disagree.
+    @objc func editChanged(_ sender: Any?) {
+        rebuildWorkingFromControls()
+        refreshModeEcho()
+        refreshSaveEnabled()
+    }
+
+    private func rebuildWorkingFromControls() {
+        var permissions = POSIXPermissions(rawValue: 0)
+        for entry in modeBoxes {
+            permissions[entry.cls, entry.access] = entry.box.state == .on
+        }
+        permissions.setUserID = setUserIDBox?.state == .on
+        permissions.setGroupID = setGroupIDBox?.state == .on
+        permissions.sticky = stickyBox?.state == .on
+        working.permissions = permissions
+
+        // Start from what was read so the bits with no checkbox — the `SF_*` flags and `SF_DATALESS`
+        // — are preserved rather than dropped; only the offered `UF_*` bits are toggled.
+        var flags = snapshot.attributes.flags
+        for entry in flagBoxes {
+            if entry.box.state == .on { flags.insert(entry.flag) } else { flags.remove(entry.flag) }
+        }
+        working.flags = flags
+    }
+
+    func refreshModeEcho() {
+        modeValueField?.stringValue = AttributeFormatting.modeDescription(working.permissions)
+    }
+
+    func refreshSaveEnabled() {
+        saveButton?.isEnabled = !AttributeDiff(from: snapshot.attributes, to: working).isEmpty
+    }
+
+    // MARK: - Commit
+
+    /// Apply the diff between what was read and what the boxes now say, as one operation: check it
+    /// does not need root, run the ordered plan, journal it for ⌘Z, re-list the pane, and close. An
+    /// empty diff just closes; a root-only change (a system-immutable file) is refused with an
+    /// explanation rather than the bare `EPERM` it would otherwise hit.
+    @objc func saveAttributes(_ sender: Any?) {
+        let old = snapshot.attributes
+        let diff = AttributeDiff(from: old, to: working)
+        guard !diff.isEmpty else { dismiss(sender); return }
+
+        let reasons = AttributePrivilege.reasons(
+            for: diff,
+            current: old,
+            actor: UserContext.current()
+        )
+        guard reasons.isEmpty else { presentNeedsAdministrator(); return }
+
+        do {
+            let plan = AttributeChangePlan(diff: diff, current: old, actsOnLink: snapshot.isSymlink)
+            try FileAttributeIO.apply(plan, to: snapshot.entry.path)
+            if let record = UndoRecord.attributeChange(
+                at: snapshot.entry.path, actsOnLink: snapshot.isSymlink, from: old, to: working
+            ) {
+                recordUndo?(record)
+            }
+            onApplied?()
+            dismiss(sender)
+        } catch {
+            presentApplyFailure(error)
+        }
+    }
+
+    // MARK: - Alerts
+
+    /// The narrow root-only case an owner can still reach — a system-immutable file — until Slice 5
+    /// adds the escalation. Stated rather than papered over: an `SF_*` `EPERM` is indistinguishable
+    /// from the "you need root" one, so the panel says which it is instead of showing a raw error.
+    private func presentNeedsAdministrator() {
+        let alert = NSAlert()
+        alert.messageText = String(
+            localized: "This change needs an administrator",
+            comment: "Attributes save alert title: the change requires root privileges."
+        )
+        alert.informativeText = String(
+            localized: """
+            “\(snapshot.entry.name)” carries a system flag that only an administrator can change, \
+            and Dirnex can’t ask for those privileges yet.
+            """,
+            comment: "Attributes save alert body when a change is root-only; %@ is the item name."
+        )
+        alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))
+        alert.enableEscapeToCancel()
+        present(alert)
+    }
+
+    private func presentApplyFailure(_ error: Error) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = String(
+            localized: "Couldn’t change “\(snapshot.entry.name)”",
+            comment: "Attributes save failure title; %@ is the item name."
+        )
+        alert.informativeText = VFSErrorText.sentence(for: error)
+        alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))
+        alert.enableEscapeToCancel()
+        present(alert)
+    }
+
+    private func present(_ alert: NSAlert) {
+        if let window = view.window {
+            alert.beginSheetModal(for: window)
+        } else {
+            alert.runModal()
+        }
+    }
+}

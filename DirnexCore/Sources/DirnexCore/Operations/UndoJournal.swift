@@ -39,6 +39,20 @@ public enum UndoStep: Sendable, Equatable, Codable {
     case removeCreatedFolder(VFSPath)
     /// Redo a New Folder: re-create the folder at `path`. The inverse of `removeCreatedFolder`.
     case createFolder(VFSPath)
+    /// Undo/redo an attributes change (mode bits, BSD flags, owner, group, times) on a local item.
+    /// `apply` is the changed fields set to the values *this* direction restores — the prior values
+    /// for undo, the new ones for redo — and `reverse` is its counterpart, so `inverse` is a plain
+    /// swap. The step reads the item's *current* attributes at revert time and rebuilds the ordered
+    /// ``AttributeChangePlan`` from them, because the unlock/relock sequencing depends on what is on
+    /// disk now, not on what it was when the edit landed. Executed straight through ``FileAttributeIO``
+    /// — a local, syscall-level operation — rather than the `VFSBackend`, matching where attribute I/O
+    /// lives; the backend passed to ``UndoJournal/revert(_:using:)`` is simply unused for this step.
+    case restoreAttributes(
+        path: VFSPath,
+        actsOnLink: Bool,
+        apply: AttributeDiff,
+        reverse: AttributeDiff
+    )
 
     /// The step that reverses this one — the heart of Redo (see `UndoRecord.inverted`).
     var inverse: UndoStep {
@@ -48,6 +62,13 @@ public enum UndoStep: Sendable, Equatable, Codable {
         case let .makeCopy(source, copy): return .removeCopy(source: source, copy: copy)
         case let .removeCreatedFolder(path): return .createFolder(path)
         case let .createFolder(path): return .removeCreatedFolder(path)
+        case let .restoreAttributes(path, actsOnLink, apply, reverse):
+            return .restoreAttributes(
+                path: path,
+                actsOnLink: actsOnLink,
+                apply: reverse,
+                reverse: apply
+            )
         }
     }
 }
@@ -291,6 +312,8 @@ public struct UndoJournal: Sendable, Equatable {
                 removeCreatedFolder(at: path, using: backend, failures: &failures)
             case let .createFolder(path):
                 createFolder(at: path, using: backend, failures: &failures)
+            case let .restoreAttributes(path, actsOnLink, apply, _):
+                restoreAttributes(apply, at: path, actsOnLink: actsOnLink, failures: &failures)
             }
         }
         return UndoReport(failures: failures)

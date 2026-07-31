@@ -14,13 +14,23 @@ enum AttributeRow {
 
     /// A `Label:  value` row.
     static func make(label: String, value: String, monospaced: Bool = false) -> NSView {
+        make(label: label, field: valueField(value, monospaced: monospaced))
+    }
+
+    /// A `Label:  value` row over a caller-supplied field — used when the caller needs to keep a
+    /// reference to the value field to update it live (the editable Mode echo).
+    static func make(label: String, field: NSTextField) -> NSView {
         let caption = NSTextField(labelWithString: label)
         caption.alignment = .right
         caption.textColor = .secondaryLabelColor
         caption.widthAnchor.constraint(equalToConstant: labelWidth).isActive = true
         caption.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         caption.lineBreakMode = .byTruncatingTail
+        return row([caption, field])
+    }
 
+    /// The value half of a row, configured the way ``make(label:value:monospaced:)`` builds it.
+    static func valueField(_ value: String, monospaced: Bool = false) -> NSTextField {
         let field = NSTextField(labelWithString: value)
         field.lineBreakMode = .byTruncatingMiddle
         field.isSelectable = true
@@ -31,8 +41,7 @@ enum AttributeRow {
         // and the sheet has a fixed width, so something has to, and truncating a path reads far
         // better than truncating the word that says what the path is.
         field.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-
-        return row([caption, field])
+        return field
     }
 
     /// A row whose value is an arbitrary view (a checkbox grid, a flags column).

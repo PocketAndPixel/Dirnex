@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M13 shipped (14 languages) · M14 (checksums + attributes) in progress — Slices 1–3 landed, Slice 4 read-only panel landed · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
+Status: M0–M13 shipped (14 languages) · M14 (checksums + attributes) in progress — Slices 1–3 landed, Slice 4 read-only panel + mode/flags editing (with undo) landed · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
 
 ---
 
@@ -545,8 +545,37 @@ catalog keys across all 14 languages.
   permissions panel, with nothing logged. Fixed by letting each form tab scroll, which is also what
   keeps a longer translation from reintroducing it.
 
-Still ahead in this slice: editing (POSIX, flags, owner, dates) with undo, the ACL editor and its
-subject picker, multi-selection, and the recursive apply.
+**Mode-and-flags editing landed (2026-07-31), with undo, and round-tripped live against the OS.**
+The Permissions tab's twelve mode checkboxes (the nine `rwx` bits plus set-uid/gid/sticky) and the
+`UF_*` flag checkboxes are now live for the item's owner, committed on **Save** as one gesture —
+Oleg's chosen model, and the one the diff-based core already assumed. `AttributeDiff` → the ordered
+`AttributeChangePlan` → `FileAttributeIO` were already tested from Slice 3; this pass added the two
+missing halves — the app wiring and *undo* — and nothing else touches bytes.
+
+- **Undo is a new core `UndoStep.restoreAttributes` + `UndoActionLabel.changeAttributes`, tested and
+  translated in all 14 languages.** The step carries the changed fields as a pair of inverse
+  `AttributeDiff`s (old-for-undo, new-for-redo) so `inverse` is a plain swap, and it re-reads the
+  item's *current* attributes at revert time to rebuild the plan — because the unlock/relock
+  sequencing depends on what is on disk now, not on what it was. It executes straight through
+  `FileAttributeIO`, not the `VFSBackend`, matching where attribute I/O lives; `AttributeDiff`,
+  `POSIXPermissions` and `BSDFileFlags` gained `Codable` so it persists in the journal like any file
+  op. Six new tests (1409 core), and `UndoJournal` split its attribute corner into
+  `UndoJournal+Attributes.swift` to stay under the 500-line ceiling.
+- **The OS was the independent judge on every claim, live.** Editing `f.txt` to `rwxr--r--` and
+  Hidden in one Save gave `stat -f` exactly `mode=744 flags=hidden` (a `chmod` and a `chflags` in one
+  plan); the pane re-listed and the now-hidden file dropped from view; **Undo Change Attributes**
+  restored `644 flags=-`. The **locked-file exit criterion is met in the app**: changing the mode of a
+  `uchg` file left it `mode=744 flags=uchg` in one gesture, no root prompt — the unlock → chmod →
+  relock the plan encodes, end to end.
+- **Privilege gating is display + a Save-time guard, not a promise it can't keep.** A file the user
+  does not own shows the same grid disabled with a note and a Done-only footer (verified on a
+  root-owned `/etc` symlink); the narrow root-only case an owner can still reach — a system-immutable
+  file — is refused at Save with a stated reason rather than the bare `EPERM` it is indistinguishable
+  from, which is exactly the seam Slice 5's escalation slots into.
+
+Still ahead in this slice: owner/group and the three dates (the same commit pipeline, plus a subject
+picker and date fields), the ACL editor and its subject picker, multi-selection, and the recursive
+apply.
 
 #### Slice 5 — the narrow privileged case
 

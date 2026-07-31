@@ -13,7 +13,7 @@ import Foundation
 /// `SF_DATALESS` lives here too, but it is never offered as a checkbox: it is set by the cloud file
 /// provider, not the user (`chflags` silently drops it — docs/NOTES.md), and it is surfaced through
 /// ``FileEntry/isDataless`` for the placeholder guards, not through this editor.
-public struct BSDFileFlags: OptionSet, Sendable, Hashable {
+public struct BSDFileFlags: OptionSet, Sendable, Hashable, Codable {
     public let rawValue: UInt32
 
     public init(rawValue: UInt32) { self.rawValue = rawValue }

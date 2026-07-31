@@ -22,8 +22,52 @@ final class AttributesController: NSViewController {
     private var accessControlTable: AccessControlTableController?
     private var extendedAttributeTable: ExtendedAttributeTableController?
 
+    // MARK: - Editing (mode bits and BSD flags — PLAN.md §M14 Slice 4)
+
+    /// The mutable copy the Permissions tab's checkboxes drive. Starts equal to what was read;
+    /// `AttributeDiff(from: snapshot.attributes, to: working)` is what Save applies, so a field the
+    /// user never touched is never written — the diff-based model the whole slice rests on.
+    var working: FileAttributes
+
+    /// Whether the offered controls are live. Editing an item's mode and `UF_*` flags is unprivileged
+    /// only for its owner (or root); a file the user does not own would need Slice 5's escalation, so
+    /// until that lands the controls are shown disabled with a note rather than promising a write that
+    /// would only fail. The narrower root-only cases an owner *can* reach (a system-immutable file)
+    /// are caught at Save by ``AttributePrivilege``.
+    let canEdit: Bool
+
+    /// Journal a committed change so ⌘Z reverses it — set by the pane to its window's undo surface.
+    var recordUndo: ((UndoRecord) -> Void)?
+    /// Re-list the pane after a change lands, so a new `UF_HIDDEN` or mode shows at once — set by the
+    /// pane. Kept separate from ``recordUndo`` because one is the window's job and the other the pane's.
+    var onApplied: (() -> Void)?
+
+    /// One mode-grid checkbox and the bit it stands for. A struct rather than a 3-tuple, which
+    /// SwiftLint's `large_tuple` forbids.
+    struct ModeCheckbox {
+        let box: NSButton
+        let cls: POSIXPermissions.Class
+        let access: POSIXPermissions.Access
+    }
+
+    /// The live checkboxes, kept so one `editChanged` handler can rebuild ``working`` from all of them
+    /// at once (simpler and less error-prone than each button carrying its own bit) and so Save's
+    /// enablement and the Mode echo can refresh together.
+    var modeBoxes: [ModeCheckbox] = []
+    var setUserIDBox: NSButton?
+    var setGroupIDBox: NSButton?
+    var stickyBox: NSButton?
+    var flagBoxes: [(box: NSButton, flag: BSDFileFlags)] = []
+    /// The `Mode:` value field, updated live as the boxes change so the octal echo never disagrees
+    /// with the grid.
+    var modeValueField: NSTextField?
+    weak var saveButton: NSButton?
+
     init(snapshot: AttributesSnapshot) {
         self.snapshot = snapshot
+        working = snapshot.attributes
+        let actor = UserContext.current()
+        canEdit = actor.isSuperUser || snapshot.attributes.ownerID == actor.userID
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -172,19 +216,47 @@ private extension AttributesController {
         tabView.addTabViewItem(item)
     }
 
+    /// A read-only panel closes with a single **Done**; an editable one commits with **Save** and
+    /// discards with **Cancel**. Save is the default button (⏎) but starts disabled — there is nothing
+    /// to save until a box is toggled — and Cancel doubles as the Escape target the whole sheet
+    /// already honours (``EscapeDismissingView``), so discarding an edit is the same gesture as
+    /// closing a read-only view.
     func makeFooter() -> NSView {
         let spacer = NSView()
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
 
-        let doneButton = NSButton(
-            title: String(localized: "Done", comment: "Button that closes a results sheet."),
-            target: self,
-            action: #selector(close(_:))
-        )
-        doneButton.bezelStyle = .rounded
-        doneButton.keyEquivalent = "\r"
+        var buttons: [NSView] = [spacer]
+        if canEdit {
+            let cancel = NSButton(
+                title: String(localized: "Cancel", comment: "Button that discards an edit."),
+                target: self,
+                action: #selector(close(_:))
+            )
+            cancel.bezelStyle = .rounded
+            cancel.keyEquivalent = "\u{1b}"
 
-        let footer = NSStackView(views: [spacer, doneButton])
+            let save = NSButton(
+                title: String(localized: "Save", comment: "Button that applies attribute edits."),
+                target: self,
+                action: #selector(saveAttributes(_:))
+            )
+            save.bezelStyle = .rounded
+            save.keyEquivalent = "\r"
+            save.isEnabled = false
+            saveButton = save
+            buttons.append(contentsOf: [cancel, save])
+        } else {
+            let done = NSButton(
+                title: String(localized: "Done", comment: "Button that closes a results sheet."),
+                target: self,
+                action: #selector(close(_:))
+            )
+            done.bezelStyle = .rounded
+            done.keyEquivalent = "\r"
+            buttons.append(done)
+        }
+
+        let footer = NSStackView(views: buttons)
         footer.orientation = .horizontal
         footer.spacing = 10
         footer.widthAnchor.constraint(equalToConstant: Self.contentWidth).isActive = true

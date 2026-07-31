@@ -7,7 +7,7 @@ import Foundation
 /// `FileEntry.permissions` keeps only the low nine bits (`mode & 0o777`) for the row's rendering;
 /// this type carries all twelve because the editor has to be able to show and change set-uid/gid and
 /// the sticky bit, which the row does not display.
-public struct POSIXPermissions: Sendable, Hashable {
+public struct POSIXPermissions: Sendable, Hashable, Codable {
     /// The classes a permission bit belongs to.
     public enum Class: Sendable, CaseIterable { case owner, group, other }
     /// The three ordinary permissions.

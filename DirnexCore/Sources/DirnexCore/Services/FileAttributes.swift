@@ -53,7 +53,11 @@ public struct FileAttributes: Sendable, Equatable {
 /// ``AttributePrivilege`` (whether any of it needs root). Building it by comparison rather than by
 /// tracking edits is what makes a mixed multi-selection correct for free: a field the user never set
 /// stays equal to what was read and so never appears in the diff.
-public struct AttributeDiff: Sendable, Equatable {
+///
+/// `Codable` because it rides inside a persisted ``UndoStep``: an applied attribute change is a
+/// reversible action, and the undo journal survives relaunch, so the changed-field values have to
+/// serialize alongside the file-operation steps.
+public struct AttributeDiff: Sendable, Equatable, Codable {
     public var permissions: POSIXPermissions?
     public var flags: BSDFileFlags?
     public var ownerID: UInt32?
