@@ -22,6 +22,15 @@ final class PanelTab {
     /// Set once this tab's directory has been listed. A tab restored from disk starts
     /// `false` so switching to it triggers a fresh load rather than showing an empty list.
     var hasLoaded = false
+    /// The cursor and marks to re-apply once a *restored* tab's directory first lists, matched by
+    /// leaf name against the fresh listing so a file deleted since quit is simply dropped (PLAN.md
+    /// §M1 "restored on relaunch"; the identity-not-index rule the cursor already follows across a
+    /// live refresh). Seeded from the on-disk `PersistedTab` in `restoredTabs`, consumed and cleared
+    /// on the first load by `PanelViewController.applyPendingRestore`; all `nil`/`false` for a tab
+    /// that was not restored from disk, which makes the re-apply a no-op there.
+    var pendingCursorName: String?
+    var pendingCursorOnParent = false
+    var pendingMarkNames: [String]?
     /// This tab's column widths/order, in display order (UI-only, like `cursorOnParentRow`;
     /// see `PanelViewController+Columns`). `nil` until the tab has been given an explicit
     /// layout — restored from disk or inherited from the tab it was spawned from — in which

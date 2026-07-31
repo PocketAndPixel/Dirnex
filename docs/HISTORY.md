@@ -65,6 +65,18 @@ the product's feel; do not rush it.
 - [x] Sort/column state per tab, persisted. Per-tab **sort** (key + direction) and per-tab
       **column widths/order** both live in each tab and persist across launches — switching
       tabs swaps the shared table's column geometry in/out.
+- [x] **Cursor and marks restored too, per tab (2026-07-31)** — a relaunched tab comes back on the
+      same file with the same selection, not on row 0 with nothing marked. Persisted by **leaf
+      name**, the identity-not-index anchoring the live cursor already uses across a refresh, so a
+      file deleted while the app was shut simply doesn't match and is dropped (`setSelection`
+      already intersects with the listing). Two things this needed that weren't obvious:
+      `persistState()` fires on navigation and tab/column changes but *not* on a cursor move or a
+      mark toggle — a `UserDefaults` write per arrow key would be wasteful — so the final position
+      is captured on the way down, from `applicationWillTerminate`; and a restored tab's first
+      listing looks to `Panel` like a same-path *refresh*, which re-anchors the cursor on its own
+      and would ignore the saved one, so the re-apply hooks the first-load completion
+      (`applyPendingRestore`) and is one-shot. Applies to every tab in both panes, including a
+      background tab that only lists when first activated.
 
 Progress (2026-07-05): the headless core for this milestone is complete and tested
 in `DirnexCore` (38 tests, SwiftLint/SwiftFormat clean) — see `Sources/DirnexCore/VFS/`:

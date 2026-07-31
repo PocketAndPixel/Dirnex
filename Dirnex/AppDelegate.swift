@@ -81,6 +81,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// (PLAN.md §M5 "unmount only what we mounted on disconnect/quit"), and hang up the terminal
     /// drawer's shell (PLAN.md §M6) rather than leave it reparented to launchd.
     func applicationWillTerminate(_ notification: Notification) {
+        // Capture each pane's final cursor and marks — those don't persist on every keystroke, so the
+        // way down is where the last selection is saved for the next launch to restore.
+        browserWindowController?.persistTabState()
         SMBMounter.shared.unmountOwnedMounts()
         browserWindowController?.terminateTerminalShell()
     }

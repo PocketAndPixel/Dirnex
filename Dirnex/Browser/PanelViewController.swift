@@ -412,6 +412,9 @@ final class PanelViewController: NSViewController {
                 }
                 // Land on a real entry; only an empty directory parks the cursor on `..`.
                 cursorOnParentRow = panel.isEmpty && panel.parentPath != nil
+                // A restored tab's first listing: re-anchor its saved cursor and re-mark its saved
+                // selection, overriding the defaults just set. A no-op for every other navigation.
+                applyPendingRestore(toTab: tabIndex)
                 tabs[tabIndex].hasLoaded = true
                 if wasResults { tabs[tabIndex].clearResultsIdentity() }
                 if wasVirtual {

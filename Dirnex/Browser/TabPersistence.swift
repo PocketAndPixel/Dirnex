@@ -20,6 +20,18 @@ struct PersistedTab: Codable {
     /// Column widths/order, in display order. Optional so tab state written before this
     /// field existed still decodes (a missing key → `nil` → default columns).
     var columns: [ColumnLayout]?
+    /// The leaf name of the file the cursor was on, so a relaunched tab re-anchors on the *same
+    /// entry by identity* rather than a row index — matching how `Panel` keeps the cursor across a
+    /// live refresh (row indices are meaningless once sort/contents drift). `nil` when the cursor
+    /// sat on `..` or the directory was empty. Optional, like every field below, so state written
+    /// before these existed still decodes (a missing key → `nil`).
+    var cursorName: String?
+    /// The cursor was parked on the synthetic `..` row (UI-only state; see `PanelTab`).
+    var cursorOnParent: Bool?
+    /// The leaf names of the marked entries, re-marked on restore by matching against the fresh
+    /// listing — names that have since vanished are dropped, mirroring how a live refresh prunes
+    /// marks. `nil` (not `[]`) when nothing was marked, so the common case stays out of the JSON.
+    var markedNames: [String]?
 }
 
 struct PersistedPane: Codable {
@@ -53,12 +65,22 @@ enum TabPersistence {
 }
 
 extension PersistedTab {
-    init(path: VFSPath, sort: FileSort, columns: [ColumnLayout]?) {
+    init(
+        path: VFSPath,
+        sort: FileSort,
+        columns: [ColumnLayout]?,
+        cursorName: String? = nil,
+        cursorOnParent: Bool = false,
+        markedNames: [String]? = nil
+    ) {
         backend = path.backend.rawValue
         self.path = path.path
         sortKey = sort.key.rawValue
         sortAscending = sort.ascending
         self.columns = columns
+        self.cursorName = cursorName
+        self.cursorOnParent = cursorOnParent
+        self.markedNames = markedNames
     }
 
     var vfsPath: VFSPath {
