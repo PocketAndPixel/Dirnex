@@ -48,6 +48,46 @@ public extension UndoRecord {
         guard !steps.isEmpty else { return nil }
         return UndoRecord(label: .changeAttributes, date: date, steps: steps)
     }
+
+    /// One item's before/after for a multi-selection commit. A struct rather than a tuple because a
+    /// four-member tuple trips SwiftLint's `large_tuple`, and because naming the fields is what keeps
+    /// `old` and `new` from being handed over in the wrong order.
+    struct AttributeBatchEntry: Sendable {
+        public let path: VFSPath
+        public let actsOnLink: Bool
+        public let old: FileAttributes
+        public let new: FileAttributes
+
+        public init(path: VFSPath, actsOnLink: Bool, old: FileAttributes, new: FileAttributes) {
+            self.path = path
+            self.actsOnLink = actsOnLink
+            self.old = old
+            self.new = new
+        }
+    }
+
+    /// Undo a **multi-selection** attributes commit — one ``UndoStep/restoreAttributes`` per item that
+    /// actually changed, gathered into a single record so one Cmd+Z reverses the whole batch (the
+    /// Multi-Rename precedent, PLAN.md §M4). Items whose diff is empty contribute no step, so a bulk
+    /// edit that happened to match a few items already never journals a no-op for them; `nil` when no
+    /// item changed at all. There is no ACL half here — bulk editing does not touch ACLs.
+    static func attributeBatchChange(
+        _ entries: [AttributeBatchEntry],
+        date: Date = Date()
+    ) -> UndoRecord? {
+        let steps: [UndoStep] = entries.compactMap { entry in
+            let forward = AttributeDiff(from: entry.old, to: entry.new)
+            guard !forward.isEmpty else { return nil }
+            return .restoreAttributes(
+                path: entry.path,
+                actsOnLink: entry.actsOnLink,
+                apply: AttributeDiff(from: entry.new, to: entry.old),
+                reverse: forward
+            )
+        }
+        guard !steps.isEmpty else { return nil }
+        return UndoRecord(label: .changeAttributes, date: date, steps: steps)
+    }
 }
 
 extension UndoJournal {

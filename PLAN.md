@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M13 shipped (14 languages) · M14 (checksums + attributes) in progress — Slices 1–3 landed, Slice 4 read-only panel, mode/flags editing, owner/group/dates, and the ACL editor (all with undo) landed · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
+Status: M0–M13 shipped (14 languages) · M14 (checksums + attributes) in progress — Slices 1–3 landed, Slice 4 read-only panel, mode/flags editing, owner/group/dates, the ACL editor, and multi-selection (all with undo) landed; recursive apply and Slice 5 (privilege escalation) remain · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
 
 ---
 
@@ -656,7 +656,39 @@ languages. 1449 core tests and 161 app tests green, both linters clean.
   inheritance row overflowing at **589 pt in Ukrainian** against English's comfortable 486. Details
   in NOTES.md — the general form is that a grid is not a form row.
 
-Still ahead in this slice: multi-selection and the recursive apply.
+**Multi-selection landed (2026-07-31), and it round-tripped live against the OS.** Marking several
+items and pressing ⌘I now opens a bulk sheet — General (a common "Where", the three dates gated by a
+per-date **Change** box) and Permissions (tri-state mode/special bits, BSD flags, and a group popup).
+Decided with Oleg: **mode + flags + group + dates**, owner read-only (`chown` is `EPERM`), and ACLs
+and xattrs left out — an ordered, kind-dependent list has no meaningful "apply a diff to N items", so
+the panel says so and points at editing those one at a time.
+
+- **The one new core piece is `AttributePatch`, and it exists because a bulk edit is a *patch*, not
+  a value.** Two selected files that disagree on a bit must keep disagreeing on it unless the user
+  touches that bit, which a whole-value `AttributeDiff` cannot express — it would carry one file's
+  bit onto the other. The patch is a mask + values over the mode word and set/clear sets for the
+  flags; `diff(against:)` turns it into that item's own `AttributeDiff`, after which the tested
+  `AttributeChangePlan` / `FileAttributeIO` / privilege / undo path all run unchanged, once per item.
+  15 new tests, including the "forcing one bit leaves an untouched, differing bit at each item's own
+  value" property proven against real files, and a batch `UndoRecord` (one step per item, the
+  Multi-Rename precedent) reversed live in one Cmd+Z.
+- **The controls are tri-state and that is the whole UX.** A checkbox the items agree on shows on/off;
+  one they disagree on shows the mixed dash and *means "leave each item alone"*. Only a control moved
+  off its starting state is written — `allowsMixedState` is on only for a box that starts mixed, so an
+  agreed box toggles cleanly while a disagreeing one cycles through mixed. The app-side mapping (the
+  place this could go wrong) is pinned by `MultiAttributesControllerTests`.
+- **The OS was the judge, live.** Two files at `0600` and `0644`, marked; forcing owner-execute (a
+  unanimous bit) and group-read (a mixed one) on both while leaving everyone-read *mixed* gave `0740`
+  and `0744` — each file kept its own other-read bit, the mixed-stays-mixed property end to end — and
+  one ⌘Z restored `0600` / `0644`. Both tabs rendered without the `NSStackView`-compression trap the
+  single-item Permissions tab hit (it scrolls, and every row was present).
+- **The group popup offers only the caller's own groups plus "Leave unchanged", never a per-item
+  current group** the way the single-item picker does: there is no single current group across a
+  selection, and offering one the caller is not in would only `EPERM` on the items not already in it.
+  Privilege is pre-flighted across the whole set, so a system-immutable item among the selection
+  refuses the batch by name before anything is touched.
+
+Still ahead in this slice: the recursive apply.
 
 #### Slice 5 — the narrow privileged case
 

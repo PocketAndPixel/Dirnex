@@ -7546,6 +7546,95 @@
         }
       }
     },
+    "A dash means the selected items disagree on that setting. Leave it to keep each item’s own value; tick or clear it to set it on all of them.": {
+      "comment": "Info panel note explaining the tri-state (mixed) checkboxes.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein Strich bedeutet, dass sich die ausgewählten Objekte in dieser Einstellung unterscheiden. Lassen Sie ihn stehen, um den Wert jedes Objekts zu behalten; aktivieren oder deaktivieren Sie ihn, um ihn für alle zu setzen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A dash means the selected items disagree on that setting. Leave it to keep each item’s own value; tick or clear it to set it on all of them."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un guion significa que los ítems seleccionados no coinciden en ese ajuste. Déjalo para conservar el valor de cada ítem; márcalo o desmárcalo para aplicarlo a todos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un tiret indique que les éléments sélectionnés diffèrent sur ce réglage. Laissez-le pour conserver la valeur de chaque élément ; cochez-le ou décochez-le pour l’appliquer à tous."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un trattino indica che gli elementi selezionati hanno impostazioni diverse. Lascialo per mantenere il valore di ciascun elemento; selezionalo o deselezionalo per applicarlo a tutti."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ダッシュは、選択した項目でこの設定が異なることを示します。そのままにすると各項目の値が保持され、チェックを入れる/外すとすべての項目に設定されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대시는 선택한 항목의 설정이 서로 다름을 나타냅니다. 그대로 두면 각 항목의 값이 유지되고, 선택하거나 해제하면 모든 항목에 설정됩니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Een streepje betekent dat de geselecteerde objecten voor die instelling verschillen. Laat het staan om de waarde van elk object te behouden; vink het aan of uit om het voor alle in te stellen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kreska oznacza, że zaznaczone elementy różnią się w tym ustawieniu. Pozostaw ją, aby zachować wartość każdego elementu; zaznacz lub odznacz, aby ustawić ją dla wszystkich."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прочерк означает, что у выбранных объектов этот параметр различается. Оставьте его, чтобы сохранить значение каждого объекта; установите или снимите флажок, чтобы задать его для всех."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Риска означає, що у вибраних об’єктів цей параметр відрізняється. Залиште її, щоб зберегти значення кожного об’єкта; позначте або зніміть позначку, щоб задати його для всіх."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Um traço significa que os itens selecionados divergem nessa configuração. Deixe-o para manter o valor de cada item; marque ou desmarque para aplicá-lo a todos."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "短横线表示所选项目在该设置上不一致。保持不变可保留各项目自己的值；勾选或取消勾选则会应用到所有项目。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "短橫線表示所選項目在該設定上不一致。保持不變可保留各項目自己的值；勾選或取消勾選則會套用到所有項目。"
+          }
+        }
+      }
+    },
     "A row of F-key buttons along the window bottom — Rename, View, Copy, Move, New Folder, Delete — the Total Commander function bar. Also in the View menu; the keys work whether or not the bar is shown.": {
       "comment": "Panels footer: function key bar.",
       "localizations": {
@@ -13950,6 +14039,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "大小寫："
+          }
+        }
+      }
+    },
+    "Change": {
+      "comment": "Checkbox that opts a date into a multi-selection edit.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ändern"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifier"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifica"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "変更"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "변경"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wijzig"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zmień"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Изменить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Змінити"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alterar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更改"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更改"
           }
         }
       }
@@ -34429,6 +34607,95 @@
         }
       }
     },
+    "Leave unchanged": {
+      "comment": "First item of a multi-selection group popup: do not change any item's group.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unverändert lassen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leave unchanged"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dejar sin cambios"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laisser inchangé"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lascia invariato"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "変更しない"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "변경 안 함"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ongewijzigd laten"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pozostaw bez zmian"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оставить без изменений"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Залишити без змін"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deixar inalterado"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持不变"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持不變"
+          }
+        }
+      }
+    },
     "Left → Right": {
       "comment": "Sync direction: mirror the left folder onto the right.",
       "localizations": {
@@ -54511,6 +54778,95 @@
         }
       }
     },
+    "Some items couldn’t be changed": {
+      "comment": "Multi-selection attributes failure title.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einige Objekte konnten nicht geändert werden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Some items couldn’t be changed"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron cambiar algunos ítems"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Certains éléments n’ont pas pu être modifiés"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile modificare alcuni elementi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一部の項目を変更できませんでした"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일부 항목을 변경할 수 없습니다"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sommige objecten konden niet worden gewijzigd"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się zmienić niektórych elementów"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось изменить некоторые объекты"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося змінити деякі об’єкти"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível alterar alguns itens"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "部分项目无法更改"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "部分項目無法更改"
+          }
+        }
+      }
+    },
     "Some of iCloud Drive needs Full Disk Access": {
       "comment": "FDA (iCloud) sheet title.",
       "localizations": {
@@ -54596,6 +54952,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "「iCloud 雲碟」的部分內容需要「完全取用磁碟」權限"
+          }
+        }
+      }
+    },
+    "Some of these items also have access-control lists, which aren’t shown here. Open an item on its own to see and edit its list.": {
+      "comment": "Info panel note when a multi-selection contains items that carry ACLs.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einige dieser Objekte haben außerdem Zugriffssteuerungslisten, die hier nicht angezeigt werden. Öffnen Sie ein Objekt einzeln, um seine Liste anzusehen und zu bearbeiten."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Some of these items also have access-control lists, which aren’t shown here. Open an item on its own to see and edit its list."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Algunos de estos ítems también tienen listas de control de acceso, que no se muestran aquí. Abre un ítem por separado para ver y editar su lista."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Certains de ces éléments ont aussi des listes de contrôle d’accès, non affichées ici. Ouvrez un élément séparément pour voir et modifier sa liste."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alcuni di questi elementi hanno anche elenchi di controllo accessi, non mostrati qui. Apri un elemento singolarmente per vedere e modificare il suo elenco."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "これらの項目の一部にはアクセス制御リストもありますが、ここには表示されません。個別に項目を開くと、そのリストを表示・編集できます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 항목 중 일부에는 접근 제어 목록도 있지만 여기에는 표시되지 않습니다. 항목을 개별적으로 열어 목록을 보고 편집하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sommige van deze objecten hebben ook toegangsbeheerlijsten, die hier niet worden getoond. Open een object afzonderlijk om de lijst te bekijken en te bewerken."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niektóre z tych elementów mają też listy kontroli dostępu, które nie są tu pokazane. Otwórz element osobno, aby zobaczyć i edytować jego listę."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У некоторых из этих объектов есть ещё и списки контроля доступа, которые здесь не показаны. Откройте объект отдельно, чтобы просмотреть и изменить его список."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У деяких із цих об’єктів є ще й списки контролю доступу, які тут не показані. Відкрийте об’єкт окремо, щоб переглянути та змінити його список."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alguns destes itens também têm listas de controle de acesso, que não são mostradas aqui. Abra um item separadamente para ver e editar sua lista."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "其中一些项目还有访问控制列表，此处未显示。单独打开某个项目即可查看和编辑其列表。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "其中一些項目還有存取控制列表，此處未顯示。單獨開啟某個項目即可查看和編輯其列表。"
           }
         }
       }
@@ -61823,6 +62268,95 @@
         }
       }
     },
+    "Tick a date to set it on every selected item; leave it unticked to keep each item’s own.": {
+      "comment": "Info panel note explaining the multi-selection date checkboxes.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktivieren Sie ein Datum, um es für jedes ausgewählte Objekt zu setzen; deaktiviert bleibt das eigene Datum jedes Objekts erhalten."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tick a date to set it on every selected item; leave it unticked to keep each item’s own."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marca una fecha para aplicarla a todos los ítems seleccionados; déjala sin marcar para conservar la de cada ítem."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cochez une date pour l’appliquer à tous les éléments sélectionnés ; laissez-la décochée pour conserver celle de chaque élément."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seleziona una data per applicarla a ogni elemento selezionato; lasciala deselezionata per mantenere quella di ciascun elemento."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日付にチェックを入れると、選択したすべての項目に設定されます。チェックを外したままにすると、各項目の日付が保持されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "날짜를 선택하면 선택한 모든 항목에 설정되고, 선택하지 않으면 각 항목의 날짜가 유지됩니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vink een datum aan om die op elk geselecteerd object in te stellen; laat het uitgevinkt om de eigen datum van elk object te behouden."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zaznacz datę, aby ustawić ją dla każdego zaznaczonego elementu; pozostaw niezaznaczoną, aby zachować datę każdego elementu."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отметьте дату, чтобы установить её для всех выбранных объектов; без отметки у каждого объекта останется своя."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Позначте дату, щоб установити її для всіх вибраних об’єктів; без позначки в кожного об’єкта залишиться своя."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marque uma data para defini-la em todos os itens selecionados; deixe desmarcada para manter a de cada item."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "勾选某个日期即可将其设置到每个选定项目；不勾选则保留各项目自己的日期。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "勾選某個日期即可將其設定到每個選取項目；不勾選則保留各項目自己的日期。"
+          }
+        }
+      }
+    },
     "Toggle Sidebar": {
       "comment": "Accessibility label for the sidebar toggle button.",
       "localizations": {
@@ -65710,6 +66244,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "你可以檢視這些內容，但只有該項目的擁有者或管理者才能更改。"
+          }
+        }
+      }
+    },
+    "You can view these, but they can only be changed when you own every selected item — one or more of these belongs to someone else.": {
+      "comment": "Info panel note when a multi-selection includes items the user does not own.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sie können diese ansehen, aber ändern lassen sie sich nur, wenn Ihnen jedes ausgewählte Objekt gehört – eines oder mehrere gehören jemand anderem."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can view these, but they can only be changed when you own every selected item — one or more of these belongs to someone else."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puedes verlos, pero solo puedes cambiarlos si eres el propietario de todos los ítems seleccionados: uno o varios pertenecen a otra persona."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous pouvez les consulter, mais vous ne pouvez les modifier que si vous êtes propriétaire de tous les éléments sélectionnés — un ou plusieurs appartiennent à quelqu’un d’autre."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puoi visualizzarli, ma puoi modificarli solo se sei il proprietario di tutti gli elementi selezionati: uno o più appartengono a qualcun altro."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "これらは表示できますが、変更できるのは選択したすべての項目を所有している場合のみです。1つ以上が別のユーザーの所有です。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 항목은 볼 수 있지만, 선택한 모든 항목을 소유한 경우에만 변경할 수 있습니다. 하나 이상이 다른 사용자의 소유입니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je kunt deze bekijken, maar je kunt ze alleen wijzigen als je elk geselecteerd object bezit — een of meer horen bij iemand anders."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Możesz je wyświetlić, ale zmienić je możesz tylko wtedy, gdy jesteś właścicielem wszystkich zaznaczonych elementów — co najmniej jeden należy do kogoś innego."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Их можно просматривать, но изменить их можно, только если вы владелец всех выбранных объектов — один или несколько принадлежат другому пользователю."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Їх можна переглядати, але змінити їх можна, лише якщо ви власник усіх вибраних об’єктів — один або кілька належать іншому користувачу."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você pode visualizá-los, mas só pode alterá-los se for o proprietário de todos os itens selecionados — um ou mais pertencem a outra pessoa."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你可以查看这些内容，但只有当你拥有所有选定项目时才能更改，其中一个或多个属于他人。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你可以檢視這些內容，但只有當你擁有所有選取項目時才能更改，其中一個或多個屬於他人。"
           }
         }
       }
@@ -91683,6 +92306,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "這個位置沒有垃圾桶。"
+          }
+        }
+      }
+    },
+    "“%1$@”: %2$@": {
+      "comment": "Multi-selection failure detail; %1$@ is an item name, %2$@ the reason.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%1$@“: %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”: %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”: %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« %1$@ » : %2$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”: %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”: %2$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”: %2$@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‘%1$@’: %2$@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%1$@”: %2$@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%1$@»: %2$@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%1$@»: %2$@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”: %2$@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”：%2$@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%1$@」：%2$@"
           }
         }
       }
