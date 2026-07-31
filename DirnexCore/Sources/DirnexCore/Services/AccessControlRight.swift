@@ -19,7 +19,7 @@ import Foundation
 /// The raw value is the exact canonical token, so a parsed right round-trips to the identical
 /// spelling. A token this build does not know is **not dropped** — ``ACLEntry`` keeps it verbatim so
 /// writing an ACL back never silently strips a right macOS added later.
-public enum ACLRight: String, Sendable, Hashable, CaseIterable {
+public enum ACLRight: String, Sendable, Hashable, CaseIterable, Codable {
     // Common — apply to any item (8).
     case delete
     case readAttributes = "readattr"

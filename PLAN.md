@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M13 shipped (14 languages) · M14 (checksums + attributes) in progress — Slices 1–3 landed, Slice 4 read-only panel, mode/flags editing, and owner/group/dates (all with undo) landed · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
+Status: M0–M13 shipped (14 languages) · M14 (checksums + attributes) in progress — Slices 1–3 landed, Slice 4 read-only panel, mode/flags editing, owner/group/dates, and the ACL editor (all with undo) landed · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
 
 ---
 
@@ -611,8 +611,52 @@ whatever the item is in now. All three dates are editable, through the plan that
   system-flag case — four whole sentences, not one frame with a clause spliced in, because a clause's
   grammar depends on the sentence around it. That is the seam Slice 5 escalates from.
 
-Still ahead in this slice: the ACL editor and its subject picker, multi-selection, and the recursive
-apply.
+**The ACL editor and its subject picker landed (2026-07-31), and the probe found two live bugs in
+shipped core before any AppKit was written.** The Sharing tab is now a master–detail editor: the
+ordered list with add / remove / move-up / move-down, and the selected entry's subject, allow-vs-deny
+and rights matrix below it. Four core changes (parser tolerance, `AccessControlList.moving(from:to:)`
++ `Codable`, the ACL as an `AttributeChangePlan` **step**, and the `UndoStep
+.restoreAccessControlList` half of the same record), three new app files, 12 catalog keys in all 14
+languages. 1449 core tests and 161 app tests green, both linters clean.
+
+- **`acl_to_text` writes two shapes the shipped strict six-field parse rejected, and both made the
+  panel claim a file had no ACL when it had one.** A rights-less entry has **five** fields —
+  `acl_to_text` omits the trailing field rather than writing it empty — and a subject whose GUID
+  answers to no account comes back with an empty name *and* empty id (`user:GUID:::allow:read`,
+  which `ls -le` shows as the bare GUID). `AccessControlList.parse` threw on both, and
+  `AttributesSnapshot` degrades a failed ACL read to an empty list, so the tab said "No access
+  control list" — wrong in the quiet direction, on the one tab whose job is that answer. Both are
+  accepted back by `acl_from_text`, so `ACLSubject.numericID` became optional and both now round-trip
+  losslessly, which is what keeps an edit to a *neighbouring* entry from rewriting them.
+- **`acl_set_file` is `EPERM` on a `UF_IMMUTABLE` file exactly as `chmod` is**, so the ACL is a step
+  *inside* the existing unlock → apply → relock window rather than a second write beside it. The two
+  halves are otherwise independent — `chmod`/`chgrp`/`utimes` each leave an ACL intact and in order,
+  and `acl_set` leaves mode and times untouched — so this needed sequencing and, unlike the ownership
+  and mtime side effects, no repair step. Proven live: an ACL written to a locked file in one
+  gesture, unprivileged, still `uchg` afterwards.
+- **The exit criterion is met in both directions, live.** An ACL authored in Dirnex (`oleg deny
+  delete` then `oleg allow read`) reads back under `ls -le` as `0: deny` / `1: allow` — the order
+  shown — with the mode untouched at 644; moving the allow above the deny and saving flips the OS's
+  order to match. ⌘Z restores the previous list whole (order included) and a second ⌘Z removes the
+  ACL entirely, since the file had none — the empty list is a state to restore, not a missing value,
+  which is why the step carries **whole lists** rather than a diff.
+- **An entry with no rights is a real state that decides nothing**, and the probe is what showed it:
+  `acl_from_text` accepts an empty rights field and `ls -le` shows `0: group:staff allow`. The editor
+  displays such an entry ("Nothing — this entry has no effect") and refuses to write one — Save stays
+  greyed even though the list changed, verified live.
+- **Inherited entries are shown exactly as they apply and not edited in place** — greyed row, subject
+  and rights disabled, a note explaining where they came from, and **remove** still available, since
+  dropping an inherited entry from this item is the user's call. Writing a list back preserves the
+  `inherited` marker verbatim (probed), so editing a neighbour never silently forks one from its
+  parent.
+- **The rights matrix was laid out from a measurement, not from the English.** Three columns need
+  506 pt against 410 — English itself clipped "Execute" — and two columns in 410 overflow Russian at
+  436 while Polish, Dutch and Ukrainian clear by 4 pt. Dropping the `AttributeRow` label column for
+  the two grids buys the full 548, where the worst language has 112 pt spare; the same run caught the
+  inheritance row overflowing at **589 pt in Ukrainian** against English's comfortable 486. Details
+  in NOTES.md — the general form is that a grid is not a form row.
+
+Still ahead in this slice: multi-selection and the recursive apply.
 
 #### Slice 5 — the narrow privileged case
 

@@ -40,6 +40,9 @@ public struct AttributeChangePlan: Sendable, Equatable {
         /// `chflags` / `lchflags`. Emitted for a temporary unlock, a final relock, or an ordinary
         /// flags change — the value is always the whole target word.
         case setFlags(BSDFileFlags)
+        /// `acl_set_file` / `acl_set_link_np` — the whole list, replaced. An empty list removes the
+        /// ACL. Carried as a whole value rather than as a diff because entry *order* is meaning.
+        case setAccessControlList(AccessControlList)
     }
 
     /// The item is a symlink and the change applies to the link itself, so the applier uses the `l*`
@@ -49,12 +52,28 @@ public struct AttributeChangePlan: Sendable, Equatable {
     /// The steps, in the exact order they must run.
     public let steps: [Step]
 
-    public init(diff: AttributeDiff, current: FileAttributes, actsOnLink: Bool) {
+    /// Build the plan for a diff, optionally replacing the item's ACL in the same gesture.
+    ///
+    /// `accessControlList` is the **desired whole list**, or `nil` when the ACL is not being touched
+    /// — never a diff, because entry order is meaning. It is sequenced inside the unlock/relock
+    /// window for the reason every other step is: probed 2026-07-31, `acl_set_file` fails with
+    /// `EPERM` on a `UF_IMMUTABLE` file exactly as `chmod` does (`chmod: Failed to set ACL on file:
+    /// Operation not permitted`), and so does clearing the ACL. The two halves are otherwise
+    /// independent — `chmod`, `chgrp` and `utimes` were each measured to leave an ACL intact **and in
+    /// order**, and `acl_set` to leave the mode and times untouched — so unlike the ownership and
+    /// mtime side effects above, this needs sequencing and no repair.
+    public init(
+        diff: AttributeDiff,
+        current: FileAttributes,
+        actsOnLink: Bool,
+        accessControlList: AccessControlList? = nil
+    ) {
         self.actsOnLink = actsOnLink
 
         // A change to anything but the flags cannot proceed while an immutable bit is set.
         let hasNonFlagChange = diff.permissions != nil
             || diff.changesOwnership || diff.changesUtimes || diff.creationDate != nil
+            || accessControlList != nil
         let unlockNeeded = current.flags.blocksModification && hasNonFlagChange
         let unlockTarget = current.flags.subtracting([.userImmutable, .systemImmutable])
 
@@ -79,6 +98,12 @@ public struct AttributeChangePlan: Sendable, Equatable {
         let birth = diff.creationDate ?? Self.preservedCreationDate(diff: diff, current: current)
         if let birth {
             steps.append(.setCreationDate(birth))
+        }
+        // Inside the unlock window, and after the mode: order between the two does not matter to the
+        // kernel (measured — neither disturbs the other), but writing the ACL last of the *content*
+        // steps keeps it adjacent to the relock, which is the pairing that has to stay obvious.
+        if let accessControlList {
+            steps.append(.setAccessControlList(accessControlList))
         }
 
         // Final flags: whatever the diff asked for (or the current word, to relock). Emit only when it

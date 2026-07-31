@@ -53,6 +53,19 @@ public enum UndoStep: Sendable, Equatable, Codable {
         apply: AttributeDiff,
         reverse: AttributeDiff
     )
+    /// Undo/redo an access-control-list change on a local item. Carries **whole lists**, not a diff,
+    /// in both directions: entry order is meaning, so "entry 2 changed" cannot describe an edit that
+    /// also moved it, and restoring the list the user had is the only description that is always
+    /// right. Like ``restoreAttributes`` it runs through the syscall path (``AccessControlListIO``,
+    /// sequenced by an ``AttributeChangePlan`` so a locked item unlocks first) rather than through a
+    /// `VFSBackend` verb. An empty `apply` list is the legitimate "there was no ACL" state and
+    /// removes the one that is there.
+    case restoreAccessControlList(
+        path: VFSPath,
+        actsOnLink: Bool,
+        apply: AccessControlList,
+        reverse: AccessControlList
+    )
 
     /// The step that reverses this one — the heart of Redo (see `UndoRecord.inverted`).
     var inverse: UndoStep {
@@ -64,6 +77,13 @@ public enum UndoStep: Sendable, Equatable, Codable {
         case let .createFolder(path): return .removeCreatedFolder(path)
         case let .restoreAttributes(path, actsOnLink, apply, reverse):
             return .restoreAttributes(
+                path: path,
+                actsOnLink: actsOnLink,
+                apply: reverse,
+                reverse: apply
+            )
+        case let .restoreAccessControlList(path, actsOnLink, apply, reverse):
+            return .restoreAccessControlList(
                 path: path,
                 actsOnLink: actsOnLink,
                 apply: reverse,
@@ -314,6 +334,10 @@ public struct UndoJournal: Sendable, Equatable {
                 createFolder(at: path, using: backend, failures: &failures)
             case let .restoreAttributes(path, actsOnLink, apply, _):
                 restoreAttributes(apply, at: path, actsOnLink: actsOnLink, failures: &failures)
+            case let .restoreAccessControlList(path, actsOnLink, apply, _):
+                restoreAccessControlList(
+                    apply, at: path, actsOnLink: actsOnLink, failures: &failures
+                )
             }
         }
         return UndoReport(failures: failures)

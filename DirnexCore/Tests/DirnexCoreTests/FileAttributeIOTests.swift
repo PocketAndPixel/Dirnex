@@ -101,6 +101,54 @@ struct FileAttributeIOTests {
         }
     }
 
+    /// The same criterion on the ACL path, and the reason the ACL is a plan *step*: probed
+    /// 2026-07-31, `acl_set_file` is `EPERM` on a locked file exactly as `chmod` is (`chmod: Failed
+    /// to set ACL on file: Operation not permitted`). One gesture writes the mode *and* the ACL and
+    /// leaves the file locked.
+    @Test("a locked file's ACL and mode change together in one gesture, and it stays locked")
+    func lockedFileACLInOneGesture() throws {
+        try withTree { tree in
+            let path = VFSPath.local(try tree.writeFile("f.txt", contents: "hi"))
+            chmod(path.path, 0o644)
+            chflags(path.path, UInt32(UF_IMMUTABLE))
+
+            let uid = getuid()
+            let list = AccessControlList(entries: [
+                ACLEntry(
+                    subject: ACLSubject(
+                        kind: .user,
+                        guid: try #require(ACLIdentity.guid(forUserID: uid)),
+                        name: NSUserName(),
+                        numericID: uid
+                    ),
+                    disposition: .deny,
+                    rights: [.delete]
+                )
+            ])
+
+            let current = try FileAttributeIO.read(at: path).attributes
+            var desired = current
+            desired.permissions = POSIXPermissions(rawValue: 0o600)
+            let plan = AttributeChangePlan(
+                diff: AttributeDiff(from: current, to: desired),
+                current: current,
+                actsOnLink: false,
+                accessControlList: list
+            )
+            #expect(plan.steps.count == 4) // unlock, chmod, acl_set, relock
+            try FileAttributeIO.apply(plan, to: path)
+
+            let after = try FileAttributeIO.read(at: path).attributes
+            #expect(after.permissions.rawValue == 0o600)
+            #expect(after.flags.isLocked)
+            let readBack = try AccessControlListIO.read(at: path)
+            #expect(readBack.entries.count == 1)
+            #expect(readBack.entries[0].disposition == .deny)
+
+            chflags(path.path, 0) // so the tree can be torn down
+        }
+    }
+
     @Test("times and creation date round-trip through the OS")
     func appliesTimes() throws {
         try withTree { tree in

@@ -73,6 +73,10 @@ public enum FileAttributeIO {
             try setCreationDate(date, at: cPath, actsOnLink: link, path: path)
         case let .setFlags(flags):
             try check(link ? lchflags(cPath, flags.rawValue) : chflags(cPath, flags.rawValue), path)
+        case let .setAccessControlList(list):
+            // The one step that is not a bare syscall: `AccessControlListIO` owns the `acl_t`
+            // lifetime and the canonical-text round trip, and is already tested there.
+            try AccessControlListIO.write(list, to: path, actsOnLink: link)
         }
     }
 

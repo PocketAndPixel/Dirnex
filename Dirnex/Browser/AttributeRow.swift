@@ -156,10 +156,16 @@ private final class FlippedView: NSView {
 enum AttributesControllerLayout {
     /// The sheet's outer width.
     static let sheetWidth: CGFloat = 620
-    /// The sheet's outer height. Sized so the densest tab (Permissions) fits without scrolling in
-    /// English; a longer translation scrolls rather than compressing, which is the point of
+    /// The sheet's outer height. Sized so the densest tab fits without scrolling in English; a longer
+    /// translation scrolls rather than compressing, which is the point of
     /// ``AttributeRow/pane(_:width:)`` being a scroll view.
-    static let sheetHeight: CGFloat = 540
+    ///
+    /// Sharing took that title from Permissions when the ACL editor landed: a list, its buttons, and
+    /// a 12- or 13-row rights matrix under it. **The scroll view is the fix and this is the comfort**
+    /// — measured live at 540, the last row of each column and the order footnote sat below the fold,
+    /// reachable but not visible. Raising the height alone would be the trap NOTES.md names (fixed in
+    /// English, back again in a longer language); the pane scrolls either way.
+    static let sheetHeight: CGFloat = 620
     /// The width every tab's content is pinned to inside it.
     static let contentWidth: CGFloat = 580
     /// The usable width inside a tab, after the pane's own insets.
@@ -168,4 +174,8 @@ enum AttributesControllerLayout {
     static let tabHeight: CGFloat = 380
     /// The height of a table inside a tab (ACL entries, extended attributes).
     static let tableHeight: CGFloat = 250
+    /// The ACL list is shorter than a plain table: it shares its tab with the per-entry editor below
+    /// it, and a list nobody can see the rights of is not the trade to make. The pane scrolls, so a
+    /// long list is reachable and a long translation cannot crush the rows.
+    static let aclTableHeight: CGFloat = 120
 }

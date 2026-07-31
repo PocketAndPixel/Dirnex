@@ -512,6 +512,27 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   function bar, applied to a manual frame layout instead of a stack view. An `NSTextField`'s
   `intrinsicContentSize` is a usable measure here (unlike `NSButtonCell.titleRect`, below); it needs no
   window. Only the live Russian run caught it.
+- **Measure a checkbox grid against every language *before* laying it out — and count the label
+  column as part of the budget.** The ACL editor's rights matrix is 12 or 13 checkboxes whose labels
+  are phrases ("Write Extended Attributes"), and the arithmetic decided the layout rather than
+  confirming it. Measured in the real font over all 14 shipped languages, with `NSButton(
+  checkboxWithTitle:).intrinsicContentSize` (a usable measure, like `NSTextField`'s and unlike
+  `NSButtonCell.titleRect`; it needs no window):
+  - Three columns need **506 pt** against the 410 an `AttributeRow` label column leaves — so *English
+    itself* clipped "Execute" and "Append", which is the rare case where the English screenshot does
+    show the bug.
+  - Two columns in that same 410 fit English at 332 and **overflow Russian at 436**
+    («Изменять расширенные атрибуты»), with Polish, Dutch and Ukrainian clearing by **4 pt** — which
+    is not clearance, it is the next translation's bug.
+  - The 130 pt label column is what costs it. Moving the caption *above* the grid gives the full
+    548, where the worst language needs 436 and has 112 pt spare. **A grid is not a form row**: the
+    `Label:  value` column that suits a popup or a date field is exactly the wrong frame for a block
+    of checkboxes.
+  - The same run caught a second overflow that no English screenshot could: the four inheritance
+    checkboxes in one row need **589 pt in Ukrainian** and 579 in Russian against 548 available,
+    while English fits at 486. 2 × 2 fits every language at 348.
+  - Reach for the measurement first — it is a 20-line throwaway that reads the real catalog — and let
+    a scrolling pane carry whatever a future translation adds anyway.
 - **A fixed-width horizontal `NSStackView` collapses a *segmented control* under a longer
   translation, not just a label.** The sync sheet's controls row (`Направление:` + a 3-segment
   direction control + `Сравнивать по:` + a 2-segment comparison control + a hint, pinned to 680 pt)
@@ -1162,6 +1183,28 @@ written. Several results changed the model, not just confirmed it.
   Probed: `user:GUID:oleg:501:allow:read` round-trips, but `user:GUID::allow:read` (empty name) and
   `user:GUID:allow:read` (no id) are both `EINVAL`. So the serializer must carry the resolved name
   and id, not just the GUID.
+  - **What that needs is the *field*, not the value — and reading, the OS writes two shapes a strict
+    six-field parse rejects.** Both were found by probing the write path (2026-07-31) and both had
+    the same shipped consequence: `AccessControlList.parse` threw, `AttributesSnapshot` degrades a
+    failed ACL read to an empty list, and the Sharing tab reported **"No access control list"** for a
+    file that has one. A wrong answer in the quiet direction, on the tab whose whole job is that
+    answer.
+    - **A rights-less entry has five fields.** `acl_to_text` *omits* the trailing rights field rather
+      than writing it empty (`group:GUID:staff:20:allow`), and `ls -le` shows `0: group:staff allow`.
+      Such an entry is legal, storable and does nothing — it occupies a position in the evaluation
+      order while allowing and denying nothing — so an editor should refuse to *create* one while
+      still displaying one it finds.
+    - **A subject whose GUID answers to no account comes back with an empty name *and* an empty id**
+      (`user:GUID:::allow:read`), which `ls -le` shows as the bare GUID. Ordinary for a file copied
+      from another Mac or an account since deleted, so the numeric id has to be modelled as optional.
+    - Both shapes are **accepted back** by `acl_from_text`, so they round-trip losslessly and an edit
+      to a neighbouring entry leaves them untouched — which is the case that actually reaches a user,
+      since the editor writes the whole list back.
+    - **The GUID is the identity and the name/id are its resolution, which the kernel re-derives.**
+      Hand `acl_from_text` a GUID with a name and id it does not believe (`…:ghost:31337:allow:read`)
+      and it is accepted, stored, and read back as `…:::allow:read`. So a name written into an entry
+      is never authoritative, and "repairing" an unresolved subject by inventing one would name the
+      wrong account.
 - **`acl_set_file` preserves entry order exactly** — write deny-then-allow, read back with both
   `acl_get_file` and `ls -le`, and the order survives. Order is meaning (a deny before an allow is a
   different ACL), so the model is an ordered list that is never silently canonicalized. The kernel
@@ -1177,6 +1220,14 @@ written. Several results changed the model, not just confirmed it.
   concurrency (`UnsafeMutableRawPointer?` is not `Sendable`); recompute it per call. The GUID they
   return is byte-identical to the one `acl_to_text` prints for the same id — pin that against the OS's
   own answer, not against your own formatter.
+- **`acl_set_file` is `EPERM` on a `UF_IMMUTABLE` file too, exactly like `chmod`** — and so is
+  clearing the ACL (`chmod: Failed to set ACL on file: Operation not permitted`, exit 1). So an ACL
+  change is a *step inside* the existing unlock → apply → relock window, not a second write beside
+  it; two separate writes would either surface that EPERM or unlock the file twice. The two halves
+  are otherwise **independent**, which is worth knowing because it is what makes the sequencing the
+  *only* thing needed: measured, `chmod`, `chgrp` and `utimes` each leave an ACL intact **and in
+  order**, and `acl_set` leaves the mode and the times untouched — so unlike the `chown`/set-uid and
+  mtime/birthtime side effects below, this needs no repair step.
 - **`chmod` fails with `EPERM` while `UF_IMMUTABLE` is set, and that EPERM is indistinguishable from
   the one that needs root.** So a change to anything but the flags on a locked file must clear the
   immutable bit, apply, then restore it — proven live, unprivileged, in one gesture. Encode the

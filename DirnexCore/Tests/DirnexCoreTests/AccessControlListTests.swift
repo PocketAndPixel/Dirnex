@@ -120,6 +120,92 @@ struct AccessControlListTests {
         }
     }
 
+    // MARK: - The two shapes the OS writes that the strict reading rejected
+
+    /// **Captured from a real file** (2026-07-31): `acl_to_text` omits the rights field *entirely*
+    /// for a rights-less entry rather than writing it empty, so the line has five fields, not six.
+    /// `ls -le` shows it as `0: group:staff allow`.
+    ///
+    /// The strict six-field reading threw here, and because `AttributesSnapshot` degrades a failed
+    /// ACL read to an empty list, the panel reported **"No access control list"** for a file that
+    /// has one — a wrong answer in the quiet direction, on the tab whose whole job is to say what
+    /// the ACL is.
+    @Test("a rights-less entry, as acl_to_text writes it, parses")
+    func rightsLessEntryParses() throws {
+        let real = "!#acl 1\ngroup:ABCDEFAB-CDEF-ABCD-EFAB-CDEF00000014:staff:20:allow\n"
+        let acl = try AccessControlList.parse(real)
+        #expect(acl.entries.count == 1)
+        let entry = acl.entries[0]
+        #expect(entry.subject.name == "staff")
+        #expect(entry.disposition == .allow)
+        #expect(entry.rights.isEmpty)
+        // And it is exactly the entry the editor must refuse to create: it decides nothing.
+        #expect(!entry.isMeaningful)
+    }
+
+    /// **Captured from a real file**: an entry whose GUID answers to no account comes back with an
+    /// empty name *and* an empty id — the kernel re-derives both from the GUID and empties them when
+    /// nothing answers, even when the writer supplied them. `ls -le` shows the bare GUID.
+    @Test("an entry naming a deleted account parses, keeping the GUID as its identity")
+    func unresolvedSubjectParses() throws {
+        let real = "!#acl 1\nuser:FFFFEEEE-DDDD-CCCC-BBBB-AAAA00007A69:::allow:read\n"
+        let acl = try AccessControlList.parse(real)
+        let subject = try #require(acl.entries.first?.subject)
+        #expect(subject.guid == "FFFFEEEE-DDDD-CCCC-BBBB-AAAA00007A69")
+        #expect(subject.numericID == nil)
+        #expect(!subject.isResolved)
+        // What the panel shows is what `ls -le` shows.
+        #expect(subject.displayName == "FFFFEEEE-DDDD-CCCC-BBBB-AAAA00007A69")
+    }
+
+    /// Both shapes must survive an edit to a *neighbouring* entry untouched, which is the case that
+    /// actually reaches a user: the editor writes the whole list back, so a lossy round-trip here
+    /// would rewrite an entry nobody selected.
+    @Test("both awkward shapes round-trip through serialize and re-parse")
+    func awkwardShapesRoundTrip() throws {
+        let real = """
+        !#acl 1
+        group:ABCDEFAB-CDEF-ABCD-EFAB-CDEF00000014:staff:20:allow
+        user:FFFFEEEE-DDDD-CCCC-BBBB-AAAA00007A69:::allow:read
+
+        """
+        let acl = try AccessControlList.parse(real)
+        #expect(try AccessControlList.parse(acl.canonicalText()) == acl)
+        // Six fields on the way out, with the unresolved subject's name and id written empty —
+        // probed to be what `acl_from_text` accepts back.
+        let lines = acl.canonicalText().split(whereSeparator: \.isNewline).map(String.init)
+        #expect(lines[2] == "user:FFFFEEEE-DDDD-CCCC-BBBB-AAAA00007A69:::allow:read")
+    }
+
+    /// An id that is present but not a number is still a malformed line — absence and garbage are
+    /// distinguished rather than both falling through to `nil`.
+    @Test("a non-numeric id still throws")
+    func nonNumericIDThrows() {
+        #expect(throws: ACLError.self) {
+            try AccessControlList.parse("!#acl 1\nuser:GUID:oleg:not-a-number:allow:read")
+        }
+    }
+
+    // MARK: - Reordering
+
+    @Test("moving an entry reorders the list and leaves the entries themselves alone")
+    func movingReorders() throws {
+        let acl = try AccessControlList.parse(fixture("acl-file"))
+        let moved = acl.moving(from: 0, to: 2)
+        #expect(moved.entries.count == 3)
+        #expect(moved.entries[2] == acl.entries[0])
+        #expect(moved.entries[0] == acl.entries[1])
+        #expect(Set(moved.entries) == Set(acl.entries))
+    }
+
+    @Test("an out-of-range move changes nothing")
+    func movingOutOfRange() throws {
+        let acl = try AccessControlList.parse(fixture("acl-file"))
+        #expect(acl.moving(from: 0, to: 9) == acl)
+        #expect(acl.moving(from: -1, to: 0) == acl)
+        #expect(AccessControlList().moving(from: 0, to: 0).isEmpty)
+    }
+
     @Test("the applicable-rights count matches the panel's 12 / 13")
     func applicableCounts() {
         #expect(ACLRight.applicable(to: .file).count == 12)

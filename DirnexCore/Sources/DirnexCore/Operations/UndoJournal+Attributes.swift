@@ -21,20 +21,32 @@ public extension UndoRecord {
         actsOnLink: Bool,
         from old: FileAttributes,
         to new: FileAttributes,
+        accessControlList lists: (old: AccessControlList, new: AccessControlList)? = nil,
         date: Date = Date()
     ) -> UndoRecord? {
         let forward = AttributeDiff(from: old, to: new)
-        guard !forward.isEmpty else { return nil }
-        return UndoRecord(
-            label: .changeAttributes,
-            date: date,
-            steps: [.restoreAttributes(
+        var steps: [UndoStep] = []
+        if !forward.isEmpty {
+            steps.append(.restoreAttributes(
                 path: path,
                 actsOnLink: actsOnLink,
                 apply: AttributeDiff(from: new, to: old),
                 reverse: forward
-            )]
-        )
+            ))
+        }
+        // The ACL is its own step in the *same* record, so one Cmd+Z reverses the whole panel commit
+        // — the sheet applies both halves on one Save, and an undo that put back the mode bits and
+        // left a new deny entry standing would be worse than no undo at all.
+        if let lists, lists.old != lists.new {
+            steps.append(.restoreAccessControlList(
+                path: path,
+                actsOnLink: actsOnLink,
+                apply: lists.old,
+                reverse: lists.new
+            ))
+        }
+        guard !steps.isEmpty else { return nil }
+        return UndoRecord(label: .changeAttributes, date: date, steps: steps)
     }
 }
 
@@ -71,6 +83,51 @@ extension UndoJournal {
                 return
             }
             let plan = AttributeChangePlan(diff: diff, current: current, actsOnLink: actsOnLink)
+            try FileAttributeIO.apply(plan, to: path)
+        } catch let error as VFSError {
+            failures.append(.init(path: path, error: error))
+        } catch {
+            failures.append(.init(path: path, error: .io(path: path, code: 0)))
+        }
+    }
+
+    /// Put a whole access-control list back — the ACL half of an undone attributes commit.
+    ///
+    /// It goes through an ``AttributeChangePlan`` rather than calling ``AccessControlListIO`` outright
+    /// for one reason, and it is the same one the mode path has: `acl_set_file` is `EPERM` while the
+    /// item is immutable (probed), so restoring an ACL on a file the user locked *after* the edit has
+    /// to unlock, write and relock exactly as the forward change did. Reading the current attributes
+    /// first is what makes that depend on what is on disk now.
+    ///
+    /// The privilege check is the same asymmetry ``restoreAttributes`` guards: nothing about a file
+    /// the user no longer owns is theirs to put back, and a bare `EPERM` here renders as a Full Disk
+    /// Access sentence that cannot help.
+    static func restoreAccessControlList(
+        _ list: AccessControlList,
+        at path: VFSPath,
+        actsOnLink: Bool,
+        failures: inout [OperationItemFailure]
+    ) {
+        do {
+            let current = try FileAttributeIO.read(at: path).attributes
+            let needsRoot = AttributePrivilege.needsRoot(
+                for: AttributeDiff(),
+                current: current,
+                actor: .current(),
+                changesAccessControlList: true
+            )
+            guard !needsRoot else {
+                let reason = VFSUnsupportedReason
+                    .attributeRestoreNeedsAdministrator(name: path.lastComponent)
+                failures.append(.init(path: path, error: .unsupported(reason)))
+                return
+            }
+            let plan = AttributeChangePlan(
+                diff: AttributeDiff(),
+                current: current,
+                actsOnLink: actsOnLink,
+                accessControlList: list
+            )
             try FileAttributeIO.apply(plan, to: path)
         } catch let error as VFSError {
             failures.append(.init(path: path, error: error))

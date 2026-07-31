@@ -13,11 +13,27 @@ import Foundation
 /// (`AccessControlListIO`). This type is the pure, tested half: text in, model out, model in, text
 /// out — verified both by round-tripping a **real** captured ACL and by having the OS read back what
 /// it wrote.
-public struct AccessControlList: Sendable, Hashable {
+///
+/// `Codable` because an ACL change is undoable and the journal survives relaunch: the step carries
+/// the whole prior list and the whole new one. **Whole lists, never a diff** — order is meaning, so
+/// "entry 2 changed" is not a description of an ACL edit that also moved it.
+public struct AccessControlList: Sendable, Hashable, Codable {
     /// The entries, in evaluation order.
     public var entries: [ACLEntry]
 
     public init(entries: [ACLEntry] = []) { self.entries = entries }
+
+    /// The list with the entry at `index` moved to `destination`, or unchanged if either is out of
+    /// range. The editor's Move Up / Move Down, as a pure function — reordering *is* the edit here,
+    /// so it is a rule with a test rather than an array shuffle in a button handler.
+    public func moving(from index: Int, to destination: Int) -> AccessControlList {
+        guard entries.indices.contains(index), entries.indices.contains(destination) else {
+            return self
+        }
+        var moved = entries
+        moved.insert(moved.remove(at: index), at: destination)
+        return AccessControlList(entries: moved)
+    }
 
     /// No entries — a file with no ACL. `acl_get_file` reports this as `nil` + `ENOENT`, a normal
     /// answer the reader maps to an empty list rather than an error.

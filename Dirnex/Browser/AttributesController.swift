@@ -18,9 +18,22 @@ final class AttributesController: NSViewController {
     let snapshot: AttributesSnapshot
 
     private let tabView = NSTabView()
-    /// Retained for the tables' lifetime — `NSTableView` holds its data source weakly.
-    private var accessControlTable: AccessControlTableController?
+    /// Retained for the tables' lifetime — `NSTableView` holds its data source weakly. The ACL one is
+    /// also where the Sharing tab's working list lives, so Save reads its edits back through it.
+    var accessControlTable: AccessControlTableController?
     private var extendedAttributeTable: ExtendedAttributeTableController?
+
+    /// The ACL as the Sharing tab currently has it, or what was read when that tab built no editor.
+    var workingAccessControlList: AccessControlList {
+        accessControlTable?.list ?? snapshot.accessControlList
+    }
+
+    /// Whether the ACL differs from what was read — the diff contract applied to the one part of the
+    /// panel that is an ordered list rather than a field. Whole-value, because entry order is
+    /// meaning: two lists with the same entries in a different order are a real, different change.
+    var accessControlListChanged: Bool {
+        workingAccessControlList != snapshot.accessControlList
+    }
 
     // MARK: - Editing (mode bits and BSD flags — PLAN.md §M14 Slice 4)
 
@@ -219,8 +232,10 @@ private extension AttributesController {
 
         let accessControl = AccessControlTableController(
             list: snapshot.accessControlList,
-            kind: snapshot.entry.kind
+            kind: snapshot.entry.kind,
+            canEdit: canEdit
         )
+        accessControl.onChange = { [weak self] in self?.refreshSaveEnabled() }
         accessControlTable = accessControl
         addTab(
             title: String(

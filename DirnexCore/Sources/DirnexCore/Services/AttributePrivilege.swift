@@ -52,12 +52,19 @@ public enum AttributePrivilege {
 
     /// The reasons `diff` needs root, given the item's current state and the caller. Empty means it
     /// applies unprivileged.
+    ///
+    /// `changesAccessControlList` is the ACL half of the same gesture, which the ``AttributeDiff``
+    /// deliberately does not carry (an ACL is an ordered list, not a field). It matters twice: an ACL
+    /// change to *someone else's* file is `EPERM` like every other change, and one to a
+    /// system-immutable file inherits the same unlock problem the mode does — `acl_set_file` is
+    /// `EPERM` while the bit is set, and clearing `SF_IMMUTABLE` is root's.
     public static func reasons(
         for diff: AttributeDiff,
         current: FileAttributes,
-        actor: UserContext
+        actor: UserContext,
+        changesAccessControlList: Bool = false
     ) -> [Reason] {
-        guard !diff.isEmpty, !actor.isSuperUser else { return [] }
+        guard !diff.isEmpty || changesAccessControlList, !actor.isSuperUser else { return [] }
         // Someone else's file: the whole edit is root's, and no per-field reason adds anything.
         guard current.ownerID == actor.userID else { return [.notOwner] }
 
@@ -74,6 +81,7 @@ public enum AttributePrivilege {
         // whole design exists to avoid.
         let hasNonFlagChange = diff.permissions != nil
             || diff.changesOwnership || diff.changesUtimes || diff.creationDate != nil
+            || changesAccessControlList
         if hasNonFlagChange {
             systemBits.formUnion(current.flags.intersection(.systemImmutable))
         }
@@ -90,8 +98,14 @@ public enum AttributePrivilege {
     public static func needsRoot(
         for diff: AttributeDiff,
         current: FileAttributes,
-        actor: UserContext
+        actor: UserContext,
+        changesAccessControlList: Bool = false
     ) -> Bool {
-        !reasons(for: diff, current: current, actor: actor).isEmpty
+        !reasons(
+            for: diff,
+            current: current,
+            actor: actor,
+            changesAccessControlList: changesAccessControlList
+        ).isEmpty
     }
 }

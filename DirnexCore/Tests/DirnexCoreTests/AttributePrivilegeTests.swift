@@ -115,6 +115,54 @@ struct AttributePrivilegeTests {
         #expect(reasons(from: attributes(), to: attributes()).isEmpty)
     }
 
+    // MARK: - The ACL, which the diff does not carry
+
+    /// An ACL change alone is a real change, even though ``AttributeDiff`` is empty — the ACL is an
+    /// ordered list rather than a field, so it rides beside the diff. Without this the panel would
+    /// ask "does an ACL-only edit need root?", get "no" for *someone else's* file, and hit the bare
+    /// EPERM the whole design exists to avoid.
+    @Test("an ACL change on someone else's file is root's, on an empty diff")
+    func aclOnAnotherUsersFile() {
+        let theirs = attributes(owner: 0)
+        #expect(AttributePrivilege.reasons(
+            for: AttributeDiff(), current: theirs, actor: me, changesAccessControlList: true
+        ) == [.notOwner])
+    }
+
+    @Test("an ACL change on your own unlocked file needs no root")
+    func aclOnOwnFile() {
+        #expect(AttributePrivilege.reasons(
+            for: AttributeDiff(), current: attributes(), actor: me, changesAccessControlList: true
+        ).isEmpty)
+    }
+
+    /// `acl_set_file` is EPERM while an immutable bit is set (probed), so an ACL change inherits the
+    /// implicit-unlock rule the mode already has: clearing `SF_IMMUTABLE` is root's, clearing
+    /// `UF_IMMUTABLE` is not.
+    @Test("an ACL change on an SF_IMMUTABLE file needs root; on a UF_IMMUTABLE one it does not")
+    func aclUnderImmutableBits() {
+        #expect(AttributePrivilege.reasons(
+            for: AttributeDiff(),
+            current: attributes(flags: [.systemImmutable]),
+            actor: me,
+            changesAccessControlList: true
+        ) == [.systemFlags(.systemImmutable)])
+
+        #expect(AttributePrivilege.reasons(
+            for: AttributeDiff(),
+            current: attributes(flags: [.userImmutable]),
+            actor: me,
+            changesAccessControlList: true
+        ).isEmpty)
+    }
+
+    @Test("no ACL change and an empty diff still needs nothing")
+    func aclFlagOffChangesNothing() {
+        #expect(AttributePrivilege.reasons(
+            for: AttributeDiff(), current: attributes(owner: 0), actor: me
+        ).isEmpty)
+    }
+
     @Test("multiple root-only changes are all reported")
     func combined() {
         var desired = attributes()

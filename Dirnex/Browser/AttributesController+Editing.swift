@@ -61,8 +61,16 @@ extension AttributesController {
         modeValueField?.stringValue = AttributeFormatting.modeDescription(working.permissions)
     }
 
+    /// Save is live when something changed **and** the change is one the panel can write.
+    ///
+    /// The validity half is the ACL's: an entry carrying no rights is a state the OS stores happily
+    /// and that decides nothing (probed), so the panel refuses to write one rather than saving a row
+    /// that does nothing. Gating Save is the honest place for that — the alternative is an alert at
+    /// commit time about a row the user can already see.
     func refreshSaveEnabled() {
-        saveButton?.isEnabled = !AttributeDiff(from: snapshot.attributes, to: working).isEmpty
+        let changed = !AttributeDiff(from: snapshot.attributes, to: working).isEmpty
+            || accessControlListChanged
+        saveButton?.isEnabled = changed && accessControlTable?.isValid != false
     }
 
     // MARK: - Commit
@@ -74,16 +82,36 @@ extension AttributesController {
     @objc func saveAttributes(_ sender: Any?) {
         let old = snapshot.attributes
         let diff = AttributeDiff(from: old, to: working)
-        guard !diff.isEmpty else { dismiss(sender); return }
+        // The ACL rides beside the diff rather than inside it: it is an ordered list, not a field,
+        // so "changed" is a whole-value comparison and the change is a whole-list replacement.
+        let aclChanged = accessControlListChanged
+        let newList = workingAccessControlList
+        guard !diff.isEmpty || aclChanged else { dismiss(sender); return }
 
-        let reasons = AttributePrivilege.reasons(for: diff, current: old, actor: actor)
+        let reasons = AttributePrivilege.reasons(
+            for: diff, current: old, actor: actor, changesAccessControlList: aclChanged
+        )
         guard reasons.isEmpty else { presentNeedsAdministrator(reasons); return }
 
         do {
-            let plan = AttributeChangePlan(diff: diff, current: old, actsOnLink: snapshot.isSymlink)
+            // One plan for both halves, so a locked item unlocks once and relocks once — `acl_set` is
+            // EPERM under UF_IMMUTABLE exactly as `chmod` is (probed), and two separate writes would
+            // either surface that EPERM or unlock the file twice.
+            let plan = AttributeChangePlan(
+                diff: diff,
+                current: old,
+                actsOnLink: snapshot.isSymlink,
+                accessControlList: aclChanged ? newList : nil
+            )
             try FileAttributeIO.apply(plan, to: snapshot.entry.path)
             if let record = UndoRecord.attributeChange(
-                at: snapshot.entry.path, actsOnLink: snapshot.isSymlink, from: old, to: working
+                at: snapshot.entry.path,
+                actsOnLink: snapshot.isSymlink,
+                from: old,
+                to: working,
+                accessControlList: aclChanged
+                    ? (old: snapshot.accessControlList, new: newList)
+                    : nil
             ) {
                 recordUndo?(record)
             }

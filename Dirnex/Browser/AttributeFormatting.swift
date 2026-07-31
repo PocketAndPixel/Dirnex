@@ -207,6 +207,12 @@ enum AttributeFormatting {
         return names.isEmpty ? nil : names.joined(separator: ", ")
     }
 
+    /// One inheritance control's label, for the editor's checkbox. The same words the summary column
+    /// uses, so a checkbox and the row it edits never spell the same flag two ways.
+    static func inheritanceTitle(_ option: ACLInheritance) -> String {
+        inheritanceTitles.first { $0.0 == option }?.1 ?? ""
+    }
+
     private static let rightTitles: [ACLRight: String] = [
         .delete: String(localized: "Delete", comment: "ACL right: delete this item."),
         .readAttributes: String(
