@@ -73,6 +73,29 @@ extension AttributesController {
         saveButton?.isEnabled = changed && accessControlTable?.isValid != false
     }
 
+    // MARK: - Recursion
+
+    /// The recursive job this sheet's edits describe, or `nil` when the box is unticked or there is
+    /// nothing to force.
+    ///
+    /// The translation from a whole-value edit to a patch is ``AttributePatch/init(from:to:)``'s, and
+    /// it is a core decision rather than a detail of this file: a changed mode travels whole because
+    /// a mode is a shape, while flags travel bit by bit so a `UF_HIDDEN` on one file inside the
+    /// folder survives ticking Locked on the folder.
+    ///
+    /// The ACL travels as a **whole list** when it was edited, adjusted to each item's kind by the
+    /// runner — a file cannot carry `delete_child` or an inheritance flag meaningfully, and the
+    /// kernel will store one anyway if nobody stops it (probed).
+    func recursiveJob() -> AttributeApplyJob? {
+        guard let options = recursiveOptions, options.isRecursive else { return nil }
+        let job = AttributeApplyJob(
+            patch: AttributePatch(from: snapshot.attributes, to: working),
+            accessControlList: accessControlListChanged ? workingAccessControlList : nil,
+            target: options.target
+        )
+        return job.isEmpty ? nil : job
+    }
+
     // MARK: - Commit
 
     /// Apply the diff between what was read and what the boxes now say, as one operation: check it
@@ -87,6 +110,14 @@ extension AttributesController {
         let aclChanged = accessControlListChanged
         let newList = workingAccessControlList
         guard !diff.isEmpty || aclChanged else { dismiss(sender); return }
+
+        // "Apply to enclosed items" replaces the flat write rather than running beside it, so the
+        // item on screen and everything under it are one operation with one undo record. Doing the
+        // root here and the tree there would take two Cmd+Z to reverse one gesture.
+        if let job = recursiveJob() {
+            confirmRecursive(job, sender)
+            return
+        }
 
         let reasons = AttributePrivilege.reasons(
             for: diff, current: old, actor: actor, changesAccessControlList: aclChanged
@@ -119,6 +150,22 @@ extension AttributesController {
             dismiss(sender)
         } catch {
             presentApplyFailure(error)
+        }
+    }
+
+    /// Count the tree, ask, and hand the job to the queue. The sheet closes as soon as the job is
+    /// accepted: it is queued work now, with its own bar and cancel button, and a sheet left sitting
+    /// over a running operation would only be describing a state that no longer exists.
+    private func confirmRecursive(_ job: AttributeApplyJob, _ sender: Any?) {
+        RecursiveApplyConfirmation.ask(
+            over: [snapshot.entry],
+            job: job,
+            using: LocalBackend(),
+            in: view.window
+        ) { [weak self] confirmed in
+            guard let self else { return }
+            enqueueRecursive?(confirmed, [snapshot.entry])
+            dismiss(sender)
         }
     }
 

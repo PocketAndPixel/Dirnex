@@ -155,6 +155,11 @@ public extension UndoRecord {
     /// - A **checksum** job has nothing to reverse — it reads bytes and, at most, writes one new
     ///   file the user can delete — so it never enters the journal. Handled explicitly rather than
     ///   through a `default`, so the next kind added is a compile error here and gets thought about.
+    /// - An **attributes** job has plenty to reverse and none of it is here: it moves nothing, so it
+    ///   produces no `outcomes`, and its undo material is the per-item before/after on
+    ///   ``OperationReport/attributeApply``, which ``attributeBatchChange(_:date:)`` turns into a
+    ///   record. Returning `nil` is therefore right *and* easy to misread — the caller must build
+    ///   from the payload, not from here.
     static func transfer(
         kind: FileOperation.Kind,
         outcomes: [OperationItemOutcome],
@@ -164,7 +169,7 @@ public extension UndoRecord {
         switch kind {
         case .copy: label = .copy
         case .move: label = .move
-        case .checksum: return nil
+        case .checksum, .attributes: return nil
         }
         var steps: [UndoStep] = []
         var nonReversible = 0

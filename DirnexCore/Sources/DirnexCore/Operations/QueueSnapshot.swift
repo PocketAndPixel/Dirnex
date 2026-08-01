@@ -58,6 +58,9 @@ public struct AggregateProgress: Sendable, Equatable {
     /// treat it as a running estimate early in a batch, exact once nothing is waiting.
     public let totalBytes: Int64
     public let completedBytes: Int64
+    /// Sum of scanned *item* counts across jobs — the measure of a job that moves no bytes.
+    public let totalItems: Int
+    public let completedItems: Int
     /// Average throughput since the batch began, `0` before anything measurable.
     public let bytesPerSecond: Double
     /// Seconds of known work remaining at the current rate, or `nil` when not yet estimable
@@ -70,6 +73,8 @@ public struct AggregateProgress: Sendable, Equatable {
         activeJobs: Int,
         totalBytes: Int64,
         completedBytes: Int64,
+        totalItems: Int = 0,
+        completedItems: Int = 0,
         bytesPerSecond: Double,
         estimatedTimeRemaining: TimeInterval?
     ) {
@@ -78,14 +83,22 @@ public struct AggregateProgress: Sendable, Equatable {
         self.activeJobs = activeJobs
         self.totalBytes = totalBytes
         self.completedBytes = completedBytes
+        self.totalItems = totalItems
+        self.completedItems = completedItems
         self.bytesPerSecond = bytesPerSecond
         self.estimatedTimeRemaining = estimatedTimeRemaining
     }
 
-    /// Fraction complete in `0...1`. Prefers the byte ratio; falls back to the job count
-    /// before any bytes are known so the bar still advances between instant operations.
+    /// Fraction complete in `0...1`, from whichever measure the running work actually has.
+    ///
+    /// Bytes first, because that is what a copy is made of. Then **items**, which is the only
+    /// measure a recursive attributes apply has — it changes metadata and moves nothing, so a
+    /// byte-only bar would sit at zero for the whole run and then jump to full, which reads as a
+    /// hang on exactly the operation that can take longest to look at. The job count is the last
+    /// resort, so the bar still advances between instant operations.
     public var fraction: Double {
         if totalBytes > 0 { return min(1, Double(completedBytes) / Double(totalBytes)) }
+        if totalItems > 0 { return min(1, Double(completedItems) / Double(totalItems)) }
         return totalJobs > 0 ? Double(finishedJobs) / Double(totalJobs) : 0
     }
 }

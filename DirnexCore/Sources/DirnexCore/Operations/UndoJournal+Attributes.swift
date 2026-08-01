@@ -49,41 +49,77 @@ public extension UndoRecord {
         return UndoRecord(label: .changeAttributes, date: date, steps: steps)
     }
 
-    /// One item's before/after for a multi-selection commit. A struct rather than a tuple because a
-    /// four-member tuple trips SwiftLint's `large_tuple`, and because naming the fields is what keeps
-    /// `old` and `new` from being handed over in the wrong order.
-    struct AttributeBatchEntry: Sendable {
+    /// One item's before/after for a multi-selection or recursive commit. A struct rather than a
+    /// tuple because a four-member tuple trips SwiftLint's `large_tuple`, and because naming the
+    /// fields is what keeps `old` and `new` from being handed over in the wrong order.
+    ///
+    /// The ACL pair is optional and defaulted, because the two callers differ: a multi-selection
+    /// never touches an ACL (an ordered, kind-dependent list has no "apply a diff to N items"),
+    /// while a recursive apply propagating a folder's list does. Whole lists in both directions,
+    /// never a diff — order is meaning.
+    struct AttributeBatchEntry: Sendable, Equatable {
         public let path: VFSPath
         public let actsOnLink: Bool
         public let old: FileAttributes
         public let new: FileAttributes
+        /// The item's list before and after, or `nil` when the commit left its ACL alone.
+        public let accessControlLists: (old: AccessControlList, new: AccessControlList)?
 
-        public init(path: VFSPath, actsOnLink: Bool, old: FileAttributes, new: FileAttributes) {
+        public init(
+            path: VFSPath,
+            actsOnLink: Bool,
+            old: FileAttributes,
+            new: FileAttributes,
+            accessControlLists: (old: AccessControlList, new: AccessControlList)? = nil
+        ) {
             self.path = path
             self.actsOnLink = actsOnLink
             self.old = old
             self.new = new
+            self.accessControlLists = accessControlLists
+        }
+
+        public static func == (lhs: AttributeBatchEntry, rhs: AttributeBatchEntry) -> Bool {
+            lhs.path == rhs.path && lhs.actsOnLink == rhs.actsOnLink
+                && lhs.old == rhs.old && lhs.new == rhs.new
+                && lhs.accessControlLists?.old == rhs.accessControlLists?.old
+                && lhs.accessControlLists?.new == rhs.accessControlLists?.new
         }
     }
 
-    /// Undo a **multi-selection** attributes commit — one ``UndoStep/restoreAttributes`` per item that
-    /// actually changed, gathered into a single record so one Cmd+Z reverses the whole batch (the
+    /// Undo a **multi-selection or recursive** attributes commit — one ``UndoStep/restoreAttributes``
+    /// per item that actually changed (plus its ``UndoStep/restoreAccessControlList`` when the commit
+    /// propagated a list), gathered into a single record so one Cmd+Z reverses the whole batch (the
     /// Multi-Rename precedent, PLAN.md §M4). Items whose diff is empty contribute no step, so a bulk
     /// edit that happened to match a few items already never journals a no-op for them; `nil` when no
-    /// item changed at all. There is no ACL half here — bulk editing does not touch ACLs.
+    /// item changed at all.
+    ///
+    /// Each item's two steps sit adjacent and in the same record for the reason the single-item
+    /// builder gives: the commit applied both halves in one gesture, so an undo that put the mode
+    /// back and left a propagated deny entry standing would be worse than no undo at all.
     static func attributeBatchChange(
         _ entries: [AttributeBatchEntry],
         date: Date = Date()
     ) -> UndoRecord? {
-        let steps: [UndoStep] = entries.compactMap { entry in
+        var steps: [UndoStep] = []
+        for entry in entries {
             let forward = AttributeDiff(from: entry.old, to: entry.new)
-            guard !forward.isEmpty else { return nil }
-            return .restoreAttributes(
-                path: entry.path,
-                actsOnLink: entry.actsOnLink,
-                apply: AttributeDiff(from: entry.new, to: entry.old),
-                reverse: forward
-            )
+            if !forward.isEmpty {
+                steps.append(.restoreAttributes(
+                    path: entry.path,
+                    actsOnLink: entry.actsOnLink,
+                    apply: AttributeDiff(from: entry.new, to: entry.old),
+                    reverse: forward
+                ))
+            }
+            if let lists = entry.accessControlLists, lists.old != lists.new {
+                steps.append(.restoreAccessControlList(
+                    path: entry.path,
+                    actsOnLink: entry.actsOnLink,
+                    apply: lists.old,
+                    reverse: lists.new
+                ))
+            }
         }
         guard !steps.isEmpty else { return nil }
         return UndoRecord(label: .changeAttributes, date: date, steps: steps)

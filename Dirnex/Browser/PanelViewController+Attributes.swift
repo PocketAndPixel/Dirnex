@@ -33,6 +33,9 @@ extension PanelViewController {
                 self?.host?.recordUndoableAction(record)
             }
             controller.onApplied = { [weak self] in self?.refreshCurrentDirectory() }
+            controller.enqueueRecursive = { [weak self] job, sources in
+                self?.enqueueRecursiveAttributes(job, sources: sources)
+            }
             presentAsSheet(controller)
         } catch {
             presentOperationFailure(
@@ -71,7 +74,37 @@ extension PanelViewController {
             self?.host?.recordUndoableAction(record)
         }
         controller.onApplied = { [weak self] in self?.refreshCurrentDirectory() }
+        controller.enqueueRecursive = { [weak self] job, sources in
+            self?.enqueueRecursiveAttributes(job, sources: sources)
+        }
         presentAsSheet(controller)
+    }
+
+    // MARK: - Recursive apply
+
+    /// Hand a confirmed recursive apply to the window's queue.
+    ///
+    /// It goes on the same queue a copy does — the volume rule, pause, cancel and determinate bar are
+    /// all engine-agnostic, so a job that changes metadata instead of moving bytes needed no
+    /// scheduler of its own. `destinationDirectory` is the pane's own path: nothing is written
+    /// anywhere else, and the queue reads it only to work out which volume the job stresses.
+    private func enqueueRecursiveAttributes(_ job: AttributeApplyJob, sources: [FileEntry]) {
+        host?.enqueue(
+            FileOperation(
+                kind: .attributes(job),
+                sources: sources,
+                destinationDirectory: panel.path
+            ),
+            conflictPolicy: .fail,
+            resolveConflict: nil,
+            onError: nil
+        )
+        showTransientStatus(
+            String(
+                localized: "Changing permissions…",
+                comment: "Status while a recursive attributes change is queued."
+            )
+        )
     }
 
     private func presentNothingToShow() {

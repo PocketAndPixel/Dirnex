@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M13 shipped (14 languages) · M14 (checksums + attributes) in progress — Slices 1–3 landed, Slice 4 read-only panel, mode/flags editing, owner/group/dates, the ACL editor, and multi-selection (all with undo) landed; recursive apply and Slice 5 (privilege escalation) remain · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
+Status: M0–M13 shipped (14 languages) · M14 (checksums + attributes) in progress — Slices 1–3 landed, Slice 4 complete (read-only panel, mode/flags editing, owner/group/dates, the ACL editor, multi-selection and the recursive apply, all with undo); Slice 5 (privilege escalation) remains · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
 
 ---
 
@@ -688,7 +688,76 @@ the panel says so and points at editing those one at a time.
   Privilege is pre-flighted across the whole set, so a system-immutable item among the selection
   refuses the batch by name before anything is touched.
 
-Still ahead in this slice: the recursive apply.
+**The recursive apply landed (2026-08-01), and the probe decided its shape before any Swift was
+written.** "Apply to enclosed items" now sits in the footer of both Get Info sheets whenever a folder
+is involved, with a Total Commander-style scope popup beside it (files and folders / files only /
+folders only); Save then hands a `.attributes` job to `FileOperationQueue` instead of writing flat, so
+one gesture covers the item on screen and everything under it, with one determinate bar, one cancel
+button and one ⌘Z. Decided with Oleg: **the scope popup, a 10 000-item undo cap with the tree counted
+up front, and the ACL propagating too.** Six core files, five app files, 18 catalog keys plus two
+`VFSUnsupportedReason` sentences in all 14 languages. 1513 core tests and 169 app tests green, both
+linters clean.
+
+- **Post-order is not a preference — it is the only order that finishes, and gathering the paths
+  first does not save it.** `chmod -R 0644` over a tree is the live demonstration, done by the
+  *system tool*: it leaves the root `drw-r--r--`, after which `ls` and `find` both fail. The trap is
+  one step deeper than it looks — with the child list already in hand, applying to the parent and
+  then to each child gave "Permission denied" on **every one of them**, because the failure is in
+  path resolution at apply time, not in the walk. So the run gathers while the tree is still
+  readable and writes from the leaves up. `AttributeApplyRunnerTests.locksItselfOutWithoutPostOrder`
+  is the one test a pre-order implementation fails, and it passes every other test in the suite.
+- **The journal is the only thing that cannot scale, and the numbers set the cap.** Measured over
+  1k…200k steps: an `UndoStep.restoreAttributes` encodes to a dead-constant **246 bytes**, and the
+  journal is JSON in `UserDefaults` re-encoded on *every* later operation — 10k steps is 2.3 MB and
+  60 ms, 50k is 11.7 MB and 280 ms, 200k is 47 MB and **1.1 s**, permanently, until it falls off the
+  50-record stack. The work itself is nothing by comparison: read + plan + apply is **17 µs an item**
+  (100k items ≈ 1.7 s) and a 5 000-entry listing takes 16 ms. Hence a cap rather than a hope, and
+  over it the run journals **nothing** rather than an arbitrary first slice — reverting part of a
+  tree leaves it in a state nobody can reason about. The confirmation sheet counts with the run's own
+  walk and says so before anything is touched.
+- **A locked parent needed no special handling, which is worth knowing because it looks like it
+  should.** Probed: `uchg` on a directory still allows `chmod`, `chflags`, `utimes` and `chgrp` on
+  everything inside — only *creating* there fails. And changing a child's attributes does not bump
+  the parent's mtime, so a recursive "set modification date" needs no ordering of its own either.
+- **Propagating an ACL onto files needed a rule the kernel does not enforce, and it fails in the
+  quiet direction.** Probed: `acl_set_file` accepts a *directory's* canonical text on a regular file,
+  returns `0`, and `acl_get_file` reads it back **verbatim** — `delete_child` and the inheritance
+  flags still stored — while `ls -le` shows only the data rights. `chmod +a` strips them on the way
+  in (and leaves `0: group:everyone allow`, an entry with nothing in it), so
+  `AccessControlList.adjusted(for:)` does the same and **drops an entry reduced to no rights**, which
+  the editor already refuses to create. Without it the Sharing tab would show `delete_child` on a
+  file — a false claim on the one tab whose whole job is that answer. A negative-control test asserts
+  the kernel really does store them, so the rule cannot go vestigial and green.
+- **A bulk edit was already a patch; a single-item edit had to become one, and the two halves
+  translate differently.** `AttributePatch(from:to:)` takes a changed **mode whole** (a mode is a
+  shape the user chose, not twelve independent bits) and **flags bit by bit** (so a `UF_HIDDEN` on
+  one file inside a folder survives ticking Locked on the folder). Getting the second one backwards
+  is silent and destructive, so it has its own test.
+- **The exit criterion is met live, with the OS as the judge.** A harness against the real core ran
+  the exact chain the sheet assembles over a real tree with deliberately mixed modes: 8 items counted
+  (5 files only, 4 folders only — the run's own walk), 8 changed, 0 failures, every mode `0750`
+  including the file under a `drwx------` directory the walk had to descend and then re-permission.
+  `ls -le` shows the directories carrying `list,delete_child,file_inherit,directory_inherit` and the
+  files carrying plain `allow read` — the kind adjustment, in the OS's own spelling. One record of 16
+  steps (8 attribute + 8 ACL) reverted the whole tree exactly, ACL marker and all.
+- **Two smaller things fell out.** A job that moves no bytes would have left the queue bar at zero for
+  its whole run and then jumped to full, so `AggregateProgress` now falls back to *items* before the
+  job count. And an item that is both a marked root and a child of another marked root is visited
+  once — applying twice is harmless, but the sheet's count and the report's would have disagreed over
+  a selection the user made deliberately.
+- **Driven live, in the real app, and the numbers matched the harness exactly.** ⌘I on a folder shows
+  the footer row with the popup disabled until the box is ticked; ticking it enables the popup and
+  Save. Over the scratch tree: *Files and folders* counted **"Change 8 items?"** and gave every item
+  `0750` — including the file inside a `drwx------` folder the walk had to descend and then
+  re-permission — with one ⌘Z restoring all three differing originals (`0700`, `0600`, `0644`)
+  exactly. *Files only* counted **5** (four files plus the root, the roots-always-apply rule) and
+  left all three enclosed folders untouched while still descending through the `0700` one. The
+  multi-selection sheet carries the same row.
+- **The over-the-cap path was forced live with a 10 500-file folder.** The confirmation read
+  **"Change 10 501 items?"** with the can't-be-reversed wording *before* the run; afterwards the alert
+  said "Changed 10 501 items — That was too many to undo, so ⌘Z will reverse whatever you did before
+  this instead", and the Edit menu proved it true by still offering the *previous* action's undo. Both
+  counts are locale-formatted by the plural entries, in every language.
 
 #### Slice 5 — the narrow privileged case
 

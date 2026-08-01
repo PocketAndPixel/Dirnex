@@ -84,6 +84,13 @@ final class MultiAttributesController: NSViewController {
     var recordUndo: ((UndoRecord) -> Void)?
     /// Re-list the pane after the change lands — set by the pane.
     var onApplied: (() -> Void)?
+    /// Hand a recursive apply to the window's operation queue — set by the pane, exactly as the
+    /// single-item sheet's is. A tree walk belongs on the queue, not in a sheet.
+    var enqueueRecursive: ((AttributeApplyJob, [FileEntry]) -> Void)?
+
+    /// The footer's "Apply to enclosed items" control, present only when a folder is among the
+    /// selection. Retained for the sheet's lifetime; `NSControl.target` is weak.
+    var recursiveOptions: RecursiveApplyOptions?
 
     var modeBoxes: [ModeTri] = []
     var specialBoxes: [SpecialTri] = []
@@ -119,7 +126,11 @@ final class MultiAttributesController: NSViewController {
         let container = EscapeDismissingView()
         container.onEscape = { [weak self] in self?.close(nil) }
 
-        let stack = NSStackView(views: [makeHeader(), makeTabs(), makeFooter()])
+        var rows: [NSView] = [makeHeader(), makeTabs()]
+        if let recursion = makeRecursiveOptions() { rows.append(recursion) }
+        rows.append(makeFooter())
+
+        let stack = NSStackView(views: rows)
         stack.orientation = .vertical
         stack.spacing = 12
         stack.alignment = .leading
@@ -134,9 +145,20 @@ final class MultiAttributesController: NSViewController {
             container.widthAnchor.constraint(equalToConstant: AttributesControllerLayout.sheetWidth),
             container.heightAnchor.constraint(
                 equalToConstant: AttributesControllerLayout.sheetHeight
+                    + (recursiveOptions == nil ? 0 : AttributesControllerLayout.recursiveRowHeight)
             )
         ])
         view = container
+    }
+
+    /// The "Apply to enclosed items" row, offered when at least one selected item is a folder — a
+    /// selection of plain files has nothing enclosed to reach.
+    private func makeRecursiveOptions() -> NSView? {
+        guard canEdit, items.contains(where: { $0.entry.kind == .directory }) else { return nil }
+        let options = RecursiveApplyOptions()
+        options.onChange = { [weak self] in self?.refreshSaveEnabled() }
+        recursiveOptions = options
+        return options.makeView(width: Self.contentWidth)
     }
 
     static let contentWidth = AttributesControllerLayout.contentWidth

@@ -357,6 +357,11 @@ extension QueueBarView {
                 localized: "Checksumming \(name)",
                 comment: "Queue-bar status; %@ is the file being hashed."
             )
+        case .attributes:
+            return String(
+                localized: "Changing \(name)",
+                comment: "Queue-bar status; %@ is the item whose attributes are being changed."
+            )
         }
     }
 
@@ -376,6 +381,11 @@ extension QueueBarView {
             return String(
                 localized: "Checksumming…",
                 comment: "Queue-bar status while a checksum run is being prepared."
+            )
+        case .attributes:
+            return String(
+                localized: "Changing permissions…",
+                comment: "Queue-bar status while a recursive attributes change is being prepared."
             )
         }
     }

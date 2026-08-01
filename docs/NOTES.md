@@ -1285,6 +1285,46 @@ written. Several results changed the model, not just confirmed it.
   Save lights up with nothing edited, and committing writes three dates nobody touched. Compare
   against the value the control was **given** (`picker.dateValue` right after assigning it), not
   against the model, so "untouched" means untouched at the control's own granularity.
+- **A recursive attribute change must be applied *deepest-first*, and having gathered the paths up
+  front does not save it.** Clearing a directory's `x` bit stops every path under it from resolving,
+  so a pre-order run gets `EPERM` on every child — measured directly, with the child list already in
+  hand: applying `0644` to the parent and then to each child gave "Permission denied" on all of them.
+  The failure is in path resolution at apply time, not in the walk, which is why "gather everything
+  first, then apply" reads like the fix and is not one. `chmod -R 0644` is the live demonstration and
+  the *system tool* does it: exit 0, and afterwards `ls` and `find` both fail on a `drw-r--r--` root.
+  Gather while the tree is still readable, write from the leaves up, and the run finishes.
+  - **A locked parent is not part of this problem, which is worth knowing because it looks like it
+    should be.** `uchg` on a directory still allows `chmod`, `chflags`, `utimes` and `chgrp` on
+    everything inside; only *creating* there fails. And changing a child's attributes does not bump
+    the parent's mtime, so a recursive date change needs no ordering of its own either.
+- **Writing a *directory's* ACL onto a plain file succeeds, stores the directory-only bits, and hands
+  them straight back.** Probed: `acl_set_file` returns `0` for a file given
+  `…:allow,file_inherit,directory_inherit:read,write,execute,append,delete_child`, and `acl_get_file`
+  reads that back **verbatim** — while `ls -le` shows only `allow read,write,execute,append`. So the
+  bits survive on disk, mean nothing, and are invisible to every tool *except* one that reads the
+  canonical text, which is exactly what an ACL editor does. `chmod(1)` strips them on the way in, so
+  stripping is what the platform's own front end does; anything propagating a list down a tree has to
+  do the same. The second half is the one that is easy to miss: `chmod +a "everyone allow
+  delete_child" f` exits 0 and leaves `0: group:everyone allow` — **an entry with no rights**, which
+  occupies a position in the evaluation order and decides nothing. Strip the bits, then drop whatever
+  is left empty. Pair the rule with a negative control asserting the kernel really does store them,
+  or a macOS that started stripping would leave the rule vestigial with every test still green.
+- **Journaling is what limits a bulk operation's size, not the work.** Measured over 1k…200k steps: an
+  `UndoStep.restoreAttributes` encodes to a dead-constant **246 bytes**, and because the journal is
+  JSON in `UserDefaults` that is re-encoded on *every* later operation, a big record taxes everything
+  after it — 10k steps is 2.3 MB and 60 ms, 50k is 11.7 MB and 280 ms, 200k is 47 MB and **1.1 s**,
+  until it falls off the 50-record stack. The work it describes is nothing by comparison: read + plan
+  + apply is **17 µs an item**, and a 5 000-entry listing is 16 ms. So the cap belongs on the journal,
+  the count belongs in a confirmation the user sees *before* the run, and over the cap the honest
+  answer is to journal **nothing** — reverting an arbitrary slice of a tree leaves it in a state
+  nobody can reason about. Any future operation that can span a hundred thousand items inherits this
+  arithmetic.
+- **A bulk edit is a patch and a single-item edit is a value, and carrying one outward needs both
+  halves translated — differently.** A changed **mode** travels whole (it is a shape the user chose,
+  not twelve independent bits, so "apply these permissions to everything inside" means that shape),
+  while **flags** travel bit by bit (they are independent switches, and a `UF_HIDDEN` on one file
+  inside a folder must survive ticking Locked on the folder). Copying the whole flags word is the
+  version that compiles, reads fine, and silently strips a bit the user never touched.
 - **`mbr_uid_to_uuid` *synthesizes* a GUID for an id with no account behind it, so it can never be an
   existence check.** Probed: uid 31337 — no such user — answers
   `FFFFEEEE-DDDD-CCCC-BBBB-AAAA00007A69`, the well-known prefix with the id in the tail (groups take

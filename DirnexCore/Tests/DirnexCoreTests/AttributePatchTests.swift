@@ -162,3 +162,98 @@ struct AttributePatchTests {
         #expect(!date.isEmpty)
     }
 }
+
+/// Turning a **single-item edit** into a patch that can travel down a tree (PLAN.md §M14 Slice 4).
+///
+/// The asymmetry is the whole content: a mode is a shape and carries whole, flags are independent
+/// switches and carry bit by bit. Getting the second one wrong is quiet and destructive — it would
+/// strip a `UF_HIDDEN` from every file inside a folder whose Locked box was merely ticked.
+@Suite("AttributePatch from an edit")
+struct AttributePatchFromEditTests {
+    private func attributes(
+        mode: UInt16 = 0o644,
+        flags: BSDFileFlags = [],
+        groupID: UInt32 = 20,
+        modified: Date = Date(timeIntervalSince1970: 1_000_000)
+    ) -> FileAttributes {
+        FileAttributes(
+            permissions: POSIXPermissions(rawValue: mode),
+            flags: flags,
+            ownerID: 501,
+            groupID: groupID,
+            accessDate: Date(timeIntervalSince1970: 500_000),
+            modificationDate: modified,
+            creationDate: Date(timeIntervalSince1970: 100_000)
+        )
+    }
+
+    @Test("An untouched edit forces nothing")
+    func noChangeIsEmpty() {
+        let same = attributes()
+        #expect(AttributePatch(from: same, to: same).isEmpty)
+    }
+
+    @Test("A changed mode carries whole, so every one of the twelve bits is forced")
+    func modeCarriesWhole() {
+        let patch = AttributePatch(from: attributes(mode: 0o644), to: attributes(mode: 0o750))
+
+        #expect(patch.permissionMask.rawValue == 0o7777)
+        #expect(patch.permissionValues.rawValue == 0o750)
+        // And applying it to an item with a completely different mode gives that shape, not a merge.
+        #expect(patch.apply(to: attributes(mode: 0o600)).permissions.rawValue == 0o750)
+    }
+
+    /// The one that matters. Ticking Locked on a folder must not clear the `UF_HIDDEN` a file inside
+    /// it carries — the folder never had that bit, so a whole-word copy would silently strip it.
+    @Test("Flags carry bit by bit, so an untouched bit survives on an item that has it")
+    func flagsCarryBitByBit() {
+        let patch = AttributePatch(
+            from: attributes(flags: []), to: attributes(flags: .userImmutable)
+        )
+
+        #expect(patch.flagsToSet == .userImmutable)
+        #expect(patch.flagsToClear.isEmpty)
+        let child = patch.apply(to: attributes(flags: .hidden))
+        #expect(child.flags.contains(.hidden), "a bit the edit never touched must survive")
+        #expect(child.flags.contains(.userImmutable))
+    }
+
+    @Test("Clearing a flag forces it off wherever it is set")
+    func clearedFlagIsForcedOff() {
+        let patch = AttributePatch(
+            from: attributes(flags: [.hidden, .userImmutable]),
+            to: attributes(flags: .userImmutable)
+        )
+
+        #expect(patch.flagsToClear == .hidden)
+        #expect(patch.flagsToSet.isEmpty)
+        #expect(!patch.apply(to: attributes(flags: .hidden)).flags.contains(.hidden))
+    }
+
+    @Test("Group and dates carry only when they changed")
+    func singleValuesCarryWhenChanged() {
+        let unchanged = AttributePatch(from: attributes(), to: attributes())
+        #expect(unchanged.groupID == nil)
+        #expect(unchanged.modificationDate == nil)
+
+        let stamp = Date(timeIntervalSince1970: 2_000_000)
+        let changed = AttributePatch(
+            from: attributes(), to: attributes(groupID: 80, modified: stamp)
+        )
+        #expect(changed.groupID == 80)
+        #expect(changed.modificationDate == stamp)
+        #expect(changed.accessDate == nil, "a date left alone is never forced")
+    }
+
+    /// Owner is absent by construction: `chown` to another user is `EPERM` even on your own file, so
+    /// it is never offered — in bulk, singly or recursively.
+    @Test("Owner never travels, even when the two values differ")
+    func ownerNeverTravels() {
+        var other = attributes()
+        other.ownerID = 31337
+        let patch = AttributePatch(from: attributes(), to: other)
+
+        #expect(patch.isEmpty)
+        #expect(patch.apply(to: attributes()).ownerID == 501)
+    }
+}

@@ -15,6 +15,17 @@ extension MultiAttributesController {
         let patch = buildPatch()
         guard !patch.isEmpty else { dismiss(sender); return }
 
+        // "Apply to enclosed items" replaces the flat write rather than running beside it, so the
+        // marked items and everything under them are one operation with one undo record. The patch
+        // needs no translation here — a bulk edit was already a patch, which is why the recursive
+        // job and the flat commit can share it exactly.
+        if let options = recursiveOptions, options.isRecursive {
+            confirmRecursive(
+                AttributeApplyJob(patch: patch, target: options.target), sender
+            )
+            return
+        }
+
         // Pre-flight the whole selection: if *any* item's change needs root, refuse the batch before
         // touching a single file and name the item, rather than half-applying and hitting the bare
         // EPERM this whole design exists to avoid. `canEdit` already ruled out foreign ownership, so
@@ -61,6 +72,22 @@ extension MultiAttributesController {
             // Anything applied is done and undoable, so close once the report is dismissed — unless
             // *nothing* applied, in which case leave the sheet open the way a single-item failure does.
             presentFailures(failures, dismissAfter: !entries.isEmpty)
+        }
+    }
+
+    /// Count the tree, ask, and hand the job to the queue — the single-item sheet's path exactly,
+    /// over the marked set instead of one item. There is no ACL half: bulk editing does not offer
+    /// one, so there is none to propagate.
+    private func confirmRecursive(_ job: AttributeApplyJob, _ sender: Any?) {
+        let sources = items.map(\.entry)
+        RecursiveApplyConfirmation.ask(
+            over: sources,
+            job: job,
+            using: LocalBackend(),
+            in: view.window
+        ) { [weak self] confirmed in
+            self?.enqueueRecursive?(confirmed, sources)
+            self?.dismiss(sender)
         }
     }
 

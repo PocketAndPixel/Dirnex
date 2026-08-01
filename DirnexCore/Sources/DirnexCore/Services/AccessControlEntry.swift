@@ -80,6 +80,13 @@ public struct ACLInheritance: OptionSet, Sendable, Hashable, Codable {
         .fileInherit, .directoryInherit, .limitInherit, .onlyInherit
     ]
 
+    /// The same four as one mask — what ``AccessControlList/adjusted(for:)`` subtracts when a
+    /// directory's list is propagated onto a file. `inherited` is deliberately outside it: it is a
+    /// marker of provenance, not a control, and a file can carry one.
+    public static let directoryOnly: ACLInheritance = [
+        .fileInherit, .directoryInherit, .limitInherit, .onlyInherit
+    ]
+
     /// Token ↔ option, in the order tokens are written back into the flags field (`inherited` last,
     /// where `acl_to_text` also puts a marker relative to the controls).
     static let tokenTable: [(token: String, option: ACLInheritance)] = [

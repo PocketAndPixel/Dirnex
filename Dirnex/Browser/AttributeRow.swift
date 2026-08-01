@@ -178,4 +178,9 @@ enum AttributesControllerLayout {
     /// it, and a list nobody can see the rights of is not the trade to make. The pane scrolls, so a
     /// long list is reachable and a long translation cannot crush the rows.
     static let aclTableHeight: CGFloat = 120
+    /// What the "Apply to enclosed items" footer row adds to the sheet, when a folder is involved.
+    /// The sheet grows by it rather than the tabs shrinking — an `NSStackView` that cannot fit its
+    /// arranged views compresses them, which is how a whole checkbox row once vanished from the
+    /// Permissions tab with nothing logged (docs/NOTES.md).
+    static let recursiveRowHeight: CGFloat = 34
 }

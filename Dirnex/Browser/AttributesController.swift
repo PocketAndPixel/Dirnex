@@ -51,6 +51,14 @@ final class AttributesController: NSViewController {
 
     /// Journal a committed change so ⌘Z reverses it — set by the pane to its window's undo surface.
     var recordUndo: ((UndoRecord) -> Void)?
+    /// Hand a recursive apply to the window's operation queue — set by the pane. A tree walk is not
+    /// the sheet's to run: it can cover a hundred thousand items and needs the determinate bar,
+    /// pause and cancel a copy gets, so the sheet only ever describes the job.
+    var enqueueRecursive: ((AttributeApplyJob, [FileEntry]) -> Void)?
+
+    /// The footer's "Apply to enclosed items" control, present only for a directory — there is
+    /// nothing enclosed in a file. Retained for the sheet's lifetime; `NSControl.target` is weak.
+    var recursiveOptions: RecursiveApplyOptions?
     /// Re-list the pane after a change lands, so a new `UF_HIDDEN` or mode shows at once — set by the
     /// pane. Kept separate from ``recordUndo`` because one is the window's job and the other the pane's.
     var onApplied: (() -> Void)?
@@ -122,7 +130,11 @@ final class AttributesController: NSViewController {
         let container = EscapeDismissingView()
         container.onEscape = { [weak self] in self?.close(nil) }
 
-        let stack = NSStackView(views: [makeHeader(), makeTabs(), makeFooter()])
+        var rows: [NSView] = [makeHeader(), makeTabs()]
+        if let recursion = makeRecursiveOptions() { rows.append(recursion) }
+        rows.append(makeFooter())
+
+        let stack = NSStackView(views: rows)
         stack.orientation = .vertical
         stack.spacing = 12
         stack.alignment = .leading
@@ -135,11 +147,25 @@ final class AttributesController: NSViewController {
             stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             stack.bottomAnchor.constraint(equalTo: container.bottomAnchor),
             container.widthAnchor.constraint(equalToConstant: Self.sheetWidth),
+            // A directory's sheet is one row taller, rather than squeezing the tabs: an NSStackView
+            // that cannot fit its arranged views *compresses* them, which is how a whole row went
+            // missing from this very panel once (docs/NOTES.md).
             container.heightAnchor.constraint(
                 equalToConstant: AttributesControllerLayout.sheetHeight
+                    + (recursiveOptions == nil ? 0 : AttributesControllerLayout.recursiveRowHeight)
             )
         ])
         view = container
+    }
+
+    /// The "Apply to enclosed items" row, for a directory the user may edit. A file has nothing
+    /// enclosed, and a read-only sheet has no Save for it to qualify.
+    private func makeRecursiveOptions() -> NSView? {
+        guard canEdit, snapshot.entry.kind == .directory else { return nil }
+        let options = RecursiveApplyOptions()
+        options.onChange = { [weak self] in self?.refreshSaveEnabled() }
+        recursiveOptions = options
+        return options.makeView(width: Self.contentWidth)
     }
 
     /// The sheet's outer width. Every tab's content is pinned to ``contentWidth`` inside it, so a

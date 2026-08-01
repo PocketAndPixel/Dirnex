@@ -45,6 +45,39 @@ public struct AttributePatch: Sendable, Equatable {
         flagsToClear = []
     }
 
+    /// The patch that carries a **single-item edit** outward — what the user changed on one item,
+    /// expressed so it can be forced onto items that do not share that item's other attributes
+    /// (PLAN.md §M14 Slice 4, the recursive apply).
+    ///
+    /// The single-item sheet edits a whole ``FileAttributes`` value, which is right for the item on
+    /// screen and wrong for everything underneath it: writing that value wholesale would carry this
+    /// folder's *unchanged* fields onto every child. So the two halves translate differently, and the
+    /// difference is the point:
+    ///
+    /// - **Mode is taken whole.** A mode is a shape the user chose (`rwxr-x---`), not a set of
+    ///   independent bits, and "apply these permissions to everything inside" means that shape. So a
+    ///   changed mode masks all twelve bits.
+    /// - **Flags are taken bit by bit.** They are independent switches with no shape between them,
+    ///   and a child may legitimately carry one this item never had — a `UF_HIDDEN` on one file
+    ///   inside a folder whose Locked box was just ticked must survive. So only the bits that
+    ///   actually moved are forced, in the direction they moved.
+    ///
+    /// Group and the three dates are single values with nothing to preserve, so they carry across
+    /// whenever they changed. Owner never does — `chown` is `EPERM` even on your own file.
+    public init(from old: FileAttributes, to new: FileAttributes) {
+        self.init()
+        if new.permissions != old.permissions {
+            permissionMask = POSIXPermissions(rawValue: 0o7777)
+            permissionValues = new.permissions
+        }
+        flagsToSet = new.flags.subtracting(old.flags)
+        flagsToClear = old.flags.subtracting(new.flags)
+        if new.groupID != old.groupID { groupID = new.groupID }
+        if new.accessDate != old.accessDate { accessDate = new.accessDate }
+        if new.modificationDate != old.modificationDate { modificationDate = new.modificationDate }
+        if new.creationDate != old.creationDate { creationDate = new.creationDate }
+    }
+
     /// Nothing is forced, so applying this to any item is a no-op the caller can skip.
     public var isEmpty: Bool {
         permissionMask.rawValue == 0 && flagsToSet.isEmpty && flagsToClear.isEmpty

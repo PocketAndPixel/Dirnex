@@ -65,6 +65,16 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
     /// renders as "Dirnex may need Full Disk Access" — true of the errno, wrong about the cause, and
     /// pointing the user at a System Settings pane that cannot help.
     case attributeRestoreNeedsAdministrator(name: String)
+    /// One item inside a recursive apply belongs to someone else, or its change needs root.
+    ///
+    /// A recursion crosses items the user never saw and may not own, so this is a *per-item* refusal
+    /// the run collects and carries past — unlike the flat sheet, which pre-flights the whole
+    /// selection and refuses before touching anything. Stopping a tree walk at the first foreign
+    /// file would leave it half-changed with nothing to say where it got to.
+    case attributeChangeNeedsAdministrator(name: String)
+    /// A recursive apply was pointed at something that is not on this disk. Mode bits, a BSD flags
+    /// word and an ACL are things a real inode has; an archive member and a server listing have none.
+    case attributesNeedLocalItem(name: String)
 
     // MARK: Routing and archives — authored in the app, named here
 
@@ -102,6 +112,8 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
         case .tagsNeedLocalFile: return "tagsNeedLocalFile"
         case .cloudStatusNeedsLocalFile: return "cloudStatusNeedsLocalFile"
         case .attributeRestoreNeedsAdministrator: return "attributeRestoreNeedsAdministrator"
+        case .attributeChangeNeedsAdministrator: return "attributeChangeNeedsAdministrator"
+        case .attributesNeedLocalItem: return "attributesNeedLocalItem"
         case .noBackendForPath: return "noBackendForPath"
         case .serverNotConnected: return "serverNotConnected"
         case .archiveToolUnavailableForRead: return "archiveToolUnavailableForRead"
@@ -180,6 +192,10 @@ public extension VFSUnsupportedReason {
                 "Only an administrator can put back the previous owner, group or system flags of %@.",
                 [name]
             )
+        case let .attributeChangeNeedsAdministrator(name):
+            return ("Only an administrator can change “%@”.", [name])
+        case let .attributesNeedLocalItem(name):
+            return ("“%@” isn’t on this Mac, so it has no permissions to change.", [name])
         case let .noBackendForPath(path):
             return ("No backend can handle %@.", [path])
         case let .serverNotConnected(server):
@@ -228,6 +244,8 @@ public extension VFSUnsupportedReason {
             .tagsNeedLocalFile,
             .cloudStatusNeedsLocalFile,
             .attributeRestoreNeedsAdministrator(name: ""),
+            .attributeChangeNeedsAdministrator(name: ""),
+            .attributesNeedLocalItem(name: ""),
             .noBackendForPath(path: ""),
             .serverNotConnected(server: ""),
             .archiveToolUnavailableForRead,

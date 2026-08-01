@@ -39,6 +39,40 @@ public struct AccessControlList: Sendable, Hashable, Codable {
     /// answer the reader maps to an empty list rather than an error.
     public var isEmpty: Bool { entries.isEmpty }
 
+    /// This list as it can honestly apply to an item of `kind` — the adjustment a **recursive** apply
+    /// owes every file it reaches with a list a *directory* authored (PLAN.md §M14 Slice 4).
+    ///
+    /// **The kernel does not do this for you, and it fails in the quiet direction.** Probed
+    /// 2026-08-01: `acl_set_file` accepts a directory's canonical text on a regular file, returns
+    /// `0`, and `acl_get_file` reads it back **verbatim** — `delete_child`, `file_inherit` and
+    /// `directory_inherit` all still stored — while `ls -le` shows only `allow read,write,execute,
+    /// append`. So the bits survive on disk, mean nothing, and are invisible to every tool that
+    /// displays an ACL *except* one that reads the canonical text, which is exactly what Dirnex's
+    /// Sharing tab does. Propagating verbatim would put `delete_child` on a file's rights matrix —
+    /// a false claim on the one tab whose whole job is that answer.
+    ///
+    /// `chmod(1)` strips both on the way in (probed: `chmod +a "everyone allow delete_child" f`
+    /// exits 0 and yields `0: group:everyone allow` — an entry with nothing in it), so stripping is
+    /// what the platform's own front end does. The one thing it does *not* do is notice what it has
+    /// left behind, which is why the second half matters: an entry reduced to no rights is dropped
+    /// rather than written. It would occupy a position in the evaluation order while allowing and
+    /// denying nothing, and ``ACLEntry/isMeaningful`` already states that the editor refuses to
+    /// create one — a recursion may not create through the back door what the editor refuses at the
+    /// front.
+    ///
+    /// The `inherited` marker is *not* a directory control and is kept: it records where an entry
+    /// came from, and a file can legitimately carry one.
+    public func adjusted(for kind: FileEntry.Kind) -> AccessControlList {
+        guard kind != .directory else { return self }
+        let adjusted = entries.compactMap { entry -> ACLEntry? in
+            var copy = entry
+            copy.rights.remove(.deleteChild)
+            copy.inheritance.subtract(ACLInheritance.directoryOnly)
+            return copy.isMeaningful ? copy : nil
+        }
+        return AccessControlList(entries: adjusted)
+    }
+
     /// The `acl_to_text` / `acl_from_text` version header line.
     public static let header = "!#acl 1"
 
