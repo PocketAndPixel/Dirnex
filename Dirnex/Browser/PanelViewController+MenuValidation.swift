@@ -136,7 +136,7 @@ extension PanelViewController: NSMenuItemValidation {
                     comment: "Menu item naming the diff tool that will open; %@ is the tool name."
                 )
             } ?? LocalizedCatalog.command(for: "file.compareByContents")?.title ?? menuItem.title
-            // Diffs the two panes' cursor files — needs a real file under each cursor.
+            // Two real local files: marked in this pane (exactly two), else one under each cursor.
             return canCompareByContents
         case #selector(showAttributes(_:)):
             // Needs a real item on disk under the cursor: a mode, a flags word and an ACL are

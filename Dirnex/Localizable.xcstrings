@@ -48183,91 +48183,91 @@
         }
       }
     },
-    "Put a file under the cursor in each panel, then compare them.": {
-      "comment": "Compare failure detail.",
+    "Put a file under the cursor in each panel, or select exactly two files in one panel, then compare them.": {
+      "comment": "Compare failure detail naming both ways to pick the pair.",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Platzieren Sie in jedem Bereich eine Datei unter dem Cursor und vergleichen Sie sie dann."
+            "value": "Platzieren Sie in jedem Bereich eine Datei unter dem Cursor oder wählen Sie genau zwei Dateien in einem Bereich aus und vergleichen Sie sie dann."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Put a file under the cursor in each panel, then compare them."
+            "value": "Put a file under the cursor in each panel, or select exactly two files in one panel, then compare them."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Coloca un archivo bajo el cursor en cada panel y compáralos."
+            "value": "Coloca un archivo bajo el cursor en cada panel, o selecciona exactamente dos archivos en un panel, y compáralos."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Placez un fichier sous le curseur dans chaque panneau, puis comparez-les."
+            "value": "Placez un fichier sous le curseur dans chaque panneau, ou sélectionnez exactement deux fichiers dans un panneau, puis comparez-les."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Seleziona un file in ogni pannello, poi confrontali."
+            "value": "Metti un file sotto il cursore in ogni pannello, oppure seleziona esattamente due file in un pannello, poi confrontali."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "各パネルでカーソル下にファイルを置いてから比較してください。"
+            "value": "各パネルでカーソル下にファイルを置くか、1つのパネルでちょうど2つのファイルを選択してから比較してください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "각 패널의 커서 아래에 파일을 놓고 비교합니다."
+            "value": "각 패널의 커서 아래에 파일을 놓거나, 한 패널에서 정확히 두 개의 파일을 선택한 다음 비교합니다."
           }
         },
         "nl": {
           "stringUnit": {
-            "value": "Plaats een bestand onder de cursor in elk paneel en vergelijk ze vervolgens.",
-            "state": "translated"
+            "state": "translated",
+            "value": "Plaats een bestand onder de cursor in elk paneel, of selecteer precies twee bestanden in één paneel, en vergelijk ze vervolgens."
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ustaw kursor na pliku w każdym panelu, a potem je porównaj."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Поместите файл под курсор на каждой панели, затем сравните их."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Поставте курсор на файл у кожній панелі, а потім порівняйте їх."
+            "value": "Ustaw kursor na pliku w każdym panelu lub zaznacz dokładnie dwa pliki w jednym panelu, a potem je porównaj."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Coloque um arquivo sob o cursor em cada painel e compare-os."
+            "value": "Coloque um arquivo sob o cursor em cada painel, ou selecione exatamente dois arquivos em um painel, e compare-os."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поместите файл под курсор на каждой панели или выделите ровно два файла на одной панели, затем сравните их."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поставте курсор на файл у кожній панелі або виберіть рівно два файли в одній панелі, а потім порівняйте їх."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "在每个面板中将光标放在一个文件上，然后比较它们。"
+            "value": "在每个面板中将光标放在一个文件上，或在一个面板中恰好选择两个文件，然后比较它们。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "在每個面板中將游標放在一個檔案上，然後比較它們。"
+            "value": "在每個面板中將游標放在一個檔案上，或在一個面板中恰好選取兩個檔案，然後比較它們。"
           }
         }
       }

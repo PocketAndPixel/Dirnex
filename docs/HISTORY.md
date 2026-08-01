@@ -7266,3 +7266,40 @@ deliberately — the flat single-item path is where the mechanism proves out.
 English-only surface, and M14 assumes that — each slice ships its own catalog keys. The bill is now
 **13 columns, not one** (M12 closed with 14 languages), and `LocalizationCoverageTests` fails on an
 untranslated command in any of them, so this is enforced, not intended.
+
+### Comparing two files from the same panel (2026-08-02, VERIFIED LIVE)
+
+⌥F3 could only ever pair the two *panes'* cursor files, so the ordinary case — two versions of one
+file sitting side by side in one directory — meant copying one across to the other pane first, or
+navigating both panes to the same folder. Total Commander's own answer is the one taken: **exactly
+two files marked in the focused pane compares those two**, anything else falls back to the cursor
+pair.
+
+**The precedence is the whole design decision, and it only has one defensible answer.** Both cursors
+are almost always on something, so preferring the cursor pair would make the marked gesture
+unreachable — it would only fire in the rare state where the other pane's cursor sits on a folder or
+`..`. Marks over the cursor is also what every other file operation here already does
+(`selectionTargets()`), which is what lets the new branch be three lines on top of the existing
+convention rather than a second selection rule.
+
+**A marked pair the tool can't take is refused, not quietly replaced.** Mark two folders and the
+command greys out; falling through would hand FileMerge two unrelated cursor files with nothing on
+screen saying the marks were ignored — wrong in the quiet direction, on a gesture whose whole point
+is "these two". Order inside a pane is **display order**, the in-pane reading of the
+physical-left-pane rule the cross-pane path has followed since the 2026-07-20 UX pass: the upper row
+is the left column.
+
+Drive-by: the cursor path never carried the `!cursorOnParentRow` guard every other cursor-driven
+command has. `..` is not a model row — it keeps its own flag — so `panel.currentEntry` there answers
+with the listing's **first** file, and a compare launched from a pane parked on `..` diffed a file
+nobody had pointed at.
+
+`CompareSelectionTests` pins the rules headlessly, and the panes it builds have **no `host`**, which
+is what makes the precedence assertions sharp rather than decorative: `comparableCursorPair` can
+never answer without a window, so a non-`nil` result can only have come from the marks and a `nil`
+one can only mean the marks were declined. Verified live on the real binary with the *right* pane's
+cursor deliberately on a folder — so nothing but the marks could have produced an answer: differing
+pair → FileMerge opened "one.txt vs. two.txt" with the upper row in the left column; identical pair
+→ "Files are identical — nothing to compare." on the status line and no FileMerge in the process
+table; file + folder → the menu item grey. 1537 core + app tests green, swiftformat + swiftlint
+--strict clean. The failure detail now names both gestures, translated into all 14 languages.
