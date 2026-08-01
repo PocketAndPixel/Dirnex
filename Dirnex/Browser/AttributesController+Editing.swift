@@ -122,7 +122,19 @@ extension AttributesController {
         let reasons = AttributePrivilege.reasons(
             for: diff, current: old, actor: actor, changesAccessControlList: aclChanged
         )
-        guard reasons.isEmpty else { presentNeedsAdministrator(reasons); return }
+        // A change that needs root — a file the user does not own, or a system-immutable one they do
+        // — is offered the escalation instead of refused (Slice 5): the same edit, run as an
+        // administrator. The dialog builds the elevated command from this exact diff and ACL.
+        guard reasons.isEmpty else {
+            presentEscalation(
+                diff: diff,
+                old: old,
+                aclChanged: aclChanged,
+                newList: newList,
+                sender: sender
+            )
+            return
+        }
 
         do {
             // One plan for both halves, so a locked item unlocks once and relocks once — `acl_set` is
@@ -171,28 +183,7 @@ extension AttributesController {
 
     // MARK: - Alerts
 
-    /// The narrow root-only cases an owner can still reach, until Slice 5 adds the escalation. Stated
-    /// rather than papered over: an `SF_*` `EPERM` is indistinguishable from the "you need root" one,
-    /// so the panel says which it is instead of showing a raw error.
-    ///
-    /// The sentence is built from the reasons the core actually gave rather than assuming the
-    /// system-flag case, which is the only one the controls could reach before dates and the group
-    /// picker existed. That is also the seam Slice 5 slots into: it escalates exactly these reasons.
-    private func presentNeedsAdministrator(_ reasons: [AttributePrivilege.Reason]) {
-        let alert = NSAlert()
-        alert.messageText = String(
-            localized: "This change needs an administrator",
-            comment: "Attributes save alert title: the change requires root privileges."
-        )
-        alert.informativeText = AttributeFormatting.privilegeExplanation(
-            reasons.first, name: snapshot.entry.name
-        )
-        alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))
-        alert.enableEscapeToCancel()
-        present(alert)
-    }
-
-    private func presentApplyFailure(_ error: Error) {
+    func presentApplyFailure(_ error: Error) {
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = String(
@@ -205,7 +196,7 @@ extension AttributesController {
         present(alert)
     }
 
-    private func present(_ alert: NSAlert) {
+    func present(_ alert: NSAlert) {
         if let window = view.window {
             alert.beginSheetModal(for: window)
         } else {

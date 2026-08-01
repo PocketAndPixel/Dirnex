@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M13 shipped (14 languages) · M14 (checksums + attributes) in progress — Slices 1–3 landed, Slice 4 complete (read-only panel, mode/flags editing, owner/group/dates, the ACL editor, multi-selection and the recursive apply, all with undo); Slice 5 (privilege escalation) remains · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
+Status: M0–M13 shipped (14 languages) · M14 (checksums + attributes) in progress — Slices 1–4 landed; Slice 5 (privilege escalation) landed for the single-item flat case (the escalation command, both surfaces, non-owned editing), with multi-selection and recursive escalation deferred · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
 
 ---
 
@@ -792,6 +792,46 @@ with a password prompt the user never needed.
 formatting concern** — the same lesson as FTP's `-Q` and the Google `doc_id`. The command is
 composed in the core through the existing `ShellQuoting`, tested against names with quotes,
 spaces, newlines and leading dashes, and never interpolated at the call site.
+
+**Slice 5 landed for the single-item flat case (2026-08-02), core-first, and it is verified live with
+the OS as the judge.** Core: `EscalatedAttributeCommand` translates a tested `AttributeChangePlan`
+into one `/bin/sh` body via `ShellQuoting` (24 tests, app untouched). App: `AdministratorShell` runs
+it through the system auth dialog, and `AttributesController+Escalation` presents both surfaces from
+that one command. Non-owned files became editable, which is what Slice 4's own comments deferred to
+"Slice 5's escalation." Nine catalog keys in all 14 languages. Multi-selection and recursive
+escalation are deferred (their sheets still refuse a root-only change by name), and were left so
+deliberately — the flat single-item path is where the mechanism proves out.
+
+- **One command serves both surfaces, which is the exit criterion.** Option 2 hands the body to
+  `do shell script (item 1 of argv) with administrator privileges` — the body passed as an *argument*,
+  never embedded in the AppleScript source, so the only quoting is the `ShellQuoting` already inside it
+  (probed: a body with quotes, backslashes and `$(…)` round-trips through `argv` inert). Option 3 shows
+  `sudo /bin/sh -c '<body>'` in a copyable field, the body single-quoted as one word. Same bytes, same
+  result. Live: `chmod 744` on the root-owned `/etc/hosts` produced exactly
+  `sudo /bin/sh -c '/bin/chmod 744 '\''/private/etc/hosts'\'''` on the clipboard.
+- **The CLI translation is faithful except two aspects no stock shell can reproduce, and those are
+  named, never dropped** (decided with Oleg). `chflags` is *additive* (probed), so each flags step is a
+  minimal `keyword`/`nokeyword` delta against the word on disk at that point; `touch -t` is
+  whole-second (which is the `NSDatePicker`'s own resolution) and only the *changed* time is touched, so
+  an untouched neighbour keeps its sub-second value; `chmod +a#` reproduces an *exact ordered* ACL, and
+  the canonical `read/write/execute/append` spelling is accepted verbatim on a directory (chmod
+  relabels it to `list/add_file/…` itself). The two omissions: the **Created date** (no stock tool sets
+  the birth time without Xcode) and an **ACL `chmod` cannot express** (an inherited entry, an
+  unresolved-GUID subject, or a token this build only keeps verbatim — the whole list is left rather
+  than written wrongly). The dialog states each omission as its own sentence.
+- **The unlock/relock and the repair steps come through for free**, because the command is built from
+  the same `AttributeChangePlan` the flat write uses. Verified on a real *owned* file (no root needed to
+  run the exact commands): a locked file's mode change came back `mode=600 flags=uchg` — changed and
+  still locked in one gesture — and the setuid digit survived a `chmod 4755`.
+- **The journal records what actually landed, not what was asked** — an omitted Created date or ACL is
+  masked out, so ⌘Z never tries to revert a change that never happened. Undo of an escalated change
+  still needs root and is refused by `UndoJournal` with the existing
+  `attributeRestoreNeedsAdministrator` reason (the same asymmetric-undo shape Slice 4 already handles);
+  making the *undo* itself escalate is a follow-on.
+- **One layout bug was found only by launching** and is the M14 AppKit lesson repeated: an `NSAlert`
+  reserves vertical space for its accessory from the view's *frame*, and a pure-Auto-Layout accessory
+  reports a zero frame — so the copyable-command view drew *over* the informative text until its frame
+  was set to `fittingSize`. Invisible in every test; obvious in the first live shot.
 
 #### Exit criteria
 

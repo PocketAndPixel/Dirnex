@@ -731,6 +731,16 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
     know to look (`titles.contains($0.title)`, `if button.title == …`); what makes them expensive is
     that they fail as *behaviour*, so no string sweep and no coverage test over the catalog can see
     them. Key off an identity the display layer doesn't own.
+- **An `NSAlert` reserves vertical space for its `accessoryView` from that view's *frame*, so a
+  pure-Auto-Layout accessory (only `translatesAutoresizingMaskIntoConstraints = false` + internal
+  constraints) reports a **zero frame** and the alert draws it *overlapping* the informative text.**
+  The escalation dialog's copyable-command view did exactly this — the "Or run this yourself…" label
+  and the command field were painted on top of the body sentence. Invisible in every test and every
+  build; obvious in the first launch. Give the accessory a concrete frame after building it —
+  `view.layoutSubtreeIfNeeded(); view.frame = NSRect(origin: .zero, size: view.fittingSize)` — with a
+  definite inner width (a fixed-width command field) so `fittingSize` resolves. Same family as the
+  `NSStackView`-compression traps above: an AppKit container that is under-informed about size fails
+  by drawing wrong rather than by complaining.
 
 ## Lint ceilings and file splitting
 
@@ -1373,6 +1383,46 @@ The subject picker and the owner/group fields both need the machine's accounts b
 - `XATTR_MAXNAMELEN` is 127. `listxattr` hands back a NUL-separated buffer; `XATTR_SHOWCOMPRESSION`
   made no difference on any real file probed, and neither `com.apple.FinderInfo` nor
   `com.apple.ResourceFork` appeared.
+
+### Attribute escalation (osascript, chflags, chmod +a#)
+
+The M14 Slice 5 escalation reproduces an `AttributeChangePlan` as a `/bin/sh` command run as root. All
+probed live (2026-08-01/02) before any Swift; several results decided the shape.
+
+- **`osascript` can run a shell body as root with *no* AppleScript-string escaping** — pass the body as
+  an argument, not embedded in the source: `osascript -e 'on run argv' -e 'do shell script (item 1 of
+  argv) with administrator privileges' -e 'end run' -- "<body>"`. Probed: a body carrying single
+  quotes, backslashes and `$(touch pwned)` came back through `argv` **inert** (returned as data, no
+  substitution). Embedding it in the AppleScript text instead would add a third quoting layer (escape
+  `\` and `"`) on top of the shell quoting inside the body — this avoids it entirely. Cancelling the
+  auth dialog is AppleScript error **-128** ("User canceled"), surfaced on stderr with a nonzero exit;
+  treat it as a choice, not a failure. `do shell script` runs `/bin/sh` and, on a nonzero exit, reports
+  `execution error: <stderr> (<code>)`.
+- **`chflags` is *additive*, not absolute** — `chflags hidden` then `chflags uchg` yields `uchg,hidden`
+  (probed). So reproducing a target flags word means emitting the minimal `keyword`/`nokeyword` delta
+  against what is on disk at that step (`chflags nouchg` clears only `uchg` and leaves `hidden`), not
+  the whole word. `chflags 0` / an octal *is* absolute, but opaque to a user reading the copyable
+  command, so the keyword delta wins. `noschg` on a file without `schg` is a clean no-op (exit 0).
+- **`chmod +a#` reproduces an *exact ordered* ACL, and the canonical rights spelling works on a
+  directory.** `chmod -N` clears the list, then `chmod +a# <index> "<spec>" <path>` in order rebuilds
+  it (probed: order preserved on readback via `ls -le`). The spec is the friendly form
+  `<user|group>:<name> <allow|deny> <rights,inherit-keywords>`, and `read/write/execute/append` are
+  accepted **verbatim on a directory** — `chmod` translates them to `list/add_file/search/
+  add_subdirectory` itself — so no per-kind relabelling. Three entries `chmod` *cannot* express, which
+  make the whole ACL a stated omission rather than a wrong write: a **bare-GUID / unresolved subject**
+  (`chmod: Unable to translate '…' to a UUID`), an **inherited** entry (`+a#` creates it explicit,
+  losing the `inherited` flag), and a token this build only keeps verbatim.
+- **No stock shell tool sets the birth/Created date** — `SetFile` is Xcode-CLT-only (and whole-second,
+  US-format), so a `setCreationDate` step is omitted and named, never faked. `touch -t` is
+  **whole-second**, which matches `NSDatePicker`'s own resolution; set only the time that changed
+  (`touch -a` / `touch -m` separately, since `touch -t` writes one value) so an untouched neighbour
+  keeps its sub-second value. `chmod`/`chflags`/`chown`/`chgrp`/`touch` all take `-h` to act on a
+  symlink itself, matching the `l*` syscalls the read path uses.
+- **Verify the translation on an *owned* file, unprivileged.** The whole point is that the *same*
+  commands the root path runs are ordinary CLI, so a throwaway harness can run the generated body on a
+  file the tester owns and let `ls -le@` / `stat -f` judge — the locked-file unlock/relock, the setuid
+  digit through `chmod 4755`, the ACL order, all provable with no password. Only the final `sudo` /
+  auth-dialog step needs privilege, and that is the one part left to the user.
 
 ### xattr and sips (the stock tools a user script reaches for)
 

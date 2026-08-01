@@ -4,11 +4,11 @@ import DirnexCore
 /// The Permissions tab: owner, group, the twelve mode bits and the BSD file flags
 /// (PLAN.md §M14 Slice 4).
 ///
-/// **Editable in this pass for the item's owner** (mode bits and `UF_*` flags — the commit and undo
-/// live in `AttributesController+Editing.swift`). A file the user does not own shows the same grid,
-/// disabled, until Slice 5 adds the privileged path; owner and group stay read-only until their own
-/// pass. Every checkbox is wired to one `editChanged` handler that rebuilds the working copy, so this
-/// file only lays them out and records which bit each one is.
+/// **Editable** (mode bits and `UF_*` flags — the commit and undo live in
+/// `AttributesController+Editing.swift`). A file the user does not own is editable too now: its Save
+/// routes through Slice 5's administrator escalation (`AttributesController+Escalation`), so the grid
+/// is live with a note rather than disabled. Every checkbox is wired to one `editChanged` handler that
+/// rebuilds the working copy, so this file only lays them out and records which bit each one is.
 ///
 /// **The ACL note here is an M14 exit criterion, not decoration.** Adding an ACL does not change the
 /// mode bits — probed: a file with an ACL still reads 0644 — so a panel that shows `rw-r--r--` and
@@ -19,7 +19,7 @@ extension AttributesController {
     func makePermissionsTab() -> NSView {
         var rows: [NSView] = []
 
-        if !canEdit {
+        if !ownsItem {
             rows.append(makeNotOwnerNote())
         }
 

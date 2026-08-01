@@ -42,12 +42,27 @@ final class AttributesController: NSViewController {
     /// user never touched is never written — the diff-based model the whole slice rests on.
     var working: FileAttributes
 
-    /// Whether the offered controls are live. Editing an item's mode and `UF_*` flags is unprivileged
-    /// only for its owner (or root); a file the user does not own would need Slice 5's escalation, so
-    /// until that lands the controls are shown disabled with a note rather than promising a write that
-    /// would only fail. The narrower root-only cases an owner *can* reach (a system-immutable file)
-    /// are caught at Save by ``AttributePrivilege``.
+    /// Whether the item is the caller's to change unprivileged — they own it, or they are root.
+    ///
+    /// A file owned by **someone else is still editable** now (Slice 5): its Save routes through the
+    /// administrator escalation instead of being refused. So `ownsItem` no longer gates *whether* the
+    /// controls are live — ``canEdit`` does that, and is always true for the real local item Get Info
+    /// handles. It gates the two things escalation does not yet cover: the "Apply to enclosed items"
+    /// footer (a recursive apply over a tree the user does not own is a follow-on) and the
+    /// Permissions-tab note that says a Save here will ask for a password.
+    let ownsItem: Bool
+
+    /// Whether the sheet offers editing at all. Always true now: an owner edits unprivileged, and a
+    /// non-owner edits through Slice 5's escalation (``AttributesController+Escalation``), so the
+    /// read-only, Done-only sheet is gone. A genuinely unwritable case — a read-only volume — still
+    /// surfaces its error at Save rather than being predicted here; the field stays so every
+    /// control-liveness site reads as "is editing offered" rather than hard-coding `true`.
     let canEdit: Bool
+
+    /// The copyable "run it yourself" field in the escalation dialog — retained so its Copy button can
+    /// read it back (``AttributesController+Escalation``). `NSButton.target` is weak, and the field
+    /// outlives the transient alert only through this reference.
+    weak var escalationCommandField: NSTextField?
 
     /// Journal a committed change so ⌘Z reverses it — set by the pane to its window's undo surface.
     var recordUndo: ((UndoRecord) -> Void)?
@@ -115,7 +130,8 @@ final class AttributesController: NSViewController {
         self.snapshot = snapshot
         working = snapshot.attributes
         actor = UserContext.current()
-        canEdit = actor.isSuperUser || snapshot.attributes.ownerID == actor.userID
+        ownsItem = actor.isSuperUser || snapshot.attributes.ownerID == actor.userID
+        canEdit = true
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -161,7 +177,10 @@ final class AttributesController: NSViewController {
     /// The "Apply to enclosed items" row, for a directory the user may edit. A file has nothing
     /// enclosed, and a read-only sheet has no Save for it to qualify.
     private func makeRecursiveOptions() -> NSView? {
-        guard canEdit, snapshot.entry.kind == .directory else { return nil }
+        // Only for a directory the caller owns: a recursive apply over a tree they do not own would
+        // need to escalate every item, which Slice 5 leaves as a follow-on — the flat escalation
+        // covers the single item on screen, not a walk.
+        guard ownsItem, snapshot.entry.kind == .directory else { return nil }
         let options = RecursiveApplyOptions()
         options.onChange = { [weak self] in self?.refreshSaveEnabled() }
         recursiveOptions = options
@@ -176,17 +195,15 @@ final class AttributesController: NSViewController {
 
     @objc private func close(_ sender: Any?) { dismiss(sender) }
 
-    /// The note every tab with controls shows when the item is not the user's to change.
-    ///
-    /// One site on purpose: `String(localized:comment:)` takes a `StaticString`, so a shared comment
-    /// cannot be hoisted into a constant and two call sites would have to repeat it *verbatim* or
-    /// hand the translator whichever one `xcstringstool` happened to keep (docs/NOTES.md).
+    /// The note a tab shows when the item belongs to someone else: it is still editable, but saving
+    /// will ask for an administrator password (Slice 5). Distinct from the old read-only note — the
+    /// controls are now live, so this sets the expectation rather than explaining why they are off.
     func makeNotOwnerNote() -> NSView {
         AttributeRow.note(String(
             localized: """
-            You can view these, but only the item’s owner or an administrator can change them.
+            You don’t own this item, so saving a change will ask for your administrator password.
             """,
-            comment: "Info panel note when the user does not own the item, so editing is off."
+            comment: "Info panel note when the user does not own the item; a Save will need root."
         ))
     }
 }

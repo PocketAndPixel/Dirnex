@@ -11616,6 +11616,184 @@
         }
       }
     },
+    "Authenticate to make this change as an administrator, or run the command below yourself.": {
+      "comment": "Attributes escalation body: how to apply a root-only change.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authentifizieren Sie sich, um diese Änderung als Administrator vorzunehmen, oder führen Sie den folgenden Befehl selbst aus."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authenticate to make this change as an administrator, or run the command below yourself."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autentícate para realizar este cambio como administrador, o ejecuta tú mismo el comando de abajo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authentifiez-vous pour effectuer cette modification en tant qu’administrateur, ou exécutez vous-même la commande ci-dessous."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autenticati per apportare questa modifica come amministratore, oppure esegui tu stesso il comando qui sotto."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "管理者としてこの変更を行うには認証してください。または、下のコマンドを自分で実行してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "관리자 권한으로 이 변경을 적용하려면 인증하거나 아래 명령을 직접 실행하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authenticeer om deze wijziging als beheerder uit te voeren, of voer de onderstaande opdracht zelf uit."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uwierzytelnij się, aby wprowadzić tę zmianę jako administrator, lub wykonaj poniższe polecenie samodzielnie."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autentique-se para fazer esta alteração como administrador, ou execute você mesmo o comando abaixo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пройдите аутентификацию, чтобы внести это изменение с правами администратора, или выполните команду ниже самостоятельно."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пройдіть автентифікацію, щоб внести цю зміну з правами адміністратора, або виконайте команду нижче самостійно."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请通过认证以管理员身份进行此更改，或自行运行下面的命令。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "請通過認證以管理者身分進行此更改，或自行執行下方的指令。"
+          }
+        }
+      }
+    },
+    "Authenticate…": {
+      "comment": "Button that runs a change through the macOS administrator auth dialog.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authentifizieren…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authenticate…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autenticar…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "S’authentifier…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autentica…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "認証…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "인증…"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authenticeer…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uwierzytelnij…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autenticar…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Аутентификация…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Автентифікація…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "认证…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "認證…"
+          }
+        }
+      }
+    },
     "Authentication failed. Check the username and password, or try a guest connection.": {
       "comment": "SMB mount failure: the server rejected the credentials.",
       "localizations": {
@@ -18927,6 +19105,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "將目前面板中的所選項目拷貝到另一面板，與 F5 相同。"
+          }
+        }
+      }
+    },
+    "Copy": {
+      "comment": "Button that copies text to the clipboard.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopieren"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copier"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コピー"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복사"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopieer"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopiuj"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скопировать"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Копіювати"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拷贝"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拷貝"
           }
         }
       }
@@ -44403,6 +44670,95 @@
         }
       }
     },
+    "Or run this yourself in Terminal:": {
+      "comment": "Label above the copyable administrator command in the attributes escalation.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oder führen Sie dies selbst im Terminal aus:"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Or run this yourself in Terminal:"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O ejecútalo tú mismo en Terminal:"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ou exécutez-le vous-même dans Terminal :"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oppure eseguilo tu stesso nel Terminale:"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "または、ターミナルで自分で実行してください:"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "또는 터미널에서 직접 실행하십시오:"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Of voer dit zelf uit in Terminal:"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lub wykonaj to samodzielnie w Terminalu:"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ou execute você mesmo no Terminal:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Или выполните это самостоятельно в Терминале:"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Або виконайте це самостійно в Терміналі:"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "或在“终端”中自行运行："
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "或在「終端機」中自行執行："
+          }
+        }
+      }
+    },
     "Organize Workspaces": {
       "comment": "Title of the workspace organizer sheet.",
       "localizations": {
@@ -60190,6 +60546,95 @@
         }
       }
     },
+    "The Created date can’t be changed this way and will be left as it is.": {
+      "comment": "Attributes escalation note: the birth date is not set by the elevated command.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Erstellungsdatum kann auf diesem Weg nicht geändert werden und bleibt unverändert."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Created date can’t be changed this way and will be left as it is."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La fecha de creación no se puede cambiar de esta manera y se dejará como está."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La date de création ne peut pas être modifiée de cette manière et restera inchangée."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La data di creazione non può essere modificata in questo modo e resterà invariata."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "作成日はこの方法では変更できないため、そのまま残ります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "생성일은 이 방법으로 변경할 수 없으며 그대로 유지됩니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De aanmaakdatum kan op deze manier niet worden gewijzigd en blijft ongewijzigd."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Daty utworzenia nie można zmienić w ten sposób i pozostanie bez zmian."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A data de criação não pode ser alterada desta forma e permanecerá como está."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Дату создания нельзя изменить таким способом — она останется прежней."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Дату створення не можна змінити таким способом — вона залишиться незмінною."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "创建时间无法通过这种方式更改，将保持原样。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "製作時間無法透過這種方式更改，將維持原樣。"
+          }
+        }
+      }
+    },
     "The Dirnex command or user script to run.": {
       "comment": "Shortcuts parameter description for Run Dirnex Operation.",
       "localizations": {
@@ -60635,6 +61080,95 @@
         }
       }
     },
+    "The access-control list can’t be changed this way and will be left as it is.": {
+      "comment": "Attributes escalation note: the ACL is not reproduced by the elevated command.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Zugriffssteuerungsliste kann auf diesem Weg nicht geändert werden und bleibt unverändert."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The access-control list can’t be changed this way and will be left as it is."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La lista de control de acceso no se puede cambiar de esta manera y se dejará como está."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La liste de contrôle d’accès ne peut pas être modifiée de cette manière et restera inchangée."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’elenco di controllo accessi non può essere modificato in questo modo e resterà invariato."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アクセス制御リストはこの方法では変更できないため、そのまま残ります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "접근 제어 목록은 이 방법으로 변경할 수 없으며 그대로 유지됩니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De toegangsbeheerlijst kan op deze manier niet worden gewijzigd en blijft ongewijzigd."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listy kontroli dostępu nie można zmienić w ten sposób i pozostanie bez zmian."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A lista de controle de acesso não pode ser alterada desta forma e permanecerá como está."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Список контроля доступа нельзя изменить таким способом — он останется прежним."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Список контролю доступу не можна змінити таким способом — він залишиться незмінним."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "访问控制列表无法通过这种方式更改，将保持原样。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "存取控制列表無法透過這種方式更改，將維持原樣。"
+          }
+        }
+      }
+    },
     "The active panel isn’t a folder on this disk.": {
       "comment": "Script run failure detail: no local folder to run in.",
       "localizations": {
@@ -60720,6 +61254,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "目前面板不是此磁碟上的檔案夾。"
+          }
+        }
+      }
+    },
+    "The administrator command didn’t finish.": {
+      "comment": "Attributes escalation failure body when the tool gave no message.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Administratorbefehl wurde nicht abgeschlossen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The administrator command didn’t finish."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El comando de administrador no se completó."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La commande administrateur ne s’est pas terminée."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il comando amministratore non è stato completato."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "管理者コマンドが完了しませんでした。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "관리자 명령이 완료되지 않았습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De beheerdersopdracht is niet voltooid."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Polecenie administratora nie zostało ukończone."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O comando de administrador não foi concluído."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Команда администратора не завершилась."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Команду адміністратора не завершено."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "管理员命令未完成。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "管理者指令未完成。"
           }
         }
       }
@@ -64191,6 +64814,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "此操作無法還原。"
+          }
+        }
+      }
+    },
+    "This change can’t be made as an administrator from here.": {
+      "comment": "Attributes escalation body when nothing the elevated command can do remains.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Änderung kann hier nicht als Administrator vorgenommen werden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This change can’t be made as an administrator from here."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este cambio no se puede realizar como administrador desde aquí."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette modification ne peut pas être effectuée en tant qu’administrateur ici."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa modifica non può essere apportata come amministratore da qui."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この変更はここでは管理者として行えません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 변경은 여기서 관리자 권한으로 적용할 수 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze wijziging kan hier niet als beheerder worden uitgevoerd."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tej zmiany nie można tu wprowadzić jako administrator."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta alteração não pode ser feita como administrador a partir daqui."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Это изменение нельзя внести с правами администратора отсюда."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цю зміну не можна внести з правами адміністратора звідси."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法在此处以管理员身份进行此更改。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法在此處以管理者身分進行此更改。"
           }
         }
       }
@@ -69684,6 +70396,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "你沒有權限。Dirnex 可能需要在「系統設定」中獲得「完全取用磁碟」權限。"
+          }
+        }
+      }
+    },
+    "You don’t own this item, so saving a change will ask for your administrator password.": {
+      "comment": "Info panel note when the user does not own the item; a Save will need root.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Objekt gehört Ihnen nicht, daher werden Sie beim Sichern einer Änderung nach einem Administratorpasswort gefragt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You don’t own this item, so saving a change will ask for your administrator password."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No eres el propietario de este ítem, así que al guardar un cambio se te pedirá una contraseña de administrador."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cet élément ne vous appartient pas : enregistrer une modification demandera un mot de passe administrateur."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo elemento non è tuo, quindi salvare una modifica richiederà una password di amministratore."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この項目の所有者ではないため、変更を保存するときに管理者パスワードの入力を求められます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 항목의 소유자가 아니므로 변경 사항을 저장하면 관리자 암호를 묻습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dit object is niet van jou, dus bij het bewaren van een wijziging wordt om een beheerderswachtwoord gevraagd."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie jesteś właścicielem tego elementu, więc zachowanie zmiany będzie wymagać hasła administratora."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você não é o proprietário deste item, portanto salvar uma alteração pedirá uma senha de administrador."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вы не владелец этого объекта, поэтому при сохранении изменения потребуется пароль администратора."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ви не власник цього об’єкта, тому для збереження зміни знадобиться пароль адміністратора."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你不是此项目的所有者，因此存储更改时会要求输入管理员密码。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你不是此項目的擁有者，因此儲存更改時會要求輸入管理者密碼。"
           }
         }
       }
