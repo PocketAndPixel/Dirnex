@@ -20,6 +20,18 @@ public struct FileOperation: Sendable {
         /// pause, cancel, and a determinate bar. A 50 GB SHA-256 is ~25 s and a CRC32 of the same
         /// file ~100 s, so "run it modally and hope" was never available.
         case checksum(ChecksumJob)
+        /// Change metadata rather than move bytes — apply an attributes patch (and optionally an
+        /// ACL) to the sources and everything inside them (PLAN.md §M14 Slice 4).
+        ///
+        /// The *flat* case never comes here: one item, or a marked set, is a handful of syscalls
+        /// that finish before the sheet closes. Recursion is the shape that can run over a hundred
+        /// thousand items and the one that can wreck a tree, so it gets the same determinate bar,
+        /// pause and cancel a copy gets — and, like `.checksum`, it needs no scheduler of its own.
+        ///
+        /// Unlike every other kind it produces no `outcomes`, because there is nothing to move:
+        /// its answer, *including the undo material*, rides home on
+        /// ``OperationReport/attributeApply``.
+        case attributes(AttributeApplyJob)
     }
 
     public let kind: Kind
@@ -218,6 +230,12 @@ public struct OperationReport: Sendable, Equatable {
     /// second place for a finished job to be missed.
     public let checksum: ChecksumOutcome?
 
+    /// What a recursive `.attributes` job changed, and whether it is small enough to undo. `nil` for
+    /// every other kind. Rides home on the report for the same reason `checksum` does — and this one
+    /// carries the *undo material*, so a second channel would be a second place to lose a tree's
+    /// only way back.
+    public let attributeApply: AttributeApplyOutcome?
+
     public init(
         completedItems: Int,
         completedBytes: Int64,
@@ -225,7 +243,8 @@ public struct OperationReport: Sendable, Equatable {
         failures: [OperationItemFailure],
         wasCancelled: Bool,
         outcomes: [OperationItemOutcome] = [],
-        checksum: ChecksumOutcome? = nil
+        checksum: ChecksumOutcome? = nil,
+        attributeApply: AttributeApplyOutcome? = nil
     ) {
         self.completedItems = completedItems
         self.completedBytes = completedBytes
@@ -234,6 +253,7 @@ public struct OperationReport: Sendable, Equatable {
         self.wasCancelled = wasCancelled
         self.outcomes = outcomes
         self.checksum = checksum
+        self.attributeApply = attributeApply
     }
 
     public var succeeded: Bool { failures.isEmpty && !wasCancelled }

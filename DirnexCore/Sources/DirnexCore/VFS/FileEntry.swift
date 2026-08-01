@@ -30,6 +30,16 @@ public struct FileEntry: Sendable, Hashable, Identifiable {
     public let isHidden: Bool
     /// POSIX permission bits (`mode & 0o777`).
     public let permissions: UInt16
+    /// Owning user id (`st_uid`). Free on a local listing — the `stat` already read it — and the
+    /// value the attributes panel and `AttributePrivilege` need to answer "do I own this file?"
+    /// (PLAN.md §M14 Slice 3). Zero for a backend with no POSIX ownership (archives, remotes).
+    public let ownerID: UInt32
+    /// Owning group id (`st_gid`); same provenance as ``ownerID``.
+    public let groupID: UInt32
+    /// The raw BSD file flags word (`st_flags`) — the same read that already yields ``isHidden`` and
+    /// ``isDataless``. Kept whole here so the attributes panel can show and edit the individual flags
+    /// (Finder's "Locked" is `UF_IMMUTABLE`) without a second `stat`. Zero where a backend has none.
+    public let flags: UInt32
     /// Inode number — reserved for future rename/identity tracking across refreshes.
     public let inode: UInt64
     /// The raw text a symlink points at (unresolved), else `nil`.
@@ -61,6 +71,9 @@ public struct FileEntry: Sendable, Hashable, Identifiable {
         creationDate: Date,
         isHidden: Bool,
         permissions: UInt16,
+        ownerID: UInt32 = 0,
+        groupID: UInt32 = 0,
+        flags: UInt32 = 0,
         inode: UInt64,
         symlinkDestination: String? = nil,
         symlinkTargetKind: Kind? = nil,
@@ -74,6 +87,9 @@ public struct FileEntry: Sendable, Hashable, Identifiable {
         self.creationDate = creationDate
         self.isHidden = isHidden
         self.permissions = permissions
+        self.ownerID = ownerID
+        self.groupID = groupID
+        self.flags = flags
         self.inode = inode
         self.symlinkDestination = symlinkDestination
         self.symlinkTargetKind = symlinkTargetKind

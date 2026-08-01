@@ -194,6 +194,11 @@ final class QueueJobRowView: NSView {
                 localized: "Checksum \(name)",
                 comment: "Queue row label; %@ is the file being hashed."
             )
+        case .attributes:
+            return String(
+                localized: "Change permissions of \(name)",
+                comment: "Queue row label; %@ is the item whose attributes are being changed."
+            )
         }
     }
 
@@ -213,6 +218,11 @@ final class QueueJobRowView: NSView {
             return String(
                 localized: "Checksum…",
                 comment: "Queue row label for a checksum job with no current item yet."
+            )
+        case .attributes:
+            return String(
+                localized: "Change permissions…",
+                comment: "Queue row label for an attributes job with no current item yet."
             )
         }
     }

@@ -79,6 +79,14 @@ extension BrowserWindowController {
             // reaches the user by the one path a finished job already travels — even if the pane
             // that started it has since changed tabs.
             presentChecksumOutcome(of: report, kind: job.kind)
+            // A recursive attributes apply owns both halves of its finish: it journals its own undo
+            // record (there are no `outcomes` for `transfer` to work from) and reports its own
+            // per-item failures, which are ordinary collected refusals rather than the whole-job
+            // failure `reportFailures` describes.
+            if case .attributes = job.kind {
+                presentAttributeApplyOutcome(of: report, kind: job.kind)
+                continue
+            }
             if !report.failures.isEmpty {
                 reportFailures(report, kind: job.kind)
             }
