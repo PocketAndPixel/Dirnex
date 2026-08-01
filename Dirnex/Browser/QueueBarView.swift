@@ -307,25 +307,9 @@ extension QueueBarView {
         if let current = active.first {
             let name = current.progress?.currentItem?.lastComponent
             if let name, !name.isEmpty {
-                text = current.kind == .copy
-                    ? String(
-                        localized: "Copying \(name)",
-                        comment: "Queue-bar status; %@ is the file being copied."
-                    )
-                    : String(
-                        localized: "Moving \(name)",
-                        comment: "Queue-bar status; %@ is the file being moved."
-                    )
+                text = Self.activeStatus(kind: current.kind, name: name)
             } else {
-                text = current.kind == .copy
-                    ? String(
-                        localized: "Copying…",
-                        comment: "Queue-bar status while a copy is being prepared."
-                    )
-                    : String(
-                        localized: "Moving…",
-                        comment: "Queue-bar status while a move is being prepared."
-                    )
+                text = Self.preparingStatus(kind: current.kind)
             }
         } else {
             text = String(
@@ -348,6 +332,62 @@ extension QueueBarView {
             )
         }
         return text
+    }
+
+    /// What a running job is doing, named by kind.
+    ///
+    /// Whole sentences per branch rather than a verb spliced into a template: a language that
+    /// inflects the object or reorders the clause cannot build "Copying <name>" from a bare verb
+    /// (docs/NOTES.md). Verifying and computing share one phrasing — from the bar's point of view
+    /// both are "reading this file to hash it", and the sheet that follows says which it was.
+    private static func activeStatus(kind: FileOperation.Kind, name: String) -> String {
+        switch kind {
+        case .copy:
+            return String(
+                localized: "Copying \(name)",
+                comment: "Queue-bar status; %@ is the file being copied."
+            )
+        case .move:
+            return String(
+                localized: "Moving \(name)",
+                comment: "Queue-bar status; %@ is the file being moved."
+            )
+        case .checksum:
+            return String(
+                localized: "Checksumming \(name)",
+                comment: "Queue-bar status; %@ is the file being hashed."
+            )
+        case .attributes:
+            return String(
+                localized: "Changing \(name)",
+                comment: "Queue-bar status; %@ is the item whose attributes are being changed."
+            )
+        }
+    }
+
+    private static func preparingStatus(kind: FileOperation.Kind) -> String {
+        switch kind {
+        case .copy:
+            return String(
+                localized: "Copying…",
+                comment: "Queue-bar status while a copy is being prepared."
+            )
+        case .move:
+            return String(
+                localized: "Moving…",
+                comment: "Queue-bar status while a move is being prepared."
+            )
+        case .checksum:
+            return String(
+                localized: "Checksumming…",
+                comment: "Queue-bar status while a checksum run is being prepared."
+            )
+        case .attributes:
+            return String(
+                localized: "Changing permissions…",
+                comment: "Queue-bar status while a recursive attributes change is being prepared."
+            )
+        }
     }
 
     /// The byte/throughput/ETA readout beneath the status line, `·`-joined.

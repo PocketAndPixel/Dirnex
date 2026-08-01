@@ -159,16 +159,39 @@ public actor FileOperationQueue {
         // The engine is synchronous and blocks its thread; run it detached so the actor
         // stays responsive. `isCancelled` is the job's control hook — it reports
         // cancellation *and* blocks the copy while the queue is paused.
+        //
+        // Which engine is the *only* thing the kind decides here. Everything else the queue does —
+        // the volume rule, pause, cancel, the aggregate bar — is engine-agnostic by construction,
+        // which is why a checksum could join without a scheduler of its own.
         let runTask = Task.detached(priority: .userInitiated) { () -> OperationReport in
-            let report = CopyEngine.run(
-                operation,
-                using: backend,
-                conflictPolicy: policy,
-                resolveConflict: resolveConflict,
-                onError: onError,
-                onProgress: { progressContinuation.yield($0) },
-                isCancelled: { control.checkpoint() }
-            )
+            let report: OperationReport
+            switch operation.kind {
+            case .copy, .move:
+                report = CopyEngine.run(
+                    operation,
+                    using: backend,
+                    conflictPolicy: policy,
+                    resolveConflict: resolveConflict,
+                    onError: onError,
+                    onProgress: { progressContinuation.yield($0) },
+                    isCancelled: { control.checkpoint() }
+                )
+            case let .attributes(job):
+                report = AttributeApplyRunner.run(
+                    job,
+                    sources: operation.sources,
+                    using: backend,
+                    onProgress: { progressContinuation.yield($0) },
+                    isCancelled: { control.checkpoint() }
+                )
+            case .checksum:
+                report = ChecksumRunner.run(
+                    operation,
+                    using: backend,
+                    onProgress: { progressContinuation.yield($0) },
+                    isCancelled: { control.checkpoint() }
+                )
+            }
             progressContinuation.finish()
             return report
         }
@@ -374,11 +397,17 @@ extension FileOperationQueue {
     private func aggregate(over jobs: [JobSnapshot]) -> AggregateProgress {
         var totalBytes: Int64 = 0
         var completedBytes: Int64 = 0
+        var totalItems = 0
+        var completedItems = 0
         var finished = 0
         var active = 0
         for job in jobs {
             totalBytes += job.progress?.totalBytes ?? 0
             completedBytes += job.report?.completedBytes ?? job.progress?.completedBytes ?? 0
+            // Items are rolled up beside bytes so a job that moves none — a recursive attributes
+            // apply — still has a measure for the bar to draw (`AggregateProgress.fraction`).
+            totalItems += job.progress?.totalItems ?? 0
+            completedItems += job.progress?.completedItems ?? 0
             switch job.status {
             case .finished, .cancelled: finished += 1
             case .running, .paused: active += 1
@@ -397,6 +426,8 @@ extension FileOperationQueue {
             activeJobs: active,
             totalBytes: totalBytes,
             completedBytes: completedBytes,
+            totalItems: totalItems,
+            completedItems: completedItems,
             bytesPerSecond: bytesPerSecond,
             estimatedTimeRemaining: eta
         )

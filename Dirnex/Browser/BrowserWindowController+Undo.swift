@@ -127,7 +127,9 @@ extension BrowserWindowController {
         )
     }
 
-    private func presentIssues(title: String, lines: [String]) {
+    /// Internal rather than private: the recursive attributes apply reports through the same alert,
+    /// and Swift's `private` does not cross files (docs/NOTES.md §"Lint ceilings").
+    func presentIssues(title: String, lines: [String]) {
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = title

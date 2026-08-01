@@ -1,8 +1,8 @@
 import AppKit
 import DirnexCore
 
-/// Compare By Contents (PLAN.md §M5) — hand the two panes' cursor files to an external visual diff
-/// tool. `ByteComparator` answers *whether* they differ; FileMerge / Kaleidoscope / BBEdit answer
+/// Compare By Contents (PLAN.md §M5) — hand a pair of files to an external visual diff tool.
+/// `ByteComparator` answers *whether* they differ; FileMerge / Kaleidoscope / BBEdit answer
 /// *how*. Split out of `PanelViewController+Sync`, which owns the folder-level Synchronize sheet:
 /// the two share a launcher but nothing else, and the sync file was near its length budget.
 ///
@@ -11,18 +11,20 @@ import DirnexCore
 extension PanelViewController {
     // MARK: - Menu / palette action (dispatched to the focused pane via the responder chain)
 
-    /// Compare the two panes' cursor files. Cursor-to-cursor keeps the choice explicit and
-    /// predictable — put the two files under the cursors and invoke it.
+    /// Compare a pair of files: the two marked in this pane, else the two panes' cursor files.
     @objc func compareByContents(_ sender: Any?) {
-        guard let (left, right) = comparableCursorPair() else {
+        guard let (left, right) = comparablePair() else {
             presentOperationFailure(
                 message: String(
                     localized: "Nothing to compare",
                     comment: "Compare failure title when no file is under the cursor."
                 ),
                 detail: String(
-                    localized: "Put a file under the cursor in each panel, then compare them.",
-                    comment: "Compare failure detail."
+                    localized: """
+                    Put a file under the cursor in each panel, or select exactly two files in one \
+                    panel, then compare them.
+                    """,
+                    comment: "Compare failure detail naming both ways to pick the pair."
                 )
             )
             return
@@ -30,8 +32,30 @@ extension PanelViewController {
         launchExternalDiff(comparing: left, with: right)
     }
 
-    /// The two local, regular files to compare, or `nil` when either side isn't a real file on
-    /// disk. Comparing a path with itself is refused (nothing to diff).
+    /// The two files to compare, or `nil` when there is no usable pair.
+    ///
+    /// Two gestures, and the marked one wins: **exactly two files marked in the focused pane**
+    /// compares those two, and anything else falls back to the cursor file in each pane. Marks over
+    /// the cursor is the rule every other file operation here follows (`selectionTargets`), and two
+    /// marks name two specific files where the other pane's cursor is usually wherever it was last
+    /// left — so preferring the cursor pair would make the marked gesture unreachable, since the
+    /// cursors are almost always both on something.
+    ///
+    /// A marked pair that isn't comparable (a folder, an archive member) is refused rather than
+    /// falling back — diffing two unrelated cursor files instead of what the user marked would be
+    /// wrong in the quiet direction.
+    ///
+    /// Internal rather than private so `CompareSelectionTests` can assert the *pair* — which two
+    /// files, in which order — rather than only the `Bool` the menu gate exposes.
+    func comparablePair() -> (VFSPath, VFSPath)? {
+        let marked = selectionTargets()
+        guard marked.count == 2 else { return comparableCursorPair() }
+        // Display order, so the upper row is the left column — the in-pane reading of the
+        // physical-left-pane rule below.
+        return Self.comparablePaths(marked[0], marked[1])
+    }
+
+    /// The cursor file in the left pane against the cursor file in the right.
     ///
     /// **The physical left pane is always the left side**, regardless of which pane is focused —
     /// the same rule `beginSync` follows, and for a stronger reason here: the diff tool labels its
@@ -40,21 +64,33 @@ extension PanelViewController {
     /// would silently transpose those columns depending on where the user last clicked.
     private func comparableCursorPair() -> (VFSPath, VFSPath)? {
         guard let window = host as? BrowserWindowController,
-              let left = Self.localFileUnderCursor(of: window.leftPanel),
-              let right = Self.localFileUnderCursor(of: window.rightPanel),
-              left != right else { return nil }
-        return (left, right)
+              let left = Self.cursorFile(of: window.leftPanel),
+              let right = Self.cursorFile(of: window.rightPanel) else { return nil }
+        return Self.comparablePaths(left, right)
     }
 
-    private static func localFileUnderCursor(of pane: PanelViewController) -> VFSPath? {
-        guard let entry = pane.panel.currentEntry,
-              entry.kind == .file,
-              entry.path.backend == .local else { return nil }
-        return entry.path
+    /// The entry under a pane's cursor, or `nil` on the synthetic `..` row — which keeps its own
+    /// flag rather than a model row, so `currentEntry` there answers with the *first* file in the
+    /// listing (the guard every other cursor-driven command already carries).
+    static func cursorFile(of pane: PanelViewController) -> FileEntry? {
+        pane.cursorOnParentRow ? nil : pane.panel.currentEntry
     }
 
-    /// Whether Compare By Contents should be enabled: a real file under the cursor in each pane.
-    var canCompareByContents: Bool { comparableCursorPair() != nil }
+    /// The pair of paths to hand the diff tool, or `nil` unless both entries are real regular files
+    /// on disk and are two *different* files (there is nothing to diff a path against itself).
+    private static func comparablePaths(
+        _ left: FileEntry,
+        _ right: FileEntry
+    ) -> (VFSPath, VFSPath)? {
+        guard left.kind == .file, right.kind == .file,
+              left.path.backend == .local, right.path.backend == .local,
+              left.path != right.path else { return nil }
+        return (left.path, right.path)
+    }
+
+    /// Whether Compare By Contents should be enabled: two real local files, marked here or under
+    /// the two panes' cursors.
+    var canCompareByContents: Bool { comparablePair() != nil }
 
     // MARK: - Launch
 
@@ -66,7 +102,18 @@ extension PanelViewController {
     /// files too large to scan ask first, and everything else launches. A pre-flight *failure*
     /// (permission, vanished mid-read) launches anyway — this is an optimization, not a gate, and
     /// the diff tool reports an unreadable file better than a second alert here would.
-    func launchExternalDiff(comparing left: VFSPath, with right: VFSPath) {
+    ///
+    /// **One failure is not "launch anyway": the comparator refusing to download a cloud
+    /// placeholder.** Falling through there would hand the placeholder to the diff tool, which
+    /// blocks *it* on the same materializing read `ByteComparator` declined to make — the identical
+    /// beachball, one process over and with nothing on screen saying why. So that one is caught,
+    /// the bytes are fetched where the user can see it happening and stop it, and the compare is
+    /// re-run. `downloadingPlaceholders` marks that second run, so it can never loop.
+    func launchExternalDiff(
+        comparing left: VFSPath,
+        with right: VFSPath,
+        downloadingPlaceholders: Bool = false
+    ) {
         guard let tool = ExternalDiffLauncher.preferredTool() else {
             presentDiffFailure(.noToolInstalled)
             return
@@ -79,23 +126,55 @@ extension PanelViewController {
         )
         Task { [weak self] in
             let outcome = await Task.detached(priority: .userInitiated) {
-                try? ByteComparator.prescan(left, right)
+                Result { try ByteComparator.prescan(
+                    left,
+                    right,
+                    allowDataless: downloadingPlaceholders
+                ) }
             }.value
             guard let self else { return }
-            // `nil` is a pre-flight that threw — fall through to the launch, as documented above.
-            switch outcome ?? .different {
-            case .identical:
+            switch outcome {
+            case .success(.identical):
                 reportComparisonResult(
                     String(
                         localized: "Files are identical — nothing to compare.",
                         comment: "Compare result when the two files match byte for byte."
                     )
                 )
-            case let .tooLargeToScan(largestByteSize):
+            case let .success(.tooLargeToScan(largestByteSize)):
                 confirmOversizedCompare(left, right, tool: tool, byteSize: largestByteSize)
-            case .different:
+            case .success(.different):
                 spawn(tool, comparing: left, with: right)
+            case let .failure(error) where Self.wouldDownloadPlaceholder(error):
+                downloadThenCompare(left, with: right)
+            case .failure:
+                spawn(tool, comparing: left, with: right) // an optimization that failed, not a gate
             }
+        }
+    }
+
+    /// Whether a pre-flight failure is the comparator declining to materialize an evicted cloud
+    /// file — the one failure whose fall-through would cause exactly the block it prevented.
+    private static func wouldDownloadPlaceholder(_ error: any Error) -> Bool {
+        guard case let .unsupported(reason) = error as? VFSError,
+              case .contentComparisonWouldDownload = reason else { return false }
+        return true
+    }
+
+    /// Fetch both sides, then compare again.
+    ///
+    /// No extra confirmation: the user put these two files under the cursors and asked what is in
+    /// them, which is the same explicit request Enter and F4 already answer by downloading — and by
+    /// the time the refusal fires the sizes have matched, so there is no free answer left to give.
+    /// What they get is what those two give: a silent start, a sheet if it takes longer than a
+    /// moment, and a Stop button that abandons the compare.
+    private func downloadThenCompare(_ left: VFSPath, with right: VFSPath) {
+        CloudDownloadPrompt.materialize(
+            [left, right],
+            using: backend,
+            over: alertHostWindow
+        ) { [weak self] in
+            self?.launchExternalDiff(comparing: left, with: right, downloadingPlaceholders: true)
         }
     }
 
@@ -136,9 +215,26 @@ extension PanelViewController {
         }
     }
 
-    /// Spawn the tool and say so. The launch is detached and a cold FileMerge takes seconds to draw
-    /// its first window, so without this line the app looks like it swallowed the keystroke.
+    /// Hand the pair to the tool, fetching either side's bytes first if it hasn't got any.
+    ///
+    /// This is the choke point that guarantees the *tool* never gets a placeholder, and it has to be
+    /// here rather than only on the refusal path: the two outcomes that reach a launch without the
+    /// comparator ever having read a byte — `tooLargeToScan`, and a pre-flight that threw for some
+    /// other reason — would otherwise walk a dataless file straight into FileMerge. Both sides are
+    /// already local on every ordinary compare, so the common case is one `stat` each and no sheet.
     private func spawn(_ tool: ExternalDiffTool, comparing left: VFSPath, with right: VFSPath) {
+        CloudDownloadPrompt.materialize(
+            [left, right],
+            using: backend,
+            over: alertHostWindow
+        ) { [weak self] in
+            self?.launch(tool, comparing: left, with: right)
+        }
+    }
+
+    /// Launch the tool and say so. The launch is detached and a cold FileMerge takes seconds to draw
+    /// its first window, so without this line the app looks like it swallowed the keystroke.
+    private func launch(_ tool: ExternalDiffTool, comparing left: VFSPath, with right: VFSPath) {
         showComparisonProgress(
             String(
                 localized: "Opening in \(tool.displayName)…",

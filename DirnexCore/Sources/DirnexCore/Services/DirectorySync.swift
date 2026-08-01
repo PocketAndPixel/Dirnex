@@ -160,6 +160,14 @@ public enum DirectorySync {
     /// - Parameter contentsEqual: the exact-equality test used in `.content` mode; defaults to
     ///   a chunked local byte comparison. Injected so the engine stays free of a read primitive
     ///   and tests can drive content mode deterministically.
+    ///
+    ///   That default **refuses an evicted cloud placeholder**, so a `.content` scan over a folder
+    ///   holding one throws rather than materializing it: a tree sweep is not a file the user
+    ///   pointed at, and reading through it would quietly download their whole cloud drive
+    ///   (docs/NOTES.md). The scan stops naming the first such file, which is the same shape as a
+    ///   directory that can't be listed — the user switches to `.sizeAndDate`, or downloads the
+    ///   folder first. A caller that has already obtained consent injects a closure passing
+    ///   `allowDataless: true`.
     public static func compare(
         left: VFSPath,
         right: VFSPath,

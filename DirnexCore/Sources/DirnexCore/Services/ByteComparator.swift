@@ -14,6 +14,24 @@ public enum ContentComparison: Sendable, Equatable {
     case tooLargeToScan(largestByteSize: Int64)
 }
 
+/// One side of a comparison: the path, plus everything a single `lstat` said about it.
+///
+/// Three facts, one syscall. `FileManager.attributesOfItem` can answer the first two and *never*
+/// the third — it does not surface `st_flags` — which is why the comparator stats for itself, the
+/// same move `ChecksumEngine` makes for the same reason.
+///
+/// It is also the seam the placeholder rule is tested through, because `SF_DATALESS` **cannot be
+/// produced in a test**: probed on macOS 26, `chflags` returns success and the kernel silently drops
+/// the flag, since it belongs to the file provider rather than to the file's owner. So the decision
+/// half of the comparator takes subjects and the reading half supplies real ones.
+struct ComparisonSubject: Equatable {
+    let path: VFSPath
+    let isRegularFile: Bool
+    let byteSize: Int64
+    /// `SF_DATALESS`: the name, size and dates are real; the bytes are not on this disk.
+    let isDataless: Bool
+}
+
 /// Byte-for-byte comparison of two on-disk files (PLAN.md §M5 "Compare by content: byte
 /// compare"). This is the exact-equality primitive behind the directory-synchronizer's
 /// `.content` mode and the standalone "compare files by content" command.
@@ -23,6 +41,13 @@ public enum ContentComparison: Sendable, Equatable {
 /// different sizes are unequal without reading a byte, and reading stops at the first
 /// differing chunk. The caller decides where it runs (the app drives it off the main
 /// thread); pass `isCancelled` to abandon a huge comparison when the user moves on.
+///
+/// **An evicted cloud placeholder is refused rather than read** (`allowDataless`). Reading one byte
+/// of an `SF_DATALESS` file makes iCloud or Google Drive materialize the whole thing and *blocks*
+/// until it lands — measured 1.1 s for 200 KB, and unbounded on a slow link — so a comparison that
+/// would do it says so instead, naming the file. The caller decides what that means: a file the
+/// user pointed at is worth downloading (the app asks the provider and shows a sheet with a Stop
+/// button), while a sweep over a tree stops rather than pulling someone's whole cloud drive.
 public enum ByteComparator {
     /// Whether the two local files hold identical bytes.
     ///
@@ -32,35 +57,28 @@ public enum ByteComparator {
     /// - A size mismatch returns `false` immediately — no bytes are read.
     /// - Directories can't be content-compared; a non-regular file on either side throws
     ///   `.unsupported` so the caller falls back to metadata comparison.
+    /// - An evicted cloud placeholder on either side throws
+    ///   `.contentComparisonWouldDownload` unless `allowDataless` says the download has
+    ///   already been agreed to.
     /// - Read failures (permission, vanished mid-read) throw `VFSError.io`.
     public static func localFilesEqual(
         _ lhs: VFSPath,
         _ rhs: VFSPath,
         chunkSize: Int = 128 * 1024,
+        allowDataless: Bool = false,
         isCancelled: () -> Bool = { false }
     ) throws -> Bool {
         guard lhs.backend == .local, rhs.backend == .local else {
             throw VFSError.unsupported(.contentComparisonNeedsLocalFiles)
         }
         guard lhs != rhs else { return true }
-
-        let lhsSize = try regularFileSize(lhs)
-        let rhsSize = try regularFileSize(rhs)
-        guard lhsSize == rhsSize else { return false }
-        guard lhsSize > 0 else { return true } // two empty files are equal
-
-        let lhsHandle = try openForReading(lhs)
-        defer { try? lhsHandle.close() }
-        let rhsHandle = try openForReading(rhs)
-        defer { try? rhsHandle.close() }
-
-        while true {
-            if isCancelled() { throw CancellationError() }
-            let lhsChunk = try read(lhsHandle, upTo: chunkSize, at: lhs)
-            let rhsChunk = try read(rhsHandle, upTo: chunkSize, at: rhs)
-            if lhsChunk != rhsChunk { return false }
-            if lhsChunk.isEmpty { return true } // both reached EOF in lock-step
-        }
+        return try equal(
+            try subject(lhs),
+            try subject(rhs),
+            chunkSize: chunkSize,
+            allowDataless: allowDataless,
+            isCancelled: isCancelled
+        )
     }
 
     /// The largest file `prescan` will read through. Past this, deciding identical-or-not costs a
@@ -75,47 +93,141 @@ public enum ByteComparator {
     /// FileMerge. Within the budget this is exactly `localFilesEqual`, so the same short-circuits
     /// apply (a size mismatch reads no bytes; reading stops at the first differing chunk).
     ///
-    /// Throws what `localFilesEqual` throws: `.unsupported` for a non-local or non-regular path,
-    /// `VFSError.io` for a read failure, `CancellationError` when `isCancelled` fires.
+    /// Throws what `localFilesEqual` throws: `.unsupported` for a non-local or non-regular path or
+    /// an un-downloaded placeholder, `VFSError.io` for a read failure, `CancellationError` when
+    /// `isCancelled` fires.
     public static func prescan(
         _ lhs: VFSPath,
         _ rhs: VFSPath,
         byteLimit: Int64 = prescanByteLimit,
         chunkSize: Int = 128 * 1024,
+        allowDataless: Bool = false,
         isCancelled: () -> Bool = { false }
     ) throws -> ContentComparison {
         guard lhs.backend == .local, rhs.backend == .local else {
             throw VFSError.unsupported(.contentComparisonNeedsLocalFiles)
         }
         guard lhs != rhs else { return .identical }
+        return try prescan(
+            try subject(lhs),
+            try subject(rhs),
+            byteLimit: byteLimit,
+            chunkSize: chunkSize,
+            allowDataless: allowDataless,
+            isCancelled: isCancelled
+        )
+    }
 
-        let lhsSize = try regularFileSize(lhs)
-        let rhsSize = try regularFileSize(rhs)
-        let largest = max(lhsSize, rhsSize)
+    // MARK: - The decision half
+
+    // Both seams below spell out every knob rather than re-declaring the public defaults, which
+    // would be a second place for one number to drift from the other.
+    // swiftlint:disable function_parameter_count
+
+    /// `prescan` over subjects already read — the seam the placeholder tests drive.
+    ///
+    /// The size gate answers *before* the placeholder rule on purpose, and for the same reason it
+    /// outranks the size-mismatch short-circuit: `tooLargeToScan` reads nothing, so it is not a
+    /// comparison that would download anything. The caller that then says "open it anyway" is
+    /// handing the pair to a diff tool, and making *that* read safe is the app's job, not this one's.
+    static func prescan(
+        _ lhs: ComparisonSubject,
+        _ rhs: ComparisonSubject,
+        byteLimit: Int64,
+        chunkSize: Int,
+        allowDataless: Bool,
+        isCancelled: () -> Bool
+    ) throws -> ContentComparison {
+        try requireRegularFiles(lhs, rhs)
+        let largest = max(lhs.byteSize, rhs.byteSize)
         guard largest <= byteLimit else { return .tooLargeToScan(largestByteSize: largest) }
 
-        let equal = try localFilesEqual(
+        let equal = try equal(
             lhs,
             rhs,
             chunkSize: chunkSize,
+            allowDataless: allowDataless,
             isCancelled: isCancelled
         )
         return equal ? .identical : .different
     }
 
-    // MARK: - Helpers
+    /// `localFilesEqual` over subjects already read — the seam the placeholder tests drive, since
+    /// `SF_DATALESS` cannot be set on a test file (see ``ComparisonSubject``).
+    ///
+    /// **The placeholder guard sits last, immediately before the first read**, after both free
+    /// answers. A dataless file carries its *real* size, so two placeholders of different sizes are
+    /// known-unequal for nothing — and refusing a question that costs no download would abort a
+    /// content sync over a pair it could already classify. The guard exists to stop a *read*, so it
+    /// is asked exactly where a read is about to happen.
+    static func equal(
+        _ lhs: ComparisonSubject,
+        _ rhs: ComparisonSubject,
+        chunkSize: Int,
+        allowDataless: Bool,
+        isCancelled: () -> Bool
+    ) throws -> Bool {
+        try requireRegularFiles(lhs, rhs)
+        guard lhs.byteSize == rhs.byteSize else { return false }
+        guard lhs.byteSize > 0 else { return true } // two empty files are equal
+        try requireDownloaded(lhs, rhs, allowDataless: allowDataless)
 
-    private static func regularFileSize(_ path: VFSPath) throws -> Int64 {
-        let attributes: [FileAttributeKey: Any]
-        do {
-            attributes = try FileManager.default.attributesOfItem(atPath: path.path)
-        } catch {
-            throw VFSError.fromErrno(errnoValue(from: error), path: path)
+        let lhsHandle = try openForReading(lhs.path)
+        defer { try? lhsHandle.close() }
+        let rhsHandle = try openForReading(rhs.path)
+        defer { try? rhsHandle.close() }
+
+        while true {
+            if isCancelled() { throw CancellationError() }
+            let lhsChunk = try read(lhsHandle, upTo: chunkSize, at: lhs.path)
+            let rhsChunk = try read(rhsHandle, upTo: chunkSize, at: rhs.path)
+            if lhsChunk != rhsChunk { return false }
+            if lhsChunk.isEmpty { return true } // both reached EOF in lock-step
         }
-        guard (attributes[.type] as? FileAttributeType) == .typeRegular else {
+    }
+
+    // swiftlint:enable function_parameter_count
+
+    private static func requireRegularFiles(_ lhs: ComparisonSubject, _ rhs: ComparisonSubject) throws {
+        guard lhs.isRegularFile, rhs.isRegularFile else {
             throw VFSError.unsupported(.contentComparisonNeedsRegularFile)
         }
-        return (attributes[.size] as? Int64) ?? 0
+    }
+
+    /// Refuse a comparison whose first read would pull a file out of the cloud, naming the side that
+    /// would be downloaded. `allowDataless` is the caller saying the user has already agreed to it.
+    private static func requireDownloaded(
+        _ lhs: ComparisonSubject,
+        _ rhs: ComparisonSubject,
+        allowDataless: Bool
+    ) throws {
+        guard !allowDataless, let placeholder = [lhs, rhs].first(where: \.isDataless) else { return }
+        throw VFSError.unsupported(
+            .contentComparisonWouldDownload(name: placeholder.path.lastComponent)
+        )
+    }
+
+    // MARK: - Helpers
+
+    /// What one `lstat` says about a path.
+    ///
+    /// `lstat` rather than `stat`, unlike `ChecksumEngine`: `FileManager.attributesOfItem` did not
+    /// traverse symlinks either, so a symlink stays a non-regular file the comparator declines and
+    /// the caller falls back to metadata comparison — the behaviour `DirectorySync.fileStatus`
+    /// already documents and relies on.
+    static func subject(_ path: VFSPath) throws -> ComparisonSubject {
+        var status = stat()
+        guard lstat(path.path, &status) == 0 else {
+            throw VFSError.fromErrno(errno, path: path)
+        }
+        return ComparisonSubject(
+            path: path,
+            isRegularFile: (status.st_mode & S_IFMT) == S_IFREG,
+            byteSize: Int64(status.st_size),
+            // Free here — the flag rides along in the `stat` the size check needed anyway, which is
+            // what makes the placeholder guard cost nothing over the type check already happening.
+            isDataless: (status.st_flags & UInt32(SF_DATALESS)) != 0
+        )
     }
 
     private static func openForReading(_ path: VFSPath) throws -> FileHandle {

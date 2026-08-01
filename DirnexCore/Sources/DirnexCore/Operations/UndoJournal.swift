@@ -39,6 +39,33 @@ public enum UndoStep: Sendable, Equatable, Codable {
     case removeCreatedFolder(VFSPath)
     /// Redo a New Folder: re-create the folder at `path`. The inverse of `removeCreatedFolder`.
     case createFolder(VFSPath)
+    /// Undo/redo an attributes change (mode bits, BSD flags, owner, group, times) on a local item.
+    /// `apply` is the changed fields set to the values *this* direction restores — the prior values
+    /// for undo, the new ones for redo — and `reverse` is its counterpart, so `inverse` is a plain
+    /// swap. The step reads the item's *current* attributes at revert time and rebuilds the ordered
+    /// ``AttributeChangePlan`` from them, because the unlock/relock sequencing depends on what is on
+    /// disk now, not on what it was when the edit landed. Executed straight through ``FileAttributeIO``
+    /// — a local, syscall-level operation — rather than the `VFSBackend`, matching where attribute I/O
+    /// lives; the backend passed to ``UndoJournal/revert(_:using:)`` is simply unused for this step.
+    case restoreAttributes(
+        path: VFSPath,
+        actsOnLink: Bool,
+        apply: AttributeDiff,
+        reverse: AttributeDiff
+    )
+    /// Undo/redo an access-control-list change on a local item. Carries **whole lists**, not a diff,
+    /// in both directions: entry order is meaning, so "entry 2 changed" cannot describe an edit that
+    /// also moved it, and restoring the list the user had is the only description that is always
+    /// right. Like ``restoreAttributes`` it runs through the syscall path (``AccessControlListIO``,
+    /// sequenced by an ``AttributeChangePlan`` so a locked item unlocks first) rather than through a
+    /// `VFSBackend` verb. An empty `apply` list is the legitimate "there was no ACL" state and
+    /// removes the one that is there.
+    case restoreAccessControlList(
+        path: VFSPath,
+        actsOnLink: Bool,
+        apply: AccessControlList,
+        reverse: AccessControlList
+    )
 
     /// The step that reverses this one — the heart of Redo (see `UndoRecord.inverted`).
     var inverse: UndoStep {
@@ -48,6 +75,20 @@ public enum UndoStep: Sendable, Equatable, Codable {
         case let .makeCopy(source, copy): return .removeCopy(source: source, copy: copy)
         case let .removeCreatedFolder(path): return .createFolder(path)
         case let .createFolder(path): return .removeCreatedFolder(path)
+        case let .restoreAttributes(path, actsOnLink, apply, reverse):
+            return .restoreAttributes(
+                path: path,
+                actsOnLink: actsOnLink,
+                apply: reverse,
+                reverse: apply
+            )
+        case let .restoreAccessControlList(path, actsOnLink, apply, reverse):
+            return .restoreAccessControlList(
+                path: path,
+                actsOnLink: actsOnLink,
+                apply: reverse,
+                reverse: apply
+            )
         }
     }
 }
@@ -111,11 +152,25 @@ public extension UndoRecord {
     /// - A **move** is undone by moving each item back to its source (`restore`).
     /// - An item that **overwrote** an existing file is counted in `nonReversibleCount`, not
     ///   reversed: deleting the replacement wouldn't bring back the original it clobbered.
+    /// - A **checksum** job has nothing to reverse — it reads bytes and, at most, writes one new
+    ///   file the user can delete — so it never enters the journal. Handled explicitly rather than
+    ///   through a `default`, so the next kind added is a compile error here and gets thought about.
+    /// - An **attributes** job has plenty to reverse and none of it is here: it moves nothing, so it
+    ///   produces no `outcomes`, and its undo material is the per-item before/after on
+    ///   ``OperationReport/attributeApply``, which ``attributeBatchChange(_:date:)`` turns into a
+    ///   record. Returning `nil` is therefore right *and* easy to misread — the caller must build
+    ///   from the payload, not from here.
     static func transfer(
         kind: FileOperation.Kind,
         outcomes: [OperationItemOutcome],
         date: Date = Date()
     ) -> UndoRecord? {
+        let label: UndoActionLabel
+        switch kind {
+        case .copy: label = .copy
+        case .move: label = .move
+        case .checksum, .attributes: return nil
+        }
         var steps: [UndoStep] = []
         var nonReversible = 0
         for outcome in outcomes {
@@ -124,14 +179,15 @@ public extension UndoRecord {
                 nonReversible += 1
                 continue
             }
-            switch kind {
-            case .copy: steps.append(.removeCopy(source: outcome.source, copy: landed))
-            case .move: steps.append(.restore(from: landed, to: outcome.source))
+            if label == .copy {
+                steps.append(.removeCopy(source: outcome.source, copy: landed))
+            } else {
+                steps.append(.restore(from: landed, to: outcome.source))
             }
         }
         guard !steps.isEmpty else { return nil }
         return UndoRecord(
-            label: kind == .copy ? .copy : .move,
+            label: label,
             date: date,
             steps: steps,
             nonReversibleCount: nonReversible
@@ -281,6 +337,12 @@ public struct UndoJournal: Sendable, Equatable {
                 removeCreatedFolder(at: path, using: backend, failures: &failures)
             case let .createFolder(path):
                 createFolder(at: path, using: backend, failures: &failures)
+            case let .restoreAttributes(path, actsOnLink, apply, _):
+                restoreAttributes(apply, at: path, actsOnLink: actsOnLink, failures: &failures)
+            case let .restoreAccessControlList(path, actsOnLink, apply, _):
+                restoreAccessControlList(
+                    apply, at: path, actsOnLink: actsOnLink, failures: &failures
+                )
             }
         }
         return UndoReport(failures: failures)

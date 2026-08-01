@@ -48,8 +48,33 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
     case alreadyInTrash(name: String)
     case contentComparisonNeedsLocalFiles
     case contentComparisonNeedsRegularFile
+    /// The file's bytes are not on this disk (`SF_DATALESS`): reading one to compare it would make
+    /// the cloud provider materialize the whole file and block until it lands (docs/NOTES.md,
+    /// measured 1.1 s for 200 KB). Named rather than silently downloaded, so a caller acting on a
+    /// file the user pointed at can ask, and a caller sweeping a tree can stop.
+    case contentComparisonWouldDownload(name: String)
     case tagsNeedLocalFile
     case cloudStatusNeedsLocalFile
+    /// Undoing an attribute change would need root, so the item cannot be put back.
+    ///
+    /// The case that makes this reachable is not obvious and was found only by undoing a real edit:
+    /// the group picker offers the groups the user belongs to **plus whatever group the item is in
+    /// now**, so moving a file *out of* a foreign group (a `wheel` file into `staff`) is a perfectly
+    /// legal one-way door — `chgrp` back to `wheel` is `EPERM`. The same holds for a `chown` or an
+    /// `SF_*` flag an administrator applied. Named rather than left as a bare `EPERM`, which the app
+    /// renders as "Dirnex may need Full Disk Access" — true of the errno, wrong about the cause, and
+    /// pointing the user at a System Settings pane that cannot help.
+    case attributeRestoreNeedsAdministrator(name: String)
+    /// One item inside a recursive apply belongs to someone else, or its change needs root.
+    ///
+    /// A recursion crosses items the user never saw and may not own, so this is a *per-item* refusal
+    /// the run collects and carries past — unlike the flat sheet, which pre-flights the whole
+    /// selection and refuses before touching anything. Stopping a tree walk at the first foreign
+    /// file would leave it half-changed with nothing to say where it got to.
+    case attributeChangeNeedsAdministrator(name: String)
+    /// A recursive apply was pointed at something that is not on this disk. Mode bits, a BSD flags
+    /// word and an ACL are things a real inode has; an archive member and a server listing have none.
+    case attributesNeedLocalItem(name: String)
 
     // MARK: Routing and archives — authored in the app, named here
 
@@ -83,8 +108,12 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
         case .alreadyInTrash: return "alreadyInTrash"
         case .contentComparisonNeedsLocalFiles: return "contentComparisonNeedsLocalFiles"
         case .contentComparisonNeedsRegularFile: return "contentComparisonNeedsRegularFile"
+        case .contentComparisonWouldDownload: return "contentComparisonWouldDownload"
         case .tagsNeedLocalFile: return "tagsNeedLocalFile"
         case .cloudStatusNeedsLocalFile: return "cloudStatusNeedsLocalFile"
+        case .attributeRestoreNeedsAdministrator: return "attributeRestoreNeedsAdministrator"
+        case .attributeChangeNeedsAdministrator: return "attributeChangeNeedsAdministrator"
+        case .attributesNeedLocalItem: return "attributesNeedLocalItem"
         case .noBackendForPath: return "noBackendForPath"
         case .serverNotConnected: return "serverNotConnected"
         case .archiveToolUnavailableForRead: return "archiveToolUnavailableForRead"
@@ -149,10 +178,24 @@ public extension VFSUnsupportedReason {
             return ("Content comparison is only available for local files.", [])
         case .contentComparisonNeedsRegularFile:
             return ("Only regular files can be compared by content.", [])
+        case let .contentComparisonWouldDownload(name):
+            return (
+                "“%@” isn’t downloaded yet. Comparing it by content would download it first.",
+                [name]
+            )
         case .tagsNeedLocalFile:
             return ("Only local files carry Finder tags.", [])
         case .cloudStatusNeedsLocalFile:
             return ("Only local files can be cloud-provider items.", [])
+        case let .attributeRestoreNeedsAdministrator(name):
+            return (
+                "Only an administrator can put back the previous owner, group or system flags of %@.",
+                [name]
+            )
+        case let .attributeChangeNeedsAdministrator(name):
+            return ("Only an administrator can change “%@”.", [name])
+        case let .attributesNeedLocalItem(name):
+            return ("“%@” isn’t on this Mac, so it has no permissions to change.", [name])
         case let .noBackendForPath(path):
             return ("No backend can handle %@.", [path])
         case let .serverNotConnected(server):
@@ -197,8 +240,12 @@ public extension VFSUnsupportedReason {
             .alreadyInTrash(name: ""),
             .contentComparisonNeedsLocalFiles,
             .contentComparisonNeedsRegularFile,
+            .contentComparisonWouldDownload(name: ""),
             .tagsNeedLocalFile,
             .cloudStatusNeedsLocalFile,
+            .attributeRestoreNeedsAdministrator(name: ""),
+            .attributeChangeNeedsAdministrator(name: ""),
+            .attributesNeedLocalItem(name: ""),
             .noBackendForPath(path: ""),
             .serverNotConnected(server: ""),
             .archiveToolUnavailableForRead,

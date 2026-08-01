@@ -153,6 +153,16 @@ public enum LocalizationKey {
         "vfs.unsupported.\(reason.key)"
     }
 
+    /// The sentence explaining why a checksum couldn't be computed or a checksum file couldn't be
+    /// read, e.g. `checksum.error.manifestUnreadable`. Same shape and same reason as
+    /// ``vfsUnsupported(_:)``: `ChecksumError.sentence` is `DirnexCore` data reached through a
+    /// *return value*, where a literal extracts nothing and renders English under a translated
+    /// alert title. The catalog value carries the same `%@` placeholders the English format does,
+    /// and may reorder them positionally (`%1$@`).
+    public static func checksumError(_ error: ChecksumError) -> String {
+        "checksum.error.\(error.key)"
+    }
+
     /// Split a translated comma-separated keyword value into terms, dropping empties and
     /// surrounding whitespace. Tolerant on purpose — the value is typed by a translator, and a
     /// stray trailing comma should cost nothing.

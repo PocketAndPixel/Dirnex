@@ -102,6 +102,25 @@ struct CommandCatalogTests {
         }
     }
 
+    @Test("the M14 checksum commands are shortcut-free File commands")
+    func coversChecksums() {
+        let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })
+        for id in ["file.checksumVerify", "file.checksumCreate"] {
+            let command = byID[id]
+            #expect(command?.category == .file)
+            // No default shortcut: the F-key row is full and neither is a reflex action.
+            #expect(command?.shortcut == nil)
+            #expect(KeyBindings().conflicts(for: id).isEmpty)
+            // A user who has a `.sha256` next to a download types the extension, not the verb.
+            #expect(command?.keywords.contains("sha256") == true)
+        }
+        // Verify leads: it is the half most people ever reach for.
+        let ids = CommandCatalog.all.map(\.id)
+        let verify = try? #require(ids.firstIndex(of: "file.checksumVerify"))
+        let create = try? #require(ids.firstIndex(of: "file.checksumCreate"))
+        #expect((verify ?? 0) < (create ?? 0))
+    }
+
     @Test("the M6 hand-off commands are shortcut-free File commands")
     func coversOpenWithAndShare() {
         let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })

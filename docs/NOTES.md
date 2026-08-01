@@ -381,6 +381,21 @@ at build time.
   `redrawAfterSelectionChange` now owns that tail for every marks-only gesture, which is the real fix:
   three call sites each spelling out the same four-line sequence is how one of them ends up missing a
   line.
+- **An `NSStackView` that cannot fit its arranged views does not overflow — it *compresses* them**,
+  and a checkbox squeezed to nothing is a row that silently disappears. The Get Info panel's
+  Permissions tab wants ~384 pt of rows in a ~320 pt tab, and the result was "Locked" overlapping
+  "Hidden" with the Locked checkbox gone entirely — a missing row in a *permissions* panel, which is
+  the worst possible direction for that surface to fail in. Nothing logs; there is no Auto Layout
+  complaint, because the constraints are all satisfiable once something has been squashed. The fix
+  is to let the pane scroll rather than to make the sheet taller: a taller sheet hides it in English
+  and brings it straight back in a language whose captions and notes are longer (the same family as
+  the pack sheet's clipped label column and the sync sheet's crushed segmented control).
+  - **A scroll view's document must be flipped and pinned to the *clip view*.** An ordinary `NSView`
+    document is bottom-origin, so the first row lands at the bottom of the clip view and everything
+    above it is out of sight — the tab comes up **completely blank**, which is what the first attempt
+    did. And a document under Auto Layout is not positioned by the scroll view: constrain its top and
+    leading to `scrollView.contentView`, or it keeps whatever frame it was born with. Both failures
+    look identical from outside (an empty pane), so check the flip before hunting the constraints.
 - **A filtered-out row must be omitted, not zeroed.** Rendering an excluded folder as its
   filtered total gives "Zero KB · 0.0 %", which reads as *"measured, and empty"* — a claim about
   the folder where the truth is a claim about the question. Drop such rows from the projection
@@ -497,6 +512,27 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   function bar, applied to a manual frame layout instead of a stack view. An `NSTextField`'s
   `intrinsicContentSize` is a usable measure here (unlike `NSButtonCell.titleRect`, below); it needs no
   window. Only the live Russian run caught it.
+- **Measure a checkbox grid against every language *before* laying it out — and count the label
+  column as part of the budget.** The ACL editor's rights matrix is 12 or 13 checkboxes whose labels
+  are phrases ("Write Extended Attributes"), and the arithmetic decided the layout rather than
+  confirming it. Measured in the real font over all 14 shipped languages, with `NSButton(
+  checkboxWithTitle:).intrinsicContentSize` (a usable measure, like `NSTextField`'s and unlike
+  `NSButtonCell.titleRect`; it needs no window):
+  - Three columns need **506 pt** against the 410 an `AttributeRow` label column leaves — so *English
+    itself* clipped "Execute" and "Append", which is the rare case where the English screenshot does
+    show the bug.
+  - Two columns in that same 410 fit English at 332 and **overflow Russian at 436**
+    («Изменять расширенные атрибуты»), with Polish, Dutch and Ukrainian clearing by **4 pt** — which
+    is not clearance, it is the next translation's bug.
+  - The 130 pt label column is what costs it. Moving the caption *above* the grid gives the full
+    548, where the worst language needs 436 and has 112 pt spare. **A grid is not a form row**: the
+    `Label:  value` column that suits a popup or a date field is exactly the wrong frame for a block
+    of checkboxes.
+  - The same run caught a second overflow that no English screenshot could: the four inheritance
+    checkboxes in one row need **589 pt in Ukrainian** and 579 in Russian against 548 available,
+    while English fits at 486. 2 × 2 fits every language at 348.
+  - Reach for the measurement first — it is a 20-line throwaway that reads the real catalog — and let
+    a scrolling pane carry whatever a future translation adds anyway.
 - **A fixed-width horizontal `NSStackView` collapses a *segmented control* under a longer
   translation, not just a label.** The sync sheet's controls row (`Направление:` + a 3-segment
   direction control + `Сравнивать по:` + a 2-segment comparison control + a hint, pinned to 680 pt)
@@ -695,6 +731,16 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
     know to look (`titles.contains($0.title)`, `if button.title == …`); what makes them expensive is
     that they fail as *behaviour*, so no string sweep and no coverage test over the catalog can see
     them. Key off an identity the display layer doesn't own.
+- **An `NSAlert` reserves vertical space for its `accessoryView` from that view's *frame*, so a
+  pure-Auto-Layout accessory (only `translatesAutoresizingMaskIntoConstraints = false` + internal
+  constraints) reports a **zero frame** and the alert draws it *overlapping* the informative text.**
+  The escalation dialog's copyable-command view did exactly this — the "Or run this yourself…" label
+  and the command field were painted on top of the body sentence. Invisible in every test and every
+  build; obvious in the first launch. Give the accessory a concrete frame after building it —
+  `view.layoutSubtreeIfNeeded(); view.frame = NSRect(origin: .zero, size: view.fittingSize)` — with a
+  definite inner width (a fixed-width command field) so `fittingSize` resolves. Same family as the
+  `NSStackView`-compression traps above: an AppKit container that is under-informed about size fails
+  by drawing wrong rather than by complaining.
 
 ## Lint ceilings and file splitting
 
@@ -938,6 +984,38 @@ off a man page.
   already does, so knowing costs nothing — but **reading one byte materializes the file and blocks**
   (measured 1.1 s for 200 KB), so every byte-touching sweep (recursive sizer, content grep,
   byte-compare) has to check it or it silently downloads the user's whole cloud drive.
+  - **`FileManager.attributesOfItem` cannot see the flag at all**, which is what makes a sweep built
+    on it *structurally* blind rather than merely missing a check. Probed against the real evicted
+    file: it hands back nineteen keys, `NSFileType` = regular and `NSFileSize` = the real 1 151 048,
+    and **nothing** for `st_flags` — there is no key to add. `ByteComparator` was written on it and
+    was the last sweep still reading through placeholders; the fix is a raw `stat`, where the type,
+    the size and `SF_DATALESS` all come out of one syscall, so the guard costs nothing over the type
+    check that had to happen anyway (`ChecksumEngine` had already made the same move). Watch the
+    real flags word: it came back `0x40000060`, `SF_DATALESS` plus `UF_COMPRESSED|UF_TRACKED`, so
+    the test is a mask and never an equality.
+  - **No test can produce a placeholder**, so the gate needs a seam. Probed: `chflags` with
+    `SF_DATALESS` **returns success** and the kernel silently drops it — the flag belongs to the file
+    provider, not to the file's owner — and a following `stat` reads `0x00000000`. That is why
+    `ChecksumEngine`'s own guard shipped with no coverage. `ByteComparator` splits at the syscall
+    instead: the decision half takes a `ComparisonSubject` (path, is-regular, size, is-dataless) and
+    only the thin reader supplies real ones, so every rule is testable and one live run against an
+    actual evicted file covers the syscall. Add the `Bool` where an existing bare trailing closure
+    binds to `isCancelled` and nothing re-points, but a second *closure* parameter would (above).
+  - **The guard belongs immediately before the first read, not at the top of the function.** It
+    exists to stop a *download*, and a placeholder carries its real size — so a size mismatch, two
+    empty files, and `prescan`'s `tooLargeToScan` are all correct answers that cost nothing, and
+    refusing them would abort a content sync over pairs it had already classified. The verification
+    that matters is the one that reads *no* bytes: assert the file is **still** `SF_DATALESS`
+    afterwards.
+  - **Who asks and who refuses is a per-caller decision, and the split is "did the user point at
+    this file".** A compare of two files under the cursors downloads them — the same explicit
+    request Enter and F4 already answer that way, through the same `CloudDownloadPrompt` (silent
+    start, sheet after 400 ms, Stop) — while `DirectorySync`'s tree sweep stops and names the first
+    placeholder, because a folder is not a file anybody pointed at. Checksums will meet the same
+    fork. The trap is on the *asking* side: an app that catches the refusal and then hands the pair
+    to an external diff tool has merely moved the blocking read into FileMerge, where nothing on
+    screen says why — so the materialize has to sit at the launch, covering the outcomes that reach
+    a tool without the comparator ever having read a byte.
 - **Finder's iCloud Drive is two directories, not one.** `com~apple~CloudDocs` holds the loose files;
   every iCloud-enabled app's `Documents` folder is a **sibling** under `~/Library/Mobile Documents`,
   not a child. Only the CloudDocs leaf is TCC-carved-out — the parent and the app containers need
@@ -1054,6 +1132,298 @@ off a man page.
     of the two accounts is signed into this Chrome profile. Nothing on the Dirnex side can do better:
     the handoff is a URL, and which session receives it is the browser's to decide.
 
+### shasum, md5sum and the checksum-file formats
+
+macOS 26 ships more producers than expected — `/sbin/md5sum`, `/sbin/sha1sum` and `/sbin/sha256sum`
+(hardlinks of one Darwin binary) alongside BSD `md5`, the Perl `shasum`, `openssl` and
+`/usr/bin/crc32` — and **they do not agree with each other**, which is what makes a tolerant parser
+the actual feature rather than gold-plating. `shasum -c` refuses the `openssl` and BSD forms
+outright ("no properly formatted SHA checksum lines found"), so a user with an `openssl dgst` output
+next to a download has no stock way to check it.
+
+- **The two Apple-shipped *checkers* disagree about escaping, and the disagreement is silent.**
+  For a name containing a backslash, `shasum` writes `\<hex>␣␣back\\slash.txt` — a leading `\` marks
+  the line and the name is escaped, the GNU coreutils convention — while `/sbin/sha256sum` (Darwin
+  1.0) writes `<hex>␣␣back\slash.txt` raw. Measured on both checkers: **the raw form is read
+  correctly by both**, while the escaped form makes `/sbin/sha256sum -c` and `/sbin/md5sum -c` print
+  "WARNING: 1 line is improperly formatted", **exit 0 anyway**, and check one file fewer. So a
+  writer must escape *only* a name containing a newline, which has no raw form any parser can split;
+  escaping a backslash costs compatibility and buys nothing. The reader has to accept both, and the
+  leading marker is the only thing that says which it is looking at. This flipped a decision that
+  was already written and tested — the design read as obviously right until both checkers were
+  actually run against it.
+- **`crc32` prints a bare digest with no name at all**, so a `.crc`/`.sfv` companion's subject can
+  only come from the manifest's own file name (`disk.iso.crc` → `disk.iso`). A parser for that form
+  needs the name passed in; there is nothing in the file to recover it from.
+- `-Q`-style ambiguity in the *other* direction: a `.sfv` line is `<name>␣<hex>` and a `md5 -r` line
+  is `<hex>␣<name>`, so a line whose name happens to be all hex (`deadbeef 4dbf2cc1`) parses either
+  way. Prefer the leading-digest reading — that is what every GNU-family tool emits — and say so.
+- **Cross-check a digest against the system tool, never against your own implementation.** Every
+  expected value in `ChecksumEngineTests` came from `/usr/bin/crc32`, `md5 -q` and `shasum` over the
+  same bytes; a fixture the engine computed would only prove it agrees with itself. The published
+  CRC-32 check vector (`"123456789"` → `0xCBF43926`) is worth its own test for the same reason: it
+  pins the polynomial, the reflection, the initial value and the final XOR all at once, and nothing
+  else will tell you which one is wrong.
+- **The speed intuition is inverted on Apple Silicon.** Measured over 256 MiB through the real
+  engine: SHA-256 2245 MiB/s and SHA-1 2287 (ARMv8 crypto instructions) against MD5 778 and CRC32
+  550 (ordinary code) — **CRC32 is the slowest of the four, not the cheapest.** All four in one pass
+  is 274 MiB/s, which is what makes "compute everything while the bytes are in hand" affordable.
+  Chunk size is irrelevant between 64 KiB and 4 MiB.
+
+### ACLs and file attributes (`acl_*`, `chmod`/`chflags`, `mbr_*`)
+
+The M14 attributes work rests on syscalls and the ACL C API, probed live before any Swift was
+written. Several results changed the model, not just confirmed it.
+
+- **`acl_to_text` wraps its output at ~column 60 with a trailing `\`** — a single logical entry can
+  span several physical lines (`...:deny\` ⏎ `:delete`). So the parser's *first* step is to un-wrap
+  (drop every backslash-before-newline); only then is each remaining non-header line one entry. A
+  line-oriented parser that skips this reads garbage. `acl_from_text` **accepts** the un-wrapped
+  single-line form, so Dirnex writes one line per entry and never re-wraps.
+- **`acl_to_text` and `ls -le` disagree on the token names, and this reshaped the model.** Four ACL
+  rights are aliased bits the kernel prints with their *file* names even on a directory —
+  `list`≡`read`, `add_file`≡`write`, `search`≡`execute`, `add_subdirectory`≡`append`. `ls -le`
+  shows the directory spellings; `acl_to_text` (what the parser consumes) **only ever** emits
+  `read/write/execute/append`. Only `delete_child` is a genuinely directory-only token in canonical
+  text. So model the **13 bits** `acl_to_text` produces, not `chmod(1)`'s 17 input tokens, or a
+  directory ACL carries the same bit twice under two names. The UI count still holds: a file offers
+  12, a directory 13 rights + 4 inheritance flags = 17 checkboxes, with the four data bits
+  *relabelled* per kind at the display layer.
+- **The canonical entry form `acl_from_text` accepts needs GUID + name + numeric id, all three.**
+  Probed: `user:GUID:oleg:501:allow:read` round-trips, but `user:GUID::allow:read` (empty name) and
+  `user:GUID:allow:read` (no id) are both `EINVAL`. So the serializer must carry the resolved name
+  and id, not just the GUID.
+  - **What that needs is the *field*, not the value — and reading, the OS writes two shapes a strict
+    six-field parse rejects.** Both were found by probing the write path (2026-07-31) and both had
+    the same shipped consequence: `AccessControlList.parse` threw, `AttributesSnapshot` degrades a
+    failed ACL read to an empty list, and the Sharing tab reported **"No access control list"** for a
+    file that has one. A wrong answer in the quiet direction, on the tab whose whole job is that
+    answer.
+    - **A rights-less entry has five fields.** `acl_to_text` *omits* the trailing rights field rather
+      than writing it empty (`group:GUID:staff:20:allow`), and `ls -le` shows `0: group:staff allow`.
+      Such an entry is legal, storable and does nothing — it occupies a position in the evaluation
+      order while allowing and denying nothing — so an editor should refuse to *create* one while
+      still displaying one it finds.
+    - **A subject whose GUID answers to no account comes back with an empty name *and* an empty id**
+      (`user:GUID:::allow:read`), which `ls -le` shows as the bare GUID. Ordinary for a file copied
+      from another Mac or an account since deleted, so the numeric id has to be modelled as optional.
+    - Both shapes are **accepted back** by `acl_from_text`, so they round-trip losslessly and an edit
+      to a neighbouring entry leaves them untouched — which is the case that actually reaches a user,
+      since the editor writes the whole list back.
+    - **The GUID is the identity and the name/id are its resolution, which the kernel re-derives.**
+      Hand `acl_from_text` a GUID with a name and id it does not believe (`…:ghost:31337:allow:read`)
+      and it is accepted, stored, and read back as `…:::allow:read`. So a name written into an entry
+      is never authoritative, and "repairing" an unresolved subject by inventing one would name the
+      wrong account.
+- **`acl_set_file` preserves entry order exactly** — write deny-then-allow, read back with both
+  `acl_get_file` and `ls -le`, and the order survives. Order is meaning (a deny before an allow is a
+  different ACL), so the model is an ordered list that is never silently canonicalized. The kernel
+  *does* re-canonicalize the rights *within* an entry, so serialize rights in any fixed order.
+- **`acl_get_file` returns `nil` + `ENOENT` to mean "this file has no ACL"** — a normal answer,
+  mapped to an empty list, not an error. Writing an empty list (`acl_init(0)` → `acl_set_file`)
+  removes the ACL — the "deleted the last entry" case.
+- **The ACL C API imports from Swift with no module map** (`acl_get_file/_link_np`, `acl_to_text`,
+  `acl_from_text`, `acl_set_file/_link_np`, `acl_init`, `acl_free`) — the opposite of libarchive.
+  But **`mbr_uid_to_uuid` / `mbr_gid_to_uuid` do not** (they live in `membership.h`, outside the
+  Darwin module map). Resolve them through `dlsym(RTLD_DEFAULT, …)` — the pseudo-handle is
+  `UnsafeMutableRawPointer(bitPattern: -2)`, and it cannot be a stored `static let` under strict
+  concurrency (`UnsafeMutableRawPointer?` is not `Sendable`); recompute it per call. The GUID they
+  return is byte-identical to the one `acl_to_text` prints for the same id — pin that against the OS's
+  own answer, not against your own formatter.
+- **`acl_set_file` is `EPERM` on a `UF_IMMUTABLE` file too, exactly like `chmod`** — and so is
+  clearing the ACL (`chmod: Failed to set ACL on file: Operation not permitted`, exit 1). So an ACL
+  change is a *step inside* the existing unlock → apply → relock window, not a second write beside
+  it; two separate writes would either surface that EPERM or unlock the file twice. The two halves
+  are otherwise **independent**, which is worth knowing because it is what makes the sequencing the
+  *only* thing needed: measured, `chmod`, `chgrp` and `utimes` each leave an ACL intact **and in
+  order**, and `acl_set` leaves the mode and the times untouched — so unlike the `chown`/set-uid and
+  mtime/birthtime side effects below, this needs no repair step.
+- **`chmod` fails with `EPERM` while `UF_IMMUTABLE` is set, and that EPERM is indistinguishable from
+  the one that needs root.** So a change to anything but the flags on a locked file must clear the
+  immutable bit, apply, then restore it — proven live, unprivileged, in one gesture. Encode the
+  ordering as a pure, tested plan (`AttributeChangePlan`): the bug is invisible in any dialog
+  screenshot, so only a test that pins the *step order* catches a regression.
+- **`chown(2)` clears the set-uid/set-gid bits for an unprivileged caller**, so a plan that changes
+  both owner and mode must `chown` **before** `chmod`, or the set-uid the user just asked for is
+  silently dropped.
+  - **And a plain `chgrp` is a `chown`, so a *group-only* edit drops the bits with no `chmod` in the
+    plan to be ordered.** Measured: `0o6755` handed from `staff` to `admin` came back `0o755`. The
+    ordering rule above reads as if it covered this and does not — it only fires when the user is also
+    changing the mode. Both bits go; the fix is to re-write the *current* mode after the chown
+    whenever the file carries either. This is the general shape worth carrying: **a syscall that
+    rewrites a neighbouring field breaks the diff-based contract** ("a field left alone is never
+    written"), so the plan owes a repair step, not just an ordering.
+- **Setting `st_mtime` earlier than `st_birthtime` drags the birth time back to match** — the same
+  family, found in the same probe. A file born today, given an mtime of 2001, reports a *creation*
+  date of 2001 afterwards; files and directories alike on APFS. Three details make it tractable: it
+  is **mtime alone** (an atime in the same past leaves the birth time untouched), re-setting the
+  birth time afterwards **repairs it exactly**, and `setattrlist(ATTR_CMN_CRTIME)` was measured *not*
+  to disturb either of the other two times — so a plan that already sequences `utimes` before the
+  crtime write can repair without undoing the edit that provoked it. Without the repair, "change
+  Modified" quietly changes "Created" too, and the panel that re-reads afterwards shows a date the
+  user never typed.
+  - Both repairs need a **negative control** in the test suite — one test asserting the OS really
+    does the damage with no plan involved. Otherwise a macOS that stopped doing it would leave the
+    repair vestigial with every other test still green.
+- **An undo can need privileges the change it reverses did not, and the asymmetry is invisible until
+  someone undoes.** A file's group is inherited from its parent, so an item can sit in a group its
+  owner is not in (`/private/tmp` children are `wheel`). Moving it *out* is legal — `chgrp` to a
+  group you belong to — and moving it *back* is `EPERM`, so a perfectly ordinary edit is a one-way
+  door. Shipped, that surfaced as the generic errno sentence: **"You don't have permission. Dirnex
+  may need Full Disk Access in System Settings."** — true of the errno, wrong about the cause, and
+  pointing the user at a settings pane that cannot help. Check `AttributePrivilege` at the *start* of
+  the undo and name the reason (`VFSUnsupportedReason.attributeRestoreNeedsAdministrator`), which
+  also means refusing before touching the file rather than half-applying. Same "an EPERM that needs
+  root is indistinguishable from one that does not" trap as the immutable-flag case, arriving from
+  the other direction — and only a live undo of a real edit exposes it.
+- **The BSD flags word splits at the 16-bit line**: the low 16 bits are owner-settable (`UF_*`), the
+  high 16 (`0xFFFF0000`) are super-user only (`SF_*`). Read "does this flag change need root?" off
+  that mask, not a per-flag table, and a flag macOS adds later lands on the right side for free.
+- **`setattrlist(ATTR_CMN_CRTIME)` sets the birth time `utimes` cannot** (pass `FSOPT_NOFOLLOW` for a
+  symlink); the `setattrlist` `options` argument is `UInt32` on this SDK, and `timeval`'s field is
+  `tv_usec`, not `tv_suseconds`. The `l*` variants (`lchmod`, `lchown`, `lchflags`, `lutimes`) all
+  import and act on the link itself, matching Finder's Get Info.
+- **`FileManager.removeItem` fails on a `UF_IMMUTABLE` file**, so a test that locks one must unlock it
+  before teardown or it strands the temp tree.
+- **`utimes` and `setattrlist(CRTIME)` are both `EPERM` on a locked file**, like `chmod` and `chown`
+  — so date editing needs the same unlock/relock dance, not a separate design. Dates otherwise have
+  no range to defend: a 2096 mtime and a pre-epoch 1938 one both applied cleanly, and a `Date`
+  round-trips through `utimes` at microsecond fidelity.
+- **An `NSDatePicker` resolves to whole seconds and a real timestamp does not**, which is a live bug
+  and not a rounding nicety: read `dateValue` back unconditionally and the sub-second remainder every
+  `st_mtime` carries makes all three fields differ from what was read *the moment the sheet opens* —
+  Save lights up with nothing edited, and committing writes three dates nobody touched. Compare
+  against the value the control was **given** (`picker.dateValue` right after assigning it), not
+  against the model, so "untouched" means untouched at the control's own granularity.
+- **A recursive attribute change must be applied *deepest-first*, and having gathered the paths up
+  front does not save it.** Clearing a directory's `x` bit stops every path under it from resolving,
+  so a pre-order run gets `EPERM` on every child — measured directly, with the child list already in
+  hand: applying `0644` to the parent and then to each child gave "Permission denied" on all of them.
+  The failure is in path resolution at apply time, not in the walk, which is why "gather everything
+  first, then apply" reads like the fix and is not one. `chmod -R 0644` is the live demonstration and
+  the *system tool* does it: exit 0, and afterwards `ls` and `find` both fail on a `drw-r--r--` root.
+  Gather while the tree is still readable, write from the leaves up, and the run finishes.
+  - **A locked parent is not part of this problem, which is worth knowing because it looks like it
+    should be.** `uchg` on a directory still allows `chmod`, `chflags`, `utimes` and `chgrp` on
+    everything inside; only *creating* there fails. And changing a child's attributes does not bump
+    the parent's mtime, so a recursive date change needs no ordering of its own either.
+- **Writing a *directory's* ACL onto a plain file succeeds, stores the directory-only bits, and hands
+  them straight back.** Probed: `acl_set_file` returns `0` for a file given
+  `…:allow,file_inherit,directory_inherit:read,write,execute,append,delete_child`, and `acl_get_file`
+  reads that back **verbatim** — while `ls -le` shows only `allow read,write,execute,append`. So the
+  bits survive on disk, mean nothing, and are invisible to every tool *except* one that reads the
+  canonical text, which is exactly what an ACL editor does. `chmod(1)` strips them on the way in, so
+  stripping is what the platform's own front end does; anything propagating a list down a tree has to
+  do the same. The second half is the one that is easy to miss: `chmod +a "everyone allow
+  delete_child" f` exits 0 and leaves `0: group:everyone allow` — **an entry with no rights**, which
+  occupies a position in the evaluation order and decides nothing. Strip the bits, then drop whatever
+  is left empty. Pair the rule with a negative control asserting the kernel really does store them,
+  or a macOS that started stripping would leave the rule vestigial with every test still green.
+- **Journaling is what limits a bulk operation's size, not the work.** Measured over 1k…200k steps: an
+  `UndoStep.restoreAttributes` encodes to a dead-constant **246 bytes**, and because the journal is
+  JSON in `UserDefaults` that is re-encoded on *every* later operation, a big record taxes everything
+  after it — 10k steps is 2.3 MB and 60 ms, 50k is 11.7 MB and 280 ms, 200k is 47 MB and **1.1 s**,
+  until it falls off the 50-record stack. The work it describes is nothing by comparison: read + plan
+  + apply is **17 µs an item**, and a 5 000-entry listing is 16 ms. So the cap belongs on the journal,
+  the count belongs in a confirmation the user sees *before* the run, and over the cap the honest
+  answer is to journal **nothing** — reverting an arbitrary slice of a tree leaves it in a state
+  nobody can reason about. Any future operation that can span a hundred thousand items inherits this
+  arithmetic.
+- **A bulk edit is a patch and a single-item edit is a value, and carrying one outward needs both
+  halves translated — differently.** A changed **mode** travels whole (it is a shape the user chose,
+  not twelve independent bits, so "apply these permissions to everything inside" means that shape),
+  while **flags** travel bit by bit (they are independent switches, and a `UF_HIDDEN` on one file
+  inside a folder must survive ticking Locked on the folder). Copying the whole flags word is the
+  version that compiles, reads fine, and silently strips a bit the user never touched.
+- **`mbr_uid_to_uuid` *synthesizes* a GUID for an id with no account behind it, so it can never be an
+  existence check.** Probed: uid 31337 — no such user — answers
+  `FFFFEEEE-DDDD-CCCC-BBBB-AAAA00007A69`, the well-known prefix with the id in the tail (groups take
+  `ABCDEFAB-CDEF-ABCD-EFAB-CDEF` + gid the same way; that is where `everyone`'s
+  `…CDEF0000000C` comes from). A real Open Directory record gets a random GUID instead — `oleg`(501)
+  does, `root`(0) does not — so *which* form comes back says nothing usable either. A subject picker
+  validating its input has to ask `getpwuid`/`getgrgid`, which return `nil` for the ghost. Nothing
+  fails loudly here: the ACL would be written with a GUID naming nobody.
+
+### Enumerating users and groups (`getpwent` / `getgrent`)
+
+The subject picker and the owner/group fields both need the machine's accounts by name. Probed live
+(2026-07-31) before the picker was designed, and both findings are invisible until measured.
+
+- **The enumerators return every record twice.** Measured on this Mac: **265** `getpwent` records for
+  133 distinct accounts, **322** `getgrent` records for **161** groups — Open Directory answering
+  from both the local node and the search path, with identical `(name, id)` pairs. `dscl . list
+  /Users` and `/Groups` independently report exactly 133 and 161, which is the OS agreeing with the
+  de-duplicated set and is what makes it a usable test oracle. De-duplicate on the **whole record**,
+  not the name: two accounts legitimately sharing a name with different ids must both survive.
+- **Filter service accounts by the leading underscore, never by a numeric floor.** "Real accounts
+  start at 500" is the tempting rule and it is wrong in the direction that matters: after
+  de-duplication the underscore rule leaves **4 users and 34 groups**, including `wheel`(0),
+  `everyone`(12), `staff`(20) and `admin`(80) — which are precisely the groups an ACL entry names. A
+  `gid >= 500` filter hides all four and leaves the picker unable to express the common case.
+
+### Extended attributes (`listxattr` / `getxattr` / `removexattr`)
+
+- **Pass `XATTR_NOFOLLOW` everywhere, for the same reason the rest of the attributes machinery uses
+  the `l*` syscalls.** Probed on a real symlink: following returned the *target's* attributes and the
+  link's own set was different, so a panel that followed would list — and delete — the wrong file's.
+  A symlink does carry its own (`com.apple.provenance`, at minimum).
+- **`removexattr` on an attribute the file does not carry fails with `ENOATTR` (93).** This is the
+  syscall behind the `xattr -d` exit-1 trap below, so the core's remove swallows `ENOATTR` and
+  succeeds: the caller's intent — "this must not be here" — is already satisfied, and idempotence is
+  what keeps a multi-selection "Remove Quarantine" from failing on the files that were already clean.
+- **One ordinary download carries all three value shapes**, so a viewer cannot assume any of them:
+  `com.apple.quarantine` is plain UTF-8 (`0281;6a5c94dc;Chrome;<UUID>`),
+  `com.apple.metadata:kMDItemWhereFroms` and the Finder tags are **binary property lists** (`bplist`
+  magic), and `com.apple.macl` / `com.apple.lastuseddate#PS` / `com.apple.provenance` are opaque
+  bytes. Classify by **inspection, not by name**, or an attribute this build has never heard of
+  renders as garbage.
+  - **A UTF-8 decode alone is not the text test.** Short binary values decode as UTF-8 surprisingly
+    often — the real 11-byte `com.apple.provenance` does — so the result must also be *printable*, or
+    control characters go straight into the panel.
+- `XATTR_MAXNAMELEN` is 127. `listxattr` hands back a NUL-separated buffer; `XATTR_SHOWCOMPRESSION`
+  made no difference on any real file probed, and neither `com.apple.FinderInfo` nor
+  `com.apple.ResourceFork` appeared.
+
+### Attribute escalation (osascript, chflags, chmod +a#)
+
+The M14 Slice 5 escalation reproduces an `AttributeChangePlan` as a `/bin/sh` command run as root. All
+probed live (2026-08-01/02) before any Swift; several results decided the shape.
+
+- **`osascript` can run a shell body as root with *no* AppleScript-string escaping** — pass the body as
+  an argument, not embedded in the source: `osascript -e 'on run argv' -e 'do shell script (item 1 of
+  argv) with administrator privileges' -e 'end run' -- "<body>"`. Probed: a body carrying single
+  quotes, backslashes and `$(touch pwned)` came back through `argv` **inert** (returned as data, no
+  substitution). Embedding it in the AppleScript text instead would add a third quoting layer (escape
+  `\` and `"`) on top of the shell quoting inside the body — this avoids it entirely. Cancelling the
+  auth dialog is AppleScript error **-128** ("User canceled"), surfaced on stderr with a nonzero exit;
+  treat it as a choice, not a failure. `do shell script` runs `/bin/sh` and, on a nonzero exit, reports
+  `execution error: <stderr> (<code>)`.
+- **`chflags` is *additive*, not absolute** — `chflags hidden` then `chflags uchg` yields `uchg,hidden`
+  (probed). So reproducing a target flags word means emitting the minimal `keyword`/`nokeyword` delta
+  against what is on disk at that step (`chflags nouchg` clears only `uchg` and leaves `hidden`), not
+  the whole word. `chflags 0` / an octal *is* absolute, but opaque to a user reading the copyable
+  command, so the keyword delta wins. `noschg` on a file without `schg` is a clean no-op (exit 0).
+- **`chmod +a#` reproduces an *exact ordered* ACL, and the canonical rights spelling works on a
+  directory.** `chmod -N` clears the list, then `chmod +a# <index> "<spec>" <path>` in order rebuilds
+  it (probed: order preserved on readback via `ls -le`). The spec is the friendly form
+  `<user|group>:<name> <allow|deny> <rights,inherit-keywords>`, and `read/write/execute/append` are
+  accepted **verbatim on a directory** — `chmod` translates them to `list/add_file/search/
+  add_subdirectory` itself — so no per-kind relabelling. Three entries `chmod` *cannot* express, which
+  make the whole ACL a stated omission rather than a wrong write: a **bare-GUID / unresolved subject**
+  (`chmod: Unable to translate '…' to a UUID`), an **inherited** entry (`+a#` creates it explicit,
+  losing the `inherited` flag), and a token this build only keeps verbatim.
+- **No stock shell tool sets the birth/Created date** — `SetFile` is Xcode-CLT-only (and whole-second,
+  US-format), so a `setCreationDate` step is omitted and named, never faked. `touch -t` is
+  **whole-second**, which matches `NSDatePicker`'s own resolution; set only the time that changed
+  (`touch -a` / `touch -m` separately, since `touch -t` writes one value) so an untouched neighbour
+  keeps its sub-second value. `chmod`/`chflags`/`chown`/`chgrp`/`touch` all take `-h` to act on a
+  symlink itself, matching the `l*` syscalls the read path uses.
+- **Verify the translation on an *owned* file, unprivileged.** The whole point is that the *same*
+  commands the root path runs are ordinary CLI, so a throwaway harness can run the generated body on a
+  file the tester owns and let `ls -le@` / `stat -f` judge — the locked-file unlock/relock, the setuid
+  digit through `chmod 4755`, the ACL order, all provable with no password. Only the final `sudo` /
+  auth-dialog step needs privilege, and that is the one part left to the user.
+
 ### xattr and sips (the stock tools a user script reaches for)
 
 - **`xattr -d` exits 1 on a file that doesn't carry the attribute** ("No such xattr"), so
@@ -1150,6 +1520,13 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   `size(of:using:) { true }` rebound to a new `excluding:` rather than the existing
   `isCancelled:`; only the differing arity made it fail loudly instead of inverting behavior.
   Label both at every call site.
+- **A Swift `Character` is a grapheme cluster, so CRLF is *one* `Character` that equals neither
+  `"\n"` nor `"\r"`.** `split(whereSeparator: { $0 == "\n" || $0 == "\r" })` therefore does not
+  split a Windows-written file **at all** — the whole file comes back as a single unparseable line,
+  which reads as "the parser rejects this format" and sends you into the parser. `\.isNewline` is
+  the right predicate and is also more honest about line *numbers*, since it counts CRLF as one
+  separator rather than two. The same trap sits behind any hand-rolled scan that compares against
+  `"\r"`; anything splitting text a user's other OS produced should use `isNewline` on principle.
 - **A notification that says "go re-read the cache" can lose results already computed.** One
   pane's FSEvents watcher invalidating every total on its root-to-leaf line produced a measured
   546 invalidations in two minutes — faster than a scan publishes — wiping freshly walked results

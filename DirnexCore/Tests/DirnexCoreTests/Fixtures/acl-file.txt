@@ -1,0 +1,4 @@
+!#acl 1
+group:ABCDEFAB-CDEF-ABCD-EFAB-CDEF0000000C:everyone:12:deny:delete
+user:6DA6D6F5-1863-4738-BA86-B0BE4E5EF4FD:oleg:501:deny:write,delete
+user:6DA6D6F5-1863-4738-BA86-B0BE4E5EF4FD:oleg:501:allow:read,write,append,readattr,writeattr

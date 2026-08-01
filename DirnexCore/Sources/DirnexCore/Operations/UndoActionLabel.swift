@@ -24,6 +24,7 @@ public enum UndoActionLabel: String, Sendable, Equatable, Codable, CaseIterable 
     case newFolder
     case rename
     case moveToTrash
+    case changeAttributes
 
     // Selection gestures — authored in the app, passed in on a `SelectionChange`.
     case mark
@@ -43,6 +44,7 @@ public enum UndoActionLabel: String, Sendable, Equatable, Codable, CaseIterable 
         case .newFolder: return "New Folder"
         case .rename: return "Rename"
         case .moveToTrash: return "Move to Trash"
+        case .changeAttributes: return "Change Attributes"
         case .mark: return "Mark"
         case .selectAll: return "Select All"
         case .invertSelection: return "Invert Selection"

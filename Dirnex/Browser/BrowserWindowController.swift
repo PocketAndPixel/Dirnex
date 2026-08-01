@@ -400,6 +400,15 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         panel === leftPanel ? rightPanel : leftPanel
     }
 
+    /// Persist both panes' tabs on the way down (called from `applicationWillTerminate`). Navigation
+    /// and tab/column changes already persist as they happen, but a cursor move or a mark toggle does
+    /// not — so this is what captures the *final* cursor position and selection at quit, which is the
+    /// state the user expects restored on next launch.
+    func persistTabState() {
+        leftPanel.persistState()
+        rightPanel.persistState()
+    }
+
     private func setActive(_ panel: PanelViewController) {
         guard activePanel !== panel else { return }
         activePanel?.isActivePanel = false

@@ -51,6 +51,23 @@ public enum CommandCatalog {
             keywords: ["share", "send", "airdrop", "mail", "message", "sheet"]
         ),
         Command(
+            id: "file.attributes",
+            title: "Get Info",
+            category: .file,
+            // Named for the platform, because ⌘I is the gesture a Mac user already has. The
+            // keywords carry the Total Commander vocabulary for the same panel ("attributes",
+            // "properties") and the words for each thing it shows — someone looking for this is
+            // usually after one row of it, and "chmod" or "quarantine" is what they would type.
+            keywords: [
+                "info", "information", "attributes", "properties", "permissions", "chmod", "mode",
+                "owner", "group", "acl", "access control", "flags", "locked", "immutable",
+                "quarantine", "xattr", "extended attributes", "metadata"
+            ],
+            // ⌘I, Finder's own. Free on both presets, and the only inspection command with a claim
+            // to it.
+            shortcut: CommandShortcut(key: "i", modifiers: .command)
+        ),
+        Command(
             id: "file.copy",
             title: "Copy to Other Panel",
             category: .file,
@@ -76,6 +93,30 @@ public enum CommandCatalog {
             title: "Synchronize Directories…",
             category: .file,
             keywords: ["sync", "synchronize", "compare", "mirror", "diff", "directories", "folders"]
+        ),
+        Command(
+            id: "file.checksumVerify",
+            title: "Verify Checksums…",
+            category: .file,
+            // The primary half of the pair: most people never author a checksum file, they
+            // download one next to an ISO and want to know whether the bytes survived. The
+            // spellings a user would actually type for that are here — including the file
+            // extensions, because the thing under the cursor is usually named `.sha256`.
+            keywords: [
+                "checksum", "verify", "check", "hash", "sha", "sha256", "md5", "crc", "sfv",
+                "integrity", "digest"
+            ]
+            // No shortcut: the F-key row is full, and this is a deliberate, occasional act rather
+            // than something done by reflex. The palette and the File menu are where it belongs.
+        ),
+        Command(
+            id: "file.checksumCreate",
+            title: "Create Checksum File…",
+            category: .file,
+            keywords: [
+                "checksum", "create", "hash", "sha", "sha256", "md5", "crc", "sfv", "digest",
+                "sign", "manifest"
+            ]
         ),
         Command(
             id: "file.compareByContents",
