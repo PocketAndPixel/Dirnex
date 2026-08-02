@@ -127,6 +127,7 @@ extension PanelViewController: NSTableViewDelegate {
         // The bar, its track and its percentage are the other fill that has to survive the cursor's
         // background (PLAN.md §M15 Slice 2) — derived from the same colour the text is.
         cell.barView.emphasizedInk = AppPreferences.shared.palette.cursorForeground
+        cell.barView.displayMode = AppPreferences.shared.sizeVizDisplayMode
         guard !isParentRow(row), let index = entryIndex(forRow: row),
               let entry = panel.displayedEntry(at: index) else {
             cell.dimmed = false

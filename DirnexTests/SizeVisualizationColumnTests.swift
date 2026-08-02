@@ -49,11 +49,14 @@ struct SizeBarColumnTests {
         #expect(column.minWidth < column.defaultWidth)
     }
 
-    @Test("the bar column is wide enough for a track plus its percentage")
+    @Test("the bar column still fits a track beside its percentage in the modes that show one")
     func widthFitsLabel() {
-        // Measured, not guessed: 86 of ~'s 93 rows floor to a stub, so the percentage beside the
-        // bar is what actually carries them. A column that cannot fit "100.0%" alongside a track
-        // long enough to compare would be a chart that says nothing at either end.
-        #expect(PanelViewController.Column.sizeBar.defaultWidth >= 100)
+        // The column now defaults to the bar alone (`SizeVizDisplayMode.bar`), which reserves no
+        // label — so its default width was narrowed to 0.7 of the old 120 pt = 84. That still clears
+        // "100.0%" beside a comparable track for the Percentage and Both modes; below ~80 the track
+        // would be shorter than the label and the bar would stop being a comparison, which is the
+        // floor `minWidth` holds.
+        #expect(PanelViewController.Column.sizeBar.defaultWidth == 84)
+        #expect(PanelViewController.Column.sizeBar.minWidth >= 80)
     }
 }

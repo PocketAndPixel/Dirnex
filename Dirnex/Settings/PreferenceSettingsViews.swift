@@ -61,6 +61,24 @@ struct PanelsSettingsView: View {
                 .foregroundStyle(.secondary)
             }
 
+            Section {
+                Picker("Size visualization", selection: $preferences.sizeVizDisplayMode) {
+                    ForEach(SizeVizDisplayMode.allCases) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+            } footer: {
+                Text(
+                    """
+                    What the size-bar column shows when a pane is in Size Visualization (View menu): \
+                    the ncdu-style bar, each row’s share of the folder as a percentage, or both.
+                    """
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+
             PaletteSettingsSection(preferences: preferences)
 
             FileColorRulesSection()

@@ -129,6 +129,23 @@ final class AppPreferences: ObservableObject {
     /// and repaints. `object` is the `AppPreferences` that changed.
     static let rowDensityDidChange = Notification.Name("Dirnex.rowDensityDidChange")
 
+    /// Panels ▸ what the size-visualization column draws: the bar, the folder-share percentage, or
+    /// both (PLAN.md §M15). A single app-wide value like `rowDensity`, not a per-tab one — it is a
+    /// reading preference, not a question about one directory. Changing it posts
+    /// `sizeVizDisplayModeDidChange` so every open pane showing bars repaints live. Defaults to
+    /// `.bar`, the quiet chart on its own.
+    @Published var sizeVizDisplayMode: SizeVizDisplayMode {
+        didSet {
+            guard sizeVizDisplayMode != oldValue else { return }
+            defaults.set(sizeVizDisplayMode.rawValue, forKey: Keys.sizeVizDisplayMode)
+            NotificationCenter.default.post(name: Self.sizeVizDisplayModeDidChange, object: self)
+        }
+    }
+
+    /// Posted (on the main actor) when `sizeVizDisplayMode` changes, so every open pane repaints
+    /// its size-bar column. `object` is the `AppPreferences` that changed.
+    static let sizeVizDisplayModeDidChange = Notification.Name("Dirnex.sizeVizDisplayModeDidChange")
+
     /// Panels ▸ the three colours the user owns (PLAN.md §M15 Slice 2), each as `#RRGGBB` or the
     /// empty string for **Follow System** — the default, so an untouched install renders exactly as
     /// it did before this setting existed and the default path stays AppKit's own drawing.
@@ -296,6 +313,10 @@ final class AppPreferences: ObservableObject {
         // (or a hand-edited defaults domain) falls back to the shipped default rather than
         // trapping, the same way `PersistedTab` reads its sort key.
         rowDensity = RowDensity(rawValue: defaults.string(forKey: Keys.rowDensity) ?? "") ?? .regular
+        // Empty (never written) = the bar alone, and so is anything an older/newer build can't parse.
+        sizeVizDisplayMode = SizeVizDisplayMode(
+            rawValue: defaults.string(forKey: Keys.sizeVizDisplayMode) ?? ""
+        ) ?? .bar
         // Empty (never written) = Follow System, and so is anything `PanelPalette` can't parse.
         accentColorHex = defaults.string(forKey: Keys.accentColorHex) ?? ""
         cursorColorHex = defaults.string(forKey: Keys.cursorColorHex) ?? ""
@@ -322,6 +343,7 @@ final class AppPreferences: ObservableObject {
         static let showSyncStatus = "Dirnex.pref.showSyncStatus"
         static let showFunctionBar = "Dirnex.pref.showFunctionBar"
         static let rowDensity = "Dirnex.pref.rowDensity"
+        static let sizeVizDisplayMode = "Dirnex.pref.sizeVizDisplayMode"
         static let accentColorHex = "Dirnex.pref.accentColorHex"
         static let cursorColorHex = "Dirnex.pref.cursorColorHex"
         static let markColorHex = "Dirnex.pref.markColorHex"

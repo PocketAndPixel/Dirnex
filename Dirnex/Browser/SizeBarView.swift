@@ -4,14 +4,15 @@ import DirnexCore
 /// One row's ncdu-style bar, plus its share of the folder (PLAN.md §M6 "toggle panel to ncdu-style
 /// bars"). Lives in the contextual bar column that `PanelViewController+SizeViz` installs.
 ///
-/// **Bar *and* percentage, because measurement says the bar alone cannot carry it.** ncdu's manual
-/// splits the two — *"Percentage is relative to the size of the current directory, graph is relative
-/// to the largest item"* — and pass 9 built both denominators into `SizeBar` for exactly that. Pass
-/// 10 measured why it matters: the dynamic range in a real `~` is ~10⁶, so **86 of its 93 rows** land
-/// under half a point of bar at any width a file pane can spare. They are floored to a visible stub
-/// (`SizeBar.inkWidth`), which honestly reads "this is noise" — and the number beside it is what
-/// distinguishes 0.9 % from 0.0001 % once the bar has given up. Drawing one without the other would
-/// leave the whole tail of every big folder unreadable.
+/// **Bar and percentage are two views of the same `SizeBar`, and which of them draw is the user's
+/// to pick** (`displayMode`, from `AppPreferences.sizeVizDisplayMode`). ncdu's manual splits the two
+/// — *"Percentage is relative to the size of the current directory, graph is relative to the largest
+/// item"* — and pass 9 built both denominators into `SizeBar` for exactly that. Pass 10 measured why
+/// the pairing is worth offering: the dynamic range in a real `~` is ~10⁶, so **86 of its 93 rows**
+/// land under half a point of bar at any width a file pane can spare. They are floored to a visible
+/// stub (`SizeBar.inkWidth`), which honestly reads "this is noise" — and the number beside it is what
+/// distinguishes 0.9 % from 0.0001 % once the bar has given up. So `.both` is the most legible, and
+/// the default (`.bar`) is the quietest; the setting lets the user trade one for the other.
 final class SizeBarView: NSView {
     /// The row's bar, or `nil` while its total is still unknown — a directory the scan has not
     /// reached yet. The distinction is the core's (`SizeVisualization.bar(for:)` answers `nil`
@@ -46,6 +47,16 @@ final class SizeBarView: NSView {
         }
     }
 
+    /// Which halves of the row to draw — the bar, the percentage, or both (`AppPreferences
+    /// .sizeVizDisplayMode`). Pushed down by `SizeBarCellView` on each render pass. Defaults to
+    /// `.both` so the view in isolation draws everything; the pane always supplies the real value.
+    var displayMode: SizeVizDisplayMode = .both {
+        didSet {
+            guard displayMode != oldValue else { return }
+            needsDisplay = true
+        }
+    }
+
     /// The bar's own minimum, in points, for any row holding bytes. ~1.5 pt is 3 device pixels at
     /// 2x — unmistakably present, still obviously nothing. See `SizeBar.inkWidth`.
     private let minimumInk: CGFloat = 1.5
@@ -73,15 +84,22 @@ final class SizeBarView: NSView {
         // found to be nothing, which is the one thing we do not know about it yet.
         guard let bar else { return }
 
-        let trackRect = NSRect(
-            x: bounds.minX,
-            y: (bounds.height - barHeight) / 2,
-            width: max(0, bounds.width - Self.labelWidth),
-            height: barHeight
-        )
-        drawTrack(in: trackRect)
-        drawFill(bar, in: trackRect)
-        drawShare(bar)
+        if displayMode.showsBar {
+            // Reserve room for the number only when it is actually drawn; the bar alone gets the
+            // whole column.
+            let reserved = displayMode.showsPercentage ? Self.labelWidth : 0
+            let trackRect = NSRect(
+                x: bounds.minX,
+                y: (bounds.height - barHeight) / 2,
+                width: max(0, bounds.width - reserved),
+                height: barHeight
+            )
+            drawTrack(in: trackRect)
+            drawFill(bar, in: trackRect)
+        }
+        if displayMode.showsPercentage {
+            drawShare(bar)
+        }
     }
 
     /// The empty track behind the bar — what makes a floored stub read as "1 % of the biggest

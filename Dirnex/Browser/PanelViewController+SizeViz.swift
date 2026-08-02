@@ -126,6 +126,28 @@ extension PanelViewController {
         )
     }
 
+    /// Subscribe to `sizeVizDisplayModeDidChange` so a pane showing bars repaints the moment the
+    /// Settings picker moves. App-wide preference, pane merely follows — the twin of the row-density
+    /// observer. Torn down by the blanket `removeObserver(self)` in `deinit`.
+    func observeSizeVizDisplayModePreference() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(sizeVizDisplayModePreferenceChanged),
+            name: AppPreferences.sizeVizDisplayModeDidChange,
+            object: nil
+        )
+    }
+
+    /// Repaint on a display-mode change. Only the drawing changed — the column width and the
+    /// projection are untouched — so `renderRefresh` (which re-fetches every cell, picking up the
+    /// new mode) is all that is owed, and only where bars are actually on screen. A rename in
+    /// progress owns the table; the end-editing handler replays the skipped refresh.
+    @objc private func sizeVizDisplayModePreferenceChanged() {
+        guard areSizeBarsVisible else { return }
+        if deferRefreshIfRenaming() { return }
+        renderRefresh()
+    }
+
     /// Totals landed for a directory this pane may be showing. Ignore every other one — with two
     /// panes and several tabs, most notifications are somebody else's.
     ///

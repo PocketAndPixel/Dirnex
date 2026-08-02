@@ -347,6 +347,7 @@ final class PanelViewController: NSViewController {
         observeFinderTagChanges()
         observeCloudSyncStatusChanges()
         observeDirectorySizeChanges()
+        observeSizeVizDisplayModePreference()
         activateTab()
     }
 
