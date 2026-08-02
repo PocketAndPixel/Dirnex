@@ -1675,3 +1675,28 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   passed: the two strings genuinely differ, just not in any pixel the user sees. Front-load the
   varying part (`someone@gmail.com — Google Drive`) and assert on a *prefix* rather than on
   inequality, so the test fails for the same reason the screenshot did. Only a screenshot caught it.
+- **A "can this apply here" predicate lives in *two* places — the behaviour and the menu that gates
+  it — and they drift silently.** Bringing size bars into the tree meant widening `areSizeBarsVisible`
+  (drop `!panel.isTree`), and every core test, the app suite, both linters and the build passed with
+  the bars fully wired — but the View ▸ Size Visualization menu item stayed **greyed out in a tree**,
+  because `validateToggleItem` carried its own hand-copied twin of the same predicate
+  (`… && !panel.isTree`). Nothing could catch it but launching: a disabled menu item swallows its own
+  key equivalent too, so ⌃B was dead as well, and the feature was unreachable while every automated
+  signal was green. When a mode gains a capability, grep the *selector's* validator for the predicate
+  that used to forbid it — the enable/disable gate is a second copy of `areSizeBarsVisible` by
+  construction, and the menu is the one surface no headless test drives. Same family as the "a display
+  string that exists twice will be localized once" and "name the new backend at every site that lists
+  the old one" traps: one rule, two spellings, and the compiler checks neither.
+- **Tree size bars are one directory per *level*, so the sizes have to live where the rows do.** The
+  flat `SizeVisualization(model:)` reads one directory's siblings; a tree's rows span many, and its
+  totals cannot sit in `DirectoryModel.directorySizes` — that map is pruned to the *root* listing on
+  every refresh (`updateListing`), so a child sized at depth 2 vanished on the next FSEvents ping.
+  `TreeProjection` grows its own cross-level `directorySizes` (unique paths, one flat map, handed to
+  each level's `DirectoryModel` which prunes it to that level), and `Panel.computedSize`/`directorySizes`/
+  the setters dispatch on `tree != nil` so the size *column* and the *bar* read one answer. Entering
+  the tree seeds from the model (`freshTree`), leaving it merges the root level back
+  (`exitTreeMode`) — the deep totals are dropped there on purpose, since the flat list has no row to
+  hang them on and a stale one would resurface. The visible win, and the thing to check in a
+  screenshot: an expanded folder's largest child fills its bar even when a root-level sibling is
+  4× bigger — proof the denominator is the *parent*, not the projection. A whole-tree denominator
+  cannot express it (a child's bytes are a subset of its parent's).

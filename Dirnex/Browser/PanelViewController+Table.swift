@@ -80,8 +80,10 @@ extension PanelViewController: NSTableViewDelegate {
             // inset.
             applyTreeLayout(to: cell, entry: entry, entryIndex: index)
         case .size:
+            // `panel.computedSize` reads the drawing surface, so a directory sized at any tree level
+            // shows its total here, not just the root's rows.
             cell.textField?.stringValue = FileFormatting.sizeString(
-                for: entry, computedSize: panel.model.computedSize(of: entry)
+                for: entry, computedSize: panel.computedSize(of: entry)
             )
             cell.textField?.alignment = .right
         case .date:

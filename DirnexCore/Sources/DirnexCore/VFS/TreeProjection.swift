@@ -61,6 +61,14 @@ public struct TreeProjection: Sendable {
     /// `listing.entries` each time.
     private var listings: [VFSPath: [FileEntry]]
 
+    /// Recursively-computed directory totals, keyed by the sized directory's path — spanning every
+    /// level, the tree's analogue of `DirectoryModel.directorySizes`. One flat map covers the whole
+    /// tree because a `VFSPath` is unique, and each level's `DirectoryModel` is handed the map and
+    /// prunes it to its own entries, so a size-sort orders each level on live totals exactly as the
+    /// flat list does. The app fills this from its `DirectorySizeProvider` (Space-on-dir or the
+    /// size-visualization scan); a size for an entry no level lists is inert until it does.
+    public private(set) var directorySizes: [VFSPath: Int64]
+
     /// The flattened, depth-annotated rows the pane renders — the tree's analogue of
     /// `DirectoryModel.visibleEntries`, and a stable array to index into.
     public private(set) var rows: [TreeRow]
@@ -70,13 +78,15 @@ public struct TreeProjection: Sendable {
         sort: FileSort = .default,
         showHidden: Bool = false,
         filter: String = "",
-        expanded: Set<VFSPath> = []
+        expanded: Set<VFSPath> = [],
+        directorySizes: [VFSPath: Int64] = [:]
     ) {
         self.rootPath = rootPath
         self.sort = sort
         self.showHidden = showHidden
         self.filter = filter
         self.expanded = expanded
+        self.directorySizes = directorySizes
         listings = [:]
         rows = []
         // No rebuild: with no listings the row list is empty, which is the correct initial state.
@@ -110,6 +120,12 @@ public struct TreeProjection: Sendable {
     /// Whether a directory's children have been listed yet (the root included).
     public func hasListing(for path: VFSPath) -> Bool {
         listings[path] != nil
+    }
+
+    /// A row's recursively-computed total, or `nil` if it has none yet — the tree's analogue of
+    /// `DirectoryModel.computedSize`, reading the flat cross-level `directorySizes` map.
+    public func computedSize(of entry: FileEntry) -> Int64? {
+        directorySizes[entry.id]
     }
 
     /// Every directory the tree currently holds a listing for — the root plus each expanded folder
@@ -165,6 +181,26 @@ public struct TreeProjection: Sendable {
         rebuild()
     }
 
+    /// Record recursively-computed totals for directory rows at any level — the size-visualization
+    /// scan landing, or Space-on-dir — re-flattening so a size-sort re-orders and the bars re-scale.
+    /// Existing totals for unmentioned paths are kept; a repeated path takes the new value. A no-op
+    /// for an empty batch, so a cold seed does not rebuild for nothing (`DirectoryModel` guards the
+    /// same way, and for the same reason).
+    public mutating func setDirectorySizes(_ sizes: [VFSPath: Int64]) {
+        guard !sizes.isEmpty else { return }
+        directorySizes.merge(sizes) { _, new in new }
+        rebuild()
+    }
+
+    /// Forget every computed total — the `.gitignore`-aware rule being switched, or its rules moving
+    /// underneath the mode (the distinction `DirectoryModel.clearDirectorySizes` documents). Rebuilds
+    /// only if there was something to drop.
+    public mutating func clearDirectorySizes() {
+        guard !directorySizes.isEmpty else { return }
+        directorySizes = [:]
+        rebuild()
+    }
+
     // MARK: - Flattening
 
     private mutating func rebuild() {
@@ -183,11 +219,15 @@ public struct TreeProjection: Sendable {
     /// the tree (its listing is keyed by the *link's* path, distinct from any ancestor's).
     private func appendLevel(of directory: VFSPath, depth: Int, into result: inout [TreeRow]) {
         guard let rawEntries = listings[directory] else { return }
+        // The whole cross-level map is handed to every level; the size-aware initializer prunes it to
+        // this directory's own entries (exactly as `updateListing` prunes on refresh), so a size-sort
+        // orders each level on its own live totals and no other level's number can leak in.
         let model = DirectoryModel(
             listing: DirectoryListing(path: directory, entries: rawEntries),
             sort: sort,
             showHidden: showHidden,
-            filter: filter
+            filter: filter,
+            directorySizes: directorySizes
         )
         for entry in model.visibleEntries {
             result.append(TreeRow(entry: entry, depth: depth))

@@ -16,7 +16,11 @@ import Foundation
 ///   same-directory `setListing` re-anchors the cursor on the same file if it is
 ///   still present.
 public struct Panel: Sendable {
-    public private(set) var model: DirectoryModel
+    // `internal(set)` rather than `private(set)`: the `Panel+DirectorySizes` companion file mutates
+    // `model`/`tree` through their own mutating methods, and Swift's `private` does not cross files
+    // (NOTES.md ▸ file splitting). Still read-only to the app; every mutation goes through a Panel
+    // method that preserves the cursor.
+    public internal(set) var model: DirectoryModel
     /// Index into `model.visibleEntries`. Clamped to a valid row, or 0 when empty.
     public private(set) var cursor: Int
     /// Marked entries, keyed by their stable path identity. Marks persist on entries
@@ -34,7 +38,9 @@ public struct Panel: Sendable {
     /// with `model`, so `model` remains the pane's settings-of-record and the source the tree is
     /// re-seeded from — only the *shape* differs. Navigating (a new `rootPath`) replaces it with a
     /// fresh, all-collapsed tree; a same-directory refresh updates it in place.
-    public private(set) var tree: TreeProjection?
+    ///
+    /// `internal(set)` for the same reason as `model` above.
+    public internal(set) var tree: TreeProjection?
 
     public init(model: DirectoryModel) {
         self.model = model
@@ -188,7 +194,11 @@ public struct Panel: Sendable {
             rootPath: model.listing.path,
             sort: model.sort,
             showHidden: model.showHidden,
-            filter: model.filter
+            filter: model.filter,
+            // Carry the root's own computed totals in, so a folder sized by hand (or by the bar scan)
+            // before the tree opened keeps its number rather than re-walking. Passed at init so the
+            // one rebuild `setListing` triggers below already sees them.
+            directorySizes: model.directorySizes
         )
         fresh.setListing(model.listing.path, entries: model.listing.entries)
         return fresh
@@ -205,9 +215,19 @@ public struct Panel: Sendable {
 
     /// Switch back to a flat list, keeping the cursor on the same entry by identity where it still
     /// exists at the root (a cursor parked deep in the tree clamps into range). A no-op in list mode.
+    ///
+    /// The tree's root-level totals flow back into the model, so a folder sized while the tree was
+    /// open still shows its number in the flat list. Deeper levels' totals are dropped — the list has
+    /// no row for them — by filtering to the root's own entries before the merge, so a stale total
+    /// can't sit in the model waiting to resurface.
     public mutating func exitTreeMode() {
-        guard tree != nil else { return }
-        mutatingPreservingCursor { $0.tree = nil }
+        guard let tree else { return }
+        let rootIDs = Set(model.listing.entries.map(\.id))
+        let rootSizes = tree.directorySizes.filter { rootIDs.contains($0.key) }
+        mutatingPreservingCursor {
+            $0.model.setDirectorySizes(rootSizes)
+            $0.tree = nil
+        }
     }
 
     /// Open a folder's children in the tree, keeping the cursor anchored by identity (expanding rows
@@ -256,27 +276,6 @@ public struct Panel: Sendable {
             $0.model.filter = filter
             $0.tree?.filter = filter
         }
-    }
-
-    /// Record a recursively-computed size for the directory at `id` (Space-on-dir),
-    /// keeping the cursor anchored on its entry by identity since size-sorting may
-    /// reorder rows once the total lands.
-    public mutating func setDirectorySize(_ id: VFSPath, bytes: Int64) {
-        mutatingPreservingCursor { $0.model.setDirectorySize(id, bytes: bytes) }
-    }
-
-    /// Record many computed directory sizes at once — seeding size-visualization mode from the
-    /// `DirectorySizeCache` — with one re-sort rather than one per entry, and the cursor kept
-    /// anchored on its entry by identity since size-sorting reorders rows as the totals land.
-    public mutating func setDirectorySizes(_ sizes: [VFSPath: Int64]) {
-        mutatingPreservingCursor { $0.model.setDirectorySizes(sizes) }
-    }
-
-    /// Forget every computed total — the `.gitignore`-aware mode being switched, or its rules
-    /// changing (see `DirectoryModel.clearDirectorySizes`). Cursor anchored by identity as above,
-    /// since dropping the totals can re-sort a size-sorted listing just as landing them can.
-    public mutating func clearDirectorySizes() {
-        mutatingPreservingCursor { $0.model.clearDirectorySizes() }
     }
 
     // MARK: - Cursor
@@ -386,7 +385,7 @@ public struct Panel: Sendable {
         displayedEntry(at: index)
     }
 
-    private mutating func mutatingPreservingCursor(_ body: (inout Panel) -> Void) {
+    mutating func mutatingPreservingCursor(_ body: (inout Panel) -> Void) {
         let anchorID = currentEntry?.id
         body(&self)
         restoreCursor(to: anchorID)

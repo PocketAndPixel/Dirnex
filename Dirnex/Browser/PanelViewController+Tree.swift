@@ -40,8 +40,9 @@ extension PanelViewController {
         reconcileCursorFromTable()
         viewMode = (viewMode == .tree) ? .list : .tree
         applyViewMode()
-        // Size bars are withdrawn in a tree (their projection is one directory's siblings); a mode
-        // change installs or removes that column, and renders.
+        // Size bars carry into a tree, re-scoped per level (`SizeVisualization(tree:)`); this keeps
+        // the column, projection and scan queue in step with the new shape, installing the column if
+        // the mode is on, and renders.
         updateSizeVisualization()
         reloadEverything()
         startPaneWatcher(panel.path, force: true)
@@ -278,6 +279,12 @@ extension PanelViewController {
                     panel.setTreeChildListing(directory, entries: entries)
                 }
             }
+            // A real change landed somewhere under the tree; the event names nothing, so evict every
+            // cached total on the root-to-leaf line (siblings survive) — the same honesty the flat
+            // watcher keeps, so a revisit re-walks what grew rather than trusting the cache. The tree
+            // keeps the totals it is already drawing (a stale total is an approximation, not a lie),
+            // and `renderRefresh` re-queues anything now genuinely unsized.
+            invalidateDirectorySizes(under: root)
             renderRefresh()
             startWatchingTree()
             updateGitStatus()

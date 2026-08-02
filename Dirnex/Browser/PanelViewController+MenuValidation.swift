@@ -220,9 +220,10 @@ extension PanelViewController: NSMenuItemValidation {
             // sane to walk, and that is not the user having switched the mode off.
             menuItem.state = isSizeVisualizationEnabled ? .on : .off
             // Disabled where it cannot apply, so the greying explains the suppression that the
-            // checkmark alone would leave looking like a bug — including in a tree, where the bars
-            // are withdrawn (PLAN.md §M15 Slice 4).
-            return panel.path.backend == .local && !isResultsListing && !panel.isTree
+            // checkmark alone would leave looking like a bug. A tree *is* allowed now — its bars are
+            // re-scoped per level (`SizeVisualization(tree:)`, PLAN.md §M15) — so the gate matches
+            // `areSizeBarsVisible`.
+            return panel.path.backend == .local && !isResultsListing
         case #selector(toggleTreeView(_:)):
             // Tracks the pane's *actual* shape (`panel.isTree`), not the tab's stored `viewMode`: a
             // tree preference is suppressed in an archive or on a remote volume, and the checkmark
