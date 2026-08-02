@@ -38,7 +38,8 @@ extension BrowserWindowController {
         updateIndicatorButton.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             updateIndicatorButton.heightAnchor.constraint(equalToConstant: 22),
-            // Same tight width as the eye and the nav chevrons so the cluster stays evenly spaced.
+            // Tight to the glyph: this one is spaced by the leading stack's own 12pt gap, unlike
+            // the nav chevrons, whose cells are widened to touch and carry their spacing inside.
             updateIndicatorButton.widthAnchor.constraint(equalToConstant: 16)
         ])
 
