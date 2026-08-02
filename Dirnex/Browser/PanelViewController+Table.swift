@@ -11,6 +11,23 @@ extension PanelViewController: NSTableViewDataSource {
 }
 
 extension PanelViewController: NSTableViewDelegate {
+    /// Every row, so the cursor's background can be a colour the user chose (PLAN.md §M15 Slice 2).
+    /// Supplied unconditionally — `PanelRowView` hands an untouched palette straight back to `super`
+    /// — so there is never a pool of one kind of row view to reconcile with the other; see the type
+    /// for the probe that makes that identical rather than merely equivalent.
+    func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
+        let identifier = NSUserInterfaceItemIdentifier("panelRow")
+        let view: PanelRowView
+        if let reused = tableView.makeView(withIdentifier: identifier, owner: self) as? PanelRowView {
+            view = reused
+        } else {
+            view = PanelRowView()
+            view.identifier = identifier
+        }
+        view.cursorColor = AppPreferences.shared.palette.cursor
+        return view
+    }
+
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         guard let tableColumn,
               let column = Column(rawValue: tableColumn.identifier.rawValue) else { return nil }
@@ -26,15 +43,25 @@ extension PanelViewController: NSTableViewDelegate {
             identifier: tableColumn.identifier
         ) }
         if isParentRow(row) { return parentRowCell(for: column, in: tableView) }
-        guard let index = entryIndex(forRow: row) else { return nil }
+        guard let index = entryIndex(forRow: row),
+              let entry = panel.displayedEntry(at: index) else { return nil }
 
-        let entry = panel.model[index]
         let cell = tableView.makeView(withIdentifier: tableColumn.identifier, owner: self) as? FileCellView
             ?? FileCellView(showsImage: column == .name, identifier: tableColumn.identifier)
 
         cell.marked = panel.isMarked(entry)
         cell.dimmed = entry.isHidden
         cell.accentColor = nil
+        // The file-type rule (PLAN.md §M15 Slice 3), on every column: Total Commander colours the
+        // whole row, and the Git gutter keeps its own letter colour because that cell overwrites
+        // `accentColor` below, which outranks this.
+        cell.typeColor = typeColor(for: entry)
+        // Set on every render, not only when the preference changes: a recycled cell was built at
+        // whatever density was current when it was made (PLAN.md §M15; see `FileCellView.density`).
+        cell.density = AppPreferences.shared.rowDensity
+        // Same reason, and it must be in hand *before* `applyStyle` below — and before the cursor
+        // lands on this row and drives `applyStyle` again from `backgroundStyle`.
+        cell.palette = AppPreferences.shared.palette
         switch column {
         case .name:
             // An app-library row in the merged iCloud listing wears the app's own icon; everything
@@ -47,9 +74,16 @@ extension PanelViewController: NSTableViewDelegate {
             // column of their own, and in Finder's order: dots first, cloud outermost.
             cell.tags = tags(for: entry)
             cell.syncStatus = syncStatus(for: entry)
+            // The tree's indentation and disclosure triangle (PLAN.md §M15 Slice 4), reset per
+            // render on the name cell — a recycled cell may have last drawn a different depth (or a
+            // list-mode row). A no-op visually in list mode: `isTreeRow == false` keeps the shipped
+            // inset.
+            applyTreeLayout(to: cell, entry: entry, entryIndex: index)
         case .size:
+            // `panel.computedSize` reads the drawing surface, so a directory sized at any tree level
+            // shows its total here, not just the root's rows.
             cell.textField?.stringValue = FileFormatting.sizeString(
-                for: entry, computedSize: panel.model.computedSize(of: entry)
+                for: entry, computedSize: panel.computedSize(of: entry)
             )
             cell.textField?.alignment = .right
         case .date:
@@ -92,12 +126,16 @@ extension PanelViewController: NSTableViewDelegate {
     ) -> NSView {
         let cell = tableView.makeView(withIdentifier: identifier, owner: self) as? SizeBarCellView
             ?? SizeBarCellView(identifier: identifier)
-        guard !isParentRow(row), let index = entryIndex(forRow: row) else {
+        // The bar, its track and its percentage are the other fill that has to survive the cursor's
+        // background (PLAN.md §M15 Slice 2) — derived from the same colour the text is.
+        cell.barView.emphasizedInk = AppPreferences.shared.palette.cursorForeground
+        cell.barView.displayMode = AppPreferences.shared.sizeVizDisplayMode
+        guard !isParentRow(row), let index = entryIndex(forRow: row),
+              let entry = panel.displayedEntry(at: index) else {
             cell.dimmed = false
             cell.barView.bar = nil
             return cell
         }
-        let entry = panel.model[index]
         cell.dimmed = entry.isHidden
         cell.barView.bar = sizeBar(for: entry)
         return cell

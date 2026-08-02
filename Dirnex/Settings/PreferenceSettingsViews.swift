@@ -44,37 +44,17 @@ struct PanelsSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Show hidden files", isOn: $preferences.showHidden)
-            } footer: {
-                Text(
-                    "Reveals dotfiles like .git and .env in every pane. Also on the toolbar and ⇧⌘."
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-
-            Section {
-                Toggle("Show Finder tags", isOn: $preferences.showTags)
+                Picker("Row height", selection: $preferences.rowDensity) {
+                    ForEach(RowDensity.allCases) { density in
+                        Text(density.title).tag(density)
+                    }
+                }
+                .pickerStyle(.segmented)
             } footer: {
                 Text(
                     """
-                    Shows each file's tag colours at the right edge of its name, as Finder does. Also in the \
-                    View menu. Archives and remote volumes have no tags, so nothing is drawn there.
-                    """
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-
-            Section {
-                Toggle("Show cloud sync status", isOn: $preferences.showSyncStatus)
-            } footer: {
-                Text(
-                    """
-                    Badges a file whose bytes are still in iCloud (or another provider), on their way up or \
-                    down, or in conflict — at the right edge of its name, as Finder does. Folders outside a \
-                    cloud provider are never scanned, and fully synced files show nothing. Also in the View \
-                    menu.
+                    How much vertical room each file row gets, in every pane and tab. Compact fits \
+                    more on screen; Roomy is easier to aim at. The icons follow along.
                     """
                 )
                 .font(.caption)
@@ -82,18 +62,26 @@ struct PanelsSettingsView: View {
             }
 
             Section {
-                Toggle("Show function key bar", isOn: $preferences.showFunctionBar)
+                Picker("Size visualization", selection: $preferences.sizeVizDisplayMode) {
+                    ForEach(SizeVizDisplayMode.allCases) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
             } footer: {
                 Text(
                     """
-                    A row of F-key buttons along the window bottom — Rename, View, Copy, Move, New Folder, \
-                    Delete — the Total Commander function bar. Also in the View menu; the keys work whether or \
-                    not the bar is shown.
+                    What the size-bar column shows when a pane is in Size Visualization (View menu): \
+                    the ncdu-style bar, each row’s share of the folder as a percentage, or both.
                     """
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
+
+            PaletteSettingsSection(preferences: preferences)
+
+            FileColorRulesSection()
 
             Section {
                 Toggle(

@@ -314,10 +314,11 @@ final class PanelViewController: NSViewController {
         // Only the Name column absorbs slack as the pane resizes; Size and Date keep their
         // set widths so they never scroll off-screen when a pane is narrow.
         tableView.columnAutoresizingStyle = .firstColumnOnlyAutoresizingStyle
-        // The cell centers its 16pt icon/text vertically; the system default height leaves
-        // it cramped, so give each row a little vertical breathing room above and below.
+        // The cell centers its icon/text vertically; the system default height leaves it cramped,
+        // so give each row a little vertical breathing room above and below. How much is the
+        // app-wide `rowDensity` (PLAN.md §M15) — `.regular` is the 22 pt this was hardcoded to.
         tableView.rowSizeStyle = .custom
-        tableView.rowHeight = 22
+        tableView.rowHeight = AppPreferences.shared.rowDensity.rowHeight
         tableView.usesAlternatingRowBackgroundColors = true
         tableView.allowsMultipleSelection = false
         tableView.allowsEmptySelection = true
@@ -339,10 +340,14 @@ final class PanelViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         observeShowHiddenPreference()
+        observeRowDensityPreference()
+        observePalettePreference()
+        observeFileColorRules()
         observeGitStatusChanges()
         observeFinderTagChanges()
         observeCloudSyncStatusChanges()
         observeDirectorySizeChanges()
+        observeSizeVizDisplayModePreference()
         activateTab()
     }
 
@@ -405,15 +410,25 @@ final class PanelViewController: NSViewController {
                 )
                 guard token == loadToken else { return }
                 panel.setModel(model)
+                // Bring the pane into the tab's shape (PLAN.md §M15 Slice 4) before the render: a
+                // fresh model is an all-collapsed tree, so this seeds `panel.tree` when the tab wants
+                // one, and flattens back where a tree can't apply.
+                applyViewMode()
                 resetMouseSelectionAnchor()
                 recordMarkChange(since: departedMarks, in: departed, label: .clearSelection)
-                if let child, let index = panel.model.index(ofID: child) {
+                if let child, let index = panel.displayedIndex(ofID: child) {
                     panel.moveCursor(to: index)
                 }
                 // Land on a real entry; only an empty directory parks the cursor on `..`.
                 cursorOnParentRow = panel.isEmpty && panel.parentPath != nil
-                // A restored tab's first listing: re-anchor its saved cursor and re-mark its saved
-                // selection, overriding the defaults just set. A no-op for every other navigation.
+                // A restored tab's first listing: re-open the folders a restored tree had expanded,
+                // listing each lazily…
+                restorePendingTreeExpansion()
+                // …then re-anchor its saved cursor and re-mark its saved selection, overriding the
+                // defaults just set. Second, because a cursor or mark *inside* one of those folders
+                // can only be anchored once that folder's rows exist — this pass takes whatever the
+                // root already shows, and each expansion's landing re-runs it for the rest. A no-op
+                // for every other navigation.
                 applyPendingRestore(toTab: tabIndex)
                 tabs[tabIndex].hasLoaded = true
                 if wasResults { tabs[tabIndex].clearResultsIdentity() }
@@ -430,7 +445,7 @@ final class PanelViewController: NSViewController {
                 DirectorySizeProvider.shared.cancelScan(for: departed)
                 reloadEverything()
                 refreshTabBar()
-                startWatching(path)
+                startPaneWatcher(path, force: true)
                 updateGitStatus()
                 updateTagStatus()
                 updateSyncStatus()

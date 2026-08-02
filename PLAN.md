@@ -4,7 +4,8 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M14 shipped (14 languages) · Created: 2026-07-05 · Log: [docs/HISTORY.md](docs/HISTORY.md)
+Status: M0–M15 shipped (14 languages) · **no milestone in flight** · Created: 2026-07-05 ·
+Log: [docs/HISTORY.md](docs/HISTORY.md)
 
 ---
 
@@ -93,9 +94,9 @@ Dirnex/
 Sizes are relative (S ≈ days, M ≈ 1–2 weeks, L ≈ 3+ weeks of focused work).
 Each milestone ends in something runnable; no milestone depends on a later one.
 
-### Shipped: M0 → M14 (2026-07-05 → 2026-08-02)
+### Shipped: M0 → M15 (2026-07-05 → 2026-08-02)
 
-Every milestone through M14 is closed. The checklists and the full per-pass progress log —
+Every milestone through M15 is closed. The checklists and the full per-pass progress log —
 what was probed, decided, and rejected — live in
 **[docs/HISTORY.md](docs/HISTORY.md)**; source comments citing `PLAN.md §M5` and the like
 refer to those sections.
@@ -117,6 +118,7 @@ refer to those sections.
 | M12 | Localization — 14 languages | 07-29 | The stock Finder-tag *names* in the ⌃T menu (`DirnexCore` `systemTagName` data); the AppleScript `.sdef` *terminology*, since renaming a verb breaks users' scripts (its error messages did translate); a lint rule keeping bare literals out of UI files (the repeated sweeps stand in for it); the "Results for Search results" stutter, a wording decision rather than a translation gap; RTL — none in the shipped set |
 | M13 | FTP and FTPS | 07-25 | `MLSD` (`curl` cannot send it); FTP-side `DirectorySync` by timestamp (unreliable by construction — LIST stamps are year- and zone-less); write-back for files edited in place over FTP (the shared edit-temp-watch-repack slice); an opportunistic "TLS optional" client mode (a password-downgrade vector — rejected 2026-07-26) |
 | M14 | Checksums and attributes | 07-30 (escalation 08-02) | Split/combine files (dropped 2026-07-29 — FAT32's ceiling, floppy/CD spanning and mail limits are all gone on macOS); multi-selection and recursive **privilege escalation** (the flat single-item path proves the mechanism; those sheets refuse a root-only change by name); escalating the *undo* of a non-owned change (still refused with `attributeRestoreNeedsAdministrator`, not escalated) |
+| M15 | The tree view, and colour the user chooses | 08-02 | The **thumbnail grid, brief view and the `PaneSurface` extraction** (cut 2026-08-02 — the three are one unit, and `FileTableView` is a 25-method contract a grid satisfies none of); a memo in front of `fnmatch` (measured unnecessary — 0.46 ms per full reload for 5 rules); size bars in tree mode, withdrawn at close and re-scoped per parent directory in a follow-up (`SizeVisualization(tree:)`) |
 
 The undone column is scope that was decided against, not forgotten — each one is argued in
 its HISTORY.md entry. The largest such call is the **built-in text editor** (2026-07-22): a
@@ -139,6 +141,19 @@ declared public scope and a folder that exists. Both are argued in HISTORY.md. T
 that approximation was reversed on 2026-07-21 (see M10): it used to also require a
 non-empty folder, which hid three folders Finder shows.
 
+### Next: nothing open yet
+
+M15 closed 2026-08-02 and no milestone has been opened since. Its section moved to
+[HISTORY.md](docs/HISTORY.md) §M15 whole, the way each milestone is archived as it closes — the four
+slices, the probes that inverted two of them, and the scope that was cut.
+
+The scope that is already written down, rather than merely imaginable, is in the *undone* column
+above plus M15's cut: the **thumbnail grid, brief view and the `PaneSurface` extraction** (one unit,
+argued in HISTORY.md §M15, with the two constraints any future grid inherits — skip
+`FileEntry.isDataless` rows, and move sort off the column header first). The one item two separate
+milestones have asked for is **edit-temp-watch-repack write-back** — M11 named it for archives and
+SFTP, M13 for FTP — so it is the candidate that would close the most open ends at once.
+
 ## 5. Cross-cutting: testing strategy
 
 | Layer | Approach |
@@ -160,8 +175,11 @@ non-empty folder, which hid three folders Finder shows.
 | Full Disk Access friction kills onboarding | Dedicated flow in M7; app degrades gracefully (browse home dir) before grant |
 | Scope creep before the feel is right | M1 exit criteria are the gate; nothing from M3+ starts until M1 feels great |
 | A system-CLI quirk changes under us (M13's TLS-1.2 pin for FTPS is a workaround for `curl` 8.7.1, not a property of the protocol) | The flag lives in a pure, tested `FTPProcessArguments` with the reason in its doc comment, so it is one place to re-measure — and a listing that comes back empty is the *symptom*, so an FTPS smoke test asserts non-empty rather than merely "no error" |
+| The tree becomes a *second* pane implementation by accretion — a refresh path, a mark gesture or a sort that quietly forks from the flat one | The tree is a flat projection over the same `NSTableView` and the same index space, not a parallel surface (HISTORY.md §M15 Slice 4); anything that forks is a signal the projection is wrong, not that the tree needs its own copy. Both fork points were answered in the slice — `SizeVisualization`'s per-directory assumption (the bars were withdrawn in tree mode at M15 close, then re-scoped *per parent directory* rather than forked — `SizeVisualization(tree:)` groups each row against its own level, so the projection stays one definition of "share of this folder") and the `installSortedModel` → `reloadEverything` → `syncCursorToTable` tail. It arrived once already, as the *second index space*: six `panel.model[row]` sites that crashed on the first click below the root's last entry, now routed through `displayedIndex(ofID:)` — NOTES.md ▸ AppKit |
 
 ## 7. Open questions
+
+**Open now:** none. M15's two closed with it (below), and nothing has been opened since.
 
 All four opened before M1 are closed — the first three by shipping and living in the result,
 which was the stated way to decide them. Recorded because reopening one is a real design
@@ -211,3 +229,18 @@ security posture revisited and re-confirmed 2026-07-26):
   matches what `SFTPProcessTransport` ships and hands the queue its delta directly. `curl`'s live meter
   was measured at ~1 Hz rounded to `k`/`M` — good for a bar, not for accounting — so an intra-file
   determinate bar is deferred as a thing worth doing for both remote backends together or not at all.
+
+Opened with M15 (2026-08-02) and **closed** in it the same day, as recommended — both about what a
+*marked set spanning directories* means for an operation:
+
+- **What F5/F6 do with marks spanning levels** — resolved: **TC's branch-view behaviour**, flatten
+  *preserving relative paths* under the destination. Copying everything flat into one folder is the
+  alternative and it silently collides the moment two folders hold an `x.jpg`.
+- **F8 with an ancestor and its descendant both marked** — resolved: **dedupe to the ancestor**
+  before enqueuing, since deleting the parent already takes the child. Implementing it added the half
+  the settling did not say: **the dedupe belongs to F5/F6 too** — a copy fails *politely* there, with
+  a conflict prompt over a file the user never chose to duplicate, which is quieter and no less wrong.
+
+Both live in `TreeSelection` (core, 18 tests); the app keeps one `recursiveTargets()` for the
+operations that recurse and the raw `selectionTargets()` for the ones that don't. See
+[HISTORY.md](docs/HISTORY.md) §M15.

@@ -1,6 +1,14 @@
 import AppKit
 import DirnexCore
 
+/// The tree disclosure triangle. It draws a chevron but is invisible to the mouse: `hitTest`
+/// returns `nil`, so a click on it passes through to the `FileTableView` beneath, which toggles the
+/// row from `mouseDown`. See the note at its construction in `FileCellView` — a live button ran its
+/// own tracking loop and dropped trackpad clicks that drifted off the narrow glyph.
+final class DisclosureTriangleView: NSButton {
+    override func hitTest(_: NSPoint) -> NSView? { nil }
+}
+
 /// One cell in a file pane.
 ///
 /// The panel distinguishes two independent states the way Total Commander does
@@ -20,6 +28,20 @@ final class FileCellView: NSTableCellView {
     /// Outranks the mark's red (a marked modified file still shows an orange `M`) but yields to
     /// the cursor's emphasized background, which needs its own contrast. `nil` for ordinary cells.
     var accentColor: NSColor?
+
+    /// The colour a file-type rule gives this row (PLAN.md §M15 Slice 3), or `nil` when no rule
+    /// claims it — which is every row on an untouched install.
+    ///
+    /// **Ranks below the mark, deliberately, and that is the one thing about it worth arguing.** The
+    /// obvious implementation reuses `accentColor`, which already outranks the mark so a marked
+    /// modified file still shows its orange Git `M` — and that is right for Git, because the letter
+    /// *is* information and there is nowhere else to put it. A type colour is not: it says what a
+    /// file already announces through its name and icon, while the mark says the user picked this
+    /// one and is about to act on it. Let `*.jpg`'s teal outrank the mark and a marked photograph
+    /// becomes indistinguishable from an unmarked one at the exact moment F5 is aimed at it —
+    /// silent, and in the expensive direction. So it takes a slot of its own rather than the
+    /// existing one: Git status → mark → type rule → label colour.
+    var typeColor: NSColor?
 
     /// The Finder-tag dots at the right edge of the name (PLAN.md §M6), or `nil` on the cells that
     /// aren't the name. Where Finder puts them, and — unlike the Git letter, which needs a gutter of
@@ -54,6 +76,83 @@ final class FileCellView: NSTableCellView {
     /// gutter — see the constraint below for why it is positive at all.
     private static let badgeOverhang: CGFloat = 4
 
+    /// The icon box, sized from `AppPreferences.rowDensity` (PLAN.md §M15). `nil` on the cells that
+    /// carry no image, where setting a density is a no-op.
+    private var iconWidth: NSLayoutConstraint?
+    private var iconHeight: NSLayoutConstraint?
+
+    /// The density this cell is currently laid out for. Re-applied on **every** render rather than
+    /// baked in at build time, because cells are recycled: `makeView(withIdentifier:)` hands back a
+    /// cell built at whatever density was current when it was made.
+    ///
+    /// Measured, in a throwaway harness against a real 300-row table: `reloadData` empties
+    /// `NSTableView`'s reuse pool outright — every row after one is a fresh build, even at an
+    /// unchanged density — so a density change *today* happens to hand out correctly sized cells
+    /// with no help from here. That is undocumented behaviour, and it fails in the quiet direction:
+    /// a macOS that kept the pool would draw 16 pt icons in a 28 pt row with nothing logged. So the
+    /// cell owns the invariant instead of relying on the table to. Re-assigning the same value
+    /// costs one comparison.
+    var density: RowDensity = .regular {
+        didSet {
+            guard density != oldValue else { return }
+            iconWidth?.constant = density.iconSize
+            iconHeight?.constant = density.iconSize
+        }
+    }
+
+    /// The user's colours (PLAN.md §M15 Slice 2). **Stored** rather than passed into `applyStyle`,
+    /// for the same reason `density` is stored: `applyStyle` also runs from `backgroundStyle`'s
+    /// `didSet`, which fires when the cursor moves onto or off this row — outside any render pass,
+    /// with no caller to hand it anything. Re-set on every render alongside `density`.
+    var palette: PanelPalette = .followSystem
+
+    // MARK: - Tree layout (PLAN.md §M15 Slice 4)
+
+    /// A directory row's disclosure state in tree mode — a folder that can be opened or closed. `nil`
+    /// on a file, on `..`, and on every row in list mode, i.e. the rows with no triangle.
+    enum TreeDisclosure { case collapsed, expanded }
+
+    /// Whether this cell is drawn inside a tree (any depth). When `false` the name column renders
+    /// byte-for-byte as the shipped flat list — the icon flush at its original inset, no triangle,
+    /// no reserved slot. When `true` every row reserves the disclosure slot so files line up under
+    /// their sibling folders. Only the name cell (the one that carries an icon) reads this.
+    var isTreeRow = false
+    /// The row's indentation depth (0 = the tree root's own entries). Drives the leading inset so a
+    /// child sits under its parent. Always 0 in list mode.
+    var treeDepth = 0
+    /// Whether this row shows a disclosure triangle, and which way it points — `nil` for a file, a
+    /// symlink-to-file, and `..`, which cannot be opened.
+    var treeDisclosure: TreeDisclosure?
+    /// Invoked when the disclosure triangle is clicked — toggles this row's expansion **without
+    /// moving the cursor** (Finder's behaviour), which is why it carries the row's own path rather
+    /// than acting on the pane's cursor. Set per render on directory rows; the closure pattern
+    /// mirrors `SidebarCellView.onEject`.
+    var onDisclosureToggle: (() -> Void)?
+
+    /// The name cell's icon inset in the shipped flat list — the leading constant every list-mode
+    /// row keeps, so nothing shifts when the tree is off.
+    private static let iconInsetList: CGFloat = 3
+    /// The tree block's leading inset, measured from the name cell's leading edge. Negative on
+    /// purpose: the `.plain` table style leaves an ~8 pt empty margin before the first column, and a
+    /// tree row reaches back into it so the disclosure triangle sits nearer the panel's left border
+    /// than a flat-list icon does — halving the border-to-`>` gap without disturbing the column
+    /// header, the inter-column spacing, or list mode. Only the tree branch reads it.
+    private static let treeLeadingInset: CGFloat = -3
+    /// One level of tree indentation.
+    private static let treeIndentPerLevel: CGFloat = 16
+    /// The width reserved before the icon for the disclosure triangle, in tree mode.
+    private static let treeDisclosureSlot: CGFloat = 14
+
+    /// The disclosure triangle for a directory row in tree mode; `nil` on the cells that carry no
+    /// image (size/date/git), which never show tree structure. Borderless with a per-cell action
+    /// closure, exactly like `SidebarCellView`'s eject button — a control in a table cell receives
+    /// its own click, so toggling never disturbs the row selection underneath.
+    private var disclosureButton: NSButton?
+    /// The two leading constraints tree layout moves: the icon's own inset and the triangle's. Held
+    /// so `applyTreeLayout` can slide them per depth without rebuilding the cell.
+    private var iconLeading: NSLayoutConstraint?
+    private var disclosureLeading: NSLayoutConstraint?
+
     init(showsImage: Bool, identifier: NSUserInterfaceItemIdentifier) {
         super.init(frame: .zero)
         self.identifier = identifier
@@ -79,6 +178,24 @@ final class FileCellView: NSTableCellView {
         image.imageScaling = .scaleProportionallyDown
         addSubview(image)
         imageView = image
+
+        // Only the name cell carries a disclosure triangle — the one column that shows tree
+        // structure. Hidden until `applyTreeLayout` gives it a state; in list mode it stays hidden
+        // and the icon keeps its original inset, so nothing changes. It is a `DisclosureTriangleView`
+        // — an NSButton that is *transparent to the mouse* (`hitTest` → nil), so a click on the
+        // triangle passes through to the file table and is toggled from `FileTableView.mouseDown` at
+        // press time. A real button ran its own tracking loop, where a trackpad's small horizontal
+        // drift off the 14 pt glyph released outside it and the action never fired — ~1 click in 5
+        // lost. Handling the toggle on mouse-down removes tracking, drift and drag from the path.
+        let disclosure = DisclosureTriangleView()
+        disclosure.translatesAutoresizingMaskIntoConstraints = false
+        disclosure.isBordered = false
+        disclosure.bezelStyle = .accessoryBarAction
+        disclosure.imagePosition = .imageOnly
+        disclosure.contentTintColor = .secondaryLabelColor
+        disclosure.isHidden = true
+        addSubview(disclosure)
+        disclosureButton = disclosure
 
         // Only the name cell carries dots — it is the one column they belong to.
         let dots = TagDotsView()
@@ -109,11 +226,37 @@ final class FileCellView: NSTableCellView {
         let dotsFlush = dots.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -1)
         dotsFlush.priority = .defaultHigh
 
+        // Built at `density`'s own size — the property's initial value — so the stored constraints
+        // and the stored density never disagree, and `didSet` has nothing to correct on a cell
+        // that is already at the current density.
+        let width = image.widthAnchor.constraint(equalToConstant: density.iconSize)
+        let height = image.heightAnchor.constraint(equalToConstant: density.iconSize)
+        iconWidth = width
+        iconHeight = height
+
+        // The icon inset and the triangle's leading are the two constants tree layout slides; both
+        // start at the shipped list-mode values (triangle hidden, icon at `iconInsetList`).
+        let icon = image.leadingAnchor.constraint(
+            equalTo: leadingAnchor, constant: Self.iconInsetList
+        )
+        iconLeading = icon
+        let disclosureLead = disclosure.leadingAnchor.constraint(
+            equalTo: leadingAnchor, constant: Self.iconInsetList
+        )
+        disclosureLeading = disclosureLead
+
         NSLayoutConstraint.activate([
-            image.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 3),
+            icon,
             image.centerYAnchor.constraint(equalTo: centerYAnchor),
-            image.widthAnchor.constraint(equalToConstant: 16),
-            image.heightAnchor.constraint(equalToConstant: 16),
+            width,
+            height,
+            disclosureLead,
+            // Pin the triangle top-to-bottom rather than centring it: `.imageOnly` keeps the glyph
+            // vertically centred, but the *button* now fills the whole row height, so its click
+            // target spans the row instead of the ~10 pt chevron — a folder is easy to aim at.
+            disclosure.topAnchor.constraint(equalTo: topAnchor),
+            disclosure.bottomAnchor.constraint(equalTo: bottomAnchor),
+            disclosure.widthAnchor.constraint(equalToConstant: Self.treeDisclosureSlot),
             text.leadingAnchor.constraint(equalTo: image.trailingAnchor, constant: 5),
             text.centerYAnchor.constraint(equalTo: centerYAnchor),
             text.trailingAnchor.constraint(lessThanOrEqualTo: dots.leadingAnchor, constant: -6),
@@ -152,14 +295,89 @@ final class FileCellView: NSTableCellView {
         textField.font = marked ? .boldSystemFont(ofSize: size) : .systemFont(ofSize: size)
 
         if backgroundStyle == .emphasized {
-            textField.textColor = .alternateSelectedControlTextColor
+            // Derived from the cursor colour, never picked: a user who could choose both would
+            // reach a white-on-pale-yellow row on their first try. Untouched, this *is*
+            // `.alternateSelectedControlTextColor` — see `PanelPalette.cursorForeground`.
+            textField.textColor = palette.cursorForeground
         } else if let accentColor {
             textField.textColor = accentColor
         } else if marked {
-            textField.textColor = .systemRed
+            textField.textColor = palette.resolvedMark
+        } else if let typeColor {
+            textField.textColor = typeColor
         } else {
             textField.textColor = .labelColor
         }
+    }
+
+    // MARK: - Tree layout
+
+    /// Position the icon and the disclosure triangle for this row's depth and state. A no-op on the
+    /// cells that carry no icon (size/date/git never show tree structure). Runs per render from the
+    /// controller, after `isTreeRow`/`treeDepth`/`treeDisclosure` are set — never from
+    /// `backgroundStyle`'s `didSet`, since the layout does not depend on the cursor.
+    func applyTreeLayout() {
+        guard let iconLeading else { return }
+        guard isTreeRow else {
+            // List mode (or a cell recycled out of the tree): the shipped rendering, exactly.
+            disclosureButton?.isHidden = true
+            iconLeading.constant = Self.iconInsetList
+            return
+        }
+        let indent = CGFloat(treeDepth) * Self.treeIndentPerLevel
+        // Every tree row reserves the disclosure slot — a file lines up under its sibling folders
+        // rather than jutting a triangle's width to the left of them.
+        iconLeading.constant = Self.treeLeadingInset + indent + Self.treeDisclosureSlot
+        if let treeDisclosure {
+            disclosureLeading?.constant = Self.treeLeadingInset + indent
+            disclosureButton?.image = Self.chevron(expanded: treeDisclosure == .expanded)
+            disclosureButton?.isHidden = false
+        } else {
+            disclosureButton?.isHidden = true
+        }
+    }
+
+    /// Whether `windowPoint` (window coordinates) lands on this row's disclosure triangle — the
+    /// whole full-height hit box, not just the glyph, and `false` on a file, `..`, or list mode
+    /// where the triangle is hidden. `FileTableView.mouseDown` calls this to toggle the row itself
+    /// instead of letting the click reach the button through `NSTableView`'s tracking loop, where a
+    /// trackpad's slight finger movement is read as a drag and the triangle needs several taps.
+    func disclosureHitTarget(containsWindowPoint windowPoint: NSPoint) -> Bool {
+        guard let disclosureButton, !disclosureButton.isHidden,
+              let disclosureLeading, let iconLeading else { return false }
+        let hit = convert(windowPoint, from: nil)
+        guard hit.y >= 0, hit.y <= bounds.height else { return false }
+        // The triangle's zone is the whole slot from its leading edge to the folder icon, full row
+        // height, plus a few points of slop toward the panel edge. A wide, forgiving target on
+        // purpose: the glyph is small and sits in the thin left margin, so a click a pixel shy of it
+        // (or in that margin) must still toggle rather than fall through to the drag-prone path.
+        return hit.x >= disclosureLeading.constant - 4 && hit.x < iconLeading.constant
+    }
+
+    /// Only the name cell carries a disclosure triangle (and thus an icon); the size/date cells do
+    /// not. `FileTableView` uses this to pick the name cell out of a row's subviews.
+    var isNameCell: Bool { disclosureButton != nil }
+
+    /// Right when closed, down when open — the direction every macOS disclosure points, matching the
+    /// sidebar's own section chevrons.
+    private static func chevron(expanded: Bool) -> NSImage {
+        let name = expanded ? "chevron.down" : "chevron.right"
+        let config = NSImage.SymbolConfiguration(pointSize: 10, weight: .semibold)
+        let image = NSImage(
+            systemSymbolName: name,
+            accessibilityDescription: expanded
+                ? String(
+                    localized: "Expanded",
+                    comment: "Accessibility state of an open tree folder's disclosure triangle."
+                )
+                : String(
+                    localized: "Collapsed",
+                    comment: "Accessibility state of a closed tree folder's disclosure triangle."
+                )
+        )?
+            .withSymbolConfiguration(config)
+        image?.isTemplate = true
+        return image ?? NSImage()
     }
 
     // MARK: - Inline rename

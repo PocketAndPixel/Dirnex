@@ -185,7 +185,7 @@ extension PanelViewController {
 
     private static var certificateNotTrusted: String {
         String(
-            localized: "The server’s certificate wasn’t trusted, so the connection was cancelled.",
+            localized: "The server’s certificate wasn’t trusted, so the connection was canceled.",
             comment: "FTP connect failure detail: the user declined to trust the certificate."
         )
     }

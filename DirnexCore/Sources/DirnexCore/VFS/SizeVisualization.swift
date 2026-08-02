@@ -80,14 +80,27 @@ public struct SizeBar: Sendable, Hashable {
 ///   grows underneath them. Rebuilding this whole projection per render handles that with no
 ///   incremental bar-width bookkeeping; `share` is therefore a share of what is *known so far* and
 ///   settles as walks land.
+///
+/// **A row's denominators are its own parent directory's, not the whole projection's** (PLAN.md §M15,
+/// re-scoped per level). In a flat listing that is a distinction without a difference — every row
+/// shares one parent. In a tree it is the whole point: an expanded folder's children are measured
+/// against *each other*, so `share` is "how much of this folder" whatever level the row sits at, and
+/// `fraction` fills the bar against the heaviest *sibling* rather than the heaviest row on screen (a
+/// deep 4 KB file next to the 40 GB root folder that contains it would otherwise floor to a stub at
+/// every level). A whole-tree denominator cannot express this: a child's bytes are a subset of its
+/// parent's, so the shares would not sum and the number would answer a question nobody asked.
 public struct SizeVisualization: Sendable {
-    /// The heaviest visible row's bytes — `fraction`'s denominator. Zero when nothing is known yet.
+    /// The heaviest **primary-group** row's bytes — `fraction`'s denominator for that group. The
+    /// primary group is the flat listing, or the tree's depth-0 root level; per-group maxima that
+    /// actually scale each bar live inside the projection. Zero when nothing is known yet.
     public let maximumBytes: Int64
-    /// The sum of every *known* visible row — `share`'s denominator. Saturates rather than trapping.
+    /// The sum of every *known* **primary-group** row — `share`'s denominator for that group.
+    /// Saturates rather than trapping.
     public let totalBytes: Int64
     /// Directories still awaiting a recursive walk, in display order — exactly the work the app's
-    /// scan queue consumes, ordered so the rows the user is looking at are sized first. Kept here
-    /// rather than recomputed by the caller so the file/directory/symlink rule lives in one place.
+    /// scan queue consumes, ordered so the rows the user is looking at are sized first. In a tree this
+    /// spans every level, so expanding a folder queues its children. Kept here rather than recomputed
+    /// by the caller so the file/directory/symlink rule lives in one place.
     public let pendingDirectories: [FileEntry]
 
     private let bars: [VFSPath: SizeBar]
@@ -108,41 +121,48 @@ public struct SizeVisualization: Sendable {
     /// row with no total is otherwise pending forever, and the pane would re-queue a walk for it on
     /// every render.
     public init(model: DirectoryModel, isExcluded: (VFSPath) -> Bool = { _ in false }) {
-        var known: [(id: VFSPath, bytes: Int64)] = []
-        var pending: [FileEntry] = []
-        var maximum: Int64 = 0
-        var total: Int64 = 0
-
+        var accumulator = Accumulator()
+        // One group: the whole listing shares a parent, so every row is primary and the projection's
+        // scalar figures are that group's.
         for entry in model.visibleEntries {
-            // Excluded rows are not "unknown pending a walk" and not "known to be zero" — they are
-            // outside the question, so they leave no trace in the projection at all.
-            if isExcluded(entry.id) { continue }
-            guard let bytes = Self.knownBytes(of: entry, in: model) else {
-                pending.append(entry)
-                continue
-            }
-            known.append((entry.id, bytes))
-            maximum = max(maximum, bytes)
-            // Saturate. `SFTPListingParser` builds sizes out of *text*, so a hostile or broken
-            // server's numbers reach this sum; a panel must not trap on arithmetic overflow.
-            let (sum, overflowed) = total.addingReportingOverflow(bytes)
-            total = overflowed ? .max : sum
-        }
-
-        var bars: [VFSPath: SizeBar] = [:]
-        bars.reserveCapacity(known.count)
-        for row in known {
-            bars[row.id] = SizeBar(
-                bytes: row.bytes,
-                fraction: maximum > 0 ? Double(row.bytes) / Double(maximum) : 0,
-                share: total > 0 ? Double(row.bytes) / Double(total) : 0
+            accumulator.add(
+                entry,
+                inGroup: model.listing.path,
+                isPrimary: true,
+                knownBytes: Self.knownBytes(of: entry, computedSize: model.computedSize(of: entry)),
+                isExcluded: isExcluded(entry.id)
             )
         }
+        self.init(accumulator)
+    }
 
-        self.bars = bars
-        maximumBytes = maximum
-        totalBytes = total
-        pendingDirectories = pending
+    /// The tree analogue: a bar per row grouped by its **parent directory**, so each expanded folder
+    /// is its own denominator (see the type's note). Rows are grouped by `entry.path.parent`, which is
+    /// unambiguous because a `VFSPath` appears in the tree at most once; the depth-0 rows are the
+    /// primary group, matching the flat listing they would be if nothing were expanded.
+    ///
+    /// `pendingDirectories` spans every level, in display order, so a folder just expanded queues its
+    /// unsized children ahead of anything deeper the user is not looking at.
+    public init(tree: TreeProjection, isExcluded: (VFSPath) -> Bool = { _ in false }) {
+        var accumulator = Accumulator()
+        for row in tree.rows {
+            let entry = row.entry
+            accumulator.add(
+                entry,
+                inGroup: entry.path.parent ?? tree.rootPath,
+                isPrimary: row.depth == 0,
+                knownBytes: Self.knownBytes(of: entry, computedSize: tree.computedSize(of: entry)),
+                isExcluded: isExcluded(entry.id)
+            )
+        }
+        self.init(accumulator)
+    }
+
+    private init(_ accumulator: Accumulator) {
+        bars = accumulator.bars()
+        maximumBytes = accumulator.primaryMaximum
+        totalBytes = accumulator.primaryTotal
+        pendingDirectories = accumulator.pending
     }
 
     /// This row's bar, or `nil` while its recursive total is still unknown (see the type's note on
@@ -151,16 +171,80 @@ public struct SizeVisualization: Sendable {
         bars[entry.id]
     }
 
-    /// The bytes a row contributes, or `nil` when a directory has not been walked yet.
+    /// The bytes a row contributes, or `nil` when a directory has not been walked yet — its computed
+    /// recursive total if one has landed, otherwise a file's own size and a directory's absence.
     ///
     /// Directory-*like* is the test, not `.directory`, matching `DirectoryModel.effectiveByteSize`
     /// and `Panel.openTarget`: a symlink resolving to a directory is navigable, so it is sized like
     /// one rather than counted as its own link inode.
     ///
     /// Negatives are clamped to zero at the boundary for the same reason the sum saturates.
-    static func knownBytes(of entry: FileEntry, in model: DirectoryModel) -> Int64? {
-        if let computed = model.computedSize(of: entry) { return max(0, computed) }
+    static func knownBytes(of entry: FileEntry, computedSize: Int64?) -> Int64? {
+        if let computedSize { return max(0, computedSize) }
         guard !entry.isDirectoryLike else { return nil }
         return max(0, entry.byteSize)
+    }
+}
+
+/// Builds the per-parent-directory groups both initializers share (see `SizeVisualization`'s note on
+/// per-level denominators). A *group* is one containing directory; a bar is scaled against its own
+/// group's maximum and total, never the projection's. The *primary* group — the flat listing or the
+/// tree root — feeds the scalar `maximumBytes`/`totalBytes`, which exist only for the status line.
+private struct Accumulator {
+    private struct Group {
+        var known: [(id: VFSPath, bytes: Int64)] = []
+        var maximum: Int64 = 0
+        var total: Int64 = 0
+    }
+
+    private var groups: [VFSPath: Group] = [:]
+    private(set) var pending: [FileEntry] = []
+    private(set) var primaryMaximum: Int64 = 0
+    private(set) var primaryTotal: Int64 = 0
+
+    mutating func add(
+        _ entry: FileEntry,
+        inGroup group: VFSPath,
+        isPrimary: Bool,
+        knownBytes: Int64?,
+        isExcluded: Bool
+    ) {
+        // Excluded rows are not "unknown pending a walk" and not "known to be zero" — they are
+        // outside the question, so they leave no trace in the projection at all.
+        guard !isExcluded else { return }
+        guard let bytes = knownBytes else {
+            pending.append(entry)
+            return
+        }
+        var accumulated = groups[group] ?? Group()
+        accumulated.known.append((entry.id, bytes))
+        accumulated.maximum = max(accumulated.maximum, bytes)
+        accumulated.total = Self.saturating(accumulated.total, plus: bytes)
+        groups[group] = accumulated
+        if isPrimary {
+            primaryMaximum = max(primaryMaximum, bytes)
+            primaryTotal = Self.saturating(primaryTotal, plus: bytes)
+        }
+    }
+
+    func bars() -> [VFSPath: SizeBar] {
+        var bars: [VFSPath: SizeBar] = [:]
+        for group in groups.values {
+            for row in group.known {
+                bars[row.id] = SizeBar(
+                    bytes: row.bytes,
+                    fraction: group.maximum > 0 ? Double(row.bytes) / Double(group.maximum) : 0,
+                    share: group.total > 0 ? Double(row.bytes) / Double(group.total) : 0
+                )
+            }
+        }
+        return bars
+    }
+
+    /// Saturate rather than trap. `SFTPListingParser` builds sizes out of *text*, so a hostile or
+    /// broken server's numbers reach this sum; a panel must not crash on arithmetic overflow.
+    private static func saturating(_ running: Int64, plus bytes: Int64) -> Int64 {
+        let (sum, overflowed) = running.addingReportingOverflow(bytes)
+        return overflowed ? .max : sum
     }
 }

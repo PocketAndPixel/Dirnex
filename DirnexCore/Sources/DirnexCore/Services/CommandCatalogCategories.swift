@@ -46,6 +46,18 @@ extension CommandCatalog {
             shortcut: CommandShortcut(key: ".", modifiers: [.command, .shift])
         ),
         Command(
+            id: "view.treeView",
+            title: "Tree View",
+            category: .view,
+            keywords: [
+                "tree", "outline", "expand", "collapse", "branch", "hierarchy", "nested",
+                "folders", "subfolders", "indent", "disclosure"
+            ]
+            // No shortcut: it changes the pane's *shape* per tab, like Show Tags and Size
+            // Visualization — a menu/palette action, not a gesture, and rebindable in Settings for
+            // anyone who wants a key. The tree's own keys (→ / ←) live on the rows once it is on.
+        ),
+        Command(
             id: "view.toggleTags",
             title: "Show Tags",
             category: .view,

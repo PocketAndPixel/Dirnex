@@ -57,6 +57,9 @@ enum CommandBinding {
         // sidebar and read the active pane's location, both window-level. Like `view.terminal`.
         "view.focusSidebar": #selector(BrowserWindowController.focusSidebar(_:)),
         "view.toggleHidden": #selector(PanelViewController.toggleShowHidden(_:)),
+        // The focused pane, not the app: the tree shape is per tab (PLAN.md §M15), so it lands
+        // wherever the responder chain does — like size visualization above.
+        "view.treeView": #selector(PanelViewController.toggleTreeView(_:)),
         "view.toggleTags": #selector(PanelViewController.toggleShowTags(_:)),
         "view.toggleSyncStatus": #selector(PanelViewController.toggleShowSyncStatus(_:)),
         "view.functionBar": #selector(PanelViewController.toggleFunctionBar(_:)),

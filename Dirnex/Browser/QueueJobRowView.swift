@@ -146,8 +146,8 @@ final class QueueJobRowView: NSView {
                 comment: "Queue row status: the operation finished."
             )
         case .cancelled: statusLabel.stringValue = String(
-                localized: "Cancelled",
-                comment: "Queue row status: the operation was cancelled."
+                localized: "Canceled",
+                comment: "Queue row status: the operation was canceled."
             )
         case .running:
             guard statusChanged

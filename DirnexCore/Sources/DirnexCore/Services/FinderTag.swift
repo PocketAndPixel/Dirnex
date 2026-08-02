@@ -37,7 +37,7 @@ public enum FinderTagColor: Int, Sendable, Hashable, CaseIterable, Codable {
     /// The user-facing colour name, for a menu item or a swatch tooltip.
     public var title: String {
         switch self {
-        case .none: return "No Colour"
+        case .none: return "No Color"
         case .grey: return "Grey"
         case .green: return "Green"
         case .purple: return "Purple"

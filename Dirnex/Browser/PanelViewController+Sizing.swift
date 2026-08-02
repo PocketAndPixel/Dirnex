@@ -16,7 +16,9 @@ extension PanelViewController {
     /// call on a re-press: once a size exists the guard makes it a no-op, so marking a
     /// run of folders never re-walks one that was already sized.
     func computeDirectorySize(for entry: FileEntry) {
-        guard panel.model.computedSize(of: entry) == nil else { return }
+        // `panel.computedSize` reads the drawing surface, so Space on an expanded child at any depth
+        // sees its own total and won't re-walk one already sized.
+        guard panel.computedSize(of: entry) == nil else { return }
         // The same rule the bars are drawn under, so one pane never shows two kinds of number in one
         // size column: with git-aware sizes on, a folder sized by hand excludes what Git ignores
         // exactly as an auto-scanned one does.

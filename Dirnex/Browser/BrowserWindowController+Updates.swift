@@ -31,13 +31,15 @@ extension BrowserWindowController {
         updateIndicatorButton.image = image
         // Accented rather than the cluster's plain template grey: this is the one button in the
         // titlebar that is asking for attention, and it only ever shows when it has something to ask.
-        updateIndicatorButton.contentTintColor = .controlAccentColor
+        // The user's accent, `.controlAccentColor` untouched (PLAN.md §M15 Slice 2).
+        updateIndicatorButton.contentTintColor = AppPreferences.shared.palette.resolvedAccent
         updateIndicatorButton.target = self
         updateIndicatorButton.action = #selector(updateIndicatorPressed(_:))
         updateIndicatorButton.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             updateIndicatorButton.heightAnchor.constraint(equalToConstant: 22),
-            // Same tight width as the eye and the nav chevrons so the cluster stays evenly spaced.
+            // Tight to the glyph: this one is spaced by the leading stack's own 12pt gap, unlike
+            // the nav chevrons, whose cells are widened to touch and carry their spacing inside.
             updateIndicatorButton.widthAnchor.constraint(equalToConstant: 16)
         ])
 
@@ -47,11 +49,24 @@ extension BrowserWindowController {
             name: AppUpdater.availabilityDidChange,
             object: nil
         )
+        // The indicator's tint is set once here rather than on every state change, so a live accent
+        // change has to reach it separately — it is the one accent site that is not redrawn by the
+        // pane's own refresh.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(updateIndicatorPaletteChanged),
+            name: AppPreferences.paletteDidChange,
+            object: nil
+        )
         updateUpdateIndicator()
     }
 
     @objc private func updateAvailabilityChanged() {
         updateUpdateIndicator()
+    }
+
+    @objc private func updateIndicatorPaletteChanged() {
+        updateIndicatorButton.contentTintColor = AppPreferences.shared.palette.resolvedAccent
     }
 
     /// Show or hide the glyph against the current availability, and point its tooltip at the version

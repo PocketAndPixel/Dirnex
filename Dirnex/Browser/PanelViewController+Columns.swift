@@ -75,10 +75,12 @@ extension PanelViewController {
             case .date: return 150
             // Fixed: one centered letter. It is a gutter, not data — nothing to widen it for.
             case .git: return 20
-            // A track plus "100.0%" beside it. Wide enough that the proportions it exists to show
-            // are actually readable — measured, a real `~` needs every point of it, since 86 of its
-            // 93 rows are floored slivers and the percentage is what carries them.
-            case .sizeBar: return 120
+            // Was 120 pt — a track plus room for "100.0%" beside it. Now that the column defaults to
+            // the bar alone (`SizeVizDisplayMode.bar`, which reserves no label), that width was mostly
+            // empty, so it opens at 0.7 of it: 84 pt. The Percentage and Both modes still fit (the
+            // number right-aligns, into the reserved slot in Both), and the user can drag it wider for
+            // a longer bar. Deliberately not scaled below `minWidth`, which stays the floor for Both.
+            case .sizeBar: return 84
             }
         }
 

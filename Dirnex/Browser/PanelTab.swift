@@ -1,6 +1,21 @@
 import DirnexCore
 import Foundation
 
+/// Which *shape* a tab draws its listing in (PLAN.md §M15 Slice 4).
+///
+/// Per **tab**, not app-wide, so one pane can be a tree while the other stays a list — which is the
+/// whole point of comparing two places at once. And **persisted**, unlike the per-tab
+/// `isSizeVisualizationEnabled`, which is the precedent this must not copy: size bars are a mode you
+/// switch on to answer a question and are done with, while a tab restored into the wrong shape reads
+/// as data loss.
+///
+/// `.tree` is accepted and round-trips through persistence from Slice 1 onward; nothing reads it
+/// yet, so a tab in it still renders as `.list` until Slice 4 lands.
+enum PanelViewMode: String, CaseIterable {
+    case list
+    case tree
+}
+
 /// One tab within a file pane: everything needed to restore its exact view when the
 /// user switches back to it. A `PanelViewController` owns an array of these and renders
 /// whichever is active (PLAN.md §M1 "tabs per panel … restored on relaunch").
@@ -22,20 +37,35 @@ final class PanelTab {
     /// Set once this tab's directory has been listed. A tab restored from disk starts
     /// `false` so switching to it triggers a fresh load rather than showing an empty list.
     var hasLoaded = false
-    /// The cursor and marks to re-apply once a *restored* tab's directory first lists, matched by
-    /// leaf name against the fresh listing so a file deleted since quit is simply dropped (PLAN.md
-    /// §M1 "restored on relaunch"; the identity-not-index rule the cursor already follows across a
-    /// live refresh). Seeded from the on-disk `PersistedTab` in `restoredTabs`, consumed and cleared
-    /// on the first load by `PanelViewController.applyPendingRestore`; all `nil`/`false` for a tab
-    /// that was not restored from disk, which makes the re-apply a no-op there.
-    var pendingCursorName: String?
+    /// The cursor and marks to re-apply once a *restored* tab's directory first lists, as paths
+    /// relative to the tab's root (the shape `PersistedTab` stores) matched by identity against the
+    /// fresh listing, so a file deleted since quit is simply dropped (PLAN.md §M1 "restored on
+    /// relaunch"; the identity-not-index rule the cursor already follows across a live refresh).
+    /// Seeded from the on-disk `PersistedTab` in `restoredTabs`, consumed by
+    /// `PanelViewController.applyPendingRestore`; all `nil`/`false` for a tab that was not restored
+    /// from disk, which makes the re-apply a no-op there.
+    var pendingCursorPath: String?
     var pendingCursorOnParent = false
-    var pendingMarkNames: [String]?
+    var pendingMarkPaths: [String]?
+    /// How many of a restored *tree's* per-folder listings are still in flight (PLAN.md §M15 Slice
+    /// 4). A cursor or a mark inside an expanded folder has no row to anchor on until that folder
+    /// has listed, so the pending state above outlives the root's load and is re-applied as each
+    /// child lands; this is what says whether another landing is still coming. Zero for a flat list,
+    /// which is what makes the restore one-shot there.
+    var pendingRestoreTreeLoads = 0
+    /// The tree folders to re-open once a *restored* tree tab's directory first lists (PLAN.md §M15
+    /// Slice 4), as paths relative to the tab's root — matching the shape `PersistedTab` stores.
+    /// Consumed and cleared by `restorePendingTreeExpansion` on the first load; `nil` for a tab that
+    /// was not restored from disk or was a flat list, which makes the re-open a no-op.
+    var pendingExpandedPaths: [String]?
     /// This tab's column widths/order, in display order (UI-only, like `cursorOnParentRow`;
     /// see `PanelViewController+Columns`). `nil` until the tab has been given an explicit
     /// layout — restored from disk or inherited from the tab it was spawned from — in which
     /// case the pane falls back to the default columns.
     var columnLayout: [ColumnLayout]?
+    /// The shape this tab draws its listing in (PLAN.md §M15), persisted beside `columnLayout` and
+    /// inherited by a tab spawned from this one, exactly as the sort and the columns are.
+    var viewMode: PanelViewMode = .list
     /// When this tab shows Spotlight results (a `.search` panel), the query and scope that
     /// produced them — retained so "Save Search…" can persist a re-runnable saved search
     /// (PLAN.md §M4). `nil` for a normal directory tab. Session-scoped: a restored tab is never
@@ -97,6 +127,19 @@ final class PanelTab {
         searchQuery = nil
         searchScope = nil
         mergedSources = []
+    }
+
+    /// Whether this tab still has a restored cursor or marks waiting to be anchored.
+    var hasPendingRestore: Bool {
+        pendingCursorPath != nil || pendingCursorOnParent || pendingMarkPaths != nil
+    }
+
+    /// Drop whatever never resolved — a file deleted since quit, or one inside a folder that failed
+    /// to list — so a later navigation in this tab starts clean.
+    func clearPendingRestore() {
+        pendingCursorPath = nil
+        pendingCursorOnParent = false
+        pendingMarkPaths = nil
     }
 
     init(panel: Panel) {

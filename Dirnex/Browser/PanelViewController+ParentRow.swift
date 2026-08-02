@@ -43,6 +43,25 @@ extension PanelViewController {
         cell.marked = false
         cell.dimmed = false
         cell.accentColor = nil
+        // Never type-coloured (PLAN.md §M15 Slice 3), for the same reason it never carries a size
+        // bar: `..` is a way out, not an entry. `Panel` has never heard of it, so there is nothing to
+        // match a rule against — and a `*` rule painting the way out of the folder would be reading
+        // the row as a file called "..".
+        cell.typeColor = nil
+        // Like every other row: a recycled cell carries the density and palette it was built at
+        // (PLAN.md §M15). `..` is never marked, but it *can* be the cursor, so it needs the derived
+        // foreground as much as any other row.
+        cell.density = AppPreferences.shared.rowDensity
+        cell.palette = AppPreferences.shared.palette
+        // In tree mode `..` reserves the disclosure slot with no triangle, so its icon lines up with
+        // the depth-0 rows below it; in list mode `isTreeRow == false` keeps the shipped inset. It
+        // can never be expanded, so it never carries a triangle or a toggle. Reset on every render —
+        // this cell is recycled from real tree rows that did carry both.
+        cell.isTreeRow = panel.isTree
+        cell.treeDepth = 0
+        cell.treeDisclosure = nil
+        cell.onDisclosureToggle = nil
+        cell.applyTreeLayout()
         switch column {
         case .name:
             cell.imageView?.image = FileIconProvider.parentIcon
