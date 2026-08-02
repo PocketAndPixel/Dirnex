@@ -1,6 +1,14 @@
 import AppKit
 import DirnexCore
 
+/// The tree disclosure triangle. It draws a chevron but is invisible to the mouse: `hitTest`
+/// returns `nil`, so a click on it passes through to the `FileTableView` beneath, which toggles the
+/// row from `mouseDown`. See the note at its construction in `FileCellView` — a live button ran its
+/// own tracking loop and dropped trackpad clicks that drifted off the narrow glyph.
+final class DisclosureTriangleView: NSButton {
+    override func hitTest(_: NSPoint) -> NSView? { nil }
+}
+
 /// One cell in a file pane.
 ///
 /// The panel distinguishes two independent states the way Total Commander does
@@ -173,19 +181,19 @@ final class FileCellView: NSTableCellView {
 
         // Only the name cell carries a disclosure triangle — the one column that shows tree
         // structure. Hidden until `applyTreeLayout` gives it a state; in list mode it stays hidden
-        // and the icon keeps its original inset, so nothing changes.
-        let disclosure = NSButton()
+        // and the icon keeps its original inset, so nothing changes. It is a `DisclosureTriangleView`
+        // — an NSButton that is *transparent to the mouse* (`hitTest` → nil), so a click on the
+        // triangle passes through to the file table and is toggled from `FileTableView.mouseDown` at
+        // press time. A real button ran its own tracking loop, where a trackpad's small horizontal
+        // drift off the 14 pt glyph released outside it and the action never fired — ~1 click in 5
+        // lost. Handling the toggle on mouse-down removes tracking, drift and drag from the path.
+        let disclosure = DisclosureTriangleView()
         disclosure.translatesAutoresizingMaskIntoConstraints = false
         disclosure.isBordered = false
         disclosure.bezelStyle = .accessoryBarAction
         disclosure.imagePosition = .imageOnly
         disclosure.contentTintColor = .secondaryLabelColor
-        disclosure.target = self
-        disclosure.action = #selector(disclosureClicked)
         disclosure.isHidden = true
-        // A control in a table cell would otherwise take first responder on click; the pane owns its
-        // own selection model, so the triangle must not steal focus (same rule as the list subclass).
-        disclosure.refusesFirstResponder = true
         addSubview(disclosure)
         disclosureButton = disclosure
 
@@ -329,9 +337,26 @@ final class FileCellView: NSTableCellView {
         }
     }
 
-    @objc private func disclosureClicked() {
-        onDisclosureToggle?()
+    /// Whether `windowPoint` (window coordinates) lands on this row's disclosure triangle — the
+    /// whole full-height hit box, not just the glyph, and `false` on a file, `..`, or list mode
+    /// where the triangle is hidden. `FileTableView.mouseDown` calls this to toggle the row itself
+    /// instead of letting the click reach the button through `NSTableView`'s tracking loop, where a
+    /// trackpad's slight finger movement is read as a drag and the triangle needs several taps.
+    func disclosureHitTarget(containsWindowPoint windowPoint: NSPoint) -> Bool {
+        guard let disclosureButton, !disclosureButton.isHidden,
+              let disclosureLeading, let iconLeading else { return false }
+        let hit = convert(windowPoint, from: nil)
+        guard hit.y >= 0, hit.y <= bounds.height else { return false }
+        // The triangle's zone is the whole slot from its leading edge to the folder icon, full row
+        // height, plus a few points of slop toward the panel edge. A wide, forgiving target on
+        // purpose: the glyph is small and sits in the thin left margin, so a click a pixel shy of it
+        // (or in that margin) must still toggle rather than fall through to the drag-prone path.
+        return hit.x >= disclosureLeading.constant - 4 && hit.x < iconLeading.constant
     }
+
+    /// Only the name cell carries a disclosure triangle (and thus an icon); the size/date cells do
+    /// not. `FileTableView` uses this to pick the name cell out of a row's subviews.
+    var isNameCell: Bool { disclosureButton != nil }
 
     /// Right when closed, down when open — the direction every macOS disclosure points, matching the
     /// sidebar's own section chevrons.

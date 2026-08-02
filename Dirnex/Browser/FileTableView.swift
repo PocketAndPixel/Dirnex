@@ -126,6 +126,20 @@ final class FileTableView: NSTableView {
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         let point = convert(event.locationInWindow, from: nil)
         let row = row(at: point)
+
+        // A plain click on a folder's disclosure triangle toggles it here, at press time, and stops.
+        // The triangle itself is transparent to the mouse (`DisclosureTriangleView.hitTest` → nil),
+        // so the click lands on the table rather than on a button that would run its own tracking
+        // loop — where a trackpad's small drift off the narrow glyph released outside it and the
+        // toggle never fired. Deciding on mouse-down from the pointer's geometry removes tracking,
+        // drift and the drag that `super.mouseDown` would otherwise start, and leaves the cursor put
+        // (Finder's behaviour — clicking a triangle never moves the selection).
+        if flags.isEmpty, row >= 0,
+           let cell = disclosureCell(atRow: row, windowPoint: event.locationInWindow) {
+            cell.onDisclosureToggle?()
+            return
+        }
+
         if inputDelegate?.fileTable(self, didClickRow: row, modifiers: flags) == true {
             return
         }
@@ -139,6 +153,19 @@ final class FileTableView: NSTableView {
             return
         }
         super.mouseDown(with: event)
+    }
+
+    /// The name cell on `row` whose disclosure triangle contains `windowPoint`, or `nil`. It reaches
+    /// the cell through the row view's own subviews rather than `view(atColumn:row:)`, which was
+    /// measured to return `nil` for a freshly clicked row. Only the name cell carries a triangle, so
+    /// the other cells simply answer `false`.
+    private func disclosureCell(atRow row: Int, windowPoint: NSPoint) -> FileCellView? {
+        guard let rowView = rowView(atRow: row, makeIfNecessary: false) else { return nil }
+        for case let cell as FileCellView in rowView.subviews
+            where cell.isNameCell && cell.disclosureHitTarget(containsWindowPoint: windowPoint) {
+            return cell
+        }
+        return nil
     }
 
     /// Right-click / Ctrl-click — hand the controller the row under the pointer and show what it
