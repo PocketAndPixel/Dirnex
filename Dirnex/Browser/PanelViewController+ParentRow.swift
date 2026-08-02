@@ -43,8 +43,11 @@ extension PanelViewController {
         cell.marked = false
         cell.dimmed = false
         cell.accentColor = nil
-        // Like every other row: a recycled cell carries the density it was built at (PLAN.md §M15).
+        // Like every other row: a recycled cell carries the density and palette it was built at
+        // (PLAN.md §M15). `..` is never marked, but it *can* be the cursor, so it needs the derived
+        // foreground as much as any other row.
         cell.density = AppPreferences.shared.rowDensity
+        cell.palette = AppPreferences.shared.palette
         switch column {
         case .name:
             cell.imageView?.image = FileIconProvider.parentIcon

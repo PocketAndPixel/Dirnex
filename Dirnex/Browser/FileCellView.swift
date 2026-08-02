@@ -78,6 +78,12 @@ final class FileCellView: NSTableCellView {
         }
     }
 
+    /// The user's colours (PLAN.md §M15 Slice 2). **Stored** rather than passed into `applyStyle`,
+    /// for the same reason `density` is stored: `applyStyle` also runs from `backgroundStyle`'s
+    /// `didSet`, which fires when the cursor moves onto or off this row — outside any render pass,
+    /// with no caller to hand it anything. Re-set on every render alongside `density`.
+    var palette: PanelPalette = .followSystem
+
     init(showsImage: Bool, identifier: NSUserInterfaceItemIdentifier) {
         super.init(frame: .zero)
         self.identifier = identifier
@@ -184,11 +190,14 @@ final class FileCellView: NSTableCellView {
         textField.font = marked ? .boldSystemFont(ofSize: size) : .systemFont(ofSize: size)
 
         if backgroundStyle == .emphasized {
-            textField.textColor = .alternateSelectedControlTextColor
+            // Derived from the cursor colour, never picked: a user who could choose both would
+            // reach a white-on-pale-yellow row on their first try. Untouched, this *is*
+            // `.alternateSelectedControlTextColor` — see `PanelPalette.cursorForeground`.
+            textField.textColor = palette.cursorForeground
         } else if let accentColor {
             textField.textColor = accentColor
         } else if marked {
-            textField.textColor = .systemRed
+            textField.textColor = palette.resolvedMark
         } else {
             textField.textColor = .labelColor
         }

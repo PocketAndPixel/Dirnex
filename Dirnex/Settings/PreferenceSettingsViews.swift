@@ -99,6 +99,8 @@ struct PanelsSettingsView: View {
                 .foregroundStyle(.secondary)
             }
 
+            PaletteSettingsSection(preferences: preferences)
+
             Section {
                 Toggle("Show function key bar", isOn: $preferences.showFunctionBar)
             } footer: {

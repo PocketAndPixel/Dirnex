@@ -185,29 +185,40 @@ Geometry, measured rather than picked: the floor is the **text**, whose intrinsi
 system font is exactly 16.00 pt (bold included — a marked row draws bold). So the three steps are
 18/14, 22/16 and 28/20, with `.regular` reproducing the shipped pane byte-for-byte.
 
-#### Slice 2 — A palette the user owns (S–M)
+#### Slice 2 — A palette the user owns (S–M) — **landed 2026-08-02**
 
 Three colours, each defaulting to **Follow System**, so an untouched install renders exactly as it
 does today and the default path stays AppKit's own drawing:
 
-- [ ] **Accent** — overrides `.controlAccentColor` at the path bar, the tab chips and the update
+- [x] **Accent** — overrides `.controlAccentColor` at the path bar, the tab chips and the update
       indicator. Framed in Settings as an override, because macOS already ships this control
       (System Settings ▸ Appearance ▸ Accent) and `.controlAccentColor` already follows it.
-- [ ] **Cursor** — the row background. The sharp one: AppKit draws the emphasized selection, so a
-      custom colour needs an `NSTableRowView` subclass that draws its own, installed *only* when a
-      custom colour is set.
-- [ ] **Mark** — today's hardcoded `.systemRed` in `FileCellView`. Unlike the selection blue this
+- [x] **Cursor** — the row background. The sharp one: AppKit draws the emphasized selection, so a
+      custom colour needs an `NSTableRowView` subclass that draws its own. **Probed, and the answer
+      simplified the plan:** when the delegate declines to supply a row view, `NSTableView` makes a
+      plain `NSTableRowView` — in every one of its five styles — so a subclass that hands the call
+      to `super` is byte-for-byte the shipped drawing, and `PanelRowView` is installed
+      *unconditionally* rather than only when a colour is set. Switching classes as the preference
+      changes would leave a reuse pool of the other kind to reason about; deferring leaves nothing
+      to get wrong.
+- [x] **Mark** — today's hardcoded `.systemRed` in `FileCellView`. Unlike the selection blue this
       one was always Dirnex's decision rather than the system's, which is what makes it the most
       worthwhile of the three.
-- [ ] Two sites currently assume the system blue and must take a **derived** foreground instead:
+- [x] Two sites currently assume the system blue and must take a **derived** foreground instead:
       `FileCellView.applyStyle`'s `.alternateSelectedControlTextColor`, and `SizeBarView`'s
       `isEmphasized` branch, whose own comment names it as the only fill that survives the blue.
       Derive by luminance — never let the user pick the foreground, or the first custom colour
-      makes the cursor row unreadable.
-- [ ] Keep the emphasized/unemphasized split. NOTES.md ▸ AppKit: grey-versus-blue is AppKit saying
+      makes the cursor row unreadable. **The rule is "white unless it drops below 3:1", not
+      "whichever contrasts more"**, and the measurement is what settled it: `.controlAccentColor`
+      is L=0.2114, where white scores 4.02:1 and black 5.23:1 — so maximum contrast picks *black*,
+      while macOS and Dirnex's own tab chip draw white. See NOTES.md ▸ AppKit.
+- [x] Keep the emphasized/unemphasized split. NOTES.md ▸ AppKit: grey-versus-blue is AppKit saying
       the focus moved, and it is the signal the *rows themselves* carry (the path bar and tab chips
       say it separately, via `updateActiveAppearance`). Flatten the two and both panes' cursors look
-      identical, which reads as permanently unfocused.
+      identical, which reads as permanently unfocused. Measured, the unemphasized selection is a
+      *pure grey* in both appearances (`#DCDCDC` / `#464646`, zero saturation) and in dark mode is
+      **darker** than the emphasized fill rather than fainter — so there is nothing to derive, and
+      only the emphasized half is drawn here.
 
 Deliberately not themable: Finder tag dots (they have to match Finder's own colours), git status
 colours, sync badges. Those are information, not decoration. All of this is presentation and lives
@@ -217,7 +228,18 @@ picks the pixels), tested in `DirnexTests` the way `SyncBadgeTests` already is. 
 hex in `UserDefaults`, per §2's "boring and debuggable".
 
 Exit: a non-default cursor colour renders legibly in both appearances, the inactive pane still reads
-as inactive, and Follow System restores byte-identical rendering.
+as inactive, and Follow System restores byte-identical rendering. **Met** — verified live against
+the real binary with a deliberately pale cursor (`#FFD60A`): the name, size, date, the ncdu bar, its
+track and its percentage all flipped to black on it, a marked row under the cursor stayed bold and
+legible, the inactive pane kept AppKit's grey, and Settings ▸ Use System Colours restored the blue
+cursor, the blue crumb, the white-on-blue chip and the titlebar indicator live, without a relaunch.
+Legibility in the *other* appearance is a claim no single screenshot can make, so it is pinned by
+construction instead: the derivation is a luminance test over the user's own sRGB colour, measured
+identical under `.aqua` and `.darkAqua` and asserted in `PanelPaletteTests`.
+
+`PathBarView` hit SwiftLint's 500-line ceiling in this slice and was split by *concept* rather than
+shaved (CLAUDE.md ▸ file splitting): `PathBarView+Editing` takes the Cmd+L text field, its
+completion cache and the `NSTextFieldDelegate` conformance, leaving the crumb row behind.
 
 #### Slice 3 — Colour rules by file type (M)
 

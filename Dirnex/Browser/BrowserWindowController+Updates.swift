@@ -31,7 +31,8 @@ extension BrowserWindowController {
         updateIndicatorButton.image = image
         // Accented rather than the cluster's plain template grey: this is the one button in the
         // titlebar that is asking for attention, and it only ever shows when it has something to ask.
-        updateIndicatorButton.contentTintColor = .controlAccentColor
+        // The user's accent, `.controlAccentColor` untouched (PLAN.md §M15 Slice 2).
+        updateIndicatorButton.contentTintColor = AppPreferences.shared.palette.resolvedAccent
         updateIndicatorButton.target = self
         updateIndicatorButton.action = #selector(updateIndicatorPressed(_:))
         updateIndicatorButton.translatesAutoresizingMaskIntoConstraints = false
@@ -47,11 +48,24 @@ extension BrowserWindowController {
             name: AppUpdater.availabilityDidChange,
             object: nil
         )
+        // The indicator's tint is set once here rather than on every state change, so a live accent
+        // change has to reach it separately — it is the one accent site that is not redrawn by the
+        // pane's own refresh.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(updateIndicatorPaletteChanged),
+            name: AppPreferences.paletteDidChange,
+            object: nil
+        )
         updateUpdateIndicator()
     }
 
     @objc private func updateAvailabilityChanged() {
         updateUpdateIndicator()
+    }
+
+    @objc private func updateIndicatorPaletteChanged() {
+        updateIndicatorButton.contentTintColor = AppPreferences.shared.palette.resolvedAccent
     }
 
     /// Show or hide the glyph against the current availability, and point its tooltip at the version

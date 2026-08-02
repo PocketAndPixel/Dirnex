@@ -128,6 +128,66 @@ final class AppPreferences: ObservableObject {
     /// and repaints. `object` is the `AppPreferences` that changed.
     static let rowDensityDidChange = Notification.Name("Dirnex.rowDensityDidChange")
 
+    /// Panels ▸ the three colours the user owns (PLAN.md §M15 Slice 2), each as `#RRGGBB` or the
+    /// empty string for **Follow System** — the default, so an untouched install renders exactly as
+    /// it did before this setting existed and the default path stays AppKit's own drawing.
+    ///
+    /// Stored as hex strings rather than as archived `NSColor`s so the defaults domain stays
+    /// readable and hand-editable (PLAN.md §2, "boring and debuggable"), and so the change guard is
+    /// an exact string comparison rather than `NSColor`'s colour-space-sensitive equality. What each
+    /// one paints, and what "the system's own" resolves to, is `PanelPalette`'s.
+    @Published var accentColorHex: String {
+        didSet { paletteValueChanged(accentColorHex, oldValue, key: Keys.accentColorHex) }
+    }
+
+    @Published var cursorColorHex: String {
+        didSet { paletteValueChanged(cursorColorHex, oldValue, key: Keys.cursorColorHex) }
+    }
+
+    @Published var markColorHex: String {
+        didSet { paletteValueChanged(markColorHex, oldValue, key: Keys.markColorHex) }
+    }
+
+    /// The three, resolved. Read at each drawing site — cheap (three dictionary lookups' worth of
+    /// stored string parsing) and always current, so no view has to be told twice.
+    var palette: PanelPalette {
+        PanelPalette(
+            accent: PanelPalette.color(fromHex: accentColorHex),
+            cursor: PanelPalette.color(fromHex: cursorColorHex),
+            mark: PanelPalette.color(fromHex: markColorHex)
+        )
+    }
+
+    /// Posted (on the main actor) when any of the three colours changes, so every open pane, tab
+    /// strip, path bar and titlebar indicator restyles live. One notification for all three rather
+    /// than three: every observer repaints the same surfaces regardless of which colour moved, and
+    /// splitting them would only invite a site that listens for two of the three.
+    static let paletteDidChange = Notification.Name("Dirnex.paletteDidChange")
+
+    /// Set while `resetPalette` writes all three, so the run posts one notification instead of up to
+    /// three — each of which would drive a full re-render of every open pane.
+    private var isResettingPalette = false
+
+    private func paletteValueChanged(_ new: String, _ old: String, key: String) {
+        guard new != old else { return }
+        defaults.set(new, forKey: key)
+        guard !isResettingPalette else { return }
+        NotificationCenter.default.post(name: Self.paletteDidChange, object: self)
+    }
+
+    /// Put all three back to Follow System in one step, for the Settings button that offers it —
+    /// the one gesture that restores the shipped rendering exactly, without the user having to
+    /// remember which of the three they had touched.
+    func resetPalette() {
+        guard !palette.isFollowingSystem else { return }
+        isResettingPalette = true
+        accentColorHex = ""
+        cursorColorHex = ""
+        markColorHex = ""
+        isResettingPalette = false
+        NotificationCenter.default.post(name: Self.paletteDidChange, object: self)
+    }
+
     /// Operations ▸ ask for confirmation before moving items to the Trash (default off —
     /// Trash is recoverable, matching Finder). Permanent delete always confirms regardless.
     @Published var confirmTrash: Bool {
@@ -235,6 +295,10 @@ final class AppPreferences: ObservableObject {
         // (or a hand-edited defaults domain) falls back to the shipped default rather than
         // trapping, the same way `PersistedTab` reads its sort key.
         rowDensity = RowDensity(rawValue: defaults.string(forKey: Keys.rowDensity) ?? "") ?? .regular
+        // Empty (never written) = Follow System, and so is anything `PanelPalette` can't parse.
+        accentColorHex = defaults.string(forKey: Keys.accentColorHex) ?? ""
+        cursorColorHex = defaults.string(forKey: Keys.cursorColorHex) ?? ""
+        markColorHex = defaults.string(forKey: Keys.markColorHex) ?? ""
         confirmTrash = defaults.bool(forKey: Keys.confirmTrash)
         // Empty (never written) = automatic, so a fresh install keeps the install-order default.
         diffToolIdentifier = defaults.string(forKey: Keys.diffToolIdentifier) ?? ""
@@ -257,6 +321,9 @@ final class AppPreferences: ObservableObject {
         static let showSyncStatus = "Dirnex.pref.showSyncStatus"
         static let showFunctionBar = "Dirnex.pref.showFunctionBar"
         static let rowDensity = "Dirnex.pref.rowDensity"
+        static let accentColorHex = "Dirnex.pref.accentColorHex"
+        static let cursorColorHex = "Dirnex.pref.cursorColorHex"
+        static let markColorHex = "Dirnex.pref.markColorHex"
         static let confirmTrash = "Dirnex.pref.confirmTrash"
         static let diffToolIdentifier = "Dirnex.pref.diffToolIdentifier"
         static let textEditorIdentifier = "Dirnex.pref.textEditorIdentifier"

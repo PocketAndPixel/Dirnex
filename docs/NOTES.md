@@ -363,6 +363,44 @@ at build time.
   drawn in the same colour at 0.25 alpha made an *empty* bar read as the heaviest row on screen,
   because the track owns the full column width where the ink may own a point. No test catches
   this; it was caught in a screenshot.
+- **"Maximum contrast" is not the rule for text on a colour — the system does not follow it, and
+  copying the system is what a user is comparing against.** Measured in both appearances before
+  designing the M15 palette: `.controlAccentColor` is `#007AFF`, relative luminance **0.2114**,
+  where white scores **4.02:1** and black **5.23:1**. So a WCAG-maximum rule picks *black*, while
+  macOS — and Dirnex's own active tab chip, which puts `.alternateSelectedControlTextColor` straight
+  onto the accent — draws white. A user who picked a blue barely distinguishable from the one they
+  already had would have watched the app's most familiar surface flip to black text. The rule that
+  works is **white unless it drops below 3:1, black otherwise**: 3:1 is the floor the system itself
+  clears with room to spare, and whenever it *is* black's turn the background is above L=0.3, where
+  black scores at least 7:1 — so it never trades legibility for familiarity, it only breaks the tie
+  in the band where both choices are legible. Note the two are measured against *different* colours:
+  AppKit's emphasized selection is `.selectedContentBackgroundColor` (`#0064E1`, L=0.1455), a darker
+  relative of the accent and not the accent itself, and there white wins under either rule.
+  - **The corollary is that the Follow-System path must fall back to the system colour, not derive
+    one.** "An untouched install renders byte-identically" is only a claim you can make if nothing
+    is recomputed for it, and the measurement above is exactly why: the derivation and the system
+    disagree on the one colour that matters most.
+  - **A derived foreground is appearance-independent, and that is the only way to claim "legible in
+    both appearances".** Only one appearance is on screen at a time, so no screenshot can check the
+    other; a luminance test over the user's own sRGB colour resolves identically under `.aqua` and
+    `.darkAqua`, which is a claim a test can pin.
+- **`NSTableView` makes a plain `NSTableRowView` when the delegate declines — in every one of its
+  five styles.** Probed rather than assumed, and it inverted a design: a row-view subclass that
+  defers to `super` is byte-for-byte the stock drawing, so it can be installed **unconditionally**
+  instead of switched in only when a custom colour is set. Switching classes as a preference changes
+  leaves a reuse pool of the other kind to reason about; deferring leaves nothing to get wrong.
+  `interiorBackgroundStyle` is derived from `isEmphasized` (probed: `true` → `.emphasized`, `false`
+  → `.normal`), so a custom `drawSelection(in:)` and the cell's own `backgroundStyle` are driven by
+  the *same* flag and cannot disagree — which is what lets a cell pick its text colour without the
+  row view telling it anything.
+  - **Only the emphasized half is worth owning.** AppKit's *unemphasized* selection is a pure grey
+    in both appearances — `#DCDCDC` light, `#464646` dark, zero saturation in each — so it discards
+    the accent's hue on purpose, and in dark mode it is **darker** than the emphasized fill
+    (L=0.0612 against 0.1175) rather than fainter. There is no relationship to re-derive: hand the
+    inactive pane back to `super` and both panes keep the focus signal they already had.
+  - A `swift`-script probe cannot make its window key, so `isEmphasized` reads `false` throughout
+    and the two states cannot be told apart that way. Probe the *derivation* (`isEmphasized` set by
+    hand on a detached row view) and leave the focus behaviour to the app that already ships it.
 - **`installSortedModel` swaps the model; `reloadEverything` is what puts it on screen.** A refresh
   path that installs and returns leaves the pane drawing the rows it already had — no error, no log
   line, just a model and a screen that disagree. Found live when an Empty Trash left the pane listing

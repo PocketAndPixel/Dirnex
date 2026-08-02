@@ -11,6 +11,23 @@ extension PanelViewController: NSTableViewDataSource {
 }
 
 extension PanelViewController: NSTableViewDelegate {
+    /// Every row, so the cursor's background can be a colour the user chose (PLAN.md §M15 Slice 2).
+    /// Supplied unconditionally — `PanelRowView` hands an untouched palette straight back to `super`
+    /// — so there is never a pool of one kind of row view to reconcile with the other; see the type
+    /// for the probe that makes that identical rather than merely equivalent.
+    func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
+        let identifier = NSUserInterfaceItemIdentifier("panelRow")
+        let view: PanelRowView
+        if let reused = tableView.makeView(withIdentifier: identifier, owner: self) as? PanelRowView {
+            view = reused
+        } else {
+            view = PanelRowView()
+            view.identifier = identifier
+        }
+        view.cursorColor = AppPreferences.shared.palette.cursor
+        return view
+    }
+
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         guard let tableColumn,
               let column = Column(rawValue: tableColumn.identifier.rawValue) else { return nil }
@@ -38,6 +55,9 @@ extension PanelViewController: NSTableViewDelegate {
         // Set on every render, not only when the preference changes: a recycled cell was built at
         // whatever density was current when it was made (PLAN.md §M15; see `FileCellView.density`).
         cell.density = AppPreferences.shared.rowDensity
+        // Same reason, and it must be in hand *before* `applyStyle` below — and before the cursor
+        // lands on this row and drives `applyStyle` again from `backgroundStyle`.
+        cell.palette = AppPreferences.shared.palette
         switch column {
         case .name:
             // An app-library row in the merged iCloud listing wears the app's own icon; everything
@@ -95,6 +115,9 @@ extension PanelViewController: NSTableViewDelegate {
     ) -> NSView {
         let cell = tableView.makeView(withIdentifier: identifier, owner: self) as? SizeBarCellView
             ?? SizeBarCellView(identifier: identifier)
+        // The bar, its track and its percentage are the other fill that has to survive the cursor's
+        // background (PLAN.md §M15 Slice 2) — derived from the same colour the text is.
+        cell.barView.emphasizedInk = AppPreferences.shared.palette.cursorForeground
         guard !isParentRow(row), let index = entryIndex(forRow: row) else {
             cell.dimmed = false
             cell.barView.bar = nil

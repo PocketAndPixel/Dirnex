@@ -341,6 +341,7 @@ final class PanelViewController: NSViewController {
         super.viewDidLoad()
         observeShowHiddenPreference()
         observeRowDensityPreference()
+        observePalettePreference()
         observeGitStatusChanges()
         observeFinderTagChanges()
         observeCloudSyncStatusChanges()
