@@ -187,16 +187,28 @@ extension PanelViewController {
     /// List `path`'s children off the main thread and install them in the tree — its lazy load on
     /// expand or on restore. Guarded on `loadToken` so a navigation that lands first wins, and on the
     /// pane still being this tree. A folder that fails to list (deleted, unreadable) stays childless.
-    private func loadTreeChild(_ path: VFSPath) {
+    ///
+    /// `duringRestore` marks a load kicked off by `restorePendingTreeExpansion`: the rows it brings in
+    /// are the ones a restored cursor or mark may be waiting on, so the landing re-runs
+    /// `applyPendingRestore` (scrolling to the cursor when this is the level that carried it), and
+    /// every exit path reports back so the restore window closes even when the folder never listed.
+    private func loadTreeChild(_ path: VFSPath, duringRestore: Bool = false) {
         let token = loadToken
         let root = panel.path
+        let tabIndex = activeTabIndex
         Task {
+            defer { if duringRestore { finishRestoreTreeLoad(inTab: tabIndex) } }
             guard let listing = try? await DirectoryLoader.list(backend, at: path) else { return }
             guard token == loadToken, panel.isTree, panel.path == root else { return }
             if deferRefreshIfRenaming() { return }
             reconcileCursorFromTable()
             panel.setTreeChildListing(path, entries: listing.entries)
+            var anchoredCursor = false
+            if duringRestore { anchoredCursor = applyPendingRestore(toTab: tabIndex) }
             renderTreeChange()
+            // `renderTreeChange` deliberately doesn't scroll (it is the live-refresh render); a cursor
+            // the user last left deep in the tree has to be brought into view, as a navigation would.
+            if anchoredCursor { syncCursorToTable(scroll: true) }
             persistState()
         }
     }
@@ -283,30 +295,36 @@ extension PanelViewController {
     func persistedExpandedPaths(for tab: PanelTab) -> [String]? {
         guard let expanded = tab.panel.tree?.expanded, !expanded.isEmpty else { return nil }
         let root = tab.panel.path
-        let relative = expanded.compactMap { treeRelativePath($0, under: root) }.sorted()
+        let relative = expanded.compactMap { rootRelativePath($0, under: root) }.sorted()
         return relative.isEmpty ? nil : relative
     }
 
     /// Re-expand and lazily re-list the folders a restored tree had open (PLAN.md §M15 "relaunch
     /// restores the expansion"). One-shot: the pending list is cleared after, so a later navigation
-    /// in the tab starts collapsed. Runs after the root's first load, inside `navigate`.
+    /// in the tab starts collapsed. Runs after the root's first load, inside `navigate` — and
+    /// *before* the cursor/marks are re-applied, so the count of listings still to come is armed
+    /// before the first pass at them: each one that lands is another chance to anchor a row that
+    /// lives inside one of these folders, and the last one closes the restore window
+    /// (`finishRestoreTreeLoad`).
     func restorePendingTreeExpansion() {
         let tab = tabs[activeTabIndex]
         guard let relatives = tab.pendingExpandedPaths, !relatives.isEmpty else { return }
         tab.pendingExpandedPaths = nil
         guard panel.isTree else { return }
         let root = panel.path
+        tab.pendingRestoreTreeLoads = relatives.count
         for relative in relatives {
-            let path = resolveTreeRelative(relative, under: root)
+            let path = resolveRootRelative(relative, under: root)
             panel.expand(path)
-            loadTreeChild(path)
+            loadTreeChild(path, duringRestore: true)
         }
         renderTreeChange()
     }
 
     /// `path` (a descendant of `root`) as a `/`-joined path relative to it, or `nil` if it is the
-    /// root itself or not under it.
-    private func treeRelativePath(_ path: VFSPath, under root: VFSPath) -> String? {
+    /// root itself or not under it. Internal because the tab's persisted cursor and marks are spelled
+    /// the same way (`PanelViewController+Restore`) — one anchoring for everything a tab restores.
+    func rootRelativePath(_ path: VFSPath, under root: VFSPath) -> String? {
         guard path != root, path.isSelfOrDescendant(of: root) else { return nil }
         let base = root.isRoot ? "" : root.path
         let relative = String(path.path.dropFirst(base.count)).trimmingCharacters(
@@ -316,8 +334,9 @@ extension PanelViewController {
     }
 
     /// The inverse: resolve a stored relative path back to an absolute one under `root`, component by
-    /// component so a leading slash or an empty segment can't confuse it.
-    private func resolveTreeRelative(_ relative: String, under root: VFSPath) -> VFSPath {
+    /// component so a leading slash or an empty segment can't confuse it. Internal for the same
+    /// reason as `rootRelativePath`.
+    func resolveRootRelative(_ relative: String, under root: VFSPath) -> VFSPath {
         relative.split(separator: "/").reduce(root) { $0.appending(String($1)) }
     }
 }

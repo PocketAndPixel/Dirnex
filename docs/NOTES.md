@@ -460,6 +460,26 @@ at build time.
     index space (HISTORY.md §M8), and that only holds if nothing reads past the projection to the
     thing it projects. `command grep -n 'model\['` over the app is the whole audit, and it is worth
     running the day any new row source lands rather than waiting for a click to find it.
+- **A *persisted* anchor is that same trap one launch later, and it has two independent halves —
+  fixing either alone changes nothing.** `PersistedTab` stored the cursor and marks by **leaf name**,
+  which is correct for a flat list and cannot address a tree row inside an expanded folder at all; so
+  the spelling had to become root-relative, the shape `expandedPaths` was already using. The second
+  half is *timing*: a restored tree lists each expanded folder lazily, so at the moment
+  `applyPendingRestore` ran after the root's first listing there were no child rows to match against
+  — the anchor was correct and the row did not exist yet. The re-apply therefore runs again on every
+  restored listing that lands, drops each anchor **as it resolves** (a later pass must not yank a
+  cursor the user has since moved), and drops the remainder when the last listing reports in — on
+  every exit path, or a folder that fails to list leaves the window open forever. It fails in the
+  quiet direction: the cursor is simply at the top, which reads as "restore doesn't cover the cursor"
+  rather than as a bug.
+  - **A live refresh mirrors the *table's* selection back into the model
+    (`reconcileCursorFromTable`), which is what makes the restored cursor checkable with no
+    screenshot and no screen-recording grant.** Seed the persisted state, launch from a shell, poke a
+    watched directory (`touch` a dot-file inside it) so an FSEvents refresh runs, quit, and read the
+    state back: if the *table* were sitting on row 0 while only the model held the nested row, that
+    refresh would overwrite the model and the persisted cursor would come back as a root-level entry.
+    It survived, so both agree. Worth reaching for whenever the thing to verify is "what is
+    selected" — `screencapture` needs a permission the shell tool does not have.
 
 ## Localization
 

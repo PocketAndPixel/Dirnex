@@ -5,7 +5,8 @@ import DirnexCore
 /// relaunch"). A pane owns an array of `PanelTab`s and renders the active one; all of
 /// the add/close/select/reorder plumbing — plus the `TabBarView` delegate and the
 /// menu actions that drive it from the keyboard — lives here to keep the controller
-/// proper focused on a single directory.
+/// proper focused on a single directory. Writing those tabs to disk and bringing them
+/// back is the neighbouring concern, in `PanelViewController+Restore`.
 extension PanelViewController {
     // MARK: - Activation
 
@@ -246,126 +247,6 @@ extension PanelViewController {
         activeTabIndex = tabs.firstIndex { $0 === activeTab } ?? activeTabIndex
         refreshTabBar()
         persistState()
-    }
-
-    // MARK: - Persistence
-
-    /// Write this pane's tabs (paths, per-tab sort, columns, and the cursor/marks) so they survive a
-    /// relaunch. The cursor and marks are captured by *leaf name* — directory-relative and identity-
-    /// based, the same anchoring `Panel` uses across a live refresh — from the tab's own `Panel`, so
-    /// an inactive tab persists exactly what the user last left in it. Cursor moves and mark toggles
-    /// don't call this (a `UserDefaults` write per arrow key would be wasteful); the final position is
-    /// instead captured on the way down via `BrowserWindowController.persistTabState`.
-    func persistState() {
-        guard let restorationKey else { return }
-        let persisted = tabs.map { tab in
-            PersistedTab(
-                path: tab.panel.path,
-                sort: tab.panel.model.sort,
-                columns: tab.columnLayout,
-                viewMode: tab.viewMode,
-                expandedPaths: persistedExpandedPaths(for: tab),
-                cursorName: tab.cursorOnParentRow ? nil : tab.panel.currentEntry?.name,
-                cursorOnParent: tab.cursorOnParentRow,
-                markedNames: tab.panel.selection.isEmpty
-                    ? nil
-                    : tab.panel.selection.map(\.lastComponent)
-            )
-        }
-        TabPersistence.save(
-            PersistedPane(tabs: persisted, activeIndex: activeTabIndex),
-            paneKey: restorationKey
-        )
-    }
-
-    /// Re-apply a restored tab's saved cursor and marks once its directory has first listed. Runs
-    /// inside the first-load completion in `navigate`, matching the persisted leaf names against the
-    /// fresh listing: a file deleted since quit simply doesn't match, so `setSelection` (which
-    /// intersects with the listing) drops a vanished mark and the cursor falls back to the top — the
-    /// same pruning a live refresh does. One-shot: the pending state is cleared afterward, so a later
-    /// navigation in the same tab starts clean, and a tab that was never restored has nothing pending
-    /// and returns immediately. Called with `index == activeTabIndex`, so `panel`/`cursorOnParentRow`
-    /// (which address the active tab) are this tab.
-    func applyPendingRestore(toTab index: Int) {
-        let tab = tabs[index]
-        guard tab.pendingCursorName != nil
-            || tab.pendingCursorOnParent
-            || tab.pendingMarkNames != nil else { return }
-        defer {
-            tab.pendingCursorName = nil
-            tab.pendingCursorOnParent = false
-            tab.pendingMarkNames = nil
-        }
-        if let names = tab.pendingMarkNames, !names.isEmpty {
-            let wanted = Set(names)
-            let ids = panel.model.listing.entries.filter { wanted.contains($0.name) }.map(\.id)
-            panel.setSelection(Set(ids))
-        }
-        if tab.pendingCursorOnParent, panel.parentPath != nil {
-            cursorOnParentRow = true
-        } else if let name = tab.pendingCursorName,
-                  let cursorIndex = panel.displayedEntries.firstIndex(where: { $0.name == name }) {
-            panel.moveCursor(to: cursorIndex)
-            cursorOnParentRow = false
-        }
-    }
-
-    /// The tabs and active index a pane opens with, given its persisted state — what `init` installs.
-    /// Wraps `restoredTabs` with the empty-fallback: when every persisted tab was dropped (a pane
-    /// whose only tab was a remote FTP/SFTP/SMB folder is the common case — those can't be listed at
-    /// launch without reconnecting), open a fresh tab at `defaultPath`, but carry the last-active
-    /// tab's column layout forward. A dropped remote tab is still where the user set those widths, and
-    /// a bare default layout snapped the Date column back to its default 150 on every relaunch of a
-    /// pane whose only tab was remote — while a plain local folder, whose tab *is* restored, kept its
-    /// widths, which is exactly the asymmetry that read as a bug.
-    static func restoredLayout(
-        from restoration: PersistedPane?,
-        defaultPath: VFSPath,
-        showHidden: Bool
-    ) -> (tabs: [PanelTab], activeIndex: Int) {
-        let restored = restoredTabs(from: restoration)
-        guard !restored.isEmpty else {
-            let fallback = PanelTab(
-                path: defaultPath,
-                showHidden: showHidden,
-                columns: restoration?.activeTabColumns
-            )
-            return ([fallback], 0)
-        }
-        return (restored, min(max(restoration?.activeIndex ?? 0, 0), restored.count - 1))
-    }
-
-    /// Rebuild tabs from a persisted pane, dropping any whose directory has since
-    /// vanished so a relaunch never opens onto a dead path or an error sheet.
-    static func restoredTabs(from restoration: PersistedPane?) -> [PanelTab] {
-        guard let restoration else { return [] }
-        // Show-hidden is a single app-wide toggle, so every restored tab adopts it — the same
-        // value a fresh tab gets. An in-session ⇧⌘. re-syncs them all live.
-        let showHidden = AppPreferences.shared.showHidden
-        return restoration.tabs.compactMap { persisted in
-            let path = persisted.vfsPath
-            var isDirectory: ObjCBool = false
-            guard path.backend == .local,
-                  FileManager.default.fileExists(atPath: path.path, isDirectory: &isDirectory),
-                  isDirectory.boolValue else { return nil }
-            let tab = PanelTab(
-                path: path,
-                sort: persisted.fileSort,
-                showHidden: showHidden,
-                columns: persisted.columns
-            )
-            // The shape the tab was last left in (PLAN.md §M15) — restored, unlike the session-
-            // scoped per-tab modes, because coming back to a tree as a flat list reads as loss.
-            tab.viewMode = persisted.panelViewMode
-            // …and the folders it had open, re-expanded lazily once its directory first lists.
-            tab.pendingExpandedPaths = persisted.expandedPaths
-            // Re-applied by `applyPendingRestore` once this tab's directory first lists (it isn't
-            // listed yet — a restored tab loads lazily), by leaf name so a since-deleted file drops.
-            tab.pendingCursorName = persisted.cursorName
-            tab.pendingCursorOnParent = persisted.cursorOnParent ?? false
-            tab.pendingMarkNames = persisted.markedNames
-            return tab
-        }
     }
 
     // MARK: - Menu actions (dispatched to the focused pane via the responder chain)

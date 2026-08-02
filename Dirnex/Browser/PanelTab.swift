@@ -37,15 +37,22 @@ final class PanelTab {
     /// Set once this tab's directory has been listed. A tab restored from disk starts
     /// `false` so switching to it triggers a fresh load rather than showing an empty list.
     var hasLoaded = false
-    /// The cursor and marks to re-apply once a *restored* tab's directory first lists, matched by
-    /// leaf name against the fresh listing so a file deleted since quit is simply dropped (PLAN.md
-    /// §M1 "restored on relaunch"; the identity-not-index rule the cursor already follows across a
-    /// live refresh). Seeded from the on-disk `PersistedTab` in `restoredTabs`, consumed and cleared
-    /// on the first load by `PanelViewController.applyPendingRestore`; all `nil`/`false` for a tab
-    /// that was not restored from disk, which makes the re-apply a no-op there.
-    var pendingCursorName: String?
+    /// The cursor and marks to re-apply once a *restored* tab's directory first lists, as paths
+    /// relative to the tab's root (the shape `PersistedTab` stores) matched by identity against the
+    /// fresh listing, so a file deleted since quit is simply dropped (PLAN.md §M1 "restored on
+    /// relaunch"; the identity-not-index rule the cursor already follows across a live refresh).
+    /// Seeded from the on-disk `PersistedTab` in `restoredTabs`, consumed by
+    /// `PanelViewController.applyPendingRestore`; all `nil`/`false` for a tab that was not restored
+    /// from disk, which makes the re-apply a no-op there.
+    var pendingCursorPath: String?
     var pendingCursorOnParent = false
-    var pendingMarkNames: [String]?
+    var pendingMarkPaths: [String]?
+    /// How many of a restored *tree's* per-folder listings are still in flight (PLAN.md §M15 Slice
+    /// 4). A cursor or a mark inside an expanded folder has no row to anchor on until that folder
+    /// has listed, so the pending state above outlives the root's load and is re-applied as each
+    /// child lands; this is what says whether another landing is still coming. Zero for a flat list,
+    /// which is what makes the restore one-shot there.
+    var pendingRestoreTreeLoads = 0
     /// The tree folders to re-open once a *restored* tree tab's directory first lists (PLAN.md §M15
     /// Slice 4), as paths relative to the tab's root — matching the shape `PersistedTab` stores.
     /// Consumed and cleared by `restorePendingTreeExpansion` on the first load; `nil` for a tab that
@@ -120,6 +127,19 @@ final class PanelTab {
         searchQuery = nil
         searchScope = nil
         mergedSources = []
+    }
+
+    /// Whether this tab still has a restored cursor or marks waiting to be anchored.
+    var hasPendingRestore: Bool {
+        pendingCursorPath != nil || pendingCursorOnParent || pendingMarkPaths != nil
+    }
+
+    /// Drop whatever never resolved — a file deleted since quit, or one inside a folder that failed
+    /// to list — so a later navigation in this tab starts clean.
+    func clearPendingRestore() {
+        pendingCursorPath = nil
+        pendingCursorOnParent = false
+        pendingMarkPaths = nil
     }
 
     init(panel: Panel) {

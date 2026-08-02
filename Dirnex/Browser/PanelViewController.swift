@@ -420,11 +420,15 @@ final class PanelViewController: NSViewController {
                 }
                 // Land on a real entry; only an empty directory parks the cursor on `..`.
                 cursorOnParentRow = panel.isEmpty && panel.parentPath != nil
-                // A restored tab's first listing: re-anchor its saved cursor and re-mark its saved
-                // selection, overriding the defaults just set. A no-op for every other navigation.
-                applyPendingRestore(toTab: tabIndex)
-                // …and re-open the folders a restored tree had expanded, listing each lazily.
+                // A restored tab's first listing: re-open the folders a restored tree had expanded,
+                // listing each lazily…
                 restorePendingTreeExpansion()
+                // …then re-anchor its saved cursor and re-mark its saved selection, overriding the
+                // defaults just set. Second, because a cursor or mark *inside* one of those folders
+                // can only be anchored once that folder's rows exist — this pass takes whatever the
+                // root already shows, and each expansion's landing re-runs it for the rest. A no-op
+                // for every other navigation.
+                applyPendingRestore(toTab: tabIndex)
                 tabs[tabIndex].hasLoaded = true
                 if wasResults { tabs[tabIndex].clearResultsIdentity() }
                 if wasVirtual {
