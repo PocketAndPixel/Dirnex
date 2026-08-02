@@ -124,6 +124,12 @@ final class FileCellView: NSTableCellView {
     /// The name cell's icon inset in the shipped flat list — the leading constant every list-mode
     /// row keeps, so nothing shifts when the tree is off.
     private static let iconInsetList: CGFloat = 3
+    /// The tree block's leading inset, measured from the name cell's leading edge. Negative on
+    /// purpose: the `.plain` table style leaves an ~8 pt empty margin before the first column, and a
+    /// tree row reaches back into it so the disclosure triangle sits nearer the panel's left border
+    /// than a flat-list icon does — halving the border-to-`>` gap without disturbing the column
+    /// header, the inter-column spacing, or list mode. Only the tree branch reads it.
+    private static let treeLeadingInset: CGFloat = -3
     /// One level of tree indentation.
     private static let treeIndentPerLevel: CGFloat = 16
     /// The width reserved before the icon for the disclosure triangle, in tree mode.
@@ -237,7 +243,11 @@ final class FileCellView: NSTableCellView {
             width,
             height,
             disclosureLead,
-            disclosure.centerYAnchor.constraint(equalTo: centerYAnchor),
+            // Pin the triangle top-to-bottom rather than centring it: `.imageOnly` keeps the glyph
+            // vertically centred, but the *button* now fills the whole row height, so its click
+            // target spans the row instead of the ~10 pt chevron — a folder is easy to aim at.
+            disclosure.topAnchor.constraint(equalTo: topAnchor),
+            disclosure.bottomAnchor.constraint(equalTo: bottomAnchor),
             disclosure.widthAnchor.constraint(equalToConstant: Self.treeDisclosureSlot),
             text.leadingAnchor.constraint(equalTo: image.trailingAnchor, constant: 5),
             text.centerYAnchor.constraint(equalTo: centerYAnchor),
@@ -309,9 +319,9 @@ final class FileCellView: NSTableCellView {
         let indent = CGFloat(treeDepth) * Self.treeIndentPerLevel
         // Every tree row reserves the disclosure slot — a file lines up under its sibling folders
         // rather than jutting a triangle's width to the left of them.
-        iconLeading.constant = Self.iconInsetList + indent + Self.treeDisclosureSlot
+        iconLeading.constant = Self.treeLeadingInset + indent + Self.treeDisclosureSlot
         if let treeDisclosure {
-            disclosureLeading?.constant = Self.iconInsetList + indent
+            disclosureLeading?.constant = Self.treeLeadingInset + indent
             disclosureButton?.image = Self.chevron(expanded: treeDisclosure == .expanded)
             disclosureButton?.isHidden = false
         } else {
