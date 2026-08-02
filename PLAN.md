@@ -299,10 +299,32 @@ footer whose whole job is to teach the syntax. It compiles, lints, and reads as 
 An inline-expanding file list: folders open in place and show their children indented, files
 included.
 
-- [ ] Core, additive: `TreeProjection` — a pure flattening of a set of expanded directories into one
+- [x] Core, additive: `TreeProjection` — a pure flattening of a set of expanded directories into one
       indexed row list of `(entry, depth)`, sorted **within each level** and hidden-filtered like the
       flat model. Tested for expand/collapse, a folder that vanishes while expanded, a filter that
-      empties a level, and sort applying per level rather than globally.
+      empties a level, and sort applying per level rather than globally. **Core pass landed
+      2026-08-02** (`TreeProjection`/`TreeRow`, 15 tests, app untouched). It **reuses `DirectoryModel`
+      per level** rather than re-deriving any of it — each directory's raw entries go through a
+      `DirectoryModel` and the visible results are stitched depth-first — so ordering, the hidden
+      filter, the text filter and the `directoriesFirst` grouping are the flat model's by construction
+      and cannot fork (the §6 risk). Falls out for free: with nothing expanded the depth-0 rows *are*
+      the flat model's rows, so an all-collapsed tree renders byte-identically to the list; and a
+      collapse keeps a hidden subtree's own expansion, so re-opening the ancestor restores it whole.
+- [x] Core, additive: **`Panel` made tree-aware** (the architecture Oleg picked over a controller-side
+      row provider — keep the selection brain in the tested value type). `Panel` gains an optional
+      `tree: TreeProjection?`; when set it is the *row source*, so `cursor`, `count`,
+      `displayedEntry(at:)`, `toggleMark`, `selectAll`, `invertSelection`, `selectRange`,
+      `selectedEntries` and the cursor-preserving refresh all read their rows from the tree instead of
+      `model.visibleEntries`. The **marks stay one `Set<VFSPath>`**, which is exactly why they span
+      levels for free — `selectedEntries` returns them in row order across depths, and a same-directory
+      refresh prunes against the tree's *whole* entry set (`allEntryIDs`) so a mark made in an expanded
+      child survives a root refresh. `model` stays the settings-of-record: `enterTreeMode` seeds the
+      tree from it, `setSort`/`setShowHidden`/`setFilter` drive both, a navigation replaces the tree
+      with a fresh all-collapsed one, and `expand`/`collapse`/`setTreeChildListing` keep the cursor on
+      the same entry by identity. **Landed 2026-08-02**, 14 `Panel — tree mode` tests; list mode
+      byte-for-byte unchanged (the 36 existing Panel/selection tests still pass, since `tree == nil`
+      makes every accessor fall straight back to `model`). App still untouched — the render/keys/
+      persistence/watcher pass is next.
 - [ ] The shape is the **sidebar's**, deliberately: an `NSTableView` over a flat projection, not an
       `NSOutlineView` (HISTORY.md §M8 — "every row is a leaf, so folding is a build-time filter, not
       a view feature — and the drag code keeps one flat index space to map through"). That is the
@@ -326,16 +348,16 @@ included.
 Exit: two folders expanded in one pane, files marked across all three levels and copied with F5; the
 tree survives an FSEvents change in a collapsed sibling; relaunch restores the expansion.
 
-#### Two decisions to settle before Slice 4 opens
+#### Two decisions to settle before Slice 4 opens — **both settled 2026-08-02, as recommended**
 
 Both are operation semantics, not view work, which is why they cannot be deferred into it:
 
-1. **What F5/F6 do with marks spanning levels.** Recommendation: TC's branch-view behaviour —
-   flatten *preserving relative paths* under the destination. Copying everything flat into one
-   folder is the alternative and it silently collides the moment two folders hold an `x.jpg`.
-2. **F8 with an ancestor and its descendant both marked.** Recommendation: dedupe to the ancestor
-   before enqueuing. Deleting the parent already takes the child, so passing both makes the second
-   operation fail on a path that no longer exists.
+1. **What F5/F6 do with marks spanning levels.** *Settled: TC's branch-view behaviour* — flatten
+   *preserving relative paths* under the destination. Copying everything flat into one folder is the
+   alternative and it silently collides the moment two folders hold an `x.jpg`.
+2. **F8 with an ancestor and its descendant both marked.** *Settled: dedupe to the ancestor* before
+   enqueuing. Deleting the parent already takes the child, so passing both makes the second operation
+   fail on a path that no longer exists.
 
 #### Deliberately not in scope: the thumbnail grid, brief view, and the surface extraction
 

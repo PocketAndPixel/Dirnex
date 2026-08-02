@@ -24,6 +24,18 @@ public struct Panel: Sendable {
     /// actually disappears from the directory.
     public private(set) var selection: Set<VFSPath>
 
+    /// The tree projection, when this pane is in tree mode (PLAN.md §M15 Slice 4) — otherwise `nil`,
+    /// and the pane is an ordinary flat list. When set it is the **row source**: `cursor` indexes into
+    /// its flattened rows and every selection operation reads its entries from it, so the tree and the
+    /// list share one index space rather than being a parallel surface (§6 risk). Marks stay the same
+    /// `Set<VFSPath>` regardless of mode, which is exactly why marks span levels for free.
+    ///
+    /// Its scalar settings (`sort`/`showHidden`/`filter`) and its root listing are kept in lock-step
+    /// with `model`, so `model` remains the pane's settings-of-record and the source the tree is
+    /// re-seeded from — only the *shape* differs. Navigating (a new `rootPath`) replaces it with a
+    /// fresh, all-collapsed tree; a same-directory refresh updates it in place.
+    public private(set) var tree: TreeProjection?
+
     public init(model: DirectoryModel) {
         self.model = model
         cursor = 0
@@ -42,17 +54,34 @@ public struct Panel: Sendable {
     // MARK: - Derived state
 
     public var path: VFSPath { model.listing.path }
-    public var count: Int { model.count }
-    public var isEmpty: Bool { model.isEmpty }
+    public var count: Int { tree?.count ?? model.count }
+    public var isEmpty: Bool { tree?.isEmpty ?? model.isEmpty }
 
-    /// The entry under the cursor, or `nil` when the directory shows no rows.
+    /// Whether the pane is currently in tree mode.
+    public var isTree: Bool { tree != nil }
+
+    /// The entries the pane is showing, in row order — the flat model's visible entries, or the
+    /// tree's flattened rows when a `TreeProjection` is installed. Every cursor/selection read goes
+    /// through here so the two shapes share one index space (PLAN.md §M15 Slice 4).
+    public var displayedEntries: [FileEntry] {
+        if let tree { return tree.rows.map(\.entry) }
+        return model.visibleEntries
+    }
+
+    /// The entry at a display row, or `nil` when the index is out of range.
+    public func displayedEntry(at index: Int) -> FileEntry? {
+        if let tree { return tree.entry(at: index) }
+        return index >= 0 && index < model.count ? model[index] : nil
+    }
+
+    /// The entry under the cursor, or `nil` when the pane shows no rows.
     public var currentEntry: FileEntry? {
-        !model.isEmpty && cursor < model.count ? model[cursor] : nil
+        displayedEntry(at: cursor)
     }
 
     /// Marked entries in current display order (excludes marks on filtered-out rows).
     public var selectedEntries: [FileEntry] {
-        model.visibleEntries.filter { selection.contains($0.id) }
+        displayedEntries.filter { selection.contains($0.id) }
     }
 
     public var selectionCount: Int { selection.count }
@@ -83,6 +112,7 @@ public struct Panel: Sendable {
         let isRefresh = listing.path == model.listing.path
         let anchorID = isRefresh ? currentEntry?.id : nil
         model.updateListing(listing)
+        updateTreeAfterModelChange(isRefresh: isRefresh)
         reconcile(isRefresh: isRefresh, anchorID: anchorID)
     }
 
@@ -96,14 +126,17 @@ public struct Panel: Sendable {
         let isRefresh = newModel.listing.path == model.listing.path
         let anchorID = isRefresh ? currentEntry?.id : nil
         model = newModel
+        updateTreeAfterModelChange(isRefresh: isRefresh)
         reconcile(isRefresh: isRefresh, anchorID: anchorID)
     }
 
     /// Shared tail of `setListing`/`setModel`: on a refresh keep the cursor on the same entry by
-    /// identity and prune marks to entries that survived; on a navigation reset both.
+    /// identity and prune marks to entries that survived; on a navigation reset both. In tree mode the
+    /// surviving set is the tree's *whole* entry set, not the root's — otherwise a root refresh would
+    /// drop every mark made in an expanded child.
     private mutating func reconcile(isRefresh: Bool, anchorID: VFSPath?) {
         if isRefresh {
-            selection.formIntersection(Set(model.listing.entries.map(\.id)))
+            selection.formIntersection(presentEntryIDs)
             restoreCursor(to: anchorID)
         } else {
             selection.removeAll()
@@ -111,18 +144,105 @@ public struct Panel: Sendable {
         }
     }
 
+    /// The identities that still exist after a refresh, for pruning marks: every entry the tree holds
+    /// in tree mode (so a mark in one expanded folder survives another's refresh), or the current
+    /// directory's entries in list mode.
+    private var presentEntryIDs: Set<VFSPath> {
+        tree?.allEntryIDs ?? Set(model.listing.entries.map(\.id))
+    }
+
+    /// Keep the tree's root listing and scalar settings in step with `model` after it changed. A
+    /// same-directory refresh updates the tree in place (expansion and child listings preserved); a
+    /// navigation to a new `rootPath` replaces it with a fresh, all-collapsed tree, since the old
+    /// expansion belonged to the old root. A no-op in list mode (`tree == nil`).
+    private mutating func updateTreeAfterModelChange(isRefresh: Bool) {
+        guard tree != nil else { return }
+        if isRefresh, var updated = tree {
+            updated.sort = model.sort
+            updated.showHidden = model.showHidden
+            updated.filter = model.filter
+            updated.setListing(model.listing.path, entries: model.listing.entries)
+            tree = updated
+        } else {
+            tree = freshTree()
+        }
+    }
+
+    /// A tree rooted at the current directory, seeded with the current root listing and the model's
+    /// sort/hidden/filter, with nothing expanded.
+    private func freshTree() -> TreeProjection {
+        var fresh = TreeProjection(
+            rootPath: model.listing.path,
+            sort: model.sort,
+            showHidden: model.showHidden,
+            filter: model.filter
+        )
+        fresh.setListing(model.listing.path, entries: model.listing.entries)
+        return fresh
+    }
+
+    // MARK: - Tree mode
+
+    /// Switch this pane into tree mode, seeding the tree from the current directory and keeping the
+    /// cursor on the same entry by identity. A no-op if already in tree mode.
+    public mutating func enterTreeMode() {
+        guard tree == nil else { return }
+        mutatingPreservingCursor { $0.tree = $0.freshTree() }
+    }
+
+    /// Switch back to a flat list, keeping the cursor on the same entry by identity where it still
+    /// exists at the root (a cursor parked deep in the tree clamps into range). A no-op in list mode.
+    public mutating func exitTreeMode() {
+        guard tree != nil else { return }
+        mutatingPreservingCursor { $0.tree = nil }
+    }
+
+    /// Open a folder's children in the tree, keeping the cursor anchored by identity (expanding rows
+    /// below the cursor never moves it). A no-op in list mode.
+    public mutating func expand(_ path: VFSPath) {
+        guard tree != nil else { return }
+        mutatingPreservingCursor { $0.tree?.expand(path) }
+    }
+
+    /// Close a folder in the tree, keeping any descendant expansion for when it re-opens and the
+    /// cursor anchored by identity. A no-op in list mode.
+    public mutating func collapse(_ path: VFSPath) {
+        guard tree != nil else { return }
+        mutatingPreservingCursor { $0.tree?.collapse(path) }
+    }
+
+    /// Install a child directory's entries in the tree — its lazy load on expand, or an FSEvents
+    /// refresh of an already-open folder — keeping the cursor anchored by identity and pruning marks
+    /// to entries that survived across the whole tree. A no-op in list mode.
+    public mutating func setTreeChildListing(_ path: VFSPath, entries: [FileEntry]) {
+        guard tree != nil else { return }
+        mutatingPreservingCursor {
+            $0.tree?.setListing(path, entries: entries)
+            $0.selection.formIntersection($0.presentEntryIDs)
+        }
+    }
+
     // MARK: - View settings (cursor-preserving)
 
     public mutating func setSort(_ sort: FileSort) {
-        mutatingPreservingCursor { $0.model.sort = sort }
+        mutatingPreservingCursor {
+            $0.model.sort = sort
+            $0.tree?.sort = sort
+        }
     }
 
     public mutating func setShowHidden(_ showHidden: Bool) {
-        mutatingPreservingCursor { $0.model.showHidden = showHidden }
+        mutatingPreservingCursor {
+            $0.model.showHidden = showHidden
+            $0.tree?.showHidden = showHidden
+        }
     }
 
     public mutating func setFilter(_ filter: String) {
-        mutatingPreservingCursor { $0.model.filter = filter }
+        mutatingPreservingCursor {
+            $0.model.filter = filter
+            $0.tree?.filter = filter
+        }
     }
 
     /// Record a recursively-computed size for the directory at `id` (Space-on-dir),
@@ -149,8 +269,8 @@ public struct Panel: Sendable {
     // MARK: - Cursor
 
     public mutating func moveCursor(to index: Int) {
-        guard !model.isEmpty else { cursor = 0; return }
-        cursor = min(max(index, 0), model.count - 1)
+        guard !isEmpty else { cursor = 0; return }
+        cursor = min(max(index, 0), count - 1)
     }
 
     public mutating func moveCursor(by delta: Int) {
@@ -180,7 +300,7 @@ public struct Panel: Sendable {
     }
 
     public mutating func selectAll() {
-        selection = Set(model.visibleEntries.map(\.id))
+        selection = Set(displayedEntries.map(\.id))
     }
 
     public mutating func clearSelection() {
@@ -192,11 +312,11 @@ public struct Panel: Sendable {
     /// prunes marks); marks on entries merely filtered out of view survive, since those entries
     /// still exist in the directory.
     public mutating func setSelection(_ ids: Set<VFSPath>) {
-        selection = ids.intersection(Set(model.listing.entries.map(\.id)))
+        selection = ids.intersection(presentEntryIDs)
     }
 
     public mutating func invertSelection() {
-        for entry in model.visibleEntries {
+        for entry in displayedEntries {
             if selection.contains(entry.id) {
                 selection.remove(entry.id)
             } else {
@@ -207,14 +327,14 @@ public struct Panel: Sendable {
 
     /// Add every visible entry whose name matches `pattern` to the selection (`+`).
     public mutating func selectMatching(_ pattern: String) {
-        for entry in model.visibleEntries where Glob.matches(pattern, entry.name) {
+        for entry in displayedEntries where Glob.matches(pattern, entry.name) {
             selection.insert(entry.id)
         }
     }
 
     /// Remove every visible entry whose name matches `pattern` from the selection (`-`).
     public mutating func deselectMatching(_ pattern: String) {
-        for entry in model.visibleEntries where Glob.matches(pattern, entry.name) {
+        for entry in displayedEntries where Glob.matches(pattern, entry.name) {
             selection.remove(entry.id)
         }
     }
@@ -235,13 +355,13 @@ public struct Panel: Sendable {
     /// replaces only the previous run. Both indices are clamped to the visible entries,
     /// and the cursor lands on `index`.
     public mutating func selectRange(from anchor: Int, through index: Int, base: Set<VFSPath>) {
-        guard !model.isEmpty else { return }
-        let lastRow = model.count - 1
+        guard !isEmpty else { return }
+        let lastRow = count - 1
         let anchorRow = min(max(anchor, 0), lastRow)
         let targetRow = min(max(index, 0), lastRow)
         var marks = base
         for row in min(anchorRow, targetRow)...max(anchorRow, targetRow) {
-            marks.insert(model[row].id)
+            if let entry = displayedEntry(at: row) { marks.insert(entry.id) }
         }
         selection = marks
         moveCursor(to: index)
@@ -250,7 +370,7 @@ public struct Panel: Sendable {
     // MARK: - Helpers
 
     private func entry(at index: Int) -> FileEntry? {
-        index >= 0 && index < model.count ? model[index] : nil
+        displayedEntry(at: index)
     }
 
     private mutating func mutatingPreservingCursor(_ body: (inout Panel) -> Void) {
@@ -260,10 +380,16 @@ public struct Panel: Sendable {
     }
 
     private mutating func restoreCursor(to id: VFSPath?) {
-        if let id, let index = model.index(ofID: id) {
+        if let id, let index = displayedIndex(ofID: id) {
             cursor = index
         } else {
-            cursor = model.isEmpty ? 0 : min(cursor, model.count - 1)
+            cursor = isEmpty ? 0 : min(cursor, count - 1)
         }
+    }
+
+    /// Row index of an entry in the current row source, or `nil` if it is not currently visible.
+    private func displayedIndex(ofID id: VFSPath) -> Int? {
+        if let tree { return tree.index(ofID: id) }
+        return model.index(ofID: id)
     }
 }
