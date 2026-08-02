@@ -58,7 +58,7 @@ struct PanelsSettingsView: View {
             } footer: {
                 Text(
                     """
-                    Shows each file's tag colours at the right edge of its name, as Finder does. Also in the \
+                    Shows each file's tag colors at the right edge of its name, as Finder does. Also in the \
                     View menu. Archives and remote volumes have no tags, so nothing is drawn there.
                     """
                 )

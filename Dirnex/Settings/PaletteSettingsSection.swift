@@ -16,7 +16,7 @@ struct PaletteSettingsSection: View {
             PaletteColorRow(
                 title: String(
                     localized: "Accent",
-                    comment: "Settings ▸ Panels: colour of the current path crumb and active tab"
+                    comment: "Settings ▸ Panels: color of the current path crumb and active tab"
                 ),
                 hex: $preferences.accentColorHex,
                 systemColor: .controlAccentColor
@@ -24,7 +24,7 @@ struct PaletteSettingsSection: View {
             PaletteColorRow(
                 title: String(
                     localized: "Cursor row",
-                    comment: "Settings ▸ Panels: background colour of the selected file row"
+                    comment: "Settings ▸ Panels: background color of the selected file row"
                 ),
                 hex: $preferences.cursorColorHex,
                 systemColor: .selectedContentBackgroundColor
@@ -32,7 +32,7 @@ struct PaletteSettingsSection: View {
             PaletteColorRow(
                 title: String(
                     localized: "Marked files",
-                    comment: "Settings ▸ Panels: text colour of files selected with Space/Insert"
+                    comment: "Settings ▸ Panels: text color of files selected with Space/Insert"
                 ),
                 hex: $preferences.markColorHex,
                 systemColor: .systemRed
@@ -41,16 +41,16 @@ struct PaletteSettingsSection: View {
             if !preferences.palette.isFollowingSystem {
                 HStack {
                     Spacer()
-                    Button("Use System Colours") { preferences.resetPalette() }
+                    Button("Use System Colors") { preferences.resetPalette() }
                 }
             }
         } header: {
-            Text("Colours")
+            Text("Colors")
         } footer: {
             Text(
                 """
-                Each colour follows macOS until you change it. Text on the cursor row is chosen for \
-                you — black or white, whichever stays readable — so a pale cursor colour can’t hide \
+                Each color follows macOS until you change it. Text on the cursor row is chosen for \
+                you — black or white, whichever stays readable — so a pale cursor color can’t hide \
                 the file names.
                 """
             )
@@ -80,8 +80,8 @@ private struct PaletteColorRow: View {
                 }
                 .buttonStyle(.borderless)
                 .help(String(
-                    localized: "Follow the system colour",
-                    comment: "Tooltip on the button that clears a custom colour in Settings ▸ Panels"
+                    localized: "Follow the system color",
+                    comment: "Tooltip on the button that clears a custom color in Settings ▸ Panels"
                 ))
             }
         }

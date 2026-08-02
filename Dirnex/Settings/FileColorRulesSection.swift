@@ -20,7 +20,7 @@ struct FileColorRulesSection: View {
     var body: some View {
         Section {
             if rules.isEmpty {
-                Text("No colour rules. Files draw in the standard text colour.")
+                Text("No color rules. Files draw in the standard text color.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -44,7 +44,7 @@ struct FileColorRulesSection: View {
             }
             controls
         } header: {
-            Text("File type colours")
+            Text("File type colors")
         } footer: {
             // The glob example is in backticks because **a SwiftUI string literal is parsed as
             // Markdown**, and `*.jpg;*.png` is a valid emphasis pair — so written plainly it renders
@@ -53,9 +53,9 @@ struct FileColorRulesSection: View {
             // asterisks; backslash escapes would work too, but leave `\*` in front of translators.
             Text(
                 """
-                Files are drawn in the colour of the first rule they match, so put the specific \
+                Files are drawn in the color of the first rule they match, so put the specific \
                 rules above the general ones. Separate several patterns with a semicolon — \
-                `*.jpg;*.png`. A marked file keeps its mark colour, and a file’s Git status still \
+                `*.jpg;*.png`. A marked file keeps its mark color, and a file’s Git status still \
                 wins over both.
                 """
             )
@@ -79,8 +79,8 @@ struct FileColorRulesSection: View {
                 Image(systemName: "plus").frame(width: iconSize, height: iconSize)
             }
             .help(String(
-                localized: "Add a colour rule",
-                comment: "Tooltip on the add button of the file-type colours editor in Settings."
+                localized: "Add a color rule",
+                comment: "Tooltip on the add button of the file-type colors editor in Settings."
             ))
 
             Button {
@@ -91,7 +91,7 @@ struct FileColorRulesSection: View {
             .disabled(selectedIndex == nil)
             .help(String(
                 localized: "Remove the selected rule",
-                comment: "Tooltip on the remove button of the file-type colours editor in Settings."
+                comment: "Tooltip on the remove button of the file-type colors editor in Settings."
             ))
 
             Divider().frame(height: 16)
@@ -104,7 +104,7 @@ struct FileColorRulesSection: View {
             .disabled(!canMoveSelected(by: -1))
             .help(String(
                 localized: "Move the rule up, so it is matched sooner",
-                comment: "Tooltip on the move-up button of the file-type colours editor in Settings."
+                comment: "Tooltip on the move-up button of the file-type colors editor in Settings."
             ))
 
             Button {
@@ -115,7 +115,7 @@ struct FileColorRulesSection: View {
             .disabled(!canMoveSelected(by: 1))
             .help(String(
                 localized: "Move the rule down, so it is matched later",
-                comment: "Tooltip on the move-down button of the file-type colours editor in Settings."
+                comment: "Tooltip on the move-down button of the file-type colors editor in Settings."
             ))
 
             Spacer()
@@ -200,7 +200,7 @@ private struct FileColorRuleRow: View {
             TextField(
                 String(
                     localized: "Name",
-                    comment: "Placeholder for a colour rule's optional name in Settings, e.g. “Images”."
+                    comment: "Placeholder for a color rule's optional name in Settings, e.g. “Images”."
                 ),
                 text: nameBinding
             )
@@ -306,17 +306,17 @@ extension FileColorTarget {
         case .any:
             return String(
                 localized: "Files and folders",
-                comment: "Scope of a recursive Get Info change, or of a colour rule: every item."
+                comment: "Scope of a recursive Get Info change, or of a color rule: every item."
             )
         case .filesOnly:
             return String(
                 localized: "Files only",
-                comment: "Scope of a recursive Get Info change, or of a colour rule: not folders."
+                comment: "Scope of a recursive Get Info change, or of a color rule: not folders."
             )
         case .foldersOnly:
             return String(
                 localized: "Folders only",
-                comment: "Scope of a recursive Get Info change, or of a colour rule: not files."
+                comment: "Scope of a recursive Get Info change, or of a color rule: not files."
             )
         }
     }

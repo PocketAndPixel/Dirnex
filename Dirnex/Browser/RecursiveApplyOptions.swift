@@ -94,17 +94,17 @@ extension AttributeApplyScope.Target {
         case .everything:
             return String(
                 localized: "Files and folders",
-                comment: "Scope of a recursive Get Info change, or of a colour rule: every item."
+                comment: "Scope of a recursive Get Info change, or of a color rule: every item."
             )
         case .filesOnly:
             return String(
                 localized: "Files only",
-                comment: "Scope of a recursive Get Info change, or of a colour rule: not folders."
+                comment: "Scope of a recursive Get Info change, or of a color rule: not folders."
             )
         case .foldersOnly:
             return String(
                 localized: "Folders only",
-                comment: "Scope of a recursive Get Info change, or of a colour rule: not files."
+                comment: "Scope of a recursive Get Info change, or of a color rule: not files."
             )
         }
     }

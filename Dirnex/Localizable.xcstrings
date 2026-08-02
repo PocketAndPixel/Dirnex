@@ -13040,8 +13040,8 @@
         }
       }
     },
-    "Cancelled": {
-      "comment": "Queue row status: the operation was cancelled.",
+    "Canceled": {
+      "comment": "Queue row status: the operation was canceled.",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -13052,7 +13052,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cancelled"
+            "value": "Canceled"
           }
         },
         "es": {
@@ -39598,7 +39598,7 @@
         }
       }
     },
-    "Name the tag and choose the colour it will be introduced in.": {
+    "Name the tag and choose the color it will be introduced in.": {
       "comment": "New-tag dialog body.",
       "localizations": {
         "de": {
@@ -39610,7 +39610,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Name the tag and choose the colour it will be introduced in."
+            "value": "Name the tag and choose the color it will be introduced in."
           }
         },
         "es": {
@@ -56996,7 +56996,7 @@
         }
       }
     },
-    "Shows each file's tag colours at the right edge of its name, as Finder does. Also in the View menu. Archives and remote volumes have no tags, so nothing is drawn there.": {
+    "Shows each file's tag colors at the right edge of its name, as Finder does. Also in the View menu. Archives and remote volumes have no tags, so nothing is drawn there.": {
       "comment": "Panels footer: Finder tags.",
       "localizations": {
         "de": {
@@ -57008,7 +57008,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Shows each file's tag colours at the right edge of its name, as Finder does. Also in the View menu. Archives and remote volumes have no tags, so nothing is drawn there."
+            "value": "Shows each file's tag colors at the right edge of its name, as Finder does. Also in the View menu. Archives and remote volumes have no tags, so nothing is drawn there."
           }
         },
         "es": {
@@ -58599,7 +58599,7 @@
       }
     },
     "Stopped after changing %lld items": {
-      "comment": "Status after a cancelled recursive apply; %lld is the count. Plural.",
+      "comment": "Status after a canceled recursive apply; %lld is the count. Plural.",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -61525,8 +61525,8 @@
         }
       }
     },
-    "The connection was cancelled.": {
-      "comment": "SMB mount failure: the user cancelled the mount.",
+    "The connection was canceled.": {
+      "comment": "SMB mount failure: the user canceled the mount.",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -61537,7 +61537,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The connection was cancelled."
+            "value": "The connection was canceled."
           }
         },
         "es": {
@@ -63661,7 +63661,7 @@
         }
       }
     },
-    "The server’s certificate wasn’t trusted, so the connection was cancelled.": {
+    "The server’s certificate wasn’t trusted, so the connection was canceled.": {
       "comment": "FTP connect failure detail: the user declined to trust the certificate.",
       "localizations": {
         "de": {
@@ -63673,7 +63673,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The server’s certificate wasn’t trusted, so the connection was cancelled."
+            "value": "The server’s certificate wasn’t trusted, so the connection was canceled."
           }
         },
         "es": {
@@ -90759,7 +90759,7 @@
       }
     },
     "tag.color.blue.title": {
-      "comment": "New Tag colour name; DirnexCore data (FinderTagColor).",
+      "comment": "New Tag color name; DirnexCore data (FinderTagColor).",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -90848,7 +90848,7 @@
       }
     },
     "tag.color.green.title": {
-      "comment": "New Tag colour name; DirnexCore data (FinderTagColor).",
+      "comment": "New Tag color name; DirnexCore data (FinderTagColor).",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -90937,7 +90937,7 @@
       }
     },
     "tag.color.grey.title": {
-      "comment": "New Tag colour name; DirnexCore data (FinderTagColor).",
+      "comment": "New Tag color name; DirnexCore data (FinderTagColor).",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -91026,7 +91026,7 @@
       }
     },
     "tag.color.none.title": {
-      "comment": "New Tag colour name; DirnexCore data (FinderTagColor).",
+      "comment": "New Tag color name; DirnexCore data (FinderTagColor).",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -91037,7 +91037,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No Colour"
+            "value": "No Color"
           }
         },
         "es": {
@@ -91115,7 +91115,7 @@
       }
     },
     "tag.color.orange.title": {
-      "comment": "New Tag colour name; DirnexCore data (FinderTagColor).",
+      "comment": "New Tag color name; DirnexCore data (FinderTagColor).",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -91204,7 +91204,7 @@
       }
     },
     "tag.color.purple.title": {
-      "comment": "New Tag colour name; DirnexCore data (FinderTagColor).",
+      "comment": "New Tag color name; DirnexCore data (FinderTagColor).",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -91293,7 +91293,7 @@
       }
     },
     "tag.color.red.title": {
-      "comment": "New Tag colour name; DirnexCore data (FinderTagColor).",
+      "comment": "New Tag color name; DirnexCore data (FinderTagColor).",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -91382,7 +91382,7 @@
       }
     },
     "tag.color.yellow.title": {
-      "comment": "New Tag colour name; DirnexCore data (FinderTagColor).",
+      "comment": "New Tag color name; DirnexCore data (FinderTagColor).",
       "localizations": {
         "de": {
           "stringUnit": {
