@@ -143,6 +143,20 @@ extension PanelViewController {
         return []
     }
 
+    /// The targets of an operation that *recurses* — delete, copy, move — with anything that already
+    /// travels inside another target dropped (PLAN.md §M15, the settled F8 semantics: deleting a
+    /// folder already takes its contents, so passing both makes the second delete fail on a path that
+    /// no longer exists; copying a folder likewise reproduces the child at exactly the path the
+    /// separately-marked child would have gone to).
+    ///
+    /// Only reachable in tree mode, where a folder and something inside it can both be marked — a
+    /// flat listing shows one directory, so `TreeSelection.withoutNestedItems` returns a sibling set
+    /// unchanged. The operations that *don't* recurse keep `selectionTargets()`: Copy Path, tagging
+    /// and Compare all mean both items when the user marked both.
+    func recursiveTargets() -> [FileEntry] {
+        TreeSelection.withoutNestedItems(selectionTargets())
+    }
+
     private func deleteSelection(permanent: Bool) {
         // Inside a top-level archive, F8/Shift+F8 rewrite the archive to drop the members (there's
         // no Trash to move them to) — a distinct, non-undoable path handled by `+ArchiveWrite`. A
@@ -157,7 +171,7 @@ extension PanelViewController {
         // permanent delete rather than silently failing on a missing Trash.
         let strategy = backend.capabilities(for: panel.path).deleteStrategy
         guard strategy != .unsupported else { return }
-        let targets = selectionTargets()
+        let targets = recursiveTargets()
         guard !targets.isEmpty else { return }
         let goesToTrash = !permanent && strategy == .trash
         if !goesToTrash {
@@ -361,7 +375,7 @@ extension PanelViewController {
             guard token == loadToken, panel.path == path, activeTabIndex == tabIndex else { return }
             reconcileCursorFromTable()
             installSortedModel(model)
-            if let target, let index = panel.model.index(ofID: target) {
+            if let target, let index = panel.displayedIndex(ofID: target) {
                 panel.moveCursor(to: index)
                 cursorOnParentRow = false
             }

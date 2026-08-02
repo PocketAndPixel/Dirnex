@@ -4,14 +4,15 @@ import DirnexCore
 /// One row's ncdu-style bar, plus its share of the folder (PLAN.md §M6 "toggle panel to ncdu-style
 /// bars"). Lives in the contextual bar column that `PanelViewController+SizeViz` installs.
 ///
-/// **Bar *and* percentage, because measurement says the bar alone cannot carry it.** ncdu's manual
-/// splits the two — *"Percentage is relative to the size of the current directory, graph is relative
-/// to the largest item"* — and pass 9 built both denominators into `SizeBar` for exactly that. Pass
-/// 10 measured why it matters: the dynamic range in a real `~` is ~10⁶, so **86 of its 93 rows** land
-/// under half a point of bar at any width a file pane can spare. They are floored to a visible stub
-/// (`SizeBar.inkWidth`), which honestly reads "this is noise" — and the number beside it is what
-/// distinguishes 0.9 % from 0.0001 % once the bar has given up. Drawing one without the other would
-/// leave the whole tail of every big folder unreadable.
+/// **Bar and percentage are two views of the same `SizeBar`, and which of them draw is the user's
+/// to pick** (`displayMode`, from `AppPreferences.sizeVizDisplayMode`). ncdu's manual splits the two
+/// — *"Percentage is relative to the size of the current directory, graph is relative to the largest
+/// item"* — and pass 9 built both denominators into `SizeBar` for exactly that. Pass 10 measured why
+/// the pairing is worth offering: the dynamic range in a real `~` is ~10⁶, so **86 of its 93 rows**
+/// land under half a point of bar at any width a file pane can spare. They are floored to a visible
+/// stub (`SizeBar.inkWidth`), which honestly reads "this is noise" — and the number beside it is what
+/// distinguishes 0.9 % from 0.0001 % once the bar has given up. So `.both` is the most legible, and
+/// the default (`.bar`) is the quietest; the setting lets the user trade one for the other.
 final class SizeBarView: NSView {
     /// The row's bar, or `nil` while its total is still unknown — a directory the scan has not
     /// reached yet. The distinction is the core's (`SizeVisualization.bar(for:)` answers `nil`
@@ -31,6 +32,27 @@ final class SizeBarView: NSView {
     var isEmphasized = false {
         didSet {
             guard isEmphasized != oldValue else { return }
+            needsDisplay = true
+        }
+    }
+
+    /// What draws on the cursor row — the bar, its track and the percentage alike (PLAN.md §M15
+    /// Slice 2). The one fill that has to survive whatever colour is behind it, so it is *derived*
+    /// from the cursor colour rather than chosen: `PanelPalette.cursorForeground`, which hands back
+    /// `.alternateSelectedControlTextColor` verbatim while the user is following the system.
+    var emphasizedInk: NSColor = .alternateSelectedControlTextColor {
+        didSet {
+            guard emphasizedInk != oldValue else { return }
+            needsDisplay = true
+        }
+    }
+
+    /// Which halves of the row to draw — the bar, the percentage, or both (`AppPreferences
+    /// .sizeVizDisplayMode`). Pushed down by `SizeBarCellView` on each render pass. Defaults to
+    /// `.both` so the view in isolation draws everything; the pane always supplies the real value.
+    var displayMode: SizeVizDisplayMode = .both {
+        didSet {
+            guard displayMode != oldValue else { return }
             needsDisplay = true
         }
     }
@@ -62,15 +84,22 @@ final class SizeBarView: NSView {
         // found to be nothing, which is the one thing we do not know about it yet.
         guard let bar else { return }
 
-        let trackRect = NSRect(
-            x: bounds.minX,
-            y: (bounds.height - barHeight) / 2,
-            width: max(0, bounds.width - Self.labelWidth),
-            height: barHeight
-        )
-        drawTrack(in: trackRect)
-        drawFill(bar, in: trackRect)
-        drawShare(bar)
+        if displayMode.showsBar {
+            // Reserve room for the number only when it is actually drawn; the bar alone gets the
+            // whole column.
+            let reserved = displayMode.showsPercentage ? Self.labelWidth : 0
+            let trackRect = NSRect(
+                x: bounds.minX,
+                y: (bounds.height - barHeight) / 2,
+                width: max(0, bounds.width - reserved),
+                height: barHeight
+            )
+            drawTrack(in: trackRect)
+            drawFill(bar, in: trackRect)
+        }
+        if displayMode.showsPercentage {
+            drawShare(bar)
+        }
     }
 
     /// The empty track behind the bar — what makes a floored stub read as "1 % of the biggest
@@ -78,8 +107,8 @@ final class SizeBarView: NSView {
     ///
     /// **The track must read as a recess, never as ink, and the cursor row is where that is hard to
     /// get right.** Off the cursor the two are different colours and the distinction is free. On it,
-    /// both are `alternateSelectedControlTextColor` — the only fill that survives the emphasized blue
-    /// — separated by alpha alone, and the track has the whole column's width to shout with where the
+    /// both are `emphasizedInk` — the only fill that survives the cursor's own background —
+    /// separated by alpha alone, and the track has the whole column's width to shout with where the
     /// ink may have a point and a half. At 0.25 an *empty* track therefore read as a *full* bar:
     /// caught live on a wholly-ignored `build/` showing "Zero KB · 0.0 %" beside what looked like the
     /// heaviest row in the folder. `.gitignore`-aware sizing is what made that common — whole folders
@@ -87,7 +116,7 @@ final class SizeBarView: NSView {
     /// cursor happened to sit on.
     private func drawTrack(in rect: NSRect) {
         guard rect.width > 0 else { return }
-        (isEmphasized ? NSColor.alternateSelectedControlTextColor.withAlphaComponent(0.12)
+        (isEmphasized ? emphasizedInk.withAlphaComponent(0.12)
             : NSColor.quaternaryLabelColor).setFill()
         NSBezierPath(roundedRect: rect, xRadius: 2, yRadius: 2).fill()
     }
@@ -110,11 +139,11 @@ final class SizeBarView: NSView {
         ).fill()
     }
 
-    /// The bar's fill. On the cursor row the emphasized background is already blue, so a blue bar
-    /// would vanish into it — the same contrast problem `FileCellView.applyStyle` solves for text,
-    /// solved the same way.
+    /// The bar's fill. On the cursor row the background is a strong colour already, so an ordinary
+    /// grey bar would vanish into it — the same contrast problem `FileCellView.applyStyle` solves
+    /// for text, solved the same way and from the same derived colour.
     private var barColor: NSColor {
-        isEmphasized ? .alternateSelectedControlTextColor : .secondaryLabelColor
+        isEmphasized ? emphasizedInk : .secondaryLabelColor
     }
 
     /// ncdu's percentage, right-aligned past the track. Drawn rather than hosted in an `NSTextField`
@@ -123,7 +152,7 @@ final class SizeBarView: NSView {
     private func drawShare(_ bar: SizeBar) {
         let text = String(format: "%.1f%%", bar.share * 100) as NSString
         let font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
-        let color: NSColor = isEmphasized ? .alternateSelectedControlTextColor : .secondaryLabelColor
+        let color: NSColor = isEmphasized ? emphasizedInk : .secondaryLabelColor
         let size = text.size(withAttributes: [.font: font, .foregroundColor: color])
         text.draw(
             at: NSPoint(x: bounds.maxX - size.width, y: (bounds.height - size.height) / 2),

@@ -20,18 +20,36 @@ struct PersistedTab: Codable {
     /// Column widths/order, in display order. Optional so tab state written before this
     /// field existed still decodes (a missing key → `nil` → default columns).
     var columns: [ColumnLayout]?
-    /// The leaf name of the file the cursor was on, so a relaunched tab re-anchors on the *same
-    /// entry by identity* rather than a row index — matching how `Panel` keeps the cursor across a
-    /// live refresh (row indices are meaningless once sort/contents drift). `nil` when the cursor
-    /// sat on `..` or the directory was empty. Optional, like every field below, so state written
-    /// before these existed still decodes (a missing key → `nil`).
-    var cursorName: String?
+    /// Which shape this tab drew its listing in (PLAN.md §M15), as `PanelViewMode.rawValue`.
+    ///
+    /// The raw string rather than the enum, matching `sortKey` right above it and for a reason
+    /// worth stating: a `Codable` enum *throws* on an unknown case, and because every field here is
+    /// decoded as one `PersistedTab`, a mode written by a newer build would fail the whole tab's
+    /// decode and drop it out of the restored session. Read back through
+    /// `panelViewMode`, which falls back to `.list`.
+    var viewMode: String?
+    /// The tree folders that were expanded, as paths relative to this tab's root (PLAN.md §M15 Slice
+    /// 4) — so a relaunched tree comes back opened to where the user left it. Optional and omitted
+    /// when empty (list mode, or an all-collapsed tree), so the common case adds nothing to the JSON.
+    var expandedPaths: [String]?
+    /// The entry the cursor was on, as a path **relative to this tab's root** — so a relaunched tab
+    /// re-anchors on the *same entry by identity* rather than a row index, matching how `Panel` keeps
+    /// the cursor across a live refresh (row indices are meaningless once sort/contents drift). `nil`
+    /// when the cursor sat on `..` or the directory was empty. Optional, like every field below, so
+    /// state written before these existed still decodes (a missing key → `nil`).
+    ///
+    /// Relative rather than a bare leaf name because a **tree** row can sit inside an expanded
+    /// folder (`jMeter/results.zip`), which a leaf name cannot address — the same anchoring, and
+    /// the same spelling, `expandedPaths` right above uses. A flat list only ever writes a single
+    /// component, which is exactly what a leaf name was.
+    var cursorPath: String?
     /// The cursor was parked on the synthetic `..` row (UI-only state; see `PanelTab`).
     var cursorOnParent: Bool?
-    /// The leaf names of the marked entries, re-marked on restore by matching against the fresh
-    /// listing — names that have since vanished are dropped, mirroring how a live refresh prunes
-    /// marks. `nil` (not `[]`) when nothing was marked, so the common case stays out of the JSON.
-    var markedNames: [String]?
+    /// The marked entries, as root-relative paths like `cursorPath` (and for the same tree reason),
+    /// re-marked on restore by matching against the fresh listing — entries that have since vanished
+    /// are dropped, mirroring how a live refresh prunes marks. `nil` (not `[]`) when nothing was
+    /// marked, so the common case stays out of the JSON.
+    var markedPaths: [String]?
 }
 
 struct PersistedPane: Codable {
@@ -69,18 +87,22 @@ extension PersistedTab {
         path: VFSPath,
         sort: FileSort,
         columns: [ColumnLayout]?,
-        cursorName: String? = nil,
+        viewMode: PanelViewMode = .list,
+        expandedPaths: [String]? = nil,
+        cursorPath: String? = nil,
         cursorOnParent: Bool = false,
-        markedNames: [String]? = nil
+        markedPaths: [String]? = nil
     ) {
         backend = path.backend.rawValue
         self.path = path.path
         sortKey = sort.key.rawValue
         sortAscending = sort.ascending
         self.columns = columns
-        self.cursorName = cursorName
+        self.viewMode = viewMode.rawValue
+        self.expandedPaths = expandedPaths
+        self.cursorPath = cursorPath
         self.cursorOnParent = cursorOnParent
-        self.markedNames = markedNames
+        self.markedPaths = markedPaths
     }
 
     var vfsPath: VFSPath {
@@ -89,5 +111,12 @@ extension PersistedTab {
 
     var fileSort: FileSort {
         FileSort(key: FileSort.Key(rawValue: sortKey) ?? .name, ascending: sortAscending)
+    }
+
+    /// The stored shape, or `.list` for state written before the field existed — and for a value a
+    /// newer build wrote that this one has never heard of. Tolerant on purpose: a tab is worth
+    /// keeping in the wrong shape, never worth dropping.
+    var panelViewMode: PanelViewMode {
+        PanelViewMode(rawValue: viewMode ?? "") ?? .list
     }
 }

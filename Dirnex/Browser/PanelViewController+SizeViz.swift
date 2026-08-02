@@ -42,6 +42,10 @@ extension PanelViewController {
     /// all. The second half is not the toggle being second-guessed — a `.search` results pane is a
     /// synthetic listing whose rows live in a dozen different folders, so "share of this directory"
     /// has no referent, and an archive's or SFTP's tree costs a network round trip per level.
+    ///
+    /// A tree is *not* excluded (it was, before per-level scoping): `SizeVisualization(tree:)` groups
+    /// each row against its own parent directory, so an expanded folder's children are measured
+    /// against each other and the shares stay meaningful across levels (PLAN.md §M15).
     var areSizeBarsVisible: Bool {
         isSizeVisualizationEnabled && panel.path.backend == .local && !isResultsListing
     }
@@ -122,6 +126,28 @@ extension PanelViewController {
         )
     }
 
+    /// Subscribe to `sizeVizDisplayModeDidChange` so a pane showing bars repaints the moment the
+    /// Settings picker moves. App-wide preference, pane merely follows — the twin of the row-density
+    /// observer. Torn down by the blanket `removeObserver(self)` in `deinit`.
+    func observeSizeVizDisplayModePreference() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(sizeVizDisplayModePreferenceChanged),
+            name: AppPreferences.sizeVizDisplayModeDidChange,
+            object: nil
+        )
+    }
+
+    /// Repaint on a display-mode change. Only the drawing changed — the column width and the
+    /// projection are untouched — so `renderRefresh` (which re-fetches every cell, picking up the
+    /// new mode) is all that is owed, and only where bars are actually on screen. A rename in
+    /// progress owns the table; the end-editing handler replays the skipped refresh.
+    @objc private func sizeVizDisplayModePreferenceChanged() {
+        guard areSizeBarsVisible else { return }
+        if deferRefreshIfRenaming() { return }
+        renderRefresh()
+    }
+
     /// Totals landed for a directory this pane may be showing. Ignore every other one — with two
     /// panes and several tabs, most notifications are somebody else's.
     ///
@@ -175,7 +201,9 @@ extension PanelViewController {
             as? DirectorySizeScope,
             scope == directorySizeRule.scope
         else { return false }
-        let fresh = totals.filter { panel.model.directorySizes[$0.key] != $0.value }
+        // `panel.directorySizes` reads the drawing surface (the tree's cross-level map or the model's)
+        // so a total already held on any level isn't re-applied and doesn't re-sort.
+        let fresh = totals.filter { panel.directorySizes[$0.key] != $0.value }
         guard !fresh.isEmpty else { return false }
         reconcileCursorFromTable()
         panel.setDirectorySizes(fresh)
@@ -217,12 +245,14 @@ extension PanelViewController {
     /// while the toggle must render regardless (see `updateSizeVisualization`).
     @discardableResult
     private func seedFromCache() -> Bool {
+        // `displayedEntries` spans every tree level (or the one directory in list mode), so a revisit
+        // to a tree seeds bars for expanded children from the cache too, not just the root's rows.
         let known = DirectorySizeProvider.shared.cachedSizes(
-            for: panel.model.visibleEntries.filter(\.isDirectoryLike).map(\.path),
+            for: panel.displayedEntries.filter(\.isDirectoryLike).map(\.path),
             rule: directorySizeRule
         )
         // Only totals we don't already carry — an unchanged seed must not re-sort the listing.
-        let fresh = known.filter { panel.model.directorySizes[$0.key] != $0.value }
+        let fresh = known.filter { panel.directorySizes[$0.key] != $0.value }
         guard !fresh.isEmpty else { return false }
         reconcileCursorFromTable()
         panel.setDirectorySizes(fresh)
@@ -301,13 +331,21 @@ extension PanelViewController {
             return
         }
         // The rule's own predicate, so an ignored folder is left out of the chart rather than shown
-        // as an empty one — see `SizeVisualization.init` on why zeroing it lies.
-        sizeVisualization = SizeVisualization(
-            model: panel.model,
-            isExcluded: directorySizeRule.exclude
-        )
+        // as an empty one — see `SizeVisualization.init` on why zeroing it lies. A tree builds from
+        // its own cross-level projection (each row scaled against its parent); a flat list from the
+        // model. Both spell the same thing — a bar per row, siblings compared — just over one level
+        // or several.
+        if let tree = panel.tree {
+            sizeVisualization = SizeVisualization(tree: tree, isExcluded: directorySizeRule.exclude)
+        } else {
+            sizeVisualization = SizeVisualization(
+                model: panel.model,
+                isExcluded: directorySizeRule.exclude
+            )
+        }
         // The visible set just changed, so what is pending changed with it — revealing dotfiles adds
-        // 68 directories to `~` (measured), and a filter can empty the queue entirely.
+        // 68 directories to `~` (measured), expanding a tree folder adds its children, and a filter
+        // can empty the queue entirely.
         requestScan()
     }
 

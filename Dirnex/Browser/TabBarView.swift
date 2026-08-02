@@ -31,6 +31,13 @@ final class TabBarView: NSView {
     private var chips: [TabChipView] = []
     private(set) var activeIndex = 0
 
+    /// Re-apply the user's accent to every chip after it changes (PLAN.md §M15 Slice 2). Unlike
+    /// `isActivePane`, nothing about a chip's own state has moved — only the colour it resolves —
+    /// so this restyles them all rather than pushing a value down.
+    func restyleForPalette() {
+        for chip in chips { chip.restyleForPalette() }
+    }
+
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         configure()
@@ -211,12 +218,21 @@ final class TabChipView: NSView {
         fatalError("init(coder:) has not been implemented")
     }
 
+    /// Re-apply the accent after the user changes it (PLAN.md §M15 Slice 2). Internal so
+    /// `TabBarView` can walk its chips from the pane's palette observer.
+    func restyleForPalette() {
+        applyStyle()
+    }
+
     private func applyStyle() {
         let background: NSColor
         let text: NSColor
+        // Untouched, these are `.controlAccentColor` and `.alternateSelectedControlTextColor`
+        // verbatim, so the shipped chip is unchanged (PLAN.md §M15 Slice 2).
+        let palette = AppPreferences.shared.palette
         if isActive, isPaneActive {
-            background = .controlAccentColor
-            text = .alternateSelectedControlTextColor
+            background = palette.resolvedAccent
+            text = palette.accentForeground
         } else if isActive {
             background = .unemphasizedSelectedContentBackgroundColor
             text = .labelColor

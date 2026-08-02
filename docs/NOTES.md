@@ -363,6 +363,44 @@ at build time.
   drawn in the same colour at 0.25 alpha made an *empty* bar read as the heaviest row on screen,
   because the track owns the full column width where the ink may own a point. No test catches
   this; it was caught in a screenshot.
+- **"Maximum contrast" is not the rule for text on a colour — the system does not follow it, and
+  copying the system is what a user is comparing against.** Measured in both appearances before
+  designing the M15 palette: `.controlAccentColor` is `#007AFF`, relative luminance **0.2114**,
+  where white scores **4.02:1** and black **5.23:1**. So a WCAG-maximum rule picks *black*, while
+  macOS — and Dirnex's own active tab chip, which puts `.alternateSelectedControlTextColor` straight
+  onto the accent — draws white. A user who picked a blue barely distinguishable from the one they
+  already had would have watched the app's most familiar surface flip to black text. The rule that
+  works is **white unless it drops below 3:1, black otherwise**: 3:1 is the floor the system itself
+  clears with room to spare, and whenever it *is* black's turn the background is above L=0.3, where
+  black scores at least 7:1 — so it never trades legibility for familiarity, it only breaks the tie
+  in the band where both choices are legible. Note the two are measured against *different* colours:
+  AppKit's emphasized selection is `.selectedContentBackgroundColor` (`#0064E1`, L=0.1455), a darker
+  relative of the accent and not the accent itself, and there white wins under either rule.
+  - **The corollary is that the Follow-System path must fall back to the system colour, not derive
+    one.** "An untouched install renders byte-identically" is only a claim you can make if nothing
+    is recomputed for it, and the measurement above is exactly why: the derivation and the system
+    disagree on the one colour that matters most.
+  - **A derived foreground is appearance-independent, and that is the only way to claim "legible in
+    both appearances".** Only one appearance is on screen at a time, so no screenshot can check the
+    other; a luminance test over the user's own sRGB colour resolves identically under `.aqua` and
+    `.darkAqua`, which is a claim a test can pin.
+- **`NSTableView` makes a plain `NSTableRowView` when the delegate declines — in every one of its
+  five styles.** Probed rather than assumed, and it inverted a design: a row-view subclass that
+  defers to `super` is byte-for-byte the stock drawing, so it can be installed **unconditionally**
+  instead of switched in only when a custom colour is set. Switching classes as a preference changes
+  leaves a reuse pool of the other kind to reason about; deferring leaves nothing to get wrong.
+  `interiorBackgroundStyle` is derived from `isEmphasized` (probed: `true` → `.emphasized`, `false`
+  → `.normal`), so a custom `drawSelection(in:)` and the cell's own `backgroundStyle` are driven by
+  the *same* flag and cannot disagree — which is what lets a cell pick its text colour without the
+  row view telling it anything.
+  - **Only the emphasized half is worth owning.** AppKit's *unemphasized* selection is a pure grey
+    in both appearances — `#DCDCDC` light, `#464646` dark, zero saturation in each — so it discards
+    the accent's hue on purpose, and in dark mode it is **darker** than the emphasized fill
+    (L=0.0612 against 0.1175) rather than fainter. There is no relationship to re-derive: hand the
+    inactive pane back to `super` and both panes keep the focus signal they already had.
+  - A `swift`-script probe cannot make its window key, so `isEmphasized` reads `false` throughout
+    and the two states cannot be told apart that way. Probe the *derivation* (`isEmphasized` set by
+    hand on a detached row view) and leave the focus behaviour to the app that already ships it.
 - **`installSortedModel` swaps the model; `reloadEverything` is what puts it on screen.** A refresh
   path that installs and returns leaves the pane drawing the rows it already had — no error, no log
   line, just a model and a screen that disagree. Found live when an Empty Trash left the pane listing
@@ -401,6 +439,47 @@ at build time.
   the folder where the truth is a claim about the question. Drop such rows from the projection
   entirely, including from any pending-work set, or a row with no total is pending forever and
   gets re-queued on every render.
+- **A second row source is a second *index space*, and every site that maps a row to an entry has to
+  be found by hand — the compiler sees `Int` on both sides.** The M15 tree renders more rows than the
+  directory it is rooted at has entries, so `panel.model[row]` — which had been right for the whole
+  life of the app — is an out-of-range crash the first time a user clicks the row *below* the last
+  root-level one. Six sites had it (the click anchor, the Cmd/Shift range anchor, drag, drop, the
+  context menu's mark check) and each is a plain `Array` subscript on a value that arrived as a table
+  row. Three things worth carrying:
+  - **It hides behind small test data and shallow gestures.** Every earlier verification pass —
+    expand, collapse, arrow keys, disclosure clicks, marking across three levels — went through the
+    *tree's* accessors and passed. Only a plain mouse click reaches the anchor code, and only one
+    landing past the root's own count crashes, so a two-entry root with one expanded folder is
+    already enough to be safe by accident. Click the **last** row of a deep tree.
+  - **The tree-aware inverse already existed and was `private`.** `Panel.displayedIndex(ofID:)` was
+    written for the cursor restore inside the value type, while every *app* caller reached for
+    `panel.model.index(ofID:)` — so the fork was not a missing capability, it was an access level.
+    When a value type grows a second row source, its row⇄entry mapping is API in both directions;
+    leaving one half private guarantees callers re-derive the wrong one.
+  - The general shape: a projection is affordable precisely because everything downstream keeps *one*
+    index space (HISTORY.md §M8), and that only holds if nothing reads past the projection to the
+    thing it projects. `command grep -n 'model\['` over the app is the whole audit, and it is worth
+    running the day any new row source lands rather than waiting for a click to find it.
+- **A *persisted* anchor is that same trap one launch later, and it has two independent halves —
+  fixing either alone changes nothing.** `PersistedTab` stored the cursor and marks by **leaf name**,
+  which is correct for a flat list and cannot address a tree row inside an expanded folder at all; so
+  the spelling had to become root-relative, the shape `expandedPaths` was already using. The second
+  half is *timing*: a restored tree lists each expanded folder lazily, so at the moment
+  `applyPendingRestore` ran after the root's first listing there were no child rows to match against
+  — the anchor was correct and the row did not exist yet. The re-apply therefore runs again on every
+  restored listing that lands, drops each anchor **as it resolves** (a later pass must not yank a
+  cursor the user has since moved), and drops the remainder when the last listing reports in — on
+  every exit path, or a folder that fails to list leaves the window open forever. It fails in the
+  quiet direction: the cursor is simply at the top, which reads as "restore doesn't cover the cursor"
+  rather than as a bug.
+  - **A live refresh mirrors the *table's* selection back into the model
+    (`reconcileCursorFromTable`), which is what makes the restored cursor checkable with no
+    screenshot and no screen-recording grant.** Seed the persisted state, launch from a shell, poke a
+    watched directory (`touch` a dot-file inside it) so an FSEvents refresh runs, quit, and read the
+    state back: if the *table* were sitting on row 0 while only the model held the nested row, that
+    refresh would overwrite the model and the persisted cursor would come back as a root-level entry.
+    It survived, so both agree. Worth reaching for whenever the thing to verify is "what is
+    selected" — `screencapture` needs a permission the shell tool does not have.
 
 ## Localization
 
@@ -417,6 +496,32 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   screenshot; eight of these were hiding in the Settings panes and only a Russian run found them.
   Merge into one literal, using `\` line continuations inside a `"""` literal to keep it readable —
   the *literal* has to be single, the source line does not.
+- **The same overload pair has a second, opposite trap: a literal that *does* bind to
+  `LocalizedStringKey` is parsed as Markdown, so a glob example loses its wildcards.** The M15 colour
+  rules teach their syntax with `*.jpg;*.png`, which is a valid **emphasis pair** — `*…*` — so the
+  rule editor's placeholder and its footer both rendered as an italic ".jpg;" followed by ".png",
+  in the two strings whose entire job is to show what a pattern looks like. Note the symmetry with
+  the note above, because it is what makes both easy to miss: there, a `String` was wanted as a key
+  and silently went verbatim; here, a literal was wanted verbatim and silently went through the
+  Markdown parser. It compiles, it lints, and unlike the localization case an **English screenshot
+  shows the bug** — but only if you read the sample rather than the sentence, and the eye takes
+  ".jpg" for a pattern quite happily. Two fixes, and which one to use depends on whether the string
+  is prose: for a *sample* (a placeholder, a code example) hold it in a `String` constant so the call
+  resolves to the verbatim overload — a glob is syntax, not something to translate; for *prose that
+  contains* a sample, wrap the sample in backticks, which renders it as code and keeps the
+  asterisks. Backslash escapes (`\*`) work too and are worse: they reach the translator, who then has
+  to know not to touch them.
+  - **What it takes is a *pair*, which is why one example is safe and two are not.** Probed through
+    `AttributedString(markdown:)`, the parser SwiftUI uses: `*.jpg;*.png` loses both asterisks, while
+    a lone `path/to/*.swift`, `one * two` and `50% * 2` all come back **unchanged**. So a placeholder
+    showing a single pattern renders perfectly, and the bug arrives the day someone adds a second one
+    to be helpful — with no edit to the code that displays it. Backticks were confirmed on the same
+    run to preserve the characters exactly.
+  - **Underscores are the one to *not* worry about, and guessing gets it backwards.** CommonMark
+    ignores intraword `_`, so `my_file_name.txt`, `a_b_c` and `report_2026_final.pdf` are all
+    untouched — but `_leading_underscore_` loses its outer pair. Inline `#` is safe too (it is only a
+    heading at the start of a block). The one beyond `*` that is worth a look is **`[`**:
+    `[a](b)` renders as `a`, so any string carrying bracket-paren text silently loses it.
 - **The menu bar's titles were a second copy of the category names.** `MenuSpec(title: "File")`
   duplicated `CommandCategory.file.title`, so translating the registry left the whole menu bar in
   English while every menu's *contents* switched — visible only by launching. `MenuSpec` now carries
@@ -1570,3 +1675,28 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   passed: the two strings genuinely differ, just not in any pixel the user sees. Front-load the
   varying part (`someone@gmail.com — Google Drive`) and assert on a *prefix* rather than on
   inequality, so the test fails for the same reason the screenshot did. Only a screenshot caught it.
+- **A "can this apply here" predicate lives in *two* places — the behaviour and the menu that gates
+  it — and they drift silently.** Bringing size bars into the tree meant widening `areSizeBarsVisible`
+  (drop `!panel.isTree`), and every core test, the app suite, both linters and the build passed with
+  the bars fully wired — but the View ▸ Size Visualization menu item stayed **greyed out in a tree**,
+  because `validateToggleItem` carried its own hand-copied twin of the same predicate
+  (`… && !panel.isTree`). Nothing could catch it but launching: a disabled menu item swallows its own
+  key equivalent too, so ⌃B was dead as well, and the feature was unreachable while every automated
+  signal was green. When a mode gains a capability, grep the *selector's* validator for the predicate
+  that used to forbid it — the enable/disable gate is a second copy of `areSizeBarsVisible` by
+  construction, and the menu is the one surface no headless test drives. Same family as the "a display
+  string that exists twice will be localized once" and "name the new backend at every site that lists
+  the old one" traps: one rule, two spellings, and the compiler checks neither.
+- **Tree size bars are one directory per *level*, so the sizes have to live where the rows do.** The
+  flat `SizeVisualization(model:)` reads one directory's siblings; a tree's rows span many, and its
+  totals cannot sit in `DirectoryModel.directorySizes` — that map is pruned to the *root* listing on
+  every refresh (`updateListing`), so a child sized at depth 2 vanished on the next FSEvents ping.
+  `TreeProjection` grows its own cross-level `directorySizes` (unique paths, one flat map, handed to
+  each level's `DirectoryModel` which prunes it to that level), and `Panel.computedSize`/`directorySizes`/
+  the setters dispatch on `tree != nil` so the size *column* and the *bar* read one answer. Entering
+  the tree seeds from the model (`freshTree`), leaving it merges the root level back
+  (`exitTreeMode`) — the deep totals are dropped there on purpose, since the flat list has no row to
+  hang them on and a stale one would resurface. The visible win, and the thing to check in a
+  screenshot: an expanded folder's largest child fills its bar even when a root-level sibling is
+  4× bigger — proof the denominator is the *parent*, not the projection. A whole-tree denominator
+  cannot express it (a child's bytes are a subset of its parent's).

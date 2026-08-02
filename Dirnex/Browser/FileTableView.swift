@@ -36,6 +36,14 @@ protocol FileTableViewInput: AnyObject {
     /// table, and they never reach `..`.
     func fileTable(_ tableView: FileTableView, stepQuickViewCursorBy delta: Int) -> Bool
 
+    /// → in tree mode (PLAN.md §M15 Slice 4) — expand the closed folder under the cursor, or step
+    /// into an open one. Returns `false` in list mode, so the arrow falls through to the table
+    /// unchanged there.
+    func fileTableExpandOrStepIn(_ tableView: FileTableView) -> Bool
+    /// ← in tree mode — collapse the open folder under the cursor, or step out to its parent's row.
+    /// Returns `false` in list mode.
+    func fileTableCollapseOrStepOut(_ tableView: FileTableView) -> Bool
+
     /// The lowest row the cursor may land on. `..` is off limits while a full-size Quick View
     /// covers the list — it is not a file to preview, so Home and Page Up stop at the first real
     /// row instead of parking on it and showing an empty surface.
@@ -118,6 +126,20 @@ final class FileTableView: NSTableView {
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         let point = convert(event.locationInWindow, from: nil)
         let row = row(at: point)
+
+        // A plain click on a folder's disclosure triangle toggles it here, at press time, and stops.
+        // The triangle itself is transparent to the mouse (`DisclosureTriangleView.hitTest` → nil),
+        // so the click lands on the table rather than on a button that would run its own tracking
+        // loop — where a trackpad's small drift off the narrow glyph released outside it and the
+        // toggle never fired. Deciding on mouse-down from the pointer's geometry removes tracking,
+        // drift and the drag that `super.mouseDown` would otherwise start, and leaves the cursor put
+        // (Finder's behaviour — clicking a triangle never moves the selection).
+        if flags.isEmpty, row >= 0,
+           let cell = disclosureCell(atRow: row, windowPoint: event.locationInWindow) {
+            cell.onDisclosureToggle?()
+            return
+        }
+
         if inputDelegate?.fileTable(self, didClickRow: row, modifiers: flags) == true {
             return
         }
@@ -131,6 +153,19 @@ final class FileTableView: NSTableView {
             return
         }
         super.mouseDown(with: event)
+    }
+
+    /// The name cell on `row` whose disclosure triangle contains `windowPoint`, or `nil`. It reaches
+    /// the cell through the row view's own subviews rather than `view(atColumn:row:)`, which was
+    /// measured to return `nil` for a freshly clicked row. Only the name cell carries a triangle, so
+    /// the other cells simply answer `false`.
+    private func disclosureCell(atRow row: Int, windowPoint: NSPoint) -> FileCellView? {
+        guard let rowView = rowView(atRow: row, makeIfNecessary: false) else { return nil }
+        for case let cell as FileCellView in rowView.subviews
+            where cell.isNameCell && cell.disclosureHitTarget(containsWindowPoint: windowPoint) {
+            return cell
+        }
+        return nil
     }
 
     /// Right-click / Ctrl-click — hand the controller the row under the pointer and show what it
@@ -239,12 +274,9 @@ final class FileTableView: NSTableView {
         case 121: // Page Down
             moveCursor(by: visibleRowCount())
             return true
-        // Any arrow — previous/next *file* while a full-size Quick View covers the list. ↑/↓ are
-        // included because with the list hidden they mean exactly what ←/→ do, and left to
-        // `NSTableView` they walk onto the `..` row and preview nothing.
+        // Any arrow — Quick View stepping, or tree expansion (PLAN.md §M11, §M15). See `handleArrow`.
         case 123, 124, 125, 126:
-            let backwards = event.keyCode == 123 || event.keyCode == 126
-            return inputDelegate?.fileTable(self, stepQuickViewCursorBy: backwards ? -1 : 1) == true
+            return handleArrow(event)
         case 69: // Keypad + — select by wildcard (TC's gray-plus)
             inputDelegate?.fileTableSelectByPattern(self)
             return true
@@ -267,6 +299,25 @@ final class FileTableView: NSTableView {
         }
 
         return forwardTypedCharacter(event)
+    }
+
+    /// Handle an arrow key. First offered to a full-size Quick View, which steps to the previous/next
+    /// *file* while it covers the list (PLAN.md §M11) — ↑/↓ mean the same as ←/→ there, and left to
+    /// `NSTableView` would walk onto the `..` row and preview nothing. Otherwise a bare ←/→ drives
+    /// tree expansion (PLAN.md §M15 Slice 4), a no-op that falls through to the table in list mode.
+    /// ⇧-arrow and ↑/↓ are left to `super`: the first must keep whatever the table does with it, the
+    /// latter move the cursor by row. Returns `true` when consumed.
+    private func handleArrow(_ event: NSEvent) -> Bool {
+        let backwards = event.keyCode == 123 || event.keyCode == 126
+        if inputDelegate?.fileTable(self, stepQuickViewCursorBy: backwards ? -1 : 1) == true {
+            return true
+        }
+        guard !event.modifierFlags.contains(.shift) else { return false }
+        switch event.keyCode {
+        case 123: return inputDelegate?.fileTableCollapseOrStepOut(self) == true
+        case 124: return inputDelegate?.fileTableExpandOrStepIn(self) == true
+        default: return false
+        }
     }
 
     /// Route a single printable character into the type-to-filter, excluding control

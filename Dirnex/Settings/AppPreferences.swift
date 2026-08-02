@@ -21,9 +21,9 @@ final class AppPreferences: ObservableObject {
         didSet { defaults.set(restoreSession, forKey: Keys.restoreSession) }
     }
 
-    /// Panels ▸ show hidden (dot) files (default off — Finder's behavior). This is a single
+    /// View ▸ show hidden (dot) files (default off — Finder's behavior). This is a single
     /// app-wide toggle, not a per-tab one: every pane and tab reflects it. Changing it posts
-    /// `showHiddenDidChange` so the open panes re-filter live, and the Settings toggle, the
+    /// `showHiddenDidChange` so the open panes re-filter live, and the View menu item, the
     /// header button, and ⇧⌘. all drive this one value.
     @Published var showHidden: Bool {
         didSet {
@@ -39,11 +39,12 @@ final class AppPreferences: ObservableObject {
 
     /// Flip the app-wide show-hidden state. The shared entry point for the header button, the
     /// ⇧⌘. shortcut, and the palette/menu command — all of which want the same one-line effect.
+    /// The View menu owns this toggle; Settings deliberately does not restate it.
     func toggleShowHidden() {
         showHidden.toggle()
     }
 
-    /// Panels ▸ show Finder tags as dots at the right edge of each name, where Finder puts them
+    /// View ▸ show Finder tags as dots at the right edge of each name, where Finder puts them
     /// (PLAN.md §M6 "Finder tags: column…"). Default **on**: someone who tags files sees them
     /// without having to find a setting first, and someone who doesn't pays nothing for it — an
     /// untagged row draws no dots and gives its name the full width.
@@ -59,13 +60,13 @@ final class AppPreferences: ObservableObject {
     /// column live. `object` is the `AppPreferences` that changed.
     static let showTagsDidChange = Notification.Name("Dirnex.showTagsDidChange")
 
-    /// Flip the app-wide tags-column state — the shared entry point for the View menu item, the
-    /// palette command, and the Settings toggle.
+    /// Flip the app-wide tags-column state — the shared entry point for the View menu item and the
+    /// palette command, which own this toggle; Settings deliberately does not restate it.
     func toggleShowTags() {
         showTags.toggle()
     }
 
-    /// Panels ▸ show each file's cloud sync state as a badge at the right edge of its name, where
+    /// View ▸ show each file's cloud sync state as a badge at the right edge of its name, where
     /// Finder puts it (PLAN.md §M6 "iCloud/provider sync status"). Default **on**, and it can afford
     /// to be: a folder that isn't a cloud folder is recognised in a single read and never scanned,
     /// so someone with no provider pays one attribute read per folder visit and sees nothing.
@@ -81,8 +82,8 @@ final class AppPreferences: ObservableObject {
     /// up or drops them live. `object` is the `AppPreferences` that changed.
     static let showSyncStatusDidChange = Notification.Name("Dirnex.showSyncStatusDidChange")
 
-    /// Flip the app-wide sync-badge state — the shared entry point for the View menu item, the
-    /// palette command, and the Settings toggle.
+    /// Flip the app-wide sync-badge state — the shared entry point for the View menu item and the
+    /// palette command, which own this toggle; Settings deliberately does not restate it.
     func toggleShowSyncStatus() {
         showSyncStatus.toggle()
     }
@@ -105,10 +106,104 @@ final class AppPreferences: ObservableObject {
     /// collapses its bar live. `object` is the `AppPreferences` that changed.
     static let showFunctionBarDidChange = Notification.Name("Dirnex.showFunctionBarDidChange")
 
-    /// Flip the app-wide function-bar state — the shared entry point for the View menu item, the
-    /// palette command, and the Settings toggle.
+    /// Flip the app-wide function-bar state — the shared entry point for the View menu item and the
+    /// palette command, which own this toggle; Settings deliberately does not restate it.
     func toggleShowFunctionBar() {
         showFunctionBar.toggle()
+    }
+
+    /// Panels ▸ how tall each file row is drawn, and how big the icon in it (PLAN.md §M15). A
+    /// single app-wide value like `showHidden`, not a per-tab one: it is a reading preference, not
+    /// a question you ask of one directory. Changing it posts `rowDensityDidChange` so every open
+    /// pane re-renders live. Defaults to `.regular`, which is the 22 pt row the app hardcoded
+    /// before this setting existed — an untouched install is unchanged.
+    @Published var rowDensity: RowDensity {
+        didSet {
+            guard rowDensity != oldValue else { return }
+            defaults.set(rowDensity.rawValue, forKey: Keys.rowDensity)
+            NotificationCenter.default.post(name: Self.rowDensityDidChange, object: self)
+        }
+    }
+
+    /// Posted (on the main actor) when `rowDensity` changes, so every open pane re-sizes its rows
+    /// and repaints. `object` is the `AppPreferences` that changed.
+    static let rowDensityDidChange = Notification.Name("Dirnex.rowDensityDidChange")
+
+    /// Panels ▸ what the size-visualization column draws: the bar, the folder-share percentage, or
+    /// both (PLAN.md §M15). A single app-wide value like `rowDensity`, not a per-tab one — it is a
+    /// reading preference, not a question about one directory. Changing it posts
+    /// `sizeVizDisplayModeDidChange` so every open pane showing bars repaints live. Defaults to
+    /// `.bar`, the quiet chart on its own.
+    @Published var sizeVizDisplayMode: SizeVizDisplayMode {
+        didSet {
+            guard sizeVizDisplayMode != oldValue else { return }
+            defaults.set(sizeVizDisplayMode.rawValue, forKey: Keys.sizeVizDisplayMode)
+            NotificationCenter.default.post(name: Self.sizeVizDisplayModeDidChange, object: self)
+        }
+    }
+
+    /// Posted (on the main actor) when `sizeVizDisplayMode` changes, so every open pane repaints
+    /// its size-bar column. `object` is the `AppPreferences` that changed.
+    static let sizeVizDisplayModeDidChange = Notification.Name("Dirnex.sizeVizDisplayModeDidChange")
+
+    /// Panels ▸ the three colours the user owns (PLAN.md §M15 Slice 2), each as `#RRGGBB` or the
+    /// empty string for **Follow System** — the default, so an untouched install renders exactly as
+    /// it did before this setting existed and the default path stays AppKit's own drawing.
+    ///
+    /// Stored as hex strings rather than as archived `NSColor`s so the defaults domain stays
+    /// readable and hand-editable (PLAN.md §2, "boring and debuggable"), and so the change guard is
+    /// an exact string comparison rather than `NSColor`'s colour-space-sensitive equality. What each
+    /// one paints, and what "the system's own" resolves to, is `PanelPalette`'s.
+    @Published var accentColorHex: String {
+        didSet { paletteValueChanged(accentColorHex, oldValue, key: Keys.accentColorHex) }
+    }
+
+    @Published var cursorColorHex: String {
+        didSet { paletteValueChanged(cursorColorHex, oldValue, key: Keys.cursorColorHex) }
+    }
+
+    @Published var markColorHex: String {
+        didSet { paletteValueChanged(markColorHex, oldValue, key: Keys.markColorHex) }
+    }
+
+    /// The three, resolved. Read at each drawing site — cheap (three dictionary lookups' worth of
+    /// stored string parsing) and always current, so no view has to be told twice.
+    var palette: PanelPalette {
+        PanelPalette(
+            accent: PanelPalette.color(fromHex: accentColorHex),
+            cursor: PanelPalette.color(fromHex: cursorColorHex),
+            mark: PanelPalette.color(fromHex: markColorHex)
+        )
+    }
+
+    /// Posted (on the main actor) when any of the three colours changes, so every open pane, tab
+    /// strip, path bar and titlebar indicator restyles live. One notification for all three rather
+    /// than three: every observer repaints the same surfaces regardless of which colour moved, and
+    /// splitting them would only invite a site that listens for two of the three.
+    static let paletteDidChange = Notification.Name("Dirnex.paletteDidChange")
+
+    /// Set while `resetPalette` writes all three, so the run posts one notification instead of up to
+    /// three — each of which would drive a full re-render of every open pane.
+    private var isResettingPalette = false
+
+    private func paletteValueChanged(_ new: String, _ old: String, key: String) {
+        guard new != old else { return }
+        defaults.set(new, forKey: key)
+        guard !isResettingPalette else { return }
+        NotificationCenter.default.post(name: Self.paletteDidChange, object: self)
+    }
+
+    /// Put all three back to Follow System in one step, for the Settings button that offers it —
+    /// the one gesture that restores the shipped rendering exactly, without the user having to
+    /// remember which of the three they had touched.
+    func resetPalette() {
+        guard !palette.isFollowingSystem else { return }
+        isResettingPalette = true
+        accentColorHex = ""
+        cursorColorHex = ""
+        markColorHex = ""
+        isResettingPalette = false
+        NotificationCenter.default.post(name: Self.paletteDidChange, object: self)
     }
 
     /// Operations ▸ ask for confirmation before moving items to the Trash (default off —
@@ -214,6 +309,18 @@ final class AppPreferences: ObservableObject {
         // Defaults on, like `showTags`: `object(forKey:)`, not `bool(forKey:)` (which answers
         // `false` for a never-written key and would ship the bar hidden).
         showFunctionBar = defaults.object(forKey: Keys.showFunctionBar) as? Bool ?? true
+        // Stored as the raw string and read back tolerantly: a value written by a newer build
+        // (or a hand-edited defaults domain) falls back to the shipped default rather than
+        // trapping, the same way `PersistedTab` reads its sort key.
+        rowDensity = RowDensity(rawValue: defaults.string(forKey: Keys.rowDensity) ?? "") ?? .regular
+        // Empty (never written) = the bar alone, and so is anything an older/newer build can't parse.
+        sizeVizDisplayMode = SizeVizDisplayMode(
+            rawValue: defaults.string(forKey: Keys.sizeVizDisplayMode) ?? ""
+        ) ?? .bar
+        // Empty (never written) = Follow System, and so is anything `PanelPalette` can't parse.
+        accentColorHex = defaults.string(forKey: Keys.accentColorHex) ?? ""
+        cursorColorHex = defaults.string(forKey: Keys.cursorColorHex) ?? ""
+        markColorHex = defaults.string(forKey: Keys.markColorHex) ?? ""
         confirmTrash = defaults.bool(forKey: Keys.confirmTrash)
         // Empty (never written) = automatic, so a fresh install keeps the install-order default.
         diffToolIdentifier = defaults.string(forKey: Keys.diffToolIdentifier) ?? ""
@@ -235,6 +342,11 @@ final class AppPreferences: ObservableObject {
         static let showTags = "Dirnex.pref.showTags"
         static let showSyncStatus = "Dirnex.pref.showSyncStatus"
         static let showFunctionBar = "Dirnex.pref.showFunctionBar"
+        static let rowDensity = "Dirnex.pref.rowDensity"
+        static let sizeVizDisplayMode = "Dirnex.pref.sizeVizDisplayMode"
+        static let accentColorHex = "Dirnex.pref.accentColorHex"
+        static let cursorColorHex = "Dirnex.pref.cursorColorHex"
+        static let markColorHex = "Dirnex.pref.markColorHex"
         static let confirmTrash = "Dirnex.pref.confirmTrash"
         static let diffToolIdentifier = "Dirnex.pref.diffToolIdentifier"
         static let textEditorIdentifier = "Dirnex.pref.textEditorIdentifier"

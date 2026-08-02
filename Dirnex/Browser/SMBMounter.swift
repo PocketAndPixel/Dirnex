@@ -236,8 +236,8 @@ struct SMBMountError: LocalizedError {
             )
         case Int32(ECANCELED), Self.userCanceledErr: // -128
             return String(
-                localized: "The connection was cancelled.",
-                comment: "SMB mount failure: the user cancelled the mount."
+                localized: "The connection was canceled.",
+                comment: "SMB mount failure: the user canceled the mount."
             )
         default:
             return String(

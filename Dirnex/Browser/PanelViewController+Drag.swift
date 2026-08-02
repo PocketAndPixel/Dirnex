@@ -24,8 +24,8 @@ extension PanelViewController {
     /// synthetic `..` row (no backing entry) or a non-local entry (an archive member has no
     /// on-disk URL to hand another app until extraction lands in a later M4 pass).
     func tableView(_ tableView: NSTableView, pasteboardWriterForRow row: Int) -> NSPasteboardWriting? {
-        guard let index = entryIndex(forRow: row) else { return nil }
-        let entry = panel.model[index]
+        guard let index = entryIndex(forRow: row),
+              let entry = panel.displayedEntry(at: index) else { return nil }
         guard entry.path.backend == .local else { return nil }
         return entry.path.localURL as NSURL
     }
@@ -45,8 +45,9 @@ extension PanelViewController {
     ) {
         guard panel.selectionCount > 1 else { return }
         let grabbedMarkedFile = rowIndexes.contains { row in
-            guard let index = entryIndex(forRow: row) else { return false }
-            return panel.isMarked(panel.model[index])
+            guard let index = entryIndex(forRow: row),
+                  let entry = panel.displayedEntry(at: index) else { return false }
+            return panel.isMarked(entry)
         }
         guard grabbedMarkedFile else { return }
         let urls = panel.selectedEntries.map { $0.path.localURL as NSURL }

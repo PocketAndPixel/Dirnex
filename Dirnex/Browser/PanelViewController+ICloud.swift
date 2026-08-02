@@ -51,7 +51,7 @@ extension PanelViewController {
             // one — a file added to iCloud Drive elsewhere then shows up without re-clicking.
             mergedSources = sources
             installResults(entries, as: iCloudPresentation())
-            if let target, let index = panel.model.index(ofID: target) {
+            if let target, let index = panel.displayedIndex(ofID: target) {
                 panel.moveCursor(to: index)
                 reloadEverything()
             }
@@ -73,7 +73,7 @@ extension PanelViewController {
             // goes on drawing what it had (docs/NOTES.md).
             _ = reconcileCursorFromTable()
             installSortedModel(resultsModel(entries, as: iCloudPresentation()))
-            if let target, let index = panel.model.index(ofID: target) {
+            if let target, let index = panel.displayedIndex(ofID: target) {
                 panel.moveCursor(to: index)
             }
             reloadEverything()

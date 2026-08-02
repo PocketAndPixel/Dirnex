@@ -1,9 +1,10 @@
-# Dirnex — build history (M0 → M14)
+# Dirnex — build history (M0 → M15)
 
 The shipped record of Dirnex's milestones: the milestone checklists as they were completed,
 plus the per-pass progress log — what was probed, what was decided, what was rejected and why.
 M0–M11 landed 2026-07-05 → 2026-07-22; M12 (localization) ran 07-22 → 07-29 and M13 (FTP/FTPS)
 landed 07-25 inside that span, so the two overlap in time — each sits in its own numeric slot below.
+M14 closed 07-30 (its escalation slice 08-02) and M15 opened and closed 08-02.
 
 This file is **archive, not instruction.** It moved out of [PLAN.md](../PLAN.md) once M7
 closed, so the plan could go back to being a plan, and each milestone since is archived
@@ -7303,3 +7304,298 @@ pair → FileMerge opened "one.txt vs. two.txt" with the upper row in the left c
 → "Files are identical — nothing to compare." on the status line and no FileMerge in the process
 table; file + folder → the menu item grey. 1537 core + app tests green, swiftformat + swiftlint
 --strict clean. The failure detail now names both gestures, translated into all 14 languages.
+
+### M15 — The tree view, and colour the user chooses (M)
+
+Goal: the file list gets a second *shape* and a palette the user owns. Everything through M14 decided
+what a pane shows; this decided how it looks and how deep it reaches. Opened and closed 2026-08-02.
+
+Four slices, each shippable on its own and ordered so the cheap visible wins landed first. Slices 1–3
+touched only the app; Slice 4 opened core-first (§2: a slice starts with purely additive, tested
+`DirnexCore` files and lands in a second pass that wires the app).
+
+#### Slice 1 — Row density, and view mode as tab state (S) — landed 2026-08-02
+
+- [x] `AppPreferences.rowDensity` — compact / regular / roomy, app-wide like every other View
+      toggle, with a change notification so open panes re-render live. `tableView.rowHeight` was a
+      hardcoded 22. Settings ▸ Panels carries a segmented picker; `PanelViewController+Density`
+      is the observer, shaped as the twin of `+Hidden` so there is one pattern for "an app-wide View
+      preference a pane must follow".
+- [x] `FileCellView`'s icon constraints follow it. They were hardcoded 16 pt `widthAnchor` /
+      `heightAnchor` constants, and cells are recycled across a density change, so the plan was to
+      rebuild the cell rather than mutate it. **Probed, and the answer inverted the plan:**
+      `reloadData` empties `NSTableView`'s reuse pool outright — measured on a real 300-row table,
+      every row after one is a fresh build even at an unchanged density — so a density change already
+      hands out correctly sized cells and there was nothing to rebuild. That is undocumented and fails
+      in the quiet direction, so the cell owns the invariant instead: `FileCellView.density` is
+      re-applied on every render and moves the two stored constraints, which is provably correct
+      whether the pool is purged or not.
+- [x] `PanelTab.viewMode` (`.list` / `.tree`), persisted in `PersistedTab` beside `columns` — per
+      *tab*, so one pane can be a tree while the other is a list. Note the precedent it must not
+      copy: `isSizeVisualizationEnabled` is per-tab and **not** persisted, which is fine for a mode
+      you switch on to answer a question; a tab restored into the wrong *shape* reads as data loss.
+      Stored as the raw string, not the enum: a `Codable` enum throws on an unknown case and the
+      throw takes the whole `PersistedTab` with it, so a shape written by a newer build would drop
+      the tab out of the session rather than merely be ignored.
+
+Exit: density changes live in both panes and survives relaunch; `viewMode` round-trips through
+persistence with `.tree` still rendering as `.list` (nothing read it yet). **Met** — verified live
+against the real binary with a temporary `NSLog` of the measured row rects and icon frames (never
+off a screenshot, NOTES.md ▸ Live verification): both panes moved together to 28/20 and 18/14 with
+`cursorRow` preserved across every change, the density came back after a relaunch, and a
+hand-written `viewMode: "tree"` was restored into the tab and re-persisted while the other pane
+stayed `.list`.
+
+Geometry, measured rather than picked: the floor is the **text**, whose intrinsic height at the
+system font is exactly 16.00 pt (bold included — a marked row draws bold). So the three steps are
+18/14, 22/16 and 28/20, with `.regular` reproducing the shipped pane byte-for-byte.
+
+#### Slice 2 — A palette the user owns (S–M) — landed 2026-08-02
+
+Three colours, each defaulting to **Follow System**, so an untouched install renders exactly as it
+did before the slice and the default path stays AppKit's own drawing:
+
+- [x] **Accent** — overrides `.controlAccentColor` at the path bar, the tab chips and the update
+      indicator. Framed in Settings as an override, because macOS already ships this control
+      (System Settings ▸ Appearance ▸ Accent) and `.controlAccentColor` already follows it.
+- [x] **Cursor** — the row background. The sharp one: AppKit draws the emphasized selection, so a
+      custom colour needs an `NSTableRowView` subclass that draws its own. **Probed, and the answer
+      simplified the plan:** when the delegate declines to supply a row view, `NSTableView` makes a
+      plain `NSTableRowView` — in every one of its five styles — so a subclass that hands the call
+      to `super` is byte-for-byte the shipped drawing, and `PanelRowView` is installed
+      *unconditionally* rather than only when a colour is set. Switching classes as the preference
+      changes would leave a reuse pool of the other kind to reason about; deferring leaves nothing
+      to get wrong.
+- [x] **Mark** — the hardcoded `.systemRed` in `FileCellView`. Unlike the selection blue this one
+      was always Dirnex's decision rather than the system's, which is what made it the most
+      worthwhile of the three.
+- [x] Two sites assumed the system blue and now take a **derived** foreground instead:
+      `FileCellView.applyStyle`'s `.alternateSelectedControlTextColor`, and `SizeBarView`'s
+      `isEmphasized` branch, whose own comment named it as the only fill that survives the blue.
+      Derived by luminance — never let the user pick the foreground, or the first custom colour
+      makes the cursor row unreadable. **The rule is "white unless it drops below 3:1", not
+      "whichever contrasts more"**, and the measurement is what settled it: `.controlAccentColor`
+      is L=0.2114, where white scores 4.02:1 and black 5.23:1 — so maximum contrast picks *black*,
+      while macOS and Dirnex's own tab chip draw white. See NOTES.md ▸ AppKit.
+- [x] Keep the emphasized/unemphasized split. NOTES.md ▸ AppKit: grey-versus-blue is AppKit saying
+      the focus moved, and it is the signal the *rows themselves* carry (the path bar and tab chips
+      say it separately, via `updateActiveAppearance`). Flatten the two and both panes' cursors look
+      identical, which reads as permanently unfocused. Measured, the unemphasized selection is a
+      *pure grey* in both appearances (`#DCDCDC` / `#464646`, zero saturation) and in dark mode is
+      **darker** than the emphasized fill rather than fainter — so there is nothing to derive, and
+      only the emphasized half is drawn here.
+
+Deliberately not themable: Finder tag dots (they have to match Finder's own colours), git status
+colours, sync badges. Those are information, not decoration. All of it is presentation and lives
+in the **app**, not the core (NOTES.md ▸ Localization: a presentation decision in the core is a
+string that can never be translated — the general form is that the core picks the state and the app
+picks the pixels), tested in `DirnexTests` the way `SyncBadgeTests` already is. Colours persist as
+hex in `UserDefaults`, per §2's "boring and debuggable".
+
+Exit: a non-default cursor colour renders legibly in both appearances, the inactive pane still reads
+as inactive, and Follow System restores byte-identical rendering. **Met** — verified live against
+the real binary with a deliberately pale cursor (`#FFD60A`): the name, size, date, the ncdu bar, its
+track and its percentage all flipped to black on it, a marked row under the cursor stayed bold and
+legible, the inactive pane kept AppKit's grey, and Settings ▸ Use System Colours restored the blue
+cursor, the blue crumb, the white-on-blue chip and the titlebar indicator live, without a relaunch.
+Legibility in the *other* appearance is a claim no single screenshot can make, so it is pinned by
+construction instead: the derivation is a luminance test over the user's own sRGB colour, measured
+identical under `.aqua` and `.darkAqua` and asserted in `PanelPaletteTests`.
+
+`PathBarView` hit SwiftLint's 500-line ceiling in this slice and was split by *concept* rather than
+shaved (CLAUDE.md ▸ file splitting): `PathBarView+Editing` takes the Cmd+L text field, its
+completion cache and the `NSTextFieldDelegate` conformance, leaving the crumb row behind.
+
+#### Slice 3 — Colour rules by file type (M) — landed 2026-08-02
+
+Total Commander's signature: an ordered list of glob → colour rules, first match wins. Order is
+meaning, so the list is never silently canonicalized — the same rule an ACL's entry order follows.
+
+- [x] Core: `FileColorRule` + `FileColorRules.firstMatch(for:)`, pure and tested, over the same
+      `Glob` that `+`/`-` pattern select already uses. The colour rides as user *data* (hex), not as
+      a decision the core authored — the `FinderTag` split, where the core carries the colour and
+      the app maps it to pixels. Two additions the plan didn't name, each because the shipped
+      alternative is unwritable rather than merely inconvenient: a rule holds **several patterns**
+      (`*.jpg;*.png` is one "Images" rule with one colour), split on `;` and *not* on whitespace as
+      TC does — a file name may contain a space, so space-splitting makes `My Photo*.jpg`
+      unexpressible; and a rule carries a **target** (files / folders / both), because "colour every
+      folder" is among the first things a TC user reaches for and a name glob cannot say it —
+      `*` would take every file along with it.
+- [x] Precedence, made explicit rather than reusing the existing slot: `FileCellView.accentColor`
+      *outranked* the mark (a marked modified file still shows its orange git `M`), and a type colour
+      has to rank **below** it — a marked file must stay unmistakably marked. Resolution is now
+      git status → mark → type rule → label colour.
+- [x] Settings editor: add / remove / reorder with a live preview row, stored beside the user
+      scripts. Reorder is explicit ▲/▼ buttons, not drag alone — it is the control that decides
+      *which rule wins*, so it has to be reachable from the keyboard and be something you do rather
+      than discover. The live preview is the row itself: the rule's name draws in the rule's own
+      colour, so an unreadable choice is visible where it is made rather than only out in the pane.
+
+**Measured before writing any of it, and it settled two decisions.** `fnmatch` costs **263 ns** a
+call, and that is the call itself — `String`→C bridging adds ~3 ns and `Glob`'s case-folding ~84 —
+so there is no cheap trick inside the matcher and the only lever is calling it less. The app
+therefore asks **per cell** (four times a row) rather than keeping a memo with an invalidation rule:
+over a 60-row screen, worst case, an empty list is free, 5 rules × 2 patterns cost 0.46 ms per full
+reload and 20 × 3 cost 2.44 ms, against 0.10 / 0.53 ms for a memo — affordable next to a reload that
+already builds 240 views and looks up an icon per row. The second: a **malformed pattern matches
+nothing**, because `fnmatch` answers its error code (2) rather than `FNM_NOMATCH` for `[`, `[a-` and
+a lone `\`, and `Glob` tests for `== 0` — so a half-typed `[` in the live editor colours nothing
+while the user keeps typing, instead of flooding the pane.
+
+Exit: `*.jpg` draws teal in both panes and survives relaunch; a marked `.jpg` still reads as marked;
+a modified `.jpg` inside a repository still shows its git letter. **Met** — verified live against the
+real binary, driving the real Settings editor: a `*.png` rule recoloured six files in both panes
+while it was still being typed and came back after a quit/relaunch; the marked `.png` stayed bold red
+and the cursor row stayed white-on-blue, so both outrank the type colour; and in this repository
+`FileCellView.swift` kept its orange `M` and `FileColorRuleStore.swift` its green `?` while name,
+size and date drew in the rule's colour. Also verified, beyond the stated exit: a folders-only `*`
+coloured the folders while leaving files whose name it matches alone (the target gate, and the
+fall-through when it rejects), ▲/▼ moved a general rule above a specific one and the whole pane
+followed first-match-wins in both directions, the `..` row never takes a colour, and deleting the
+rules restored the shipped rendering exactly.
+
+One bug found only by launching, in the class NOTES.md ▸ Localization already collects: **a SwiftUI
+string literal is parsed as Markdown**, so the pattern example `*.jpg;*.png` is a valid emphasis pair
+and rendered as an italic ".jpg;" followed by ".png" — wildcards eaten, in the placeholder and the
+footer whose whole job is to teach the syntax. It compiles, lints, and reads as fine at a glance.
+
+#### Slice 4 — The tree (M–L, core-first) — landed 2026-08-02
+
+An inline-expanding file list: folders open in place and show their children indented, files
+included.
+
+- [x] Core, additive: `TreeProjection` — a pure flattening of a set of expanded directories into one
+      indexed row list of `(entry, depth)`, sorted **within each level** and hidden-filtered like the
+      flat model. Tested for expand/collapse, a folder that vanishes while expanded, a filter that
+      empties a level, and sort applying per level rather than globally. **Core pass landed
+      2026-08-02** (`TreeProjection`/`TreeRow`, 15 tests, app untouched). It **reuses `DirectoryModel`
+      per level** rather than re-deriving any of it — each directory's raw entries go through a
+      `DirectoryModel` and the visible results are stitched depth-first — so ordering, the hidden
+      filter, the text filter and the `directoriesFirst` grouping are the flat model's by construction
+      and cannot fork (the §6 risk). Falls out for free: with nothing expanded the depth-0 rows *are*
+      the flat model's rows, so an all-collapsed tree renders byte-identically to the list; and a
+      collapse keeps a hidden subtree's own expansion, so re-opening the ancestor restores it whole.
+- [x] Core, additive: **`Panel` made tree-aware** (the architecture Oleg picked over a controller-side
+      row provider — keep the selection brain in the tested value type). `Panel` gains an optional
+      `tree: TreeProjection?`; when set it is the *row source*, so `cursor`, `count`,
+      `displayedEntry(at:)`, `toggleMark`, `selectAll`, `invertSelection`, `selectRange`,
+      `selectedEntries` and the cursor-preserving refresh all read their rows from the tree instead of
+      `model.visibleEntries`. The **marks stay one `Set<VFSPath>`**, which is exactly why they span
+      levels for free — `selectedEntries` returns them in row order across depths, and a same-directory
+      refresh prunes against the tree's *whole* entry set (`allEntryIDs`) so a mark made in an expanded
+      child survives a root refresh. `model` stays the settings-of-record: `enterTreeMode` seeds the
+      tree from it, `setSort`/`setShowHidden`/`setFilter` drive both, a navigation replaces the tree
+      with a fresh all-collapsed one, and `expand`/`collapse`/`setTreeChildListing` keep the cursor on
+      the same entry by identity. **Landed 2026-08-02**, 14 `Panel — tree mode` tests; list mode
+      byte-for-byte unchanged (the 36 existing Panel/selection tests still pass, since `tree == nil`
+      makes every accessor fall straight back to `model`).
+- [x] The shape is the **sidebar's**, deliberately: an `NSTableView` over a flat projection, not an
+      `NSOutlineView` (§M8 — "every row is a leaf, so folding is a build-time filter, not
+      a view feature — and the drag code keeps one flat index space to map through"). That is the
+      whole reason this slice was affordable: columns, the git gutter, the size bar, marks (already
+      keyed by `VFSPath`), inline rename, drag/drop and the Quick View overlay all keep working
+      against one index space, unchanged.
+- [x] Expansion state per tab (`Set<VFSPath>` in `PanelTab`, persisted), listed lazily on expand
+      under the existing `loadToken` stale-guard.
+- [x] **One** `DirectoryWatcher` over the whole expanded set, not one per folder: `FSEventStreamCreate`
+      takes an array of paths (NOTES.md, the merged-listing lesson), and the stream is rebuilt only
+      when the *set* changes — rebuilding per event tears down the thing that delivered it.
+- [x] Keys reuse the sidebar's vocabulary rather than inventing a second one
+      (`SidebarViewController+Keyboard`): **→** expands a closed folder or steps into an open one,
+      **←** collapses an open folder or steps out to its parent. Space still marks, ⏎ still opens.
+- [x] Two things the flat model owns that a tree breaks, both answered *in* the slice:
+      `SizeVisualization(model:)` projects one directory's siblings, so the bars are either scoped
+      per level or withdrawn in tree mode; and every tree refresh path keeps the
+      `installSortedModel` → `reloadEverything` → `syncCursorToTable(scroll: false)` tail, each half
+      of which NOTES.md records as a bug found live.
+- [x] **App-wiring pass landed 2026-08-02** — `PanelViewController+Tree`, the `FileCellView`
+      indentation + disclosure chevron, the `→`/`←` keys, per-tab persisted expansion, the one
+      multi-path watcher, a `Tree View` command in the View menu (translated into all 14 languages),
+      and the two fork points answered: the size bars are **withdrawn** in tree mode (a level's
+      siblings are not the row's neighbours), and every tree refresh keeps the
+      `installSortedModel` → `reloadEverything` → `syncCursorToTable(scroll: false)` tail.
+- [x] **Operation semantics landed 2026-08-02** — `TreeSelection` in the core (18 tests):
+      `transferGroups(_:relativeTo:)` groups a marked set by each item's path relative to the pane's
+      directory, and `withoutNestedItems` dedupes to the ancestor. F5/F6 create the intermediate
+      directories under the destination and enqueue one job per group (a selection at the pane's own
+      level is one group with no relative path — byte-for-byte the shipped single-job path, so list
+      mode is untouched); F8 and F5/F6 both take the deduped set, while the operations that *don't*
+      recurse (Copy Path, tags, Compare) keep the raw selection.
+
+Exit **met** — verified live 2026-08-02 against a three-level tree: two folders expanded, five files
+marked across all three levels and copied with F5, which reproduced `Alpha/Nested/deep.txt` and kept
+`Alpha/same.txt` and `Beta/same.txt` apart with the right bytes in each (the collision that flattening
+loses); a `touch` inside an expanded folder *and* a new collapsed sibling both appeared with no click
+and without moving the cursor; F8 with a folder and its own grandchild marked trashed the folder whole
+with no error; and the expansion survived two relaunches.
+
+One bug found only by launching, and it is the §6 risk arriving exactly as predicted — as a **fork
+between two index spaces**, not as a wrong drawing. Six app sites read `panel.model[row]` for a row
+the *table* drew, which in tree mode indexes past the root directory's entry count: a plain click on
+the first row below the last root-level entry crashed with `Index out of range`. `Panel` already had
+the tree-aware inverse (`displayedIndex(ofID:)`) as a **private** helper, so the fix was to publish it
+and route every mouse gesture (click anchor, Cmd/Shift range, drag, drop, context menu) and every
+cursor-restore through it and `displayedEntry(at:)`. Written up in NOTES.md ▸ AppKit.
+
+#### Two decisions settled before Slice 4 opened — both settled 2026-08-02, as recommended
+
+Both are operation semantics, not view work, which is why they could not be deferred into it:
+
+1. **What F5/F6 do with marks spanning levels.** *Settled: TC's branch-view behaviour* — flatten
+   *preserving relative paths* under the destination. Copying everything flat into one folder is the
+   alternative and it silently collides the moment two folders hold an `x.jpg`.
+2. **F8 with an ancestor and its descendant both marked.** *Settled: dedupe to the ancestor* before
+   enqueuing. Deleting the parent already takes the child, so passing both makes the second operation
+   fail on a path that no longer exists.
+
+Both landed in `TreeSelection` (core, 18 tests) with the slice. One thing the settling did not say and
+implementing did: **the dedupe belongs to F5/F6 too.** The argument is the same one — copying `Alpha`
+already writes `Alpha/Nested/deep.txt` at exactly the path the separately-marked child would go to —
+and the difference is only that a copy fails *politely*, with a conflict prompt over a file the user
+never chose to duplicate. So the app has one `recursiveTargets()` for the operations that recurse and
+keeps the raw `selectionTargets()` for the ones that don't (Copy Path, tagging, Compare all mean both
+items when the user marked both).
+
+#### Deliberately not in scope: the thumbnail grid, brief view, and the surface extraction
+
+Cut 2026-08-02. The three are one unit, and the reason is worth writing down because it is not
+obvious from the outside: `FileTableView` is not a view but a **contract** — 25 `FileTableViewInput`
+methods, plus drag-out, drop, inline rename, the context menu's row mapping, and the cursor⇄selection
+mirror (`syncCursorToTable` / `reconcileCursorFromTable`) that assumes *row == entry*. A grid
+satisfies none of it, so a second surface must first extract that contract into a shared `PaneSurface`
+protocol — otherwise there are two definitions of what an arrow does, which NOTES.md already records
+as a mistake in a smaller form. Brief view was only ever justified as a free rider on the grid
+thumbnails would have paid for; with thumbnails out it carries the whole extraction alone, to show
+names in columns. So M15 needed no second surface at all, and stayed four additive slices on the table
+that already existed.
+
+Two things to keep, for whenever the grid is revisited: a thumbnail sweep must skip
+`FileEntry.isDataless` rows (a grid over an iCloud or Drive folder would otherwise download the
+user's cloud drive by scrolling — NOTES.md measured 1.1 s to materialize 200 KB) and fall back to
+type icons on every remote backend, where a thumbnail is a network transfer. And the column header
+is currently the only sort UI, so a grid has to move sort to the View menu first.
+
+#### How it closed
+
+All four slice exits were met and each was verified live against the real binary rather than off a
+screenshot, per NOTES.md ▸ Live verification. Three lessons went into NOTES.md as they were found, and
+each is the kind that only a launch produces: the Markdown-parsed SwiftUI literal that ate the
+wildcards out of the two strings whose job is to teach glob syntax; the second **index space** a tree
+introduces, where six `panel.model[row]` sites compiled fine and crashed on the first click below the
+root's last entry; and the two AppKit probes that *simplified* the plan rather than complicating it —
+`reloadData` purging the reuse pool, and `NSTableView` making a plain `NSTableRowView` in all five
+styles when the delegate declines.
+
+Both fork points the §6 risk named were answered inside the slice rather than by giving the tree its
+own copy of anything: the size bars are withdrawn in tree mode, and every tree refresh path carries
+the `installSortedModel` → `reloadEverything` → `syncCursorToTable(scroll: false)` tail. The risk row
+itself stays in PLAN.md §6 — the projection is the mitigation, and it is still the thing to check
+against whenever a tree-only path is proposed.
+
+**Localization:** M12's rhythm holds — each slice shipped its own catalog keys, so the `Tree View`
+command, the density picker, the three colour wells and the colour-rules editor were translated into
+all 14 languages in the slice that added them, with `LocalizationCoverageTests` failing on an
+untranslated command in any of them.
+
+Closed with **1610 core + 210 app tests green** (150 and 41 suites), `swiftformat --lint` clean and
+`swiftlint --strict` clean over 545 files.

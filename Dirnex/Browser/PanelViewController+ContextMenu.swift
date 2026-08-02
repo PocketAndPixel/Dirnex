@@ -61,7 +61,7 @@ extension PanelViewController {
             // The empty space below the list is not an entry; leave the marks be.
             return
         }
-        if panel.isMarked(panel.model[index]) { return }
+        if let entry = panel.displayedEntry(at: index), panel.isMarked(entry) { return }
         let previousMarks = panel.selection
         panel.clearSelection()
         recordMarkChange(since: previousMarks, label: .clearSelection)

@@ -64,7 +64,7 @@ extension BrowserWindowController {
             report.wasCancelled
                 ? String(
                     localized: "Stopped after changing \(changed) items",
-                    comment: "Status after a cancelled recursive apply; %lld is the count. Plural."
+                    comment: "Status after a canceled recursive apply; %lld is the count. Plural."
                 )
                 : String(
                     localized: "Changed \(changed) items",

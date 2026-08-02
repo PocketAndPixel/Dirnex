@@ -226,7 +226,7 @@ extension PanelViewController {
         let alert = NSAlert()
         alert.messageText = String(localized: "New Tag", comment: "Title of the new-tag dialog.")
         alert.informativeText = String(
-            localized: "Name the tag and choose the colour it will be introduced in.",
+            localized: "Name the tag and choose the color it will be introduced in.",
             comment: "New-tag dialog body."
         )
         alert.addButton(
