@@ -21,9 +21,9 @@ final class AppPreferences: ObservableObject {
         didSet { defaults.set(restoreSession, forKey: Keys.restoreSession) }
     }
 
-    /// Panels ▸ show hidden (dot) files (default off — Finder's behavior). This is a single
+    /// View ▸ show hidden (dot) files (default off — Finder's behavior). This is a single
     /// app-wide toggle, not a per-tab one: every pane and tab reflects it. Changing it posts
-    /// `showHiddenDidChange` so the open panes re-filter live, and the Settings toggle, the
+    /// `showHiddenDidChange` so the open panes re-filter live, and the View menu item, the
     /// header button, and ⇧⌘. all drive this one value.
     @Published var showHidden: Bool {
         didSet {
@@ -39,11 +39,12 @@ final class AppPreferences: ObservableObject {
 
     /// Flip the app-wide show-hidden state. The shared entry point for the header button, the
     /// ⇧⌘. shortcut, and the palette/menu command — all of which want the same one-line effect.
+    /// The View menu owns this toggle; Settings deliberately does not restate it.
     func toggleShowHidden() {
         showHidden.toggle()
     }
 
-    /// Panels ▸ show Finder tags as dots at the right edge of each name, where Finder puts them
+    /// View ▸ show Finder tags as dots at the right edge of each name, where Finder puts them
     /// (PLAN.md §M6 "Finder tags: column…"). Default **on**: someone who tags files sees them
     /// without having to find a setting first, and someone who doesn't pays nothing for it — an
     /// untagged row draws no dots and gives its name the full width.
@@ -59,13 +60,13 @@ final class AppPreferences: ObservableObject {
     /// column live. `object` is the `AppPreferences` that changed.
     static let showTagsDidChange = Notification.Name("Dirnex.showTagsDidChange")
 
-    /// Flip the app-wide tags-column state — the shared entry point for the View menu item, the
-    /// palette command, and the Settings toggle.
+    /// Flip the app-wide tags-column state — the shared entry point for the View menu item and the
+    /// palette command, which own this toggle; Settings deliberately does not restate it.
     func toggleShowTags() {
         showTags.toggle()
     }
 
-    /// Panels ▸ show each file's cloud sync state as a badge at the right edge of its name, where
+    /// View ▸ show each file's cloud sync state as a badge at the right edge of its name, where
     /// Finder puts it (PLAN.md §M6 "iCloud/provider sync status"). Default **on**, and it can afford
     /// to be: a folder that isn't a cloud folder is recognised in a single read and never scanned,
     /// so someone with no provider pays one attribute read per folder visit and sees nothing.
@@ -81,8 +82,8 @@ final class AppPreferences: ObservableObject {
     /// up or drops them live. `object` is the `AppPreferences` that changed.
     static let showSyncStatusDidChange = Notification.Name("Dirnex.showSyncStatusDidChange")
 
-    /// Flip the app-wide sync-badge state — the shared entry point for the View menu item, the
-    /// palette command, and the Settings toggle.
+    /// Flip the app-wide sync-badge state — the shared entry point for the View menu item and the
+    /// palette command, which own this toggle; Settings deliberately does not restate it.
     func toggleShowSyncStatus() {
         showSyncStatus.toggle()
     }
@@ -105,8 +106,8 @@ final class AppPreferences: ObservableObject {
     /// collapses its bar live. `object` is the `AppPreferences` that changed.
     static let showFunctionBarDidChange = Notification.Name("Dirnex.showFunctionBarDidChange")
 
-    /// Flip the app-wide function-bar state — the shared entry point for the View menu item, the
-    /// palette command, and the Settings toggle.
+    /// Flip the app-wide function-bar state — the shared entry point for the View menu item and the
+    /// palette command, which own this toggle; Settings deliberately does not restate it.
     func toggleShowFunctionBar() {
         showFunctionBar.toggle()
     }

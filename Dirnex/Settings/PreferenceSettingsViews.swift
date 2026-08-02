@@ -44,44 +44,6 @@ struct PanelsSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Show hidden files", isOn: $preferences.showHidden)
-            } footer: {
-                Text(
-                    "Reveals dotfiles like .git and .env in every pane. Also on the toolbar and ⇧⌘."
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-
-            Section {
-                Toggle("Show Finder tags", isOn: $preferences.showTags)
-            } footer: {
-                Text(
-                    """
-                    Shows each file's tag colors at the right edge of its name, as Finder does. Also in the \
-                    View menu. Archives and remote volumes have no tags, so nothing is drawn there.
-                    """
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-
-            Section {
-                Toggle("Show cloud sync status", isOn: $preferences.showSyncStatus)
-            } footer: {
-                Text(
-                    """
-                    Badges a file whose bytes are still in iCloud (or another provider), on their way up or \
-                    down, or in conflict — at the right edge of its name, as Finder does. Folders outside a \
-                    cloud provider are never scanned, and fully synced files show nothing. Also in the View \
-                    menu.
-                    """
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-
-            Section {
                 Picker("Row height", selection: $preferences.rowDensity) {
                     ForEach(RowDensity.allCases) { density in
                         Text(density.title).tag(density)
@@ -102,20 +64,6 @@ struct PanelsSettingsView: View {
             PaletteSettingsSection(preferences: preferences)
 
             FileColorRulesSection()
-
-            Section {
-                Toggle("Show function key bar", isOn: $preferences.showFunctionBar)
-            } footer: {
-                Text(
-                    """
-                    A row of F-key buttons along the window bottom — Rename, View, Copy, Move, New Folder, \
-                    Delete — the Total Commander function bar. Also in the View menu; the keys work whether or \
-                    not the bar is shown.
-                    """
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
 
             Section {
                 Toggle(
