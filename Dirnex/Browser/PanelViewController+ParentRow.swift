@@ -43,6 +43,11 @@ extension PanelViewController {
         cell.marked = false
         cell.dimmed = false
         cell.accentColor = nil
+        // Never type-coloured (PLAN.md §M15 Slice 3), for the same reason it never carries a size
+        // bar: `..` is a way out, not an entry. `Panel` has never heard of it, so there is nothing to
+        // match a rule against — and a `*` rule painting the way out of the folder would be reading
+        // the row as a file called "..".
+        cell.typeColor = nil
         // Like every other row: a recycled cell carries the density and palette it was built at
         // (PLAN.md §M15). `..` is never marked, but it *can* be the cursor, so it needs the derived
         // foreground as much as any other row.

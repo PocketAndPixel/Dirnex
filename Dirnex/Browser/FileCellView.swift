@@ -21,6 +21,20 @@ final class FileCellView: NSTableCellView {
     /// the cursor's emphasized background, which needs its own contrast. `nil` for ordinary cells.
     var accentColor: NSColor?
 
+    /// The colour a file-type rule gives this row (PLAN.md §M15 Slice 3), or `nil` when no rule
+    /// claims it — which is every row on an untouched install.
+    ///
+    /// **Ranks below the mark, deliberately, and that is the one thing about it worth arguing.** The
+    /// obvious implementation reuses `accentColor`, which already outranks the mark so a marked
+    /// modified file still shows its orange Git `M` — and that is right for Git, because the letter
+    /// *is* information and there is nowhere else to put it. A type colour is not: it says what a
+    /// file already announces through its name and icon, while the mark says the user picked this
+    /// one and is about to act on it. Let `*.jpg`'s teal outrank the mark and a marked photograph
+    /// becomes indistinguishable from an unmarked one at the exact moment F5 is aimed at it —
+    /// silent, and in the expensive direction. So it takes a slot of its own rather than the
+    /// existing one: Git status → mark → type rule → label colour.
+    var typeColor: NSColor?
+
     /// The Finder-tag dots at the right edge of the name (PLAN.md §M6), or `nil` on the cells that
     /// aren't the name. Where Finder puts them, and — unlike the Git letter, which needs a gutter of
     /// its own because it is *text* competing with the mark's red and the hidden-file dim — dots are
@@ -198,6 +212,8 @@ final class FileCellView: NSTableCellView {
             textField.textColor = accentColor
         } else if marked {
             textField.textColor = palette.resolvedMark
+        } else if let typeColor {
+            textField.textColor = typeColor
         } else {
             textField.textColor = .labelColor
         }

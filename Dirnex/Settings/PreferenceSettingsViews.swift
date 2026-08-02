@@ -101,6 +101,8 @@ struct PanelsSettingsView: View {
 
             PaletteSettingsSection(preferences: preferences)
 
+            FileColorRulesSection()
+
             Section {
                 Toggle("Show function key bar", isOn: $preferences.showFunctionBar)
             } footer: {

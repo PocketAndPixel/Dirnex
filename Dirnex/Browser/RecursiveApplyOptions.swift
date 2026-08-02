@@ -85,20 +85,26 @@ extension AttributeApplyScope.Target {
     /// language that inflects the object cannot build one from the other (docs/NOTES.md).
     var title: String {
         switch self {
+        // These three keys are shared with the M15 colour-rule targets (`FileColorTarget.title`),
+        // which mean the same thing about the same two kinds of item. The comments must therefore be
+        // repeated **verbatim** at both sites: `String(localized:comment:)` takes a `StaticString`,
+        // so a shared comment cannot be hoisted, and two sites keying one string with different
+        // comments hand the translator whichever one `xcstringstool` happened to keep
+        // (NOTES.md ▸ Localization). Worded for both callers for the same reason.
         case .everything:
             return String(
                 localized: "Files and folders",
-                comment: "Get Info recursive-apply scope: change every enclosed item."
+                comment: "Scope of a recursive Get Info change, or of a colour rule: every item."
             )
         case .filesOnly:
             return String(
                 localized: "Files only",
-                comment: "Get Info recursive-apply scope: leave enclosed folders untouched."
+                comment: "Scope of a recursive Get Info change, or of a colour rule: not folders."
             )
         case .foldersOnly:
             return String(
                 localized: "Folders only",
-                comment: "Get Info recursive-apply scope: leave enclosed files untouched."
+                comment: "Scope of a recursive Get Info change, or of a colour rule: not files."
             )
         }
     }

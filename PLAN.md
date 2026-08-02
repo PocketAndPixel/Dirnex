@@ -241,24 +241,58 @@ identical under `.aqua` and `.darkAqua` and asserted in `PanelPaletteTests`.
 shaved (CLAUDE.md ▸ file splitting): `PathBarView+Editing` takes the Cmd+L text field, its
 completion cache and the `NSTextFieldDelegate` conformance, leaving the crumb row behind.
 
-#### Slice 3 — Colour rules by file type (M)
+#### Slice 3 — Colour rules by file type (M) — **landed 2026-08-02**
 
 Total Commander's signature: an ordered list of glob → colour rules, first match wins. Order is
 meaning, so the list is never silently canonicalized — the same rule an ACL's entry order follows.
 
-- [ ] Core: `FileColorRule` + `FileColorRules.firstMatch(for:)`, pure and tested, over the same
+- [x] Core: `FileColorRule` + `FileColorRules.firstMatch(for:)`, pure and tested, over the same
       `Glob` that `+`/`-` pattern select already uses. The colour rides as user *data* (hex), not as
       a decision the core authored — the `FinderTag` split, where the core carries the colour and
-      the app maps it to pixels.
-- [ ] Precedence, made explicit rather than reusing the existing slot: `FileCellView.accentColor`
+      the app maps it to pixels. Two additions the plan didn't name, each because the shipped
+      alternative is unwritable rather than merely inconvenient: a rule holds **several patterns**
+      (`*.jpg;*.png` is one "Images" rule with one colour), split on `;` and *not* on whitespace as
+      TC does — a file name may contain a space, so space-splitting makes `My Photo*.jpg`
+      unexpressible; and a rule carries a **target** (files / folders / both), because "colour every
+      folder" is among the first things a TC user reaches for and a name glob cannot say it —
+      `*` would take every file along with it.
+- [x] Precedence, made explicit rather than reusing the existing slot: `FileCellView.accentColor`
       currently *outranks* the mark (a marked modified file still shows its orange git `M`), and a
       type colour has to rank **below** it — a marked file must stay unmistakably marked. Resolution
       becomes git status → mark → type rule → label colour.
-- [ ] Settings editor: add / remove / reorder with a live preview row, stored beside the user
-      scripts.
+- [x] Settings editor: add / remove / reorder with a live preview row, stored beside the user
+      scripts. Reorder is explicit ▲/▼ buttons, not drag alone — it is the control that decides
+      *which rule wins*, so it has to be reachable from the keyboard and be something you do rather
+      than discover. The live preview is the row itself: the rule's name draws in the rule's own
+      colour, so an unreadable choice is visible where it is made rather than only out in the pane.
+
+**Measured before writing any of it, and it settled two decisions.** `fnmatch` costs **263 ns** a
+call, and that is the call itself — `String`→C bridging adds ~3 ns and `Glob`'s case-folding ~84 —
+so there is no cheap trick inside the matcher and the only lever is calling it less. The app
+therefore asks **per cell** (four times a row) rather than keeping a memo with an invalidation rule:
+over a 60-row screen, worst case, an empty list is free, 5 rules × 2 patterns cost 0.46 ms per full
+reload and 20 × 3 cost 2.44 ms, against 0.10 / 0.53 ms for a memo — affordable next to a reload that
+already builds 240 views and looks up an icon per row. The second: a **malformed pattern matches
+nothing**, because `fnmatch` answers its error code (2) rather than `FNM_NOMATCH` for `[`, `[a-` and
+a lone `\`, and `Glob` tests for `== 0` — so a half-typed `[` in the live editor colours nothing
+while the user keeps typing, instead of flooding the pane.
 
 Exit: `*.jpg` draws teal in both panes and survives relaunch; a marked `.jpg` still reads as marked;
-a modified `.jpg` inside a repository still shows its git letter.
+a modified `.jpg` inside a repository still shows its git letter. **Met** — verified live against the
+real binary, driving the real Settings editor: a `*.png` rule recoloured six files in both panes
+while it was still being typed and came back after a quit/relaunch; the marked `.png` stayed bold red
+and the cursor row stayed white-on-blue, so both outrank the type colour; and in this repository
+`FileCellView.swift` kept its orange `M` and `FileColorRuleStore.swift` its green `?` while name,
+size and date drew in the rule's colour. Also verified, beyond the stated exit: a folders-only `*`
+coloured the folders while leaving files whose name it matches alone (the target gate, and the
+fall-through when it rejects), ▲/▼ moved a general rule above a specific one and the whole pane
+followed first-match-wins in both directions, the `..` row never takes a colour, and deleting the
+rules restored the shipped rendering exactly.
+
+One bug found only by launching, in the class NOTES.md ▸ Localization already collects: **a SwiftUI
+string literal is parsed as Markdown**, so the pattern example `*.jpg;*.png` is a valid emphasis pair
+and rendered as an italic ".jpg;" followed by ".png" — wildcards eaten, in the placeholder and the
+footer whose whole job is to teach the syntax. It compiles, lints, and reads as fine at a glance.
 
 #### Slice 4 — The tree (M–L, core-first)
 

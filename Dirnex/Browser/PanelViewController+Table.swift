@@ -52,6 +52,10 @@ extension PanelViewController: NSTableViewDelegate {
         cell.marked = panel.isMarked(entry)
         cell.dimmed = entry.isHidden
         cell.accentColor = nil
+        // The file-type rule (PLAN.md §M15 Slice 3), on every column: Total Commander colours the
+        // whole row, and the Git gutter keeps its own letter colour because that cell overwrites
+        // `accentColor` below, which outranks this.
+        cell.typeColor = typeColor(for: entry)
         // Set on every render, not only when the preference changes: a recycled cell was built at
         // whatever density was current when it was made (PLAN.md §M15; see `FileCellView.density`).
         cell.density = AppPreferences.shared.rowDensity

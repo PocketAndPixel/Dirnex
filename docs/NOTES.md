@@ -455,6 +455,32 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   screenshot; eight of these were hiding in the Settings panes and only a Russian run found them.
   Merge into one literal, using `\` line continuations inside a `"""` literal to keep it readable —
   the *literal* has to be single, the source line does not.
+- **The same overload pair has a second, opposite trap: a literal that *does* bind to
+  `LocalizedStringKey` is parsed as Markdown, so a glob example loses its wildcards.** The M15 colour
+  rules teach their syntax with `*.jpg;*.png`, which is a valid **emphasis pair** — `*…*` — so the
+  rule editor's placeholder and its footer both rendered as an italic ".jpg;" followed by ".png",
+  in the two strings whose entire job is to show what a pattern looks like. Note the symmetry with
+  the note above, because it is what makes both easy to miss: there, a `String` was wanted as a key
+  and silently went verbatim; here, a literal was wanted verbatim and silently went through the
+  Markdown parser. It compiles, it lints, and unlike the localization case an **English screenshot
+  shows the bug** — but only if you read the sample rather than the sentence, and the eye takes
+  ".jpg" for a pattern quite happily. Two fixes, and which one to use depends on whether the string
+  is prose: for a *sample* (a placeholder, a code example) hold it in a `String` constant so the call
+  resolves to the verbatim overload — a glob is syntax, not something to translate; for *prose that
+  contains* a sample, wrap the sample in backticks, which renders it as code and keeps the
+  asterisks. Backslash escapes (`\*`) work too and are worse: they reach the translator, who then has
+  to know not to touch them.
+  - **What it takes is a *pair*, which is why one example is safe and two are not.** Probed through
+    `AttributedString(markdown:)`, the parser SwiftUI uses: `*.jpg;*.png` loses both asterisks, while
+    a lone `path/to/*.swift`, `one * two` and `50% * 2` all come back **unchanged**. So a placeholder
+    showing a single pattern renders perfectly, and the bug arrives the day someone adds a second one
+    to be helpful — with no edit to the code that displays it. Backticks were confirmed on the same
+    run to preserve the characters exactly.
+  - **Underscores are the one to *not* worry about, and guessing gets it backwards.** CommonMark
+    ignores intraword `_`, so `my_file_name.txt`, `a_b_c` and `report_2026_final.pdf` are all
+    untouched — but `_leading_underscore_` loses its outer pair. Inline `#` is safe too (it is only a
+    heading at the start of a block). The one beyond `*` that is worth a look is **`[`**:
+    `[a](b)` renders as `a`, so any string carrying bracket-paren text silently loses it.
 - **The menu bar's titles were a second copy of the category names.** `MenuSpec(title: "File")`
   duplicated `CommandCategory.file.title`, so translating the registry left the whole menu bar in
   English while every menu's *contents* switched — visible only by launching. `MenuSpec` now carries
