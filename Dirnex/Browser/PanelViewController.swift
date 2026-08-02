@@ -314,10 +314,11 @@ final class PanelViewController: NSViewController {
         // Only the Name column absorbs slack as the pane resizes; Size and Date keep their
         // set widths so they never scroll off-screen when a pane is narrow.
         tableView.columnAutoresizingStyle = .firstColumnOnlyAutoresizingStyle
-        // The cell centers its 16pt icon/text vertically; the system default height leaves
-        // it cramped, so give each row a little vertical breathing room above and below.
+        // The cell centers its icon/text vertically; the system default height leaves it cramped,
+        // so give each row a little vertical breathing room above and below. How much is the
+        // app-wide `rowDensity` (PLAN.md §M15) — `.regular` is the 22 pt this was hardcoded to.
         tableView.rowSizeStyle = .custom
-        tableView.rowHeight = 22
+        tableView.rowHeight = AppPreferences.shared.rowDensity.rowHeight
         tableView.usesAlternatingRowBackgroundColors = true
         tableView.allowsMultipleSelection = false
         tableView.allowsEmptySelection = true
@@ -339,6 +340,7 @@ final class PanelViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         observeShowHiddenPreference()
+        observeRowDensityPreference()
         observeGitStatusChanges()
         observeFinderTagChanges()
         observeCloudSyncStatusChanges()

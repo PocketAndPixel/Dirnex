@@ -82,6 +82,24 @@ struct PanelsSettingsView: View {
             }
 
             Section {
+                Picker("Row height", selection: $preferences.rowDensity) {
+                    ForEach(RowDensity.allCases) { density in
+                        Text(density.title).tag(density)
+                    }
+                }
+                .pickerStyle(.segmented)
+            } footer: {
+                Text(
+                    """
+                    How much vertical room each file row gets, in every pane and tab. Compact fits \
+                    more on screen; Roomy is easier to aim at. The icons follow along.
+                    """
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+
+            Section {
                 Toggle("Show function key bar", isOn: $preferences.showFunctionBar)
             } footer: {
                 Text(

@@ -54,6 +54,30 @@ final class FileCellView: NSTableCellView {
     /// gutter — see the constraint below for why it is positive at all.
     private static let badgeOverhang: CGFloat = 4
 
+    /// The icon box, sized from `AppPreferences.rowDensity` (PLAN.md §M15). `nil` on the cells that
+    /// carry no image, where setting a density is a no-op.
+    private var iconWidth: NSLayoutConstraint?
+    private var iconHeight: NSLayoutConstraint?
+
+    /// The density this cell is currently laid out for. Re-applied on **every** render rather than
+    /// baked in at build time, because cells are recycled: `makeView(withIdentifier:)` hands back a
+    /// cell built at whatever density was current when it was made.
+    ///
+    /// Measured, in a throwaway harness against a real 300-row table: `reloadData` empties
+    /// `NSTableView`'s reuse pool outright — every row after one is a fresh build, even at an
+    /// unchanged density — so a density change *today* happens to hand out correctly sized cells
+    /// with no help from here. That is undocumented behaviour, and it fails in the quiet direction:
+    /// a macOS that kept the pool would draw 16 pt icons in a 28 pt row with nothing logged. So the
+    /// cell owns the invariant instead of relying on the table to. Re-assigning the same value
+    /// costs one comparison.
+    var density: RowDensity = .regular {
+        didSet {
+            guard density != oldValue else { return }
+            iconWidth?.constant = density.iconSize
+            iconHeight?.constant = density.iconSize
+        }
+    }
+
     init(showsImage: Bool, identifier: NSUserInterfaceItemIdentifier) {
         super.init(frame: .zero)
         self.identifier = identifier
@@ -109,11 +133,19 @@ final class FileCellView: NSTableCellView {
         let dotsFlush = dots.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -1)
         dotsFlush.priority = .defaultHigh
 
+        // Built at `density`'s own size — the property's initial value — so the stored constraints
+        // and the stored density never disagree, and `didSet` has nothing to correct on a cell
+        // that is already at the current density.
+        let width = image.widthAnchor.constraint(equalToConstant: density.iconSize)
+        let height = image.heightAnchor.constraint(equalToConstant: density.iconSize)
+        iconWidth = width
+        iconHeight = height
+
         NSLayoutConstraint.activate([
             image.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 3),
             image.centerYAnchor.constraint(equalTo: centerYAnchor),
-            image.widthAnchor.constraint(equalToConstant: 16),
-            image.heightAnchor.constraint(equalToConstant: 16),
+            width,
+            height,
             text.leadingAnchor.constraint(equalTo: image.trailingAnchor, constant: 5),
             text.centerYAnchor.constraint(equalTo: centerYAnchor),
             text.trailingAnchor.constraint(lessThanOrEqualTo: dots.leadingAnchor, constant: -6),

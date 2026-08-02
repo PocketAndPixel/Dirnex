@@ -97,6 +97,7 @@ extension PanelViewController {
             showHidden: AppPreferences.shared.showHidden,
             columns: tabs[activeTabIndex].columnLayout
         )
+        tab.viewMode = tabs[activeTabIndex].viewMode
         tabs.insert(tab, at: activeTabIndex + 1)
         if activate {
             activeTabIndex += 1
@@ -116,6 +117,9 @@ extension PanelViewController {
         let currentTab = tabs[activeTabIndex]
         let tab = newTab(basedOn: currentTab)
         tab.columnLayout = currentTab.columnLayout
+        // Inherited alongside the sort, hidden files and the columns: a fresh tab matches the pane
+        // you opened it from, in shape as much as in everything else (PLAN.md §M15).
+        tab.viewMode = currentTab.viewMode
         tabs.insert(tab, at: activeTabIndex + 1)
         activeTabIndex += 1
         activateTab()
@@ -249,6 +253,7 @@ extension PanelViewController {
                 path: tab.panel.path,
                 sort: tab.panel.model.sort,
                 columns: tab.columnLayout,
+                viewMode: tab.viewMode,
                 cursorName: tab.cursorOnParentRow ? nil : tab.panel.currentEntry?.name,
                 cursorOnParent: tab.cursorOnParentRow,
                 markedNames: tab.panel.selection.isEmpty
@@ -338,6 +343,9 @@ extension PanelViewController {
                 showHidden: showHidden,
                 columns: persisted.columns
             )
+            // The shape the tab was last left in (PLAN.md §M15) — restored, unlike the session-
+            // scoped per-tab modes, because coming back to a tree as a flat list reads as loss.
+            tab.viewMode = persisted.panelViewMode
             // Re-applied by `applyPendingRestore` once this tab's directory first lists (it isn't
             // listed yet — a restored tab loads lazily), by leaf name so a since-deleted file drops.
             tab.pendingCursorName = persisted.cursorName

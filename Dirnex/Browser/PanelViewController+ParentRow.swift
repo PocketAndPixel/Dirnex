@@ -43,6 +43,8 @@ extension PanelViewController {
         cell.marked = false
         cell.dimmed = false
         cell.accentColor = nil
+        // Like every other row: a recycled cell carries the density it was built at (PLAN.md §M15).
+        cell.density = AppPreferences.shared.rowDensity
         switch column {
         case .name:
             cell.imageView?.image = FileIconProvider.parentIcon

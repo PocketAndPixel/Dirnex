@@ -111,6 +111,23 @@ final class AppPreferences: ObservableObject {
         showFunctionBar.toggle()
     }
 
+    /// Panels ▸ how tall each file row is drawn, and how big the icon in it (PLAN.md §M15). A
+    /// single app-wide value like `showHidden`, not a per-tab one: it is a reading preference, not
+    /// a question you ask of one directory. Changing it posts `rowDensityDidChange` so every open
+    /// pane re-renders live. Defaults to `.regular`, which is the 22 pt row the app hardcoded
+    /// before this setting existed — an untouched install is unchanged.
+    @Published var rowDensity: RowDensity {
+        didSet {
+            guard rowDensity != oldValue else { return }
+            defaults.set(rowDensity.rawValue, forKey: Keys.rowDensity)
+            NotificationCenter.default.post(name: Self.rowDensityDidChange, object: self)
+        }
+    }
+
+    /// Posted (on the main actor) when `rowDensity` changes, so every open pane re-sizes its rows
+    /// and repaints. `object` is the `AppPreferences` that changed.
+    static let rowDensityDidChange = Notification.Name("Dirnex.rowDensityDidChange")
+
     /// Operations ▸ ask for confirmation before moving items to the Trash (default off —
     /// Trash is recoverable, matching Finder). Permanent delete always confirms regardless.
     @Published var confirmTrash: Bool {
@@ -214,6 +231,10 @@ final class AppPreferences: ObservableObject {
         // Defaults on, like `showTags`: `object(forKey:)`, not `bool(forKey:)` (which answers
         // `false` for a never-written key and would ship the bar hidden).
         showFunctionBar = defaults.object(forKey: Keys.showFunctionBar) as? Bool ?? true
+        // Stored as the raw string and read back tolerantly: a value written by a newer build
+        // (or a hand-edited defaults domain) falls back to the shipped default rather than
+        // trapping, the same way `PersistedTab` reads its sort key.
+        rowDensity = RowDensity(rawValue: defaults.string(forKey: Keys.rowDensity) ?? "") ?? .regular
         confirmTrash = defaults.bool(forKey: Keys.confirmTrash)
         // Empty (never written) = automatic, so a fresh install keeps the install-order default.
         diffToolIdentifier = defaults.string(forKey: Keys.diffToolIdentifier) ?? ""
@@ -235,6 +256,7 @@ final class AppPreferences: ObservableObject {
         static let showTags = "Dirnex.pref.showTags"
         static let showSyncStatus = "Dirnex.pref.showSyncStatus"
         static let showFunctionBar = "Dirnex.pref.showFunctionBar"
+        static let rowDensity = "Dirnex.pref.rowDensity"
         static let confirmTrash = "Dirnex.pref.confirmTrash"
         static let diffToolIdentifier = "Dirnex.pref.diffToolIdentifier"
         static let textEditorIdentifier = "Dirnex.pref.textEditorIdentifier"

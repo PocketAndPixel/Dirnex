@@ -1,6 +1,21 @@
 import DirnexCore
 import Foundation
 
+/// Which *shape* a tab draws its listing in (PLAN.md §M15 Slice 4).
+///
+/// Per **tab**, not app-wide, so one pane can be a tree while the other stays a list — which is the
+/// whole point of comparing two places at once. And **persisted**, unlike the per-tab
+/// `isSizeVisualizationEnabled`, which is the precedent this must not copy: size bars are a mode you
+/// switch on to answer a question and are done with, while a tab restored into the wrong shape reads
+/// as data loss.
+///
+/// `.tree` is accepted and round-trips through persistence from Slice 1 onward; nothing reads it
+/// yet, so a tab in it still renders as `.list` until Slice 4 lands.
+enum PanelViewMode: String, CaseIterable {
+    case list
+    case tree
+}
+
 /// One tab within a file pane: everything needed to restore its exact view when the
 /// user switches back to it. A `PanelViewController` owns an array of these and renders
 /// whichever is active (PLAN.md §M1 "tabs per panel … restored on relaunch").
@@ -36,6 +51,9 @@ final class PanelTab {
     /// layout — restored from disk or inherited from the tab it was spawned from — in which
     /// case the pane falls back to the default columns.
     var columnLayout: [ColumnLayout]?
+    /// The shape this tab draws its listing in (PLAN.md §M15), persisted beside `columnLayout` and
+    /// inherited by a tab spawned from this one, exactly as the sort and the columns are.
+    var viewMode: PanelViewMode = .list
     /// When this tab shows Spotlight results (a `.search` panel), the query and scope that
     /// produced them — retained so "Save Search…" can persist a re-runnable saved search
     /// (PLAN.md §M4). `nil` for a normal directory tab. Session-scoped: a restored tab is never

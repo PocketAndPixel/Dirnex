@@ -35,6 +35,9 @@ extension PanelViewController: NSTableViewDelegate {
         cell.marked = panel.isMarked(entry)
         cell.dimmed = entry.isHidden
         cell.accentColor = nil
+        // Set on every render, not only when the preference changes: a recycled cell was built at
+        // whatever density was current when it was made (PLAN.md §M15; see `FileCellView.density`).
+        cell.density = AppPreferences.shared.rowDensity
         switch column {
         case .name:
             // An app-library row in the merged iCloud listing wears the app's own icon; everything

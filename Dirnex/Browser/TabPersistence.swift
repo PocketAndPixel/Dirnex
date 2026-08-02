@@ -20,6 +20,14 @@ struct PersistedTab: Codable {
     /// Column widths/order, in display order. Optional so tab state written before this
     /// field existed still decodes (a missing key → `nil` → default columns).
     var columns: [ColumnLayout]?
+    /// Which shape this tab drew its listing in (PLAN.md §M15), as `PanelViewMode.rawValue`.
+    ///
+    /// The raw string rather than the enum, matching `sortKey` right above it and for a reason
+    /// worth stating: a `Codable` enum *throws* on an unknown case, and because every field here is
+    /// decoded as one `PersistedTab`, a mode written by a newer build would fail the whole tab's
+    /// decode and drop it out of the restored session. Read back through
+    /// `panelViewMode`, which falls back to `.list`.
+    var viewMode: String?
     /// The leaf name of the file the cursor was on, so a relaunched tab re-anchors on the *same
     /// entry by identity* rather than a row index — matching how `Panel` keeps the cursor across a
     /// live refresh (row indices are meaningless once sort/contents drift). `nil` when the cursor
@@ -69,6 +77,7 @@ extension PersistedTab {
         path: VFSPath,
         sort: FileSort,
         columns: [ColumnLayout]?,
+        viewMode: PanelViewMode = .list,
         cursorName: String? = nil,
         cursorOnParent: Bool = false,
         markedNames: [String]? = nil
@@ -78,6 +87,7 @@ extension PersistedTab {
         sortKey = sort.key.rawValue
         sortAscending = sort.ascending
         self.columns = columns
+        self.viewMode = viewMode.rawValue
         self.cursorName = cursorName
         self.cursorOnParent = cursorOnParent
         self.markedNames = markedNames
@@ -89,5 +99,12 @@ extension PersistedTab {
 
     var fileSort: FileSort {
         FileSort(key: FileSort.Key(rawValue: sortKey) ?? .name, ascending: sortAscending)
+    }
+
+    /// The stored shape, or `.list` for state written before the field existed — and for a value a
+    /// newer build wrote that this one has never heard of. Tolerant on purpose: a tab is worth
+    /// keeping in the wrong shape, never worth dropping.
+    var panelViewMode: PanelViewMode {
+        PanelViewMode(rawValue: viewMode ?? "") ?? .list
     }
 }

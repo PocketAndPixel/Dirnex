@@ -149,21 +149,41 @@ Four slices, each shippable on its own and ordered so the cheap visible wins lan
 touch only the app; Slice 4 opens core-first (§2: a slice starts with purely additive, tested
 `DirnexCore` files and lands in a second pass that wires the app).
 
-#### Slice 1 — Row density, and view mode as tab state (S)
+#### Slice 1 — Row density, and view mode as tab state (S) — **landed 2026-08-02**
 
-- [ ] `AppPreferences.rowDensity` — compact / regular / roomy, app-wide like every other View
+- [x] `AppPreferences.rowDensity` — compact / regular / roomy, app-wide like every other View
       toggle, with a change notification so open panes re-render live. `tableView.rowHeight` is a
-      hardcoded 22 today.
-- [ ] `FileCellView`'s icon constraints follow it. They are hardcoded 16 pt `widthAnchor` /
+      hardcoded 22 today. Settings ▸ Panels carries a segmented picker; `PanelViewController+Density`
+      is the observer, shaped as the twin of `+Hidden` so there is one pattern for "an app-wide View
+      preference a pane must follow".
+- [x] `FileCellView`'s icon constraints follow it. They are hardcoded 16 pt `widthAnchor` /
       `heightAnchor` constants, and cells are recycled across a density change, so the cell is
-      rebuilt rather than mutated.
-- [ ] `PanelTab.viewMode` (`.list` / `.tree`), persisted in `PersistedTab` beside `columns` — per
+      rebuilt rather than mutated. **Probed, and the answer inverted the plan:** `reloadData` empties
+      `NSTableView`'s reuse pool outright — measured on a real 300-row table, every row after one is
+      a fresh build even at an unchanged density — so a density change already hands out correctly
+      sized cells and there is nothing to rebuild. That is undocumented and fails in the quiet
+      direction, so the cell owns the invariant instead: `FileCellView.density` is re-applied on
+      every render and moves the two stored constraints, which is provably correct whether the pool
+      is purged or not.
+- [x] `PanelTab.viewMode` (`.list` / `.tree`), persisted in `PersistedTab` beside `columns` — per
       *tab*, so one pane can be a tree while the other is a list. Note the precedent it must not
       copy: `isSizeVisualizationEnabled` is per-tab and **not** persisted, which is fine for a mode
       you switch on to answer a question; a tab restored into the wrong *shape* reads as data loss.
+      Stored as the raw string, not the enum: a `Codable` enum throws on an unknown case and the
+      throw takes the whole `PersistedTab` with it, so a shape written by a newer build would drop
+      the tab out of the session rather than merely be ignored.
 
 Exit: density changes live in both panes and survives relaunch; `viewMode` round-trips through
-persistence with `.tree` still rendering as `.list` (nothing reads it yet).
+persistence with `.tree` still rendering as `.list` (nothing reads it yet). **Met** — verified live
+against the real binary with a temporary `NSLog` of the measured row rects and icon frames (never
+off a screenshot, NOTES.md ▸ Live verification): both panes moved together to 28/20 and 18/14 with
+`cursorRow` preserved across every change, the density came back after a relaunch, and a
+hand-written `viewMode: "tree"` was restored into the tab and re-persisted while the other pane
+stayed `.list`.
+
+Geometry, measured rather than picked: the floor is the **text**, whose intrinsic height at the
+system font is exactly 16.00 pt (bold included — a marked row draws bold). So the three steps are
+18/14, 22/16 and 28/20, with `.regular` reproducing the shipped pane byte-for-byte.
 
 #### Slice 2 — A palette the user owns (S–M)
 
