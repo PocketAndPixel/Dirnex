@@ -66,12 +66,17 @@ struct FileColorRulesSection: View {
 
     /// Add, remove and reorder. Grouped below the list rather than beside it so the row layout keeps
     /// its full width for the pattern field, which is the one control whose content varies in length.
+    ///
+    /// Every glyph sits in the same `iconSize` square: `.bordered` hugs its label, and `plus`/`minus`
+    /// have a near-square layout box while `chevron.up`/`chevron.down` are short, wide carets — so left
+    /// to their natural sizes the four buttons come out at three different heights. A shared frame
+    /// centres each glyph at its own drawn size in an identical box, so the buttons match.
     private var controls: some View {
         HStack(spacing: 8) {
             Button {
                 add()
             } label: {
-                Image(systemName: "plus")
+                Image(systemName: "plus").frame(width: iconSize, height: iconSize)
             }
             .help(String(
                 localized: "Add a colour rule",
@@ -81,7 +86,7 @@ struct FileColorRulesSection: View {
             Button {
                 removeSelected()
             } label: {
-                Image(systemName: "minus")
+                Image(systemName: "minus").frame(width: iconSize, height: iconSize)
             }
             .disabled(selectedIndex == nil)
             .help(String(
@@ -94,7 +99,7 @@ struct FileColorRulesSection: View {
             Button {
                 moveSelected(by: -1)
             } label: {
-                Image(systemName: "chevron.up")
+                Image(systemName: "chevron.up").frame(width: iconSize, height: iconSize)
             }
             .disabled(!canMoveSelected(by: -1))
             .help(String(
@@ -105,7 +110,7 @@ struct FileColorRulesSection: View {
             Button {
                 moveSelected(by: 1)
             } label: {
-                Image(systemName: "chevron.down")
+                Image(systemName: "chevron.down").frame(width: iconSize, height: iconSize)
             }
             .disabled(!canMoveSelected(by: 1))
             .help(String(
@@ -117,6 +122,10 @@ struct FileColorRulesSection: View {
         }
         .buttonStyle(.bordered)
     }
+
+    /// Side of the square each control glyph is centred in — large enough to contain the tallest
+    /// (`plus`) at the default control font, so nothing overflows its box.
+    private let iconSize: CGFloat = 14
 
     // MARK: - Editing
 
