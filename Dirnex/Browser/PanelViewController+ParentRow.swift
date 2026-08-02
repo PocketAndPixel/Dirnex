@@ -53,6 +53,15 @@ extension PanelViewController {
         // foreground as much as any other row.
         cell.density = AppPreferences.shared.rowDensity
         cell.palette = AppPreferences.shared.palette
+        // In tree mode `..` reserves the disclosure slot with no triangle, so its icon lines up with
+        // the depth-0 rows below it; in list mode `isTreeRow == false` keeps the shipped inset. It
+        // can never be expanded, so it never carries a triangle or a toggle. Reset on every render —
+        // this cell is recycled from real tree rows that did carry both.
+        cell.isTreeRow = panel.isTree
+        cell.treeDepth = 0
+        cell.treeDisclosure = nil
+        cell.onDisclosureToggle = nil
+        cell.applyTreeLayout()
         switch column {
         case .name:
             cell.imageView?.image = FileIconProvider.parentIcon

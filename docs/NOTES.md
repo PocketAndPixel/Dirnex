@@ -439,6 +439,27 @@ at build time.
   the folder where the truth is a claim about the question. Drop such rows from the projection
   entirely, including from any pending-work set, or a row with no total is pending forever and
   gets re-queued on every render.
+- **A second row source is a second *index space*, and every site that maps a row to an entry has to
+  be found by hand — the compiler sees `Int` on both sides.** The M15 tree renders more rows than the
+  directory it is rooted at has entries, so `panel.model[row]` — which had been right for the whole
+  life of the app — is an out-of-range crash the first time a user clicks the row *below* the last
+  root-level one. Six sites had it (the click anchor, the Cmd/Shift range anchor, drag, drop, the
+  context menu's mark check) and each is a plain `Array` subscript on a value that arrived as a table
+  row. Three things worth carrying:
+  - **It hides behind small test data and shallow gestures.** Every earlier verification pass —
+    expand, collapse, arrow keys, disclosure clicks, marking across three levels — went through the
+    *tree's* accessors and passed. Only a plain mouse click reaches the anchor code, and only one
+    landing past the root's own count crashes, so a two-entry root with one expanded folder is
+    already enough to be safe by accident. Click the **last** row of a deep tree.
+  - **The tree-aware inverse already existed and was `private`.** `Panel.displayedIndex(ofID:)` was
+    written for the cursor restore inside the value type, while every *app* caller reached for
+    `panel.model.index(ofID:)` — so the fork was not a missing capability, it was an access level.
+    When a value type grows a second row source, its row⇄entry mapping is API in both directions;
+    leaving one half private guarantees callers re-derive the wrong one.
+  - The general shape: a projection is affordable precisely because everything downstream keeps *one*
+    index space (HISTORY.md §M8), and that only holds if nothing reads past the projection to the
+    thing it projects. `command grep -n 'model\['` over the app is the whole audit, and it is worth
+    running the day any new row source lands rather than waiting for a click to find it.
 
 ## Localization
 

@@ -28,6 +28,10 @@ struct PersistedTab: Codable {
     /// decode and drop it out of the restored session. Read back through
     /// `panelViewMode`, which falls back to `.list`.
     var viewMode: String?
+    /// The tree folders that were expanded, as paths relative to this tab's root (PLAN.md §M15 Slice
+    /// 4) — so a relaunched tree comes back opened to where the user left it. Optional and omitted
+    /// when empty (list mode, or an all-collapsed tree), so the common case adds nothing to the JSON.
+    var expandedPaths: [String]?
     /// The leaf name of the file the cursor was on, so a relaunched tab re-anchors on the *same
     /// entry by identity* rather than a row index — matching how `Panel` keeps the cursor across a
     /// live refresh (row indices are meaningless once sort/contents drift). `nil` when the cursor
@@ -78,6 +82,7 @@ extension PersistedTab {
         sort: FileSort,
         columns: [ColumnLayout]?,
         viewMode: PanelViewMode = .list,
+        expandedPaths: [String]? = nil,
         cursorName: String? = nil,
         cursorOnParent: Bool = false,
         markedNames: [String]? = nil
@@ -88,6 +93,7 @@ extension PersistedTab {
         sortAscending = sort.ascending
         self.columns = columns
         self.viewMode = viewMode.rawValue
+        self.expandedPaths = expandedPaths
         self.cursorName = cursorName
         self.cursorOnParent = cursorOnParent
         self.markedNames = markedNames

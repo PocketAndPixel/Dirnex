@@ -46,6 +46,11 @@ final class PanelTab {
     var pendingCursorName: String?
     var pendingCursorOnParent = false
     var pendingMarkNames: [String]?
+    /// The tree folders to re-open once a *restored* tree tab's directory first lists (PLAN.md §M15
+    /// Slice 4), as paths relative to the tab's root — matching the shape `PersistedTab` stores.
+    /// Consumed and cleared by `restorePendingTreeExpansion` on the first load; `nil` for a tab that
+    /// was not restored from disk or was a flat list, which makes the re-open a no-op.
+    var pendingExpandedPaths: [String]?
     /// This tab's column widths/order, in display order (UI-only, like `cursorOnParentRow`;
     /// see `PanelViewController+Columns`). `nil` until the tab has been given an explicit
     /// layout — restored from disk or inherited from the tab it was spawned from — in which

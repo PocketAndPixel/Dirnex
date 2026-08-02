@@ -112,6 +112,15 @@ public struct TreeProjection: Sendable {
         listings[path] != nil
     }
 
+    /// Every directory the tree currently holds a listing for — the root plus each expanded folder
+    /// that has been lazily loaded. The app watches exactly this set with one FSEvents stream (one
+    /// per folder would be wasteful — PLAN.md §M15 Slice 4) and re-lists each of them when a change
+    /// lands, since the event carries no path (`DirectoryWatcher` discards it). Unordered, like the
+    /// dictionary it reads.
+    public var listedDirectories: [VFSPath] {
+        Array(listings.keys)
+    }
+
     /// Every entry the tree holds a listing for, across all levels — the set a refresh prunes marks
     /// against, so a mark on an entry in one expanded folder survives another folder's refresh. This
     /// **includes** entries hidden or filtered out of `rows` (they still exist in the directory),

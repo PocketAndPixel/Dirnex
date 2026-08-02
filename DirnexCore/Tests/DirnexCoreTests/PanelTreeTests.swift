@@ -261,4 +261,52 @@ struct PanelTreeTests {
         panel.setShowHidden(true)
         #expect(rowNames(panel) == ["docs", ".h", "a.txt"])
     }
+
+    // MARK: - One index space
+
+    /// The row⇄entry mapping in both directions, which is what every mouse gesture and every
+    /// cursor-restore goes through. Reaching past these into `model` is the fork that crashed a
+    /// live click on the first tree row below the root's last entry (PLAN.md §M15 Slice 4).
+    @Test("a display row maps to the entry the tree draws there, past the root's own count")
+    func displayedEntryReadsTreeRows() {
+        let docs = root.appending("docs")
+        var panel = treePanel([dir("docs"), entry("z.txt")])
+        panel.setTreeChildListing(docs, entries: [
+            entry("a.txt", in: docs),
+            entry("b.txt", in: docs)
+        ])
+        panel.expand(docs)
+        #expect(rowNames(panel) == ["docs", "a.txt", "b.txt", "z.txt"])
+        // Row 3 exists in the tree and is past the end of the two-entry root model.
+        #expect(panel.count == 4)
+        #expect(panel.displayedEntry(at: 3)?.name == "z.txt")
+        #expect(panel.displayedEntry(at: 4) == nil)
+    }
+
+    @Test("an entry's display row is its tree row, and nil for one that isn't shown")
+    func displayedIndexReadsTreeRows() {
+        let docs = root.appending("docs")
+        var panel = treePanel([dir("docs"), entry("z.txt")])
+        panel.setTreeChildListing(docs, entries: [entry("a.txt", in: docs)])
+        panel.expand(docs)
+
+        #expect(panel.displayedIndex(ofID: docs.appending("a.txt")) == 1)
+        #expect(panel.displayedIndex(ofID: root.appending("z.txt")) == 2)
+        #expect(panel.displayedIndex(ofID: root.appending("nope.txt")) == nil)
+
+        // Collapsed, the child is no longer a row — and `z.txt` moves back up to 1.
+        panel.collapse(docs)
+        #expect(panel.displayedIndex(ofID: docs.appending("a.txt")) == nil)
+        #expect(panel.displayedIndex(ofID: root.appending("z.txt")) == 1)
+    }
+
+    @Test("in list mode both accessors are the flat model's")
+    func indexSpaceMatchesModelInListMode() {
+        var panel = Panel(path: root, sort: FileSort(key: .name))
+        panel.setListing(DirectoryListing(path: root, entries: [dir("docs"), entry("z.txt")]))
+        #expect(panel.displayedIndex(ofID: root.appending("z.txt")) == panel.model.index(
+            ofID: root.appending("z.txt")
+        ))
+        #expect(panel.displayedEntry(at: 1) == panel.model[1])
+    }
 }

@@ -73,8 +73,12 @@ extension PanelViewController {
 
     // MARK: - Anchor bookkeeping
 
+    /// `index` is a *display row*, so the entry comes from `panel.displayedEntry(at:)` — in tree
+    /// mode the pane draws more rows than the root directory has entries, and reading
+    /// `panel.model[index]` there is an out-of-range crash on the first click below the last
+    /// root-level row (found live, PLAN.md §M15 Slice 4).
     private func setAnchor(to index: Int) {
-        mouseSelectionAnchor = panel.model[index].id
+        mouseSelectionAnchor = panel.displayedEntry(at: index)?.id
         mouseSelectionBase = panel.selection
     }
 
@@ -84,14 +88,14 @@ extension PanelViewController {
     /// already set) as the anchor/base, so the sweep extends from where the user is
     /// without discarding what they had marked.
     private func resolvedAnchorIndex(fallingBackTo index: Int) -> Int {
-        if let id = mouseSelectionAnchor, let anchor = panel.model.index(ofID: id) {
+        if let id = mouseSelectionAnchor, let anchor = panel.displayedIndex(ofID: id) {
             return anchor
         }
         let fallback = cursorOnParentRow
             ? index
             : min(max(panel.cursor, 0), max(panel.count - 1, 0))
         mouseSelectionBase = panel.selection
-        mouseSelectionAnchor = panel.isEmpty ? nil : panel.model[fallback].id
+        mouseSelectionAnchor = panel.displayedEntry(at: fallback)?.id
         return fallback
     }
 }

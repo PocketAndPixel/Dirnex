@@ -68,7 +68,7 @@ extension PanelViewController {
         // F5/F6 reach here via the key model, which bypasses menu validation — so re-check that
         // this isn't an archive pane, whose entries can't be extracted yet (a later M4 pass).
         guard !isArchive else { return }
-        let sources = selectionTargets()
+        let sources = recursiveTargets()
         guard !sources.isEmpty, let destPane = host?.panelCounterpart(of: self) else { return }
         let destination = destPane.panel.path
         // The queue writes into a real directory — on disk (`.local`), or on a connected SFTP or
@@ -79,15 +79,7 @@ extension PanelViewController {
             || destination.backend.isSFTP
             || destination.backend.isFTP else {
             presentOperationFailure(
-                message: kind == .copy
-                    ? String(
-                        localized: "Can’t copy here",
-                        comment: "Copy failure title: destination can't receive files."
-                    )
-                    : String(
-                        localized: "Can’t move here",
-                        comment: "Move failure title: destination can't receive files."
-                    ),
+                message: transferFailureTitle(kind),
                 detail: String(
                     localized: "The other panel isn’t a folder you can copy into.",
                     comment: "Copy/move failure detail: destination isn't a writable folder."
@@ -115,13 +107,110 @@ extension PanelViewController {
             )
             return
         }
-        submitTransfer(kind: kind, sources: sources, destination: destination)
-        // Marks are consumed the moment the operation is queued, matching the delete flow;
-        // the source rows themselves stay until the job runs and the window controller
-        // re-lists both panes on completion.
+        // In tree mode the marked set can span levels, and TC's branch-view semantics are to
+        // reproduce each item's path *relative to this pane's directory* under the destination
+        // (PLAN.md §M15) — so the transfer becomes one job per destination subdirectory. A
+        // selection that sits entirely at this pane's own level is a single group with no relative
+        // path, which is every list-mode transfer and takes the shipped single-job path unchanged.
+        let groups = TreeSelection.transferGroups(sources, relativeTo: panel.path)
+        if groups.count == 1, groups[0].relativeComponents.isEmpty {
+            submitTransfer(kind: kind, sources: sources, destination: destination)
+            consumeTransferMarks()
+        } else {
+            submitBranchTransfer(kind: kind, groups: groups, destination: destination)
+        }
+    }
+
+    /// Marks are consumed the moment the operation is queued, matching the delete flow; the source
+    /// rows themselves stay until the job runs and the window controller re-lists both panes on
+    /// completion.
+    private func consumeTransferMarks() {
         panel.clearSelection()
         reloadEverything()
         focusTable()
+    }
+
+    /// A transfer whose sources span several tree levels: recreate the folders they came from under
+    /// the destination, then hand each directory's sources to the queue as its own job.
+    ///
+    /// The alternative — everything flat into one folder — collides silently the moment two expanded
+    /// folders each hold an `x.jpg`, which is why the semantics were settled before the slice opened.
+    ///
+    /// The directories must exist before the jobs run (the engine writes into
+    /// `destinationDirectory`, it does not create it), so they are made first, off the main thread,
+    /// walking each group's chain from the destination down — `alreadyExists` is the ordinary answer
+    /// for a folder the destination already has, not a failure. The marks are consumed only once
+    /// that succeeds, so a failure here leaves the selection intact to retry. Each group then goes
+    /// through `submitTransfer`, so the conflict prompter, the error prompter and the undo
+    /// journalling are the flat path's, unchanged.
+    private func submitBranchTransfer(
+        kind: FileOperation.Kind,
+        groups: [TreeTransferGroup],
+        destination: VFSPath
+    ) {
+        let backend = backend
+        let directories = intermediateDirectories(for: groups, under: destination)
+        Task {
+            do {
+                try await Task.detached(priority: .userInitiated) {
+                    for directory in directories {
+                        do {
+                            try backend.createDirectory(at: directory)
+                        } catch VFSError.alreadyExists {
+                            continue
+                        }
+                    }
+                }.value
+            } catch {
+                presentOperationFailure(
+                    message: transferFailureTitle(kind),
+                    detail: describe(error)
+                )
+                return
+            }
+            for group in groups {
+                submitTransfer(
+                    kind: kind,
+                    sources: group.sources,
+                    destination: group.destination(under: destination)
+                )
+            }
+            consumeTransferMarks()
+        }
+    }
+
+    /// Every directory a branch transfer has to make under `destination`, each after the ones that
+    /// contain it: the full chain of every group's relative path, de-duplicated, since a group's own
+    /// parent need not itself be a group (marking one file three levels down is one group and three
+    /// directories).
+    private func intermediateDirectories(
+        for groups: [TreeTransferGroup],
+        under destination: VFSPath
+    ) -> [VFSPath] {
+        var directories: [VFSPath] = []
+        var seen: Set<VFSPath> = []
+        for group in groups {
+            var current = destination
+            for component in group.relativeComponents {
+                current = current.appending(component)
+                if seen.insert(current).inserted { directories.append(current) }
+            }
+        }
+        return directories
+    }
+
+    /// The alert title for a copy/move that can't proceed — one definition, so the two strings are
+    /// looked up (and translated) once however many sites raise them.
+    private func transferFailureTitle(_ kind: FileOperation.Kind) -> String {
+        kind == .copy
+            ? String(
+                localized: "Can’t copy here",
+                comment: "Copy failure title: destination can't receive files."
+            )
+            : String(
+                localized: "Can’t move here",
+                comment: "Move failure title: destination can't receive files."
+            )
     }
 
     /// Hand a copy/move to the window's shared queue under the `.ask` conflict policy: the

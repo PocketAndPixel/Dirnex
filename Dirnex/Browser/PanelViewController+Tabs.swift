@@ -17,6 +17,9 @@ extension PanelViewController {
         applyColumnLayout(for: tabs[activeTabIndex])
         refreshTabBar()
         if tabs[activeTabIndex].hasLoaded {
+            // The tab's `Panel` value already carries its tree, if any; this keeps `panel.tree` in
+            // agreement with the tab's `viewMode` (idempotent) before the render (PLAN.md §M15).
+            applyViewMode()
             reloadEverything()
             refreshActiveDirectory()
             // The tab renders its own stored Git state immediately (it is per-tab, like the cursor);
@@ -40,6 +43,13 @@ extension PanelViewController {
     /// the tab may have gone stale while inactive (nothing watches an inactive tab). A virtual
     /// results tab has no directory to re-list; its snapshot stands until the tab is closed.
     private func refreshActiveDirectory() {
+        // A tree tab re-lists every level it holds and re-arms its multi-path watcher — the flat
+        // re-list below would refresh only the root and leave expanded children stale (PLAN.md §M15).
+        if panel.isTree {
+            startWatchingTree(force: true)
+            refreshTree()
+            return
+        }
         guard panel.path.backend == .local else {
             // A *merged* listing is the exception: it is a live view of real directories, not a
             // snapshot of a question, and the pane's single watcher followed whichever tab was
@@ -254,6 +264,7 @@ extension PanelViewController {
                 sort: tab.panel.model.sort,
                 columns: tab.columnLayout,
                 viewMode: tab.viewMode,
+                expandedPaths: persistedExpandedPaths(for: tab),
                 cursorName: tab.cursorOnParentRow ? nil : tab.panel.currentEntry?.name,
                 cursorOnParent: tab.cursorOnParentRow,
                 markedNames: tab.panel.selection.isEmpty
@@ -293,7 +304,7 @@ extension PanelViewController {
         if tab.pendingCursorOnParent, panel.parentPath != nil {
             cursorOnParentRow = true
         } else if let name = tab.pendingCursorName,
-                  let cursorIndex = panel.model.visibleEntries.firstIndex(where: { $0.name == name }) {
+                  let cursorIndex = panel.displayedEntries.firstIndex(where: { $0.name == name }) {
             panel.moveCursor(to: cursorIndex)
             cursorOnParentRow = false
         }
@@ -346,6 +357,8 @@ extension PanelViewController {
             // The shape the tab was last left in (PLAN.md §M15) — restored, unlike the session-
             // scoped per-tab modes, because coming back to a tree as a flat list reads as loss.
             tab.viewMode = persisted.panelViewMode
+            // …and the folders it had open, re-expanded lazily once its directory first lists.
+            tab.pendingExpandedPaths = persisted.expandedPaths
             // Re-applied by `applyPendingRestore` once this tab's directory first lists (it isn't
             // listed yet — a restored tab loads lazily), by leaf name so a since-deleted file drops.
             tab.pendingCursorName = persisted.cursorName

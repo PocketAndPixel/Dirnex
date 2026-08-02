@@ -325,28 +325,53 @@ included.
       byte-for-byte unchanged (the 36 existing Panel/selection tests still pass, since `tree == nil`
       makes every accessor fall straight back to `model`). App still untouched — the render/keys/
       persistence/watcher pass is next.
-- [ ] The shape is the **sidebar's**, deliberately: an `NSTableView` over a flat projection, not an
+- [x] The shape is the **sidebar's**, deliberately: an `NSTableView` over a flat projection, not an
       `NSOutlineView` (HISTORY.md §M8 — "every row is a leaf, so folding is a build-time filter, not
       a view feature — and the drag code keeps one flat index space to map through"). That is the
       whole reason this slice is affordable: columns, the git gutter, the size bar, marks (already
       keyed by `VFSPath`), inline rename, drag/drop and the Quick View overlay all keep working
       against one index space, unchanged.
-- [ ] Expansion state per tab (`Set<VFSPath>` in `PanelTab`, persisted), listed lazily on expand
+- [x] Expansion state per tab (`Set<VFSPath>` in `PanelTab`, persisted), listed lazily on expand
       under the existing `loadToken` stale-guard.
-- [ ] **One** `DirectoryWatcher` over the whole expanded set, not one per folder: `FSEventStreamCreate`
+- [x] **One** `DirectoryWatcher` over the whole expanded set, not one per folder: `FSEventStreamCreate`
       takes an array of paths (NOTES.md, the merged-listing lesson), and the stream is rebuilt only
       when the *set* changes — rebuilding per event tears down the thing that delivered it.
-- [ ] Keys reuse the sidebar's vocabulary rather than inventing a second one
+- [x] Keys reuse the sidebar's vocabulary rather than inventing a second one
       (`SidebarViewController+Keyboard`): **→** expands a closed folder or steps into an open one,
       **←** collapses an open folder or steps out to its parent. Space still marks, ⏎ still opens.
-- [ ] Two things the flat model owns that a tree breaks, both answered *in* the slice:
+- [x] Two things the flat model owns that a tree breaks, both answered *in* the slice:
       `SizeVisualization(model:)` projects one directory's siblings, so the bars are either scoped
       per level or withdrawn in tree mode; and every tree refresh path keeps the
       `installSortedModel` → `reloadEverything` → `syncCursorToTable(scroll: false)` tail, each half
       of which NOTES.md records as a bug found live.
+- [x] **App-wiring pass landed 2026-08-02** — `PanelViewController+Tree`, the `FileCellView`
+      indentation + disclosure chevron, the `→`/`←` keys, per-tab persisted expansion, the one
+      multi-path watcher, a `Tree View` command in the View menu (translated into all 14 languages),
+      and the two fork points answered: the size bars are **withdrawn** in tree mode (a level's
+      siblings are not the row's neighbours), and every tree refresh keeps the
+      `installSortedModel` → `reloadEverything` → `syncCursorToTable(scroll: false)` tail.
+- [x] **Operation semantics landed 2026-08-02** — `TreeSelection` in the core (18 tests):
+      `transferGroups(_:relativeTo:)` groups a marked set by each item's path relative to the pane's
+      directory, and `withoutNestedItems` dedupes to the ancestor. F5/F6 create the intermediate
+      directories under the destination and enqueue one job per group (a selection at the pane's own
+      level is one group with no relative path — byte-for-byte the shipped single-job path, so list
+      mode is untouched); F8 and F5/F6 both take the deduped set, while the operations that *don't*
+      recurse (Copy Path, tags, Compare) keep the raw selection.
 
-Exit: two folders expanded in one pane, files marked across all three levels and copied with F5; the
-tree survives an FSEvents change in a collapsed sibling; relaunch restores the expansion.
+Exit **met** — verified live 2026-08-02 against a three-level tree: two folders expanded, five files
+marked across all three levels and copied with F5, which reproduced `Alpha/Nested/deep.txt` and kept
+`Alpha/same.txt` and `Beta/same.txt` apart with the right bytes in each (the collision that flattening
+loses); a `touch` inside an expanded folder *and* a new collapsed sibling both appeared with no click
+and without moving the cursor; F8 with a folder and its own grandchild marked trashed the folder whole
+with no error; and the expansion survived two relaunches.
+
+One bug found only by launching, and it is the §6 risk arriving exactly as predicted — as a **fork
+between two index spaces**, not as a wrong drawing. Six app sites read `panel.model[row]` for a row
+the *table* drew, which in tree mode indexes past the root directory's entry count: a plain click on
+the first row below the last root-level entry crashed with `Index out of range`. `Panel` already had
+the tree-aware inverse (`displayedIndex(ofID:)`) as a **private** helper, so the fix was to publish it
+and route every mouse gesture (click anchor, Cmd/Shift range, drag, drop, context menu) and every
+cursor-restore through it and `displayedEntry(at:)`. Written up in NOTES.md ▸ AppKit.
 
 #### Two decisions to settle before Slice 4 opens — **both settled 2026-08-02, as recommended**
 
@@ -358,6 +383,14 @@ Both are operation semantics, not view work, which is why they cannot be deferre
 2. **F8 with an ancestor and its descendant both marked.** *Settled: dedupe to the ancestor* before
    enqueuing. Deleting the parent already takes the child, so passing both makes the second operation
    fail on a path that no longer exists.
+
+Both landed in `TreeSelection` (core, 18 tests) with the slice. One thing the settling did not say and
+implementing did: **the dedupe belongs to F5/F6 too.** The argument is the same one — copying `Alpha`
+already writes `Alpha/Nested/deep.txt` at exactly the path the separately-marked child would go to —
+and the difference is only that a copy fails *politely*, with a conflict prompt over a file the user
+never chose to duplicate. So the app has one `recursiveTargets()` for the operations that recurse and
+keeps the raw `selectionTargets()` for the ones that don't (Copy Path, tagging, Compare all mean both
+items when the user marked both).
 
 #### Deliberately not in scope: the thumbnail grid, brief view, and the surface extraction
 

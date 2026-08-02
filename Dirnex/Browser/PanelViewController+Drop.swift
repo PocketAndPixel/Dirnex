@@ -126,11 +126,10 @@ extension PanelViewController {
             if isParentRow(row), let parent = panel.parentPath {
                 return (parent, row)
             }
-            if let index = entryIndex(forRow: row) {
-                let entry = panel.model[index]
-                if entry.isDirectoryLike {
-                    return (entry.path, row)
-                }
+            if let index = entryIndex(forRow: row),
+               let entry = panel.displayedEntry(at: index),
+               entry.isDirectoryLike {
+                return (entry.path, row)
             }
         }
         return (base, nil)

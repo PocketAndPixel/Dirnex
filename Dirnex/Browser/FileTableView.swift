@@ -36,6 +36,14 @@ protocol FileTableViewInput: AnyObject {
     /// table, and they never reach `..`.
     func fileTable(_ tableView: FileTableView, stepQuickViewCursorBy delta: Int) -> Bool
 
+    /// → in tree mode (PLAN.md §M15 Slice 4) — expand the closed folder under the cursor, or step
+    /// into an open one. Returns `false` in list mode, so the arrow falls through to the table
+    /// unchanged there.
+    func fileTableExpandOrStepIn(_ tableView: FileTableView) -> Bool
+    /// ← in tree mode — collapse the open folder under the cursor, or step out to its parent's row.
+    /// Returns `false` in list mode.
+    func fileTableCollapseOrStepOut(_ tableView: FileTableView) -> Bool
+
     /// The lowest row the cursor may land on. `..` is off limits while a full-size Quick View
     /// covers the list — it is not a file to preview, so Home and Page Up stop at the first real
     /// row instead of parking on it and showing an empty surface.
@@ -239,12 +247,9 @@ final class FileTableView: NSTableView {
         case 121: // Page Down
             moveCursor(by: visibleRowCount())
             return true
-        // Any arrow — previous/next *file* while a full-size Quick View covers the list. ↑/↓ are
-        // included because with the list hidden they mean exactly what ←/→ do, and left to
-        // `NSTableView` they walk onto the `..` row and preview nothing.
+        // Any arrow — Quick View stepping, or tree expansion (PLAN.md §M11, §M15). See `handleArrow`.
         case 123, 124, 125, 126:
-            let backwards = event.keyCode == 123 || event.keyCode == 126
-            return inputDelegate?.fileTable(self, stepQuickViewCursorBy: backwards ? -1 : 1) == true
+            return handleArrow(event)
         case 69: // Keypad + — select by wildcard (TC's gray-plus)
             inputDelegate?.fileTableSelectByPattern(self)
             return true
@@ -267,6 +272,25 @@ final class FileTableView: NSTableView {
         }
 
         return forwardTypedCharacter(event)
+    }
+
+    /// Handle an arrow key. First offered to a full-size Quick View, which steps to the previous/next
+    /// *file* while it covers the list (PLAN.md §M11) — ↑/↓ mean the same as ←/→ there, and left to
+    /// `NSTableView` would walk onto the `..` row and preview nothing. Otherwise a bare ←/→ drives
+    /// tree expansion (PLAN.md §M15 Slice 4), a no-op that falls through to the table in list mode.
+    /// ⇧-arrow and ↑/↓ are left to `super`: the first must keep whatever the table does with it, the
+    /// latter move the cursor by row. Returns `true` when consumed.
+    private func handleArrow(_ event: NSEvent) -> Bool {
+        let backwards = event.keyCode == 123 || event.keyCode == 126
+        if inputDelegate?.fileTable(self, stepQuickViewCursorBy: backwards ? -1 : 1) == true {
+            return true
+        }
+        guard !event.modifierFlags.contains(.shift) else { return false }
+        switch event.keyCode {
+        case 123: return inputDelegate?.fileTableCollapseOrStepOut(self) == true
+        case 124: return inputDelegate?.fileTableExpandOrStepIn(self) == true
+        default: return false
+        }
     }
 
     /// Route a single printable character into the type-to-filter, excluding control

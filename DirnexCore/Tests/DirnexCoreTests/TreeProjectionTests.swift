@@ -294,4 +294,21 @@ struct TreeProjectionTests {
         #expect(tree.index(ofID: root.appending("z.txt")) == 2)
         #expect(tree.index(ofID: root.appending("missing")) == nil)
     }
+
+    @Test("listedDirectories reports the root plus every loaded expanded folder")
+    func listedDirectoriesTracksLoadedLevels() {
+        let docs = root.appending("docs")
+        var tree = TreeProjection(rootPath: root, sort: FileSort(key: .name))
+        // Only the root is loaded to begin with — the set a fresh, all-collapsed tree watches.
+        tree.setListing(root, entries: [dir("docs"), entry("z.txt")])
+        #expect(Set(tree.listedDirectories) == [root])
+
+        // Expanding without a listing yet does not add a directory to watch — there is nothing
+        // under it to re-list until its lazy load arrives.
+        tree.expand(docs)
+        #expect(Set(tree.listedDirectories) == [root])
+
+        tree.setListing(docs, entries: [entry("a.txt", in: docs)])
+        #expect(Set(tree.listedDirectories) == [root, docs])
+    }
 }

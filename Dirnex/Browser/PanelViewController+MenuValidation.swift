@@ -220,8 +220,16 @@ extension PanelViewController: NSMenuItemValidation {
             // sane to walk, and that is not the user having switched the mode off.
             menuItem.state = isSizeVisualizationEnabled ? .on : .off
             // Disabled where it cannot apply, so the greying explains the suppression that the
-            // checkmark alone would leave looking like a bug.
-            return panel.path.backend == .local && !isResultsListing
+            // checkmark alone would leave looking like a bug — including in a tree, where the bars
+            // are withdrawn (PLAN.md §M15 Slice 4).
+            return panel.path.backend == .local && !isResultsListing && !panel.isTree
+        case #selector(toggleTreeView(_:)):
+            // Tracks the pane's *actual* shape (`panel.isTree`), not the tab's stored `viewMode`: a
+            // tree preference is suppressed in an archive or on a remote volume, and the checkmark
+            // must read as off there rather than blame the setting (the size-viz reasoning above).
+            menuItem.state = panel.isTree ? .on : .off
+            // Enabled only where a tree can apply — a real, local, on-disk directory.
+            return canUseTreeMode
         case #selector(toggleGitAwareSizes(_:)):
             // The tab's flag again, not `areGitAwareSizesActive` — browsing out of a repository
             // suppresses the filtering, and unchecking the box would blame the user's setting.

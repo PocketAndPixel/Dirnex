@@ -98,6 +98,47 @@ final class FileCellView: NSTableCellView {
     /// with no caller to hand it anything. Re-set on every render alongside `density`.
     var palette: PanelPalette = .followSystem
 
+    // MARK: - Tree layout (PLAN.md §M15 Slice 4)
+
+    /// A directory row's disclosure state in tree mode — a folder that can be opened or closed. `nil`
+    /// on a file, on `..`, and on every row in list mode, i.e. the rows with no triangle.
+    enum TreeDisclosure { case collapsed, expanded }
+
+    /// Whether this cell is drawn inside a tree (any depth). When `false` the name column renders
+    /// byte-for-byte as the shipped flat list — the icon flush at its original inset, no triangle,
+    /// no reserved slot. When `true` every row reserves the disclosure slot so files line up under
+    /// their sibling folders. Only the name cell (the one that carries an icon) reads this.
+    var isTreeRow = false
+    /// The row's indentation depth (0 = the tree root's own entries). Drives the leading inset so a
+    /// child sits under its parent. Always 0 in list mode.
+    var treeDepth = 0
+    /// Whether this row shows a disclosure triangle, and which way it points — `nil` for a file, a
+    /// symlink-to-file, and `..`, which cannot be opened.
+    var treeDisclosure: TreeDisclosure?
+    /// Invoked when the disclosure triangle is clicked — toggles this row's expansion **without
+    /// moving the cursor** (Finder's behaviour), which is why it carries the row's own path rather
+    /// than acting on the pane's cursor. Set per render on directory rows; the closure pattern
+    /// mirrors `SidebarCellView.onEject`.
+    var onDisclosureToggle: (() -> Void)?
+
+    /// The name cell's icon inset in the shipped flat list — the leading constant every list-mode
+    /// row keeps, so nothing shifts when the tree is off.
+    private static let iconInsetList: CGFloat = 3
+    /// One level of tree indentation.
+    private static let treeIndentPerLevel: CGFloat = 16
+    /// The width reserved before the icon for the disclosure triangle, in tree mode.
+    private static let treeDisclosureSlot: CGFloat = 14
+
+    /// The disclosure triangle for a directory row in tree mode; `nil` on the cells that carry no
+    /// image (size/date/git), which never show tree structure. Borderless with a per-cell action
+    /// closure, exactly like `SidebarCellView`'s eject button — a control in a table cell receives
+    /// its own click, so toggling never disturbs the row selection underneath.
+    private var disclosureButton: NSButton?
+    /// The two leading constraints tree layout moves: the icon's own inset and the triangle's. Held
+    /// so `applyTreeLayout` can slide them per depth without rebuilding the cell.
+    private var iconLeading: NSLayoutConstraint?
+    private var disclosureLeading: NSLayoutConstraint?
+
     init(showsImage: Bool, identifier: NSUserInterfaceItemIdentifier) {
         super.init(frame: .zero)
         self.identifier = identifier
@@ -123,6 +164,24 @@ final class FileCellView: NSTableCellView {
         image.imageScaling = .scaleProportionallyDown
         addSubview(image)
         imageView = image
+
+        // Only the name cell carries a disclosure triangle — the one column that shows tree
+        // structure. Hidden until `applyTreeLayout` gives it a state; in list mode it stays hidden
+        // and the icon keeps its original inset, so nothing changes.
+        let disclosure = NSButton()
+        disclosure.translatesAutoresizingMaskIntoConstraints = false
+        disclosure.isBordered = false
+        disclosure.bezelStyle = .accessoryBarAction
+        disclosure.imagePosition = .imageOnly
+        disclosure.contentTintColor = .secondaryLabelColor
+        disclosure.target = self
+        disclosure.action = #selector(disclosureClicked)
+        disclosure.isHidden = true
+        // A control in a table cell would otherwise take first responder on click; the pane owns its
+        // own selection model, so the triangle must not steal focus (same rule as the list subclass).
+        disclosure.refusesFirstResponder = true
+        addSubview(disclosure)
+        disclosureButton = disclosure
 
         // Only the name cell carries dots — it is the one column they belong to.
         let dots = TagDotsView()
@@ -161,11 +220,25 @@ final class FileCellView: NSTableCellView {
         iconWidth = width
         iconHeight = height
 
+        // The icon inset and the triangle's leading are the two constants tree layout slides; both
+        // start at the shipped list-mode values (triangle hidden, icon at `iconInsetList`).
+        let icon = image.leadingAnchor.constraint(
+            equalTo: leadingAnchor, constant: Self.iconInsetList
+        )
+        iconLeading = icon
+        let disclosureLead = disclosure.leadingAnchor.constraint(
+            equalTo: leadingAnchor, constant: Self.iconInsetList
+        )
+        disclosureLeading = disclosureLead
+
         NSLayoutConstraint.activate([
-            image.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 3),
+            icon,
             image.centerYAnchor.constraint(equalTo: centerYAnchor),
             width,
             height,
+            disclosureLead,
+            disclosure.centerYAnchor.constraint(equalTo: centerYAnchor),
+            disclosure.widthAnchor.constraint(equalToConstant: Self.treeDisclosureSlot),
             text.leadingAnchor.constraint(equalTo: image.trailingAnchor, constant: 5),
             text.centerYAnchor.constraint(equalTo: centerYAnchor),
             text.trailingAnchor.constraint(lessThanOrEqualTo: dots.leadingAnchor, constant: -6),
@@ -217,6 +290,59 @@ final class FileCellView: NSTableCellView {
         } else {
             textField.textColor = .labelColor
         }
+    }
+
+    // MARK: - Tree layout
+
+    /// Position the icon and the disclosure triangle for this row's depth and state. A no-op on the
+    /// cells that carry no icon (size/date/git never show tree structure). Runs per render from the
+    /// controller, after `isTreeRow`/`treeDepth`/`treeDisclosure` are set — never from
+    /// `backgroundStyle`'s `didSet`, since the layout does not depend on the cursor.
+    func applyTreeLayout() {
+        guard let iconLeading else { return }
+        guard isTreeRow else {
+            // List mode (or a cell recycled out of the tree): the shipped rendering, exactly.
+            disclosureButton?.isHidden = true
+            iconLeading.constant = Self.iconInsetList
+            return
+        }
+        let indent = CGFloat(treeDepth) * Self.treeIndentPerLevel
+        // Every tree row reserves the disclosure slot — a file lines up under its sibling folders
+        // rather than jutting a triangle's width to the left of them.
+        iconLeading.constant = Self.iconInsetList + indent + Self.treeDisclosureSlot
+        if let treeDisclosure {
+            disclosureLeading?.constant = Self.iconInsetList + indent
+            disclosureButton?.image = Self.chevron(expanded: treeDisclosure == .expanded)
+            disclosureButton?.isHidden = false
+        } else {
+            disclosureButton?.isHidden = true
+        }
+    }
+
+    @objc private func disclosureClicked() {
+        onDisclosureToggle?()
+    }
+
+    /// Right when closed, down when open — the direction every macOS disclosure points, matching the
+    /// sidebar's own section chevrons.
+    private static func chevron(expanded: Bool) -> NSImage {
+        let name = expanded ? "chevron.down" : "chevron.right"
+        let config = NSImage.SymbolConfiguration(pointSize: 10, weight: .semibold)
+        let image = NSImage(
+            systemSymbolName: name,
+            accessibilityDescription: expanded
+                ? String(
+                    localized: "Expanded",
+                    comment: "Accessibility state of an open tree folder's disclosure triangle."
+                )
+                : String(
+                    localized: "Collapsed",
+                    comment: "Accessibility state of a closed tree folder's disclosure triangle."
+                )
+        )?
+            .withSymbolConfiguration(config)
+        image?.isTemplate = true
+        return image ?? NSImage()
     }
 
     // MARK: - Inline rename

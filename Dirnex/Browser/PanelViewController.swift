@@ -409,9 +409,13 @@ final class PanelViewController: NSViewController {
                 )
                 guard token == loadToken else { return }
                 panel.setModel(model)
+                // Bring the pane into the tab's shape (PLAN.md §M15 Slice 4) before the render: a
+                // fresh model is an all-collapsed tree, so this seeds `panel.tree` when the tab wants
+                // one, and flattens back where a tree can't apply.
+                applyViewMode()
                 resetMouseSelectionAnchor()
                 recordMarkChange(since: departedMarks, in: departed, label: .clearSelection)
-                if let child, let index = panel.model.index(ofID: child) {
+                if let child, let index = panel.displayedIndex(ofID: child) {
                     panel.moveCursor(to: index)
                 }
                 // Land on a real entry; only an empty directory parks the cursor on `..`.
@@ -419,6 +423,8 @@ final class PanelViewController: NSViewController {
                 // A restored tab's first listing: re-anchor its saved cursor and re-mark its saved
                 // selection, overriding the defaults just set. A no-op for every other navigation.
                 applyPendingRestore(toTab: tabIndex)
+                // …and re-open the folders a restored tree had expanded, listing each lazily.
+                restorePendingTreeExpansion()
                 tabs[tabIndex].hasLoaded = true
                 if wasResults { tabs[tabIndex].clearResultsIdentity() }
                 if wasVirtual {
@@ -434,7 +440,7 @@ final class PanelViewController: NSViewController {
                 DirectorySizeProvider.shared.cancelScan(for: departed)
                 reloadEverything()
                 refreshTabBar()
-                startWatching(path)
+                startPaneWatcher(path, force: true)
                 updateGitStatus()
                 updateTagStatus()
                 updateSyncStatus()

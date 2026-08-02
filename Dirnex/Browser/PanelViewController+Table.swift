@@ -43,9 +43,9 @@ extension PanelViewController: NSTableViewDelegate {
             identifier: tableColumn.identifier
         ) }
         if isParentRow(row) { return parentRowCell(for: column, in: tableView) }
-        guard let index = entryIndex(forRow: row) else { return nil }
+        guard let index = entryIndex(forRow: row),
+              let entry = panel.displayedEntry(at: index) else { return nil }
 
-        let entry = panel.model[index]
         let cell = tableView.makeView(withIdentifier: tableColumn.identifier, owner: self) as? FileCellView
             ?? FileCellView(showsImage: column == .name, identifier: tableColumn.identifier)
 
@@ -74,6 +74,11 @@ extension PanelViewController: NSTableViewDelegate {
             // column of their own, and in Finder's order: dots first, cloud outermost.
             cell.tags = tags(for: entry)
             cell.syncStatus = syncStatus(for: entry)
+            // The tree's indentation and disclosure triangle (PLAN.md §M15 Slice 4), reset per
+            // render on the name cell — a recycled cell may have last drawn a different depth (or a
+            // list-mode row). A no-op visually in list mode: `isTreeRow == false` keeps the shipped
+            // inset.
+            applyTreeLayout(to: cell, entry: entry, entryIndex: index)
         case .size:
             cell.textField?.stringValue = FileFormatting.sizeString(
                 for: entry, computedSize: panel.model.computedSize(of: entry)
@@ -122,12 +127,12 @@ extension PanelViewController: NSTableViewDelegate {
         // The bar, its track and its percentage are the other fill that has to survive the cursor's
         // background (PLAN.md §M15 Slice 2) — derived from the same colour the text is.
         cell.barView.emphasizedInk = AppPreferences.shared.palette.cursorForeground
-        guard !isParentRow(row), let index = entryIndex(forRow: row) else {
+        guard !isParentRow(row), let index = entryIndex(forRow: row),
+              let entry = panel.displayedEntry(at: index) else {
             cell.dimmed = false
             cell.barView.bar = nil
             return cell
         }
-        let entry = panel.model[index]
         cell.dimmed = entry.isHidden
         cell.barView.bar = sizeBar(for: entry)
         return cell

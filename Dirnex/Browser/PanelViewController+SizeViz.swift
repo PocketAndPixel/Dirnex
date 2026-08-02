@@ -43,7 +43,11 @@ extension PanelViewController {
     /// synthetic listing whose rows live in a dozen different folders, so "share of this directory"
     /// has no referent, and an archive's or SFTP's tree costs a network round trip per level.
     var areSizeBarsVisible: Bool {
-        isSizeVisualizationEnabled && panel.path.backend == .local && !isResultsListing
+        // Withdrawn in a tree (PLAN.md §M15 Slice 4): the bar projection is one directory's siblings
+        // — `SizeVisualization(model:)` reads `panel.model`, which in tree mode is only the root — so
+        // the shares would be wrong across levels. The mode stays flagged on the tab and returns when
+        // the tree is switched off, exactly as browsing to an SFTP volume suppresses it.
+        isSizeVisualizationEnabled && panel.path.backend == .local && !isResultsListing && !panel.isTree
     }
 
     // MARK: - .gitignore-aware totals

@@ -74,6 +74,19 @@ public struct Panel: Sendable {
         return index >= 0 && index < model.count ? model[index] : nil
     }
 
+    /// The display row an entry occupies, by identity, or `nil` when it isn't currently shown.
+    ///
+    /// The inverse of ``displayedEntry(at:)`` and the other half of the one index space: a caller
+    /// holding a `VFSPath` — a cursor to restore after a refresh, a range anchor to sweep from —
+    /// must land on the row the pane is *drawing*, which in tree mode is not the flat model's index.
+    /// Reaching past this into `model.index(ofID:)` is how a row index and a model index end up
+    /// meaning different things (PLAN.md §6: anything that forks is a signal the projection is
+    /// wrong, not that the tree needs its own copy).
+    public func displayedIndex(ofID id: VFSPath) -> Int? {
+        if let tree { return tree.index(ofID: id) }
+        return model.index(ofID: id)
+    }
+
     /// The entry under the cursor, or `nil` when the pane shows no rows.
     public var currentEntry: FileEntry? {
         displayedEntry(at: cursor)
@@ -385,11 +398,5 @@ public struct Panel: Sendable {
         } else {
             cursor = isEmpty ? 0 : min(cursor, count - 1)
         }
-    }
-
-    /// Row index of an entry in the current row source, or `nil` if it is not currently visible.
-    private func displayedIndex(ofID id: VFSPath) -> Int? {
-        if let tree { return tree.index(ofID: id) }
-        return model.index(ofID: id)
     }
 }
