@@ -129,6 +129,26 @@ public struct Panel: Sendable {
     /// The parent directory, or `nil` at the backend root.
     public var parentPath: VFSPath? { model.listing.path.parent }
 
+    /// The directory that *contains* the cursor's row — where an item created "where the cursor is"
+    /// belongs (F7 New Folder, ⇧F4 Edit File).
+    ///
+    /// In a flat list this is always the pane's own directory, because every row's container is; the
+    /// property exists because a tree is the one shape where that stops being true. With the cursor
+    /// inside an expanded folder the answer is that folder, so the new item appears as a sibling
+    /// right where the cursor is standing.
+    ///
+    /// What the row *is* never enters into it: a folder row answers with its parent, not with
+    /// itself, and a scaffolding row (a folder drawn only because something under it matched the
+    /// filter) is no different from any other. The question is which directory the row lives in.
+    ///
+    /// Two cases the caller still owns, because this type cannot see them: a cursor parked on the
+    /// `..` row, which is no level's row at all, and a pane with no real directory underneath —
+    /// search results, a browsed archive, the merged Trash (`PanelViewController.writeDirectory`).
+    public var cursorDirectory: VFSPath {
+        guard isTree, let parent = currentEntry?.path.parent else { return path }
+        return parent
+    }
+
     // MARK: - Listing
 
     /// Install a directory snapshot. Same-directory calls are treated as a live

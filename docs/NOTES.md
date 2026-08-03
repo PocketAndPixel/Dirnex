@@ -1736,3 +1736,30 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     would under-report the work in the one direction that costs the user something. The two lines are
     allowed to disagree across a ⌘A (`6 items` → `7 of 7 selected`); what is not allowed is a summary
     of an operation that is smaller than the operation.
+- **A tree splits "the current directory" into two questions, and every create was answering the
+  wrong one.** F7 New Folder and ⇧F4 Edit File both created into `writeDirectory` — the pane's real
+  on-disk directory — which in a *flat* list is also "where the cursor is", because every row of a
+  flat list lives in it. That equivalence is what made it invisible: the two questions had the same
+  answer for the whole life of the app, so nothing marked which one each site meant. A tree draws
+  several directories at once, so with the cursor three levels down both keys created back at the
+  **root** — the new row landed off screen or not at all, and New Folder's dialog said "Create a
+  folder in *<root>*" while the user was pointing somewhere else entirely. It fails in the quiet
+  direction: a folder really is created, the pane really does refresh, and the only tell is a name in
+  a sentence nobody reads twice. Split it — `Panel.cursorDirectory` (core, pure, tested) answers
+  *which* directory the cursor's row lives in, and `writeDirectory` goes on answering *whether there
+  is a real one at all*, which is the only one that can be `nil`. Three things fell out:
+  - **The displayed name is a third question, and folding it into the target regresses iCloud.** A
+    dialog names *what the pane shows*, so the merged iCloud listing must keep saying "iCloud Drive"
+    and never "com~apple~CloudDocs" — the target and its name coincide only in a tree, which is the
+    one case where the pane genuinely draws the deeper folder with a row of its own. Swapping
+    `panel.path.lastComponent` for the target's own is the obvious edit and is wrong everywhere else.
+  - **The refresh needed nothing.** `refreshCurrentDirectory(selecting:)` already routes a tree
+    through `refreshTree(selecting:)`, which re-lists every listed directory and lands the cursor on
+    the target by identity — so a row created at depth 2 appears at depth 2 with the cursor on it, for
+    free. It was written for a *rename* landing in a child; a create in a child is the same shape,
+    which is the payoff of having one refresh funnel rather than one per operation.
+  - **Reconcile the cursor before reading it.** The table's selection is the live cursor until its
+    change notification fires a runloop pass later, so a create invoked straight after an arrow key
+    reads the row the user just left. In a flat list that error was unobservable — both rows have the
+    same parent — and in a tree it is a different *directory*. Every tree key already does this; a
+    command that only became cursor-dependent now has to as well.

@@ -43691,6 +43691,95 @@
         }
       }
     },
+    "Open a file in “%@”, or type a new name to create one there.": {
+      "comment": "Body of the ⇧F4 edit/create-file dialog when the tree cursor sits in a subfolder; %@ is that folder's name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Öffnen Sie eine Datei in „%@“ oder geben Sie einen neuen Namen ein, um dort eine zu erstellen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open a file in “%@”, or type a new name to create one there."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abre un archivo en «%@» o escribe un nombre nuevo para crear uno ahí."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrez un fichier dans «%@» ou tapez un nouveau nom pour en créer un à cet endroit."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apri un file in “%@” o digita un nuovo nome per crearne uno lì."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”内のファイルを開くか、新しい名前を入力してそこに作成します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”에 있는 파일을 열거나 새 이름을 입력하여 그곳에 생성합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open een bestand in “%@” of typ een nieuwe naam om er daar een te maken."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz plik w „%@” albo wpisz nową nazwę, aby go tam utworzyć."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Откройте файл в «%@» или введите новое имя, чтобы создать его там."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Відкрийте файл у «%@» або введіть нову назву, щоб створити його там."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abra um arquivo em “%@” ou digite um novo nome para criar um ali."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开“%@”中的文件，或输入新名称以在其中创建文件。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打開「%@」中的檔案，或輸入新名稱以在其中建立檔案。"
+          }
+        }
+      }
+    },
     "Open a file, or type a new name to create one.": {
       "comment": "Body of the ⇧F4 edit/create-file dialog.",
       "localizations": {

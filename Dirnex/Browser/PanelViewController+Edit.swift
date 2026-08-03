@@ -80,12 +80,14 @@ extension PanelViewController {
         }
     }
 
-    /// Whether ⇧F4 can create into this pane. Gated on a **real directory** (`writeDirectory`) and
-    /// not on `.write` alone: the merged Trash carries `.write` so its `deleteStrategy` resolves to
-    /// `.permanent`, and that capability alone already lit up New Folder and Paste in a Trash tab
-    /// (docs/NOTES.md). This is the same guard `promptForNewFolder` uses, for the same reason.
+    /// Whether ⇧F4 can create into this pane. Gated on there being a **real directory** to create
+    /// into (`creationDirectory`) and not on `.write` alone: the merged Trash carries `.write` so its
+    /// `deleteStrategy` resolves to `.permanent`, and that capability alone already lit up New Folder
+    /// and Paste in a Trash tab (docs/NOTES.md). This is the same guard `promptForNewFolder` uses,
+    /// for the same reason. Safe in a menu validator, which does not reconcile the cursor first:
+    /// *which* directory follows the cursor in a tree, but *whether there is one* never does.
     private var canCreateFileHere: Bool {
-        backend.capabilities(for: panel.path).contains(.write) && writeDirectory != nil
+        backend.capabilities(for: panel.path).contains(.write) && creationDirectory != nil
     }
 
     /// The entry F4 would act on: the cursor's, never the marked set, never the `..` row, and
@@ -169,18 +171,31 @@ extension PanelViewController {
     /// with a real message, then `refreshCurrentDirectory(selecting:)` so a newly created file lands
     /// under the cursor.
     private func promptForFileToEdit() {
-        guard let target = writeDirectory, canCreateFileHere else { return }
+        // The cursor decides the target in a tree, and the table's selection is the live cursor
+        // (`PanelViewController+CreateTarget`).
+        reconcileCursorFromTable()
+        guard let target = creationDirectory, canCreateFileHere else { return }
         let alert = NSAlert()
         alert.messageText = String(
             localized: "Edit File",
             comment: "Title of the ⇧F4 edit/create-file dialog."
         )
-        // The folder isn't named here: the path bar above the dialog already says which one this
-        // is, and the field below is prefilled out of it.
-        alert.informativeText = String(
-            localized: "Open a file, or type a new name to create one.",
-            comment: "Body of the ⇧F4 edit/create-file dialog."
-        )
+        // Normally the folder isn't named: the path bar above the dialog already says which one this
+        // is, and the field below is prefilled out of it. A tree breaks that — the path bar shows the
+        // *root* while the cursor stands in a folder several levels down, so the one case where the
+        // dialog would be silently wrong about where is the one case that says it out loud.
+        alert.informativeText = target == panel.path
+            ? String(
+                localized: "Open a file, or type a new name to create one.",
+                comment: "Body of the ⇧F4 edit/create-file dialog."
+            )
+            : String(
+                localized: "Open a file in “\(creationDirectoryName)”, or type a new name to create one there.",
+                comment: """
+                Body of the ⇧F4 edit/create-file dialog when the tree cursor sits in a subfolder; \
+                %@ is that folder's name.
+                """
+            )
         alert.addButton(
             withTitle: String(
                 localized: "Edit",

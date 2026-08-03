@@ -7599,3 +7599,34 @@ untranslated command in any of them.
 
 Closed with **1610 core + 210 app tests green** (150 and 41 suites), `swiftformat --lint` clean and
 `swiftlint --strict` clean over 545 files.
+
+#### Follow-up (2026-08-03): F7 and ⇧F4 create where the tree cursor is
+
+Reported from using it: with the cursor on a row inside an expanded folder, ⇧F4 created the file back
+at the tree's **root**. F7 New Folder had the same bug, unreported, because the two share a target.
+
+The cause is one the slice's own design note points at without naming: `writeDirectory` answers *is
+there a real on-disk directory under this pane*, and every create had been reading it as *which
+directory is the cursor in* — the same sentence in a flat list, where every row's container is the
+pane's own directory, and two different sentences in a tree. So the pure half went to the core as
+`Panel.cursorDirectory` (the folder containing the cursor's row; the pane's own directory in a flat
+list, on the `..` row, and in an empty tree), and the app's `creationDirectory` composes it with
+`writeDirectory` — which keeps owning the `nil` cases the tree cannot see, and the merged iCloud
+listing's real home underneath. A folder row answers with its *parent*, not itself: the settled rule
+is that the new item appears as a sibling right where the cursor is standing, which is the exact
+generalization of what a flat list already did.
+
+Two smaller halves came with it. ⇧F4's dialog deliberately did not name its folder — the path bar
+above it already said which one — and a tree breaks exactly that assumption, so it now names the
+folder in the one case where the path bar shows the root instead (a new key, translated into all 14).
+And both prompts reconcile the cursor from the table first, since a create straight after an arrow key
+would otherwise read the row the user just left, which in a tree is a different directory.
+
+Paste (⌘V) was left creating at the root deliberately, not overlooked: a drop already resolves its own
+destination from the row it is released on, and the clipboard has no cursor gesture behind it.
+
+Verified live against the real binary on a restored session in tree mode: with the cursor on `prod`
+(inside `xlms`) the New Folder dialog named `xlms` and the folder landed there; two levels down inside
+`prod` the ⇧F4 dialog named `prod` and the file landed there with the cursor on it; a root-level row
+and the `..` row both still named the pane's own directory. 1646 core + 215 app tests green, both
+linters clean.
