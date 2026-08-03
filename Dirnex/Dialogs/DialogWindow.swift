@@ -38,7 +38,76 @@ extension NSViewController {
         presentAsModalWindow(controller)
         // Reachable synchronously — the animator has already installed and ordered in the window by
         // the time the call returns (probed), so there is nothing to defer.
-        controller.view.window?.styleMask.remove(.resizable)
+        guard let window = controller.view.window else { return }
+        window.styleMask.remove(.resizable)
+        // Keyed by the controller's own type: one remembered position per kind of dialog, which is
+        // what "where I left the report" means. A renamed class forgets its position once, which is
+        // the cheapest possible consequence.
+        DialogWindowPlacement.place(
+            window,
+            key: String(describing: type(of: controller)),
+            centeredOver: view.window
+        )
+    }
+}
+
+/// Where a dialog window opens: where the user last dragged it, else centred on the app's own
+/// window.
+///
+/// Centring on the *app* rather than the screen is the point — on a large display a screen-centred
+/// dialog can land nowhere near the window that raised it. AppKit's `NSWindow` frame autosave does
+/// the remembering, so there is nothing to observe and nothing to tear down; that matters here
+/// because a modal-window presentation **posts no `willCloseNotification`** (probed), so the obvious
+/// save-on-close design would silently never save.
+///
+/// The one ordering rule: `.resizable` must already be off. Probed on a non-resizable window,
+/// `setFrameUsingName` restores the saved *position* alone — it keeps the window's current size and
+/// preserves the **top-left** while doing it (a frame saved at 400×332 restored a 640×512 window
+/// with both tops at y=587). So a size saved by an older build can never come back, and none of that
+/// arithmetic has to be written by hand. On a resizable window the same call would restore the stale
+/// size too.
+enum DialogWindowPlacement {
+    /// Restore `window` to its remembered position under `key`, or centre it over `parent` when
+    /// there is nothing remembered — or when what is remembered is on a display the app is no longer
+    /// using. Registers the autosave either way, so wherever the user drags it next is what returns.
+    static func place(_ window: NSWindow, key: String, centeredOver parent: NSWindow?) {
+        let name = NSWindow.FrameAutosaveName("Dialog.\(key)")
+        if !window.setFrameUsingName(name) || !isNear(parent, window) {
+            center(window, over: parent)
+        }
+        window.setFrameAutosaveName(name)
+    }
+
+    /// Whether a restored position is still on the screen the app's window is on.
+    ///
+    /// A remembered position is *absolute*, so plugging in an external display and moving the main
+    /// window over to it would otherwise leave every dialog opening back on the laptop screen —
+    /// far from the window that raised it, with nothing on screen to explain why. AppKit's own
+    /// constraining cannot catch this: the saved frame is perfectly valid, just somewhere else. The
+    /// test is the window's centre rather than an intersection, so a dialog straddling two displays
+    /// counts as being on the one it mostly occupies.
+    private static func isNear(_ parent: NSWindow?, _ window: NSWindow) -> Bool {
+        guard let visible = parent?.screen?.visibleFrame else { return true }
+        return visible.contains(NSPoint(x: window.frame.midX, y: window.frame.midY))
+    }
+
+    /// Dead centre of `parent`, or of the screen when there is no window to centre on.
+    ///
+    /// Dead centre rather than AppKit's `center()`, which biases above the midpoint — the same
+    /// choice `centerOnScreen` makes, for the same reason. No screen clamping: probed,
+    /// `setFrameOrigin` and `setFrame(_:display:)` both constrain the result onto a screen
+    /// themselves, keeping the title bar reachable, so a hand-rolled clamp would only second-guess
+    /// AppKit on the one case (a display that went away) it already handles.
+    private static func center(_ window: NSWindow, over parent: NSWindow?) {
+        guard let parent, parent !== window else {
+            window.centerOnScreen()
+            return
+        }
+        let host = parent.frame
+        window.setFrameOrigin(NSPoint(
+            x: host.midX - window.frame.width / 2,
+            y: host.midY - window.frame.height / 2
+        ))
     }
 }
 

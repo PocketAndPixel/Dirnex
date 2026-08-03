@@ -883,6 +883,39 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   - A title bar arriving also makes any in-content headline a **duplicate**, and a display string
     that exists twice gets localized once (below). Promote the existing headline to the window title
     and delete the label — its translations carry over untouched, since the key is the English text.
+- **`setFrameUsingName` restores the *position only* on a non-resizable window, and preserves the
+  top-left while doing it.** Probed after the move above, because the obvious worry — a size saved by
+  an older build coming back and fighting a fixed-size container — turns out not to exist: a frame
+  saved at 400×332 restored a 640×512 window as 640×512, with both frames' **tops at y=587**. AppKit
+  clamps the restored size to the window's own min/max, which for a non-resizable window is its
+  current size, and re-derives the origin from the top-left. So "remember where the user dragged this
+  dialog" is `setFrameUsingName` + `setFrameAutosaveName` and no arithmetic at all — but only if
+  `.resizable` is **already off** when the restore runs. On a resizable window the same call brings
+  the stale size back with it.
+  - The autosave is also the reason not to hand-roll it: a modal-window presentation **posts no
+    `willCloseNotification`** (probed), so the natural save-on-close design silently never saves, and
+    a `didMove` observer would need a lifetime hook that dismissal does not give you either. AppKit's
+    autosave writes on every move and needs no teardown.
+  - **Both `setFrameOrigin` and `setFrame(_:display:)` constrain the result onto a screen by
+    themselves** — an origin of 99 999 came back as 1688, off-screen negatives came back with the
+    title bar reachable — so a hand-rolled clamp only second-guesses AppKit. What AppKit *cannot*
+    catch is a saved position that is perfectly valid on a display the app is no longer using: that
+    needs its own check (is the restored centre on the parent window's screen?), or every dialog
+    opens back on the laptop screen the day an external display arrives.
+- **A SwiftUI-hosted window can consume Escape before any AppKit handler runs, and a local key
+  monitor is the way in.** A monitor runs *ahead of responder dispatch*, so it sees the key whatever
+  the hosting view would have done with it — the same lever Quick View already uses to take Esc back
+  from a focused `PDFView`. The cost is that it now sees **every** Escape in that window, so it has to
+  hand the key back to whoever legitimately owns it: a field editor mid-edit (which reverts the edit),
+  and any control that means something else by it — in Settings, the shortcut recorder, where Escape
+  cancels the capture. Mark those with a protocol on the *control* rather than listing class names in
+  the monitor; the knowledge belongs with the thing that wants the key.
+  - Verify it in a **probe with `postEvent`, not through computer-use**: synthetic Escape is swallowed
+    before the app entirely (above), so the tool cannot tell a working monitor from a broken one — it
+    shows the window simply staying open either way. `NSApp.postEvent` does reach a local monitor, so
+    a throwaway app carrying the identical monitor over a real `NSHostingController` pins all three
+    branches (nothing focused → closes; `_SystemTextFieldFieldEditor` focused → does not;
+    marked control focused → does not). The one step left for a human is the physical keypress.
 
 ## Lint ceilings and file splitting
 

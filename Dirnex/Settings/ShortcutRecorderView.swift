@@ -105,7 +105,10 @@ struct ShortcutRecorder: NSViewRepresentable {
 
         private func handle(_ event: NSEvent) {
             switch event.keyCode {
-            case 53: // Escape — cancel without changing the binding.
+            // Escape — cancel without changing the binding. The `EscapeKeyConsuming` conformance
+            // below is what keeps the Settings window's own Escape-to-close off this key while the
+            // pill is recording; without it, cancelling a recording would close the window instead.
+            case 53:
                 endRecording()
             case 51, 117: // Delete / Forward Delete — clear the binding.
                 onRecord?(nil)
@@ -126,6 +129,10 @@ struct ShortcutRecorder: NSViewRepresentable {
             isRecording = false
             return super.resignFirstResponder()
         }
+
+        // The view only holds first responder *while recording* (`mouseDown` takes it,
+        // `endRecording` and `resignFirstResponder` give it back), so being focused and wanting
+        // Escape are the same state — nothing further to test.
 
         // MARK: - Appearance
 
@@ -199,3 +206,7 @@ struct ShortcutRecorder: NSViewRepresentable {
         }
     }
 }
+
+/// Escape belongs to the recorder while it is recording — it cancels the capture. Marked so the
+/// Settings window's Escape-to-close stands aside rather than closing over an in-progress recording.
+extension ShortcutRecorder.RecorderView: EscapeKeyConsuming {}
