@@ -24,7 +24,7 @@ extension PanelViewController {
         controller.onSearch = { [weak self] query, scopeToFolder in
             self?.runSearch(query, scopeToCurrentFolder: scopeToFolder)
         }
-        presentAsSheet(controller)
+        presentAsMovableWindow(controller)
     }
 
     // MARK: - Running the search

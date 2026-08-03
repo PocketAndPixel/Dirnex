@@ -1,17 +1,20 @@
 import AppKit
 import DirnexCore
 
-/// The workspace organizer sheet (PLAN.md §M3 "Workspaces … named, switchable"): a small
-/// editable list of the saved workspaces where the user can drag to reorder, rename in place
-/// (double-click), or delete. Presented as a sheet over the browser window via `presentAsSheet`,
-/// which retains it for its on-screen lifetime. Every edit is saved to `WorkspaceStore`
-/// immediately, so closing — by Done or otherwise — always persists the current order.
+/// The workspace organizer (PLAN.md §M3 "Workspaces … named, switchable"): a small editable list
+/// of the saved workspaces where the user can drag to reorder, rename in place (double-click), or
+/// delete. Presented over the browser window via `presentAsMovableWindow`, which retains it for its
+/// on-screen lifetime. Every edit is saved to `WorkspaceStore` immediately, so closing — by Done or
+/// otherwise — always persists the current order.
 ///
 /// This was one of a pair with `FavoritesOrganizerController`, which M8 retired once the sidebar's
 /// Favorites section gained drag-reorder and an in-place right-click menu. Workspaces have no such
-/// section to move into, so this sheet stays. Its notable difference from the retired one is
+/// section to move into, so this one stays. Its notable difference from the retired one is
 /// rename, which can be rejected (an empty or already-used name) because a workspace's name is its
 /// identity — a rejected edit snaps the field back to the existing name.
+///
+/// Its name is the *window's* title rather than a label inside it, for the reason
+/// `UserScriptsOrganizerController` states.
 @MainActor
 final class WorkspaceOrganizerController: NSViewController {
     private var workspaces = WorkspaceStore.load()
@@ -22,18 +25,24 @@ final class WorkspaceOrganizerController: NSViewController {
     /// Private drag type for internal row reordering.
     private static let rowType = NSPasteboard.PasteboardType("com.dirnex.workspace.row")
 
+    init() {
+        super.init(nibName: nil, bundle: nil)
+        title = String(
+            localized: "Organize Workspaces",
+            comment: "Title of the workspace organizer window."
+        )
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
     // MARK: - View setup
 
     override func loadView() {
         let container = EscapeDismissingView()
         container.onEscape = { [weak self] in self?.done(nil) }
-
-        let title = NSTextField(labelWithString: String(
-            localized: "Organize Workspaces",
-            comment: "Title of the workspace organizer sheet."
-        ))
-        title.font = .systemFont(ofSize: NSFont.systemFontSize, weight: .semibold)
-        title.translatesAutoresizingMaskIntoConstraints = false
 
         configureTable()
         scrollView.documentView = tableView
@@ -56,14 +65,11 @@ final class WorkspaceOrganizerController: NSViewController {
         doneButton.keyEquivalent = "\r"
         doneButton.translatesAutoresizingMaskIntoConstraints = false
 
-        for subview in [title, scrollView, removeButton, doneButton] {
+        for subview in [scrollView, removeButton, doneButton] {
             container.addSubview(subview)
         }
         NSLayoutConstraint.activate([
-            title.topAnchor.constraint(equalTo: container.topAnchor, constant: 16),
-            title.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
-
-            scrollView.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 10),
+            scrollView.topAnchor.constraint(equalTo: container.topAnchor, constant: 16),
             scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
             scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -20),
 

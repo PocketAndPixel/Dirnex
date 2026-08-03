@@ -36,7 +36,7 @@ extension PanelViewController {
             controller.enqueueRecursive = { [weak self] job, sources in
                 self?.enqueueRecursiveAttributes(job, sources: sources)
             }
-            presentAsSheet(controller)
+            presentAsMovableWindow(controller)
         } catch {
             presentOperationFailure(
                 message: String(
@@ -77,7 +77,7 @@ extension PanelViewController {
         controller.enqueueRecursive = { [weak self] job, sources in
             self?.enqueueRecursiveAttributes(job, sources: sources)
         }
-        presentAsSheet(controller)
+        presentAsMovableWindow(controller)
     }
 
     // MARK: - Recursive apply

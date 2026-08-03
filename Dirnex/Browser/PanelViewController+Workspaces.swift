@@ -150,9 +150,9 @@ extension PanelViewController {
     }
 
     @objc private func manageWorkspaces(_ sender: Any?) {
-        // `presentAsSheet` retains the organizer for its on-screen lifetime, so the pane
+        // `presentAsMovableWindow` retains the organizer for its on-screen lifetime, so the pane
         // doesn't need to hold it.
-        presentAsSheet(WorkspaceOrganizerController())
+        presentAsMovableWindow(WorkspaceOrganizerController())
     }
 
     // MARK: - Prompts

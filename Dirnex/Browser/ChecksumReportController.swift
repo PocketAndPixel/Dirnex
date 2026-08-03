@@ -1,10 +1,12 @@
 import AppKit
 import DirnexCore
 
-/// The verification report sheet (PLAN.md §M14 Slice 2) — what a checksum file said, and what the
-/// files on disk actually are.
+/// The verification report (PLAN.md §M14 Slice 2) — what a checksum file said, and what the
+/// files on disk actually are. Presented via `presentAsMovableWindow`, which retains it for its
+/// on-screen lifetime; a report the user may want to read against the pane behind it is exactly the
+/// case a sheet cannot serve, since a sheet cannot be moved.
 ///
-/// The Synchronize sheet's diff table is the shape this borrows: one row per name, a glyph column
+/// The Synchronize dialog's diff table is the shape this borrows: one row per name, a glyph column
 /// carrying the verdict, and a status line that answers before the table is read. What it does not
 /// borrow is the checkboxes — nothing here is actionable. A verification is a *statement*, and the
 /// one thing it must do is be unambiguous about which of five things happened to each name.
@@ -35,6 +37,7 @@ final class ChecksumReportController: NSViewController {
             ? report.entries
             : report.entries.filter { $0.status != .ok }
         super.init(nibName: nil, bundle: nil)
+        title = DialogTitle.ofCommand("file.checksumVerify")
     }
 
     @available(*, unavailable)

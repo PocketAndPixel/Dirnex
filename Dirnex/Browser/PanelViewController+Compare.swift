@@ -250,11 +250,16 @@ extension PanelViewController {
 
     // MARK: - Reporting
 
-    /// Where a compare's alert belongs: the sheet on top of the window when one is up — the
-    /// Synchronize sheet drives compares too — else the window itself. Stacking a second sheet on
-    /// a window that already has one queues it behind the first, where nobody sees it.
+    /// Where a compare's alert belongs: whatever surface is in front of the pane when one is up —
+    /// the Synchronize dialog drives compares too — else the window itself. Stacking a second sheet
+    /// on a window that already has one queues it behind the first, where nobody sees it.
+    ///
+    /// `NSApp.modalWindow` is the first question because Synchronize is a *window* now
+    /// (`presentAsMovableWindow`), not a sheet, so it is no longer this window's `attachedSheet` —
+    /// and an alert hung on the browser window while that dialog is app-modal is one the user
+    /// cannot click. The `attachedSheet` fallback still covers the `NSAlert`-based confirmations.
     private var alertHostWindow: NSWindow? {
-        view.window?.attachedSheet ?? view.window
+        NSApp.modalWindow ?? view.window?.attachedSheet ?? view.window
     }
 
     /// An in-flight note ("Comparing…", "Opening in FileMerge…"): status line only. Never an alert
@@ -264,11 +269,11 @@ extension PanelViewController {
         showTransientStatus(message)
     }
 
-    /// A final, non-blocking result. Normally the pane's status line; but when a sheet is up it
-    /// covers that status line, so the message becomes an alert on the sheet instead — the
-    /// alternative is telling the user nothing at all.
+    /// A final, non-blocking result. Normally the pane's status line; but when a dialog is up it
+    /// covers — or, as a modal window, outranks — that status line, so the message becomes an alert
+    /// on the dialog instead. The alternative is telling the user nothing at all.
     private func reportComparisonResult(_ message: String) {
-        guard let sheet = view.window?.attachedSheet else {
+        guard let sheet = NSApp.modalWindow ?? view.window?.attachedSheet else {
             showTransientStatus(message)
             return
         }

@@ -846,6 +846,43 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   definite inner width (a fixed-width command field) so `fittingSize` resolves. Same family as the
   `NSStackView`-compression traps above: an AppKit container that is under-informed about size fails
   by drawing wrong rather than by complaining.
+- **`presentAsModalWindow(_:)` is the sheet replacement when a dialog has to be *movable*, and —
+  against every expectation the word "modal" sets up — it does not block the caller.** A sheet is
+  nailed to its window, so a verification report or a Get Info panel can never be dragged aside to
+  read the pane behind it; this is AppKit's own answer and needs no window plumbing. Nothing about it
+  is documented, so all of it was probed on a live window:
+  - The call **returns immediately**, and main-queue work and default-mode timers keep firing while
+    the dialog is up — the operation queue, the FSEvents refreshes and a running checksum job are
+    unaffected. That is the fact that makes the move affordable; a nested `NSApp.runModal` would not
+    have been. It is nonetheless genuinely app-modal (`NSApp.modalWindow` is it).
+  - The window is `[.titled, .closable, .resizable]`, `isMovable == true`, and it is reachable
+    **synchronously** right after the call — so `styleMask.remove(.resizable)` belongs there, with
+    nothing deferred. Removing it leaves the frame untouched and disables the zoom button. Worth
+    doing for any controller that pins a fixed width *and* height: a resize corner Auto Layout then
+    refuses to honour is a worse lie than no corner.
+  - The window draws its content view controller's `title`, and a **`nil` one renders as the literal
+    word "Untitled"** — so a controller with no name gets a visibly broken title bar rather than an
+    empty one. Set it in the designated initializer, before the animator builds the window.
+  - An `NSAlert` raised *from* one of these still attaches to it as a sheet and still runs its
+    completion handler; the close button ends the presentation properly (`presentedViewControllers`
+    drops to 0, the modal state clears), so `dismiss(_:)`, a Done button and `EscapeDismissingView`
+    keep working unchanged.
+  - **The trap is `view.window?.attachedSheet`, which silently stops answering.** Any code asking
+    "is a dialog covering the pane?" that way reads `nil` once the dialog is a window, and an
+    `NSAlert` hung on the browser window while another window is app-modal is one the user *cannot
+    click*. `PanelViewController+Compare` had two such sites (the compare alert's host, and the
+    "Files are identical" report that otherwise fell back to a status line nobody can see behind a
+    modal). `NSApp.modalWindow ?? view.window?.attachedSheet ?? view.window` is the ordering that
+    covers both eras. Same family as naming a new backend at every site that lists the old one — one
+    question, two spellings, and the compiler checks neither.
+  - **Verify Escape by A/B against a sheet in the same script, not on its own.** A first probe sent a
+    synthetic Escape into the modal window and *nothing* fired, which reads as a regression; the
+    control run showed the sheet behaving identically, and the real cause was `EscapeDismissingView`'s
+    own field-editor carve-out — the probe had put an `NSTextField` in the view. Without the control
+    it would have looked like modal windows swallow Escape.
+  - A title bar arriving also makes any in-content headline a **duplicate**, and a display string
+    that exists twice gets localized once (below). Promote the existing headline to the window title
+    and delete the label — its translations carry over untouched, since the key is the English text.
 
 ## Lint ceilings and file splitting
 

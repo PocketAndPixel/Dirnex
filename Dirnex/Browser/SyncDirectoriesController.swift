@@ -1,7 +1,7 @@
 import AppKit
 import DirnexCore
 
-/// The Synchronize Directories sheet (PLAN.md §M5 "Synchronize directories: two-panel diff view
+/// The Synchronize Directories dialog (PLAN.md §M5 "Synchronize directories: two-panel diff view
 /// … selective sync actions through the queue"). It compares the two panes' folders through the
 /// headless `DirectorySync` engine and lists every difference, one row per item, with a default
 /// action derived from the chosen direction. The user picks a direction (mirror either way, or
@@ -9,7 +9,7 @@ import DirnexCore
 /// alone, and commits — the panel then runs the checked actions through the M2 queue (copies)
 /// and Trash (deletes).
 ///
-/// Presented via `presentAsSheet`, which retains it for its on-screen lifetime. All comparison
+/// Presented via `presentAsMovableWindow`, which retains it for its on-screen lifetime. All comparison
 /// is pure `DirnexCore`; this file is the AppKit shell that binds the controls to a scan and
 /// renders the diff. The scan runs off the main thread (content mode reads bytes).
 @MainActor
@@ -58,6 +58,7 @@ final class SyncDirectoriesController: NSViewController {
         self.rightDir = rightDir
         self.backend = backend
         super.init(nibName: nil, bundle: nil)
+        title = DialogTitle.ofCommand("file.syncDirectories")
     }
 
     @available(*, unavailable)

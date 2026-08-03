@@ -37,7 +37,7 @@ extension PanelViewController {
         controller.onApply = { [weak self] proposals in
             self?.applyMultiRename(proposals)
         }
-        presentAsSheet(controller)
+        presentAsMovableWindow(controller)
     }
 
     /// The existing names in every directory the marked items live in, keyed by directory. In list

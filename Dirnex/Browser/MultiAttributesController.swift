@@ -113,6 +113,7 @@ final class MultiAttributesController: NSViewController {
         self.actor = actor
         canEdit = actor.isSuperUser || items.allSatisfy { $0.attributes.ownerID == actor.userID }
         super.init(nibName: nil, bundle: nil)
+        title = DialogTitle.ofCommand("file.attributes")
     }
 
     @available(*, unavailable)
