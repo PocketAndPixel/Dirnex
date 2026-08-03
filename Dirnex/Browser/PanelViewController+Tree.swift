@@ -255,7 +255,14 @@ extension PanelViewController {
     /// identity. The FSEvents event names nothing (`DirectoryWatcher` discards its paths), so this
     /// refreshes the whole visible tree — which is a handful of listings, since trees are shallow.
     /// Internal so a tab switch can reuse it for a stale tree tab.
-    func refreshTree() {
+    ///
+    /// `selecting` is the tree analogue of `refreshCurrentDirectory(selecting:)`: after an operation
+    /// the app initiated (a rename, a New Folder, a delete), the target may live in a child directory
+    /// the *root* re-list would never touch, so the whole tree is re-listed and the cursor is landed
+    /// on the target by identity and scrolled to it — the way a list-mode refresh lands on a
+    /// just-created entry. A passive FSEvents/tab-switch refresh passes `nil` and leaves the scroll
+    /// position where it was.
+    func refreshTree(selecting target: VFSPath? = nil) {
         guard let tree = panel.tree else { return }
         let token = loadToken
         let root = panel.path
@@ -285,7 +292,14 @@ extension PanelViewController {
             // keeps the totals it is already drawing (a stale total is an approximation, not a lie),
             // and `renderRefresh` re-queues anything now genuinely unsized.
             invalidateDirectorySizes(under: root)
-            renderRefresh()
+            if let target, let index = panel.displayedIndex(ofID: target) {
+                panel.moveCursor(to: index)
+                cursorOnParentRow = false
+                renderRefresh()
+                syncCursorToTable(scroll: true)
+            } else {
+                renderRefresh()
+            }
             startWatchingTree()
             updateGitStatus()
             updateTagStatus()

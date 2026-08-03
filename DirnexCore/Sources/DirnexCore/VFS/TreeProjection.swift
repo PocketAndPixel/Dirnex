@@ -122,6 +122,14 @@ public struct TreeProjection: Sendable {
         listings[path] != nil
     }
 
+    /// A listed directory's raw entries (unsorted, unfiltered, hidden included), or `nil` if that
+    /// directory has not been listed. The raw set is what a bystander check wants — a hidden or
+    /// filtered-out file still collides on disk — mirroring how the flat model checks against
+    /// `listing.entries` rather than `visibleEntries`.
+    public func entries(in directory: VFSPath) -> [FileEntry]? {
+        listings[directory]
+    }
+
     /// A row's recursively-computed total, or `nil` if it has none yet — the tree's analogue of
     /// `DirectoryModel.computedSize`, reading the flat cross-level `directorySizes` map.
     public func computedSize(of entry: FileEntry) -> Int64? {

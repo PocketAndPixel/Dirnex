@@ -351,6 +351,14 @@ extension PanelViewController {
             reloadICloudDrive(selecting: target)
             return
         }
+        // A tree spans several directories, and an operation the app just performed (a rename, a
+        // New Folder, a delete) can land in a child the *root* re-list below would never touch — so
+        // the display would go stale until an FSEvents ping caught up, and the cursor would never
+        // reach the target. Re-list the whole (shallow) tree and land on the target by identity.
+        if panel.isTree {
+            refreshTree(selecting: target)
+            return
+        }
         // Re-list a real directory — on disk or on a connected SFTP account (an SFTP path is
         // re-listable, so it must refresh after an upload/delete/mkdir even without FSEvents). A
         // virtual pane (search results, a browsed archive) has no directory to re-list, so a

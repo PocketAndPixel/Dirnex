@@ -13,7 +13,10 @@ import DirnexCore
 @MainActor
 final class MultiRenameController: NSViewController {
     private let items: [FileEntry]
-    private let existingNames: Set<String>
+    /// The names already in each directory the marked items live in, keyed by that directory — the
+    /// planner's bystander/duplicate check is scoped per folder, so a tree batch spanning levels
+    /// checks each item against its own directory rather than one shared set.
+    private let namesByDir: [VFSPath: Set<String>]
     /// Handed the clean, applyable proposals when the user commits. The panel performs the
     /// moves and records the undo batch.
     var onApply: (([RenameProposal]) -> Void)?
@@ -49,9 +52,9 @@ final class MultiRenameController: NSViewController {
         (String(localized: "Capitalized"), .capitalized)
     ]
 
-    init(items: [FileEntry], existingNames: Set<String>) {
+    init(items: [FileEntry], existingNamesByDirectory: [VFSPath: Set<String>]) {
         self.items = items
-        self.existingNames = existingNames
+        namesByDir = existingNamesByDirectory
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -237,7 +240,7 @@ final class MultiRenameController: NSViewController {
     /// every keystroke (see `controlTextDidChange`) — the planner is pure and cheap.
     private func updatePreview() {
         let spec = currentSpec()
-        proposals = MultiRename.plan(for: items, spec: spec, existingNames: existingNames)
+        proposals = MultiRename.plan(for: items, spec: spec, existingNamesByDirectory: namesByDir)
         tableView.reloadData()
         updateFooter(spec: spec)
     }

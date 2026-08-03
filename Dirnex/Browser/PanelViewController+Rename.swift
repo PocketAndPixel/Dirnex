@@ -102,7 +102,12 @@ extension PanelViewController {
             return
         }
 
-        let destination = panel.path.appending(newName)
+        // The new name lands in the entry's *own* directory, not the pane's. In tree mode the
+        // cursor can sit on a row inside an expanded child folder, so `panel.path` (the tree root)
+        // is not where `source` lives — rebuilding the destination from it renamed the file *and*
+        // moved it up to the root (docs/NOTES.md ▸ the second-index-space trap). `source.parent` is
+        // where it actually is; it is `nil` only at the backend root, which is never an entry.
+        let destination = (source.parent ?? panel.path).appending(newName)
         // `rename(2)` silently *overwrites* an existing file, so — unlike New Folder, which
         // `mkdir` protects with EEXIST — we must refuse a colliding name ourselves. A
         // case-only change ("foo" → "Foo") is allowed: on case-insensitive APFS the
