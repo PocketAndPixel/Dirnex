@@ -32,6 +32,47 @@ public enum ChecksumScope {
         entry.kind == .file
     }
 
+    // MARK: - Where the manifest goes
+
+    /// The directory a freshly created manifest belongs in: the deepest directory that contains
+    /// every one of `sources`, so the manifest sits *beside* the objects it describes and spells
+    /// them by the shortest relative name that still resolves.
+    ///
+    /// Each source contributes its *containing* directory — a file's parent, and a folder's parent
+    /// too, because a manifest sits next to the folder it names and spells its contents `folder/…`.
+    /// The result is the common ancestor of those.
+    ///
+    /// - In a flat listing every source is a sibling, so this is the pane's own directory — the
+    ///   location checksums have always used, unchanged.
+    /// - In a tree a selection can straddle folders. A set all inside `photos/raw` lands its
+    ///   manifest in `photos/raw` (bare names beside the files); one that also reaches up into
+    ///   `photos` lands in `photos` (a `raw/…` name for the deeper file). Either way the manifest is
+    ///   with the files rather than up at the tree's root, which is the whole point of the fix.
+    ///
+    /// `nil` only for an empty selection or one that mixes backends — a case the caller has already
+    /// excluded (checksums are local-only), so it falls back to the pane's directory there.
+    public static func manifestDirectory(for sources: [VFSPath]) -> VFSPath? {
+        guard let first = sources.first else { return nil }
+        var common = first.parent ?? first
+        for source in sources.dropFirst() {
+            let container = source.parent ?? source
+            guard container.backend == common.backend else { return nil }
+            common = commonAncestor(of: common, container)
+        }
+        return common
+    }
+
+    /// The deepest directory that is an ancestor of both paths — the last shared step of their two
+    /// root-to-leaf chains. Always at least the backend root, since both chains start there.
+    private static func commonAncestor(of lhs: VFSPath, _ rhs: VFSPath) -> VFSPath {
+        var result = VFSPath(backend: lhs.backend, path: "/")
+        for (left, right) in zip(lhs.ancestorsFromRoot, rhs.ancestorsFromRoot) {
+            guard left == right else { break }
+            result = left
+        }
+        return result
+    }
+
     /// One file's relative, `/`-separated name under the manifest's directory — the spelling every
     /// checksum format uses.
     public static func relativeName(of path: VFSPath, under root: VFSPath) -> String? {
