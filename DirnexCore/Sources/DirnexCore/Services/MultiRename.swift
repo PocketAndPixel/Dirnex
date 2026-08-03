@@ -161,10 +161,28 @@ public struct RenameProposal: Sendable, Equatable, Identifiable {
 
 // MARK: - Engine
 
+/// A proposed name scoped to the directory it would land in — the key for per-directory duplicate
+/// detection, so two items producing the same name only clash when they share a folder. The name is
+/// folded to lowercase on construction to match the default case-insensitive APFS volume.
+private struct DirectoryScopedName: Hashable {
+    let directory: VFSPath?
+    let name: String
+
+    init(directory: VFSPath?, name: String) {
+        self.directory = directory
+        self.name = name.lowercased()
+    }
+}
+
 public enum MultiRename {
-    /// Plan a batch rename of `items` under `spec`. `existingNames` is every name currently in
-    /// the destination directory (including the items themselves), used to flag names that
-    /// would clobber a bystander. The `[C]` counter follows the order of `items`.
+    /// Plan a batch rename of `items` that all live in **one** directory, whose names are
+    /// `existingNames` (the items themselves included), used to flag a name that would clobber a
+    /// bystander. The `[C]` counter follows the order of `items`.
+    ///
+    /// This is the flat-listing case — every list-mode rename, and the common tree one where the
+    /// marked set sits at a single level. A tree selection spanning levels (each item in its own
+    /// folder) uses ``plan(for:spec:existingNamesByDirectory:)`` instead: collisions are per
+    /// directory there, so `a/x.txt` and `b/x.txt` can both become `y.txt` without clashing.
     ///
     /// Collision rules keep the batch always-safe and always cleanly undoable: a new name may
     /// only equal its own item's original (a pure case change) — never another existing file,
@@ -175,6 +193,28 @@ public enum MultiRename {
         spec: RenameSpec,
         existingNames: Set<String>
     ) -> [RenameProposal] {
+        // Attribute the one name set to every directory the items live in. For a genuinely
+        // single-directory batch that is one key; the directory-aware planner then reduces to the
+        // flat behaviour exactly.
+        let byDirectory = Dictionary(grouping: items, by: { $0.path.parent ?? $0.path })
+            .mapValues { _ in existingNames }
+        return plan(for: items, spec: spec, existingNamesByDirectory: byDirectory)
+    }
+
+    /// Plan a batch rename where items may live in **different** directories — the tree's
+    /// cross-level selection. `existingNamesByDirectory` maps each item's parent directory to the
+    /// names already in it (the items included), so a bystander check and a duplicate check are
+    /// both scoped to the folder the item actually lands in. A directory with no entry in the map
+    /// is treated as empty (nothing to collide with).
+    ///
+    /// The same always-safe collision rules as the flat overload, applied per directory: two
+    /// items only clash when they produce the same name *and* share a folder, and a name only
+    /// collides with a bystander in its *own* folder.
+    public static func plan(
+        for items: [FileEntry],
+        spec: RenameSpec,
+        existingNamesByDirectory: [VFSPath: Set<String>]
+    ) -> [RenameProposal] {
         let regex = spec.useRegex && !spec.find.isEmpty
             ? try? NSRegularExpression(pattern: spec.find)
             : nil
@@ -184,23 +224,29 @@ public enum MultiRename {
         }
 
         // Case-insensitive to match the default APFS volume: two names differing only in case
-        // still collide on disk.
-        let existingLower = Set(existingNames.map { $0.lowercased() })
-        var targetCounts: [String: Int] = [:]
+        // still collide on disk. Both maps are keyed by (directory, lowercased name) so nothing
+        // from another folder can be read as a conflict.
+        let existingLowerByDirectory = existingNamesByDirectory.mapValues {
+            Set($0.map { $0.lowercased() })
+        }
+        var targetCounts: [DirectoryScopedName: Int] = [:]
         for item in proposed {
-            targetCounts[item.newName.lowercased(), default: 0] += 1
+            let key = DirectoryScopedName(directory: item.entry.path.parent, name: item.newName)
+            targetCounts[key, default: 0] += 1
         }
 
         return proposed.map { entry, newName in
-            RenameProposal(
+            let directory = entry.path.parent
+            let key = DirectoryScopedName(directory: directory, name: newName)
+            return RenameProposal(
                 source: entry.path,
                 originalName: entry.name,
                 newName: newName,
                 status: status(
                     original: entry.name,
                     newName: newName,
-                    existingLower: existingLower,
-                    targetCounts: targetCounts
+                    existingLower: directory.flatMap { existingLowerByDirectory[$0] } ?? [],
+                    isDuplicate: (targetCounts[key] ?? 0) > 1
                 )
             )
         }
@@ -210,15 +256,15 @@ public enum MultiRename {
         original: String,
         newName: String,
         existingLower: Set<String>,
-        targetCounts: [String: Int]
+        isDuplicate: Bool
     ) -> RenameStatus {
         if newName.isEmpty { return .emptyName }
         if newName.contains("/") { return .invalidCharacter }
         // A case-sensitive comparison: a case-only change ("Photo" → "photo") is a real rename.
         if newName == original { return .unchanged }
 
+        if isDuplicate { return .duplicate }
         let lower = newName.lowercased()
-        if (targetCounts[lower] ?? 0) > 1 { return .duplicate }
         // Landing on any existing file other than this item itself would clobber a bystander.
         if lower != original.lowercased(), existingLower.contains(lower) { return .collision }
         return .rename

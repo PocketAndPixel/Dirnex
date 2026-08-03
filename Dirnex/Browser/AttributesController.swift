@@ -133,6 +133,7 @@ final class AttributesController: NSViewController {
         ownsItem = actor.isSuperUser || snapshot.attributes.ownerID == actor.userID
         canEdit = true
         super.init(nibName: nil, bundle: nil)
+        title = DialogTitle.ofCommand("file.attributes")
     }
 
     @available(*, unavailable)

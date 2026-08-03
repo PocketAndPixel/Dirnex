@@ -26,14 +26,34 @@ extension PanelViewController {
         let targets = selectionTargets()
         guard !targets.isEmpty else { return }
 
-        // Every name currently in the directory (unfiltered, hidden included) — the set the
-        // planner checks new names against so a rename never clobbers a bystander.
-        let existingNames = Set(panel.model.listing.entries.map(\.name))
-        let controller = MultiRenameController(items: targets, existingNames: existingNames)
+        // The names already in each directory the marked items live in (unfiltered, hidden
+        // included) — the set the planner checks new names against so a rename never clobbers a
+        // bystander. In a tree the selection can span levels, so this is one set per folder rather
+        // than one shared set: a rename in a child is checked against that child, not the root.
+        let controller = MultiRenameController(
+            items: targets,
+            existingNamesByDirectory: existingNamesByDirectory(for: targets)
+        )
         controller.onApply = { [weak self] proposals in
             self?.applyMultiRename(proposals)
         }
-        presentAsSheet(controller)
+        presentAsMovableWindow(controller)
+    }
+
+    /// The existing names in every directory the marked items live in, keyed by directory. In list
+    /// mode that is one entry (`panel.path`); in a tree it is each distinct parent among the marks,
+    /// read from the tree's own per-level listing so a child's bystanders are the child's names.
+    private func existingNamesByDirectory(for targets: [FileEntry]) -> [VFSPath: Set<String>] {
+        let directories = Set(targets.compactMap { $0.path.parent })
+        var result: [VFSPath: Set<String>] = [:]
+        for directory in directories {
+            if let entries = panel.tree?.entries(in: directory) {
+                result[directory] = Set(entries.map(\.name))
+            } else if directory == panel.path {
+                result[directory] = Set(panel.model.listing.entries.map(\.name))
+            }
+        }
+        return result
     }
 
     // MARK: - Apply
@@ -42,9 +62,13 @@ extension PanelViewController {
     /// as one undo record. The planner guarantees each target is unique and lands on no existing
     /// bystander, so a plain `moveItem` per item is safe and order-independent.
     private func applyMultiRename(_ proposals: [RenameProposal]) {
-        let directory = panel.path
+        // Each item is renamed in its *own* directory, not the pane's. A tree selection spans
+        // levels, so the destination has to come from each source's parent — `panel.path` (the
+        // tree root) would rename in place *and* move every child item up to the root, the same
+        // second-index-space trap inline rename hit (docs/NOTES.md).
         let jobs: [(from: VFSPath, to: VFSPath)] = proposals.compactMap { proposal in
             guard proposal.willRename else { return nil }
+            let directory = proposal.source.parent ?? panel.path
             return (from: proposal.source, to: directory.appending(proposal.newName))
         }
         guard !jobs.isEmpty else { focusTable(); return }

@@ -359,8 +359,13 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         // A drawer the autosave restored open is one the user left open, so its shell starts with
         // the window. A fresh install opens collapsed and spawns nothing.
         startTerminalShellIfDrawerIsOpen()
-        setActive(leftPanel)
-        leftPanel.focusTable()
+        // Restore focus to whichever pane the user last left active — gated on the same session-
+        // restore setting as the tabs, so a fresh session (setting off, or a first launch) opens on
+        // the left as before.
+        let restoredSide = AppPreferences.shared.restoreSession ? TabPersistence.loadActivePane() : nil
+        let initialPanel = restoredSide == "right" ? rightPanel : leftPanel
+        setActive(initialPanel)
+        initialPanel.focusTable()
     }
 
     /// Split the two panes 50/50. Called once on a fresh layout (no saved divider
@@ -407,6 +412,8 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     func persistTabState() {
         leftPanel.persistState()
         rightPanel.persistState()
+        // Which side had focus, so the next launch restores it rather than always snapping to left.
+        TabPersistence.saveActivePane(focusedPanel.restorationKey ?? "left")
     }
 
     private func setActive(_ panel: PanelViewController) {

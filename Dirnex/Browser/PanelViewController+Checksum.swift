@@ -117,7 +117,8 @@ extension PanelViewController {
             )
         alert.informativeText = String(
             localized: """
-            The file is written into “\(panel.path.lastComponent)”, beside the items it describes.
+            The file is written into “\(checksumDirectory(for: sources).lastComponent)”, beside the \
+            items it describes.
             """,
             comment: "Create-checksum sheet body; %@ is the folder name."
         )
@@ -154,8 +155,21 @@ extension PanelViewController {
     /// The name the sheet pre-fills: the item's own name for a single selection, the folder's for
     /// several — so one file yields `disk.iso.sha256`, the form every publisher ships, and a
     /// multi-selection yields `Downloads.sha256`.
+    ///
+    /// The folder used for the multi case is where the manifest actually lands
+    /// (``checksumDirectory(for:)``), not the pane's root, so a tree selection sitting inside `raw/`
+    /// is named `raw.sha256` after the folder it is in rather than after the whole tree.
     private func defaultChecksumBaseName(for sources: [FileEntry]) -> String {
-        sources.count == 1 ? sources[0].name : panel.path.lastComponent
+        sources.count == 1 ? sources[0].name : checksumDirectory(for: sources).lastComponent
+    }
+
+    /// The directory a created manifest belongs in — beside the selected objects, at their common
+    /// root. In a flat listing that is the pane's own folder (unchanged); in a tree it is wherever
+    /// the selection actually lives, so the checksum file sits with the files it names rather than
+    /// up at the tree's root. Falls back to the pane's directory for the empty/mixed-backend cases
+    /// the create action has already excluded.
+    private func checksumDirectory(for sources: [FileEntry]) -> VFSPath {
+        ChecksumScope.manifestDirectory(for: sources.map(\.path)) ?? panel.path
     }
 
     // MARK: - Conflict + enqueue
@@ -166,7 +180,7 @@ extension PanelViewController {
         fileName: String,
         algorithm: ChecksumAlgorithm
     ) {
-        let target = panel.path.appending(fileName)
+        let target = checksumDirectory(for: sources).appending(fileName)
         guard (try? backend.stat(at: target)) != nil else {
             startChecksumCreate(sources: sources, manifest: target, algorithm: algorithm)
             return
@@ -217,7 +231,10 @@ extension PanelViewController {
                 FileOperation(
                     kind: .checksum(.create(manifest: manifest, algorithm: algorithm)),
                     sources: sources,
-                    destinationDirectory: panel.path
+                    // The manifest's own directory, so the operation's metadata agrees with where
+                    // the file lands — the runner reads `manifest.parent`, not this, but the two
+                    // must not disagree.
+                    destinationDirectory: manifest.parent ?? panel.path
                 ),
                 conflictPolicy: .fail,
                 resolveConflict: nil,

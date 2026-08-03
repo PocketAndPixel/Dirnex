@@ -19,6 +19,11 @@ import DirnexCore
 /// Because the pasteboard is app-global and paste always targets the *focused* pane, ⌘C in one
 /// pane then ⌘V in the other copies/moves between the panels. Pasting back into the source
 /// folder is a duplicate: `submitTransfer` renames it "<name> copy", matching Finder's ⌘C/⌘V.
+///
+/// In a **tree** the destination is the folder the cursor's row lives in, not the tree's root —
+/// `creationDirectory`, the same rule F7 New Folder and ⇧F4 Edit File follow. That is what makes
+/// pasting *into* a source's own subtree reachable at all (put the cursor inside a folder you just
+/// copied), which `pasteRecurses` was already written to refuse.
 extension PanelViewController {
     // MARK: - Menu / key actions (dispatched to the focused pane via the responder chain)
 
@@ -55,8 +60,9 @@ extension PanelViewController {
 
     // MARK: - Flow
 
-    /// Read the pasteboard's file URLs and transfer them into this pane's directory. A move
-    /// silently drops any item already living here (moving a file onto itself is a no-op);
+    /// Read the pasteboard's file URLs and transfer them into this pane's destination directory —
+    /// the pane's own in a flat list, the cursor's level in a tree. A move
+    /// silently drops any item already living there (moving a file onto itself is a no-op);
     /// a copy keeps them — landing on itself becomes a "<name> copy" duplicate downstream.
     /// Either kind drops a source that would recurse into its own subtree (pasting a folder
     /// inside itself), mirroring the drop guard.
@@ -68,9 +74,14 @@ extension PanelViewController {
             if kind == .copy { pasteIntoArchive() }
             return
         }
+        // The cursor decides the destination in a tree, and the table's selection is the live cursor
+        // (`PanelViewController+CreateTarget`).
+        reconcileCursorFromTable()
         // `nil` where there is no real destination directory; the CloudDocs container when the pane
-        // is showing the merged iCloud listing, whose root is a place files can be put (§M9).
-        guard let destination = writeDirectory else { return }
+        // is showing the merged iCloud listing, whose root is a place files can be put (§M9); and in
+        // a tree, the folder the cursor's row lives in — so a paste lands where the user is pointing
+        // rather than back at the root, the same rule F7 and ⇧F4 follow.
+        guard let destination = creationDirectory else { return }
         guard backend.capabilities.contains(.write) else { return }
         let options: [NSPasteboard.ReadingOptionKey: Any] = [.urlReadingFileURLsOnly: true]
         guard let urls = NSPasteboard.general.readObjects(

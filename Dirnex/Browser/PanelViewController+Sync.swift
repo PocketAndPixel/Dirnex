@@ -59,7 +59,7 @@ extension PanelViewController {
         controller.onCompare = { [weak self] left, right in
             self?.launchExternalDiff(comparing: left, with: right)
         }
-        presentAsSheet(controller)
+        presentAsMovableWindow(controller)
     }
 
     /// A pane can take part in a sync when it shows a real, readable on-disk folder — never a

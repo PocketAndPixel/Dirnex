@@ -174,14 +174,18 @@ extension PanelViewController: NSMenuItemValidation {
     /// `.read`, so `.write` is absent and the op greys out; a real disk (and a future writable
     /// SFTP mount) reports `.write`.
     ///
-    /// `writeDirectory` is the second half because the merged Trash is a virtual location that *does*
-    /// carry `.write` — it holds real files that can be deleted — while having no directory to create
-    /// or paste into. Without it, New Folder lit up in a Trash tab and the flow behind it bailed out
-    /// silently at its own guard. The merged iCloud listing is the mirror image: also virtual, also
-    /// writable, but it *does* have a directory underneath (CloudDocs), so it enables rather than
-    /// greys — which is exactly why both ask the same question the flows themselves ask.
+    /// `creationDirectory` is the second half because the merged Trash is a virtual location that
+    /// *does* carry `.write` — it holds real files that can be deleted — while having no directory to
+    /// create or paste into. Without it, New Folder lit up in a Trash tab and the flow behind it
+    /// bailed out silently at its own guard. The merged iCloud listing is the mirror image: also
+    /// virtual, also writable, but it *does* have a directory underneath (CloudDocs), so it enables
+    /// rather than greys — which is exactly why both ask the same question the flows themselves ask.
+    ///
+    /// It is the same property those flows resolve their destination from, spelled the same way so it
+    /// cannot drift into a second predicate. Safe in a validator, which does not reconcile the cursor
+    /// first: *which* directory follows the cursor in a tree, but *whether there is one* never does.
     private var canWriteHere: Bool {
-        backend.capabilities(for: panel.path).contains(.write) && writeDirectory != nil
+        backend.capabilities(for: panel.path).contains(.write) && creationDirectory != nil
     }
 
     /// This pane can rename an item in place — the owning backend advertises `.rename`.

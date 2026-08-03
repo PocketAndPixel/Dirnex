@@ -63,6 +63,17 @@ public struct Panel: Sendable {
     public var count: Int { tree?.count ?? model.count }
     public var isEmpty: Bool { tree?.isEmpty ?? model.isEmpty }
 
+    /// How many rows matched the filter themselves — `count` in a flat list (where every visible row
+    /// matched by construction) and in an unfiltered tree, and smaller than `count` in a filtered
+    /// tree, which also draws the folders standing between the root and a match.
+    ///
+    /// This is a **reporting** number, not an addressing one: it answers "how many did I find" for
+    /// the status line. Everything that acts on the pane — marking, `selectAll`, the file operations
+    /// — still works over `displayedEntries`, scaffolding included, because a folder on screen is a
+    /// folder the user can point at. Anything summarizing what an operation will *touch* must count
+    /// rows, not matches, or it under-reports the work.
+    public var matchCount: Int { tree?.matchCount ?? model.count }
+
     /// Whether the pane is currently in tree mode.
     public var isTree: Bool { tree != nil }
 
@@ -117,6 +128,26 @@ public struct Panel: Sendable {
 
     /// The parent directory, or `nil` at the backend root.
     public var parentPath: VFSPath? { model.listing.path.parent }
+
+    /// The directory that *contains* the cursor's row — where an item created "where the cursor is"
+    /// belongs (F7 New Folder, ⇧F4 Edit File).
+    ///
+    /// In a flat list this is always the pane's own directory, because every row's container is; the
+    /// property exists because a tree is the one shape where that stops being true. With the cursor
+    /// inside an expanded folder the answer is that folder, so the new item appears as a sibling
+    /// right where the cursor is standing.
+    ///
+    /// What the row *is* never enters into it: a folder row answers with its parent, not with
+    /// itself, and a scaffolding row (a folder drawn only because something under it matched the
+    /// filter) is no different from any other. The question is which directory the row lives in.
+    ///
+    /// Two cases the caller still owns, because this type cannot see them: a cursor parked on the
+    /// `..` row, which is no level's row at all, and a pane with no real directory underneath —
+    /// search results, a browsed archive, the merged Trash (`PanelViewController.writeDirectory`).
+    public var cursorDirectory: VFSPath {
+        guard isTree, let parent = currentEntry?.path.parent else { return path }
+        return parent
+    }
 
     // MARK: - Listing
 

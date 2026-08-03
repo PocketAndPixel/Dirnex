@@ -1,15 +1,20 @@
 import AppKit
 import DirnexCore
 
-/// The scripts organizer sheet (PLAN.md §M6 "user actions — shell scripts … surfaced in palette
+/// The scripts organizer (PLAN.md §M6 "user actions — shell scripts … surfaced in palette
 /// and F-key bar") — where the user *creates* the scripts the palette and the right-click
-/// **Scripts ▸** submenu then run. A master–detail sheet: the saved scripts on the left, an editor
+/// **Scripts ▸** submenu then run. A master–detail form: the saved scripts on the left, an editor
 /// for the selected one on the right (name, run mode, palette keywords, and the shell body).
 ///
-/// Presented over the browser window via `presentAsSheet`, which retains it. Every edit is written
-/// straight to `UserScriptStore` (which posts its change notification, so an open palette picks the
-/// change up on its next open), so closing — by Done or Escape — always persists the current state,
-/// exactly like the favorites / saved-search organizers.
+/// Presented over the browser window via `presentAsMovableWindow`, which retains it. Every edit is
+/// written straight to `UserScriptStore` (which posts its change notification, so an open palette
+/// picks the change up on its next open), so closing — by Done or Escape — always persists the
+/// current state, exactly like the favorites / saved-search organizers.
+///
+/// Its name is the *window's* title rather than a label inside it: a title bar arrived with the move
+/// off sheets, and the same words in both places is the duplication that gets one of them translated
+/// (docs/NOTES.md). The string is the one the in-content headline used, so its translations carried
+/// over untouched.
 @MainActor
 final class UserScriptsOrganizerController: NSViewController {
     /// Internal (not `private`) so the table data-source companion file can read it.
@@ -32,6 +37,19 @@ final class UserScriptsOrganizerController: NSViewController {
     private let commandScrollView = NSScrollView()
     private let detailStack = NSStackView()
 
+    init() {
+        super.init(nibName: nil, bundle: nil)
+        title = String(
+            localized: "Scripts",
+            comment: "Title of the user-scripts organizer window."
+        )
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
     // MARK: - View setup
 
     override func loadView() {
@@ -41,13 +59,6 @@ final class UserScriptsOrganizerController: NSViewController {
         // always, so Escape has to close over the field editor or it would never close at all.
         // `done` flushes the in-progress edit first, so nothing typed is lost on the way out.
         container.dismissesWhileEditing = true
-
-        let title = NSTextField(labelWithString: String(
-            localized: "Scripts",
-            comment: "Title of the user-scripts organizer sheet."
-        ))
-        title.font = .systemFont(ofSize: NSFont.systemFontSize, weight: .semibold)
-        title.translatesAutoresizingMaskIntoConstraints = false
 
         configureTable()
         scrollView.documentView = tableView
@@ -74,10 +85,10 @@ final class UserScriptsOrganizerController: NSViewController {
         doneButton.keyEquivalent = "\r"
         doneButton.translatesAutoresizingMaskIntoConstraints = false
 
-        for subview in [title, scrollView, addButton, removeButton, detailStack, doneButton] {
+        for subview in [scrollView, addButton, removeButton, detailStack, doneButton] {
             container.addSubview(subview)
         }
-        activateConstraints(in: container, title: title, doneButton: doneButton)
+        activateConstraints(in: container, doneButton: doneButton)
         view = container
     }
 
@@ -438,16 +449,9 @@ private extension UserScriptsOrganizerController {
         commandScrollView.translatesAutoresizingMaskIntoConstraints = false
     }
 
-    func activateConstraints(
-        in container: NSView,
-        title: NSTextField,
-        doneButton: NSButton
-    ) {
+    func activateConstraints(in container: NSView, doneButton: NSButton) {
         NSLayoutConstraint.activate([
-            title.topAnchor.constraint(equalTo: container.topAnchor, constant: 16),
-            title.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
-
-            scrollView.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 10),
+            scrollView.topAnchor.constraint(equalTo: container.topAnchor, constant: 16),
             scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
             scrollView.widthAnchor.constraint(equalToConstant: 190),
 

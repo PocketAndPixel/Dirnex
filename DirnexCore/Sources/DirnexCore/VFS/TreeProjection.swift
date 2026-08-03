@@ -9,9 +9,20 @@ public struct TreeRow: Sendable, Hashable {
     public let entry: FileEntry
     public let depth: Int
 
-    public init(entry: FileEntry, depth: Int) {
+    /// Whether this row matched the filter *itself*, as opposed to being drawn only because a
+    /// descendant did (see `TreeProjection.appendLevel`). Always `true` when no filter is active, so
+    /// a caller counting matches gets the row count for free in the ordinary case.
+    ///
+    /// It exists because "how many things did I find" and "how many rows are on screen" stop being
+    /// the same number the moment a folder is kept as scaffolding — and the first is what a user
+    /// reading a filtered pane is asking. Marking, sizing and every file operation still work on the
+    /// row, scaffolding included: this narrows what is *reported*, never what is *addressed*.
+    public let matchesFilter: Bool
+
+    public init(entry: FileEntry, depth: Int, matchesFilter: Bool = true) {
         self.entry = entry
         self.depth = depth
+        self.matchesFilter = matchesFilter
     }
 }
 
@@ -43,9 +54,14 @@ public struct TreeProjection: Sendable {
 
     public var sort: FileSort { didSet { rebuild() } }
     public var showHidden: Bool { didSet { rebuild() } }
-    /// Type-to-filter text, applied per level exactly as the flat model applies it — so a filter can
-    /// empty a level: a folder whose children all filter out still shows (if it matches at its own
-    /// level) as an expanded row with nothing beneath it.
+    /// Type-to-filter text, matched per level exactly as the flat model matches it, with one rule of
+    /// the tree's own: an expanded folder also survives when a **descendant** matches, so the filter
+    /// reaches into the folders the user has opened instead of hiding them for their own names. See
+    /// `appendLevel` for why, and for what that costs. Two consequences worth stating: a folder whose
+    /// children all filter out still shows (if it matches at its own level) as an expanded row with
+    /// nothing beneath it, and a folder shown purely as scaffolding is an ordinary row — it can be
+    /// marked, and marking it means the whole folder, non-matching children included, exactly as
+    /// marking a filtered-in folder does in the flat list.
     public var filter: String { didSet { rebuild() } }
 
     /// Directories the user has opened, by identity. A path stays here while an ancestor is collapsed
@@ -73,6 +89,13 @@ public struct TreeProjection: Sendable {
     /// `DirectoryModel.visibleEntries`, and a stable array to index into.
     public private(set) var rows: [TreeRow]
 
+    /// How many rows matched the filter themselves — `rows.count` minus the folders kept only as the
+    /// path to a match. Equal to `count` whenever no filter is active, and never larger.
+    ///
+    /// Stored rather than computed so the status line, which is rebuilt on every render, stays O(1)
+    /// on a pane that can hold 100k rows; the flatten is already walking them, so it costs nothing.
+    public private(set) var matchCount: Int
+
     public init(
         rootPath: VFSPath,
         sort: FileSort = .default,
@@ -89,6 +112,7 @@ public struct TreeProjection: Sendable {
         self.directorySizes = directorySizes
         listings = [:]
         rows = []
+        matchCount = 0
         // No rebuild: with no listings the row list is empty, which is the correct initial state.
         // (didSet does not fire during init, so nothing would run anyway.)
     }
@@ -120,6 +144,14 @@ public struct TreeProjection: Sendable {
     /// Whether a directory's children have been listed yet (the root included).
     public func hasListing(for path: VFSPath) -> Bool {
         listings[path] != nil
+    }
+
+    /// A listed directory's raw entries (unsorted, unfiltered, hidden included), or `nil` if that
+    /// directory has not been listed. The raw set is what a bystander check wants — a hidden or
+    /// filtered-out file still collides on disk — mirroring how the flat model checks against
+    /// `listing.entries` rather than `visibleEntries`.
+    public func entries(in directory: VFSPath) -> [FileEntry]? {
+        listings[directory]
     }
 
     /// A row's recursively-computed total, or `nil` if it has none yet — the tree's analogue of
@@ -207,11 +239,28 @@ public struct TreeProjection: Sendable {
         var result: [TreeRow] = []
         appendLevel(of: rootPath, depth: 0, into: &result)
         rows = result
+        // Tallied from the finished rows rather than during the walk: `appendLevel` speculatively
+        // emits a folder and takes it back when nothing beneath it survived, so a running count kept
+        // alongside would have to be unwound in step with the `removeLast` — one more thing to get
+        // out of agreement with what is on screen. Counting what actually shipped cannot drift.
+        matchCount = result.count { $0.matchesFilter }
     }
 
     /// Project one directory's entries through a `DirectoryModel` — so ordering, the hidden filter and
-    /// the text filter are byte-for-byte the flat model's — emit a row per visible entry, and recurse
+    /// the text filter are byte-for-byte the flat model's — emit a row per surviving entry, and recurse
     /// into each that is an expanded directory. Depth-first, children right after their parent.
+    ///
+    /// "Surviving" is where a tree differs from a list, and it is the one rule this type adds on top of
+    /// `DirectoryModel`: an entry survives if it **matches the filter itself, or if anything beneath it
+    /// does**. A folder is the path to its contents, so filtering it out for its own name would take
+    /// every match inside it off screen — which made the filter unusable in a tree, since the useful
+    /// query ("where is `report`") almost never matches the folders on the way to it. A non-matching
+    /// ancestor is therefore kept as scaffolding, exactly as it is in every outline filter.
+    ///
+    /// Only *expanded* folders can rescue an ancestor: this stays a pure projection of the listings
+    /// already in hand, so a collapsed folder contributes no rows and rescues nothing, whether or not
+    /// its listing happens to be cached. Reaching into unlisted directories would make a keystroke do
+    /// I/O — that is search (⌘F), not a filter.
     ///
     /// Termination: every recursion descends into a strictly-deeper child path, and there are finitely
     /// many `listings` keys, each the parent of its own entries exactly once — so no directory is
@@ -229,11 +278,29 @@ public struct TreeProjection: Sendable {
             filter: filter,
             directorySizes: directorySizes
         )
-        for entry in model.visibleEntries {
-            result.append(TreeRow(entry: entry, depth: depth))
-            if entry.isDirectoryLike, expanded.contains(entry.path) {
-                appendLevel(of: entry.path, depth: depth + 1, into: &result)
+        // `visibleEntries` (matched the text filter) is an order-preserving subset of `sortedEntries`
+        // (the level under `sort` + `showHidden`) — `DirectoryModel` splits its projection in exactly
+        // those two stages — so one forward index decides "did this entry match" with no set to build.
+        // Worth the care: this runs per level on every keystroke.
+        let matches = model.visibleEntries
+        var matchIndex = 0
+        for entry in model.sortedEntries {
+            var isMatch = false
+            if matchIndex < matches.count, matches[matchIndex].id == entry.id {
+                isMatch = true
+                matchIndex += 1
             }
+            guard entry.isDirectoryLike, expanded.contains(entry.path) else {
+                if isMatch { result.append(TreeRow(entry: entry, depth: depth)) }
+                continue
+            }
+            // Speculatively emit the folder, walk it, and take it back if it turned out to be neither
+            // a match nor the way to one. Cheaper than building the subtree in a scratch array, and it
+            // keeps the depth-first order the rows are read in.
+            let mark = result.count
+            result.append(TreeRow(entry: entry, depth: depth, matchesFilter: isMatch))
+            appendLevel(of: entry.path, depth: depth + 1, into: &result)
+            if !isMatch, result.count == mark + 1 { result.removeLast() }
         }
     }
 }

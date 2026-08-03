@@ -135,7 +135,7 @@ extension PanelViewController {
 
     /// Open the scripts organizer to create, edit, reorder, or remove scripts.
     @objc func manageUserScripts(_ sender: Any?) {
-        presentAsSheet(UserScriptsOrganizerController())
+        presentAsMovableWindow(UserScriptsOrganizerController())
     }
 
     // MARK: - Scripts submenu

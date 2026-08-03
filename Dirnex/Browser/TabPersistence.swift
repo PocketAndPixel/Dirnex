@@ -70,6 +70,7 @@ struct PersistedPane: Codable {
 /// Load/save per-pane tab state keyed by a stable pane identifier ("left"/"right").
 enum TabPersistence {
     private static let keyPrefix = "Dirnex.tabs."
+    private static let activePaneKey = "Dirnex.activePane"
 
     static func load(paneKey: String) -> PersistedPane? {
         guard let data = UserDefaults.standard.data(forKey: keyPrefix + paneKey) else { return nil }
@@ -79,6 +80,17 @@ enum TabPersistence {
     static func save(_ pane: PersistedPane, paneKey: String) {
         guard let data = try? JSONEncoder().encode(pane) else { return }
         UserDefaults.standard.set(data, forKey: keyPrefix + paneKey)
+    }
+
+    /// The pane identifier ("left"/"right") that held focus when the session was last saved, so a
+    /// relaunch restores focus to the pane the user was actually in rather than always snapping to
+    /// the left. `nil` until a session has been saved (a first launch).
+    static func loadActivePane() -> String? {
+        UserDefaults.standard.string(forKey: activePaneKey)
+    }
+
+    static func saveActivePane(_ paneKey: String) {
+        UserDefaults.standard.set(paneKey, forKey: activePaneKey)
     }
 }
 

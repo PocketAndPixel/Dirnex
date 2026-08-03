@@ -846,6 +846,76 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   definite inner width (a fixed-width command field) so `fittingSize` resolves. Same family as the
   `NSStackView`-compression traps above: an AppKit container that is under-informed about size fails
   by drawing wrong rather than by complaining.
+- **`presentAsModalWindow(_:)` is the sheet replacement when a dialog has to be *movable*, and —
+  against every expectation the word "modal" sets up — it does not block the caller.** A sheet is
+  nailed to its window, so a verification report or a Get Info panel can never be dragged aside to
+  read the pane behind it; this is AppKit's own answer and needs no window plumbing. Nothing about it
+  is documented, so all of it was probed on a live window:
+  - The call **returns immediately**, and main-queue work and default-mode timers keep firing while
+    the dialog is up — the operation queue, the FSEvents refreshes and a running checksum job are
+    unaffected. That is the fact that makes the move affordable; a nested `NSApp.runModal` would not
+    have been. It is nonetheless genuinely app-modal (`NSApp.modalWindow` is it).
+  - The window is `[.titled, .closable, .resizable]`, `isMovable == true`, and it is reachable
+    **synchronously** right after the call — so `styleMask.remove(.resizable)` belongs there, with
+    nothing deferred. Removing it leaves the frame untouched and disables the zoom button. Worth
+    doing for any controller that pins a fixed width *and* height: a resize corner Auto Layout then
+    refuses to honour is a worse lie than no corner.
+  - The window draws its content view controller's `title`, and a **`nil` one renders as the literal
+    word "Untitled"** — so a controller with no name gets a visibly broken title bar rather than an
+    empty one. Set it in the designated initializer, before the animator builds the window.
+  - An `NSAlert` raised *from* one of these still attaches to it as a sheet and still runs its
+    completion handler; the close button ends the presentation properly (`presentedViewControllers`
+    drops to 0, the modal state clears), so `dismiss(_:)`, a Done button and `EscapeDismissingView`
+    keep working unchanged.
+  - **The trap is `view.window?.attachedSheet`, which silently stops answering.** Any code asking
+    "is a dialog covering the pane?" that way reads `nil` once the dialog is a window, and an
+    `NSAlert` hung on the browser window while another window is app-modal is one the user *cannot
+    click*. `PanelViewController+Compare` had two such sites (the compare alert's host, and the
+    "Files are identical" report that otherwise fell back to a status line nobody can see behind a
+    modal). `NSApp.modalWindow ?? view.window?.attachedSheet ?? view.window` is the ordering that
+    covers both eras. Same family as naming a new backend at every site that lists the old one — one
+    question, two spellings, and the compiler checks neither.
+  - **Verify Escape by A/B against a sheet in the same script, not on its own.** A first probe sent a
+    synthetic Escape into the modal window and *nothing* fired, which reads as a regression; the
+    control run showed the sheet behaving identically, and the real cause was `EscapeDismissingView`'s
+    own field-editor carve-out — the probe had put an `NSTextField` in the view. Without the control
+    it would have looked like modal windows swallow Escape.
+  - A title bar arriving also makes any in-content headline a **duplicate**, and a display string
+    that exists twice gets localized once (below). Promote the existing headline to the window title
+    and delete the label — its translations carry over untouched, since the key is the English text.
+- **`setFrameUsingName` restores the *position only* on a non-resizable window, and preserves the
+  top-left while doing it.** Probed after the move above, because the obvious worry — a size saved by
+  an older build coming back and fighting a fixed-size container — turns out not to exist: a frame
+  saved at 400×332 restored a 640×512 window as 640×512, with both frames' **tops at y=587**. AppKit
+  clamps the restored size to the window's own min/max, which for a non-resizable window is its
+  current size, and re-derives the origin from the top-left. So "remember where the user dragged this
+  dialog" is `setFrameUsingName` + `setFrameAutosaveName` and no arithmetic at all — but only if
+  `.resizable` is **already off** when the restore runs. On a resizable window the same call brings
+  the stale size back with it.
+  - The autosave is also the reason not to hand-roll it: a modal-window presentation **posts no
+    `willCloseNotification`** (probed), so the natural save-on-close design silently never saves, and
+    a `didMove` observer would need a lifetime hook that dismissal does not give you either. AppKit's
+    autosave writes on every move and needs no teardown.
+  - **Both `setFrameOrigin` and `setFrame(_:display:)` constrain the result onto a screen by
+    themselves** — an origin of 99 999 came back as 1688, off-screen negatives came back with the
+    title bar reachable — so a hand-rolled clamp only second-guesses AppKit. What AppKit *cannot*
+    catch is a saved position that is perfectly valid on a display the app is no longer using: that
+    needs its own check (is the restored centre on the parent window's screen?), or every dialog
+    opens back on the laptop screen the day an external display arrives.
+- **A SwiftUI-hosted window can consume Escape before any AppKit handler runs, and a local key
+  monitor is the way in.** A monitor runs *ahead of responder dispatch*, so it sees the key whatever
+  the hosting view would have done with it — the same lever Quick View already uses to take Esc back
+  from a focused `PDFView`. The cost is that it now sees **every** Escape in that window, so it has to
+  hand the key back to whoever legitimately owns it: a field editor mid-edit (which reverts the edit),
+  and any control that means something else by it — in Settings, the shortcut recorder, where Escape
+  cancels the capture. Mark those with a protocol on the *control* rather than listing class names in
+  the monitor; the knowledge belongs with the thing that wants the key.
+  - Verify it in a **probe with `postEvent`, not through computer-use**: synthetic Escape is swallowed
+    before the app entirely (above), so the tool cannot tell a working monitor from a broken one — it
+    shows the window simply staying open either way. `NSApp.postEvent` does reach a local monitor, so
+    a throwaway app carrying the identical monitor over a real `NSHostingController` pins all three
+    branches (nothing focused → closes; `_SystemTextFieldFieldEditor` focused → does not;
+    marked control focused → does not). The one step left for a human is the physical keypress.
 
 ## Lint ceilings and file splitting
 
@@ -1700,3 +1770,72 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   screenshot: an expanded folder's largest child fills its bar even when a root-level sibling is
   4× bigger — proof the denominator is the *parent*, not the projection. A whole-tree denominator
   cannot express it (a child's bytes are a subset of its parent's).
+- **Reusing a flat rule per level is right for *ordering* and wrong for *filtering*, and the tree
+  shipped with both.** `TreeProjection` deliberately projects each level through a `DirectoryModel`
+  so sort, hidden and filter cannot fork from the list — correct for the first two, and for the
+  filter it deleted the feature: `appendLevel` recursed only into entries that survived their own
+  level, so a folder whose *name* missed the filter took every matching file under it off screen.
+  Typing `report` in a tree hid `docs/` and with it `docs/report.pdf`, which is the only query
+  anybody types. The rule that works is the one every outline filter uses — an entry survives if it
+  matches **or if anything beneath it does** — and the honest framing is that a folder is not a
+  peer of its contents: filtering it on its own name filters *the path to* the results, not the
+  results. Three things worth carrying:
+  - **The shipped tests pinned the bug's good half and not its bad half.** Both filter tests set up
+    a parent that *matched* (`filter = "doc"` over a folder named `docs`), so they exercised
+    "children filter out under a matching parent" and never the inverse. The asymmetry is easy to
+    write without noticing, because the matching-parent case is the one you reach for when naming a
+    fixture. Name the fixture for the query (`report.pdf` inside `docs/`), not for the folder.
+  - **It is invisible to every automated signal.** 1634 core tests, 215 app tests and both linters
+    were green while the filter was unusable in a tree; nothing logs, and the pane shows *a*
+    plausible answer (fewer rows) rather than an empty or broken one. Same quiet-direction family as
+    the size-bar menu validator — and, like it, only reachable by doing the thing a user does.
+  - **"Only expanded folders can rescue an ancestor" is what keeps it a filter.** Reaching into
+    unlisted directories would put I/O on a keystroke, which is search (⌘F), not a filter — so a
+    collapsed folder rescues nothing even when its listing is still cached, and collapsing the
+    folder that carried the only match makes it disappear. Verified live: the scaffolding row went
+    away on the collapse, and clearing the filter brought the whole tree back with the expansion
+    exactly as the user left it.
+  - **Scaffolding splits "how many rows" from "how many did I find", and a status line needs both.**
+    Once a folder can be on screen without matching, `rows.count` stops answering the question a
+    filtered pane is asked — `Filter “dscf” · 7 items` over six files and the folder they were found
+    in. Hence `TreeRow.matchesFilter` and `TreeProjection.matchCount`, equal to `count` in a flat
+    list and in an unfiltered tree so only the case where the distinction is real ever differs. The
+    rule for choosing between them: **a reporting number counts matches, an addressing number counts
+    rows.** So the marked branch of the same status line deliberately keeps counting rows — marks
+    land on scaffolding like any other row, and F5 copies the whole folder, so counting matches there
+    would under-report the work in the one direction that costs the user something. The two lines are
+    allowed to disagree across a ⌘A (`6 items` → `7 of 7 selected`); what is not allowed is a summary
+    of an operation that is smaller than the operation.
+- **A tree splits "the current directory" into two questions, and every write was answering the wrong
+  one.** F7 New Folder, ⇧F4 Edit File and both pastes (⌘V / ⌥⌘V) all targeted `writeDirectory` — the
+  pane's real on-disk directory — which in a *flat* list is also "where the cursor is", because every
+  row of a flat list lives in it. That equivalence is what made it invisible: the two questions had the same
+  answer for the whole life of the app, so nothing marked which one each site meant. A tree draws
+  several directories at once, so with the cursor three levels down both keys created back at the
+  **root** — the new row landed off screen or not at all, and New Folder's dialog said "Create a
+  folder in *<root>*" while the user was pointing somewhere else entirely. It fails in the quiet
+  direction: a folder really is created, the pane really does refresh, and the only tell is a name in
+  a sentence nobody reads twice. Split it — `Panel.cursorDirectory` (core, pure, tested) answers
+  *which* directory the cursor's row lives in, and `writeDirectory` goes on answering *whether there
+  is a real one at all*, which is the only one that can be `nil`. Three things fell out:
+  - **The displayed name is a third question, and folding it into the target regresses iCloud.** A
+    dialog names *what the pane shows*, so the merged iCloud listing must keep saying "iCloud Drive"
+    and never "com~apple~CloudDocs" — the target and its name coincide only in a tree, which is the
+    one case where the pane genuinely draws the deeper folder with a row of its own. Swapping
+    `panel.path.lastComponent` for the target's own is the obvious edit and is wrong everywhere else.
+  - **The refresh needed nothing.** `refreshCurrentDirectory(selecting:)` already routes a tree
+    through `refreshTree(selecting:)`, which re-lists every listed directory and lands the cursor on
+    the target by identity — so a row created at depth 2 appears at depth 2 with the cursor on it, for
+    free. It was written for a *rename* landing in a child; a create in a child is the same shape,
+    which is the payoff of having one refresh funnel rather than one per operation.
+  - **Reconcile the cursor before reading it.** The table's selection is the live cursor until its
+    change notification fires a runloop pass later, so a write invoked straight after an arrow key
+    reads the row the user just left. In a flat list that error was unobservable — both rows have the
+    same parent — and in a tree it is a different *directory*. Every tree key already does this; a
+    command that only became cursor-dependent now has to as well.
+  - **A guard written for one shape becomes reachable in another.** `pasteRecurses` — refuse a paste
+    whose destination is inside the source's own subtree — was written for the flat list, where it
+    could only fire across panes; a tree makes it a *single-pane* gesture, since ⌘C a folder and then
+    putting the cursor inside it is one arrow key away. It held (verified live: nothing was created,
+    nothing logged), which is the point — the audit worth doing when a destination widens is over the
+    guards that already constrain it, not only over the sites that compute it.

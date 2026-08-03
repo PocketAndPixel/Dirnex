@@ -43,18 +43,24 @@ extension PanelViewController {
     // MARK: - New Folder (F7)
 
     private func promptForNewFolder() {
-        // `writeDirectory` is `nil` wherever there is no real directory to create into — and, for
-        // the merged iCloud listing, the CloudDocs container the merge is built on (PLAN.md §M9).
-        guard let target = writeDirectory else { return }
+        // The cursor decides the target in a tree, and the table's selection is the live cursor
+        // (`PanelViewController+CreateTarget`).
+        reconcileCursorFromTable()
+        // `creationDirectory` is `nil` wherever there is no real directory to create into — and, for
+        // the merged iCloud listing, the CloudDocs container the merge is built on (PLAN.md §M9). In
+        // a tree it is the folder the cursor's row lives in, so the new folder appears as a sibling
+        // right where the cursor is rather than back at the root.
+        guard let target = creationDirectory else { return }
         let alert = NSAlert()
         alert.messageText = String(
             localized: "New Folder",
             comment: "Title of the New Folder dialog."
         )
         // Named for what the pane shows, not for the directory underneath: "iCloud Drive", not
-        // "com~apple~CloudDocs", which is a folder the user has never heard of.
+        // "com~apple~CloudDocs", which is a folder the user has never heard of. A tree is the
+        // exception `creationDirectoryName` exists for — it really is drawing the deeper folder.
         alert.informativeText = String(
-            localized: "Create a folder in “\(panel.path.lastComponent)”.",
+            localized: "Create a folder in “\(creationDirectoryName)”.",
             comment: "New Folder dialog body; %@ is the containing folder name."
         )
         alert.addButton(
@@ -349,6 +355,14 @@ extension PanelViewController {
         // `writeDirectory`, so a New Folder or a paste lands *in* it and must show up (PLAN.md §M9).
         if isICloudListing {
             reloadICloudDrive(selecting: target)
+            return
+        }
+        // A tree spans several directories, and an operation the app just performed (a rename, a
+        // New Folder, a delete) can land in a child the *root* re-list below would never touch — so
+        // the display would go stale until an FSEvents ping caught up, and the cursor would never
+        // reach the target. Re-list the whole (shallow) tree and land on the target by identity.
+        if panel.isTree {
+            refreshTree(selecting: target)
             return
         }
         // Re-list a real directory — on disk or on a connected SFTP account (an SFTP path is

@@ -1,19 +1,22 @@
 import AppKit
 import DirnexCore
 
-/// The Multi-Rename Tool sheet (PLAN.md §M4 "Multi-rename tool … live preview table, applies
+/// The Multi-Rename Tool dialog (PLAN.md §M4 "Multi-rename tool … live preview table, applies
 /// as one undoable batch"). A form of TC's rename controls — name/extension masks, search &
 /// replace (literal or regex), case fold, and a counter — over a live preview table that
 /// recomputes on every keystroke through the headless `MultiRename` planner. "Rename" hands the
 /// applyable proposals back to the panel, which performs the moves and journals them for undo.
 ///
-/// Presented via `presentAsSheet`, which retains it for its on-screen lifetime. All planning is
+/// Presented via `presentAsMovableWindow`, which retains it for its on-screen lifetime. All planning is
 /// pure `DirnexCore`; this file is the AppKit shell that binds controls to a `RenameSpec` and
 /// renders the plan.
 @MainActor
 final class MultiRenameController: NSViewController {
     private let items: [FileEntry]
-    private let existingNames: Set<String>
+    /// The names already in each directory the marked items live in, keyed by that directory — the
+    /// planner's bystander/duplicate check is scoped per folder, so a tree batch spanning levels
+    /// checks each item against its own directory rather than one shared set.
+    private let namesByDir: [VFSPath: Set<String>]
     /// Handed the clean, applyable proposals when the user commits. The panel performs the
     /// moves and records the undo batch.
     var onApply: (([RenameProposal]) -> Void)?
@@ -49,10 +52,11 @@ final class MultiRenameController: NSViewController {
         (String(localized: "Capitalized"), .capitalized)
     ]
 
-    init(items: [FileEntry], existingNames: Set<String>) {
+    init(items: [FileEntry], existingNamesByDirectory: [VFSPath: Set<String>]) {
         self.items = items
-        self.existingNames = existingNames
+        namesByDir = existingNamesByDirectory
         super.init(nibName: nil, bundle: nil)
+        title = DialogTitle.ofCommand("file.multiRename")
     }
 
     @available(*, unavailable)
@@ -237,7 +241,7 @@ final class MultiRenameController: NSViewController {
     /// every keystroke (see `controlTextDidChange`) — the planner is pure and cheap.
     private func updatePreview() {
         let spec = currentSpec()
-        proposals = MultiRename.plan(for: items, spec: spec, existingNames: existingNames)
+        proposals = MultiRename.plan(for: items, spec: spec, existingNamesByDirectory: namesByDir)
         tableView.reloadData()
         updateFooter(spec: spec)
     }

@@ -1,11 +1,13 @@
 import AppKit
 
-/// Escape-to-close helpers for the app's AppKit dialogs, so a user is never trapped in a modal
-/// surface. Both ride the standard `performKeyEquivalent(with:)` path — the same one a "Cancel"
+/// Escape-to-close helpers for the app's dialogs, so a user is never trapped in a modal surface.
+/// The first two ride the standard `performKeyEquivalent(with:)` path — the same one a "Cancel"
 /// button's Escape key equivalent uses — so they fire regardless of which control holds focus.
 ///
-/// The SwiftUI-hosted Settings window is deliberately out of scope: its hosting view swallows Escape
-/// before any AppKit handler can see it, so it keeps the standard ⌘W / red-button close.
+/// The SwiftUI-hosted Settings window takes the third, `EscapeToCloseMonitor`, because a hosting
+/// view can consume Escape before any of that runs. A **local key monitor runs ahead of responder
+/// dispatch entirely** (docs/NOTES.md), so it sees the key whatever SwiftUI would do with it — which
+/// is exactly why it then has to hand Escape *back* to the responders that legitimately own it.
 
 /// A container view that dismisses its enclosing sheet when Escape is pressed and nothing focused
 /// claims the key first — the reliable way to add Escape-to-close to a sheet that has no Cancel
@@ -32,6 +34,46 @@ final class EscapeDismissingView: NSView {
         if !dismissesWhileEditing, window?.firstResponder is NSText { return false }
         onEscape()
         return true
+    }
+}
+
+/// A responder that owns Escape for itself, so the window-wide monitor must leave it alone.
+///
+/// A marker rather than a list of class names inside the monitor: the knowledge belongs with the
+/// control that wants the key ("Escape cancels *my* recording"), not with the window that would
+/// otherwise close over it. Anything added to Settings later opts in the same way.
+@MainActor
+protocol EscapeKeyConsuming: NSResponder {}
+
+/// Escape-to-close for a window whose content is SwiftUI, where `EscapeDismissingView` cannot reach.
+///
+/// Scoped to one window and installed only while it is on screen. Three responders keep Escape:
+/// a field editor mid-edit (it reverts the edit — the same carve-out `EscapeDismissingView` makes),
+/// anything marked ``EscapeKeyConsuming``, and any window that is not this one.
+@MainActor
+final class EscapeToCloseMonitor {
+    private var monitor: Any?
+
+    /// Begin watching for Escape while `window` is key. Idempotent — a second call replaces the
+    /// first, so re-presenting a shared window cannot stack monitors.
+    func install(for window: NSWindow, onEscape: @escaping () -> Void) {
+        remove()
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak window] event in
+            guard let window, window.isKeyWindow,
+                  event.keyCode == 53,
+                  event.modifierFlags.isDisjoint(with: [.command, .control, .option, .shift])
+            else { return event }
+            let focused = window.firstResponder
+            if focused is NSText || focused is any EscapeKeyConsuming { return event }
+            onEscape()
+            return nil // handled — don't also deliver it to the responder chain
+        }
+    }
+
+    /// Stop watching. Safe to call when nothing is installed.
+    func remove() {
+        if let monitor { NSEvent.removeMonitor(monitor) }
+        monitor = nil
     }
 }
 

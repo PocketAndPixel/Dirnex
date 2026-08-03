@@ -9,7 +9,7 @@ import DirnexCore
 /// once, over whatever is on screen then.
 ///
 /// The two modes get deliberately different surfaces. A **verification** is the answer the user
-/// asked for, so it gets a sheet they have to look at. A **creation** produced a file they can see
+/// asked for, so it gets a window they have to look at. A **creation** produced a file they can see
 /// in the pane, so it gets a status line — unless something was skipped, which is the one case a
 /// created manifest can quietly lie by omission and therefore the one case that interrupts.
 extension BrowserWindowController {
@@ -31,7 +31,7 @@ extension BrowserWindowController {
 
     private func presentReport(_ report: ChecksumVerificationReport, manifestName: String) {
         let controller = ChecksumReportController(report: report, manifestName: manifestName)
-        focusedPanel.presentAsSheet(controller)
+        focusedPanel.presentAsMovableWindow(controller)
     }
 
     // MARK: - Create

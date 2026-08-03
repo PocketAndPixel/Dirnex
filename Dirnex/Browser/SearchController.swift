@@ -1,13 +1,13 @@
 import AppKit
 import DirnexCore
 
-/// The Find Files sheet (⌥F7 / palette "Find Files…") — a small form over a `SpotlightQuery`
+/// The Find Files dialog (⌥F7 / palette "Find Files…") — a small form over a `SpotlightQuery`
 /// (PLAN.md §M4 "Search … with filter chips (kind, size, date)"). The user fills in any
 /// combination of a name substring, a content substring, and the kind/size/date chips, picks a
 /// scope, and "Find" hands the query back to the panel, which runs `mdfind` and shows the hits
 /// in a virtual results panel.
 ///
-/// Presented via `presentAsSheet` (which retains it for its on-screen lifetime). All the query
+/// Presented via `presentAsMovableWindow` (which retains it for its on-screen lifetime). All the query
 /// logic is the tested `DirnexCore.SpotlightQuery`; this is just the AppKit shell that binds
 /// controls to it.
 @MainActor
@@ -95,6 +95,7 @@ final class SearchController: NSViewController {
     init(currentFolderName: String) {
         self.currentFolderName = currentFolderName
         super.init(nibName: nil, bundle: nil)
+        title = DialogTitle.ofCommand("go.search")
     }
 
     @available(*, unavailable)

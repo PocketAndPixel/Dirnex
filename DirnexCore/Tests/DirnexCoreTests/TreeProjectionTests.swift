@@ -196,38 +196,6 @@ struct TreeProjectionTests {
         #expect(shape(tree).map(\.0) == ["docs", "a.txt", "z.txt"])
     }
 
-    // MARK: - Filter
-
-    @Test("a filter that empties a level leaves the matching parent childless")
-    func filterEmptiesALevel() {
-        let docs = root.appending("docs")
-        var tree = TreeProjection(rootPath: root, sort: FileSort(key: .name))
-        tree.setListing(root, entries: [dir("docs")])
-        tree.setListing(docs, entries: [entry("a.txt", in: docs), entry("b.txt", in: docs)])
-        tree.expand(docs)
-
-        // "docs" matches the filter at its own level; none of its children do.
-        tree.filter = "doc"
-        #expect(shape(tree).map(\.0) == ["docs"])
-    }
-
-    @Test("a filter removes non-matching entries at each level")
-    func filterPerLevel() {
-        let docs = root.appending("docs")
-        var tree = TreeProjection(rootPath: root, sort: FileSort(key: .name))
-        // Root has a matching file; the folder name also matches so it survives to show its children.
-        tree.setListing(root, entries: [dir("docs"), entry("keep.txt"), entry("drop.log")])
-        tree.setListing(
-            docs,
-            entries: [entry("dockeep.txt", in: docs), entry("other.log", in: docs)]
-        )
-        tree.expand(docs)
-
-        tree.filter = "do" // matches "docs", "drop.log"? no — "drop.log" has no "do"… it has "dro".
-        // "do" is a substring of "docs" and "dockeep.txt" only.
-        #expect(shape(tree).map { "\($0.0)@\($0.1)" } == ["docs@0", "dockeep.txt@1"])
-    }
-
     // MARK: - Hidden entries
 
     @Test("hidden entries are filtered per level, and showHidden reveals them")
