@@ -1736,10 +1736,10 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     would under-report the work in the one direction that costs the user something. The two lines are
     allowed to disagree across a ⌘A (`6 items` → `7 of 7 selected`); what is not allowed is a summary
     of an operation that is smaller than the operation.
-- **A tree splits "the current directory" into two questions, and every create was answering the
-  wrong one.** F7 New Folder and ⇧F4 Edit File both created into `writeDirectory` — the pane's real
-  on-disk directory — which in a *flat* list is also "where the cursor is", because every row of a
-  flat list lives in it. That equivalence is what made it invisible: the two questions had the same
+- **A tree splits "the current directory" into two questions, and every write was answering the wrong
+  one.** F7 New Folder, ⇧F4 Edit File and both pastes (⌘V / ⌥⌘V) all targeted `writeDirectory` — the
+  pane's real on-disk directory — which in a *flat* list is also "where the cursor is", because every
+  row of a flat list lives in it. That equivalence is what made it invisible: the two questions had the same
   answer for the whole life of the app, so nothing marked which one each site meant. A tree draws
   several directories at once, so with the cursor three levels down both keys created back at the
   **root** — the new row landed off screen or not at all, and New Folder's dialog said "Create a
@@ -1759,7 +1759,13 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     free. It was written for a *rename* landing in a child; a create in a child is the same shape,
     which is the payoff of having one refresh funnel rather than one per operation.
   - **Reconcile the cursor before reading it.** The table's selection is the live cursor until its
-    change notification fires a runloop pass later, so a create invoked straight after an arrow key
+    change notification fires a runloop pass later, so a write invoked straight after an arrow key
     reads the row the user just left. In a flat list that error was unobservable — both rows have the
     same parent — and in a tree it is a different *directory*. Every tree key already does this; a
     command that only became cursor-dependent now has to as well.
+  - **A guard written for one shape becomes reachable in another.** `pasteRecurses` — refuse a paste
+    whose destination is inside the source's own subtree — was written for the flat list, where it
+    could only fire across panes; a tree makes it a *single-pane* gesture, since ⌘C a folder and then
+    putting the cursor inside it is one arrow key away. It held (verified live: nothing was created,
+    nothing logged), which is the point — the audit worth doing when a destination widens is over the
+    guards that already constrain it, not only over the sites that compute it.
