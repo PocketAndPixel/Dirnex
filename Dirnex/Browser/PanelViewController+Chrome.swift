@@ -72,10 +72,19 @@ extension PanelViewController {
                 """
             )
         } else {
+            // `matchCount`, not `total`: a filtered tree also draws the folders standing between the
+            // root and a match, and counting those would answer a question nobody asked — "6 items"
+            // for five files and the folder they were found in. Identical to `total` in a flat list
+            // and in an unfiltered tree, so this only ever differs where the distinction is real.
+            //
+            // Deliberately *not* mirrored in the marked branch above: that line reports what F5/F8
+            // will touch, marks on scaffolding folders included, so it must count rows. The two
+            // numbers answer different questions and are allowed to disagree.
+            //
             // One key with a plural variation, not a 1-vs-many ternary: a language with more than
             // two forms (Russian has three) can't be expressed by a branch in Swift.
             counts = String(
-                localized: "\(total) items",
+                localized: "\(panel.matchCount) items",
                 comment: "Pane status line when nothing is marked. %lld is the row count."
             )
         }

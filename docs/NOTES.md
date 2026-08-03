@@ -1725,3 +1725,14 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     folder that carried the only match makes it disappear. Verified live: the scaffolding row went
     away on the collapse, and clearing the filter brought the whole tree back with the expansion
     exactly as the user left it.
+  - **Scaffolding splits "how many rows" from "how many did I find", and a status line needs both.**
+    Once a folder can be on screen without matching, `rows.count` stops answering the question a
+    filtered pane is asked — `Filter “dscf” · 7 items` over six files and the folder they were found
+    in. Hence `TreeRow.matchesFilter` and `TreeProjection.matchCount`, equal to `count` in a flat
+    list and in an unfiltered tree so only the case where the distinction is real ever differs. The
+    rule for choosing between them: **a reporting number counts matches, an addressing number counts
+    rows.** So the marked branch of the same status line deliberately keeps counting rows — marks
+    land on scaffolding like any other row, and F5 copies the whole folder, so counting matches there
+    would under-report the work in the one direction that costs the user something. The two lines are
+    allowed to disagree across a ⌘A (`6 items` → `7 of 7 selected`); what is not allowed is a summary
+    of an operation that is smaller than the operation.

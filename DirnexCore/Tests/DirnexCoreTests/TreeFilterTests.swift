@@ -6,9 +6,14 @@ import Testing
 /// How the type-to-filter behaves in a tree — split from `TreeProjectionTests` (which was at
 /// SwiftLint's `type_body_length` ceiling) along the seam the rule itself draws: matching a level is
 /// `DirectoryModel`'s job and is covered there, while deciding whether a **non-matching folder**
-/// survives as the way to a match is the one rule `TreeProjection` adds of its own.
-@Suite("TreeProjection filter")
-struct TreeProjectionFilterTests {
+/// survives as the way to a match is the one rule the tree adds of its own.
+///
+/// Covers that rule at both levels it surfaces — the `TreeProjection` that implements it and the
+/// `Panel` facade the app reads it through — because the reporting half (`matchCount`) is only
+/// meaningful as the two compared, and a test that pins one without the other would not notice the
+/// facade handing back the wrong mode's answer.
+@Suite("Tree filter")
+struct TreeFilterTests {
     /// A `FileEntry` under `dir`; tests override only what they assert on. Private per suite, the way
     /// every other tree suite here carries its own.
     private func entry(
@@ -163,5 +168,110 @@ struct TreeProjectionFilterTests {
         #expect(shape(tree).count == 2)
         tree.filter = ""
         #expect(shape(tree).map { "\($0.0)@\($0.1)" } == unfiltered)
+    }
+
+    // MARK: - Match count (what the status line reports)
+
+    @Test("matchCount counts matches only, not the folders kept as the path to them")
+    func matchCountExcludesScaffolding() {
+        let docs = root.appending("docs")
+        var tree = TreeProjection(rootPath: root, sort: FileSort(key: .name))
+        tree.setListing(root, entries: [dir("docs"), entry("toplevel.txt")])
+        tree.setListing(docs, entries: [
+            entry("report-a.pdf", in: docs),
+            entry("report-b.pdf", in: docs),
+            entry("other.log", in: docs)
+        ])
+        tree.expand(docs)
+
+        tree.filter = "report"
+        // Three rows on screen — `docs` plus its two matches — but only two things were found.
+        #expect(tree.count == 3)
+        #expect(tree.matchCount == 2)
+        #expect(tree.rows.map(\.matchesFilter) == [false, true, true])
+    }
+
+    @Test("a folder that matches on its own name counts as a match")
+    func matchCountIncludesMatchingFolders() {
+        let docs = root.appending("docs")
+        var tree = TreeProjection(rootPath: root, sort: FileSort(key: .name))
+        tree.setListing(root, entries: [dir("docs")])
+        tree.setListing(
+            docs,
+            entries: [entry("doc-one.txt", in: docs), entry("other.log", in: docs)]
+        )
+        tree.expand(docs)
+
+        // `docs` is a result here, not scaffolding — it is what the user typed.
+        tree.filter = "doc"
+        #expect(tree.count == 2)
+        #expect(tree.matchCount == 2)
+        // Hoisted: `allSatisfy` inside `#expect` doesn't compile (NOTES.md ▸ Testing).
+        let everyRowMatched = tree.rows.allSatisfy(\.matchesFilter)
+        #expect(everyRowMatched)
+    }
+
+    @Test("with no filter every row is a match, so matchCount is the row count")
+    func matchCountEqualsCountUnfiltered() {
+        let docs = root.appending("docs")
+        var tree = TreeProjection(rootPath: root, sort: FileSort(key: .name))
+        tree.setListing(root, entries: [dir("docs"), entry("z.txt")])
+        tree.setListing(docs, entries: [entry("a.txt", in: docs)])
+        tree.expand(docs)
+
+        #expect(tree.count == 3)
+        #expect(tree.matchCount == 3)
+
+        // And it comes back when the filter is cleared, rather than sticking at the narrowed value.
+        tree.filter = "a.txt"
+        #expect(tree.matchCount == 1)
+        tree.filter = ""
+        #expect(tree.matchCount == 3)
+    }
+
+    @Test("matchCount tracks a collapse that removes the scaffolding it was hiding")
+    func matchCountTracksCollapse() {
+        let docs = root.appending("docs")
+        var tree = TreeProjection(rootPath: root, sort: FileSort(key: .name))
+        tree.setListing(root, entries: [dir("docs")])
+        tree.setListing(docs, entries: [entry("needle.txt", in: docs)])
+        tree.expand(docs)
+        tree.filter = "needle"
+        #expect(tree.count == 2)
+        #expect(tree.matchCount == 1)
+
+        tree.collapse(docs)
+        #expect(tree.isEmpty)
+        #expect(tree.matchCount == 0)
+    }
+
+    // MARK: - Match count across both modes
+
+    @Test("matchCount is the row count in a list and drops the scaffolding in a tree")
+    func matchCountAcrossModes() {
+        let docs = root.appending("docs")
+        var panel = Panel(path: root, sort: FileSort(key: .name))
+        panel.setListing(DirectoryListing(path: root, entries: [dir("docs"), entry("z.txt")]))
+
+        // Flat: every visible row matched by construction, filtered or not.
+        #expect(panel.matchCount == panel.count)
+        panel.setFilter("z")
+        #expect(panel.matchCount == 1)
+        #expect(panel.matchCount == panel.count)
+        panel.setFilter("")
+
+        panel.enterTreeMode()
+        panel.setTreeChildListing(docs, entries: [entry("report.pdf", in: docs)])
+        panel.expand(docs)
+        #expect(panel.matchCount == panel.count)
+
+        // `docs` is now on screen only as the way to `report.pdf`, so the two part company.
+        panel.setFilter("report")
+        #expect(panel.count == 2)
+        #expect(panel.matchCount == 1)
+
+        // Leaving the tree hands the question back to the flat model.
+        panel.exitTreeMode()
+        #expect(panel.matchCount == panel.count)
     }
 }

@@ -63,6 +63,17 @@ public struct Panel: Sendable {
     public var count: Int { tree?.count ?? model.count }
     public var isEmpty: Bool { tree?.isEmpty ?? model.isEmpty }
 
+    /// How many rows matched the filter themselves — `count` in a flat list (where every visible row
+    /// matched by construction) and in an unfiltered tree, and smaller than `count` in a filtered
+    /// tree, which also draws the folders standing between the root and a match.
+    ///
+    /// This is a **reporting** number, not an addressing one: it answers "how many did I find" for
+    /// the status line. Everything that acts on the pane — marking, `selectAll`, the file operations
+    /// — still works over `displayedEntries`, scaffolding included, because a folder on screen is a
+    /// folder the user can point at. Anything summarizing what an operation will *touch* must count
+    /// rows, not matches, or it under-reports the work.
+    public var matchCount: Int { tree?.matchCount ?? model.count }
+
     /// Whether the pane is currently in tree mode.
     public var isTree: Bool { tree != nil }
 
