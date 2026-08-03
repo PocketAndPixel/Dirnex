@@ -1700,3 +1700,28 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   screenshot: an expanded folder's largest child fills its bar even when a root-level sibling is
   4× bigger — proof the denominator is the *parent*, not the projection. A whole-tree denominator
   cannot express it (a child's bytes are a subset of its parent's).
+- **Reusing a flat rule per level is right for *ordering* and wrong for *filtering*, and the tree
+  shipped with both.** `TreeProjection` deliberately projects each level through a `DirectoryModel`
+  so sort, hidden and filter cannot fork from the list — correct for the first two, and for the
+  filter it deleted the feature: `appendLevel` recursed only into entries that survived their own
+  level, so a folder whose *name* missed the filter took every matching file under it off screen.
+  Typing `report` in a tree hid `docs/` and with it `docs/report.pdf`, which is the only query
+  anybody types. The rule that works is the one every outline filter uses — an entry survives if it
+  matches **or if anything beneath it does** — and the honest framing is that a folder is not a
+  peer of its contents: filtering it on its own name filters *the path to* the results, not the
+  results. Three things worth carrying:
+  - **The shipped tests pinned the bug's good half and not its bad half.** Both filter tests set up
+    a parent that *matched* (`filter = "doc"` over a folder named `docs`), so they exercised
+    "children filter out under a matching parent" and never the inverse. The asymmetry is easy to
+    write without noticing, because the matching-parent case is the one you reach for when naming a
+    fixture. Name the fixture for the query (`report.pdf` inside `docs/`), not for the folder.
+  - **It is invisible to every automated signal.** 1634 core tests, 215 app tests and both linters
+    were green while the filter was unusable in a tree; nothing logs, and the pane shows *a*
+    plausible answer (fewer rows) rather than an empty or broken one. Same quiet-direction family as
+    the size-bar menu validator — and, like it, only reachable by doing the thing a user does.
+  - **"Only expanded folders can rescue an ancestor" is what keeps it a filter.** Reaching into
+    unlisted directories would put I/O on a keystroke, which is search (⌘F), not a filter — so a
+    collapsed folder rescues nothing even when its listing is still cached, and collapsing the
+    folder that carried the only match makes it disappear. Verified live: the scaffolding row went
+    away on the collapse, and clearing the filter brought the whole tree back with the expansion
+    exactly as the user left it.

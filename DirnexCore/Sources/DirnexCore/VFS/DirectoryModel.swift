@@ -59,7 +59,13 @@ public struct DirectoryModel: Sendable {
     /// `listing.entries` under `showHidden` + `sort`, but *before* the text filter — the
     /// stable base a keystroke filters without re-sorting. Rebuilt only when the listing,
     /// sort, hidden-toggle, or computed sizes change.
-    private var sortedEntries: [FileEntry]
+    ///
+    /// Readable (not `private`) because `TreeProjection` needs both halves of the projection to
+    /// decide whether a row survives: `visibleEntries` says what matched the text filter, and this
+    /// says what the level holds regardless — an expanded folder that matched nothing itself still
+    /// has to be walked, in case something beneath it did. `visibleEntries` remains an
+    /// order-preserving subset of this, which is what lets that walk be one forward pass.
+    private(set) var sortedEntries: [FileEntry]
 
     /// Lazily-built lowercased UTF-8 of the `sortedEntries` names, used by the ASCII filter
     /// fast path. Invalidated (to `nil`) on every resort and rebuilt on the first non-empty
