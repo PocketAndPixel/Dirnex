@@ -7,19 +7,61 @@ import DirnexCore
 /// `SidebarViewController` so that file stays under its length limit, the same reason Favorites
 /// and the sections logic live beside it.
 ///
-/// Deliberately thin: unlike Favorites there is nothing to reorder, rename, or remove — these are
-/// system locations, not user-owned pins — so there is no drag, no context menu, and no store. A
-/// row is present or absent purely on whether the folder is on disk.
+/// There is nothing here to rename or remove — these are system locations, not user-owned pins, so
+/// a row is present or absent purely on whether the folder is on disk. Their **order**, though, is
+/// the user's: the rows are draggable like a favorite's, and `CloudSectionOrderStore` remembers
+/// where they were put. That takes an order stored beside the rows rather than in them, since the
+/// rows come back from a scan every rebuild — `SidebarItemOrder` is that, and the identities it
+/// keys off are chosen here (`orderIdentity`).
 ///
 /// The section keeps the `icloud` identity rather than gaining a new one, so a user who had it
 /// folded shut finds it still folded after the rename: `SidebarSectionCollapse` persists the raw
 /// case name, and only the header's *title* changed.
 extension SidebarViewController {
-    /// The section's rows: iCloud Drive first — Apple's own, and the one a Mac is likeliest to
-    /// have — then the provider mounts, already ordered by name.
+    /// The identity iCloud Drive is remembered by. A literal rather than its path: the path is
+    /// `~/Library/Mobile Documents/com~apple~CloudDocs`, which carries the user's home directory
+    /// into a stored order and would lose the row's position on a Mac where that differs.
+    private static let iCloudOrderIdentity = "icloud"
+
+    /// The section's rows in the user's order — or, until they have dragged anything, the natural
+    /// one: iCloud Drive first (Apple's own, and the row a Mac is likeliest to have) then the
+    /// provider mounts by name.
     func cloudRows() -> [Row] {
         let iCloud = SidebarLocations.iCloudDrive().map { [Row.iCloud($0)] } ?? []
-        return iCloud + CloudStorageMounts.mounts().map(Row.cloudMount)
+        let discovered = iCloud + CloudStorageMounts.mounts().map(Row.cloudMount)
+        // Every row here is a Cloud row by construction, so the fallback is unreachable rather than
+        // a stand-in identity anything could be stored under.
+        return CloudSectionOrderStore.load().apply(to: discovered) { Self.orderIdentity(of: $0) ?? "" }
+    }
+
+    /// How a Cloud row is named in the stored order, or `nil` for a row that is not one.
+    ///
+    /// A mount is keyed off its **directory name** under `~/Library/CloudStorage`, the one stable
+    /// thing about it: `name` is a display string that changes the moment a second account of the
+    /// same provider appears and both rows gain their account label, and keying off that would drop
+    /// both rows back to the bottom of the section on the day one is added. The `mount:` prefix
+    /// keeps that namespace clear of the iCloud literal.
+    static func orderIdentity(of row: Row) -> String? {
+        switch row {
+        case .iCloud: return iCloudOrderIdentity
+        case let .cloudMount(mount): return "mount:\(mount.directoryName)"
+        default: return nil
+        }
+    }
+
+    /// Rebuild when the shared Cloud order changes — a drag here or in another window re-sorts every
+    /// open sidebar, the way a pin does.
+    func observeCloudSectionOrderChanges() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(cloudSectionOrderChanged),
+            name: CloudSectionOrderStore.didChangeNotification,
+            object: nil
+        )
+    }
+
+    @objc private func cloudSectionOrderChanged() {
+        rebuild()
     }
 
     /// Rebuild when a provider mount appears or disappears, so connecting a second Google account

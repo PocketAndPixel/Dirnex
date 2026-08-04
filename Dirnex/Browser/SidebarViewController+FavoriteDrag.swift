@@ -7,11 +7,16 @@ import DirnexCore
 /// each with a tested `move(from:to:)`; what lives here is the mapping between `NSTableView`'s row
 /// indices and each list's own.
 ///
-/// Three sections reorder — Favorites, Searches and Servers — because each is a user-authored
-/// ordered list with somewhere to store the order. The rest do not: Volumes is a mount-table
-/// snapshot re-sorted on every mount event, Cloud mounts are discovered under
-/// `~/Library/CloudStorage`, and Tags are Finder's fixed set — none has a place to put a user order,
-/// so their rows are neither draggable nor droppable.
+/// Four sections reorder. Favorites, Searches and Servers are user-authored ordered lists, so the
+/// order simply *is* the list's and each store rewrites it. Cloud is not — its rows are discovered
+/// (iCloud Drive, plus whatever is mounted under `~/Library/CloudStorage`) and come back from a
+/// scan on every rebuild — so its order is stored beside them as identities, through
+/// `SidebarItemOrder` and `CloudSectionOrderStore`. The mapping below is the same either way; only
+/// the store differs.
+///
+/// Volumes and Tags still do not: a volume list is a mount-table snapshot re-sorted on every mount
+/// event and Tags is Finder's fixed set, so neither has an identity worth persisting a hand order
+/// against, and their rows are neither draggable nor droppable.
 ///
 /// **A reorder stays within its own section.** A drag started on a server can only land among
 /// servers, never among favorites: they are different kinds of thing, not repositionable peers. The
@@ -37,13 +42,16 @@ extension SidebarViewController {
     }
 
     /// The reorderable section a row is an *item* of, or `nil` for a header, a system row (Recents,
-    /// Trash), or an item of a non-reorderable section (a volume, an iCloud/cloud-mount row, a tag).
+    /// Trash), or an item of a non-reorderable section (a volume, a tag).
     func reorderableSection(ofRow row: Int) -> SidebarSection? {
         guard rows.indices.contains(row) else { return nil }
         switch rows[row] {
         case .favorite: return .favorites
         case .savedSearch: return .searches
         case .server: return .servers
+        // Both kinds of Cloud row are peers within one section: iCloud Drive is a row the user can
+        // put below a Google Drive mount, not a fixed first entry.
+        case .iCloud, .cloudMount: return .icloud
         default: return nil
         }
     }
@@ -140,10 +148,24 @@ extension SidebarViewController {
             var store = ServerConnectionStore.load()
             store.move(from: source, to: adjusted)
             ServerConnectionStore.save(store)
+        case .icloud:
+            // The one section whose rows aren't a stored list, so the move is recorded against the
+            // identities of what is *on screen* rather than against a list this could index into.
+            var order = CloudSectionOrderStore.load()
+            order.reorder(displayed: cloudIdentities(in: range), from: source, to: adjusted)
+            CloudSectionOrderStore.save(order)
         default:
             return false
         }
         return true
+    }
+
+    /// The identities of the Cloud rows currently on screen, in screen order — `dropRange`'s span
+    /// is the section's items, from just below its header through one past its last row.
+    private func cloudIdentities(in range: ClosedRange<Int>) -> [String] {
+        (range.lowerBound..<range.upperBound).compactMap { row in
+            rows.indices.contains(row) ? Self.orderIdentity(of: rows[row]) : nil
+        }
     }
 
     // MARK: - Pin (Favorites only)
