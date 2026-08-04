@@ -45,6 +45,13 @@ final class SidebarTableView: NSTableView {
             onEmptyClick?()
             return
         }
+        // A row the delegate refuses to select is, as far as a click is concerned, empty space —
+        // today that is the blank spacer above Trash. Without this it would swallow the click
+        // silently instead of re-focusing the pane the way the space around it does.
+        guard delegate?.tableView?(self, shouldSelectRow: row) ?? true else {
+            onEmptyClick?()
+            return
+        }
         super.mouseDown(with: event)
     }
 

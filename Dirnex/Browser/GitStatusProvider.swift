@@ -32,27 +32,24 @@ final class GitStatusProvider {
     static let didChangeNotification = Notification.Name("Dirnex.gitStatusDidChange")
     static let repositoryRootKey = "repositoryRoot"
 
-    /// A burst of filesystem events collapses into one run at the end of this window.
-    private let debounceInterval: Duration = .milliseconds(300)
-    /// The longest a visible snapshot may stay stale while changes keep arriving. Past this, a
-    /// request skips the debounce and runs now, so sustained churn (a build, a big checkout) still
-    /// updates the column instead of starving the trailing edge.
-    private let maximumStaleness: TimeInterval = 2
-    /// How many repositories keep a cached snapshot. Panes are two, tabs are few; this is enough to
-    /// make switching between the repositories someone actually has open instant, while bounding
-    /// what a session spent wandering through a source tree retains.
-    private let cacheLimit = 8
-
-    private var snapshots: [VFSPath: GitStatusSnapshot] = [:]
-    /// Cached roots in least-recently-used order, most recent last.
-    private var usage: [VFSPath] = []
-    private var lastRun: [VFSPath: Date] = [:]
-    /// The pending debounce timer per root — cancelled and replaced by each new request.
-    private var scheduled: [VFSPath: Task<Void, Never>] = [:]
-    /// Roots with a `git status` in flight, and those whose changes arrived while it ran (so the
-    /// snapshot we are about to store is already known to be stale and must be re-read once).
-    private var running: Set<VFSPath> = []
-    private var repeatRequested: Set<VFSPath> = []
+    /// The scan machine — debounce, LRU cache, per-root serialization — is `DirectoryScanCache`'s;
+    /// only the repository walk and the `git status` subprocess below are this provider's.
+    ///
+    /// Note the unit: one `git status` answers for a whole working tree, so the key here is the
+    /// **repository root**, not the directory on screen. A `nil` result — no usable `git`, or a
+    /// working tree that went away underneath us — forgets what we knew rather than leaving a stale
+    /// column painted over a directory that is no longer a repo.
+    private lazy var cache = DirectoryScanCache<Void, GitStatusSnapshot>(
+        scan: { root, _ in await GitStatusReader.read(repositoryRoot: root) },
+        completion: { [weak self] root, _, _ in
+            guard let self else { return }
+            NotificationCenter.default.post(
+                name: Self.didChangeNotification,
+                object: self,
+                userInfo: [Self.repositoryRootKey: root]
+            )
+        }
+    )
 
     // MARK: - Repository discovery
 
@@ -73,83 +70,14 @@ final class GitStatusProvider {
     /// The snapshot already in hand for `root`, or `nil` when none has been read yet. Synchronous
     /// and O(1) — this is what a pane calls while rendering rows.
     func cachedSnapshot(for root: VFSPath) -> GitStatusSnapshot? {
-        snapshots[root]
+        cache.cachedSnapshot(for: root)
     }
 
     /// Ask for `root`'s status to be brought up to date, coalescing with any other request in the
     /// same window. The first look at a repository runs immediately (nobody wants to watch a column
-    /// appear a third of a second after the folder does); later ones are rate-limited as described
-    /// on the type.
+    /// appear a third of a second after the folder does); later ones are rate-limited.
     func requestRefresh(for root: VFSPath) {
-        // "Have we ever run this?", not "do we have a snapshot?" — a repository `git` refuses to
-        // read (dubious ownership, a corrupt index) caches no snapshot, so asking about the
-        // snapshot would call every single request its first and spawn `git` on every filesystem
-        // event, which is precisely the storm this rate limiting exists to prevent. Eviction drops
-        // the run stamp with the snapshot, so a repository that has aged out is a first look again.
-        let isFirstLook = lastRun[root] == nil
-        let isOverdue = Date.now.timeIntervalSince(lastRun[root] ?? .distantPast) > maximumStaleness
-        if isFirstLook || isOverdue {
-            scheduled.removeValue(forKey: root)?.cancel()
-            Task { await run(root) }
-            return
-        }
-        scheduled[root]?.cancel()
-        let interval = debounceInterval
-        scheduled[root] = Task { [weak self] in
-            try? await Task.sleep(for: interval)
-            guard !Task.isCancelled else { return }
-            await self?.run(root)
-        }
-    }
-
-    /// Read `root` now and publish the result. Serialized per root: a request arriving mid-run is
-    /// remembered and replayed afterwards rather than spawning a second `git` against the same
-    /// repository — the answer it would get is the one this run is already fetching.
-    private func run(_ root: VFSPath) async {
-        guard !running.contains(root) else {
-            repeatRequested.insert(root)
-            return
-        }
-        // This request is being served now, so whatever timer produced it is spent.
-        scheduled.removeValue(forKey: root)
-        running.insert(root)
-        lastRun[root] = .now
-        let snapshot = await GitStatusReader.read(repositoryRoot: root)
-        running.remove(root)
-
-        if let snapshot {
-            store(snapshot, for: root)
-        } else {
-            // No usable `git`, or the working tree went away underneath us — forget what we knew
-            // rather than leave a stale column painted over a directory that is no longer a repo.
-            forget(root)
-        }
-        NotificationCenter.default.post(
-            name: Self.didChangeNotification,
-            object: self,
-            userInfo: [Self.repositoryRootKey: root]
-        )
-        if repeatRequested.remove(root) != nil {
-            requestRefresh(for: root)
-        }
-    }
-
-    private func store(_ snapshot: GitStatusSnapshot, for root: VFSPath) {
-        snapshots[root] = snapshot
-        usage.removeAll { $0 == root }
-        usage.append(root)
-        while usage.count > cacheLimit {
-            let evicted = usage.removeFirst()
-            snapshots.removeValue(forKey: evicted)
-            lastRun.removeValue(forKey: evicted)
-        }
-    }
-
-    /// Drop what we knew about `root` while keeping its run stamp — the stamp is what rate-limits
-    /// the *next* attempt, so a repository that just failed must not lose it.
-    private func forget(_ root: VFSPath) {
-        snapshots.removeValue(forKey: root)
-        usage.removeAll { $0 == root }
+        cache.requestRefresh(for: root)
     }
 }
 

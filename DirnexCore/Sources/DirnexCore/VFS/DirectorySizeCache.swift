@@ -1,5 +1,3 @@
-import Foundation
-
 /// Which bytes a recursive total counted — the second half of a cache key, and of every question
 /// asked about a folder's size (PLAN.md §M6 "optional .gitignore-aware folder sizes").
 ///

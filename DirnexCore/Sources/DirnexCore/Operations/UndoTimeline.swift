@@ -110,13 +110,6 @@ public enum UndoEntry: Sendable, Equatable, Codable {
         return nil
     }
 
-    /// Only file operations survive relaunch; selection marks are session state that references
-    /// a directory listing which may not even exist next launch, so it is never persisted.
-    var isPersistable: Bool {
-        if case .fileOperation = self { return true }
-        return false
-    }
-
     /// The entry that reverses this one — a file op or a selection, each inverted its own way.
     var inverted: UndoEntry {
         switch self {

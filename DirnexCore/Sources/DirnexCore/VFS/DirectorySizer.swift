@@ -1,5 +1,3 @@
-import Foundation
-
 /// Recursively totals the logical byte size of a directory subtree by walking a
 /// `VFSBackend`. This is the engine behind Total Commander's Space-on-directory
 /// in-place sizing (PLAN.md §M1): the panel shows a folder's real weight in the size

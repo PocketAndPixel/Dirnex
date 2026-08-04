@@ -1,15 +1,22 @@
 import Foundation
 
-/// The sidebar's sections, in the order they are rendered (PLAN.md §M8 "Collapsible sections").
+/// The sidebar's **collapsible** sections, in the order they are rendered (PLAN.md §M8
+/// "Collapsible sections").
 ///
 /// A section is an *identity*, not a title string. The app used to locate the Favorites section by
 /// comparing header text, which made a user-visible string load-bearing; a case is what the drag
 /// code, the collapse state and the persisted file all key off instead.
 ///
-/// `allCases` is the display order, which is why the cases are declared in it rather than
-/// alphabetically.
+/// **Recents and Trash are deliberately not here.** Each is a single fixed system row, so a section
+/// header to caption one row is pure weight; they render headerless instead — Recents pinned to the
+/// very top (where Finder puts it) and Trash to the very bottom (where the Dock puts it), outside
+/// every collapsible section. They were sections through M8–M15; a persisted "recents"/"trash"
+/// collapse name is now an *unknown* name the store carries through untouched (see
+/// `SidebarSectionCollapse`), so a user who had folded either loses nothing.
+///
+/// `allCases` is the display order of the sectioned middle, which is why the cases are declared in
+/// it rather than alphabetically.
 public enum SidebarSection: String, CaseIterable, Sendable, Hashable {
-    case recents
     case searches
     case favorites
     /// iCloud Drive **and** every other cloud provider's mount (PLAN.md §M10). The case is still
@@ -19,19 +26,16 @@ public enum SidebarSection: String, CaseIterable, Sendable, Hashable {
     case icloud
     case volumes
     case servers
-    case trash
     case tags
 
     /// The section header's label.
     public var title: String {
         switch self {
-        case .recents: "Recents"
         case .searches: "Searches"
         case .favorites: "Favorites"
         case .icloud: "Cloud"
         case .volumes: "Volumes"
         case .servers: "Servers"
-        case .trash: "Trash"
         case .tags: "Tags"
         }
     }
@@ -44,9 +48,9 @@ public enum SidebarSection: String, CaseIterable, Sendable, Hashable {
 /// **Collapsed sections are stored as raw strings, not as `SidebarSection` values.** Decoding a
 /// `Set<SidebarSection>` throws on the first name it doesn't recognise, and a throwing decode
 /// resets *every* section's state — so one unknown name would silently unfold the whole sidebar.
-/// Sections keep arriving (Recents and Trash both landed after this was written) and betas do get
-/// rolled back, so the version that doesn't know a name has to carry it through untouched rather
-/// than lose it.
+/// Section names come *and go* (Recents and Trash were both sections through M15 and are now
+/// headerless rows, so their names are unknown to this build) and betas do get rolled back, so the
+/// version that doesn't know a name has to carry it through untouched rather than lose it.
 public struct SidebarSectionCollapse: Equatable, Sendable, Codable {
     /// Raw section identifiers, including any this build doesn't know about.
     private var collapsed: Set<String>

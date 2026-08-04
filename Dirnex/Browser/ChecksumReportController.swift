@@ -50,18 +50,8 @@ final class ChecksumReportController: NSViewController {
     override func loadView() {
         let container = EscapeDismissingView()
         container.onEscape = { [weak self] in self?.close(nil) }
-        let stack = NSStackView(views: [makeHeader(), makeTable(), makeFooter()])
-        stack.orientation = .vertical
-        stack.spacing = 12
-        stack.alignment = .leading
-        stack.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(stack)
+        DialogLayout.fill(container, with: [makeHeader(), makeTable(), makeFooter()])
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: container.topAnchor),
-            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            stack.bottomAnchor.constraint(equalTo: container.bottomAnchor),
             container.widthAnchor.constraint(equalToConstant: 660),
             container.heightAnchor.constraint(equalToConstant: 460)
         ])

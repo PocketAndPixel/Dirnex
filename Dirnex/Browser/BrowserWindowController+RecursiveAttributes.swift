@@ -1,4 +1,3 @@
-import AppKit
 import DirnexCore
 
 /// Where a finished recursive attributes apply reaches the user (PLAN.md §M14 Slice 4).

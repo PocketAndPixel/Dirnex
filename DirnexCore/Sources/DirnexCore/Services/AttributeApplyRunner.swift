@@ -79,6 +79,10 @@ public enum AttributeApplyRunner {
         while let item = stack.popLast() {
             if isCancelled() { return ordered(found) }
             // The roots are always in scope; the target filter governs what is *inside* them.
+            // A deliberate reading rather than an oversight: the filter is about the items the user
+            // never saw, while a root is the thing they opened Get Info on and edited. Excluding the
+            // folder whose panel they just used because they also asked for "files only" would be
+            // surprising in the one direction that matters — silently not doing what the sheet said.
             if item.isRoot || AttributeApplyScope.includes(item.entry.kind, target: target) {
                 found.append(item.entry)
             }

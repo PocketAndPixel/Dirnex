@@ -1,5 +1,3 @@
-import Foundation
-
 /// One row's entry in the size-visualization bar column (PLAN.md §M6 "toggle panel to
 /// ncdu-style bars").
 ///

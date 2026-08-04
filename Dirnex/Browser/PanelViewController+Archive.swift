@@ -1,4 +1,3 @@
-import AppKit
 import DirnexCore
 
 /// Browsing archives as folders (PLAN.md §M4 ArchiveBackend). Entering an archive file

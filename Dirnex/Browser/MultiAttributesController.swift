@@ -131,18 +131,8 @@ final class MultiAttributesController: NSViewController {
         if let recursion = makeRecursiveOptions() { rows.append(recursion) }
         rows.append(makeFooter())
 
-        let stack = NSStackView(views: rows)
-        stack.orientation = .vertical
-        stack.spacing = 12
-        stack.alignment = .leading
-        stack.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(stack)
+        DialogLayout.fill(container, with: rows)
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: container.topAnchor),
-            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            stack.bottomAnchor.constraint(equalTo: container.bottomAnchor),
             container.widthAnchor.constraint(equalToConstant: AttributesControllerLayout.sheetWidth),
             container.heightAnchor.constraint(
                 equalToConstant: AttributesControllerLayout.sheetHeight

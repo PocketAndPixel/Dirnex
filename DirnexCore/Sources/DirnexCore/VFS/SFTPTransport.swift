@@ -18,28 +18,14 @@ import Foundation
 /// directory before `rmdir`, since `sftp` has no recursive remove). Every method is synchronous and
 /// may block on the network — the backend is always called off the main thread by the operation
 /// engine and the panel's background list, never on it.
-public protocol SFTPTransport: Sendable {
+/// The four write verbs come from ``RemoteWriteTransport``, shared with `FTPTransport`; over SFTP
+/// they are `mkdir`, `rename`, `rm` (the link itself, never its target) and `rmdir`. `sftp` has no
+/// recursive remove, so `RemoteTransportBackend` empties a directory depth-first before `rmdir`.
+public protocol SFTPTransport: RemoteWriteTransport {
     /// The raw `sftp` `ls -la` output for `remotePath` — one entry per line. For a directory this
     /// is its children (each printed as a full path, plus the `.`/`..` self/parent rows); for a
     /// file it is that single file's row. Throws `SFTPTransportError` on a remote failure.
     func listDirectory(_ remotePath: String) throws -> String
-
-    /// Create a single remote directory (`mkdir`). Throws on any failure (the parent is missing,
-    /// something already occupies the path, permission denied) — the backend never relies on
-    /// intermediate directories being created, mirroring `mkdir(2)`.
-    func makeDirectory(_ remotePath: String) throws
-
-    /// Rename or move a remote item within the account (`rename`). Only valid within one
-    /// connection; a cross-backend move is copy-then-delete, decided above the transport.
-    func rename(_ source: String, to destination: String) throws
-
-    /// Remove a remote regular file or symbolic link (`rm`) — the link itself, never its target.
-    /// Directories are emptied and removed with `removeDirectory` by the backend.
-    func removeFile(_ remotePath: String) throws
-
-    /// Remove an *empty* remote directory (`rmdir`); the backend deletes the contents first, since
-    /// `sftp` has no recursive remove.
-    func removeDirectory(_ remotePath: String) throws
 
     /// Create a remote symbolic link at `remotePath` pointing at the raw (unresolved) `target`
     /// (`ln -s`) — used when a copied/mirrored tree contains a symlink.

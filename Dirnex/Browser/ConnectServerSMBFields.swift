@@ -90,7 +90,7 @@ final class ConnectServerSMBFields: NSObject, NSTextFieldDelegate {
         user.stringValue = location.username ?? ""
         port = location.port
         if location.username != nil {
-            password.stringValue = SMBKeychain.password(for: location) ?? ""
+            password.stringValue = ServerKeychain.password(for: location) ?? ""
         }
     }
 

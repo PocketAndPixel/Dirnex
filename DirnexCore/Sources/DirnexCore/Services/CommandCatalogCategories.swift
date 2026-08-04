@@ -1,5 +1,3 @@
-import Foundation
-
 // The View, Navigation, Workspace, Window, and Application categories live in this companion file so
 // `CommandCatalog.swift` stays under SwiftLint's `type_body_length` *and* `file_length` limits — the
 // M8 Focus Sidebar command was the entry that pushed the single file over 500 lines. `all`, in the

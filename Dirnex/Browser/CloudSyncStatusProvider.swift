@@ -36,16 +36,6 @@ final class CloudSyncStatusProvider {
     static let didChangeNotification = Notification.Name("Dirnex.cloudSyncStatusDidChange")
     static let directoryKey = "directory"
 
-    /// A burst of filesystem events collapses into one scan at the end of this window — a provider
-    /// materializing a file lands as several events, as does a download finishing.
-    private let debounceInterval: Duration = .milliseconds(300)
-    /// The longest a visible snapshot may stay stale while changes keep arriving. Past this a
-    /// request skips the debounce and runs now, so sustained churn (a folder mid-sync) still updates
-    /// the badges instead of starving the trailing edge.
-    private let maximumStaleness: TimeInterval = 2
-    /// How many directories keep a cached snapshot. Panes are two and tabs are few — the same
-    /// bargain `FinderTagProvider` strikes.
-    private let cacheLimit = 8
     /// How long after a scan that found a transfer in flight to look again — see `scheduleFollowUp`,
     /// which explains why a filesystem event cannot answer this on its own. A second is fast enough
     /// that a finished download stops claiming to be downloading before anyone notices, and slow
@@ -55,88 +45,48 @@ final class CloudSyncStatusProvider {
     /// A minute of looking covers any transfer that is actually progressing; past that the provider
     /// is wedged or paused, and polling it forever would be a busy-wait on someone else's problem.
     private let followUpLimit = 60
-
-    private var snapshots: [VFSPath: CloudSyncSnapshot] = [:]
-    /// Cached directories in least-recently-used order, most recent last.
-    private var usage: [VFSPath] = []
-    private var lastRun: [VFSPath: Date] = [:]
-    /// The paths to read for each directory, as of its most recent request — kept so a debounced or
-    /// replayed run uses the *latest* listing rather than the one that happened to schedule it.
-    private var requested: [VFSPath: [VFSPath]] = [:]
-    /// The pending debounce timer per directory — cancelled and replaced by each new request.
-    private var scheduled: [VFSPath: Task<Void, Never>] = [:]
-    /// Directories with a scan in flight, and those whose changes arrived while it ran (so the
-    /// snapshot we are about to store is already known to be stale and must be re-read once).
-    private var running: Set<VFSPath> = []
-    private var repeatRequested: Set<VFSPath> = []
     /// Consecutive follow-up scans per directory, so a wedged transfer cannot poll forever. Reset
     /// the moment a scan finds nothing in flight.
     private var followUps: [VFSPath: Int] = [:]
+
+    /// The scan machine — debounce, LRU cache, per-directory serialization — is
+    /// `DirectoryScanCache`'s; the directory gate and the per-row reads below are this provider's,
+    /// as is the follow-up poll, which is the one piece of scheduling the shared machine has no
+    /// reason to know about.
+    ///
+    /// A provider materializing a file lands as several filesystem events, as does a download
+    /// finishing — exactly the burst the debounce exists for.
+    private lazy var cache = DirectoryScanCache<[VFSPath], CloudSyncSnapshot>(
+        scan: { directory, entries in
+            await CloudSyncScanner.scan(directory: directory, entries: entries)
+        },
+        completion: { [weak self] directory, snapshot, willReplay in
+            guard let self, let snapshot else { return }
+            NotificationCenter.default.post(
+                name: Self.didChangeNotification,
+                object: self,
+                userInfo: [Self.directoryKey: directory]
+            )
+            guard !willReplay else { return }
+            scheduleFollowUp(for: directory, after: snapshot)
+        }
+    )
 
     // MARK: - Snapshots
 
     /// The snapshot already in hand for `directory`, or `nil` when none has been read yet.
     /// Synchronous and O(1) — this is what a pane calls while rendering rows.
     func cachedSnapshot(for directory: VFSPath) -> CloudSyncSnapshot? {
-        snapshots[directory]
+        cache.cachedSnapshot(for: directory)
     }
 
-    /// Ask for `directory`'s sync status to be brought up to date, reading `entries`. The first look
-    /// runs immediately (a badge that arrives a third of a second after the folder reads as a
-    /// glitch); later ones are rate-limited as described on the type.
+    /// Ask for `directory`'s sync status to be brought up to date, reading `entries`.
     ///
     /// `entries` should be the **whole** listing, not just the visible rows: two panes on one folder
     /// can have different hidden/filter settings, and a scan of the narrower one would evict rows
     /// the other still shows — leaving a not-downloaded file looking local.
     func requestRefresh(for directory: VFSPath, entries: [VFSPath]) {
-        requested[directory] = entries
-        // "Have we ever run this?", not "do we have a snapshot?" — an all-synced cloud folder caches
-        // an *empty* snapshot, and a directory we cannot read caches nothing; asking about the
-        // snapshot would call every request its first and re-scan on every filesystem event, which
-        // is precisely what this rate limiting exists to prevent.
-        let isFirstLook = lastRun[directory] == nil
-        let isOverdue = Date.now.timeIntervalSince(lastRun[directory] ?? .distantPast) > maximumStaleness
-        if isFirstLook || isOverdue {
-            scheduled.removeValue(forKey: directory)?.cancel()
-            Task { await run(directory) }
-            return
-        }
-        scheduled[directory]?.cancel()
-        let interval = debounceInterval
-        scheduled[directory] = Task { [weak self] in
-            try? await Task.sleep(for: interval)
-            guard !Task.isCancelled else { return }
-            await self?.run(directory)
-        }
-    }
-
-    /// Read `directory` now and publish the result. Serialized per directory: a request arriving
-    /// mid-scan is remembered and replayed afterwards rather than starting a second pass over the
-    /// same rows — the answer it would get is the one this scan is already fetching.
-    private func run(_ directory: VFSPath) async {
-        guard let entries = requested[directory] else { return }
-        guard !running.contains(directory) else {
-            repeatRequested.insert(directory)
-            return
-        }
-        // This request is being served now, so whatever timer produced it is spent.
-        scheduled.removeValue(forKey: directory)
-        running.insert(directory)
-        lastRun[directory] = .now
-        let snapshot = await CloudSyncScanner.scan(directory: directory, entries: entries)
-        running.remove(directory)
-
-        store(snapshot, for: directory)
-        NotificationCenter.default.post(
-            name: Self.didChangeNotification,
-            object: self,
-            userInfo: [Self.directoryKey: directory]
-        )
-        if repeatRequested.remove(directory) != nil {
-            requestRefresh(for: directory, entries: requested[directory] ?? entries)
-            return
-        }
-        scheduleFollowUp(for: directory, after: snapshot)
+        cache.requestRefresh(for: directory, input: entries)
     }
 
     /// Keep looking while something is still moving.
@@ -162,26 +112,7 @@ final class CloudSyncStatusProvider {
         let count = followUps[directory, default: 0] + 1
         guard count <= followUpLimit else { return }
         followUps[directory] = count
-
-        let interval = followUpInterval
-        scheduled[directory]?.cancel()
-        scheduled[directory] = Task { [weak self] in
-            try? await Task.sleep(for: interval)
-            guard !Task.isCancelled else { return }
-            await self?.run(directory)
-        }
-    }
-
-    private func store(_ snapshot: CloudSyncSnapshot, for directory: VFSPath) {
-        snapshots[directory] = snapshot
-        usage.removeAll { $0 == directory }
-        usage.append(directory)
-        while usage.count > cacheLimit {
-            let evicted = usage.removeFirst()
-            snapshots.removeValue(forKey: evicted)
-            lastRun.removeValue(forKey: evicted)
-            requested.removeValue(forKey: evicted)
-        }
+        cache.scheduleRun(for: directory, after: followUpInterval)
     }
 }
 

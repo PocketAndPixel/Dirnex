@@ -1,4 +1,3 @@
-import AppKit
 import DirnexCore
 
 /// The path bar's delegate: activating a crumb navigates the pane, and the bar's inline

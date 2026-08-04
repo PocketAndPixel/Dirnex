@@ -13,11 +13,13 @@ struct SidebarSectionsTests {
 
     @Test("allCases is the sidebar's render order")
     func caseOrderIsRenderOrder() {
-        // Not decoration: the app builds its rows in this order, and a case inserted alphabetically
-        // would move a whole section on screen without anything else looking wrong.
+        // Not decoration: the app builds its sectioned rows in this order, and a case inserted
+        // alphabetically would move a whole section on screen without anything else looking wrong.
+        // Recents and Trash are not here — they render as headerless rows the app pins above the
+        // first section and below the last, outside this list (see `SidebarSection`).
         #expect(
             SidebarSection.allCases
-                == [.recents, .searches, .favorites, .icloud, .volumes, .servers, .trash, .tags]
+                == [.searches, .favorites, .icloud, .volumes, .servers, .tags]
         )
     }
 

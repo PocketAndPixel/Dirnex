@@ -1,4 +1,3 @@
-import CoreServices
 import Foundation
 
 /// Watches a single directory and fires `onChange` — coalesced by FSEvents' own

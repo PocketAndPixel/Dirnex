@@ -68,23 +68,11 @@ final class MultiRenameController: NSViewController {
 
     override func loadView() {
         let container = NSView()
-        let stack = NSStackView(views: [
-            makeControlsGrid(),
-            makeLegend(),
-            makePreview(),
-            makeFooter()
-        ])
-        stack.orientation = .vertical
-        stack.spacing = 12
-        stack.alignment = .leading
-        stack.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(stack)
+        DialogLayout.fill(
+            container,
+            with: [makeControlsGrid(), makeLegend(), makePreview(), makeFooter()]
+        )
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: container.topAnchor),
-            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            stack.bottomAnchor.constraint(equalTo: container.bottomAnchor),
             container.widthAnchor.constraint(equalToConstant: 640),
             container.heightAnchor.constraint(equalToConstant: 540)
         ])
@@ -248,7 +236,7 @@ final class MultiRenameController: NSViewController {
 
     private func updateFooter(spec: RenameSpec) {
         let renaming = proposals.lazy.filter(\.willRename).count
-        let problems = proposals.lazy.filter { $0.status.isProblem }.count
+        let problems = proposals.count { $0.status.isProblem }
 
         if !spec.regexIsValid {
             setStatus(String(localized: "Invalid search pattern"), isError: true)

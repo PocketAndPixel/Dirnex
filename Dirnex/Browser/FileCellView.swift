@@ -148,6 +148,10 @@ final class FileCellView: NSTableCellView {
     /// closure, exactly like `SidebarCellView`'s eject button — a control in a table cell receives
     /// its own click, so toggling never disturbs the row selection underneath.
     private var disclosureButton: NSButton?
+    /// The untinted chevron this row currently shows, kept so `applyDisclosureForeground` can
+    /// re-derive a cursor-coloured copy from it without knowing which way the triangle points — and
+    /// so successive tints never compound onto the last copy.
+    private var disclosureBaseImage: NSImage?
     /// The two leading constraints tree layout moves: the icon's own inset and the triangle's. Held
     /// so `applyTreeLayout` can slide them per depth without rebuilding the cell.
     private var iconLeading: NSLayoutConstraint?
@@ -192,7 +196,8 @@ final class FileCellView: NSTableCellView {
         disclosure.isBordered = false
         disclosure.bezelStyle = .accessoryBarAction
         disclosure.imagePosition = .imageOnly
-        disclosure.contentTintColor = .secondaryLabelColor
+        // The tint is not set here: `applyDisclosureForeground` owns it, and on the cursor row it
+        // has to bake the colour into the glyph rather than tint the control.
         disclosure.isHidden = true
         addSubview(disclosure)
         disclosureButton = disclosure
@@ -294,6 +299,8 @@ final class FileCellView: NSTableCellView {
         let size = NSFont.systemFontSize
         textField.font = marked ? .boldSystemFont(ofSize: size) : .systemFont(ofSize: size)
 
+        applyDisclosureForeground()
+
         if backgroundStyle == .emphasized {
             // Derived from the cursor colour, never picked: a user who could choose both would
             // reach a white-on-pale-yellow row on their first try. Untouched, this *is*
@@ -330,11 +337,50 @@ final class FileCellView: NSTableCellView {
         iconLeading.constant = Self.treeLeadingInset + indent + Self.treeDisclosureSlot
         if let treeDisclosure {
             disclosureLeading?.constant = Self.treeLeadingInset + indent
-            disclosureButton?.image = Self.chevron(expanded: treeDisclosure == .expanded)
+            disclosureBaseImage = Self.chevron(expanded: treeDisclosure == .expanded)
+            applyDisclosureForeground()
             disclosureButton?.isHidden = false
         } else {
             disclosureButton?.isHidden = true
         }
+    }
+
+    /// Paint the triangle in the same foreground the name draws in — on the cursor row the derived
+    /// `cursorForeground`, elsewhere the secondary label colour AppKit's own outline disclosure uses.
+    /// Runs from both `applyTreeLayout` (which has just chosen the glyph) and `applyStyle` (which
+    /// runs again on its own when the cursor moves onto or off this row).
+    ///
+    /// **`contentTintColor` is the obvious spelling and is silently ignored**, exactly as it is for
+    /// an `NSTableCellView`'s `imageView` — an emphasized cell repaints a template image white
+    /// whatever tint the control carries, so a pale cursor colour left a white chevron beside black
+    /// text. Baking the colour in is what the emphasized row honours, because the result is no longer
+    /// a template for AppKit to re-tint. See `SidebarCellView.applySelectionForeground`, which hit
+    /// the same wall on the sidebar's glyphs.
+    /// Only the emphasized half is baked. Off the cursor the glyph stays a template tinted the
+    /// ordinary way, so `.secondaryLabelColor` goes on resolving itself against the live appearance
+    /// — a baked copy would hold whichever appearance it was drawn in until the next render.
+    private func applyDisclosureForeground() {
+        guard let disclosureBaseImage else { return }
+        guard backgroundStyle == .emphasized else {
+            disclosureButton?.image = disclosureBaseImage
+            disclosureButton?.contentTintColor = .secondaryLabelColor
+            return
+        }
+        disclosureButton?.image = Self.tinted(disclosureBaseImage, palette.cursorForeground)
+    }
+
+    /// `image` painted in `color`, keeping its coverage: `.sourceAtop` replaces the colour of every
+    /// pixel the glyph covers and leaves its alpha, so the antialiased edges survive. The copy is no
+    /// longer a template, which is the whole point — there is nothing left for AppKit to re-tint.
+    private static func tinted(_ image: NSImage, _ color: NSColor) -> NSImage {
+        let copy = NSImage(size: image.size, flipped: false) { rect in
+            image.draw(in: rect)
+            color.set()
+            rect.fill(using: .sourceAtop)
+            return true
+        }
+        copy.isTemplate = false
+        return copy
     }
 
     /// Whether `windowPoint` (window coordinates) lands on this row's disclosure triangle — the

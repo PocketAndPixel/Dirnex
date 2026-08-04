@@ -24,10 +24,6 @@ public struct ExtendedAttribute: Sendable, Hashable {
     /// everything and so says nothing about the file it is on.
     public static let provenanceName = "com.apple.provenance"
 
-    /// The quarantine flag Gatekeeper reads: the one attribute a user actually reaches for, and the
-    /// one worth offering to remove (docs/NOTES.md records that `xattr -dr` is the form that exits 0).
-    public static let quarantineName = "com.apple.quarantine"
-
     /// Whether this attribute belongs in the panel's list. Only ``provenanceName`` is filtered — a
     /// broader "hide anything `com.apple.*`" rule would hide the quarantine flag and the
     /// where-from URLs, which are the two most useful things here.

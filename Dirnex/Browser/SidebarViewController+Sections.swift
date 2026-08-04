@@ -37,6 +37,14 @@ extension SidebarViewController {
     /// section around it.
     func section(containingRow row: Int) -> SidebarSection? {
         guard rows.indices.contains(row) else { return nil }
+        // Recents and Trash are headerless system rows outside every section (see `SidebarSection`),
+        // so ←/→ must not climb from them into whatever section happens to sit above or below —
+        // Trash, at the very bottom, would otherwise resolve to the last section's header. The
+        // spacer beside it is blank padding and belongs to nothing at all.
+        switch rows[row] {
+        case .recents, .trash, .spacer: return nil
+        default: break
+        }
         for index in stride(from: row, through: 0, by: -1) {
             if let section = rows[index].section { return section }
         }

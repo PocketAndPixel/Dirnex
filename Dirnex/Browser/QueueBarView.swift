@@ -299,7 +299,7 @@ extension QueueBarView {
     /// under the type-body-length ceiling (docs/NOTES.md).
     func statusText(for snapshot: QueueSnapshot) -> String {
         let active = snapshot.jobs.filter { $0.status == .running || $0.status == .paused }
-        let pending = snapshot.jobs.filter { $0.status == .waiting }.count
+        let pending = snapshot.jobs.count { $0.status == .waiting }
 
         // Whole sentences per branch rather than a spliced verb (docs/NOTES.md): a language that
         // inflects the object or reorders the clause can't build "Copying <name>" from a bare verb.

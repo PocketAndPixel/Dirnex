@@ -25,33 +25,23 @@ final class FinderTagProvider {
     static let didChangeNotification = Notification.Name("Dirnex.finderTagsDidChange")
     static let directoryKey = "directory"
 
-    /// A burst of filesystem events collapses into one scan at the end of this window. Tagging in
-    /// Finder, or our own editor writing a tag across a marked set, is exactly such a burst: one
-    /// `setxattr` per file, each landing as its own event.
-    private let debounceInterval: Duration = .milliseconds(300)
-    /// The longest a visible snapshot may stay stale while changes keep arriving. Past this, a
-    /// request skips the debounce and runs now, so sustained churn still updates the column instead
-    /// of starving the trailing edge.
-    private let maximumStaleness: TimeInterval = 2
-    /// How many directories keep a cached snapshot — panes are two and tabs are few, so this makes
-    /// stepping back and forth between the folders someone actually has open instant, while
-    /// bounding what a session spent wandering a source tree retains.
-    private let cacheLimit = 8
-
-    private var snapshots: [VFSPath: FinderTagSnapshot] = [:]
-    /// Cached directories in least-recently-used order, most recent last.
-    private var usage: [VFSPath] = []
-    private var lastRun: [VFSPath: Date] = [:]
-    /// The paths to read for each directory, as of its most recent request — the scan's input, kept
-    /// here so a debounced or replayed run uses the *latest* listing rather than the one that
-    /// happened to schedule it.
-    private var requested: [VFSPath: [VFSPath]] = [:]
-    /// The pending debounce timer per directory — cancelled and replaced by each new request.
-    private var scheduled: [VFSPath: Task<Void, Never>] = [:]
-    /// Directories with a scan in flight, and those whose changes arrived while it ran (so the
-    /// snapshot we are about to store is already known to be stale and must be re-read once).
-    private var running: Set<VFSPath> = []
-    private var repeatRequested: Set<VFSPath> = []
+    /// The scan machine — debounce, LRU cache, per-directory serialization — is
+    /// `DirectoryScanCache`'s; only the `getxattr` sweep below and the tag index are this provider's.
+    ///
+    /// Tagging in Finder, or our own editor writing a tag across a marked set, is exactly the burst
+    /// the debounce exists for: one `setxattr` per file, each landing as its own event.
+    private lazy var cache = DirectoryScanCache<[VFSPath], FinderTagSnapshot>(
+        scan: { _, entries in await FinderTagScanner.scan(entries) },
+        completion: { [weak self] directory, snapshot, _ in
+            guard let self, let snapshot else { return }
+            record(snapshot)
+            NotificationCenter.default.post(
+                name: Self.didChangeNotification,
+                object: self,
+                userInfo: [Self.directoryKey: directory]
+            )
+        }
+    )
 
     /// Every tag seen this session, plus the seven macOS ships with — the app's approximation of the
     /// name → colour database Finder resolves dots against. The tag editor offers these, the
@@ -90,65 +80,16 @@ final class FinderTagProvider {
     /// The snapshot already in hand for `directory`, or `nil` when none has been read yet.
     /// Synchronous and O(1) — this is what a pane calls while rendering rows.
     func cachedSnapshot(for directory: VFSPath) -> FinderTagSnapshot? {
-        snapshots[directory]
+        cache.cachedSnapshot(for: directory)
     }
 
-    /// Ask for `directory`'s tags to be brought up to date, reading `entries`. The first look runs
-    /// immediately (nobody wants to watch dots appear a third of a second after the folder does);
-    /// later ones are rate-limited as described on the type.
+    /// Ask for `directory`'s tags to be brought up to date, reading `entries`.
     ///
     /// `entries` should be the **whole** listing, not just the visible rows: two panes on one
     /// folder can have different hidden/filter settings, and a scan of the narrower one would
     /// otherwise evict rows the other still shows — leaving tagged files looking untagged.
     func requestRefresh(for directory: VFSPath, entries: [VFSPath]) {
-        requested[directory] = entries
-        // "Have we ever run this?", not "do we have a snapshot?" — a directory we cannot read
-        // caches nothing, so asking about the snapshot would call every request its first and
-        // re-scan on every filesystem event, which is precisely what this rate limiting exists to
-        // prevent. Eviction drops the run stamp with the snapshot, so an aged-out directory is a
-        // first look again.
-        let isFirstLook = lastRun[directory] == nil
-        let isOverdue = Date.now.timeIntervalSince(lastRun[directory] ?? .distantPast) > maximumStaleness
-        if isFirstLook || isOverdue {
-            scheduled.removeValue(forKey: directory)?.cancel()
-            Task { await run(directory) }
-            return
-        }
-        scheduled[directory]?.cancel()
-        let interval = debounceInterval
-        scheduled[directory] = Task { [weak self] in
-            try? await Task.sleep(for: interval)
-            guard !Task.isCancelled else { return }
-            await self?.run(directory)
-        }
-    }
-
-    /// Read `directory` now and publish the result. Serialized per directory: a request arriving
-    /// mid-scan is remembered and replayed afterwards rather than starting a second pass over the
-    /// same rows — the answer it would get is the one this scan is already fetching.
-    private func run(_ directory: VFSPath) async {
-        guard let entries = requested[directory] else { return }
-        guard !running.contains(directory) else {
-            repeatRequested.insert(directory)
-            return
-        }
-        // This request is being served now, so whatever timer produced it is spent.
-        scheduled.removeValue(forKey: directory)
-        running.insert(directory)
-        lastRun[directory] = .now
-        let snapshot = await FinderTagScanner.scan(entries)
-        running.remove(directory)
-
-        store(snapshot, for: directory)
-        record(snapshot)
-        NotificationCenter.default.post(
-            name: Self.didChangeNotification,
-            object: self,
-            userInfo: [Self.directoryKey: directory]
-        )
-        if repeatRequested.remove(directory) != nil {
-            requestRefresh(for: directory, entries: requested[directory] ?? entries)
-        }
+        cache.requestRefresh(for: directory, input: entries)
     }
 
     /// Learn the tags a scan turned up. Only tagged files appear in a snapshot, so this is cheap
@@ -182,7 +123,8 @@ final class FinderTagProvider {
         // synchronously on `post` and is free to call straight back in here (a pane re-reads its
         // snapshot), and it should not be able to see a half-purged cache.
         var touched: [VFSPath] = []
-        for (directory, snapshot) in snapshots {
+        for directory in cache.cachedKeys {
+            guard let snapshot = cache.cachedSnapshot(for: directory) else { continue }
             let carriers = snapshot.tagsByPath.filter { $0.value.contains(tag) }
             guard !carriers.isEmpty else { continue }
             var updated = snapshot
@@ -196,7 +138,7 @@ final class FinderTagProvider {
                     updated.tagsByPath[path] = remaining
                 }
             }
-            snapshots[directory] = updated
+            cache.replaceSnapshot(updated, for: directory)
             touched.append(directory)
         }
         for directory in touched {
@@ -205,18 +147,6 @@ final class FinderTagProvider {
                 object: self,
                 userInfo: [Self.directoryKey: directory]
             )
-        }
-    }
-
-    private func store(_ snapshot: FinderTagSnapshot, for directory: VFSPath) {
-        snapshots[directory] = snapshot
-        usage.removeAll { $0 == directory }
-        usage.append(directory)
-        while usage.count > cacheLimit {
-            let evicted = usage.removeFirst()
-            snapshots.removeValue(forKey: evicted)
-            lastRun.removeValue(forKey: evicted)
-            requested.removeValue(forKey: evicted)
         }
     }
 }

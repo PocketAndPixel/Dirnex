@@ -96,7 +96,7 @@ final class SidebarViewController: NSViewController {
         tableView.delegate = self
         tableView.target = self
         tableView.action = #selector(rowClicked)
-        registerFavoriteDragTypes()
+        registerSidebarDragTypes()
 
         // Right-click on a saved-search row offers Run / Rename / Delete; the menu builds its
         // items lazily from the clicked row, so it stays empty (and doesn't appear) elsewhere.
@@ -144,6 +144,8 @@ final class SidebarViewController: NSViewController {
         observeServerConnectionActivity()
         observeTagChanges()
         observeCloudStorageChanges()
+        observeCloudSectionOrderChanges()
+        observePaletteChanges()
         rebuild()
     }
 
@@ -167,9 +169,10 @@ final class SidebarViewController: NSViewController {
         var rows: [Row] = []
         // Recents leads the sidebar, where Finder puts it — one fixed row that runs the
         // recently-used-files query into a virtual results panel (PLAN.md §M8). Always present: it
-        // needs only Spotlight, which is effectively always on, so unlike iCloud it has no
-        // absent state.
-        append(.recents, items: [.recents], to: &rows)
+        // needs only Spotlight, which is effectively always on, so unlike iCloud it has no absent
+        // state. Headerless: a section header to caption a single fixed row is pure weight, so it
+        // sits bare above every collapsible section (see `SidebarSection`).
+        rows.append(.recents)
         // Saved searches follow, above the standard Favorites/Volumes sections.
         append(.searches, items: SavedSearchStore.load().searches.map(Row.savedSearch), to: &rows)
         // Favorites is the user's own pin list (PLAN.md §M8) — seeded once from the standard places
@@ -189,12 +192,19 @@ final class SidebarViewController: NSViewController {
         // Saved servers, grouped with the local volumes as the "places you browse"
         // (PLAN.md §M5 "a Servers sidebar section mirroring Searches").
         append(.servers, items: ServerConnectionStore.load().connections.map(Row.server), to: &rows)
-        // The Trash sits above Tags, just below the volumes and servers it complements. Always
-        // present: every Mac has one, and whether it can be read is the pane's answer to give, not
-        // a reason to hide the row.
-        append(.trash, items: [.trash], to: &rows)
-        // Tags close the sidebar, where Finder puts them, and only when View ▸ Show Tags is on.
+        // Tags close the collapsible sections, where Finder puts them, and only when View ▸ Show
+        // Tags is on.
         append(.tags, items: tagRows(), to: &rows)
+        // The Trash is the very last row, where the Dock puts it — one fixed headerless row that
+        // opens every volume's trash as one merged listing. Always present: every Mac has one, and
+        // whether it can be read is the pane's answer to give, not a reason to hide the row.
+        //
+        // Having no header of its own, it would otherwise sit flush against the section above and
+        // read as a member of it — with Tags shown, as an eighth tag colour. The spacer restores the
+        // separation a header used to provide, at exactly the gap AppKit itself puts above a section
+        // (see `heightOfRow`).
+        rows.append(.spacer)
+        rows.append(.trash)
         self.rows = rows
         tableView.reloadData()
 
@@ -347,7 +357,31 @@ extension SidebarViewController: NSTableViewDelegate {
         // Headers are keyboard-selectable so arrow navigation can land on one and ←/→/Return fold it
         // (PLAN.md §M8). The mouse never selects a header: `SidebarTableView.mouseDown` intercepts a
         // header click and returns before `super`, so a click still folds rather than selects.
-        true
+        //
+        // The spacer is the one row that isn't: it is blank padding, so ↑/↓ steps straight over it
+        // (AppKit skips unselectable rows) and a click on it is treated as a click on empty space.
+        if case .spacer = rows[row] { return false }
+        return true
+    }
+
+    /// Row heights.
+    ///
+    /// Implementing this at all means owning **every** row's height — AppKit's automatic
+    /// `rowSizeStyle = .default` sizing stops applying the moment the delegate answers. So the two
+    /// real kinds return the values AppKit itself was using, probed on a `.sourceList` table
+    /// configured exactly like this one: 19 pt for a group row, and `rowHeight` — which AppKit sets
+    /// to 32 for `.default` — for an item. Verified byte-identical against the stock layout, row
+    /// origins included, so nothing but the spacer moved.
+    ///
+    /// The spacer's 13 pt is not a taste value either: it is the gap AppKit inserts above every
+    /// section header (measured — a header following an item row starts 13 pt below it), so the
+    /// space above Trash matches the space above every other group in the list.
+    func tableView(_ tableView: NSTableView, heightOfRow row: Int) -> CGFloat {
+        switch rows[row] {
+        case .header: 19
+        case .spacer: 13
+        default: tableView.rowHeight
+        }
     }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
@@ -364,6 +398,9 @@ extension SidebarViewController: NSTableViewDelegate {
             return recentsCell()
         case .trash:
             return trashCell()
+        case .spacer:
+            // Nothing to draw: the row is its own height and no more.
+            return nil
         case let .favorite(entry):
             return favoriteCell(for: entry)
         case let .iCloud(path):

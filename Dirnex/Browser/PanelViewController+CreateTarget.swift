@@ -1,4 +1,3 @@
-import AppKit
 import DirnexCore
 
 /// Where a "create something here" command lands — F7 New Folder and ⇧F4 Edit File.

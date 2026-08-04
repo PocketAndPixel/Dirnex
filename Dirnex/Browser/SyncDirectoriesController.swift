@@ -70,18 +70,11 @@ final class SyncDirectoriesController: NSViewController {
 
     override func loadView() {
         let container = NSView()
-        let stack = NSStackView(views: [makeHeader(), makeControls(), makeTable(), makeFooter()])
-        stack.orientation = .vertical
-        stack.spacing = 12
-        stack.alignment = .leading
-        stack.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(stack)
+        DialogLayout.fill(
+            container,
+            with: [makeHeader(), makeControls(), makeTable(), makeFooter()]
+        )
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: container.topAnchor),
-            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            stack.bottomAnchor.constraint(equalTo: container.bottomAnchor),
             container.widthAnchor.constraint(equalToConstant: 720),
             container.heightAnchor.constraint(equalToConstant: 520)
         ])
@@ -240,9 +233,9 @@ final class SyncDirectoriesController: NSViewController {
             return
         }
         let checked = rows.filter { $0.included && isActionable($0.action) }
-        let copies = checked.filter { isCopy($0.action) }.count
+        let copies = checked.count { isCopy($0.action) }
         let deletes = checked.count - copies
-        let conflicts = rows.filter { $0.action == .conflict }.count
+        let conflicts = rows.count { $0.action == .conflict }
         var text = String(
             localized: "\(copies) to copy, \(deletes) to delete",
             comment: "Sync status summary; %1$lld files to copy, %2$lld to delete."

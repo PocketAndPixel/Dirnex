@@ -13,7 +13,37 @@ final class SidebarCellView: NSTableCellView {
     /// Invoked when the eject button is clicked; `nil` hides the button.
     var onEject: (() -> Void)?
 
+    /// What the glyph — the leading icon and the eject button — draws in while this row is the
+    /// sidebar's cursor, or `nil` — the untouched case — to leave it to AppKit. Pushed by
+    /// `SidebarRowView`, which is the only place that knows the row's selection *and* emphasis; a
+    /// cell sees only `backgroundStyle`, which is `.normal` for a selected-but-unfocused row and so
+    /// cannot tell it from an ordinary one.
+    ///
+    /// The tag rows are unaffected by construction: their dot is not a template image, so no tint
+    /// reaches it (`SidebarViewController+Tags`), which is exactly the intent — a tag's colour is
+    /// the one thing it has to say.
+    var glyphForeground: NSColor? {
+        didSet {
+            guard glyphForeground != oldValue else { return }
+            applySelectionForeground()
+        }
+    }
+
+    /// What the name draws in, and a separate question from the glyph's: it is set only for the
+    /// filled pill, where the cursor colour is the *background* and the label needs a legible
+    /// foreground against it. Everywhere else it is `nil` and AppKit's own colour stands, so a custom
+    /// palette tints the sidebar's icons and never its text (see `SidebarRowView`).
+    var labelForeground: NSColor? {
+        didSet {
+            guard labelForeground != oldValue else { return }
+            applySelectionForeground()
+        }
+    }
+
     private let icon = NSImageView()
+    /// The glyph exactly as the row builder handed it over, so a tint is always derived from the
+    /// original rather than compounded onto the last tinted copy.
+    private var baseImage: NSImage?
     private let label = NSTextField(labelWithString: "")
     private let ejectButton = NSButton()
     /// Overlays the icon while a server row is connecting; a spinner replaces the leading glyph so
@@ -116,11 +146,55 @@ final class SidebarCellView: NSTableCellView {
         isBusy: Bool = false
     ) {
         label.stringValue = name
-        icon.image = image
+        baseImage = image
         ejectButton.isHidden = !canEject
         toolTip = tooltip
         setBusy(isBusy)
         updateTrailingLayout()
+        // Last, and unconditionally: a recycled cell may already be the cursor's, and the glyph it
+        // has just been given has to arrive tinted rather than a repaint later.
+        applySelectionForeground()
+    }
+
+    /// Paint the glyph and the eject button in the pushed glyph colour and the name in the pushed
+    /// label colour — or hand each back to AppKit, which tints a template symbol and colours a label
+    /// from the cell's own `backgroundStyle`. `nil` restores exactly what the cell was built with, so
+    /// an untouched palette leaves the sidebar drawing as it always did.
+    ///
+    /// **The glyph cannot go through `contentTintColor`, which is the obvious spelling and is
+    /// silently ignored.** Probed on a real cell: an emphasized `NSTableCellView` draws its
+    /// `imageView`'s template image white whatever tint the view carries — pixel-identical to an
+    /// untinted control, in either assignment order — so a pale cursor colour got a black label
+    /// beside a white house. It works only while the cell is `.normal`, which is exactly the half
+    /// that already looked right. Baking the colour into the image is what the emphasized row
+    /// honours, because the result is no longer a template for AppKit to re-tint.
+    private func applySelectionForeground() {
+        label.textColor = labelForeground
+        ejectButton.contentTintColor = glyphForeground ?? .secondaryLabelColor
+        guard let baseImage else { return }
+        if let glyphForeground, baseImage.isTemplate {
+            icon.image = Self.tinted(baseImage, glyphForeground)
+        } else {
+            icon.image = baseImage
+        }
+    }
+
+    /// `image` painted in `color`, keeping its shape: `.sourceAtop` replaces the colour of every
+    /// pixel the glyph covers and leaves its coverage — so the antialiased edges survive.
+    ///
+    /// Deliberately general rather than an SF Symbol configuration (`paletteColors:`, measured to
+    /// render identically): it works for any template image, so a sidebar glyph that is not a symbol
+    /// tints too. A **non**-template image is never handed here — a tag's dot carries the one colour
+    /// that must not be overwritten (`SidebarViewController+Tags`).
+    private static func tinted(_ image: NSImage, _ color: NSColor) -> NSImage {
+        let copy = NSImage(size: image.size, flipped: false) { rect in
+            image.draw(in: rect)
+            color.set()
+            rect.fill(using: .sourceAtop)
+            return true
+        }
+        copy.isTemplate = false
+        return copy
     }
 
     /// Swap the leading icon for a spinning indicator while a server row connects — the icon is hidden
