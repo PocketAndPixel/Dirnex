@@ -138,11 +138,11 @@ extension SidebarViewController {
     private static func forgetSecret(for server: ServerConnection) {
         switch server.endpoint {
         case let .sftp(location, authentication):
-            if case .password = authentication { SFTPKeychain.removePassword(for: location) }
+            if case .password = authentication { ServerKeychain.removePassword(for: location) }
         case let .ftp(location, authentication, _):
-            if case .password = authentication { FTPKeychain.removePassword(for: location) }
+            if case .password = authentication { ServerKeychain.removePassword(for: location) }
         case let .smb(location):
-            if location.username != nil { SMBKeychain.removePassword(for: location) }
+            if location.username != nil { ServerKeychain.removePassword(for: location) }
         }
     }
 }

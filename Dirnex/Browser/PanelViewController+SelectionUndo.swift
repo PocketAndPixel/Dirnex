@@ -1,4 +1,3 @@
-import AppKit
 import DirnexCore
 
 /// The pane's half of selection undo/redo (PLAN.md §M2 "Undo journal", extended to marks): a

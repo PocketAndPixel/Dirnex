@@ -1,4 +1,3 @@
-import AppKit
 import DirnexCore
 
 /// The window's `PanelHost` workspace surface (PLAN.md §M3 "Workspaces: save/restore both

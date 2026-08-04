@@ -141,3 +141,47 @@ enum DialogTitle {
         return title
     }
 }
+
+/// The body layout every one of those dialogs builds in its `loadView()`: a vertical stack of rows,
+/// inset from the container by the standard margin and pinned to all four of its edges.
+///
+/// Six controllers spelled this out identically — the same insets, the same four anchors — and the
+/// margin is exactly the kind of number that drifts when it lives in six places. What stays at the
+/// call site is the part that genuinely differs: which rows, and the container's own fixed size.
+enum DialogLayout {
+    /// The margin between the container's edge and the content, on all four sides.
+    static let inset: CGFloat = 20
+
+    /// The gap between rows. The search sheet wants a looser 16; everything else takes this.
+    static let spacing: CGFloat = 12
+
+    /// Fill `container` with `rows` stacked vertically, and return the stack for a caller that needs
+    /// to constrain something to it.
+    ///
+    /// Nothing here sizes the container: a dialog states its own width (and usually height) at the
+    /// call site, because those are decisions about that dialog. Note what the fixed height buys —
+    /// an `NSStackView` that cannot fit its arranged views *compresses* them rather than overflowing,
+    /// which is how a whole row once went missing from the attributes panel (docs/NOTES.md), so a
+    /// dialog that grows a row must grow its height too rather than trusting the stack.
+    @discardableResult
+    static func fill(
+        _ container: NSView,
+        with rows: [NSView],
+        spacing: CGFloat = Self.spacing
+    ) -> NSStackView {
+        let stack = NSStackView(views: rows)
+        stack.orientation = .vertical
+        stack.spacing = spacing
+        stack.alignment = .leading
+        stack.edgeInsets = NSEdgeInsets(top: inset, left: inset, bottom: inset, right: inset)
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: container.topAnchor),
+            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            stack.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+        ])
+        return stack
+    }
+}

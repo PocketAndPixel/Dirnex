@@ -1,5 +1,3 @@
-import Foundation
-
 // MARK: - Job
 
 /// What a queued checksum operation is being asked to do (PLAN.md §M14 Slice 2).

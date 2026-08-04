@@ -14,29 +14,16 @@ import Foundation
 ///
 /// Every method is synchronous and may block on the network — the backend is always called off the
 /// main thread by the operation engine and the panel's background list, never on it.
-public protocol FTPTransport: Sendable {
+/// The four write verbs come from ``RemoteWriteTransport``, shared with `SFTPTransport`; over FTP
+/// they are `MKD`, `RNFR`+`RNTO` (which must travel as one pair on one connection), `DELE` and
+/// `RMD`. FTP has no recursive remove, so `RemoteTransportBackend` empties a directory depth-first
+/// before `RMD` — the same walk the SFTP side does.
+public protocol FTPTransport: RemoteWriteTransport {
     /// The raw `LIST` output for `remotePath` — one entry per line, in the server's own format
     /// (`FTPListingParser` handles the Unix and DOS dialects). Unlike `sftp`'s `ls`, names come back
     /// **bare**, there are no `.`/`..` rows, and there is no way to list a single file: the backend
     /// stats an item through its *parent's* listing.
     func listDirectory(_ remotePath: String) throws -> String
-
-    /// Create a single remote directory (`MKD`). Throws when the parent is missing, something
-    /// already occupies the path, or the account may not write there — the backend never relies on
-    /// intermediate directories being created.
-    func makeDirectory(_ remotePath: String) throws
-
-    /// Rename or move a remote item within the account (`RNFR` + `RNTO`, which must travel as one
-    /// pair on one connection). Only valid within a connection; a cross-backend move is
-    /// copy-then-delete, decided above the transport.
-    func rename(_ source: String, to destination: String) throws
-
-    /// Remove a remote regular file (`DELE`).
-    func removeFile(_ remotePath: String) throws
-
-    /// Remove an *empty* remote directory (`RMD`); FTP has no recursive remove, so the backend
-    /// empties it depth-first first — the same walk `SFTPBackend` does.
-    func removeDirectory(_ remotePath: String) throws
 
     /// Download the remote file at `remotePath` to a local path, returning **the bytes transferred
     /// by this call**. With `resume` the transfer continues from the local file's current length

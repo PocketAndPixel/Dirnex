@@ -48,16 +48,6 @@ public enum AttributeApplyScope {
 
     // MARK: - The order — the rule that decides whether the run completes
 
-    /// Whether the *roots* — the items the sheet was opened on — are always changed, whatever the
-    /// target filter says.
-    ///
-    /// They are, and it is a deliberate reading rather than an oversight: the filter is about the
-    /// items *inside*, which the user never saw, while a root is the thing they opened Get Info on
-    /// and edited. Excluding the folder whose panel they just used because they also asked for
-    /// "files only" would be surprising in the one direction that matters — silently not doing what
-    /// the visible sheet said.
-    public static let rootsAlwaysApply = true
-
     /// Order a gathered walk so it can actually be applied: **deepest item first, every root last.**
     ///
     /// This is the finding that shapes the whole operation, probed 2026-08-01, and it is not the

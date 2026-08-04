@@ -1,4 +1,3 @@
-import AppKit
 import DirnexCore
 
 /// Total Commander's Space-on-directory in-place sizing (PLAN.md §M1 "Space-on-dir

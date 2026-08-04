@@ -1,4 +1,3 @@
-import AppKit
 import DirnexCore
 
 /// Virtual **results** tabs: a pane showing a set of files that share no directory — Spotlight hits

@@ -1,4 +1,3 @@
-import AppKit
 import DirnexCore
 
 /// One rendered sidebar row. Split out of `SidebarViewController` so that file stays under its

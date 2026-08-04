@@ -56,8 +56,6 @@ struct AttributesSnapshot {
     /// `oleg (501)`, or just `501` when the id resolves to no account.
     var ownerDescription: String { Self.describe(ownerName, id: attributes.ownerID) }
 
-    var groupDescription: String { Self.describe(groupName, id: attributes.groupID) }
-
     /// Shared with the group picker, so a popup row and the row above it spell an account the same
     /// way in every language.
     static func describe(_ name: String?, id: UInt32) -> String {

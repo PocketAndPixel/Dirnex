@@ -107,18 +107,8 @@ final class SearchController: NSViewController {
 
     override func loadView() {
         let container = NSView()
-        let stack = NSStackView(views: [makeControlsGrid(), makeFooter()])
-        stack.orientation = .vertical
-        stack.spacing = 16
-        stack.alignment = .leading
-        stack.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(stack)
+        DialogLayout.fill(container, with: [makeControlsGrid(), makeFooter()], spacing: 16)
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: container.topAnchor),
-            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            stack.bottomAnchor.constraint(equalTo: container.bottomAnchor),
             container.widthAnchor.constraint(equalToConstant: 552)
         ])
         view = container

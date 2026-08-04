@@ -1,4 +1,3 @@
-import Darwin
 import Foundation
 
 /// Keeping a terminal drawer and its panel pointed at the same directory (PLAN.md §M6 "bottom pane

@@ -16,7 +16,7 @@ import Foundation
 ///
 /// The backend's `id` encodes the account (`sftp://user@host:port`), so a `VFSPath` under it names
 /// both which account and which remote path; the app's composite backend routes on that id.
-public struct SFTPBackend: VFSBackend {
+public struct SFTPBackend: RemoteTransportBackend {
     /// The remote account this backend is connected to — its identity.
     public let location: SFTPLocation
     private let transport: any SFTPTransport
@@ -27,6 +27,9 @@ public struct SFTPBackend: VFSBackend {
     }
 
     public var id: VFSBackendID { .sftp(location) }
+
+    public var connectionDescriptor: String { location.descriptor }
+    public var writeTransport: any RemoteWriteTransport { transport }
 
     /// Browse, rename, and write — but no Trash and no copy-on-write clone. This is exactly the
     /// set the M5 "capability degradation" path was built for (PLAN.md §M5): with `.write` but not
@@ -63,53 +66,9 @@ public struct SFTPBackend: VFSBackend {
 
     // MARK: - Writes
 
-    public func createDirectory(at path: VFSPath) throws {
-        try requireOwnBackend(path)
-        try mapErrors(path) { try transport.makeDirectory(path.path) }
-    }
-
-    /// Rename within this account. A move whose destination lives on a *different* backend
-    /// (download-then-delete, upload-then-delete) is not a remote rename — throw `EXDEV` so
-    /// `CopyEngine` falls back to copy-then-delete across backends, exactly as it does for a
-    /// cross-volume local move.
-    public func moveItem(at source: VFSPath, to destination: VFSPath) throws {
-        try requireOwnBackend(source)
-        guard destination.backend == id else {
-            throw VFSError.io(path: source, code: EXDEV)
-        }
-        try mapErrors(source) { try transport.rename(source.path, to: destination.path) }
-    }
-
-    /// Permanently remove `path`, recursively for directories — `sftp` has no `rm -r`, so a
-    /// directory is emptied (depth-first) before its `rmdir`. The item's kind is read from its
-    /// **parent listing**, not a `stat` of the path itself: `sftp`'s `ls` follows a symlink, so
-    /// statting a link-to-directory would misreport it as a directory and delete the *target's*
-    /// contents — a parent listing shows the link as a link, so `rm` removes the link alone.
-    public func removeItem(at path: VFSPath) throws {
-        try requireOwnBackend(path)
-        guard let parent = path.parent else {
-            throw VFSError.unsupported(.deleteConnectionRoot)
-        }
-        let siblings = try listDirectory(at: parent)
-        guard let entry = siblings.first(where: { $0.name == path.lastComponent }) else {
-            throw VFSError.notFound(path)
-        }
-        try removeResolved(entry)
-    }
-
-    /// Remove one already-classified entry: a directory has its children removed first (each
-    /// child's kind comes from *its* directory listing, so nested links are removed as links),
-    /// then the now-empty directory itself; a file or symlink is removed directly.
-    private func removeResolved(_ entry: FileEntry) throws {
-        if entry.kind == .directory {
-            for child in try listDirectory(at: entry.path) {
-                try removeResolved(child)
-            }
-            try mapErrors(entry.path) { try transport.removeDirectory(entry.path.path) }
-        } else {
-            try mapErrors(entry.path) { try transport.removeFile(entry.path.path) }
-        }
-    }
+    // `createDirectory`, `moveItem` and the recursive `removeItem` are `RemoteTransportBackend`'s —
+    // identical to FTP's, since both are the same four transport verbs plus the same depth-first
+    // walk. Symbolic links and the byte transfer below are protocol-specific.
 
     public func createSymbolicLink(at destination: VFSPath, withDestination target: String) throws {
         try requireOwnBackend(destination)
@@ -208,18 +167,10 @@ public struct SFTPBackend: VFSBackend {
 
     // MARK: - Mapping
 
-    private func requireOwnBackend(_ path: VFSPath) throws {
-        guard path.backend == id else {
-            throw VFSError.unsupported(
-                .pathOutsideConnection(path: "\(path)", connection: location.descriptor)
-            )
-        }
-    }
-
     /// Normalize a transport failure onto the shared `VFSError` vocabulary, attaching the
     /// `VFSPath` the transport (which only knows a raw string) couldn't. A `VFSError` thrown from
     /// deeper is passed through unchanged.
-    private func mapErrors<T>(_ path: VFSPath, _ body: () throws -> T) throws -> T {
+    public func mapErrors<T>(_ path: VFSPath, _ body: () throws -> T) throws -> T {
         do {
             return try body()
         } catch let error as SFTPTransportError {

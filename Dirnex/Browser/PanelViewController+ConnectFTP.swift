@@ -56,7 +56,7 @@ extension PanelViewController {
         case .success:
             // Only persist a password once it actually authenticated, so a typo isn't cached.
             if case .password = request.authentication, !request.password.isEmpty {
-                FTPKeychain.store(password: request.password, for: location)
+                ServerKeychain.store(password: request.password, for: location)
             }
             composite.connectFTP(
                 location: location,

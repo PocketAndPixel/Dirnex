@@ -1,5 +1,3 @@
-import Foundation
-
 /// Executes a checksum `FileOperation` — write a manifest, or verify one (PLAN.md §M14 Slice 2).
 ///
 /// `CopyEngine`'s shape exactly, and deliberately so: a plain synchronous entry point returning an

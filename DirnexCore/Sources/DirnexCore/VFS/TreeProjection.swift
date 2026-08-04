@@ -190,13 +190,6 @@ public struct TreeProjection: Sendable {
         rebuild()
     }
 
-    /// Forget a directory's cached entries — e.g. pruning a collapsed subtree the app no longer wants
-    /// to hold. Rebuilds only if there was one to remove.
-    public mutating func removeListing(_ path: VFSPath) {
-        guard listings.removeValue(forKey: path) != nil else { return }
-        rebuild()
-    }
-
     /// Mark a directory open (the `→` key on a closed folder). Beyond membership this shows nothing
     /// until the directory's listing arrives.
     public mutating func expand(_ path: VFSPath) {

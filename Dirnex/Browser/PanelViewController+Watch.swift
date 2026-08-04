@@ -1,4 +1,3 @@
-import AppKit
 import DirnexCore
 
 /// The pane's live refresh: the FSEvents watcher on the directory on screen, and everything one of

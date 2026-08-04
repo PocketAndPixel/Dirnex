@@ -1,5 +1,3 @@
-import Foundation
-
 /// A single pane/tab's back–forward navigation trail (PLAN.md §M3 "Per-panel history
 /// (Alt+Down list; Cmd+[ / Cmd+] back/forward)"). Semantics match a web browser's tab
 /// history: a fresh navigation truncates any forward entries and appends, while `back`

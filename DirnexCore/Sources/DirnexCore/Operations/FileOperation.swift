@@ -1,5 +1,3 @@
-import Foundation
-
 /// A single queued file operation (PLAN.md §2 "Operations"). The "instant" operations
 /// (new folder, delete) don't need this shape — they finish immediately and live in
 /// the `VFSBackend` write primitives; this models the long, byte-touching work that runs

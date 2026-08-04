@@ -1,4 +1,3 @@
-import AppKit
 import DirnexCore
 
 /// Records a successful navigation into the two places that remember where the pane has

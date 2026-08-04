@@ -14,7 +14,7 @@ import Foundation
 ///
 /// The backend's `id` encodes the account (`ftpes://user@host:port`), so a `VFSPath` under it names
 /// both which account and which remote path; the app's composite backend routes on that id.
-public struct FTPBackend: VFSBackend {
+public struct FTPBackend: RemoteTransportBackend {
     /// The remote account this backend is connected to — its identity.
     public let location: FTPLocation
     private let transport: any FTPTransport
@@ -25,6 +25,9 @@ public struct FTPBackend: VFSBackend {
     }
 
     public var id: VFSBackendID { .ftp(location) }
+
+    public var connectionDescriptor: String { location.descriptor }
+    public var writeTransport: any RemoteWriteTransport { transport }
 
     /// Browse, rename, and write — but no Trash, no copy-on-write clone, and no file watching.
     /// Exactly `SFTPBackend`'s set, and it lights up the same M5 degradation paths with no new UI:
@@ -85,49 +88,9 @@ public struct FTPBackend: VFSBackend {
 
     // MARK: - Writes
 
-    public func createDirectory(at path: VFSPath) throws {
-        try requireOwnBackend(path)
-        try mapErrors(path) { try transport.makeDirectory(path.path) }
-    }
-
-    /// Rename within this account. A move whose destination lives on a *different* backend is not a
-    /// remote rename — throw `EXDEV` so `CopyEngine` falls back to copy-then-delete across
-    /// backends, exactly as it does for a cross-volume local move and for SFTP.
-    public func moveItem(at source: VFSPath, to destination: VFSPath) throws {
-        try requireOwnBackend(source)
-        guard destination.backend == id else {
-            throw VFSError.io(path: source, code: EXDEV)
-        }
-        try mapErrors(source) { try transport.rename(source.path, to: destination.path) }
-    }
-
-    /// Permanently remove `path`, recursively for directories — FTP has no recursive delete, so a
-    /// directory is emptied depth-first before its `RMD`. Each item's kind comes from the listing it
-    /// was found in, so a link is removed as a link rather than followed.
-    public func removeItem(at path: VFSPath) throws {
-        try requireOwnBackend(path)
-        guard let parent = path.parent else {
-            throw VFSError.unsupported(.deleteConnectionRoot)
-        }
-        let siblings = try listDirectory(at: parent)
-        guard let entry = siblings.first(where: { $0.name == path.lastComponent }) else {
-            throw VFSError.notFound(path)
-        }
-        try removeResolved(entry)
-    }
-
-    /// Remove one already-classified entry: a directory has its children removed first, then the
-    /// now-empty directory itself; anything else is removed directly with `DELE`.
-    private func removeResolved(_ entry: FileEntry) throws {
-        if entry.kind == .directory {
-            for child in try listDirectory(at: entry.path) {
-                try removeResolved(child)
-            }
-            try mapErrors(entry.path) { try transport.removeDirectory(entry.path.path) }
-        } else {
-            try mapErrors(entry.path) { try transport.removeFile(entry.path.path) }
-        }
-    }
+    // `createDirectory`, `moveItem` and the recursive `removeItem` are `RemoteTransportBackend`'s —
+    // identical to SFTP's, since both are the same four transport verbs plus the same depth-first
+    // walk. Only the byte transfer below is protocol-specific.
 
     /// Copy one file's bytes between this account and the local disk — a **download** (remote source
     /// → local destination) or an **upload**. The whole file transfers as one `curl` invocation, so
@@ -214,18 +177,10 @@ public struct FTPBackend: VFSBackend {
 
     // MARK: - Mapping
 
-    private func requireOwnBackend(_ path: VFSPath) throws {
-        guard path.backend == id else {
-            throw VFSError.unsupported(
-                .pathOutsideConnection(path: "\(path)", connection: location.descriptor)
-            )
-        }
-    }
-
     /// Normalize a transport failure onto the shared `VFSError` vocabulary, attaching the `VFSPath`
     /// the transport (which only knows a raw string) couldn't. A `VFSError` thrown from deeper is
     /// passed through unchanged.
-    private func mapErrors<T>(_ path: VFSPath, _ body: () throws -> T) throws -> T {
+    public func mapErrors<T>(_ path: VFSPath, _ body: () throws -> T) throws -> T {
         do {
             return try body()
         } catch let error as FTPTransportError {

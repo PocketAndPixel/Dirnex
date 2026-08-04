@@ -1,5 +1,3 @@
-import Foundation
-
 /// A pane's recursively-computed directory totals (Space-on-dir since §M1; the size-visualization
 /// scan since §M6; per-level in a tree since §M15). Split from `Panel` proper for SwiftLint's
 /// type-body limit, along the seam the concern already draws — every method here reads or writes the

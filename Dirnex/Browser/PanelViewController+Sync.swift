@@ -85,7 +85,7 @@ extension PanelViewController {
         leftDir: VFSPath,
         rightDir: VFSPath
     ) {
-        let deletions = decisions.filter { $0.action == .deleteLeft || $0.action == .deleteRight }.count
+        let deletions = decisions.count { $0.action == .deleteLeft || $0.action == .deleteRight }
         guard deletions > 0 else {
             applySync(decisions, leftDir: leftDir, rightDir: rightDir)
             return
