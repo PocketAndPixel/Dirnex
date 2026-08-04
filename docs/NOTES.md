@@ -433,6 +433,29 @@ at build time.
     re-tint. `NSImage.SymbolConfiguration(paletteColors:)` measured identical and is worse: it only
     answers for SF Symbols, while `.sourceAtop` tints any template image. Keep the *original* around
     and re-derive from it, or successive tints compound onto the last copy.
+    - **It is the *cell*, not the image view — an `NSButton` inside the same emphasized cell is
+      repainted white too.** The rule was written for `NSTableCellView.imageView` and reads as if it
+      were about that property; the tree's disclosure triangle is a borderless `NSButton` with a
+      template chevron, and it went white on a pale cursor row beside black text, i.e. the identical
+      symptom one class further out. Measured on a cell rendered into a bitmap, `contentTintColor`
+      set to black on both variants: `.normal` draws the glyph `#000000` either way, while
+      `.emphasized` gives the tinted control a `#FFFEFF` glyph (no dark pixel anywhere in the cell)
+      and the `.sourceAtop` copy `#000000`. So treat "an emphasized cell repaints template images
+      white" as the rule and `contentTintColor` as never load-bearing there, whatever control carries
+      the image. Bake only the emphasized half, though — off the cursor a template plus
+      `.secondaryLabelColor` keeps resolving against the live appearance, where a baked copy would
+      hold whichever appearance it was drawn in until the next render.
+    - **The probe needs the cell in a real window *and* a full-bitmap scan.** `cacheDisplay` into
+      `bitmapImageRepForCachingDisplay` drew nothing but the background for a detached cell (the same
+      "a stock row draws nothing" trap as the pill measurement), and once in a window the rep is at
+      the **backing scale** — a scan over point-space coordinates lands in the button's empty margin
+      and reports "no glyph" twice over, which reads as the drawing being broken rather than the scan.
+      Iterate `rep.pixelsWide`/`pixelsHigh`.
+    - **This is also the class of bug a computer-use screenshot cannot judge**, and it was called
+      *fixed* off one: a zoom of a 2 pt chevron over a pale row read as dark when the glyph was
+      provably white. The capture is downsampled below 1x (the geometry note above), and colour goes
+      the same way as geometry once the ink is a couple of points wide. `screencapture` from the shell
+      tool is refused (no permission), so the bitmap probe is the instrument — not the screen.
   - The window-key state is a third one and is not reachable from either side: states 2 (window key,
     pane focused) and 3 (window not key) both read `isEmphasized == false` with no callback between
     them, so the tint stays on in a background window where macOS would drop it.
