@@ -96,7 +96,7 @@ final class SidebarViewController: NSViewController {
         tableView.delegate = self
         tableView.target = self
         tableView.action = #selector(rowClicked)
-        registerFavoriteDragTypes()
+        registerSidebarDragTypes()
 
         // Right-click on a saved-search row offers Run / Rename / Delete; the menu builds its
         // items lazily from the clicked row, so it stays empty (and doesn't appear) elsewhere.
@@ -167,9 +167,10 @@ final class SidebarViewController: NSViewController {
         var rows: [Row] = []
         // Recents leads the sidebar, where Finder puts it — one fixed row that runs the
         // recently-used-files query into a virtual results panel (PLAN.md §M8). Always present: it
-        // needs only Spotlight, which is effectively always on, so unlike iCloud it has no
-        // absent state.
-        append(.recents, items: [.recents], to: &rows)
+        // needs only Spotlight, which is effectively always on, so unlike iCloud it has no absent
+        // state. Headerless: a section header to caption a single fixed row is pure weight, so it
+        // sits bare above every collapsible section (see `SidebarSection`).
+        rows.append(.recents)
         // Saved searches follow, above the standard Favorites/Volumes sections.
         append(.searches, items: SavedSearchStore.load().searches.map(Row.savedSearch), to: &rows)
         // Favorites is the user's own pin list (PLAN.md §M8) — seeded once from the standard places
@@ -189,12 +190,13 @@ final class SidebarViewController: NSViewController {
         // Saved servers, grouped with the local volumes as the "places you browse"
         // (PLAN.md §M5 "a Servers sidebar section mirroring Searches").
         append(.servers, items: ServerConnectionStore.load().connections.map(Row.server), to: &rows)
-        // The Trash sits above Tags, just below the volumes and servers it complements. Always
-        // present: every Mac has one, and whether it can be read is the pane's answer to give, not
-        // a reason to hide the row.
-        append(.trash, items: [.trash], to: &rows)
-        // Tags close the sidebar, where Finder puts them, and only when View ▸ Show Tags is on.
+        // Tags close the collapsible sections, where Finder puts them, and only when View ▸ Show
+        // Tags is on.
         append(.tags, items: tagRows(), to: &rows)
+        // The Trash is the very last row, where the Dock puts it — one fixed headerless row that
+        // opens every volume's trash as one merged listing. Always present: every Mac has one, and
+        // whether it can be read is the pane's answer to give, not a reason to hide the row.
+        rows.append(.trash)
         self.rows = rows
         tableView.reloadData()
 
