@@ -131,4 +131,86 @@ struct ColumnarListingTests {
 
         #expect(calendar.component(.year, from: parsed) == calendar.component(.year, from: nearly))
     }
+
+    // MARK: - The Unix row
+
+    private static let unixFormatters = ColumnarListing.unixDateFormatters()
+
+    @Test("a full Unix row reads every fixed column")
+    func readsUnixRow() throws {
+        let line: Substring = "-rw-r--r-- 1 sa users 3145728 Jul 25 2019 my report.txt"
+        let row = try #require(ColumnarListing.unixRow(line, formatters: Self.unixFormatters))
+        let year = Calendar(identifier: .gregorian).component(.year, from: row.modificationDate)
+
+        #expect(row.kind == .file)
+        #expect(row.byteSize == 3_145_728)
+        #expect(row.permissions == 0o644)
+        #expect(row.name == "my report.txt")
+        #expect(row.symlinkDestination == nil)
+        #expect(year == 2019)
+    }
+
+    @Test("a directory row reads as a directory")
+    func readsDirectoryRow() throws {
+        let line: Substring = "drwxr-xr-x 2 sa users 0 Jul 25 20:55 sub dir"
+        let row = try #require(ColumnarListing.unixRow(line, formatters: Self.unixFormatters))
+
+        #expect(row.kind == .directory)
+        #expect(row.name == "sub dir")
+        #expect(row.permissions == 0o755)
+    }
+
+    /// The mode gate is what makes this safe: a file legitimately named `a -> b` must not be read as
+    /// a symlink pointing at `b`, so the ` -> ` split is reached only for an `l` mode.
+    @Test("a symlink's target is split off, and a file named like one is left alone")
+    func splitsTargetOnlyForSymlinks() throws {
+        let link: Substring = "lrwxr-xr-x 1 sa users 9 Jul 25 20:55 latest -> releases/1.2"
+        let linkRow = try #require(ColumnarListing.unixRow(link, formatters: Self.unixFormatters))
+        #expect(linkRow.kind == .symlink)
+        #expect(linkRow.name == "latest")
+        #expect(linkRow.symlinkDestination == "releases/1.2")
+
+        let file: Substring = "-rw-r--r-- 1 sa users 9 Jul 25 20:55 a -> b"
+        let fileRow = try #require(ColumnarListing.unixRow(file, formatters: Self.unixFormatters))
+        #expect(fileRow.kind == .file)
+        #expect(fileRow.name == "a -> b")
+        #expect(fileRow.symlinkDestination == nil)
+    }
+
+    /// The name is handed back **raw**, full path and all. Reducing it is `SFTPListingParser`'s job
+    /// and would be wrong for FTP, which prints bare names — that difference is the reason this
+    /// returns a name rather than an entry.
+    @Test("a full-path name is not reduced here")
+    func leavesFullPathNameAlone() throws {
+        let line: Substring = "-rw-r--r-- ? oleg staff 11 Jul 13 00:09 /home/oleg/docs/notes.txt"
+        let row = try #require(ColumnarListing.unixRow(line, formatters: Self.unixFormatters))
+        #expect(row.name == "/home/oleg/docs/notes.txt")
+    }
+
+    /// The difference that keeps `ArchiveTOCParser` on its own scan: it reads an unrecognized mode
+    /// as a file, where both remote dialects read it as `.other` — a device, socket or FIFO is shown
+    /// but is not navigable.
+    @Test("an unrecognized mode reads as other, not as a file")
+    func unknownModeIsOther() throws {
+        for mode in ["b", "c", "s", "p"] {
+            let line = "\(mode)rw-r--r-- 1 sa users 0 Jul 25 20:55 dev0"
+            let row = try #require(
+                ColumnarListing.unixRow(line[...], formatters: Self.unixFormatters)
+            )
+            #expect(row.kind == .other, "mode \(mode)")
+        }
+    }
+
+    @Test("a line that is not a row is rejected rather than guessed at")
+    func rejectsNonRows() {
+        let formatters = Self.unixFormatters
+        #expect(ColumnarListing.unixRow("", formatters: formatters) == nil)
+        #expect(ColumnarListing.unixRow("total 8", formatters: formatters) == nil)
+        #expect(ColumnarListing.unixRow("sftp> ls -la /home/oleg", formatters: formatters) == nil)
+        #expect(ColumnarListing.unixRow("Can't ls: \"/x\" not found", formatters: formatters) == nil)
+        // Nine columns but no mode field: the shape `ArchiveTOCParser` accepts and this rejects.
+        #expect(
+            ColumnarListing.unixRow("x 0 501 20 11 Jul 10 16:19 f", formatters: formatters) == nil
+        )
+    }
 }

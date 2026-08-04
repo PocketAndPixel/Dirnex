@@ -29,7 +29,7 @@ enum SFTPListingParser {
     /// Parse a raw `ls -la` block into its rows (names reduced to a last path component), in the
     /// server's order, **including** any `.`/`..` rows — the caller decides what to keep.
     static func parse(_ text: String) -> [Entry] {
-        let formatters = dateFormatters()
+        let formatters = ColumnarListing.unixDateFormatters()
         var entries: [Entry] = []
         for line in text.split(whereSeparator: \.isNewline) {
             if let entry = parseLine(line, formatters: formatters) { entries.append(entry) }
@@ -39,44 +39,19 @@ enum SFTPListingParser {
 
     // MARK: - Line scanning
 
+    /// `sftp`'s one departure from the shared row shape: a name arrives as a **full path**, so both
+    /// it and a symlink target are reduced to a last component. Everything else about the row —
+    /// the columns, the ` -> ` split, the `sftp>` prompt echo and error lines the guards reject —
+    /// is `ColumnarListing.unixRow`'s.
     private static func parseLine(_ line: Substring, formatters: [DateFormatter]) -> Entry? {
-        // The leading columns never contain spaces, so a collapsing split reads them; the name is
-        // taken verbatim after the 8th column to keep internal spaces (`my report.txt`). The
-        // interactive `sftp>` prompt echo and error lines have too few / non-mode columns and are
-        // skipped by the count + mode-field guards.
-        let columns = line.split(separator: " ", omittingEmptySubsequences: true)
-        guard columns.count >= 9, ColumnarListing.isModeField(columns[0]),
-              let modeChar = columns[0].first,
-              var rawName = ColumnarListing.nameField(in: line, afterColumns: 8) else { return nil }
-
-        let byteSize = Int64(columns[4]) ?? 0
-        let date = ColumnarListing.date(
-            from: "\(columns[5]) \(columns[6]) \(columns[7])", formatters: formatters
-        )
-        let permissions = ColumnarListing.permissions(fromMode: columns[0])
-
-        var symlinkDestination: String?
-        if modeChar == "l", let range = rawName.range(of: " -> ") {
-            symlinkDestination = lastComponent(of: String(rawName[range.upperBound...]))
-            rawName = String(rawName[..<range.lowerBound])
-        }
-        let name = lastComponent(of: rawName)
-
-        let kind: FileEntry.Kind
-        switch modeChar {
-        case "d": kind = .directory
-        case "l": kind = .symlink
-        case "-": kind = .file
-        default: kind = .other // block/char device, socket, FIFO — shown but not navigable
-        }
-
+        guard let row = ColumnarListing.unixRow(line, formatters: formatters) else { return nil }
         return Entry(
-            name: name,
-            kind: kind,
-            byteSize: byteSize,
-            modificationDate: date,
-            permissions: permissions,
-            symlinkDestination: symlinkDestination
+            name: lastComponent(of: row.name),
+            kind: row.kind,
+            byteSize: row.byteSize,
+            modificationDate: row.modificationDate,
+            permissions: row.permissions,
+            symlinkDestination: row.symlinkDestination.map(lastComponent(of:))
         )
     }
 
@@ -85,11 +60,5 @@ enum SFTPListingParser {
     /// slashes (can't arise from a real listing).
     private static func lastComponent(of path: String) -> String {
         path.split(separator: "/", omittingEmptySubsequences: true).last.map(String.init) ?? path
-    }
-
-    // MARK: - Dates
-
-    private static func dateFormatters() -> [DateFormatter] {
-        ColumnarListing.formatters(for: ["MMM d HH:mm", "MMM d yyyy", "MMM d HH:mm:ss"])
     }
 }

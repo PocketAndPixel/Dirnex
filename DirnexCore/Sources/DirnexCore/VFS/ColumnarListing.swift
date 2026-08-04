@@ -78,6 +78,13 @@ enum ColumnarListing {
         }
     }
 
+    /// The formatters for the Unix `ls -l` time column, which is a recent entry's `HH:mm` or an
+    /// older one's year. All three dialects print the identical column, in English regardless of
+    /// locale, and each held its own verbatim copy of this list before it was named here.
+    static func unixDateFormatters() -> [DateFormatter] {
+        formatters(for: ["MMM d HH:mm", "MMM d yyyy", "MMM d HH:mm:ss"])
+    }
+
     /// Parse `string` with the first formatter that accepts it, or `.distantPast` when none does.
     ///
     /// A no-year date assigned the current year can land in the future near a year boundary (a
@@ -91,5 +98,68 @@ enum ColumnarListing {
             return Calendar(identifier: .gregorian).date(byAdding: .year, value: -1, to: date) ?? date
         }
         return .distantPast
+    }
+
+    // MARK: - The Unix `ls -l` row
+
+    /// One row of a Unix `ls -l`-style listing, taken as far as the shared lexing goes: the fields
+    /// are read and any ` -> target` suffix is split off, but the name is left **raw**, because what
+    /// a name means is the one thing the two dialects disagree on — `sftp` prints full paths where
+    /// FTP prints bare ones.
+    struct UnixRow: Equatable {
+        let kind: FileEntry.Kind
+        let byteSize: Int64
+        let modificationDate: Date
+        let permissions: UInt16
+        /// The name field with any ` -> target` suffix removed, otherwise verbatim.
+        let name: String
+        /// The symlink target as printed, or `nil` for anything not a symlink carrying one.
+        let symlinkDestination: String?
+    }
+
+    /// Scan one `mode links owner group size month day time-or-year name` row, or `nil` for a line
+    /// that is not one.
+    ///
+    /// `sftp`'s batch `ls -la` and FTP's Unix-dialect `LIST` print the same nine columns, so this is
+    /// the whole of what both parsers do before applying their own naming rule. The leading columns
+    /// never contain spaces, so a collapsing split reads them; the name is taken verbatim after the
+    /// 8th, which is what keeps `my report.txt` in one piece.
+    ///
+    /// The count and mode-field guards are what reject every line that is not a row: the interactive
+    /// `sftp>` prompt echo, `sftp`'s error text, and FTP's `total 8` header.
+    ///
+    /// `ArchiveTOCParser` deliberately does **not** come through here. `bsdtar -tvf` prints the same
+    /// shape, but that parser accepts any first column rather than requiring a mode field, and reads
+    /// an unrecognized mode as a file where these two read it as `.other` — a difference in what a
+    /// line means, not in how it is lexed, so folding it in would change which archives parse.
+    static func unixRow(_ line: Substring, formatters: [DateFormatter]) -> UnixRow? {
+        let columns = line.split(separator: " ", omittingEmptySubsequences: true)
+        guard columns.count >= 9, isModeField(columns[0]), let modeChar = columns[0].first,
+              var name = nameField(in: line, afterColumns: 8) else { return nil }
+
+        var symlinkDestination: String?
+        if modeChar == "l", let range = name.range(of: " -> ") {
+            symlinkDestination = String(name[range.upperBound...])
+            name = String(name[..<range.lowerBound])
+        }
+
+        let kind: FileEntry.Kind
+        switch modeChar {
+        case "d": kind = .directory
+        case "l": kind = .symlink
+        case "-": kind = .file
+        default: kind = .other // block/char device, socket, FIFO — shown but not navigable
+        }
+
+        return UnixRow(
+            kind: kind,
+            byteSize: Int64(columns[4]) ?? 0,
+            modificationDate: date(
+                from: "\(columns[5]) \(columns[6]) \(columns[7])", formatters: formatters
+            ),
+            permissions: permissions(fromMode: columns[0]),
+            name: name,
+            symlinkDestination: symlinkDestination
+        )
     }
 }

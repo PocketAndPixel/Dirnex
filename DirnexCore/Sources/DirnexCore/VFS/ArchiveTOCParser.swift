@@ -30,9 +30,9 @@ enum ArchiveTOCParser {
     }
 
     static func parse(_ text: String) -> Result {
-        // One formatter set, reused across every line — `bsdtar` emits either a
-        // "HH:mm" (recent) or "yyyy" (old) time column, in English regardless of locale.
-        let formatters = dateFormatters()
+        // One formatter set, reused across every line. `bsdtar` prints the same time column as
+        // `sftp` and FTP's Unix dialect, so the formatters are the shared ones.
+        let formatters = ColumnarListing.unixDateFormatters()
 
         // Full path -> its Entry (name = last component). Explicit lines overwrite
         // synthesized placeholders because their assignment is unconditional; synthesized
@@ -168,9 +168,5 @@ enum ArchiveTOCParser {
         var components = innerPath.split(separator: "/", omittingEmptySubsequences: true)
         components.removeLast()
         return "/" + components.joined(separator: "/")
-    }
-
-    private static func dateFormatters() -> [DateFormatter] {
-        ColumnarListing.formatters(for: ["MMM d HH:mm", "MMM d yyyy", "MMM d HH:mm:ss"])
     }
 }

@@ -47,7 +47,7 @@ enum FTPListingParser {
     /// dialect — a multiline banner, a `total 12` header, a blank line — are skipped rather than
     /// guessed at.
     static func parse(_ text: String) -> [Entry] {
-        let unix = unixDateFormatters()
+        let unix = ColumnarListing.unixDateFormatters()
         let dos = dosDateFormatters()
         var entries: [Entry] = []
         for line in text.split(whereSeparator: \.isNewline) {
@@ -64,38 +64,17 @@ enum FTPListingParser {
 
     // MARK: - Unix dialect
 
+    /// The Unix dialect *is* the shared row, name and symlink target included — unlike `sftp`, an
+    /// FTP server prints both bare, so there is nothing left to reduce.
     private static func parseUnixLine(_ line: Substring, formatters: [DateFormatter]) -> Entry? {
-        let columns = line.split(separator: " ", omittingEmptySubsequences: true)
-        guard columns.count >= 9, ColumnarListing.isModeField(columns[0]),
-              let modeChar = columns[0].first,
-              var rawName = ColumnarListing.nameField(in: line, afterColumns: 8) else { return nil }
-
-        let byteSize = Int64(columns[4]) ?? 0
-        let date = ColumnarListing.date(
-            from: "\(columns[5]) \(columns[6]) \(columns[7])", formatters: formatters
-        )
-
-        var symlinkDestination: String?
-        if modeChar == "l", let range = rawName.range(of: " -> ") {
-            symlinkDestination = String(rawName[range.upperBound...])
-            rawName = String(rawName[..<range.lowerBound])
-        }
-
-        let kind: FileEntry.Kind
-        switch modeChar {
-        case "d": kind = .directory
-        case "l": kind = .symlink
-        case "-": kind = .file
-        default: kind = .other // block/char device, socket, FIFO — shown but not navigable
-        }
-
+        guard let row = ColumnarListing.unixRow(line, formatters: formatters) else { return nil }
         return Entry(
-            name: rawName,
-            kind: kind,
-            byteSize: byteSize,
-            modificationDate: date,
-            permissions: ColumnarListing.permissions(fromMode: columns[0]),
-            symlinkDestination: symlinkDestination
+            name: row.name,
+            kind: row.kind,
+            byteSize: row.byteSize,
+            modificationDate: row.modificationDate,
+            permissions: row.permissions,
+            symlinkDestination: row.symlinkDestination
         )
     }
 
@@ -134,10 +113,9 @@ enum FTPListingParser {
 
     // MARK: - Dates
 
-    private static func unixDateFormatters() -> [DateFormatter] {
-        ColumnarListing.formatters(for: ["MMM d HH:mm", "MMM d yyyy", "MMM d HH:mm:ss"])
-    }
-
+    /// The DOS dialect's own stamps. The Unix ones come from `ColumnarListing.unixDateFormatters`,
+    /// which every dialect shares; these are FTP's alone, and the only two-digit-year formats
+    /// anywhere — which is why the year test there is `contains("y")` and not `contains("yyyy")`.
     private static func dosDateFormatters() -> [DateFormatter] {
         ColumnarListing.formatters(
             for: ["MM-dd-yy hh:mma", "MM-dd-yyyy hh:mma", "MM-dd-yy HH:mm", "MM-dd-yyyy HH:mm"]
