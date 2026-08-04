@@ -18,9 +18,11 @@ import AppKit
 /// **Only the emphasized half is filled**, for the same reason `PanelRowView` gives: AppKit's
 /// unemphasized selection is a pure grey that says "the focus moved", and flattening the two makes
 /// every pane and the sidebar read as permanently unfocused. What the unemphasized state *does* take
-/// from the palette is its content colour — a selected-but-unfocused source-list row draws its label
-/// and glyph in the accent, and that is the second place the cursor colour belongs (see
-/// `SidebarCellView.selectionForeground`).
+/// from the palette is its **glyph** — a selected-but-unfocused source-list row draws its icon in the
+/// accent, and that is the second place the cursor colour belongs (see
+/// `SidebarCellView.glyphForeground`). The **label** deliberately stays out of it: the colour it
+/// takes on the filled pill is a derived, legible foreground, never the cursor colour itself, so a
+/// custom palette never recolours the sidebar's text.
 final class SidebarRowView: NSTableRowView {
     /// The cursor colour, or `nil` to let AppKit draw and tint its own selection.
     var cursorColor: NSColor? {
@@ -66,16 +68,27 @@ final class SidebarRowView: NSTableRowView {
         ).fill()
     }
 
-    /// Hand each cell the colour its label and glyph should draw in: the derived foreground on top
-    /// of the filled pill, the cursor colour itself on the unfocused row AppKit would have tinted
-    /// with the accent, and `nil` — AppKit's own — everywhere else.
+    /// Hand each cell the colours its glyph and its label should draw in.
+    ///
+    /// The **glyph** is what carries the palette: the derived foreground on top of the filled pill,
+    /// the cursor colour itself on the unfocused row AppKit would have tinted with the accent, and
+    /// `nil` — AppKit's own — everywhere else. The **label** takes only the derived foreground, which
+    /// is not the cursor colour but the colour that stays legible *on* it; off the filled pill it is
+    /// left to AppKit, so the sidebar's text reads the same whatever palette is set.
     private func applySelectionForeground() {
-        var foreground: NSColor?
+        var glyph: NSColor?
+        var text: NSColor?
         if let cursorColor, isSelected {
-            foreground = isEmphasized ? PanelPalette.foreground(on: cursorColor) : cursorColor
+            if isEmphasized {
+                glyph = PanelPalette.foreground(on: cursorColor)
+                text = glyph
+            } else {
+                glyph = cursorColor
+            }
         }
         for case let cell as SidebarCellView in subviews {
-            cell.selectionForeground = foreground
+            cell.glyphForeground = glyph
+            cell.labelForeground = text
         }
     }
 }

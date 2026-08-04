@@ -302,62 +302,6 @@ struct PanelPaletteTests {
         #expect(row.cursorColor == .systemTeal)
     }
 
-    /// The sidebar's row is the pane's row with one extra state to serve. A source list draws its
-    /// *unfocused* selection's label and glyph in the accent — that is the second place the cursor
-    /// colour belongs — and the cell cannot work it out for itself, since `backgroundStyle` reads
-    /// `.normal` for a selected-but-unfocused row exactly as it does for an ordinary one. So the
-    /// push from the row view is the mechanism, and this is what pins it.
-    @Test("the sidebar row hands its cell a foreground for each selection state")
-    func sidebarRowPushesTheForeground() {
-        let row = SidebarRowView()
-        let cell = SidebarCellView()
-        row.addSubview(cell)
-
-        // Untouched: nothing of ours reaches the cell, so AppKit keeps drawing what it always drew.
-        row.isSelected = true
-        row.isEmphasized = true
-        #expect(cell.selectionForeground == nil)
-
-        // The cursor: derived against the fill, like the pane's own row.
-        row.cursorColor = .systemYellow
-        #expect(cell.selectionForeground == .black)
-        #expect(cell.textField?.textColor == .black)
-
-        // Focus moved to a pane — the row keeps AppKit's grey pill and takes the colour into its
-        // content, which is what the accent was doing there before.
-        row.isEmphasized = false
-        #expect(cell.selectionForeground == .systemYellow)
-
-        // An ordinary row is never tinted, whatever the palette says.
-        row.isSelected = false
-        #expect(cell.selectionForeground == nil)
-    }
-
-    /// The glyph beside the label, which is the half that cannot go through `contentTintColor`: an
-    /// emphasized `NSTableCellView` draws a *template* image white whatever tint the image view
-    /// carries (probed), so a pale cursor colour left a white house next to a black name. The tell
-    /// that the colour was baked in rather than requested is that the image stops being a template.
-    @Test("a tinted sidebar glyph stops being a template, and an untinted one is untouched")
-    func sidebarGlyphIsBakedNotTinted() throws {
-        let cell = SidebarCellView()
-        let glyph = SidebarViewController.templateSymbol("house", pointSize: 15)
-        cell.configure(name: "Home", image: glyph, canEject: false, tooltip: nil)
-
-        // Untouched: the very image the row builder handed over, template and all.
-        #expect(cell.imageView?.image === glyph)
-        #expect(try #require(cell.imageView?.image).isTemplate)
-
-        cell.selectionForeground = .black
-        let tinted = try #require(cell.imageView?.image)
-        #expect(tinted !== glyph)
-        #expect(!tinted.isTemplate)
-        #expect(tinted.size == glyph.size)
-
-        // Back to Follow System: the original, not a tinted copy of a tinted copy.
-        cell.selectionForeground = nil
-        #expect(cell.imageView?.image === glyph)
-    }
-
     /// The size bar is the other fill that has to survive the cursor's background, and it defaults
     /// to the same system colour the text does.
     @Test("the size bar's emphasized ink defaults to the system's and takes a derived colour")

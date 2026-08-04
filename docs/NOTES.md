@@ -420,9 +420,17 @@ at build time.
     The hand-drawn path matched more closely than the one that reuses AppKit's own pixels.
   - **A cell cannot tell a selected-but-unfocused row from an ordinary one**: `backgroundStyle` is
     `.normal` for both (probed). That matters because a source list tints the *unfocused* selected
-    row's label and glyph with the accent — a second place the cursor colour belongs — so the row
-    view has to **push** the colour down to its cells from `isSelected`/`isEmphasized`, plus
-    `didAddSubview`, since the controller hands the row its colour before the cell is attached.
+    row's glyph with the accent — a second place the cursor colour belongs — so the row view has to
+    **push** the colour down to its cells from `isSelected`/`isEmphasized`, plus `didAddSubview`,
+    since the controller hands the row its colour before the cell is attached.
+    - **The glyph and the label are two pushed values, not one.** They looked like one — both need a
+      colour on the filled pill — but the colours mean opposite things: the glyph wears the *cursor
+      colour itself*, while the label only ever takes the **derived** foreground that stays legible
+      *on* that fill. Collapsing them into a single push therefore carried the raw colour into the
+      unfocused row's text too, so a custom palette recoloured the sidebar's names — a change nothing
+      asked for, in the one place the user reads rather than scans. Push the glyph's colour and the
+      label's separately: the label is then untouched in every state but the pill, and the sidebar's
+      text reads the same whatever palette is set.
   - **`NSImageView.contentTintColor` is ignored for a template image in an *emphasized*
     `NSTableCellView`** — the cell draws it white regardless, pixel-identical to an untinted control,
     in either assignment order (probed both). It works while the cell is `.normal`, which is the

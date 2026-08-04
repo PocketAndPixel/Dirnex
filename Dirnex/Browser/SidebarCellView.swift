@@ -13,17 +13,29 @@ final class SidebarCellView: NSTableCellView {
     /// Invoked when the eject button is clicked; `nil` hides the button.
     var onEject: (() -> Void)?
 
-    /// What the label and glyph draw in while this row is the sidebar's cursor, or `nil` — the
-    /// untouched case — to leave both to AppKit. Pushed by `SidebarRowView`, which is the only place
-    /// that knows the row's selection *and* emphasis; a cell sees only `backgroundStyle`, which is
-    /// `.normal` for a selected-but-unfocused row and so cannot tell it from an ordinary one.
+    /// What the glyph — the leading icon and the eject button — draws in while this row is the
+    /// sidebar's cursor, or `nil` — the untouched case — to leave it to AppKit. Pushed by
+    /// `SidebarRowView`, which is the only place that knows the row's selection *and* emphasis; a
+    /// cell sees only `backgroundStyle`, which is `.normal` for a selected-but-unfocused row and so
+    /// cannot tell it from an ordinary one.
     ///
     /// The tag rows are unaffected by construction: their dot is not a template image, so no tint
     /// reaches it (`SidebarViewController+Tags`), which is exactly the intent — a tag's colour is
     /// the one thing it has to say.
-    var selectionForeground: NSColor? {
+    var glyphForeground: NSColor? {
         didSet {
-            guard selectionForeground != oldValue else { return }
+            guard glyphForeground != oldValue else { return }
+            applySelectionForeground()
+        }
+    }
+
+    /// What the name draws in, and a separate question from the glyph's: it is set only for the
+    /// filled pill, where the cursor colour is the *background* and the label needs a legible
+    /// foreground against it. Everywhere else it is `nil` and AppKit's own colour stands, so a custom
+    /// palette tints the sidebar's icons and never its text (see `SidebarRowView`).
+    var labelForeground: NSColor? {
+        didSet {
+            guard labelForeground != oldValue else { return }
             applySelectionForeground()
         }
     }
@@ -144,10 +156,10 @@ final class SidebarCellView: NSTableCellView {
         applySelectionForeground()
     }
 
-    /// Paint the label, the glyph and the eject button in the cursor colour's foreground — or hand
-    /// all three back to AppKit, which tints a template symbol and colours a label from the cell's
-    /// own `backgroundStyle`. `nil` restores exactly what the cell was built with, so an untouched
-    /// palette leaves the sidebar drawing as it always did.
+    /// Paint the glyph and the eject button in the pushed glyph colour and the name in the pushed
+    /// label colour — or hand each back to AppKit, which tints a template symbol and colours a label
+    /// from the cell's own `backgroundStyle`. `nil` restores exactly what the cell was built with, so
+    /// an untouched palette leaves the sidebar drawing as it always did.
     ///
     /// **The glyph cannot go through `contentTintColor`, which is the obvious spelling and is
     /// silently ignored.** Probed on a real cell: an emphasized `NSTableCellView` draws its
@@ -157,11 +169,11 @@ final class SidebarCellView: NSTableCellView {
     /// that already looked right. Baking the colour into the image is what the emphasized row
     /// honours, because the result is no longer a template for AppKit to re-tint.
     private func applySelectionForeground() {
-        label.textColor = selectionForeground
-        ejectButton.contentTintColor = selectionForeground ?? .secondaryLabelColor
+        label.textColor = labelForeground
+        ejectButton.contentTintColor = glyphForeground ?? .secondaryLabelColor
         guard let baseImage else { return }
-        if let selectionForeground, baseImage.isTemplate {
-            icon.image = Self.tinted(baseImage, selectionForeground)
+        if let glyphForeground, baseImage.isTemplate {
+            icon.image = Self.tinted(baseImage, glyphForeground)
         } else {
             icon.image = baseImage
         }
