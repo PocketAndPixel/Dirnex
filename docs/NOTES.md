@@ -401,6 +401,41 @@ at build time.
   - A `swift`-script probe cannot make its window key, so `isEmphasized` reads `false` throughout
     and the two states cannot be told apart that way. Probe the *derivation* (`isEmphasized` set by
     hand on a detached row view) and leave the focus behaviour to the app that already ships it.
+- **A source list's selection is the same `drawSelection(in:)` — but the shape is a pill, and the
+  probe that measures it needs its own override to exist at all.** Owning the sidebar's cursor colour
+  (the same one the panes draw) meant reproducing AppKit's geometry rather than filling a rectangle:
+  measured by letting `super` draw into a bitmap and counting the ink, it is inset **10 pt** on each
+  side, the **full row height**, with a corner radius of **8 pt** — constant across widths
+  (180/257/400), row heights (24/32) and both appearances. A circular 8 pt arc tracks AppKit's own
+  per-scanline edge coverage to within half a pixel, closer than 6, 7, 8.5 or 9.
+  - **The probe's trap: a *stock* row (and a bare subclass) draws nothing into `cacheDisplay`.** Two
+    rounds read "no fill" and looked like the selection was drawn by the table or a layer somewhere
+    else; the same table with a subclass that merely *overrides* `drawSelection` and calls `super`
+    renders it perfectly. So the measurement needs the override even when the thing being measured is
+    AppKit's own drawing — and put no cell view in the row, or the label's glyphs are what the alpha
+    scan finds.
+  - **Tinting `super`'s output instead of drawing it was measured and is worse.** Rendering `super`
+    into a `CGLayer` and painting the colour through its alpha (`.sourceIn`) looks like the
+    shape-proof answer and came out **half a point wide on each side** — a fatter pill than AppKit's.
+    The hand-drawn path matched more closely than the one that reuses AppKit's own pixels.
+  - **A cell cannot tell a selected-but-unfocused row from an ordinary one**: `backgroundStyle` is
+    `.normal` for both (probed). That matters because a source list tints the *unfocused* selected
+    row's label and glyph with the accent — a second place the cursor colour belongs — so the row
+    view has to **push** the colour down to its cells from `isSelected`/`isEmphasized`, plus
+    `didAddSubview`, since the controller hands the row its colour before the cell is attached.
+  - **`NSImageView.contentTintColor` is ignored for a template image in an *emphasized*
+    `NSTableCellView`** — the cell draws it white regardless, pixel-identical to an untinted control,
+    in either assignment order (probed both). It works while the cell is `.normal`, which is the
+    half that already looked right, so the bug reads as "the icon didn't follow the label" on
+    exactly one of two states: a pale cursor colour gave a **black label beside a white glyph**.
+    Bake the colour into the image instead — draw it and `fill(using: .sourceAtop)`, which replaces
+    the colour and keeps the coverage, then clear `isTemplate` so there is nothing left for AppKit to
+    re-tint. `NSImage.SymbolConfiguration(paletteColors:)` measured identical and is worse: it only
+    answers for SF Symbols, while `.sourceAtop` tints any template image. Keep the *original* around
+    and re-derive from it, or successive tints compound onto the last copy.
+  - The window-key state is a third one and is not reachable from either side: states 2 (window key,
+    pane focused) and 3 (window not key) both read `isEmphasized == false` with no callback between
+    them, so the tint stays on in a background window where macOS would drop it.
 - **`installSortedModel` swaps the model; `reloadEverything` is what puts it on screen.** A refresh
   path that installs and returns leaves the pane drawing the rows it already had — no error, no log
   line, just a model and a screen that disagree. Found live when an Empty Trash left the pane listing

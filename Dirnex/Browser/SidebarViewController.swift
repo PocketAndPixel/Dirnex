@@ -145,6 +145,7 @@ final class SidebarViewController: NSViewController {
         observeTagChanges()
         observeCloudStorageChanges()
         observeCloudSectionOrderChanges()
+        observePaletteChanges()
         rebuild()
     }
 
