@@ -12,6 +12,17 @@ extension SidebarViewController {
         /// (PLAN.md §M8). Like `.recents` it carries nothing — the Trash is not one directory, so
         /// there is no path to hold.
         case trash
+        /// Blank vertical space, carrying no content and no behaviour — the one row that exists for
+        /// layout alone. It sits above the headerless Trash row so that row reads as its own thing
+        /// rather than as the last entry of whatever section happens to precede it (with Tags shown,
+        /// Trash otherwise looks like an eighth tag colour).
+        ///
+        /// A row rather than extra height on Trash itself, because `NSTableRowView` draws the
+        /// selection across its **whole** height — measured: a 40 pt row gets a 40 pt capsule — so a
+        /// padded Trash row would carry a visibly fatter highlight than every other row. It is
+        /// unselectable, undraggable, has no menu and no path, and `SidebarTableView` treats a click
+        /// on it as a click on empty space.
+        case spacer
         /// A section header. Carries the section's *identity*, not its title — the drag code used
         /// to find Favorites by comparing header text, which made a user-visible string
         /// load-bearing, and the fold state keys off the same case (PLAN.md §M8).
@@ -58,7 +69,8 @@ extension SidebarViewController {
         /// at a directory.
         var path: VFSPath? {
             switch self {
-            case .header, .recents, .trash, .savedSearch, .server, .tag, .allTags: return nil
+            case .header, .recents, .trash, .spacer, .savedSearch, .server, .tag, .allTags:
+                return nil
             case let .favorite(entry): return entry.path
             case let .iCloud(path): return path
             case let .cloudMount(mount): return mount.entryDirectory

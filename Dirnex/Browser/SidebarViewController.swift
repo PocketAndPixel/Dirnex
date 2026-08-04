@@ -196,6 +196,12 @@ final class SidebarViewController: NSViewController {
         // The Trash is the very last row, where the Dock puts it — one fixed headerless row that
         // opens every volume's trash as one merged listing. Always present: every Mac has one, and
         // whether it can be read is the pane's answer to give, not a reason to hide the row.
+        //
+        // Having no header of its own, it would otherwise sit flush against the section above and
+        // read as a member of it — with Tags shown, as an eighth tag colour. The spacer restores the
+        // separation a header used to provide, at exactly the gap AppKit itself puts above a section
+        // (see `heightOfRow`).
+        rows.append(.spacer)
         rows.append(.trash)
         self.rows = rows
         tableView.reloadData()
@@ -349,7 +355,31 @@ extension SidebarViewController: NSTableViewDelegate {
         // Headers are keyboard-selectable so arrow navigation can land on one and ←/→/Return fold it
         // (PLAN.md §M8). The mouse never selects a header: `SidebarTableView.mouseDown` intercepts a
         // header click and returns before `super`, so a click still folds rather than selects.
-        true
+        //
+        // The spacer is the one row that isn't: it is blank padding, so ↑/↓ steps straight over it
+        // (AppKit skips unselectable rows) and a click on it is treated as a click on empty space.
+        if case .spacer = rows[row] { return false }
+        return true
+    }
+
+    /// Row heights.
+    ///
+    /// Implementing this at all means owning **every** row's height — AppKit's automatic
+    /// `rowSizeStyle = .default` sizing stops applying the moment the delegate answers. So the two
+    /// real kinds return the values AppKit itself was using, probed on a `.sourceList` table
+    /// configured exactly like this one: 19 pt for a group row, and `rowHeight` — which AppKit sets
+    /// to 32 for `.default` — for an item. Verified byte-identical against the stock layout, row
+    /// origins included, so nothing but the spacer moved.
+    ///
+    /// The spacer's 13 pt is not a taste value either: it is the gap AppKit inserts above every
+    /// section header (measured — a header following an item row starts 13 pt below it), so the
+    /// space above Trash matches the space above every other group in the list.
+    func tableView(_ tableView: NSTableView, heightOfRow row: Int) -> CGFloat {
+        switch rows[row] {
+        case .header: 19
+        case .spacer: 13
+        default: tableView.rowHeight
+        }
     }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
@@ -366,6 +396,9 @@ extension SidebarViewController: NSTableViewDelegate {
             return recentsCell()
         case .trash:
             return trashCell()
+        case .spacer:
+            // Nothing to draw: the row is its own height and no more.
+            return nil
         case let .favorite(entry):
             return favoriteCell(for: entry)
         case let .iCloud(path):
