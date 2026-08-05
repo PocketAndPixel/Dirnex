@@ -27,14 +27,18 @@ final class QuickViewDocumentWebView: WKWebView {}
 /// blocked: the responses fail CORS, the requests still go out, and a tracking pixel needs only the
 /// request.
 ///
-/// So: **JavaScript on, network off.** `blockRemoteRules` blocks every load that is not `file://`,
-/// which measured as zero requests reaching the server while scripts still ran, the page's own
-/// stylesheet still applied and `data:` images — what a self-contained report inlines — still
-/// loaded. Local scripts with no network cannot exfiltrate, and they are what makes a report render
-/// instead of showing the raw LaTeX Quick Look shows today. The store is non-persistent so nothing
-/// a preview touches outlives it, the file load is scoped to the file's own directory, and
-/// `decidePolicyFor` refuses every navigation but the first, so a link cannot take the preview
-/// somewhere the user never asked to go.
+/// So: **network off, unconditionally; JavaScript off by default and switchable.**
+/// `blockRemoteRules` blocks every load that is not `file://`, which measured as zero requests
+/// reaching the server while scripts still ran, the page's own stylesheet still applied and `data:`
+/// images — what a self-contained report inlines — still loaded. That closed network is what makes
+/// the script switch *offerable*: a local script with no network cannot exfiltrate, so turning it on
+/// costs the user nothing beyond what a page can draw, and it is what makes a report render instead
+/// of showing the raw LaTeX Quick Look shows today. It ships off all the same, because a preview
+/// renders as the cursor moves and running a file's code takes more than passing over it
+/// (`AppPreferences.quickViewJavaScriptEnabled`). The store is non-persistent so nothing a preview
+/// touches outlives it, the file load is scoped to the file's own directory, and `decidePolicyFor`
+/// refuses every navigation but the first, so a link cannot take the preview somewhere the user
+/// never asked to go.
 ///
 /// The rule list is a **precondition, not a decoration**: compiling it is asynchronous, so this view
 /// cannot be built until it exists (`withContentRules`). A build that starts before the rules land

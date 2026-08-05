@@ -169,16 +169,17 @@ final class AppPreferences: ObservableObject {
 
     /// Panels ▸ whether a rendered HTML preview may run the page's own JavaScript (PLAN.md §M16).
     ///
-    /// **On** by default, and the reason is what was measured rather than what sounds safer: the
-    /// risk a previewed page carries is the *network*, and that is closed unconditionally by a
-    /// content rule list nothing here can turn off (`QuickViewWebView`) — a script with no network
-    /// cannot report what it saw. What scripts buy is a self-contained report rendering as itself
-    /// instead of showing raw LaTeX, which is the common case for an HTML file worth previewing.
+    /// **Off** by default: a preview renders on every cursor step, so the file's code would run
+    /// because the cursor passed over it, not because anybody opened it — and "run no code from a
+    /// file I have not opened" is the answer that needs no argument. What the switch buys when it
+    /// is on is a self-contained report rendering as itself instead of showing raw LaTeX, which is
+    /// worth having and is one toggle away.
     ///
-    /// It is offered anyway because "run no code from a file I have not opened" is a coherent
-    /// position, and a preview that renders on every cursor step is exactly where somebody may want
-    /// it. Changing it posts `quickViewJavaScriptDidChange` so an open preview re-renders under the
-    /// new answer.
+    /// The measured half is what makes turning it on defensible rather than reckless: the risk a
+    /// previewed page carries is the *network*, and that is closed unconditionally by a content
+    /// rule list nothing here can turn off (`QuickViewWebView`) — a script with no network cannot
+    /// report what it saw. Changing it posts `quickViewJavaScriptDidChange` so an open preview
+    /// re-renders under the new answer, and the full-size header says which answer is in force.
     @Published var quickViewJavaScriptEnabled: Bool {
         didSet {
             guard quickViewJavaScriptEnabled != oldValue else { return }
@@ -374,10 +375,9 @@ final class AppPreferences: ObservableObject {
         sizeVizDisplayMode = SizeVizDisplayMode(
             rawValue: defaults.string(forKey: Keys.sizeVizDisplayMode) ?? ""
         ) ?? .bar
-        // Defaults on, so `object(forKey:)` rather than `bool(forKey:)` — the latter answers
-        // `false` for a never-written key and would ship the feature turned off.
-        quickViewJavaScriptEnabled = defaults
-            .object(forKey: Keys.quickViewJavaScriptEnabled) as? Bool ?? true
+        // Defaults off (see the property), which is what `bool(forKey:)` already answers for a
+        // never-written key.
+        quickViewJavaScriptEnabled = defaults.bool(forKey: Keys.quickViewJavaScriptEnabled)
         // Empty (never written) = the source, the shipped default, and so is anything an
         // older/newer build can't parse.
         quickViewRenderStyle = QuickViewRenderStyle(

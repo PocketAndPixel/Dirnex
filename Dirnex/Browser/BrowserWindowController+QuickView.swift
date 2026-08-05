@@ -148,6 +148,23 @@ extension BrowserWindowController {
         ] {
             surface?.webSurface?.reloadPage()
         }
+        refreshFullSizeCaption()
+    }
+
+    /// Re-state the visible full-size header, because the JavaScript mark lives in its caption and
+    /// the reload above says nothing about it. Only the caption is touched: re-delivering would ask
+    /// the surface to show a file it is already showing, which it rightly skips, and the page has
+    /// just been reloaded by the loop above anyway.
+    private func refreshFullSizeCaption() {
+        guard isQuickViewEnabled, quickViewMode.isFullSize else { return }
+        let preview = quickViewMode == .fullScreen ? fullScreenPreview : fullWindowPreview
+        guard let preview, !preview.isHidden else { return }
+        let active = focusedPanel
+        preview.setCaption(quickViewCaption(
+            for: active.quickViewSourceURL,
+            style: AppPreferences.shared.quickViewRenderStyle,
+            from: active
+        ))
     }
 
     func panelCursorDidChange(_ panel: PanelViewController) {
@@ -225,9 +242,26 @@ extension BrowserWindowController {
     ) {
         preview.isHidden = false
         preview.show(url, style: style)
+        preview.setCaption(quickViewCaption(for: url, style: style, from: active))
+    }
+
+    /// `active`'s own caption, plus the two things only the window knows: the style the file is
+    /// being shown in, and whether that rendering ran the page's scripts. Both are stated only for
+    /// a file that genuinely has two styles, so the hint appears exactly where `1` / `2` would do
+    /// something and says nothing everywhere else.
+    private func quickViewCaption(
+        for url: URL?,
+        style: QuickViewRenderStyle,
+        from active: PanelViewController
+    ) -> QuickViewCaption? {
         var caption = active.quickViewCaption
-        caption?.style = url.map(QuickViewPreviewView.isRenderableHTML) == true ? style : nil
-        preview.setCaption(caption)
+        guard url.map(QuickViewPreviewView.isRenderableHTML) == true else {
+            caption?.style = nil
+            return caption
+        }
+        caption?.style = style
+        caption?.javaScriptDisabled = !AppPreferences.shared.quickViewJavaScriptEnabled
+        return caption
     }
 
     /// Hide a full-size surface and release what it had loaded. A no-op for one never built.

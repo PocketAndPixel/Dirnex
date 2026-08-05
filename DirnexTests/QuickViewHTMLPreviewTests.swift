@@ -86,16 +86,16 @@ struct QuickViewHTMLPreviewTests {
 
     // MARK: - JavaScript
 
-    /// The default, and the reasoning behind it: the risk a previewed page carries is the network,
-    /// and that is closed unconditionally by the content rule list — a script with no network cannot
-    /// report what it saw. So scripts are on, and what they buy is a self-contained report rendering
-    /// as itself.
-    @Test("scripts are allowed by default")
-    func javaScriptDefaultsOn() throws {
+    /// The default, and the reasoning behind it: a preview renders on every cursor step, so scripts
+    /// left on would run because the cursor passed over a file rather than because anybody opened
+    /// it. Off is therefore the shipped answer, and the switch is what buys a self-contained report
+    /// rendering as itself.
+    @Test("scripts are refused by default")
+    func javaScriptDefaultsOff() throws {
         let suite = "dirnex.tests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
-        #expect(AppPreferences(defaults: defaults).quickViewJavaScriptEnabled)
+        #expect(!AppPreferences(defaults: defaults).quickViewJavaScriptEnabled)
     }
 
     /// The guard that would have caught this milestone's worst bug, and the reason it is written by

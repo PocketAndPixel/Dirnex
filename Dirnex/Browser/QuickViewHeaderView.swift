@@ -15,6 +15,11 @@ struct QuickViewCaption: Equatable {
     /// rendering — which is most files. Set by the window controller, since the style is app-wide
     /// and the pane that builds the caption does not know it (PLAN.md §M16).
     var style: QuickViewRenderStyle?
+    /// Whether the page on screen was rendered with scripts refused — the shipped default, and the
+    /// one thing about a rendered page that is invisible in the page itself: a report that needs
+    /// its scripts simply shows less, with nothing to say why. Only meaningful alongside `style`,
+    /// and only in `.rendered`, where scripts would otherwise have run.
+    var javaScriptDisabled = false
 
     /// "3 of 42" — the position half of the header, rendered beside the name.
     var positionText: String {
@@ -46,7 +51,10 @@ final class QuickViewHeaderView: NSVisualEffectView {
             guard caption != oldValue else { return }
             nameLabel.stringValue = caption?.name ?? ""
             positionLabel.stringValue = caption?.positionText ?? ""
-            styleLabel.attributedStringValue = Self.styleText(for: caption?.style)
+            styleLabel.attributedStringValue = Self.styleText(
+                for: caption?.style,
+                javaScriptDisabled: caption?.javaScriptDisabled == true
+            )
         }
     }
 
@@ -104,7 +112,16 @@ final class QuickViewHeaderView: NSVisualEffectView {
     /// "1 Source · 2 Page", with the current style in full strength and the other dimmed — one
     /// glance says both what you are looking at and which key changes it. Empty for a file with a
     /// single rendering, so the strip says nothing where the keys would do nothing.
-    private static func styleText(for style: QuickViewRenderStyle?) -> NSAttributedString {
+    ///
+    /// A page rendered with scripts refused carries "(no JavaScript)" after the two styles. Written
+    /// as a lowercase parenthetical rather than as a third `· item` on purpose: the two styles are
+    /// a list of things a key selects, and a note that reads like a third one invites the user to
+    /// look for the digit that picks it. It appears only in `.rendered` — in source mode no script
+    /// would have run either way, so the mark would be true and meaningless.
+    private static func styleText(
+        for style: QuickViewRenderStyle?,
+        javaScriptDisabled: Bool
+    ) -> NSAttributedString {
         guard let style else { return NSAttributedString() }
         let text = NSMutableAttributedString()
         for candidate in QuickViewRenderStyle.allCases {
@@ -120,6 +137,18 @@ final class QuickViewHeaderView: NSVisualEffectView {
                 attributes: [.foregroundColor: colour]
             ))
         }
+        if style == .rendered, javaScriptDisabled {
+            text.append(NSAttributedString(
+                string: "  \(Self.noJavaScriptMark)",
+                attributes: [.foregroundColor: NSColor.tertiaryLabelColor]
+            ))
+        }
         return text
     }
+
+    /// The mark itself, keyed by its English text like every other app literal.
+    static let noJavaScriptMark = String(
+        localized: "(no JavaScript)",
+        comment: "Quick View header mark: the rendered page was drawn with scripts refused."
+    )
 }

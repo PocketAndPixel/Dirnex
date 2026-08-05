@@ -90,8 +90,9 @@ struct PanelsSettingsView: View {
                     A Quick View set to show a page (2) renders it in place, and a self-contained \
                     report usually needs its own scripts to draw charts or formulas. Previews never \
                     reach the network whatever this says — every request to anything but the file \
-                    itself is blocked — so a script can only change what you see. Turn it off to \
-                    render no code from a file you have not opened.
+                    itself is blocked — so a script can only change what you see. It is off by \
+                    default, because a preview renders as the cursor moves: turn it on when a page \
+                    needs its scripts.
                     """
                 )
                 .font(.caption)

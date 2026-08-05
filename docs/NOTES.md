@@ -210,9 +210,15 @@ at build time.
     own bytes and its local siblings. Re-measured on the same server: **zero** requests, while
     JavaScript still ran, the local stylesheet still applied, and `data:` images — what a
     self-contained report inlines — still loaded, since neither rule matches them. `blob:` is
-    collateral and is blocked. So "JavaScript on, network off" is available and is the right default:
-    local scripts with no network cannot exfiltrate, and they are what makes a MathJax report render
-    instead of showing raw LaTeX the way Quick Look does.
+    collateral and is blocked. So "JavaScript on, network off" is genuinely available: local scripts
+    with no network cannot exfiltrate, and they are what makes a MathJax report render instead of
+    showing raw LaTeX the way Quick Look does.
+    - **But that measurement says the switch is safe to offer, not that it should be on.** Dirnex
+      shipped it on for one day and flipped it: a preview renders on **cursor movement**, so scripts
+      left on run a file's code because the cursor passed over it rather than because anyone opened
+      it. Worth separating the two questions whenever a measurement clears a feature — "is this
+      harmful" and "should this happen unasked" have different answers, and only the first is what
+      an access log can settle.
   - **The rules compile asynchronously, which makes them a precondition rather than a setting.**
     `QuickViewWebView` has no public initializer — `withContentRules` builds one only once the list
     exists, and hands back `nil` if it cannot be compiled, where the caller falls back to showing the

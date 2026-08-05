@@ -7640,3 +7640,169 @@ Verified live against the real binary on a restored session in tree mode. With t
 root-level file into `prod` leaving the original in place, and ⌥⌘V moved one in and out of the root; a
 paste of `xlms` into its own `prod` did nothing, as intended; a root-level row and the `..` row both
 still named the pane's own directory. 1646 core + 215 app tests green, both linters clean.
+
+### M16 — Quick View: source or page (S–M)
+
+Goal: an HTML file previews **as its source by default**, and as a real rendered page on demand,
+switched with `1` / `2` the way Lister's view modes are. Opened and closed 2026-08-06.
+
+The complaint that opened it was "the rendered page doesn't stretch to the available area", and
+reading the code found the larger half: HTML routes to `QLPreviewView`, which renders it as a
+fixed-width document *card* — and the surface deliberately swallows the mouse
+(`QuickViewPreviewView.hitTest`, NOTES.md), so **a page longer than the surface cannot be scrolled
+at all**. Neither is fixable from our side of an out-of-process view. So the rendered mode is a
+fourth in-process backend beside `PDFView`, `NSImageView` and `QuickViewTextView`, for the same
+reason each of those exists: something Quick Look cannot give the user here.
+
+App-only, with one core touch (two `CommandCatalog` entries, which are data). Nothing new reads
+bytes — `TextPreview` already does that, and `TextPreview`'s own doc comment already states the
+division this milestone leans on: *routing a file is a UTType question, and therefore a UI one*. The
+render-style enum is therefore an app type, the twin of `RowDensity` and `SizeVizDisplayMode`.
+
+Probed before any Swift (2026-08-06):
+
+- **`.xhtml` is `public.xhtml`, which does not conform to `public.html`** — so `isText`'s existing
+  `!type.conforms(to: .html)` exclusion never caught it and XHTML already previews as source today.
+  The dual-style set is therefore named explicitly (`.html` and `.xhtml`), not derived from one
+  conformance. `.mhtml` and `.webarchive` conform to neither text nor html and stay with Quick Look.
+- **A local page in a plain `WKWebView` reaches the network, and the page's own error handlers say
+  it didn't.** Measured against a real HTTP server on 127.0.0.1: a preview of one saved page issued
+  three GETs (a stylesheet, an image, a `fetch`) while `window.probe` reported `img: 'error'` and
+  `fetch: 'blocked'` — the responses fail CORS, the *requests* go out. A tracking pixel needs only
+  the request, so "the page reported an error" is not evidence of anything.
+- **A two-rule `WKContentRuleList` (block `.*`, then `ignore-previous-rules` for `^file://`) stops
+  all of it**: zero requests reached the server on the A/B rerun, while JavaScript still ran, the
+  page's local stylesheet still applied, and `data:` images — what a self-contained report inlines —
+  still loaded. `blob:` URLs are collateral and are blocked; nothing a preview needs.
+
+Hence the policy: **network off unconditionally, JavaScript switchable**. A local script with no
+network cannot exfiltrate, which is what makes running one *offerable* — and what it buys is a
+self-contained report rendering instead of showing raw LaTeX the way Quick Look does now. The switch
+opened on and closed off; Slice 4 argues the flip. A non-persistent data store, `loadFileURL(_:allowingReadAccessTo:)` scoped to the file's own
+directory, and a navigation delegate that refuses everything but the initial load complete it.
+
+#### Slice 1 — The rendered backend (S–M) — landed 2026-08-06
+
+- [x] `QuickViewWebView` + `QuickViewPreviewView+HTML` — a `WKWebView` pinned into `content`
+      alongside the other three backends, with the rule list, the ephemeral store and the scoped
+      file load. Added to `hitTest`'s interactive list so it scrolls and the mouse works.
+- [x] HTML routes here instead of to `QLPreviewView`. Ordered first on purpose: it is an
+      improvement on its own (the page fills the surface and scrolls) and never a regression, which
+      the reverse order would be — text-only would take rendered HTML away before anything gave it
+      back.
+
+Exit: a long local page fills the surface and scrolls at all three sizes; a page referencing a
+remote asset makes no request (verified against a local server, not against the page's own report).
+**Met** — a throwaway harness compiled against the *shipping* `QuickViewWebView.swift` reported the
+web view filling its container exactly (900×500 in a 900×500 surface, against Quick Look's card), a
+13 676 pt document scrolling inside a 500 pt viewport, JavaScript running, the local stylesheet
+applied, a link click declined (still on `page.html`), `clearPage` emptying the document — and **zero
+requests** in the server's log for the run.
+
+The image backend moved to `QuickViewPreviewView+Image.swift` on the way: the fourth backend pushed
+the class past `type_body_length`, and each in-process backend stating its own reason for existing
+in its own file is where they were all heading anyway.
+
+#### Slice 2 — The two styles, and the keys (S) — landed 2026-08-06
+
+- [x] `QuickViewRenderStyle` (`.source` / `.rendered`), persisted app-wide in `AppPreferences`,
+      defaulting to `.source`. A reading preference like `rowDensity`, not a per-tab question.
+- [x] `isText` takes HTML when the style is `.source`; the web backend takes it when `.rendered`.
+      RTF keeps its Quick Look rendering — it has no source anyone wants to read.
+- [x] `1` / `2` in the existing Quick View key monitor, gated on the mode being on *and* the file
+      offering both styles. Not menu key equivalents: a bare digit as a key equivalent is
+      window-global and would swallow `1` everywhere.
+- [x] Two `CommandCatalog` entries so the menu and the ⌘K palette can reach it, with the 13
+      translations `LocalizationCoverageTests` requires, and the full-size header naming the two
+      styles when the file offers both.
+
+Exit: `1` and `2` flip a previewed page between source and rendering, the choice survives walking
+the list and a relaunch, and a digit still types normally everywhere else. **Met**, verified live
+against the real binary at both sizes: ⌃⇧Q opened on the source with the header reading
+`1 Source · 2 Page`, `2` rendered the page edge to edge with its CSS and its JavaScript, two scrolls
+reached filler line 51 (the gesture that did nothing at all before), `1` came back to the source, and
+the choice survived a quit and relaunch into ⌃Q.
+
+The last clause is the one that found a bug, and only live: with a preview up, ⌘L and typing
+`/tmp/12` put **`/tmp/`** in the path field — the monitor ate both digits inside a text field. Esc's
+carve-outs were written into `escapeBelongsToQuickView`, so the digit branch three lines away
+inherited none of them; `digitBelongsToQuickView` is the fix, and it is deliberately *not* the same
+predicate (a `FileTableView` is exactly where these keys must work, and is where Esc must not).
+
+#### Slice 3 — The JavaScript switch (S) — landed 2026-08-06
+
+Added on request after Slice 2. Scripts shipped **on** here, for the reason the milestone opened
+with: the risk a previewed page carries is the network, and that is closed unconditionally by the
+rule list — a script with no network cannot report what it saw. The switch existed because "run no
+code from a file I have not opened" is a coherent position, and a preview that renders on every
+cursor step is where somebody may want it. Slice 4 made that the default instead.
+
+- [x] `AppPreferences.quickViewJavaScriptEnabled`, Settings ▸ Panels, translated in all 14.
+- [x] Applied **per navigation** in the policy delegate, not on the configuration. Probed on one live
+      web view over four loads: the delegate's `preferences` re-gated scripts off and on each time,
+      while assigning `webView.configuration.defaultWebpagePreferences.allowsContentJavaScript` did
+      nothing at all **and read back as though it had worked**.
+- [x] A change reloads open previews (`reloadPage`) rather than re-delivering them — the answer is
+      given per navigation, so a page already rendered has had its.
+
+Exit: the toggle changes an open preview live, both ways, and defaults on. **Met**, verified live —
+the visible page flipped between "JavaScript RAN" and "JavaScript did NOT run" with its CSS intact
+in both, and back again.
+
+**The slice's real find, in the code Slice 1 had already shipped.** Asserting the delegate callback
+in a test failed, and `class_copyMethodList` said why: on a `@MainActor` class in Swift 6 the
+*completion-handler* spelling of an `@objc` optional requirement compiles, reports
+`surface is WKNavigationDelegate == true`, and **is never emitted as an Objective-C method** — the
+class's whole method list was its two initializers. WebKit dispatches by `respondsToSelector:`, so
+the policy callback had never run and the "a link cannot navigate the preview away" rule was absent
+from the shipping build. The `async` variant is the witness Swift 6 recognizes; a link click is now
+declined live. Slice 1's harness had "verified" the broken version because a throwaway `swiftc`
+binary compiles in the **Swift 5** language mode, where that spelling *is* the witness — the whole
+trap is written up in NOTES.md.
+
+#### Slice 4 — Scripts off by default, and a header that says so (S) — landed 2026-08-06
+
+Slice 3's own argument, taken one step further on request. Everything it measured still holds — the
+network is closed unconditionally, so a local script cannot report what it saw — but that is what
+makes the switch *safe to offer*, not what makes it the right default. The deciding asymmetry is
+the one the preview is built around: it renders on **cursor movement**, so scripts left on run a
+file's code because the cursor passed over it rather than because anybody opened it. Off is the
+answer that needs no argument; on is one toggle away, and it is what makes a self-contained report
+draw its charts.
+
+- [x] `quickViewJavaScriptEnabled` defaults to `false`, which is what `defaults.bool(forKey:)`
+      already answers for a never-written key — the `object(forKey:) as? Bool ?? true` dance the
+      opposite default needed is gone. A user who turned it on keeps it on: only a `didSet` writes
+      the key, so an explicit choice is the only thing in the domain.
+- [x] The full-size header carries **"(no JavaScript)"** after `1 Source · 2 Page`, in
+      `tertiaryLabelColor`, only in `.rendered` and only while scripts are refused. A lowercase
+      parenthetical rather than a third `· item`: the two styles are a list of things a key selects,
+      and a note that reads like a third invites the user to hunt for the digit that picks it. In
+      source mode no script would have run either way, so the mark there would be true and useless.
+- [x] `QuickViewCaption.javaScriptDisabled`, set by the window controller beside `style` — both are
+      app-wide facts a pane cannot see, so the two arrived by the same route. `quickViewCaption(for:
+      style:from:)` now owns building the pair, and the JavaScript observer re-states the visible
+      header through it after reloading the pages: the caption is not something a reload touches.
+- [x] The Settings footer's last sentence flipped with it, in all 14 languages — it used to end
+      "Turn it off to render no code from a file you have not opened", which is the wrong direction
+      to point a user once that is what the app already does.
+
+Why the mark earns its place: this is the one thing about a rendered page that is invisible **in the
+page**. A report that needed its scripts simply shows less — an empty chart box, raw LaTeX — with
+nothing on screen to say why, and the setting that explains it is two panes away in Settings. The
+header is already the strip that tells you what you are looking at.
+
+Exit: a fresh install renders a page with scripts refused and says so, and the toggle changes both
+the page and the mark live. **Met**, verified live against the real binary with the key deleted from
+the defaults domain: ⌃⇧Q on a probe page showed "JavaScript did NOT run" under
+`1 Source · 2 Page  (no JavaScript)`; ticking the toggle in Settings ▸ Panels turned the page green
+("JavaScript RAN") and the mark vanished in the same beat; unticking brought both back; and `1`
+dropped the mark with the source on screen, as designed.
+
+Left deliberately undone: Markdown and RTF as dual-style types, and `.webarchive` / `.mhtml`, which
+need `loadData` rather than a file load. Also **the pane-size preview has no header at all**, so it
+cannot carry the mark — the file list is right there beside it, which is the same reason it has no
+name readout either.
+
+Closed with **1678 core + 229 app tests green** (157 and 43 suites), `swiftformat --lint` and
+`swiftlint --strict` clean over 569 files.

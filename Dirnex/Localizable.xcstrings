@@ -7878,6 +7878,95 @@
         }
       }
     },
+    "(no JavaScript)": {
+      "comment": "Quick View header mark: the rendered page was drawn with scripts refused.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(kein JavaScript)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(no JavaScript)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(sin JavaScript)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(sans JavaScript)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(senza JavaScript)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "（JavaScript なし）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(JavaScript 없음)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(geen JavaScript)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(bez JavaScriptu)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(sem JavaScript)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(без JavaScript)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(без JavaScript)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "（无 JavaScript）"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "（無 JavaScript）"
+          }
+        }
+      }
+    },
     "(unavailable)": {
       "comment": "Shown in place of a host-key fingerprint that couldn’t be read.",
       "localizations": {
@@ -7967,91 +8056,91 @@
         }
       }
     },
-    "A Quick View set to show a page (2) renders it in place, and a self-contained report usually needs its own scripts to draw charts or formulas. Previews never reach the network whatever this says — every request to anything but the file itself is blocked — so a script can only change what you see. Turn it off to render no code from a file you have not opened.": {
+    "A Quick View set to show a page (2) renders it in place, and a self-contained report usually needs its own scripts to draw charts or formulas. Previews never reach the network whatever this says — every request to anything but the file itself is blocked — so a script can only change what you see. It is off by default, because a preview renders as the cursor moves: turn it on when a page needs its scripts.": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "A Quick View set to show a page (2) renders it in place, and a self-contained report usually needs its own scripts to draw charts or formulas. Previews never reach the network whatever this says — every request to anything but the file itself is blocked — so a script can only change what you see. Turn it off to render no code from a file you have not opened."
+            "value": "A Quick View set to show a page (2) renders it in place, and a self-contained report usually needs its own scripts to draw charts or formulas. Previews never reach the network whatever this says — every request to anything but the file itself is blocked — so a script can only change what you see. It is off by default, because a preview renders as the cursor moves: turn it on when a page needs its scripts."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Eine Übersicht im Seitenmodus (2) rendert die Seite direkt, und ein in sich geschlossener Bericht braucht meist eigene Skripte, um Diagramme oder Formeln zu zeichnen. Vorschauen erreichen unabhängig von dieser Einstellung nie das Netzwerk — jede Anfrage außer der Datei selbst wird blockiert —, ein Skript kann also nur ändern, was Sie sehen. Schalten Sie es aus, um keinen Code aus einer nicht geöffneten Datei auszuführen."
+            "value": "Eine Übersicht im Seitenmodus (2) rendert die Seite direkt, und ein in sich geschlossener Bericht braucht meist eigene Skripte, um Diagramme oder Formeln zu zeichnen. Vorschauen erreichen unabhängig von dieser Einstellung nie das Netzwerk — jede Anfrage außer der Datei selbst wird blockiert —, ein Skript kann also nur ändern, was Sie sehen. Standardmäßig aus, weil eine Vorschau schon beim Bewegen des Cursors rendert: Schalten Sie es ein, wenn eine Seite ihre Skripte braucht."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Una vista rápida en modo página (2) la renderiza ahí mismo, y un informe autocontenido suele necesitar sus propios scripts para dibujar gráficos o fórmulas. Las vistas previas nunca acceden a la red, diga lo que diga esta opción: se bloquea toda petición que no sea el propio archivo, así que un script solo puede cambiar lo que ves. Desactívalo para no ejecutar código de un archivo que no has abierto."
+            "value": "Una vista rápida en modo página (2) la renderiza ahí mismo, y un informe autocontenido suele necesitar sus propios scripts para dibujar gráficos o fórmulas. Las vistas previas nunca acceden a la red, diga lo que diga esta opción: se bloquea toda petición que no sea el propio archivo, así que un script solo puede cambiar lo que ves. Está desactivado por omisión, porque la vista previa se renderiza al mover el cursor: actívalo cuando una página necesite sus scripts."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Un coup d’œil en mode page (2) affiche la page telle quelle, et un rapport autonome a généralement besoin de ses propres scripts pour tracer des graphiques ou des formules. Les aperçus n’atteignent jamais le réseau, quel que soit ce réglage — toute requête autre que le fichier lui-même est bloquée —, un script ne peut donc que modifier ce que vous voyez. Désactivez-le pour n’exécuter aucun code d’un fichier que vous n’avez pas ouvert."
+            "value": "Un coup d’œil en mode page (2) affiche la page telle quelle, et un rapport autonome a généralement besoin de ses propres scripts pour tracer des graphiques ou des formules. Les aperçus n’atteignent jamais le réseau, quel que soit ce réglage — toute requête autre que le fichier lui-même est bloquée —, un script ne peut donc que modifier ce que vous voyez. Désactivé par défaut, car un aperçu s’affiche dès que le curseur se déplace : activez-le lorsqu’une page a besoin de ses scripts."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Un’anteprima rapida in modalità pagina (2) la renderizza sul posto, e un report autonomo di solito ha bisogno dei propri script per disegnare grafici o formule. Le anteprime non raggiungono mai la rete, qualunque cosa dica questa opzione: ogni richiesta diversa dal file stesso è bloccata, quindi uno script può solo cambiare ciò che vedi. Disattivalo per non eseguire codice da un file che non hai aperto."
+            "value": "Un’anteprima rapida in modalità pagina (2) la renderizza sul posto, e un report autonomo di solito ha bisogno dei propri script per disegnare grafici o formule. Le anteprime non raggiungono mai la rete, qualunque cosa dica questa opzione: ogni richiesta diversa dal file stesso è bloccata, quindi uno script può solo cambiare ciò che vedi. È disattivato per impostazione predefinita, perché l’anteprima si disegna al muoversi del cursore: attivalo quando una pagina ha bisogno dei suoi script."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ページ表示（2）のクイックビューはその場でページを描画します。自己完結型のレポートは、グラフや数式を描くために自身のスクリプトを必要とすることがほとんどです。この設定にかかわらず、プレビューがネットワークに接続することはありません（ファイル自体以外のリクエストはすべてブロックされます）。したがってスクリプトができるのは表示内容を変えることだけです。開いていないファイルのコードを一切実行したくない場合はオフにしてください。"
+            "value": "ページ表示（2）のクイックビューはその場でページを描画します。自己完結型のレポートは、グラフや数式を描くために自身のスクリプトを必要とすることがほとんどです。この設定にかかわらず、プレビューがネットワークに接続することはありません（ファイル自体以外のリクエストはすべてブロックされます）。したがってスクリプトができるのは表示内容を変えることだけです。カーソルを動かすだけでプレビューが描画されるため、初期設定ではオフです。ページにスクリプトが必要なときにオンにしてください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "페이지 보기(2)로 설정된 빠른 보기는 페이지를 그 자리에서 렌더링하며, 자체 완결형 보고서는 대개 차트나 수식을 그리기 위해 자체 스크립트가 필요합니다. 이 설정과 관계없이 미리보기는 네트워크에 접근하지 않습니다. 파일 자체를 제외한 모든 요청이 차단되므로 스크립트는 보이는 내용만 바꿀 수 있습니다. 열지 않은 파일의 코드를 전혀 실행하지 않으려면 끄십시오."
+            "value": "페이지 보기(2)로 설정된 빠른 보기는 페이지를 그 자리에서 렌더링하며, 자체 완결형 보고서는 대개 차트나 수식을 그리기 위해 자체 스크립트가 필요합니다. 이 설정과 관계없이 미리보기는 네트워크에 접근하지 않습니다. 파일 자체를 제외한 모든 요청이 차단되므로 스크립트는 보이는 내용만 바꿀 수 있습니다. 커서를 옮기기만 해도 미리보기가 그려지므로 기본값은 꺼짐입니다. 페이지에 스크립트가 필요할 때 켜십시오."
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Een overzicht in paginaweergave (2) toont de pagina ter plekke, en een op zichzelf staand rapport heeft meestal eigen scripts nodig om grafieken of formules te tekenen. Voorbeelden bereiken nooit het netwerk, wat deze instelling ook zegt — elk verzoek behalve het bestand zelf wordt geblokkeerd — dus een script kan alleen veranderen wat u ziet. Zet het uit om geen code uit te voeren uit een bestand dat u niet hebt geopend."
+            "value": "Een overzicht in paginaweergave (2) toont de pagina ter plekke, en een op zichzelf staand rapport heeft meestal eigen scripts nodig om grafieken of formules te tekenen. Voorbeelden bereiken nooit het netwerk, wat deze instelling ook zegt — elk verzoek behalve het bestand zelf wordt geblokkeerd — dus een script kan alleen veranderen wat u ziet. Standaard uit, omdat een voorbeeld al rendert zodra de cursor beweegt: zet het aan wanneer een pagina zijn scripts nodig heeft."
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Podgląd ustawiony na widok strony (2) renderuje ją na miejscu, a samodzielny raport zwykle potrzebuje własnych skryptów, by narysować wykresy lub wzory. Podglądy nigdy nie sięgają do sieci, niezależnie od tego ustawienia — każde żądanie inne niż sam plik jest blokowane — więc skrypt może zmienić tylko to, co widzisz. Wyłącz, aby nie uruchamiać żadnego kodu z pliku, którego nie otworzyłeś."
+            "value": "Podgląd ustawiony na widok strony (2) renderuje ją na miejscu, a samodzielny raport zwykle potrzebuje własnych skryptów, by narysować wykresy lub wzory. Podglądy nigdy nie sięgają do sieci, niezależnie od tego ustawienia — każde żądanie inne niż sam plik jest blokowane — więc skrypt może zmienić tylko to, co widzisz. Domyślnie wyłączone, ponieważ podgląd renderuje się już przy przesuwaniu kursora: włącz je, gdy strona potrzebuje swoich skryptów."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uma vista rápida no modo página (2) a renderiza ali mesmo, e um relatório autocontido normalmente precisa dos próprios scripts para desenhar gráficos ou fórmulas. As pré-visualizações nunca acessam a rede, diga o que disser esta opção — toda requisição que não seja o próprio arquivo é bloqueada —, então um script só pode mudar o que você vê. Desative para não executar nenhum código de um arquivo que você não abriu."
+            "value": "Uma vista rápida no modo página (2) a renderiza ali mesmo, e um relatório autocontido normalmente precisa dos próprios scripts para desenhar gráficos ou fórmulas. As pré-visualizações nunca acessam a rede, diga o que disser esta opção — toda requisição que não seja o próprio arquivo é bloqueada —, então um script só pode mudar o que você vê. Vem desativado, porque a pré-visualização é renderizada ao mover o cursor: ative quando uma página precisar dos seus scripts."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Быстрый просмотр в режиме страницы (2) отрисовывает её на месте, а самодостаточному отчёту обычно нужны собственные скрипты, чтобы построить графики или формулы. Предпросмотр никогда не выходит в сеть, что бы здесь ни стояло: любой запрос, кроме самого файла, блокируется, поэтому скрипт может изменить только то, что вы видите. Отключите, чтобы не выполнять код из файла, который вы не открывали."
+            "value": "Быстрый просмотр в режиме страницы (2) отрисовывает её на месте, а самодостаточному отчёту обычно нужны собственные скрипты, чтобы построить графики или формулы. Предпросмотр никогда не выходит в сеть, что бы здесь ни стояло: любой запрос, кроме самого файла, блокируется, поэтому скрипт может изменить только то, что вы видите. По умолчанию выключено, потому что предпросмотр отрисовывается уже при движении курсора: включите, когда странице нужны её скрипты."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Швидкий перегляд у режимі сторінки (2) відтворює її на місці, а самодостатньому звіту зазвичай потрібні власні скрипти, щоб намалювати діаграми або формули. Перегляд ніколи не виходить у мережу, хоч би що тут стояло: будь-який запит, окрім самого файлу, блокується, тож скрипт може змінити лише те, що ви бачите. Вимкніть, щоб не виконувати код із файлу, який ви не відкривали."
+            "value": "Швидкий перегляд у режимі сторінки (2) відтворює її на місці, а самодостатньому звіту зазвичай потрібні власні скрипти, щоб намалювати діаграми або формули. Перегляд ніколи не виходить у мережу, хоч би що тут стояло: будь-який запит, окрім самого файлу, блокується, тож скрипт може змінити лише те, що ви бачите. Типово вимкнено, бо перегляд відтворюється вже під час руху курсора: увімкніть, коли сторінці потрібні її скрипти."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "设为网页显示（2）的快速查看会就地渲染该页面，而自包含的报告通常需要自己的脚本来绘制图表或公式。无论此项如何设置，预览都不会访问网络——除文件本身外的所有请求都会被阻止——因此脚本只能改变你看到的内容。若不想运行未打开文件中的任何代码，请将其关闭。"
+            "value": "设为网页显示（2）的快速查看会就地渲染该页面，而自包含的报告通常需要自己的脚本来绘制图表或公式。无论此项如何设置，预览都不会访问网络——除文件本身外的所有请求都会被阻止——因此脚本只能改变你看到的内容。默认关闭，因为光标一移动预览就会渲染：当页面确实需要脚本时再开启。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "設為網頁顯示（2）的快速預覽會就地算繪該頁面，而自足式報告通常需要自己的指令碼來繪製圖表或公式。無論此項如何設定，預覽都不會存取網路——除檔案本身以外的所有請求都會被封鎖——因此指令碼只能改變你看到的內容。若不想執行未開啟檔案中的任何程式碼，請將其關閉。"
+            "value": "設為網頁顯示（2）的快速預覽會就地算繪該頁面，而自足式報告通常需要自己的指令碼來繪製圖表或公式。無論此項如何設定，預覽都不會存取網路——除檔案本身以外的所有請求都會被封鎖——因此指令碼只能改變你看到的內容。預設關閉，因為游標一移動預覽就會算繪：當頁面確實需要指令碼時再開啟。"
           }
         }
       }
