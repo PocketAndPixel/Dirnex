@@ -12,6 +12,17 @@ import AppKit
 extension BrowserWindowController {
     var isQuickViewEnabled: Bool { quickViewMode != .off }
 
+    /// Everything a window needs before Quick View can be turned on: the two event monitors it
+    /// takes keys and swipes with, and the two notifications it follows. One funnel rather than
+    /// four lines in `windowDidLoad`, so a fifth piece of Quick View wiring has an obvious home.
+    func installQuickViewSupport() {
+        installQuickViewKeyMonitor()
+        installQuickViewSwipeMonitor()
+        observeQuickViewRenderStyle()
+        observeQuickViewJavaScript()
+        observeQuickViewFullScreen()
+    }
+
     /// ⌃Q / View ▸ Quick View Panel — the *inactive* pane previews the active pane's cursor file.
     @objc func toggleQuickViewPanel(_ sender: Any?) {
         toggleQuickView(.pane)
@@ -64,6 +75,81 @@ extension BrowserWindowController {
         splitViewController.isDividerLocked = mode == .fullScreen
     }
 
+    // MARK: - Source or page
+
+    /// View ▸ Quick View ▸ View Source / View Rendered Page, and the `1` / `2` keys behind them.
+    @objc func showQuickViewSource(_ sender: Any?) {
+        setQuickViewRenderStyle(.source)
+    }
+
+    @objc func showQuickViewRenderedPage(_ sender: Any?) {
+        setQuickViewRenderStyle(.rendered)
+    }
+
+    /// Switch the app-wide style and re-render what is on screen.
+    ///
+    /// The preference is the single source of truth and every open window follows it, so this
+    /// writes it and lets `quickViewRenderStyleDidChange` drive the re-delivery — including this
+    /// window's. Setting the value and re-delivering by hand here would give the window the user
+    /// pressed the key in a different path from every other one, which is how two windows end up
+    /// disagreeing about the same preference.
+    private func setQuickViewRenderStyle(_ style: QuickViewRenderStyle) {
+        AppPreferences.shared.quickViewRenderStyle = style
+    }
+
+    /// Whether the file currently previewed is one the two keys mean anything for. Everything else
+    /// has a single honest rendering, and a digit there must stay an ordinary keystroke rather than
+    /// being quietly eaten by a mode it does not apply to.
+    var previewedFileOffersBothStyles: Bool {
+        guard isQuickViewEnabled, let url = focusedPanel.quickViewSourceURL else { return false }
+        return QuickViewPreviewView.isRenderableHTML(url)
+    }
+
+    /// Subscribe to `quickViewRenderStyleDidChange`, so a window re-renders the file it is already
+    /// showing when the style changes — including the window whose key press changed it. A
+    /// selector-based observer, torn down by the blanket `removeObserver(self)` in `deinit`
+    /// (docs/NOTES.md: a token-based one cannot be removed from a `nonisolated deinit`).
+    func observeQuickViewRenderStyle() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(quickViewRenderStyleDidChange),
+            name: AppPreferences.quickViewRenderStyleDidChange,
+            object: nil
+        )
+    }
+
+    @objc func quickViewRenderStyleDidChange(_ notification: Notification) {
+        guard isQuickViewEnabled else { return }
+        updateQuickView()
+    }
+
+    /// Subscribe to `quickViewJavaScriptDidChange`, so a rendered page already on screen is drawn
+    /// again under the new answer. Torn down by the blanket `removeObserver(self)` in `deinit`.
+    func observeQuickViewJavaScript() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(quickViewJavaScriptDidChange),
+            name: AppPreferences.quickViewJavaScriptDidChange,
+            object: nil
+        )
+    }
+
+    /// Reload rather than re-deliver. `show(_:style:)` skips a file it is already showing — which is
+    /// right, and is exactly why the style became part of that identity — but the JavaScript answer
+    /// is not something the surface holds: it is given per *navigation*. So the page has to be
+    /// loaded again, which is what `reloadPage` is for, and every surface gets it because a
+    /// background pane's preview must not come back still running (or still missing) the scripts.
+    @objc func quickViewJavaScriptDidChange(_ notification: Notification) {
+        for surface in [
+            leftPanel.quickViewPreview,
+            rightPanel.quickViewPreview,
+            fullWindowPreview,
+            fullScreenPreview
+        ] {
+            surface?.webSurface?.reloadPage()
+        }
+    }
+
     func panelCursorDidChange(_ panel: PanelViewController) {
         guard isQuickViewEnabled, panel === focusedPanel else { return }
         showActivePreview(from: panel)
@@ -105,18 +191,21 @@ extension BrowserWindowController {
         }
     }
 
-    /// Load `active`'s cursor file into whichever surface the current mode uses.
+    /// Load `active`'s cursor file into whichever surface the current mode uses, in the style the
+    /// user last chose (PLAN.md §M16). Read here, once per delivery, so every surface a window
+    /// drives agrees — and so `1` / `2` need only change the preference and re-deliver.
     private func deliverPreview(from active: PanelViewController) {
         let url = active.quickViewSourceURL
+        let style = AppPreferences.shared.quickViewRenderStyle
         switch quickViewMode {
         case .off:
             return
         case .pane:
-            counterpart(of: active).showQuickViewPreview(of: url)
+            counterpart(of: active).showQuickViewPreview(of: url, style: style)
         case .fullWindow:
-            present(ensureFullWindowPreview(), url: url, from: active)
+            present(ensureFullWindowPreview(), url: url, style: style, from: active)
         case .fullScreen:
-            present(ensureFullScreenPreview(), url: url, from: active)
+            present(ensureFullScreenPreview(), url: url, style: style, from: active)
         }
         // The full-size surfaces sit over the *focused* table, so anything a backend does with
         // first responder as it loads would silently turn ↑/↓ into document scrolling — the mode's
@@ -125,14 +214,20 @@ extension BrowserWindowController {
     }
 
     /// Unhide `preview`, load `url` into it, and name the file in its header.
+    ///
+    /// The header also carries the *style* — but only for a file that genuinely has two, so the
+    /// hint appears exactly where `1` / `2` would do something and says nothing everywhere else.
     private func present(
         _ preview: QuickViewPreviewView,
         url: URL?,
+        style: QuickViewRenderStyle,
         from active: PanelViewController
     ) {
         preview.isHidden = false
-        preview.show(url)
-        preview.setCaption(active.quickViewCaption)
+        preview.show(url, style: style)
+        var caption = active.quickViewCaption
+        caption?.style = url.map(QuickViewPreviewView.isRenderableHTML) == true ? style : nil
+        preview.setCaption(caption)
     }
 
     /// Hide a full-size surface and release what it had loaded. A no-op for one never built.
@@ -176,7 +271,14 @@ extension BrowserWindowController {
                     reclaimArrowsFromPreview()
                     return event
                 default:
-                    return event
+                    // 1 / 2 — the render style, by character rather than key code so a non-US
+                    // layout and the keypad both work (docs/NOTES.md).
+                    guard let digit = event.charactersIgnoringModifiers,
+                          let style = QuickViewRenderStyle.style(forDigit: digit),
+                          digitBelongsToQuickView
+                    else { return event }
+                    setQuickViewRenderStyle(style)
+                    return nil
                 }
             }
     }
@@ -194,6 +296,27 @@ extension BrowserWindowController {
         if responder is FileTableView { return false }
         if responder is NSText, !(responder is QuickViewDocumentTextView) { return false }
         return !isTerminalFocused
+    }
+
+    /// Whether `1` / `2` mean "switch the rendering" here, or are an ordinary digit somebody is
+    /// typing (PLAN.md §M16).
+    ///
+    /// It has to be asked, and it is not the same question as Esc's. Found live: with a preview up,
+    /// ⌘L and typing `/tmp/12` put **`/tmp/`** in the path field — the monitor ate both digits, in a
+    /// text field, with the caret visibly in it. The two branches sit three lines apart in the same
+    /// monitor, and a branch added beside an existing one inherits *none* of its carve-outs; Esc's
+    /// were written into `escapeBelongsToQuickView` rather than into the monitor, which is what made
+    /// the omission invisible at the call site.
+    ///
+    /// Three exemptions, and only the first is shared with Esc verbatim. A **field editor** owns
+    /// every character typed into it — a rename, the path bar, the filter — with the preview's own
+    /// text view the exception, since a digit there is not being typed *anywhere*. The **terminal
+    /// drawer** owns its keys outright. And unlike Esc there is no `FileTableView` exemption: the
+    /// table is exactly where these keys are meant to work.
+    private var digitBelongsToQuickView: Bool {
+        let responder = window?.firstResponder
+        if responder is NSText, !(responder is QuickViewDocumentTextView) { return false }
+        return !isTerminalFocused && previewedFileOffersBothStyles
     }
 
     /// Hand the arrows back to the file list once the user has clicked into a preview.

@@ -135,6 +135,17 @@ at build time.
     and driving the window's directly undid nothing.
   - The tell that this class of bug is present is a *comment* claiming a fall-through, and it fails
     in the quiet direction: nothing logs, every menu builds, and the key just does nothing.
+- **A branch added beside an existing one in a key monitor inherits none of its carve-outs, and the
+  carve-outs are invisible at the call site precisely because they were factored out well.** The
+  Quick View monitor's Esc branch reads `guard escapeBelongsToQuickView` — one line, no mention of
+  field editors — so the `1`/`2` branch written three lines below it shipped with no field-editor
+  test at all: with a preview up, ⌘L and typing `/tmp/12` put **`/tmp/`** in the path field, both
+  digits eaten, caret visibly in the text. It cannot be caught by a test that drives the monitor
+  (the monitor did exactly what it was told) and it is invisible in every screenshot that does not
+  include someone typing. When adding a branch to a monitor, **read the predicate the neighbouring
+  branch guards on, not just its name** — and expect the answer to differ: `digitBelongsToQuickView`
+  deliberately drops Esc's `FileTableView` exemption, because the table is where the digits must
+  work and is where Esc must not.
 - **A search field that owns a list's key handling is one click away from being cut out of it.** The
   ⌘K palette routes ⎋, ⏎ and ↑/↓ through `control(_:doCommandBy:)`, which fires *only* while the
   field is first responder — and a stock `NSTableView` takes first responder in `mouseDown:`. So one
@@ -158,6 +169,62 @@ at build time.
     character and confirm it lands in the field — if the field kept focus it receives the whole
     `doCommandBy:` family, Escape included. After the click-to-run change the only click that leaves
     the panel open is one in the empty space below the last row, which is exactly where to aim it.
+- **An `@objc` *optional* delegate requirement implemented on a `@MainActor` class in Swift 6 can
+  compile, conform, and never be emitted as an Objective-C method at all — so the framework never
+  calls it.** `QuickViewWebView` implemented `webView(_:decidePolicyFor:preferences:decisionHandler:)`
+  — the completion-handler spelling — in an `extension … : WKNavigationDelegate`. It built clean, and
+  `surface is WKNavigationDelegate` answered **true**, while `class_copyMethodList` over the class
+  returned exactly `initWithFrame:`, `initWithCoder:` and `.cxx_destruct`. WebKit dispatches through
+  `respondsToSelector:`, so the callback simply never ran and the rule it carried — a link in a
+  previewed page must not navigate the preview somewhere else — was quietly absent.
+  - **A bare `@objc` makes it worse in an instructive way**: the method appears, under the selector
+    derived from the *Swift* labels (`webView:decidePolicyFor:preferences:decisionHandler:`), which is
+    still not the requirement's `webView:decidePolicyForNavigationAction:preferences:decisionHandler:`.
+    Two spellings, one right, and nothing in the compiler distinguishes them.
+  - **The `async` variant is what Swift 6 recognizes as the witness**, and it emits the requirement's
+    own selector. Prefer it for any completion-handler delegate method on a main-actor class rather
+    than hand-spelling `@objc(...)`.
+  - **`responds(to:)` is the assertion; `class_copyMethodList` is the diagnosis.** The first says
+    "no" without saying why, and `x is SomeProtocol` says "yes" throughout — dumping the method list
+    is what turns it from a puzzle into one line. Assert by **selector string**, not by
+    `#selector(SomeProtocol.method)`: the latter resolves against the *protocol*, so it keeps naming
+    the right selector even after the class has stopped implementing it, which is precisely the state
+    the test exists to catch (same family as the Sparkle selector note above).
+  - **The harness that "verified" the broken version is the second lesson.** A throwaway compiled
+    with `swiftc` defaults to the **Swift 5** language mode, where the completion-handler method *is*
+    the witness — so the probe passed, on the real source file, while the app target it was copied
+    from was inert. A harness only agrees with the app about what it was told to agree about; when
+    what is under test is *conformance or isolation*, compile it the way the target does
+    (`-swift-version 6`) or check the claim inside the app's own test target.
+- **A local HTML file previewed in a plain `WKWebView` reaches the network, and the page's own error
+  handlers say it did not.** Measured against a real HTTP server on 127.0.0.1 before the M16 backend
+  was written: one saved page issued **three** GETs — a stylesheet, an image and a `fetch` — while
+  `window.probe` reported `img: 'error'` and `fetch: 'blocked'`, because the *responses* fail CORS
+  from a `file://` origin and the *requests* go out regardless. A tracking pixel needs only the
+  request, so a preview that renders on cursor movement confirms to a stranger that this Mac opened
+  their file. The lesson generalizes past WebKit: **when the thing being measured is "did anything
+  leave this machine", the instrument is a server's access log, not the page's opinion** — every
+  in-page signal here pointed the wrong way, and a probe that trusted them would have shipped.
+  - **Two content-rule-list lines stop all of it, and cost nothing that matters.** Block `.*`, then
+    `ignore-previous-rules` for `^file://` — order matters, the second is what re-admits the page's
+    own bytes and its local siblings. Re-measured on the same server: **zero** requests, while
+    JavaScript still ran, the local stylesheet still applied, and `data:` images — what a
+    self-contained report inlines — still loaded, since neither rule matches them. `blob:` is
+    collateral and is blocked. So "JavaScript on, network off" is available and is the right default:
+    local scripts with no network cannot exfiltrate, and they are what makes a MathJax report render
+    instead of showing raw LaTeX the way Quick Look does.
+  - **The rules compile asynchronously, which makes them a precondition rather than a setting.**
+    `QuickViewWebView` has no public initializer — `withContentRules` builds one only once the list
+    exists, and hands back `nil` if it cannot be compiled, where the caller falls back to showing the
+    file as text. A view built before the rules land would render exactly one page unprotected, and
+    it is the quietest failure available: the preview looks perfect, and only a server somewhere else
+    knows.
+- **`.xhtml` does not conform to `public.html`.** Probed: it is `public.xhtml`, conforming to
+  `public.xml` and `public.text` — so a `conforms(to: .html)` gate silently excludes it, which is how
+  XHTML sat in the *text* backend unnoticed for the whole life of that exclusion. Name the family's
+  types explicitly rather than deriving them from one conformance. (`.shtml` and `.htm` are both
+  `public.html`; `.mhtml` and `.webarchive` conform to neither text nor html; `.svg` is an image
+  *and* text, so backend order decides it.)
 - **The shared `QLPreviewPanel` (⌘Y) is key while open**, so arrows navigate its preview items,
   not the table. `QLPreviewView` is not opaque and `init(frame:style:)` is failable — an
   embedded preview needs an opaque backing or the covered view bleeds through. It also only

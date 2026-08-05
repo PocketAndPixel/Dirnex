@@ -258,9 +258,7 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         queueBar.onCancelJob = { [weak self] id in self?.cancelJob(id) }
         queueBar.onPreferredHeightChanged = { [weak self] in self?.updateQueueBarHeight() }
         startObservingQueue()
-        installQuickViewKeyMonitor()
-        installQuickViewSwipeMonitor()
-        observeQuickViewFullScreen()
+        installQuickViewSupport()
         observeVolumeUnmount()
         installFunctionBar()
     }

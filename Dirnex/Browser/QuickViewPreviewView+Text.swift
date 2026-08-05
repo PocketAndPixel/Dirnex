@@ -24,6 +24,7 @@ extension QuickViewPreviewView {
         standDownPDF()
         standDownQuickLook()
         standDownImage()
+        standDownWeb()
         surface.isHidden = false
         loadToken += 1
         let token = loadToken

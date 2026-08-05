@@ -11,6 +11,10 @@ struct QuickViewCaption: Equatable {
     /// promise one more than ← / → can reach.
     let position: Int
     let count: Int
+    /// The render style this file is being shown in, or `nil` when it has only one honest
+    /// rendering — which is most files. Set by the window controller, since the style is app-wide
+    /// and the pane that builds the caption does not know it (PLAN.md §M16).
+    var style: QuickViewRenderStyle?
 
     /// "3 of 42" — the position half of the header, rendered beside the name.
     var positionText: String {
@@ -30,6 +34,10 @@ final class QuickViewHeaderView: NSVisualEffectView {
 
     private let nameLabel = NSTextField(labelWithString: "")
     private let positionLabel = NSTextField(labelWithString: "")
+    /// "1 Source · 2 Page" for a file that offers both, blank for every other file. The only place
+    /// the two keys announce themselves, so it names *both* and dims the one you are not in rather
+    /// than naming only the alternative — which reads as a label for what you are looking at.
+    private let styleLabel = NSTextField(labelWithString: "")
 
     /// The file being previewed, or `nil` when there is nothing under the cursor — which blanks
     /// the strip rather than hiding it, so the preview underneath doesn't jump.
@@ -38,6 +46,7 @@ final class QuickViewHeaderView: NSVisualEffectView {
             guard caption != oldValue else { return }
             nameLabel.stringValue = caption?.name ?? ""
             positionLabel.stringValue = caption?.positionText ?? ""
+            styleLabel.attributedStringValue = Self.styleText(for: caption?.style)
         }
     }
 
@@ -65,7 +74,8 @@ final class QuickViewHeaderView: NSVisualEffectView {
         nameLabel.alignment = .center
         positionLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         positionLabel.textColor = .secondaryLabelColor
-        for label in [nameLabel, positionLabel] {
+        styleLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        for label in [nameLabel, positionLabel, styleLabel] {
             label.translatesAutoresizingMaskIntoConstraints = false
             addSubview(label)
         }
@@ -76,7 +86,12 @@ final class QuickViewHeaderView: NSVisualEffectView {
             heightAnchor.constraint(equalToConstant: Self.height),
             nameLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
             nameLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
-            nameLabel.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 12),
+            styleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            styleLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            nameLabel.leadingAnchor.constraint(
+                greaterThanOrEqualTo: styleLabel.trailingAnchor,
+                constant: 12
+            ),
             nameLabel.trailingAnchor.constraint(
                 lessThanOrEqualTo: positionLabel.leadingAnchor,
                 constant: -12
@@ -84,5 +99,27 @@ final class QuickViewHeaderView: NSVisualEffectView {
             positionLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
             positionLabel.centerYAnchor.constraint(equalTo: centerYAnchor)
         ])
+    }
+
+    /// "1 Source · 2 Page", with the current style in full strength and the other dimmed — one
+    /// glance says both what you are looking at and which key changes it. Empty for a file with a
+    /// single rendering, so the strip says nothing where the keys would do nothing.
+    private static func styleText(for style: QuickViewRenderStyle?) -> NSAttributedString {
+        guard let style else { return NSAttributedString() }
+        let text = NSMutableAttributedString()
+        for candidate in QuickViewRenderStyle.allCases {
+            if text.length > 0 {
+                text.append(NSAttributedString(
+                    string: " · ",
+                    attributes: [.foregroundColor: NSColor.tertiaryLabelColor]
+                ))
+            }
+            let colour = candidate == style ? NSColor.labelColor : .secondaryLabelColor
+            text.append(NSAttributedString(
+                string: "\(candidate.digit) \(candidate.headerLabel)",
+                attributes: [.foregroundColor: colour]
+            ))
+        }
+        return text
     }
 }

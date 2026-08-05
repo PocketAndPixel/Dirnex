@@ -270,6 +270,12 @@ extension BrowserWindowController {
 /// than three independent switches — which is what the flat toggles behave like. Validated here
 /// rather than on the pane because the commands are the window's (see `CommandBinding`); every
 /// other selector the window answers is always enabled, as it was before this conformance existed.
+///
+/// The two render styles (§M16) are the same shape, with one difference: they are *disabled* unless
+/// the previewed file genuinely offers both. That predicate is `previewedFileOffersBothStyles` —
+/// the same one the `1` / `2` monitor gates on, called rather than restated here, because a menu
+/// validator carrying its own hand-copied twin of a behaviour's predicate is how a shipped feature
+/// ends up greyed out with every test green (docs/NOTES.md).
 extension BrowserWindowController: NSMenuItemValidation {
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         switch menuItem.action {
@@ -279,6 +285,12 @@ extension BrowserWindowController: NSMenuItemValidation {
             menuItem.state = quickViewMode == .fullWindow ? .on : .off
         case #selector(toggleQuickViewFullScreen(_:)):
             menuItem.state = quickViewMode == .fullScreen ? .on : .off
+        case #selector(showQuickViewSource(_:)):
+            menuItem.state = AppPreferences.shared.quickViewRenderStyle == .source ? .on : .off
+            return previewedFileOffersBothStyles
+        case #selector(showQuickViewRenderedPage(_:)):
+            menuItem.state = AppPreferences.shared.quickViewRenderStyle == .rendered ? .on : .off
+            return previewedFileOffersBothStyles
         default:
             break
         }

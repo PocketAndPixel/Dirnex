@@ -92,6 +92,7 @@ enum MainMenuBuilder {
             .command("view.sizeVisualization"), .subcommand("view.gitAwareSizes"), .separator,
             .command("view.quickLook"), .command("view.quickView"),
             .subcommand("view.quickViewFullWindow"), .subcommand("view.quickViewFullScreen"),
+            .subcommand("view.quickViewSource"), .subcommand("view.quickViewRenderedPage"),
             .separator,
             .command("view.terminal")
         ]),
