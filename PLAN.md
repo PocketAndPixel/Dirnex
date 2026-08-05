@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M16 shipped (14 languages) · **no milestone open** · Created: 2026-07-05 ·
+Status: M0–M16 shipped (14 languages) · **M17 in flight** · Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md)
 
 ---
@@ -142,15 +142,134 @@ declared public scope and a folder that exists. Both are argued in HISTORY.md. T
 that approximation was reversed on 2026-07-21 (see M10): it used to also require a
 non-empty folder, which hid three folders Finder shows.
 
-### Next: nothing open
+### In flight: M17 — Syntax highlighting in Quick View (S–M)
 
-M16 closed on the day it opened. The scope that is already written down, rather than merely
-imaginable, is in the *undone* column above plus M15's cut: the **thumbnail grid, brief view and the
-`PaneSurface` extraction** (one unit, argued in HISTORY.md §M15, with the two constraints any future
-grid inherits — skip `FileEntry.isDataless` rows, and move sort off the column header first). The one
-item two separate milestones have asked for is **edit-temp-watch-repack write-back** — M11 named it
-for archives and SFTP, M13 for FTP — so it is the candidate that would close the most open ends at
-once.
+Goal: the text preview stops being one colour. M11 gave Quick View its own in-process text view so
+the user could select and copy; M16 made **source** the default rendering for a file that has two.
+Both decisions point here — a file manager that shows you the file should show it the way an editor
+would. Opened 2026-08-06.
+
+Measured before any Swift was written, because the numbers decide the design (§"How to work here":
+probe the real thing first). A hand-written single-pass scanner over the project's own Swift, and the
+cost of putting the result into the real `NSTextView` shape `QuickViewTextView` builds:
+
+| corpus | scan | attribute build | steady-state swap into the view |
+|---|---|---|---|
+| 128 KB | 1.1 ms | — | 2.5 ms (at 20 KB) |
+| 1 MB | 5.2 ms | 3.5 ms | 4.8 ms (plain: 2.7) |
+| 4 MB — `TextPreview.byteLimit` | 17.2 ms | 12.5 ms | — |
+
+And the one that would have changed everything: **an attributed string does not cost TextKit 2 its
+lazy layout.** `textLayoutManager` is still non-`nil` after a 4 MB rich `setAttributedString`, first
+display 12.1 ms against 11.6 plain, scroll-to-end 2.2 ms. So the whole buffer is scanned in one pass
+on the detached task that already does the read — **no viewport-incremental highlighting, no
+per-paragraph state machine, no lowering the 4 MB read limit.** Every one of those was on the table
+before the measurement and none of them is needed. (One artifact to re-measure in the app rather than
+trust: the *first* swap after a 4 MB document read 144 ms in the probe window — a teardown cost that
+did not survive a repeat.)
+
+Three slices, core-first (§2), each shippable alone.
+
+#### Slice 1 — The scanner and the grammar table (S, core-only)
+
+- [ ] `SyntaxToken` — offset, length, `Kind`. Plain `Int` offsets over **UTF-16** code units, which
+      is what an `NSRange` indexes; the core stays AppKit-free but must hand back offsets the app can
+      use without re-walking the string.
+- [ ] `LanguageGrammar` — a value type, not code per language: line-comment token, block-comment
+      delimiters, string and character delimiters with their escape, keyword set, number rule,
+      optional preprocessor sigil, and flags for nested block comments (Swift yes, C no) and
+      case-insensitive keywords (SQL).
+- [ ] `SyntaxHighlighter.tokens(in:grammar:)` — one single-pass scanner, no regex, no
+      `NSRegularExpression`. Pure and fully tested: every token kind, a comment or string running to
+      EOF, a truncated buffer (`TextPreview` hands one over at the limit), CRLF (NOTES.md: a Swift
+      `Character` makes CRLF *one* grapheme, so nothing here may compare against `"\n"`), and an
+      empty file.
+- [ ] The grammar table, which is where the ~25 types live and is data rather than code. Two shapes
+      cover almost all of it: the **C family** (Swift, ObjC, C/C++/headers, Java, Kotlin, C#, Go,
+      Rust, JS/TS/JSX, PHP, Dart, Scala, JSON — strings, numbers, and `true`/`false`/`null` as its
+      keywords — and SQL on the case-insensitive flag), and the **hash-comment family** (Python,
+      Ruby, shell/bash/zsh, Perl, Makefile, YAML, TOML, INI/conf, Dockerfile, CMake), which is the
+      same scanner with a different comment token and keyword set.
+- [ ] `SyntaxLanguage.forFile(named:)` — extension-first, and the comment must say why it inverts the
+      rule beside it: the backend routing is content-type-first, but `UTType` cannot tell a `.h`
+      apart as C, C++ or ObjC. Watch the file-length ceiling from the start — the table gets its own
+      file, or two (NOTES.md ▸ lint ceilings: 500/250).
+
+Exit: a Swift file, a `Makefile`, a `.json` and a `.sql` each tokenize as expected in tests; nothing
+in the app has changed and it does not need a rebuild.
+
+#### Slice 2 — The three that need their own scanner (S, core-only)
+
+The languages that fit neither shape, ordered by traffic:
+
+- [ ] **XML/HTML/SVG/plist/xcstrings** — tag, attribute name, attribute value, entity, comment,
+      CDATA, doctype. A genuinely different scanner (~100 lines) and worth it for covering five
+      extensions at once — and it is the one M16 makes load-bearing, since `.source` is the default
+      style for exactly these files.
+- [ ] **Markdown** — heading, emphasis, code span and fence, link, list marker, blockquote.
+      Line-oriented, and the code fence is the one construct that spans lines.
+- [ ] **Diff/patch** — `+`, `-`, `@@`, the file headers. Twenty lines, entirely line-oriented, and
+      the most satisfying-per-line in the milestone.
+- [ ] CSS/SCSS/LESS ride the C-family grammar (block comments, strings, numbers, no keywords), which
+      looks acceptable and is honest about being approximate. A selector/property/value scanner is
+      **not** in scope.
+
+Exit: the same tests, plus a real `.html` from this repo, `PLAN.md` itself, and a `git diff` capture.
+
+#### Slice 3 — Colour, in the app (S)
+
+- [ ] `SyntaxTheme` — `SyntaxToken.Kind` → `NSColor`, six semantic kinds and no more: keyword,
+      string, comment, number, type-or-tag, and plain. **System dynamic colours** (`.systemPink`,
+      `.systemGreen`, …) rather than authored hex, decided 2026-08-06 with the user: each resolves per
+      appearance for free, which is the only way to claim "legible in both appearances" without a
+      screenshot of each (NOTES.md ▸ the M15 palette measurements), and it keeps the whole milestone
+      out of Settings.
+- [ ] `QuickViewTextView.show` builds an `NSMutableAttributedString` instead of assigning `.string`.
+      The font and the `.textColor` default stay exactly as they are — highlighting *adds* foreground
+      colours to a document that already renders correctly, so the un-highlighted case is unchanged
+      by construction and an unknown extension is not a special case.
+- [ ] The tokenize runs on the existing detached read task in `showText`, beside `TextPreview.read`,
+      under the same `loadToken` stale-guard. `TextPreview` gains no knowledge of languages: it
+      decodes bytes, and the highlighter is a second pure function over its result.
+- [ ] Live verification in all three Quick View sizes and **both appearances**, with the cursor
+      stepped through a folder of source — the preview re-renders on every cursor step
+      (`panelCursorDidChange` → `updateQuickView`), which is the load the measurements above were
+      taken for.
+
+Exit: stepping the cursor down a folder of mixed source files shows each highlighted with no
+perceptible latency; a binary named `.swift` still falls back to Quick Look; a 4 MB log still shows
+its truncation notice; both linters clean and both suites green.
+
+#### Deliberately not in scope
+
+Stated up front, because this is the milestone whose scope has no natural floor, and the correctness
+tail is what would turn three days into three weeks. A regex-free single-pass scanner is about 95 %
+right, and the remaining 5 % is a list of *decisions*, not bugs: **string interpolation** (`\(…)` in
+Swift, `${…}` in JS and shell — a keyword inside a string will be coloured as a string, which is the
+quiet direction), **JS regex literals** (the `/` ambiguity with division is genuinely undecidable
+without a parser), **heredocs** in shell and PHP, **JSX**, and semantic colouring of any kind (a type
+is a type because of a declaration somewhere else — that is a compiler, not a scanner). Each gets a
+comment naming it where the grammar would otherwise have handled it, so the next reader knows it was
+chosen.
+
+Also not in scope, each for its own reason: a **theme picker** (costed alongside this at the estimate
+— per-appearance colour pairs, persistence, a Settings section; deferred in favour of system colours,
+and the M15 palette work is the precedent for what it costs if it is ever wanted); **line numbers,
+folding and a minimap**, which are editor features, and Dirnex hands editing to the user's own editor
+(§M11's largest deliberate call); highlighting inside the **rendered** HTML style, which is the page's
+own business; and any third-party highlighter — **Highlightr** (highlight.js in a `JSContext`) buys
+~190 languages at the price of a dependency, a JS engine on every cursor step and output §2 cannot
+test, and **tree-sitter** is a C dependency plus one compiled grammar per language. Both rejected
+2026-08-06 in favour of a hand-rolled scanner the core can test.
+
+### After M17
+
+The scope that is already written down, rather than merely imaginable, is in the *undone* column above
+plus M15's cut: the **thumbnail grid, brief view and the `PaneSurface` extraction** (one unit, argued
+in HISTORY.md §M15, with the two constraints any future grid inherits — skip `FileEntry.isDataless`
+rows, and move sort off the column header first). The one item two separate milestones have asked for
+is **edit-temp-watch-repack write-back** — M11 named it for archives and SFTP, M13 for FTP — so it is
+the candidate that would close the most open ends at once.
 
 ## 5. Cross-cutting: testing strategy
 
@@ -173,11 +292,19 @@ once.
 | Full Disk Access friction kills onboarding | Dedicated flow in M7; app degrades gracefully (browse home dir) before grant |
 | Scope creep before the feel is right | M1 exit criteria are the gate; nothing from M3+ starts until M1 feels great |
 | A system-CLI quirk changes under us (M13's TLS-1.2 pin for FTPS is a workaround for `curl` 8.7.1, not a property of the protocol) | The flag lives in a pure, tested `FTPProcessArguments` with the reason in its doc comment, so it is one place to re-measure — and a listing that comes back empty is the *symptom*, so an FTPS smoke test asserts non-empty rather than merely "no error" |
+| M17's highlighter grows into a parser by accretion — one heredoc, one regex literal, one interpolation at a time, each individually reasonable | The scanner's boundary is written into the milestone as a list of *decisions*, and each one carries a comment at the place in the grammar where it would have been handled. The tell that the boundary is being crossed is a grammar gaining a **state stack**: a single pass with one lookahead is the whole design, and anything needing to remember where it has been is a parser, which is a compiler's job and not a preview's. The affordable escape hatch is that highlighting only ever *adds* foreground colour to a document that already renders correctly — so a construct the scanner gets wrong is a wrong colour, never a wrong character, and the honest fix for a hard one is to stop colouring it |
 | The tree becomes a *second* pane implementation by accretion — a refresh path, a mark gesture or a sort that quietly forks from the flat one | The tree is a flat projection over the same `NSTableView` and the same index space, not a parallel surface (HISTORY.md §M15 Slice 4); anything that forks is a signal the projection is wrong, not that the tree needs its own copy. Both fork points were answered in the slice — `SizeVisualization`'s per-directory assumption (the bars were withdrawn in tree mode at M15 close, then re-scoped *per parent directory* rather than forked — `SizeVisualization(tree:)` groups each row against its own level, so the projection stays one definition of "share of this folder") and the `installSortedModel` → `reloadEverything` → `syncCursorToTable` tail. It arrived once already, as the *second index space*: six `panel.model[row]` sites that crashed on the first click below the root's last entry, now routed through `displayedIndex(ofID:)` — NOTES.md ▸ AppKit |
 
 ## 7. Open questions
 
-**Open now:** none. M15's two closed with it (below), and nothing has been opened since.
+**Open now:** none. M15's two closed with it (below), and M17's one closed at open (2026-08-06):
+**how much of a syntax theme the user owns** — resolved in favour of **six semantic kinds on system
+dynamic colours**, no Settings surface at all. The alternative was a real theme with a picker, and
+the reason for the cheap answer is not only cost: a system colour resolves in both appearances by
+itself, so "legible in dark mode" is true by construction rather than by a screenshot nobody took.
+Reopening it means the M15 palette machinery (per-appearance pairs, hex persistence, a Settings
+section) and a derived-foreground rule for a colour drawn on the text background — which is why the
+decision is written down rather than assumed.
 
 All four opened before M1 are closed — the first three by shipping and living in the result,
 which was the stated way to decide them. Recorded because reopening one is a real design
