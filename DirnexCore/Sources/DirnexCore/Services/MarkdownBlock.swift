@@ -28,6 +28,10 @@ public enum MarkdownBlock: Equatable, Sendable {
     /// thematic break and the document opens looking broken. A file manager shows what is in the
     /// file, so it renders — as a subdued table, not as prose.
     case frontMatter([MarkdownFrontMatterEntry])
+    /// A `[[_TOC_]]` marker, standing in for the outline the renderer builds from the document's
+    /// headings. A **block**, decided in the block pass, which is what keeps the same marker inside
+    /// a code fence the literal text it is there to be (PLAN.md §M18 ▸ Slice 2).
+    case tableOfContents
 }
 
 /// A bullet or numbered list, and whether its items are paragraphs or bare text.

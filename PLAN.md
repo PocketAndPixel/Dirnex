@@ -255,22 +255,49 @@ Two findings worth carrying:
   reached a **tag**: the attribute names against a closed set, and every `href`/`src` scheme against
   an allow-list. Now in docs/NOTES.md ▸ Testing.
 
-#### Slice 2 — `[[_TOC_]]`, anchors, and coloured fences (S, core-only)
+#### Slice 2 — `[[_TOC_]]`, anchors, and coloured fences (S, core-only) — landed 2026-08-06
 
-- [ ] Heading slugs, GitHub's rule (lowercase, spaces to hyphens, punctuation dropped, duplicates
-      suffixed `-1`, `-2`), emitted as `id` on every heading so any anchor in the document resolves —
-      including the ones the file's author already wrote by hand.
-- [ ] `[[_TOC_]]` — Azure DevOps' spelling, with `[TOC]` recognized beside it — as a block of its
-      own, replaced by a nested `<nav>` built from Slice 1's heading list. Doing it in the block pass
-      is what makes a marker inside a code fence stay text.
-- [ ] A fence whose info string names a language is tokenized through **M17's existing
+- [x] Heading slugs, GitHub's rule, emitted as `id` on every heading so any anchor in the document
+      resolves — including the ones the file's author already wrote by hand. **Measured, not read**:
+      there is no specification, so the rule was probed against 211 real `.md` files on this Mac
+      carrying 2282 hand-written `](#…)` links, and two of the three things it settled would have
+      been got wrong by reading `github-slugger`'s published regex (below).
+- [x] `[[_TOC_]]` — Azure DevOps' spelling, with `[TOC]` recognized beside it — as a block of its
+      own, replaced by a nested `<nav>` built from the heading list. Doing it in the block pass is
+      what makes a marker inside a code fence stay text, and it does.
+- [x] A fence whose info string names a language is tokenized through **M17's existing
       `SyntaxHighlighter`** and emitted as one `<span class="tok-…">` per `SyntaxToken.Kind`, so the
       fence in the rendered page and the file in source mode are coloured by the same scanner and the
       same table. No language, or one no grammar claims, is plain `<code>` — the same "an unknown
       type is not a special case" rule the text backend already keeps.
 
-Exit: `PLAN.md`'s own headings produce a TOC whose every link matches an emitted `id`; a Swift fence
-carries the spans `SyntaxHighlighterTests` already pins.
+Exit: **met.** `PLAN.md`'s own 17 headings produce a TOC whose links and emitted `id`s are the same
+set, counted as well as compared; README.md's ```` ```bash ```` fences carry the comment spans
+`SyntaxHighlighter` itself claims for the same bytes. 20 new core tests, 1843 core + the app suite
+green, both linters clean; the app is untouched.
+
+Three findings worth carrying:
+
+- **A corpus of files that already depend on an undocumented rule is an oracle for it.** Three
+  candidate slug rules were scored against those 2282 real links: an allow-list (keep letters,
+  digits, spaces, `-`, `_`) resolved **25 anchors the published block-list regex does not**, with
+  none going the other way. The 25 are emoji headings — `## 🐛 Bugs` really does anchor as `#-bugs`,
+  and `## Contributors ✨` as `#contributors-`. So **nothing is trimmed**, which is the tidying every
+  reasonable person would apply and which breaks real documents. The corpus also produced the
+  duplicate rule's own shape, in a file linking to `#all`, `#all-1` *and* `#all-2` — a counter that
+  steps past a collision the author wrote by hand, not "append the count".
+- **The anchors and the TOC's links are one derivation, not two.** The obvious arrangement — a
+  slugger in the renderer, another where the outline is built — agrees right up until it doesn't,
+  and the failure is a page that looks perfect with every TOC entry dead. So the parse gathers the
+  headings once, in render order, and the renderer consumes that list by position. The one thing
+  that could silently drift is the *order* the two walks visit headings in, and a test pins it
+  against a document with headings inside both a blockquote and a list.
+- **Highlighting costs nothing at the sizes that exist.** Release build, best of 20: README 0.95 ms,
+  `PLAN.md` 4.6 ms, `NOTES.md` 24.0 ms, `HISTORY.md` 94 ms — all within noise of Slice 1's figures.
+  The per-fence fixed cost (compiling a grammar) is **~7.5 µs**, so 1000 fences add 3.8 ms and no
+  cache is warranted. The new per-byte cost only shows at the ceiling: 4 MB that is *one* `swift`
+  fence renders in 564 ms against 177 ms untagged — still under the 579 ms the same 4 MB of prose
+  takes, so the fenced case does not move where the detached-task argument sits.
 
 #### Slice 3 — The app: routing, style, and the sites that name a backend (S)
 

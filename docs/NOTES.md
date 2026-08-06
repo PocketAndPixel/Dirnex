@@ -16,6 +16,17 @@ at build time.
   `intercellSpacing.width` is 17 pt, not 2–3; the terminal drawer needs no shell-integration
   snippet because `proc_pidinfo` already knows. The one pass that assumed a format
   (`SFTPListingParser`) had to be reworked against reality.
+- **When a format's rule is undocumented, the oracle is a corpus that already depends on it.** There
+  is no specification for GitHub's heading anchors, so M18's slug rule was scored against **2282
+  hand-written `](#…)` links** in 211 real `.md` files sitting on this Mac — a table of contents
+  somebody wrote by copying anchors GitHub had actually produced is a recorded answer, whatever the
+  question. It inverted the obvious implementation twice: an **allow-list** (letters, digits, space,
+  `-`, `_`) resolved 25 anchors `github-slugger`'s published block-list regex does not, all of them
+  emoji headings; and **nothing is trimmed**, so `## 🐛 Bugs` genuinely anchors as `#-bugs` and
+  tidying that leading hyphen away breaks every document carrying one. Both are invisible at build
+  time and read as *our* bug when a user's link lands nowhere. The same corpus handed over the
+  duplicate rule's real shape — a file linking to `#all`, `#all-1` **and** `#all-2`, which is a
+  counter that steps past a collision the author wrote, not "append the count".
 - **Core first, then the app.** A slice opens with pure, tested, purely-additive `DirnexCore`
   files (app untouched, no rebuild) and lands in a second pass that wires the app. PLAN.md §2:
   if it touches bytes it lives in the core and has tests.

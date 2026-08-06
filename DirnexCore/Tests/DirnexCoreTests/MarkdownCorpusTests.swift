@@ -36,7 +36,9 @@ struct MarkdownCorpusTests {
     private static let allowedTags: Set<String> = [
         "h1", "h2", "h3", "h4", "h5", "h6", "p", "hr", "pre", "code", "blockquote",
         "ul", "ol", "li", "input", "table", "thead", "tbody", "tr", "th", "td",
-        "em", "strong", "del", "a", "img", "br"
+        "em", "strong", "del", "a", "img", "br",
+        // Slice 2: `nav` is `[[_TOC_]]`'s outline, `span` is one token of a coloured fence.
+        "nav", "span"
     ]
 
     private static let headingTags: Set<String> = ["h1", "h2", "h3", "h4", "h5", "h6"]
@@ -44,7 +46,9 @@ struct MarkdownCorpusTests {
     /// Every attribute the renderer is allowed to write. Closed for the same reason the tags are —
     /// and this is the set that catches an event handler, which no search of the *text* can.
     private static let allowedAttributes: Set<String> = [
-        "class", "href", "title", "src", "alt", "start", "colspan", "type", "disabled", "checked"
+        "class", "href", "title", "src", "alt", "start", "colspan", "type", "disabled", "checked",
+        // Slice 2: a heading's anchor.
+        "id"
     ]
 
     private func source(_ name: String) throws -> String {
@@ -152,6 +156,73 @@ struct MarkdownCorpusTests {
             rendered == expected,
             "\(name): \(rendered) headings rendered, \(expected) in source"
         )
+    }
+
+    /// Slice 2's exit criterion, over the real document rather than a fixture: PLAN.md is 60-odd
+    /// headings deep, carries duplicate titles across milestones, and is full of the punctuation and
+    /// em dashes the slug rule drops — so a TOC over it exercises the numbering, not just the shape.
+    @Test("a TOC over PLAN.md links only to anchors the same render emitted")
+    func tableOfContentsResolves() throws {
+        let html = MarkdownDocument.render("[[_TOC_]]\n\n" + (try source("PLAN.md"))).html
+        let tags = Self.tags(in: html)
+        let ids = Set(tags.compactMap { $0.attributes["id"] })
+        let fragments = tags.compactMap { $0.attributes["href"] }
+            .filter { $0.hasPrefix("#") }
+            .map { String($0.dropFirst()) }
+        #expect(fragments.count > 10)
+        // Every anchor is linked and every link is an anchor. PLAN.md carries no in-page links of
+        // its own (checked: the whole corpus has none), so the two sets are the TOC and the
+        // headings — and comparing counts as well as membership is what catches a *dropped* entry,
+        // which set membership alone would call a pass.
+        #expect(fragments.count == ids.count)
+        for fragment in fragments {
+            #expect(
+                ids.contains(fragment),
+                "PLAN.md: the TOC links to #\(fragment), which is not an id"
+            )
+        }
+        // And the outline is nested, not flat — a `<nav>` of one long list would satisfy every
+        // assertion above while saying nothing about the document's shape.
+        #expect(html.contains("<nav class=\"toc\">"))
+        let nav = try #require(html.range(of: "</nav>")).lowerBound
+        #expect(html[..<nav].components(separatedBy: "<ul>").count > 2)
+    }
+
+    /// The other half of Slice 2's exit: a fence in the rendered page is coloured by the **same**
+    /// scanner as the file in source mode.
+    ///
+    /// README.md is the corpus document that carries a tagged fence — two ```` ```bash ```` blocks,
+    /// which is worth naming because PLAN.md's four fences carry no info string at all and would
+    /// have made this assertion unfailable (the trap the suite's own `notesStructure` comment
+    /// already records once).
+    @Test("README's bash fences are coloured by M17's scanner, token for token")
+    func fencesAreHighlighted() throws {
+        let source = try source("README.md")
+        let html = MarkdownDocument.render(source).html
+        // Asserted against `SyntaxHighlighter`'s own answer rather than a golden string, so the two
+        // cannot drift apart without this failing — and taken from the file's real fence body, so
+        // the claim is about this document rather than about a sample invented to pass.
+        let body = try #require(Self.firstFenceBody(in: source, info: "bash"))
+        let comments = SyntaxHighlighter.tokens(in: body, language: .shell)
+            .filter { $0.kind == .comment }
+        #expect(!comments.isEmpty)
+        for comment in comments {
+            let text = String(
+                decoding: Array(body.utf16)[comment.offset..<comment.end],
+                as: UTF16.self
+            )
+            #expect(html.contains("<span class=\"tok-comment\">\(text)</span>"))
+        }
+    }
+
+    /// The body of the first fence carrying `info`, taken from the source by hand — the parser is
+    /// what is under test, so it cannot also be the thing that says what the fence contained.
+    private static func firstFenceBody(in text: String, info: String) -> String? {
+        let lines = text.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+        guard let open = lines.firstIndex(where: { $0 == "```" + info }) else { return nil }
+        let rest = lines[lines.index(after: open)...]
+        guard let close = rest.firstIndex(where: { $0.hasPrefix("```") }) else { return nil }
+        return rest[..<close].joined(separator: "\n") + "\n"
     }
 
     @Test("NOTES.md keeps its deep nesting, its tables, and its punctuation inside code")

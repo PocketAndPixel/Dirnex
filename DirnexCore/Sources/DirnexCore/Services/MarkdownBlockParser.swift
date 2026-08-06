@@ -6,10 +6,19 @@ public struct MarkdownBlockScan: Equatable, Sendable {
     /// Keyed by `MarkdownLinkReference.key(for:)`, so a use and its definition match with the case
     /// and the internal spacing they were written with.
     public let references: [String: MarkdownLinkReference]
+    /// Every heading in the document, in the order it is rendered in, each with the anchor it will
+    /// carry. Both the `id`s and `[[_TOC_]]`'s links come from this one list (PLAN.md §M18 ▸
+    /// Slice 2) — see `MarkdownHeadings` for why it is not derived twice.
+    public let headings: [MarkdownHeading]
 
-    public init(blocks: [MarkdownBlock], references: [String: MarkdownLinkReference] = [:]) {
+    public init(
+        blocks: [MarkdownBlock],
+        references: [String: MarkdownLinkReference] = [:],
+        headings: [MarkdownHeading] = []
+    ) {
         self.blocks = blocks
         self.references = references
+        self.headings = headings
     }
 }
 
@@ -35,7 +44,11 @@ enum MarkdownBlockParser {
         }
         let references = MarkdownLinkDefinitions.extract(from: &lines)
         blocks.append(contentsOf: self.blocks(in: lines))
-        return MarkdownBlockScan(blocks: blocks, references: references)
+        return MarkdownBlockScan(
+            blocks: blocks,
+            references: references,
+            headings: MarkdownHeadings.gather(from: blocks, references: references)
+        )
     }
 
     /// Parse a run of lines that has already had its container's marker stripped — a blockquote's
@@ -102,6 +115,17 @@ enum MarkdownBlockParser {
         return marker == "=" ? 1 : 2
     }
 
+    /// `[[_TOC_]]` — Azure DevOps' spelling, which is the one people write — or `[TOC]`, alone on
+    /// its line.
+    ///
+    /// Matched case-insensitively because both are written both ways, and required to be the
+    /// *whole* line: `[TOC]` is also a legal shortcut reference link, and one sitting inside a
+    /// sentence is a link somebody wrote, not a request for an outline.
+    static func isTableOfContents(_ content: some StringProtocol) -> Bool {
+        let trimmed = MarkdownLine.trimmingTrailingWhitespace(content).uppercased()
+        return trimmed == "[[_TOC_]]" || trimmed == "[TOC]"
+    }
+
     /// The fence character and its run length when `content` opens or closes a fenced code block.
     static func fenceRun(_ content: some StringProtocol) -> (marker: Character, length: Int)? {
         guard let marker = content.first, marker == "`" || marker == "~" else { return nil }
@@ -122,6 +146,7 @@ enum MarkdownBlockParser {
         if atxHeading(content) != nil { return true }
         if isThematicBreak(content) { return true }
         if fenceRun(content) != nil { return true }
+        if isTableOfContents(content) { return true }
         if MarkdownTableParser.take(from: lines, at: index) != nil { return true }
         return MarkdownListParser.interruptsParagraph(lines, at: index)
     }
@@ -160,6 +185,11 @@ enum MarkdownBlockParser {
             }
             if MarkdownBlockParser.isThematicBreak(content) {
                 blocks.append(.thematicBreak)
+                index += 1
+                return
+            }
+            if MarkdownBlockParser.isTableOfContents(content) {
+                blocks.append(.tableOfContents)
                 index += 1
                 return
             }

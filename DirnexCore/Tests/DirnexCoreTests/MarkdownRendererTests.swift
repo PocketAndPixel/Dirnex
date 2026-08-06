@@ -83,16 +83,21 @@ struct MarkdownRendererTests {
 
     @Test("headings, paragraphs and rules render as themselves")
     func leafBlocks() {
-        #expect(html("# Title") == "<h1>Title</h1>")
+        // The `id` arrives with Slice 2; `MarkdownAnchorTests` is where the rule that produces it
+        // is pinned, and this only states that a heading carries one.
+        #expect(html("# Title") == "<h1 id=\"title\">Title</h1>")
         #expect(html("Text.") == "<p>Text.</p>")
         #expect(html("***") == "<hr>")
     }
 
     @Test("a fence names its language in the class every other tool uses")
     func codeBlocks() {
-        #expect(html("```swift\nlet x = 1\n```")
-            == "<pre><code class=\"language-swift\">let x = 1\n</code></pre>")
+        // A named language is also *coloured* from Slice 2 on, by M17's scanner — so the plain
+        // shape is the one an unclaimed info string keeps.
+        #expect(html("```swift\nlet x = 1\n```").hasPrefix("<pre><code class=\"language-swift\">"))
         #expect(html("```\nplain\n```") == "<pre><code>plain\n</code></pre>")
+        #expect(html("```nosuchlanguage\nplain\n```")
+            == "<pre><code class=\"language-nosuchlanguage\">plain\n</code></pre>")
         // Only the first word: an info string may carry more than the language.
         #expect(html("```swift showLineNumbers\nx\n```").contains("class=\"language-swift\""))
     }
@@ -142,7 +147,8 @@ struct MarkdownRendererTests {
 
     @Test("a blockquote holds whatever blocks were inside it")
     func blockQuote() {
-        #expect(html("> ## Note\n> text") == "<blockquote><h2>Note</h2>\n<p>text</p></blockquote>")
+        #expect(html("> ## Note\n> text")
+            == "<blockquote><h2 id=\"note\">Note</h2>\n<p>text</p></blockquote>")
     }
 
     // MARK: - Inline

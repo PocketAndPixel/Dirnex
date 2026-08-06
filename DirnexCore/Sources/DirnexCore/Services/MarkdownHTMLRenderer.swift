@@ -12,20 +12,33 @@ import Foundation
 /// never an appearance.
 enum MarkdownHTMLRenderer {
     static func render(_ scan: MarkdownBlockScan, options: MarkdownRenderOptions) -> String {
-        let context = Context(references: scan.references, options: options)
+        let context = Context(scan: scan, options: options)
         return scan.blocks.map { context.render($0) }.joined(separator: "\n")
     }
 
-    /// What every block needs while rendering: the link definitions to resolve against, and the
-    /// caller's say over where an image's bytes come from.
-    struct Context {
+    /// What every block needs while rendering: the link definitions to resolve against, the
+    /// document's headings, and the caller's say over where an image's bytes come from.
+    ///
+    /// A **class**, not a struct, for one reason: the anchors are handed out in document order, so
+    /// rendering a heading advances a cursor. A struct would need every `render` on the walk to be
+    /// `mutating`, which recursion through `map` cannot express.
+    final class Context {
         let references: [String: MarkdownLinkReference]
         let options: MarkdownRenderOptions
+        let headings: [MarkdownHeading]
+        /// How many headings have been rendered. See `nextHeadingID`.
+        private var headingIndex = 0
+
+        init(scan: MarkdownBlockScan, options: MarkdownRenderOptions) {
+            references = scan.references
+            headings = scan.headings
+            self.options = options
+        }
 
         func render(_ block: MarkdownBlock) -> String {
             switch block {
             case let .heading(level, text):
-                MarkdownHTML.element("h\(level)", inline(text))
+                heading(level: level, text: text)
             case let .paragraph(text):
                 MarkdownHTML.element("p", inline(text))
             case .thematicBreak:
@@ -40,6 +53,8 @@ enum MarkdownHTMLRenderer {
                 self.table(table)
             case let .frontMatter(entries):
                 frontMatter(entries)
+            case .tableOfContents:
+                MarkdownTOC.nav(for: headings)
             }
         }
 
@@ -49,9 +64,32 @@ enum MarkdownHTMLRenderer {
 
         // MARK: Leaf blocks
 
+        /// A heading, carrying the anchor every link in the document resolves against — including
+        /// the ones the file's own author wrote by hand, which is why the slug follows GitHub's
+        /// rule to the letter (`MarkdownSlug`).
+        private func heading(level: Int, text: String) -> String {
+            MarkdownHTML.element(
+                "h\(level)",
+                inline(text),
+                attributes: MarkdownHTML.attribute("id", nextHeadingID())
+            )
+        }
+
+        /// The next anchor from the list the parse produced.
+        ///
+        /// By **position**, because that list was gathered in exactly this order — one traversal,
+        /// one slugger, so a TOC entry and the heading it points at can never disagree. `nil` past
+        /// the end leaves the heading without an `id` rather than inventing one, which would be a
+        /// second spelling of the rule and the thing this design exists to avoid.
+        private func nextHeadingID() -> String? {
+            guard headingIndex < headings.count else { return nil }
+            defer { headingIndex += 1 }
+            return headings[headingIndex].slug
+        }
+
         /// A fenced block keeps its info string as a class, in the `language-…` spelling every
-        /// other tool uses. Slice 2 replaces the escaped body with coloured spans; until then the
-        /// class is already the hook, so nothing about this shape has to change for it.
+        /// other tool uses, and its body is coloured by M17's own scanner
+        /// (`MarkdownCodeHighlighting`) when that info names a language.
         private func codeBlock(info: String?, code: String) -> String {
             // The first word only: an info string may carry more (`swift showLineNumbers`), and the
             // language is the part that names a grammar.
@@ -59,7 +97,7 @@ enum MarkdownHTMLRenderer {
             let attributes = language.map { " class=\"language-\(MarkdownHTML.escaped($0))\"" } ?? ""
             return "<pre>" + MarkdownHTML.element(
                 "code",
-                MarkdownHTML.escaped(code),
+                MarkdownCodeHighlighting.body(code, info: info),
                 attributes: attributes
             ) + "</pre>"
         }
