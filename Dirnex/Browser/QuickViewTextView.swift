@@ -28,6 +28,14 @@ final class QuickViewTextView: NSView {
     /// The view the surface must let the mouse reach for a selection drag to work at all.
     var interactiveSubtree: NSView { scrollView }
 
+    /// Set on the view *and* into the attributed string: `setAttributedString` replaces every
+    /// attribute, so the font the view carries stops governing the moment a document is installed
+    /// through the storage. One constant so the two cannot drift into different sizes.
+    private static let documentFont = NSFont.monospacedSystemFont(
+        ofSize: NSFont.systemFontSize,
+        weight: .regular
+    )
+
     init() {
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
@@ -42,12 +50,47 @@ final class QuickViewTextView: NSView {
 
     // MARK: - Content
 
-    func show(_ preview: TextPreview) {
-        textView.string = preview.text
+    /// Show a decoded file, coloured by `tokens` — which is empty for a file no grammar claims, and
+    /// that case is not special: an empty loop leaves the document in the view's own `.textColor`,
+    /// exactly as it rendered before M17 existed.
+    func show(_ preview: TextPreview, tokens: [SyntaxToken]) {
+        textView.textStorage?.setAttributedString(attributed(preview.text, tokens: tokens))
         // Back to the top for each new file: the surface is reused as the cursor walks the list, and
         // arriving at line 4000 of a file you have never opened is nobody's idea of a preview.
         textView.scroll(.zero)
         truncationNotice.isHidden = !preview.isTruncated
+    }
+
+    /// The document as one attributed string: the view's font and default colour over the whole of
+    /// it, then a foreground colour per token.
+    ///
+    /// `textStorage` is measured safe here, which is worth stating because the neighbouring rule is
+    /// the opposite: reading `.layoutManager` drops the view back to TextKit 1, where forcing layout
+    /// on a large document takes seconds (docs/NOTES.md), and `NSTextView.textStorage` is
+    /// historically `layoutManager.textStorage`. Probed on a real window before this was written —
+    /// `textLayoutManager` is still non-`nil` after reading `.textStorage` *and* after a 4 MB
+    /// `setAttributedString` through it, first display 0.03 ms and scroll-to-end 2.7 ms. The lazy
+    /// layout an attributed string might have cost is intact.
+    private func attributed(_ text: String, tokens: [SyntaxToken]) -> NSMutableAttributedString {
+        let attributed = NSMutableAttributedString(
+            string: text,
+            attributes: [.font: Self.documentFont, .foregroundColor: NSColor.textColor]
+        )
+        let length = attributed.length
+        for token in tokens {
+            // The core promises in-range, ordered, non-overlapping offsets and its tests pin all
+            // three — but an out-of-range `NSRange` here would *raise*, so a mismatched pair (a
+            // string and tokens scanned from a different one) has to fail as a missing colour
+            // rather than as a crash in a preview. Ordered, so the first miss ends the loop.
+            guard token.end <= length else { break }
+            guard let colour = SyntaxTheme.color(for: token.kind) else { continue }
+            attributed.addAttribute(
+                .foregroundColor,
+                value: colour,
+                range: NSRange(location: token.offset, length: token.length)
+            )
+        }
+        return attributed
     }
 
     func clearText() {
@@ -69,7 +112,7 @@ final class QuickViewTextView: NSView {
         textView.backgroundColor = .textBackgroundColor
         // Monospaced, like Quick Look's own text preview: a preview of a log or a config file is
         // read by column as often as by sentence.
-        textView.font = .monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+        textView.font = Self.documentFont
         textView.textContainerInset = NSSize(width: 8, height: 8)
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false

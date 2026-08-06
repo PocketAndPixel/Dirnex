@@ -7806,3 +7806,228 @@ name readout either.
 
 Closed with **1678 core + 229 app tests green** (157 and 43 suites), `swiftformat --lint` and
 `swiftlint --strict` clean over 569 files.
+
+### M17 — Syntax highlighting in Quick View (S–M)
+
+Goal: the text preview stops being one colour. M11 gave Quick View its own in-process text view so
+the user could select and copy; M16 made **source** the default rendering for a file that has two.
+Both decisions point here — a file manager that shows you the file should show it the way an editor
+would. Opened 2026-08-06.
+
+Measured before any Swift was written, because the numbers decide the design (§"How to work here":
+probe the real thing first). A hand-written single-pass scanner over the project's own Swift, and the
+cost of putting the result into the real `NSTextView` shape `QuickViewTextView` builds:
+
+| corpus | scan | attribute build | steady-state swap into the view |
+|---|---|---|---|
+| 128 KB | 1.1 ms | — | 2.5 ms (at 20 KB) |
+| 1 MB | 5.2 ms | 3.5 ms | 4.8 ms (plain: 2.7) |
+| 4 MB — `TextPreview.byteLimit` | 17.2 ms | 12.5 ms | — |
+
+And the one that would have changed everything: **an attributed string does not cost TextKit 2 its
+lazy layout.** `textLayoutManager` is still non-`nil` after a 4 MB rich `setAttributedString`, first
+display 12.1 ms against 11.6 plain, scroll-to-end 2.2 ms. So the whole buffer is scanned in one pass
+on the detached task that already does the read — **no viewport-incremental highlighting, no
+per-paragraph state machine, no lowering the 4 MB read limit.** Every one of those was on the table
+before the measurement and none of them is needed. (One artifact to re-measure in the app rather than
+trust: the *first* swap after a 4 MB document read 144 ms in the probe window — a teardown cost that
+did not survive a repeat.)
+
+Three slices, core-first (§2), each shippable alone.
+
+#### Slice 1 — The scanner and the grammar table (S, core-only) — landed 2026-08-06
+
+- [x] `SyntaxToken` — offset, length, `Kind`. Plain `Int` offsets over **UTF-16** code units, which
+      is what an `NSRange` indexes; the core stays AppKit-free but must hand back offsets the app can
+      use without re-walking the string.
+- [x] `LanguageGrammar` — a value type, not code per language: line-comment token, block-comment
+      delimiters, string and character delimiters with their escape, keyword set, number rule,
+      optional preprocessor sigil, and flags for nested block comments (Swift yes, C no) and
+      case-insensitive keywords (SQL).
+- [x] `SyntaxHighlighter.tokens(in:grammar:)` — one single-pass scanner, no regex, no
+      `NSRegularExpression`. Pure and fully tested: every token kind, a comment or string running to
+      EOF, a truncated buffer (`TextPreview` hands one over at the limit), CRLF (NOTES.md: a Swift
+      `Character` makes CRLF *one* grapheme, so nothing here may compare against `"\n"`), and an
+      empty file.
+- [x] The grammar table, which is where the ~25 types live and is data rather than code. Two shapes
+      cover almost all of it: the **C family** (Swift, ObjC, C/C++/headers, Java, Kotlin, C#, Go,
+      Rust, JS/TS/JSX, PHP, Dart, Scala, JSON — strings, numbers, and `true`/`false`/`null` as its
+      keywords — and SQL on the case-insensitive flag), and the **hash-comment family** (Python,
+      Ruby, shell/bash/zsh, Perl, Makefile, YAML, TOML, INI/conf, Dockerfile, CMake), which is the
+      same scanner with a different comment token and keyword set.
+- [x] `SyntaxLanguage.forFile(named:)` — extension-first, and the comment must say why it inverts the
+      rule beside it: the backend routing is content-type-first, but `UTType` cannot tell a `.h`
+      apart as C, C++ or ObjC. Watch the file-length ceiling from the start — the table gets its own
+      file, or two (NOTES.md ▸ lint ceilings: 500/250).
+
+Exit: a Swift file, a `Makefile`, a `.json` and a `.sql` each tokenize as expected in tests; nothing
+in the app has changed and it does not need a rebuild. **Met** — 37 new tests (1715 core, app suite
+green, both linters clean), the app target untouched.
+
+Six languages went beyond the table and into a **throwaway ANSI-colour probe over this repo's own
+files**, which is what the working rhythm buys here: the scan can be *read* rather than trusted, and
+three things came out of it that no unit test would have been written for.
+
+- **`prefix` and `postfix` are out of the Swift keyword set.** Both are contextual — they mean
+  something only before `func` or `operator` — and `prefix` is one of the most common method names in
+  the language: `data.prefix(n)` came back coloured as a keyword on three lines of `TextPreview.swift`
+  alone. A scanner with no parser cannot tell the two apart, and the false positive is louder than the
+  word it colours. The general shape, and the first live instance of the milestone's own escape hatch:
+  **the honest fix for a construct a scanner gets wrong is to stop colouring it.**
+- **`.xcstrings` is JSON, not XML.** Slice 2's bullet lists it with the markup family; probed against
+  this repo's own catalogs, they open `{ "sourceLanguage": … }`. It routes to `json` and Slice 2 keeps
+  four extensions, not five.
+- **A `.h` takes the *union* of C++ and Objective-C**, rather than a guess between three dialects.
+  `UTType` says `public.c-header` and no more — which is the whole reason the routing is
+  extension-first — so `cHeader` merges the keyword sets and keeps `@`. A word coloured that a dialect
+  never uses is invisible in the files that do not use it; picking one dialect leaves `class` or
+  `@interface` flat in the other two.
+
+Two shapes fell out of the scanner that are worth stating because they are what keeps it a scanner.
+Ordinary quotes **do not span lines** (`StringLiteral.spansLines`), so one stray quote costs its own
+line instead of painting the rest of the document — a robustness decision, not a grammatical one. And
+the compiled grammar **sorts string openers longest-first**, so `"""` claims its opening before `"`
+can; written the other way round a Python docstring's body scans as code, which is the quiet
+direction and exactly what a table hand-ordered by a human would eventually get wrong.
+
+#### Slice 2 — The three that need their own scanner (S, core-only) — landed 2026-08-06
+
+The languages that fit neither shape, ordered by traffic:
+
+- [x] **XML/HTML/SVG/plist** — tag, attribute name, attribute value, entity, comment, CDATA,
+      doctype. A genuinely different scanner (~100 lines) and worth it for covering four extensions
+      at once — and it is the one M16 makes load-bearing, since `.source` is the default style for
+      exactly these files. (`.xcstrings` was listed here and is JSON; Slice 1 routed it.)
+- [x] **Markdown** — heading, emphasis, code span and fence, link, list marker, blockquote.
+      Line-oriented, and the code fence is the one construct that spans lines.
+- [x] **Diff/patch** — `+`, `-`, `@@`, the file headers. Twenty lines, entirely line-oriented, and
+      the most satisfying-per-line in the milestone.
+- [x] CSS/SCSS/LESS ride the C-family grammar (block comments, strings, numbers, no keywords), which
+      looks acceptable and is honest about being approximate. A selector/property/value scanner is
+      **not** in scope. (Landed in Slice 1 with the rest of the table; `annotationSigil` gives it the
+      at-rules — `@media`, `@import`, `@mixin` — for free, which is most of what makes a stylesheet
+      readable.)
+
+Exit: the same tests, plus a real `.html` from this repo, `PLAN.md` itself, and a `git diff` capture.
+**Met** — 29 further tests (66 across the four syntax suites, 1744 core, app suite green, both
+linters clean), and all three exit corpora driven through the ANSI probe: a hand-written page with
+every bracketed form, `PLAN.md` (headings, fences, tables, links, bold), and a real
+`git diff docs/NOTES.md`.
+
+Three decisions, each of which changed something already written:
+
+- **`SyntaxToken.Kind` grew by two — `.inserted` and `.deleted`.** "Six and no more" was written
+  against a *theme* question (§7: how much the user owns — still "none"), and these are two more
+  entries in the same system-colour dictionary, not a Settings surface. The alternative was to borrow
+  `.comment` for an added line and `.string` for a removed one, which renders correctly against the
+  colours Slice 3 will likely pick and **couples the diff to a decision about something else**: the
+  day `.comment` becomes grey, as many themes have it, a diff silently loses its green and nothing in
+  the code says why.
+- **`SyntaxLanguage.grammar` is now optional, behind an internal `Scanning` enum.** The obvious
+  shape — an optional grammar plus a second switch for the three scanner-backed cases — needs a
+  `default` branch that can only ever mean "a case nobody wired up", and it would return an empty
+  token list rather than fail. One switch over `Scanning` makes the compiler name any case added
+  without being routed.
+- **The order of the diff scanner's tests *is* its correctness argument.** `--- a/file` and
+  `+++ b/file` open with the same characters as a removed and an added line, so the file headers have
+  to be tested first — written the other way round, every diff's own header reads as a deletion
+  followed by an insertion, which is a wrong colour exactly where a reader orients themselves.
+
+And one measurement that corrects the table at the top of this milestone. The pre-milestone probe
+projected **17.2 ms** for a 4 MB scan; the shipping scanner measures **58 ms** (three runs, 57–59,
+on 4 MB of this repo's own Swift), split 8.6 ms to build the `[UInt16]` and ~43 ms to walk it, of
+which ~18 ms is the keyword lookup (isolated by scanning the identical bytes as `.css` and `.json`,
+whose grammars have no words: 43 and 39 ms). Markdown is 22 ms and markup ~26 ms at the same size.
+The estimate was 3.4× optimistic and **the design it justified still stands** — the argument was that
+no viewport-incremental pass is needed, and 58 ms on the detached task that already reads the file is
+not perceptible, with a typical source file (< 200 KB) under 3 ms. `@inline(__always)` on the
+code-unit helpers was tried and measured as **noise** (52.5 against 51.6, i.e. slightly worse), so it
+is reverted rather than kept — the same call NOTES.md records for the three Quick View animation
+fixes that measured worse or identical.
+
+#### Slice 3 — Colour, in the app (S) — landed 2026-08-06
+
+- [x] `SyntaxTheme` — `SyntaxToken.Kind` → `NSColor`. **Authored light/dark pairs, not the system
+      palette**, which is a correction to the decision this milestone opened with and is argued
+      below.
+- [x] `QuickViewTextView.show` builds an `NSMutableAttributedString` instead of assigning `.string`.
+      The font and the `.textColor` default stay exactly as they are — highlighting *adds* foreground
+      colours to a document that already renders correctly, so the un-highlighted case is unchanged
+      by construction and an unknown extension is not a special case.
+- [x] The tokenize runs on the existing detached read task in `showText`, beside `TextPreview.read`,
+      under the same `loadToken` stale-guard. `TextPreview` gains no knowledge of languages: it
+      decodes bytes, and the highlighter is a second pure function over its result. What crosses the
+      actor boundary is a `TextScan` — the decoded preview plus its tokens, both `Sendable`, because
+      an `NSMutableAttributedString` is not and never could be.
+- [x] Live verification in all three Quick View sizes and **both appearances**, with the cursor
+      stepped through a folder of source.
+
+Exit: stepping the cursor down a folder of mixed source files shows each highlighted with no
+perceptible latency; a binary named `.swift` still falls back to Quick Look; a 4 MB log still shows
+its truncation notice; both linters clean and both suites green. **Met** — 8 further app tests (237
+app, 1744 core, both linters clean), and a folder of nine mixed files stepped through in ⌃Q, ⌃⇧Q and
+⌃⌥Q under both appearances: Python, shell, Swift, HTML, a `git diff`, `PLAN.md`, SQL, CSS and a JSON
+catalog, each correct, with no error on the process's stderr in either run.
+
+**The milestone's colour decision was reversed by a measurement, and re-taken with the user.** M17
+opened (PLAN.md §7) on *system dynamic colours*, on the stated ground that each resolves per
+appearance for free — "the only way to claim legible in both appearances without a screenshot of
+each". Measured against `.textBackgroundColor` in both appearances, alpha composited, before a line
+of `SyntaxTheme` was written:
+
+| | light, on `#FFFFFF` | dark, on `#1E1E1E` |
+|---|---|---|
+| `.systemGreen` | **2.22:1** | 8.25:1 |
+| `.systemTeal` / `.systemCyan` / `.systemMint` | **2.16 / 2.16 / 2.12** | 8.97 / 9.48 / 9.38 |
+| `.systemOrange` / `.systemYellow` | **2.31 / 1.51** | 7.47 / 11.81 |
+| `.systemRed` / `.systemBlue` / `.systemPurple` / `.systemIndigo` | 3.57 / 3.52 / 4.17 / 5.09 | 4.86 / 5.16 / 4.59 / 4.75 |
+
+The system palette is tuned for **fills** — a button, a badge, a selection — not for text on a white
+background, and the hues that fail are exactly the ones a syntax theme wants most. The premise held
+in dark mode and collapsed in light. So the light half is authored (Xcode's own Default Light values,
+each measured: keyword `#9B2393` 6.87:1, string `#C41A16` 5.99, comment `#267507` 5.79, number
+`#1C00CF` 10.77, type `#3E8087` 4.52) and the dark half stays the system colour. What the plan
+actually wanted is untouched — one `NSColor` per kind that resolves itself, no Settings, no
+persistence, no picker — and the claim is now **stronger** than the original could make, because
+`SyntaxThemeTests` pins ≥ 4.5:1 for every kind in *both* appearances rather than trusting a
+screenshot of one. Chosen by the user 2026-08-06 over the two alternatives (restrict to the system
+colours that pass, which leaves a diff with no green; or ship the washed-out ones).
+
+Two more things the wiring turned up:
+
+- **`NSTextView.textStorage` does *not* drop the view to TextKit 1**, which had to be probed because
+  the neighbouring rule is the opposite: reading `.layoutManager` does, and `textStorage` is
+  historically `layoutManager.textStorage`. On a real window, `textLayoutManager` is still non-`nil`
+  after reading `.textStorage` and after a 4 MB `setAttributedString` through it — first display
+  0.03 ms, scroll-to-end 2.7 ms, against 0.47 ms to install the same 4 MB as a plain string and
+  ~38 ms to build the attributed one. The lazy layout the whole design rests on is intact, and
+  `SyntaxThemeTests` now asserts it rather than leaving it to the probe.
+- **A test that spins the run loop is not a test that awaits.**
+  `QuickViewTextPreviewTests.loaded` pumps `RunLoop.run(until:)`, which is enough to lay the surface
+  out — every existing test there only hit-tests it, and all of them pass on that alone. It is *not*
+  enough to land the document, because the detached read's continuation needs the main actor to
+  suspend. The first content assertion written against it read an **empty string**, which is how the
+  gap surfaced; the fix is `await Task.sleep` in a loop, and the shape generalizes to any assertion
+  about what an async load put on screen.
+
+#### Deliberately not in scope
+
+Stated up front, because this is the milestone whose scope has no natural floor, and the correctness
+tail is what would turn three days into three weeks. A regex-free single-pass scanner is about 95 %
+right, and the remaining 5 % is a list of *decisions*, not bugs: **string interpolation** (`\(…)` in
+Swift, `${…}` in JS and shell — a keyword inside a string will be coloured as a string, which is the
+quiet direction), **JS regex literals** (the `/` ambiguity with division is genuinely undecidable
+without a parser), **heredocs** in shell and PHP, **JSX**, and semantic colouring of any kind (a type
+is a type because of a declaration somewhere else — that is a compiler, not a scanner). Each gets a
+comment naming it where the grammar would otherwise have handled it, so the next reader knows it was
+chosen.
+
+Also not in scope, each for its own reason: a **theme picker** (costed alongside this at the estimate
+— per-appearance colour pairs, persistence, a Settings section; deferred in favour of system colours,
+and the M15 palette work is the precedent for what it costs if it is ever wanted); **line numbers,
+folding and a minimap**, which are editor features, and Dirnex hands editing to the user's own editor
+(§M11's largest deliberate call); highlighting inside the **rendered** HTML style, which is the page's
+own business; and any third-party highlighter — **Highlightr** (highlight.js in a `JSContext`) buys
+~190 languages at the price of a dependency, a JS engine on every cursor step and output §2 cannot
+test, and **tree-sitter** is a C dependency plus one compiled grammar per language. Both rejected
+2026-08-06 in favour of a hand-rolled scanner the core can test.

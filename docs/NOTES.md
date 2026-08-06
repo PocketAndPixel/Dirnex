@@ -90,6 +90,15 @@ at build time.
   live by making it fail with bad credentials rather than skip.
 - **A date parsed from a year-less `ls` stamp lands at local midnight** (the formatter sets no
   zone), so read `.day` in the local calendar or the day shifts by one.
+- **Spinning the run loop is not the same as awaiting, and a view-shaped test cannot tell.**
+  `RunLoop.current.run(until:)` drives layout, so a helper built on it produces a view with real
+  frames — enough for every assertion about *structure*, which is why Quick View's hit-test suite
+  passed on it for two milestones. It does **not** land the result of a detached read: that
+  continuation needs the main actor to *suspend*, which a run-loop spin never does. The first
+  assertion about the view's **content** therefore reads an empty string, and it reads as a broken
+  feature rather than a broken wait. Use `await Task.sleep` in a poll loop for anything asserting
+  what an async load put on screen, and treat "the existing helper works" as evidence about the
+  existing assertions only.
 
 ## AppKit
 
@@ -291,6 +300,17 @@ at build time.
     "Arabic (Windows)" — **and lossy about MacRoman** (`Caf<?> na夫e` for `Café naïve`). Refuse the
     lossy answers; take the rest. It is what TextEdit shows, and doing better means shipping a
     charset detector.
+  - **`NSTextView.textStorage` is *not* the TextKit 1 trapdoor, and `.layoutManager` is** — worth
+    stating because it is the natural next worry: `textStorage` is historically
+    `layoutManager.textStorage`, so an attributed document installed through it looks like the exact
+    thing the warning above forbids. Probed on a real window (macOS 26): `textLayoutManager` is still
+    non-`nil` after *reading* `.textStorage` and after a **4 MB** `setAttributedString` through it,
+    with `textContentStorage?.textStorage?` measuring identically. So syntax highlighting costs the
+    lazy layout nothing — first display **0.03 ms**, scroll-to-end **2.7 ms** — and the real costs
+    are elsewhere and are both linear: ~38 ms to *build* the `NSMutableAttributedString` for 4 MB and
+    ~20 ms to install it, against 0.47 ms to assign the same text as a plain `String`. Prefer
+    `textStorage` over the TextKit-2 spelling anyway: it is non-`nil` in both generations, where
+    `textContentStorage?.textStorage?` fails as a **blank preview** if either optional is ever `nil`.
 - **An overlay does not disable the `NSSplitView` divider it covers.** The split view keeps its drag
   region *and* its resize cursor whatever is drawn on top, so a full-window preview showed a `< | >`
   cursor over a photograph and a drag there resized two panes nobody could see — the divider was
@@ -457,6 +477,27 @@ at build time.
     both appearances".** Only one appearance is on screen at a time, so no screenshot can check the
     other; a luminance test over the user's own sRGB colour resolves identically under `.aqua` and
     `.darkAqua`, which is a claim a test can pin.
+- **The `.system*` palette is tuned for *fills*, not for text, and in light mode most of it is
+  unreadable on white.** "Use a system dynamic colour, it resolves per appearance for free" is the
+  natural answer to any two-appearance colour problem — it is what M17 opened on — and it is only
+  half true. Measured against `.textBackgroundColor` in both appearances with alpha composited:
+
+  | | light, on `#FFFFFF` | dark, on `#1E1E1E` |
+  |---|---|---|
+  | `.systemGreen` · `.systemTeal` · `.systemCyan` · `.systemMint` | **2.22 · 2.16 · 2.16 · 2.12** | 8.25 · 8.97 · 9.48 · 9.38 |
+  | `.systemOrange` · `.systemYellow` | **2.31 · 1.51** | 7.47 · 11.81 |
+  | `.systemRed` · `.systemBlue` · `.systemPurple` · `.systemIndigo` · `.systemPink` · `.systemGray` | 3.57 · 3.52 · 4.17 · 5.09 · 3.65 · 3.26 | 4.86 · 5.16 · 4.59 · 4.75 · 4.73 · 5.81 |
+
+  Every one of them clears AA on a dark background and half of them sit near **2:1** on a white one —
+  and the failures are the hues anything text-shaped wants most. It fails in the direction that hides
+  it, too: a developer working in dark mode sees a perfect palette and has no reason to look. The
+  shape that works is `NSColor(name:dynamicProvider:)` with an **authored** light value and the system
+  colour in dark, which keeps everything the system-colour answer was *for* (one colour object per
+  role, resolving itself, no persistence, no Settings) while making the claim testable.
+  - `.secondaryLabelColor` and `.tertiaryLabelColor` carry **alpha** (0.50 and 0.26 in light), so
+    `usingColorSpace(.sRGB)` alone reports them as pure black at 21:1. Composite onto the background
+    before measuring or the two most tempting "muted text" colours score wildly wrong — the tertiary
+    one is really **1.88:1** in light and **2.26:1** in dark, i.e. unusable in both.
 - **`NSTableView` makes a plain `NSTableRowView` when the delegate declines — in every one of its
   five styles.** Probed rather than assumed, and it inverted a design: a row-view subclass that
   defers to `super` is byte-for-byte the stock drawing, so it can be installed **unconditionally**
