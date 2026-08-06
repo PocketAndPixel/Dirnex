@@ -179,21 +179,25 @@ the candidate that would close the most open ends at once.
 ## 7. Open questions
 
 **Open now:** none. M15's two closed with it (below), and M17's one closed at open and was then
-**re-taken once during the milestone** (2026-08-06, both times by the user):
+**re-taken twice** (2026-08-06, every time by the user):
 
 - **How much of a syntax theme the user owns** — resolved in favour of **a small fixed set of
-  semantic kinds, no Settings surface at all**. That half never moved. What moved is where the
-  colours come from: the question closed on *system dynamic colours*, on the ground that each
+  semantic kinds, no Settings surface at all**. That half never moved. What moved, twice, is where
+  the colours come from. The question closed on *system dynamic colours*, on the ground that each
   resolves per appearance for free — and Slice 3 measured them and found `.systemGreen` at
   **2.22:1** on a white text background, with teal, cyan, mint, orange and yellow all between 1.5
   and 2.4. The system palette is tuned for fills, not for text on white, so the premise held in
-  dark mode and collapsed in light. Re-taken as **authored light values with the system colour in
-  dark**, which keeps everything the original answer was *for* (one `NSColor` per kind, resolving
-  itself, no picker, no persistence) and makes the legibility claim testable instead of assumed —
-  `SyntaxThemeTests` pins ≥ 4.5:1 in both appearances. The two alternatives, both declined:
-  restrict to the system colours that pass (which leaves a diff with no green), or ship the
-  washed-out ones. Reopening the *owned-theme* half still means the M15 palette machinery
-  (persistence, a Settings section, a derived-foreground rule), which is why it stays written down.
+  dark mode and collapsed in light. Re-taken as authored light values with the system colour in
+  dark; then re-taken again, the same day and on sight of the result, as **VS Code's Dark Modern
+  and Light Modern on both halves** — the `dark_plus` / `light_plus` token colours. The reason is
+  not aesthetic preference but *whose* theme: a preview is read next to the editor the file will be
+  opened in, and matching that editor is worth more than any hue chosen in isolation. It cost
+  nothing to check — every published value clears the same ≥ 4.5:1 floor `SyntaxThemeTests` already
+  pinned, in both appearances, because `.textBackgroundColor` resolves to exactly `#1E1E1E` in
+  dark, which *is* VS Code's editor background. Everything the original answer was *for* survives
+  both moves: one `NSColor` per kind, resolving itself, no picker, no persistence. Reopening the
+  *owned-theme* half still means the M15 palette machinery (persistence, a Settings section, a
+  derived-foreground rule), which is why it stays written down.
 - Kind count is the one detail the answer no longer pins: it opened at "six and no more" and is
   **eight**, `.inserted` and `.deleted` having been added with the diff scanner (HISTORY.md §M17
   ▸ Slice 2). That is two more entries in the same dictionary, not a Settings surface.

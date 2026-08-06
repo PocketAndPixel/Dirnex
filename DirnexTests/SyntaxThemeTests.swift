@@ -64,8 +64,12 @@ struct SyntaxThemeTests {
 
     @Test("no two kinds resolve to the same colour, except the pair that means to")
     func kindsAreTellableApart() throws {
-        // A reader has to see keyword and string as different things. `deleted` and `string` share
-        // a red on purpose — a diff has no strings and code has no diff lines, so they never meet.
+        // A reader has to see keyword and string as different things. Two pairs share a value on
+        // purpose, and both are VS Code's own: `deleted` takes `string`'s salmon, and `inserted`
+        // takes `number`'s pale green. Neither collision is reachable in a source file — a diff has
+        // no strings or numbers of its own — and where the two vocabularies *can* now meet, inside
+        // a ```diff fence in a Markdown document, the shared green separates a `+` line from a list
+        // marker by position rather than by hue, which is how the editor beside it reads too.
         let appearance = try #require(NSAppearance(named: .aqua))
         var seen: [String: SyntaxToken.Kind] = [:]
         var clashes: [String] = []
@@ -145,11 +149,11 @@ struct SyntaxThemeTests {
 
     // MARK: - Helpers
 
-    /// Whether two kinds are allowed to share a colour: only the diff pair, which cannot appear in
-    /// the same document as the code kinds it borrows a hue from.
+    /// Whether two kinds are allowed to share a colour: only the diff pair, which no source file
+    /// can put beside the code kinds it borrows a hue from.
     private static func mayShareAColour(_ one: SyntaxToken.Kind, _ other: SyntaxToken.Kind) -> Bool {
         let pair: Set<SyntaxToken.Kind> = [one, other]
-        return pair == [.deleted, .string] || pair == [.inserted, .comment]
+        return pair == [.deleted, .string] || pair == [.inserted, .number]
     }
 
     /// The text view of a loaded preview, **awaited** rather than spun for.

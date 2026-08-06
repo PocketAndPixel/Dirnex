@@ -53,16 +53,71 @@ struct SyntaxMarkdownAndDiffTests {
     @Test("a fenced block runs to its matching closer, and only its own character closes it")
     func fences() {
         #expect(md("```swift\nlet x = 1\n```\n# after") == [
-            Span("```swift\nlet x = 1\n```", .string),
+            Span("```swift", .keyword),
+            Span("let", .keyword),
+            Span("1", .number),
+            Span("```", .keyword),
             Span("# after", .keyword)
         ])
-        // A ``` block may contain ~~~, and vice versa.
-        #expect(md("~~~\n```\n~~~") == [Span("~~~\n```\n~~~", .string)])
+        // A ``` block may contain ~~~, and vice versa. Neither names a language, so the body of
+        // each is left in the document's own colour.
+        #expect(md("~~~\n```\n~~~") == [Span("~~~", .keyword), Span("~~~", .keyword)])
+    }
+
+    @Test("a fence names its own language, and an undecorated one colours nothing inside")
+    func fenceBodyTakesItsInfoStringsLanguage() {
+        // The whole point of the change: a tree diagram or a plain transcript is the largest thing
+        // on a README's page, and painting it one colour makes the loudest region the least
+        // meaningful one.
+        #expect(md("```\nDirnex/\n├── PLAN.md\n```") == [
+            Span("```", .keyword),
+            Span("```", .keyword)
+        ])
+        // The spelled-out spellings route too, not just the ones that happen to be extensions.
+        #expect(md("```shell\n# note\n```") == [
+            Span("```shell", .keyword),
+            Span("# note", .comment),
+            Span("```", .keyword)
+        ])
+        // An info string nothing claims is the undecorated case again, not an error.
+        #expect(md("```brainfuck\n+++.\n```") == [
+            Span("```brainfuck", .keyword),
+            Span("```", .keyword)
+        ])
+        // Only the first word is the language; the rest belongs to whatever renders the document.
+        #expect(md("```json title=\"a.json\"\n\"k\"\n```") == [
+            Span("```json title=\"a.json\"", .keyword),
+            Span("\"k\"", .string),
+            Span("```", .keyword)
+        ])
+    }
+
+    @Test("a fence inside a fence terminates, and is bounded at two levels by construction")
+    func nestedFences() {
+        // A fence closes on the first run of its *own* character, so a ~~~ body can hold ``` blocks
+        // and those can hold neither — there is no third level for the re-entrant scan to reach.
+        #expect(md("~~~markdown\n```swift\nlet x = 1\n```\n~~~") == [
+            Span("~~~markdown", .keyword),
+            Span("```swift", .keyword),
+            Span("let", .keyword),
+            Span("1", .number),
+            Span("```", .keyword),
+            Span("~~~", .keyword)
+        ])
     }
 
     @Test("an unclosed fence runs to the end of the buffer")
     func unterminatedFence() {
-        #expect(md("```\nstill inside\n") == [Span("```\nstill inside\n", .string)])
+        #expect(md("```\nstill inside\n") == [Span("```", .keyword)])
+        // …and its body is still scanned, which is what a file truncated at the preview's byte
+        // limit hands over.
+        #expect(md("```swift\nlet x = 1\n") == [
+            Span("```swift", .keyword),
+            Span("let", .keyword),
+            Span("1", .number)
+        ])
+        // A fence that is the file's last line has no body at all.
+        #expect(md("text\n```swift") == [Span("```swift", .keyword)])
     }
 
     // MARK: - Markdown inline

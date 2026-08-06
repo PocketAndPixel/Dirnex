@@ -83,6 +83,46 @@ struct SyntaxLanguageTests {
         #expect(SyntaxLanguage.forFile(named: "Localizable.xcstrings") == .json)
     }
 
+    // MARK: - Fence info strings
+
+    @Test("a fence's info string routes through the extension table it shares with file names")
+    func fenceInfoReusesTheExtensionTable() {
+        #expect(SyntaxLanguage.forFenceInfo("swift") == .swift)
+        #expect(SyntaxLanguage.forFenceInfo("bash") == .shell)
+        #expect(SyntaxLanguage.forFenceInfo("json") == .json)
+        #expect(SyntaxLanguage.forFenceInfo("py") == .python)
+        #expect(SyntaxLanguage.forFenceInfo("Swift") == .swift)
+        #expect(SyntaxLanguage.forFenceInfo("diff") == .diff)
+    }
+
+    @Test("the spellings a file name can never carry route too")
+    func fenceInfoHasItsOwnVocabulary() {
+        // The reason `forFenceInfo` exists rather than a call to `forFile(named:)`: these are whole
+        // *names* on that side and would be read as extensions, and these spelled-out ones are
+        // neither.
+        #expect(SyntaxLanguage.forFenceInfo("makefile") == .makefile)
+        #expect(SyntaxLanguage.forFenceInfo("dockerfile") == .dockerfile)
+        #expect(SyntaxLanguage.forFenceInfo("python") == .python)
+        #expect(SyntaxLanguage.forFenceInfo("javascript") == .javascript)
+        #expect(SyntaxLanguage.forFenceInfo("shell") == .shell)
+        #expect(SyntaxLanguage.forFenceInfo("console") == .shell)
+        #expect(SyntaxLanguage.forFenceInfo("objective-c") == .objectiveC)
+        // …and each is genuinely unreachable the other way, which is the claim being made.
+        #expect(SyntaxLanguage.forFile(named: "a.makefile") == nil)
+        #expect(SyntaxLanguage.forFile(named: "a.python") == nil)
+        #expect(SyntaxLanguage.forFile(named: "a.shell") == nil)
+    }
+
+    @Test("only the first word is the language, and an unclaimed one is nil")
+    func fenceInfoEdges() {
+        #expect(SyntaxLanguage.forFenceInfo("js title=\"app.js\"") == .javascript)
+        #expect(SyntaxLanguage.forFenceInfo("") == nil)
+        #expect(SyntaxLanguage.forFenceInfo("   ") == nil)
+        // What a tree diagram or a transcript carries, and the case the whole change is for.
+        #expect(SyntaxLanguage.forFenceInfo("text") == nil)
+        #expect(SyntaxLanguage.forFenceInfo("brainfuck") == nil)
+    }
+
     // MARK: - Table invariants
 
     @Test("no extension and no file name is claimed by two languages")

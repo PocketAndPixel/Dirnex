@@ -8010,6 +8010,42 @@ Two more things the wiring turned up:
   gap surfaced; the fix is `await Task.sleep` in a loop, and the shape generalizes to any assertion
   about what an async load put on screen.
 
+**Then the palette was re-taken a second time, same day, on sight of a README.** The Xcode-derived
+table above shipped and looked wrong in one specific way the user named immediately: *red, almost
+everywhere*. The cause was only half the colour table. `SyntaxMarkdownScanner` mapped a **fenced code
+block** to `.string`, so the layout tree and both `bash` blocks in this repo's own README rendered as
+one continuous red mass — a fence is routinely the largest thing on a page, so painting it all one
+literal colour makes the loudest region of the document the one carrying the least meaning. Two
+changes, and the second is the one that mattered:
+
+- **The palette is now VS Code's Dark Modern and Light Modern on both halves** (`dark_plus` /
+  `light_plus` token colours), replacing Xcode-light-plus-system-dark. Not an aesthetic preference
+  but a choice of *whose* theme: a file manager's preview is read beside the editor the file will be
+  opened in. It cost nothing to verify — measured against the real `.textBackgroundColor` in both
+  appearances before anything was written, every published value clears the same 4.5:1 floor
+  (light: keyword `#0000FF` 8.59, string `#A31515` 7.85, comment `#008000` 5.14, number `#098658`
+  4.60, type `#267F99` 4.59; dark: `#569CD6` 5.65, `#CE9178` 6.31, `#6A9955` 5.00, `#B5CEA8` 9.81,
+  `#4EC9B0` 8.18). The dark half needed no adjustment at all, and that is not luck:
+  `.textBackgroundColor` resolves to exactly `#1E1E1E` in dark mode, which *is* VS Code's classic
+  editor background — the dark values are measured on the background they were designed for.
+  `SyntaxThemeTests.mayShareAColour` gained one change: `inserted` now shares with `number` rather
+  than with `comment`, which is VS Code's own collision (both `#b5cea8` / `#098658` there too).
+- **A fence is three tokens, not one.** The two delimiter *lines* take `.keyword`, on the heading's
+  argument — they are the document's own structure — and the **body** is scanned as the language its
+  info string names, or left entirely uncoloured when it names none. `SyntaxLanguage.forFenceInfo`
+  is its own entry point rather than a call to `forFile(named:)`, because the two vocabularies
+  disagree in both directions: `makefile` and `dockerfile` are whole *names* on that side and would
+  be read as extensions, and the spelled-out `python`, `javascript`, `shell`, `objective-c` — what
+  people actually type above a fence — are neither, so they need a table of their own. What the two
+  share is the extension table, so `swift`, `bash`, `json`, `py` and the rest need no entry. The
+  re-entrant scan is bounded at **two levels by construction, not by a counter**: a fence closes on
+  the first run of its *own* character, so its body can contain no fence of that character at all —
+  an outer ``` block holds only `~~~` fences, whose bodies can hold neither.
+
+Live-verified on this repo's README in both appearances: the layout tree renders plain, the `bash`
+blocks render as bash, and flipping the system appearance with the preview already open re-resolves
+every colour in place — which is the dynamic-pair design doing what it was built for.
+
 #### Deliberately not in scope
 
 Stated up front, because this is the milestone whose scope has no natural floor, and the correctness

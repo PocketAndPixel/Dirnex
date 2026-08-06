@@ -8,11 +8,13 @@ import Foundation
 /// unclosed `*` costs its own line rather than the rest of the document — the same bound the source
 /// scanner puts on an unterminated quote.
 ///
-/// The kinds, and the reasoning for each: a **heading** is `.keyword` and a **thematic break** is
-/// too, because both are the document's own structure; a **blockquote** is `.comment`, being an
-/// aside; **code** — span or fence — is `.string`, being literal text; a **list marker** is
-/// `.number`, which is what an ordered one literally is; and **emphasis** and a **link's text** are
-/// `.typeOrTag`, the remaining bucket, with the link's URL taking `.string` beside it.
+/// The kinds, and the reasoning for each: a **heading** is `.keyword` and a **thematic break** and
+/// a **fence line** are too, because all three are the document's own structure; a **blockquote**
+/// is `.comment`, being an aside; an inline **code span** is `.string`, being literal text; a
+/// **list marker** is `.number`, which is what an ordered one literally is; and **emphasis** and a
+/// **link's text** are `.typeOrTag`, the remaining bucket, with the link's URL taking `.string`
+/// beside it. A **fenced block's body** is none of these — it is scanned as the language its info
+/// string names, and left alone when it names none; see `scanFence`.
 ///
 /// Two constructs are deliberately absent, both because they need to remember a *previous* line:
 /// the **setext heading** (text underlined with `===`) and the **indented code block**, which is
@@ -71,20 +73,67 @@ enum SyntaxMarkdownScanner {
         /// A fenced code block, from its opening fence to the end of the matching closing one — or
         /// to the end of the buffer when it is never closed, which is what a truncated file hands
         /// over. The closer must be the same character, so a ``` block containing `~~~` survives.
+        ///
+        /// **Three tokens, not one.** The two fence *lines* take `.keyword`, on the heading's
+        /// argument — they are the document's own structure — and the block's **content** is
+        /// scanned as the language its info string names, or left entirely uncoloured when it names
+        /// none. That is what VS Code shows and what the block wants: a fence is routinely the
+        /// largest thing on a page, so painting it all one literal colour makes the loudest region
+        /// of the document the one carrying the least meaning. Whatever a fence holds, it is not a
+        /// string.
         private mutating func scanFence(from content: Int, lineEnd: Int) -> Int? {
             guard let fence = fenceCharacter(at: content, upTo: lineEnd) else { return nil }
-            var cursor = Unit.nextLineStart(after: lineEnd, in: units)
+            let bodyStart = Unit.nextLineStart(after: lineEnd, in: units)
+            var cursor = bodyStart
             while cursor < units.count {
                 let end = Unit.lineEnd(from: cursor, in: units)
                 let lineContent = Unit.firstNonSpace(from: cursor, upTo: end, in: units)
                 if fenceCharacter(at: lineContent, upTo: end) == fence {
-                    emit(content, end, .string)
+                    emit(content, lineEnd, .keyword)
+                    emitBody(from: bodyStart, to: cursor, openedAt: content, lineEnd: lineEnd)
+                    emit(lineContent, end, .keyword)
                     return Unit.nextLineStart(after: end, in: units)
                 }
                 cursor = Unit.nextLineStart(after: end, in: units)
             }
-            emit(content, units.count, .string)
+            emit(content, lineEnd, .keyword)
+            emitBody(from: bodyStart, to: units.count, openedAt: content, lineEnd: lineEnd)
             return units.count
+        }
+
+        /// The block's content, scanned as its own language and re-based onto this document.
+        ///
+        /// Re-entrant, and bounded at two levels rather than by a counter: a fence closes on the
+        /// **first** run of its own character, so its body can contain no fence of that character
+        /// at all. An outer ``` block therefore holds only `~~~` fences, whose bodies can hold
+        /// neither — there is no third level to reach.
+        private mutating func emitBody(from start: Int, to end: Int, openedAt: Int, lineEnd: Int) {
+            guard start < end, let language = fenceLanguage(openedAt: openedAt, lineEnd: lineEnd)
+            else { return }
+            let text = String(decoding: units[start..<end], as: UTF16.self)
+            // The slice is cut at line boundaries, so it cannot split a surrogate pair — but a
+            // re-encode that changed length would slide every offset below it, and a wrong offset
+            // is the one failure that is not merely a wrong colour. Checked rather than argued.
+            guard text.utf16.count == end - start else { return }
+            for token in SyntaxHighlighter.tokens(in: text, language: language) {
+                tokens.append(
+                    SyntaxToken(
+                        offset: start + token.offset,
+                        length: token.length,
+                        kind: token.kind
+                    )
+                )
+            }
+        }
+
+        /// The language named after the opening fence's run of delimiters, if any.
+        private func fenceLanguage(openedAt: Int, lineEnd: Int) -> SyntaxLanguage? {
+            var position = openedAt
+            while position < lineEnd, units[position] == units[openedAt] { position += 1 }
+            guard position < lineEnd else { return nil }
+            return SyntaxLanguage.forFenceInfo(
+                String(decoding: units[position..<lineEnd], as: UTF16.self)
+            )
         }
 
         /// The fence character when at least three of it open the line, else `nil`.

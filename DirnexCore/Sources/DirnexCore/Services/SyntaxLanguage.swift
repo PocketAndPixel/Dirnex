@@ -221,3 +221,46 @@ public enum SyntaxLanguage: String, Sendable, CaseIterable {
         return table
     }()
 }
+
+// MARK: - Fenced code blocks
+
+public extension SyntaxLanguage {
+    /// The language a Markdown fence's info string names — ```` ```swift ````, ```` ```bash ```` —
+    /// or `nil` for one nothing here claims, which is what leaves an undecorated fence uncoloured
+    /// (PLAN.md §M17 ▸ Slice 3).
+    ///
+    /// Its own entry point rather than a call to `forFile(named:)`, because an info string is not a
+    /// file name and the two vocabularies genuinely disagree in both directions. `makefile` and
+    /// `dockerfile` are whole *names* on that side and would be read as extensions here; and the
+    /// spelled-out `python`, `javascript`, `shell`, `objective-c` — what people actually type above
+    /// a fence — are neither a name nor an extension, so they need a table of their own. What the
+    /// two *do* share is the extension table, which already answers `swift`, `bash`, `json`, `py`
+    /// and the rest, so nothing is duplicated to get them.
+    static func forFenceInfo(_ info: String) -> SyntaxLanguage? {
+        // CommonMark: the info string's first word is the language, and anything after it belongs
+        // to whatever renders the document (`js title="app.js"`), not to the name.
+        guard let word = info.split(whereSeparator: { $0 == " " || $0 == "\t" }).first else {
+            return nil
+        }
+        let lowered = word.lowercased()
+        return fenceAliases[lowered] ?? byFileName[lowered] ?? byExtension[lowered]
+    }
+
+    /// The spellings that are neither a file name nor an extension. Kept short on purpose: an alias
+    /// nobody writes above a fence is dead data, and a fence this misses renders as plain text —
+    /// which is the same thing it did before embedded highlighting existed.
+    private static let fenceAliases: [String: SyntaxLanguage] = [
+        "objective-c": .objectiveC, "objectivec": .objectiveC, "objc": .objectiveC,
+        "csharp": .cSharp,
+        "golang": .go,
+        "javascript": .javascript, "node": .javascript,
+        "typescript": .typeScript,
+        "python": .python, "python3": .python,
+        "ruby": .ruby,
+        "rust": .rust,
+        "kotlin": .kotlin,
+        "perl": .perl,
+        // A fenced shell block is as often a transcript as a script, and both are shell.
+        "shell": .shell, "shell-session": .shell, "console": .shell, "terminal": .shell
+    ]
+}
