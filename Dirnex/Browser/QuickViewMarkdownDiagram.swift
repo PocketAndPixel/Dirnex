@@ -23,6 +23,18 @@ enum QuickViewMarkdownDiagram {
     /// around it rather than shouting over it — the same relationship a code fence has.
     static let labelSize = NSFont.smallSystemFontSize
 
+    /// How much larger than its laid-out size a diagram is drawn (`MarkdownRenderOptions
+    /// .diagramScale`).
+    ///
+    /// The layout's own size is measured in the label font, which is deliberately the *small*
+    /// system size so a diagram does not shout over the prose — and at that size a flowchart's
+    /// labels read a good deal smaller than the paragraph beside it, which is the one place the
+    /// relationship with a code fence stops holding. Magnifying the finished drawing fixes the
+    /// reading size without touching a single layout constant: the `viewBox` is untouched, so
+    /// boxes, gaps, strokes and text all grow together and the `max-width: 100%` rule still shrinks
+    /// the whole thing back down on a window too narrow to hold it.
+    static let scale = 1.25
+
     /// A font carried across the detached boundary.
     ///
     /// `@unchecked Sendable` is a claim, and this is the one the milestone's probe actually
@@ -69,9 +81,11 @@ enum QuickViewMarkdownDiagram {
     /// knows which appearance is on screen.
     static var rules: String {
         """
-        figure.mermaid-figure { margin: 0 0 1em; }
+        figure.mermaid-figure { margin: 0 0 1em; text-align: center; }
+        figure.mermaid-figure pre { text-align: left; }
         svg.mermaid {
           display: block;
+          margin-inline: auto;
           max-width: 100%;
           height: auto;
           color: var(--text);

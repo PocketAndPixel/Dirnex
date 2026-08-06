@@ -45,6 +45,30 @@ struct MermaidRendererTests {
         #expect(output.contains(" viewBox=\"0 0 "))
     }
 
+    @Test("a scale magnifies a diagram rather than laying it out again")
+    func diagramScaleMagnifies() {
+        // The claim worth pinning is not "the numbers got bigger" but that *only* the two size
+        // attributes did: with the `viewBox` and the body untouched, every proportion the layout
+        // measured — box against label, gap against box, stroke against both — survives the change
+        // by construction, which is what a re-layout at a larger font could not promise.
+        let source = "```mermaid\ngraph TD\nA[Start] --> B[Done]\n```"
+        let natural = html(source)
+        let magnified = html(source, options: MarkdownRenderOptions(diagramScale: 2))
+        let naturalWidth = Self.attribute("width", in: natural).flatMap(Double.init) ?? 0
+        let naturalHeight = Self.attribute("height", in: natural).flatMap(Double.init) ?? 0
+        let magnifiedWidth = Self.attribute("width", in: magnified).flatMap(Double.init) ?? 0
+        let magnifiedHeight = Self.attribute("height", in: magnified).flatMap(Double.init) ?? 0
+        let expectedWidth = naturalWidth * 2
+        let expectedHeight = naturalHeight * 2
+        #expect(naturalWidth > 0 && naturalHeight > 0)
+        #expect(magnifiedWidth == expectedWidth)
+        #expect(magnifiedHeight == expectedHeight)
+        #expect(Self.attribute("viewBox", in: magnified) == Self.attribute("viewBox", in: natural))
+        // Everything the emitter drew is the same bytes at either scale.
+        #expect(Self.body(of: magnified) == Self.body(of: natural))
+        #expect(!Self.body(of: natural).isEmpty)
+    }
+
     @Test("a sequence fence draws too, and the info string may be spelled either way")
     func sequenceDraws() {
         #expect(fence("sequenceDiagram\nA->>B: hi").contains("mermaid-sequence"))
@@ -193,5 +217,24 @@ struct MermaidRendererTests {
             )
         }
         return result
+    }
+
+    /// The value of an attribute on the `<svg>` open tag, read the same hand-rolled way.
+    static func attribute(_ name: String, in html: String) -> String? {
+        guard let open = html.range(of: "<svg "),
+              let close = html[open.upperBound...].firstIndex(of: ">"),
+              let start = html[open.upperBound..<close].range(of: "\(name)=\"")
+        else { return nil }
+        guard let end = html[start.upperBound..<close].firstIndex(of: "\"") else { return nil }
+        return String(html[start.upperBound..<end])
+    }
+
+    /// Everything the emitter drew inside the `<svg>` wrapper.
+    static func body(of html: String) -> String {
+        guard let open = html.range(of: "<svg "),
+              let close = html[open.upperBound...].firstIndex(of: ">"),
+              let end = html.range(of: "</svg>")
+        else { return "" }
+        return String(html[html.index(after: close)..<end.lowerBound])
     }
 }

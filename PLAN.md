@@ -417,6 +417,16 @@ Four findings worth carrying:
   this repo's own `PLAN.md` already takes. The real metric adds ~6 µs a label on top. So a diagram
   costs about what the document around it costs, and it rides the detached read task either way.
 
+Followed up 2026-08-07 after reading a page: a diagram laid out in the *small* system size reads
+noticeably smaller than the prose beside it, so a finished drawing is now **magnified** —
+`MarkdownRenderOptions.diagramScale`, 1.25 in the app — and the figure is centred in the reading
+column. Magnifying the `<svg>`'s displayed size while the `viewBox` stays put is what makes it one
+line rather than a second layout: boxes, gaps, strokes and labels all grow together, so no
+proportion the layout measured can drift, and `max-width: 100%` still shrinks the whole thing on a
+narrow window. Growing the label font instead would have grown the text inside boxes whose paddings
+and layer gaps are constants. The centring needs its own carve-out for the fallback — a `<pre>`
+inside a centred `<figure>` is *source code*, and it stays left-aligned.
+
 #### Deliberately not in scope
 
 - **Full CommonMark conformance.** The target is what the file's own author sees on GitHub for an

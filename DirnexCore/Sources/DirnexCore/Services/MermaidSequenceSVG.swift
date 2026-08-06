@@ -5,7 +5,7 @@ import Foundation
 /// Painting order is lifelines, activations, notes, messages, then headers — bottom to top, so a
 /// message crosses a lifeline and a header box covers the line hanging from it.
 enum MermaidSequenceSVG {
-    static func svg(_ drawing: MermaidSequenceDrawing) -> String {
+    static func svg(_ drawing: MermaidSequenceDrawing, scale: Double = 1) -> String {
         let body = drawing.participants.map { lifeline($0, bottom: drawing.lifelineBottom) }.joined()
             + drawing.activations.map { MermaidSVG.rect($0, classes: "mm-activation") }.joined()
             + drawing.notes.map(note).joined()
@@ -15,7 +15,8 @@ enum MermaidSequenceSVG {
             width: drawing.width,
             height: drawing.height,
             body: body,
-            classes: "mermaid mermaid-sequence"
+            classes: "mermaid mermaid-sequence",
+            scale: scale
         )
     }
 

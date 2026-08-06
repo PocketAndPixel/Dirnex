@@ -34,9 +34,23 @@ enum MermaidSVG {
     /// twice that, on a page whose prose was the size it should have been. With `width` and
     /// `height` present the diagram draws at the size it was laid out for and the `max-width` rule
     /// only ever scales it *down*, on a window too narrow to hold it.
-    static func document(width: Double, height: Double, body: String, classes: String) -> String {
+    ///
+    /// `scale` multiplies the *displayed* size and leaves the `viewBox` — hence the whole drawing —
+    /// alone, so it is a uniform magnification rather than a second layout: labels, strokes and
+    /// gaps all grow by the same factor and their proportions cannot drift from the ones the layout
+    /// was measured in. Doing it here rather than by enlarging the label font is what keeps that
+    /// true; the paddings and layer gaps are constants, so a bigger font alone would grow the text
+    /// inside boxes that stayed the size they were.
+    static func document(
+        width: Double,
+        height: Double,
+        body: String,
+        classes: String,
+        scale: Double = 1
+    ) -> String {
         """
-        <svg class="\(classes)" width="\(number(width))" height="\(number(height))" \
+        <svg class="\(classes)" width="\(number(width * scale))" \
+        height="\(number(height * scale))" \
         viewBox="0 0 \(number(width)) \(number(height))" \
         xmlns="http://www.w3.org/2000/svg" role="img">\(body)</svg>
         """

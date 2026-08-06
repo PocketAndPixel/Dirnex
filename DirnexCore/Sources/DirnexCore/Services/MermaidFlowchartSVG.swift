@@ -5,13 +5,14 @@ import Foundation
 /// Edges first, then nodes, so a line that passes near a box is covered by it rather than crossing
 /// its label — SVG has no z-index, and painting order is the whole of the answer.
 enum MermaidFlowchartSVG {
-    static func svg(_ drawing: MermaidFlowchartDrawing) -> String {
+    static func svg(_ drawing: MermaidFlowchartDrawing, scale: Double = 1) -> String {
         let body = drawing.edges.map(edge).joined() + drawing.nodes.map(node).joined()
         return MermaidSVG.document(
             width: drawing.width,
             height: drawing.height,
             body: body,
-            classes: "mermaid mermaid-flowchart"
+            classes: "mermaid mermaid-flowchart",
+            scale: scale
         )
     }
 

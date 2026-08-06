@@ -42,16 +42,26 @@ public struct MarkdownRenderOptions: Sendable {
     /// established for the same problem.
     public var describeUndrawnDiagram: @Sendable (String) -> String
 
+    /// How much larger than its laid-out size a diagram is drawn.
+    ///
+    /// A magnification, not a second layout: it scales the `<svg>`'s displayed width and height and
+    /// leaves the `viewBox` alone (`MermaidSVG.document`), so every proportion the layout measured
+    /// survives it. `1` is the size the layout produced, which is what every test that pins an
+    /// exact number is written against.
+    public var diagramScale: Double
+
     public init(
         resolveImageSource: @escaping @Sendable (String) -> String = { $0 },
         textMetric: MarkdownTextMetric = .fixedAdvance,
         describeUndrawnDiagram: @escaping @Sendable (String) -> String = {
             "“\($0)” is not drawn in this preview."
-        }
+        },
+        diagramScale: Double = 1
     ) {
         self.resolveImageSource = resolveImageSource
         self.textMetric = textMetric
         self.describeUndrawnDiagram = describeUndrawnDiagram
+        self.diagramScale = diagramScale
     }
 }
 

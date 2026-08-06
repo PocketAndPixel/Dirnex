@@ -86,7 +86,8 @@ extension QuickViewPreviewView {
                 // concurrent queues and agreed exactly (`QuickViewMarkdownDiagram`), and the
                 // sentence is a catalog lookup.
                 textMetric: QuickViewMarkdownDiagram.metric,
-                describeUndrawnDiagram: { QuickViewMarkdownDiagram.describeUndrawn($0) }
+                describeUndrawnDiagram: { QuickViewMarkdownDiagram.describeUndrawn($0) },
+                diagramScale: QuickViewMarkdownDiagram.scale
             )
             return MarkdownScan(
                 html: MarkdownDocument.render(preview.text, options: options).html,

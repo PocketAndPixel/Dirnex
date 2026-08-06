@@ -29,10 +29,16 @@ enum MermaidRenderer {
         switch MermaidParser.parse(source) {
         case let .flowchart(chart):
             let drawing = MermaidFlowchartLayout.lay(out: chart, metric: options.textMetric)
-            return Output(svg: MermaidFlowchartSVG.svg(drawing), undrawn: chart.undrawn)
+            return Output(
+                svg: MermaidFlowchartSVG.svg(drawing, scale: options.diagramScale),
+                undrawn: chart.undrawn
+            )
         case let .sequence(diagram):
             let drawing = MermaidSequenceLayout.lay(out: diagram, metric: options.textMetric)
-            return Output(svg: MermaidSequenceSVG.svg(drawing), undrawn: diagram.undrawn)
+            return Output(
+                svg: MermaidSequenceSVG.svg(drawing, scale: options.diagramScale),
+                undrawn: diagram.undrawn
+            )
         case .unsupported:
             return nil
         }
