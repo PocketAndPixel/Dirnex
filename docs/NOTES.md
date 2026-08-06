@@ -90,6 +90,21 @@ at build time.
   live by making it fail with bad credentials rather than skip.
 - **A date parsed from a year-less `ls` stamp lands at local midnight** (the formatter sets no
   zone), so read `.day` in the local calendar or the day shifts by one.
+- **A security assertion that searches rendered *text* for a dangerous string is testing the
+  document, not the renderer.** Three of M18 Slice 1's own assertions over the Markdown renderer
+  were written that way and all three were wrong, in both directions. `!html.contains("onerror")`
+  fails on a **correct** render, because the word is legitimate prose — PLAN.md contains one, and
+  escaping the tag around it does not (and must not) remove it; `!html.contains("javascript:")`
+  fails the same way on any document that *discusses* link safety, which is exactly the document
+  most likely to be in the corpus. And a third, `name.first == "h" && name.count == 2` as "count
+  the headings", quietly counted `<hr>` — so it over-reported rather than failing, which is worse.
+  The assertions that hold ask what reached a **tag**: the set of attribute *names* against a closed
+  allow-list (this is what catches an event handler), and every `href`/`src` **scheme** against
+  another. Two corollaries worth keeping: a string that escaping makes *unrepresentable* is still
+  safe to search for — a literal `<script` in the output could only have been written by the
+  renderer, since prose renders as `&lt;script` — and the scheme reader in the test is written out
+  by hand rather than borrowed from the code under test, since reusing it would prove the two agree
+  rather than that either is right.
 - **Spinning the run loop is not the same as awaiting, and a view-shaped test cannot tell.**
   `RunLoop.current.run(until:)` drives layout, so a helper built on it produces a view with real
   frames — enough for every assertion about *structure*, which is why Quick View's hit-test suite

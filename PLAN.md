@@ -202,33 +202,58 @@ Four slices, core-first (§2). The order is deliberate: the app wiring lands **t
 milestone is a usable feature before mermaid is written and mermaid can be cut without leaving
 anything half-built.
 
-#### Slice 1 — The block and inline renderer (M, core-only)
+#### Slice 1 — The block and inline renderer (M, core-only) — landed 2026-08-06
 
-- [ ] `MarkdownParser` — a line-oriented **block** pass, then an **inline** pass per block. Two passes
-      rather than M17's one, and the departure is the point: that scanner is single-pass with one
-      lookahead *because* it only ever adds colour, so a construct it gets wrong is a wrong colour. A
-      renderer produces the document itself, and gets the previous line and the block's whole text.
-      Which is also why **setext headings and indented code blocks** — both named in M17's undone
-      column as needing a lookahead the scanner does not keep — are in scope here.
-- [ ] Blocks: ATX and setext headings, paragraphs, thematic breaks, fenced (``` and `~~~`, with info
+- [x] `MarkdownBlockParser` — a line-oriented **block** pass, then an **inline** pass per block. Two
+      passes rather than M17's one, and the departure is the point: that scanner is single-pass with
+      one lookahead *because* it only ever adds colour, so a construct it gets wrong is a wrong
+      colour. A renderer produces the document itself, and gets the previous line and the block's
+      whole text. Which is also why **setext headings and indented code blocks** — both named in
+      M17's undone column as needing a lookahead the scanner does not keep — are in scope here, and
+      both landed.
+- [x] Blocks: ATX and setext headings, paragraphs, thematic breaks, fenced (``` and `~~~`, with info
       string) and indented code, nesting blockquotes, ordered and unordered lists (nesting,
       tight/loose), GFM tables with per-column alignment, task-list items, link reference definitions,
       and **YAML front matter** — recognized rather than ignored, since an opening `---` otherwise
       parses as a thematic break and the document opens looking broken. Rendered as a subdued
       metadata table: a file manager shows what is in the file.
-- [ ] Inline: emphasis and strong, inline code spans, links, images, autolinks, GFM strikethrough,
-      hard line breaks, entities, and backslash escapes.
-- [ ] **Escaping is the renderer's contract, not a step inside it**: every text run reaches the output
-      HTML-escaped, and a raw tag in the source is text. Asserted directly rather than assumed — a
-      fixture carrying `<script>`, an `onerror` attribute and a `javascript:` link must render three
-      visible strings and no elements.
-- [ ] The output is a **fragment plus the heading list**, not a whole document. The `<html>` wrapper
-      and the stylesheet are the app's, because the app is the only side that knows which appearance
-      is on screen.
+- [x] Inline: emphasis and strong, inline code spans, links, images, autolinks, GFM strikethrough,
+      hard line breaks, entities, and backslash escapes. **Emphasis is what forced the inline pass
+      into two stages of its own** — scanning forward and matching the first legal closer gets
+      `*a **b** c*` wrong, because the `**` after `b` *is* a legal closer for the outer `*`. The
+      scan therefore emits finished nodes with the delimiter runs left in place, and a second pass
+      pairs them from the inside out.
+- [x] **Escaping is the renderer's contract, not a step inside it**: every text run reaches the
+      output HTML-escaped, and a raw tag in the source is text. A second wall behind it for the one
+      thing escaping cannot reach — `[click](javascript:…)` is *valid Markdown* with no raw HTML in
+      it, so `MarkdownURL` allow-lists the schemes and a refused link keeps its words and loses its
+      `href`.
+- [x] The output is a **fragment**, not a whole document. The `<html>` wrapper and the stylesheet are
+      the app's, because the app is the only side that knows which appearance is on screen. (The
+      heading list moves to Slice 2, where the TOC needs it.)
+- [x] `MarkdownRenderOptions.resolveImageSource` — the seam the milestone's **first probe** lands in,
+      added now with an identity default so no test in this slice depends on how that probe comes out.
 
-Exit: this repo's own `PLAN.md`, `README.md` and `docs/NOTES.md` — the hardest file in the corpus,
-with lists five deep, tables, and inline code full of markdown punctuation — each render as expected
-in tests; nothing in the app has changed and it does not need a rebuild.
+Exit: **met.** 77 new core tests, and the corpus suite renders this repo's own `PLAN.md`,
+`README.md`, `docs/NOTES.md` and `docs/HISTORY.md` structurally rather than against a golden file —
+the output is balanced, every tag and every attribute is in a **closed set** the renderer chose, no
+`href` carries a scheme outside the allow-list, and no heading is lost between source and page.
+1823 core + the app suite green, both linters clean; the app is untouched and was not rebuilt for it.
+
+Two findings worth carrying:
+
+- **Rendering is affordable at the sizes that exist, and only just at the ceiling.** Release build:
+  README 0.5 ms, `PLAN.md` (37 KB) 4.5 ms, `NOTES.md` (174 KB) 24 ms, `HISTORY.md` (683 KB) 96 ms,
+  and 482 ms at `TextPreview.byteLimit`'s 4 MB (debug is ~2.2× each). So Slice 3 puts this on the
+  detached read task beside `TextPreview.read`, exactly where M17 put the tokenizer and for the same
+  reason — the preview re-renders on **every cursor step**. A `.md` large enough to be a problem is
+  not a document anybody reads, and it already has the truncation notice.
+- **A security assertion that searches the rendered *text* for a dangerous string tests the
+  document, not the renderer** — three of this slice's own assertions were written that way and all
+  three were wrong. `onerror` as a word is legitimate prose (this plan contains one), `javascript:`
+  likewise, and `hr` matched a "starts with h" heading count. The assertions that hold ask what
+  reached a **tag**: the attribute names against a closed set, and every `href`/`src` scheme against
+  an allow-list. Now in docs/NOTES.md ▸ Testing.
 
 #### Slice 2 — `[[_TOC_]]`, anchors, and coloured fences (S, core-only)
 
