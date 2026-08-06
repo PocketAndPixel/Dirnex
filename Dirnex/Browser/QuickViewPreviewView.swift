@@ -61,13 +61,20 @@ final class QuickViewPreviewView: NSView {
 
     private var previewView: QLPreviewView?
     private var pdfView: PDFView?
-    private var imageView: NSImageView?
+    /// Internal, not private: built and driven from `QuickViewPreviewView+Image`, and Swift's
+    /// `private` does not cross files.
+    var imageView: NSImageView?
     /// Internal, not private: built and driven from `QuickViewPreviewView+Text`, and Swift's
     /// `private` does not cross files.
     var textSurface: QuickViewTextView?
+    /// Internal for the same reason, from `QuickViewPreviewView+HTML`.
+    var webSurface: QuickViewWebView?
     /// The URL currently loaded, so an unrelated refresh that re-drives the same file is skipped
     /// instead of flickering the preview.
     private var loadedURL: URL?
+    /// The style it was loaded in, which is the other half of that identity: the same file in the
+    /// other style is a different thing to show, not the same thing again.
+    private var loadedStyle = QuickViewRenderStyle.default
     /// Set once the first `show` has run, so `show(nil)` on a fresh view still blanks the backends
     /// rather than being mistaken for "already showing nil".
     private var hasLoaded = false
@@ -110,27 +117,53 @@ final class QuickViewPreviewView: NSView {
 
     // MARK: - Content
 
-    /// Show `url`, routing it to the backend that fits. `nil` clears to a blank preview — the
-    /// cursor is on `..` or in an empty directory, so there is nothing to show.
-    func show(_ url: URL?) {
-        guard url != loadedURL || !hasLoaded else { return }
+    /// Show `url` in `style`, routing it to the backend that fits. `nil` clears to a blank preview
+    /// — the cursor is on `..` or in an empty directory, so there is nothing to show.
+    ///
+    /// The style is part of what is being shown, not a setting beside it: the guard below skips a
+    /// re-drive of the file already on screen, and pressing `2` on the file you are looking at is
+    /// exactly that call with a different answer expected (PLAN.md §M16).
+    func show(_ url: URL?, style: QuickViewRenderStyle) {
+        guard url != loadedURL || style != loadedStyle || !hasLoaded else { return }
         loadedURL = url
+        loadedStyle = style
         hasLoaded = true
         if let url, Self.isPDF(url) {
             showPDF(url)
         } else if let url, Self.isImage(url) {
             showImage(url)
-        } else if let url, Self.isText(url) {
+        } else if let url, Self.isRenderableHTML(url), style == .rendered {
+            showRenderedHTML(url)
+        } else if let url, Self.isRenderableMarkdown(url), style == .rendered {
+            showRenderedMarkdown(url)
+        } else if let url, Self.isText(url) || Self.offersBothStyles(url) {
+            // HTML reaches the text backend only here, in `.source` — `isText` still refuses it, so
+            // that a file which is *only* ever text keeps the one rule it always had. Markdown
+            // needs no such exception: `isText` takes it already, which is what made `1` work on a
+            // `.md` before this milestone existed.
             showText(url)
         } else {
             showQuickLook(url)
         }
     }
 
+    /// Whether `url` is a file Quick View can honestly draw two ways — the one predicate behind the
+    /// `1` / `2` keys, the header's hint, and the routing above (PLAN.md §M18 ▸ Slice 3).
+    ///
+    /// One place, deliberately. Until this milestone the same question was spelled `isRenderableHTML`
+    /// at three sites, and adding a second dual-style type meant finding all three by hand with the
+    /// compiler checking none of them — the trap docs/NOTES.md names for a new VFS backend, in a
+    /// different shape. The failure available here is quiet: `2` doing nothing on a `.md` while the
+    /// header says it should, or the digit being swallowed on a file that has one rendering.
+    static func offersBothStyles(_ url: URL) -> Bool {
+        isRenderableHTML(url) || isRenderableMarkdown(url)
+    }
+
     /// Release both backends' loaded documents so nothing lingers in memory while the mode is off.
     /// Safe to call on a surface that never showed anything.
     func clear() {
         loadedURL = nil
+        loadedStyle = .default
         hasLoaded = false
         previewView?.previewItem = nil
         pdfView?.document = nil
@@ -142,6 +175,7 @@ final class QuickViewPreviewView: NSView {
         resetSwipe()
         imageView?.image = nil
         textSurface?.clearText()
+        webSurface?.clearPage()
     }
 
     /// The file the header names. Ignored when this surface has no header.
@@ -196,14 +230,20 @@ final class QuickViewPreviewView: NSView {
     /// consume the event in front of the covered panes.
     ///
     /// The in-process backends are the deliberate exceptions, each because the mouse is the whole
-    /// reason it exists: `PDFView` scrolls and pinch-zooms a document, and the text view is where a
-    /// drag *selects* — the thing Quick Look's preview cannot offer. Both consume what they handle,
-    /// which is what separates them from the remote view. The header keeps the mouse too — it is
-    /// this surface's own chrome.
+    /// reason it exists: `PDFView` scrolls and pinch-zooms a document, the text view is where a drag
+    /// *selects* — the thing Quick Look's preview cannot offer — and the web view is where a page
+    /// taller than the surface **scrolls at all**, which is the whole of §M16. All three consume
+    /// what they handle, which is what separates them from the remote view. The header keeps the
+    /// mouse too — it is this surface's own chrome.
     override func hitTest(_ point: NSPoint) -> NSView? {
         guard !isHidden, frame.contains(point) else { return nil }
         if let hit = super.hitTest(point), hit.isInteractiveQuickViewBackend(
-            among: [pdfView, textSurface?.interactiveSubtree, headerView]
+            among: [
+                pdfView,
+                textSurface?.interactiveSubtree,
+                webSurface?.interactiveSubtree,
+                headerView
+            ]
         ) {
             return hit
         }
@@ -231,34 +271,9 @@ final class QuickViewPreviewView: NSView {
         standDownPDF()
         standDownImage()
         standDownText()
+        standDownWeb()
         preview.isHidden = false
         preview.previewItem = url as NSURL?
-    }
-
-    /// Show `url` in the plain `NSImageView` backend, standing the others down.
-    ///
-    /// Images bypass Quick Look deliberately (PLAN.md §M11). `QLPreviewView` renders in *another
-    /// process*, so translating the layer that hosts it costs a round trip per frame — measured as
-    /// a visibly juddering two-finger swipe, on exactly the content people swipe through most.
-    /// An `NSImageView` is in-process, like the `PDFView` beside it, and the swipe runs at full rate.
-    ///
-    /// The bytes are read off the main actor so a large photo does not stall the flip; `Data` is
-    /// `Sendable` where `NSImage` is not, which is why the image itself is built back here.
-    private func showImage(_ url: URL) {
-        let view = ensureImageView()
-        standDownPDF()
-        standDownQuickLook()
-        standDownText()
-        view.isHidden = false
-        loadToken += 1
-        let token = loadToken
-        Task { [weak self] in
-            let data = await Task.detached(priority: .userInitiated) {
-                try? Data(contentsOf: url, options: .mappedIfSafe)
-            }.value
-            guard let self, token == loadToken else { return }
-            view.image = data.flatMap(NSImage.init(data:))
-        }
     }
 
     // The three stand-downs are internal for the same reason `showQuickLook` is: the text backend
@@ -274,11 +289,6 @@ final class QuickViewPreviewView: NSView {
         pdfView?.document = nil
     }
 
-    func standDownImage() {
-        imageView?.isHidden = true
-        imageView?.image = nil
-    }
-
     /// Show `url` in the PDFKit backend, standing down the Quick Look one. `autoScales` refits the
     /// page to the surface for each new document; the user can then pinch to zoom in or out.
     private func showPDF(_ url: URL) {
@@ -286,6 +296,7 @@ final class QuickViewPreviewView: NSView {
         standDownQuickLook()
         standDownImage()
         standDownText()
+        standDownWeb()
         pdfView.isHidden = false
         let document = PDFDocument(url: url)
         pdfView.document = document
@@ -305,36 +316,6 @@ final class QuickViewPreviewView: NSView {
             return type.conforms(to: .pdf)
         }
         return url.pathExtension.caseInsensitiveCompare("pdf") == .orderedSame
-    }
-
-    /// Whether `url` is an image, so it routes to the in-process `NSImageView`. Content type first
-    /// (an odd extension still classifies), extension as the fallback.
-    private static func isImage(_ url: URL) -> Bool {
-        if let type = try? url.resourceValues(forKeys: [.contentTypeKey]).contentType {
-            return type.conforms(to: .image)
-        }
-        return UTType(filenameExtension: url.pathExtension)?.conforms(to: .image) ?? false
-    }
-
-    /// Build the image backend on first use. `scaleProportionallyDown` matches Quick Look: fit a
-    /// large photo to the surface, but never blow a small one up past its own size.
-    private func ensureImageView() -> NSImageView {
-        if let imageView { return imageView }
-        let view = NSImageView()
-        view.imageScaling = .scaleProportionallyDown
-        view.animates = true
-        // An `NSImageView`'s intrinsic content size is its *image*, and it defends that size at
-        // priority 750 — so a wide photo pushes the whole constraint chain outwards and resizes the
-        // **window**. A 8629 px panorama grew it past the edge of the display, cutting off the
-        // function bar, with every frame in the preview itself still provably correct. The surface
-        // is sized by its anchors alone; the image inside is a passenger.
-        for axis in [NSLayoutConstraint.Orientation.horizontal, .vertical] {
-            view.setContentCompressionResistancePriority(.init(1), for: axis)
-            view.setContentHuggingPriority(.init(1), for: axis)
-        }
-        pin(view, inside: content)
-        imageView = view
-        return view
     }
 
     /// Build the Quick Look backend on first use. `.compact` style drops Quick Look's

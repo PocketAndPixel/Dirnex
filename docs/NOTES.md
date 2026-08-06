@@ -16,6 +16,17 @@ at build time.
   `intercellSpacing.width` is 17 pt, not 2–3; the terminal drawer needs no shell-integration
   snippet because `proc_pidinfo` already knows. The one pass that assumed a format
   (`SFTPListingParser`) had to be reworked against reality.
+- **When a format's rule is undocumented, the oracle is a corpus that already depends on it.** There
+  is no specification for GitHub's heading anchors, so M18's slug rule was scored against **2282
+  hand-written `](#…)` links** in 211 real `.md` files sitting on this Mac — a table of contents
+  somebody wrote by copying anchors GitHub had actually produced is a recorded answer, whatever the
+  question. It inverted the obvious implementation twice: an **allow-list** (letters, digits, space,
+  `-`, `_`) resolved 25 anchors `github-slugger`'s published block-list regex does not, all of them
+  emoji headings; and **nothing is trimmed**, so `## 🐛 Bugs` genuinely anchors as `#-bugs` and
+  tidying that leading hyphen away breaks every document carrying one. Both are invisible at build
+  time and read as *our* bug when a user's link lands nowhere. The same corpus handed over the
+  duplicate rule's real shape — a file linking to `#all`, `#all-1` **and** `#all-2`, which is a
+  counter that steps past a collision the author wrote, not "append the count".
 - **Core first, then the app.** A slice opens with pure, tested, purely-additive `DirnexCore`
   files (app untouched, no rebuild) and lands in a second pass that wires the app. PLAN.md §2:
   if it touches bytes it lives in the core and has tests.
@@ -90,6 +101,30 @@ at build time.
   live by making it fail with bad credentials rather than skip.
 - **A date parsed from a year-less `ls` stamp lands at local midnight** (the formatter sets no
   zone), so read `.day` in the local calendar or the day shifts by one.
+- **A security assertion that searches rendered *text* for a dangerous string is testing the
+  document, not the renderer.** Three of M18 Slice 1's own assertions over the Markdown renderer
+  were written that way and all three were wrong, in both directions. `!html.contains("onerror")`
+  fails on a **correct** render, because the word is legitimate prose — PLAN.md contains one, and
+  escaping the tag around it does not (and must not) remove it; `!html.contains("javascript:")`
+  fails the same way on any document that *discusses* link safety, which is exactly the document
+  most likely to be in the corpus. And a third, `name.first == "h" && name.count == 2` as "count
+  the headings", quietly counted `<hr>` — so it over-reported rather than failing, which is worse.
+  The assertions that hold ask what reached a **tag**: the set of attribute *names* against a closed
+  allow-list (this is what catches an event handler), and every `href`/`src` **scheme** against
+  another. Two corollaries worth keeping: a string that escaping makes *unrepresentable* is still
+  safe to search for — a literal `<script` in the output could only have been written by the
+  renderer, since prose renders as `&lt;script` — and the scheme reader in the test is written out
+  by hand rather than borrowed from the code under test, since reusing it would prove the two agree
+  rather than that either is right.
+- **Spinning the run loop is not the same as awaiting, and a view-shaped test cannot tell.**
+  `RunLoop.current.run(until:)` drives layout, so a helper built on it produces a view with real
+  frames — enough for every assertion about *structure*, which is why Quick View's hit-test suite
+  passed on it for two milestones. It does **not** land the result of a detached read: that
+  continuation needs the main actor to *suspend*, which a run-loop spin never does. The first
+  assertion about the view's **content** therefore reads an empty string, and it reads as a broken
+  feature rather than a broken wait. Use `await Task.sleep` in a poll loop for anything asserting
+  what an async load put on screen, and treat "the existing helper works" as evidence about the
+  existing assertions only.
 
 ## AppKit
 
@@ -135,6 +170,17 @@ at build time.
     and driving the window's directly undid nothing.
   - The tell that this class of bug is present is a *comment* claiming a fall-through, and it fails
     in the quiet direction: nothing logs, every menu builds, and the key just does nothing.
+- **A branch added beside an existing one in a key monitor inherits none of its carve-outs, and the
+  carve-outs are invisible at the call site precisely because they were factored out well.** The
+  Quick View monitor's Esc branch reads `guard escapeBelongsToQuickView` — one line, no mention of
+  field editors — so the `1`/`2` branch written three lines below it shipped with no field-editor
+  test at all: with a preview up, ⌘L and typing `/tmp/12` put **`/tmp/`** in the path field, both
+  digits eaten, caret visibly in the text. It cannot be caught by a test that drives the monitor
+  (the monitor did exactly what it was told) and it is invisible in every screenshot that does not
+  include someone typing. When adding a branch to a monitor, **read the predicate the neighbouring
+  branch guards on, not just its name** — and expect the answer to differ: `digitBelongsToQuickView`
+  deliberately drops Esc's `FileTableView` exemption, because the table is where the digits must
+  work and is where Esc must not.
 - **A search field that owns a list's key handling is one click away from being cut out of it.** The
   ⌘K palette routes ⎋, ⏎ and ↑/↓ through `control(_:doCommandBy:)`, which fires *only* while the
   field is first responder — and a stock `NSTableView` takes first responder in `mouseDown:`. So one
@@ -158,6 +204,116 @@ at build time.
     character and confirm it lands in the field — if the field kept focus it receives the whole
     `doCommandBy:` family, Escape included. After the click-to-run change the only click that leaves
     the panel open is one in the empty space below the last row, which is exactly where to aim it.
+- **An `@objc` *optional* delegate requirement implemented on a `@MainActor` class in Swift 6 can
+  compile, conform, and never be emitted as an Objective-C method at all — so the framework never
+  calls it.** `QuickViewWebView` implemented `webView(_:decidePolicyFor:preferences:decisionHandler:)`
+  — the completion-handler spelling — in an `extension … : WKNavigationDelegate`. It built clean, and
+  `surface is WKNavigationDelegate` answered **true**, while `class_copyMethodList` over the class
+  returned exactly `initWithFrame:`, `initWithCoder:` and `.cxx_destruct`. WebKit dispatches through
+  `respondsToSelector:`, so the callback simply never ran and the rule it carried — a link in a
+  previewed page must not navigate the preview somewhere else — was quietly absent.
+  - **A bare `@objc` makes it worse in an instructive way**: the method appears, under the selector
+    derived from the *Swift* labels (`webView:decidePolicyFor:preferences:decisionHandler:`), which is
+    still not the requirement's `webView:decidePolicyForNavigationAction:preferences:decisionHandler:`.
+    Two spellings, one right, and nothing in the compiler distinguishes them.
+  - **The `async` variant is what Swift 6 recognizes as the witness**, and it emits the requirement's
+    own selector. Prefer it for any completion-handler delegate method on a main-actor class rather
+    than hand-spelling `@objc(...)`.
+  - **`responds(to:)` is the assertion; `class_copyMethodList` is the diagnosis.** The first says
+    "no" without saying why, and `x is SomeProtocol` says "yes" throughout — dumping the method list
+    is what turns it from a puzzle into one line. Assert by **selector string**, not by
+    `#selector(SomeProtocol.method)`: the latter resolves against the *protocol*, so it keeps naming
+    the right selector even after the class has stopped implementing it, which is precisely the state
+    the test exists to catch (same family as the Sparkle selector note above).
+  - **The harness that "verified" the broken version is the second lesson.** A throwaway compiled
+    with `swiftc` defaults to the **Swift 5** language mode, where the completion-handler method *is*
+    the witness — so the probe passed, on the real source file, while the app target it was copied
+    from was inert. A harness only agrees with the app about what it was told to agree about; when
+    what is under test is *conformance or isolation*, compile it the way the target does
+    (`-swift-version 6`) or check the claim inside the app's own test target.
+- **A local HTML file previewed in a plain `WKWebView` reaches the network, and the page's own error
+  handlers say it did not.** Measured against a real HTTP server on 127.0.0.1 before the M16 backend
+  was written: one saved page issued **three** GETs — a stylesheet, an image and a `fetch` — while
+  `window.probe` reported `img: 'error'` and `fetch: 'blocked'`, because the *responses* fail CORS
+  from a `file://` origin and the *requests* go out regardless. A tracking pixel needs only the
+  request, so a preview that renders on cursor movement confirms to a stranger that this Mac opened
+  their file. The lesson generalizes past WebKit: **when the thing being measured is "did anything
+  leave this machine", the instrument is a server's access log, not the page's opinion** — every
+  in-page signal here pointed the wrong way, and a probe that trusted them would have shipped.
+  - **Two content-rule-list lines stop all of it, and cost nothing that matters.** Block `.*`, then
+    `ignore-previous-rules` for `^file://` — order matters, the second is what re-admits the page's
+    own bytes and its local siblings. Re-measured on the same server: **zero** requests, while
+    JavaScript still ran, the local stylesheet still applied, and `data:` images — what a
+    self-contained report inlines — still loaded, since neither rule matches them. `blob:` is
+    collateral and is blocked. So "JavaScript on, network off" is genuinely available: local scripts
+    with no network cannot exfiltrate, and they are what makes a MathJax report render instead of
+    showing raw LaTeX the way Quick Look does.
+    - **But that measurement says the switch is safe to offer, not that it should be on.** Dirnex
+      shipped it on for one day and flipped it: a preview renders on **cursor movement**, so scripts
+      left on run a file's code because the cursor passed over it rather than because anyone opened
+      it. Worth separating the two questions whenever a measurement clears a feature — "is this
+      harmful" and "should this happen unasked" have different answers, and only the first is what
+      an access log can settle.
+  - **`prefers-color-scheme` follows the web view's effective appearance, with no `color-scheme`
+    declaration, and re-evaluates live with no reload.** Probed on a real view: flipping
+    `view.appearance` moved the page across its own media query (`matchMedia` 0 → 1) while nothing
+    navigated. That inverts the natural design for a generated page — M18's plan said to re-generate
+    on `viewDidChangeEffectiveAppearance` — and the difference is not cosmetic: a reload throws away
+    the user's reading position every time the system crosses sunset. Emit **both** palettes under
+    one media query instead. Two neighbours from the same run: `underPageBackgroundColor` already
+    resolves to `#1E1E1E` in dark so there is no white flash to fix, and *assigning* it freezes it at
+    the current appearance (the captured-`cgColor` trap); and the system fonts have no usable CSS
+    family name (`.AppleSystemUIFont`), so the family comes from the CSS generics and only the
+    **size** is read from AppKit.
+  - **A generated `<svg>` with only a `viewBox` has no intrinsic size, so `max-width: 100%` makes it
+    fill its container instead of constraining it.** M18's diagram emitter deliberately omitted
+    `width`/`height` on the reasoning that the stylesheet should own the size — and a three-node
+    flowchart came up stretched across the whole reading column, its 11 pt labels drawn at twice
+    that, beside prose that was the right size. Emit **both**: the natural `width`/`height` *and* the
+    `viewBox`, and the `max-width` rule can then only ever scale it down, on a window too narrow to
+    hold it. Worth stating because the failure is the exact opposite of what the rule reads as, and
+    because no assertion over the markup can see it — 1902 tests passed, and it was obvious in the
+    first second of looking at the app.
+  - **The rules compile asynchronously, which makes them a precondition rather than a setting.**
+    `QuickViewWebView` has no public initializer — `withContentRules` builds one only once the list
+    exists, and hands back `nil` if it cannot be compiled, where the caller falls back to showing the
+    file as text. A view built before the rules land would render exactly one page unprotected, and
+    it is the quietest failure available: the preview looks perfect, and only a server somewhere else
+    knows.
+- **`loadHTMLString(_:baseURL:)` grants the page no file access at all, and a probe put next to its
+  own test data will tell you it does.** M18 needed a *generated* document to reach the sibling image
+  a `.md` refers to. The first probe measured six candidates and reported the obvious one working —
+  base URL = the document's directory, relative `src`, image loads, even with JavaScript off. It was
+  wrong, and the app proved it within a minute of launching: every image a broken icon. The test
+  directory had been created **inside the probe binary's own directory**, which the WebContent
+  sandbox already lets it read, so what was being measured was the harness's own location. Moving the
+  identical bytes one directory sideways flips every answer, and copying the binary next to the data
+  flips them back — which is the A/B that settles it in one run.
+  - The honest matrix, re-measured against a directory far from every binary: `loadHTMLString` with a
+    file base URL **no** (relative *and* absolute `file://` src, so it is the sandbox and not URL
+    resolution); `loadFileURL(<temp>, allowingReadAccessTo: <the document's dir>)` **fails to load at
+    all** ("Ignoring request to load this main resource because it is outside the sandbox" — the main
+    resource must be inside the grant); `loadFileURL(<temp>, allowingReadAccessTo: <temp>)` loads but
+    reaches nothing outside it; `loadFileURL(<temp>, allowingReadAccessTo: /)` **yes**; a `data:` URI
+    **yes**. A `WKURLSchemeHandler` is asked for the subresource and can serve the *document*, but its
+    image responses did not render in either spelling — not pursued once two options measured working.
+  - So the two that work are "hand the page the whole disk" and "hand the page the bytes", and the
+    second is better on the merits rather than merely simpler: a preview that renders on cursor
+    movement then reads exactly the files something decided to give it. Inlining measured cheap —
+    **0.4 ms and 1.33× per megabyte** — so the price the plan worried about (holding the bytes twice)
+    is not what decides it.
+  - The generalizable half: **when a probe's subject is "may this process read that file", the
+    probe's own location is part of the experiment.** Nothing about the result looked suspicious —
+    six candidates, three clean noes, a control that behaved — and the two noes (`loadFileURL` cases)
+    were even *correct*, which is what made the whole matrix read as credible. Put the fixture
+    somewhere the harness has no claim on, and re-run one known-good case from a second location
+    before believing any of it.
+- **`.xhtml` does not conform to `public.html`.** Probed: it is `public.xhtml`, conforming to
+  `public.xml` and `public.text` — so a `conforms(to: .html)` gate silently excludes it, which is how
+  XHTML sat in the *text* backend unnoticed for the whole life of that exclusion. Name the family's
+  types explicitly rather than deriving them from one conformance. (`.shtml` and `.htm` are both
+  `public.html`; `.mhtml` and `.webarchive` conform to neither text nor html; `.svg` is an image
+  *and* text, so backend order decides it.)
 - **The shared `QLPreviewPanel` (⌘Y) is key while open**, so arrows navigate its preview items,
   not the table. `QLPreviewView` is not opaque and `init(frame:style:)` is failable — an
   embedded preview needs an opaque backing or the covered view bleeds through. It also only
@@ -218,6 +374,17 @@ at build time.
     "Arabic (Windows)" — **and lossy about MacRoman** (`Caf<?> na夫e` for `Café naïve`). Refuse the
     lossy answers; take the rest. It is what TextEdit shows, and doing better means shipping a
     charset detector.
+  - **`NSTextView.textStorage` is *not* the TextKit 1 trapdoor, and `.layoutManager` is** — worth
+    stating because it is the natural next worry: `textStorage` is historically
+    `layoutManager.textStorage`, so an attributed document installed through it looks like the exact
+    thing the warning above forbids. Probed on a real window (macOS 26): `textLayoutManager` is still
+    non-`nil` after *reading* `.textStorage` and after a **4 MB** `setAttributedString` through it,
+    with `textContentStorage?.textStorage?` measuring identically. So syntax highlighting costs the
+    lazy layout nothing — first display **0.03 ms**, scroll-to-end **2.7 ms** — and the real costs
+    are elsewhere and are both linear: ~38 ms to *build* the `NSMutableAttributedString` for 4 MB and
+    ~20 ms to install it, against 0.47 ms to assign the same text as a plain `String`. Prefer
+    `textStorage` over the TextKit-2 spelling anyway: it is non-`nil` in both generations, where
+    `textContentStorage?.textStorage?` fails as a **blank preview** if either optional is ever `nil`.
 - **An overlay does not disable the `NSSplitView` divider it covers.** The split view keeps its drag
   region *and* its resize cursor whatever is drawn on top, so a full-window preview showed a `< | >`
   cursor over a photograph and a drag there resized two panes nobody could see — the divider was
@@ -384,6 +551,39 @@ at build time.
     both appearances".** Only one appearance is on screen at a time, so no screenshot can check the
     other; a luminance test over the user's own sRGB colour resolves identically under `.aqua` and
     `.darkAqua`, which is a claim a test can pin.
+- **The `.system*` palette is tuned for *fills*, not for text, and in light mode most of it is
+  unreadable on white.** "Use a system dynamic colour, it resolves per appearance for free" is the
+  natural answer to any two-appearance colour problem — it is what M17 opened on — and it is only
+  half true. Measured against `.textBackgroundColor` in both appearances with alpha composited:
+
+  | | light, on `#FFFFFF` | dark, on `#1E1E1E` |
+  |---|---|---|
+  | `.systemGreen` · `.systemTeal` · `.systemCyan` · `.systemMint` | **2.22 · 2.16 · 2.16 · 2.12** | 8.25 · 8.97 · 9.48 · 9.38 |
+  | `.systemOrange` · `.systemYellow` | **2.31 · 1.51** | 7.47 · 11.81 |
+  | `.systemRed` · `.systemBlue` · `.systemPurple` · `.systemIndigo` · `.systemPink` · `.systemGray` | 3.57 · 3.52 · 4.17 · 5.09 · 3.65 · 3.26 | 4.86 · 5.16 · 4.59 · 4.75 · 4.73 · 5.81 |
+
+  Every one of them clears AA on a dark background and half of them sit near **2:1** on a white one —
+  and the failures are the hues anything text-shaped wants most. It fails in the direction that hides
+  it, too: a developer working in dark mode sees a perfect palette and has no reason to look. The
+  shape that works is `NSColor(name:dynamicProvider:)` with an **authored** light value and the system
+  colour in dark, which keeps everything the system-colour answer was *for* (one colour object per
+  role, resolving itself, no persistence, no Settings) while making the claim testable.
+  - `.secondaryLabelColor` and `.tertiaryLabelColor` carry **alpha** (0.50 and 0.26 in light), so
+    `usingColorSpace(.sRGB)` alone reports them as pure black at 21:1. Composite onto the background
+    before measuring or the two most tempting "muted text" colours score wildly wrong — the tertiary
+    one is really **1.88:1** in light and **2.26:1** in dark, i.e. unusable in both.
+  - **There is no system colour for "a panel slightly off the text background", and the two obvious
+    ones are the same colour.** Measured against `.textBackgroundColor` for M18's code fences:
+    `.windowBackgroundColor` and `.controlBackgroundColor` are **byte-identical** to it in both
+    appearances (`#FFFFFF` / `#1E1E1E`), so either as a fill draws an invisible box;
+    `.underPageBackgroundColor` is `#A1A1A1` in light and drops the M17 syntax palette to 1.77–3.31:1;
+    and `.gridColor` **inverts** — `#E6E6E6` in light but `#1A1A1A` in dark, *darker* than the surface
+    it would sit on (1.04:1), where `.separatorColor` behaves in both (1.25 / 1.34:1).
+  - **A fill under coloured text costs contrast the palette was measured without.** Even the gentlest
+    one — `.quaternaryLabelColor` composited, `#E6E6E6` — takes `typeOrTag` from 4.59:1 to **3.68:1**,
+    because M17 authored those values against `.textBackgroundColor` and they clear AA *there*. So a
+    code fence that carries syntax colours is delimited by a **border** and keeps the page's own
+    background; the fill is only safe on inline code, which carries `.textColor` and nothing else.
 - **`NSTableView` makes a plain `NSTableRowView` when the delegate declines — in every one of its
   five styles.** Probed rather than assumed, and it inverted a design: a row-view subclass that
   defers to `super` is byte-for-byte the stock drawing, so it can be installed **unconditionally**
@@ -1757,6 +1957,21 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
 
 ## Design lessons that generalize
 
+- **A layout is the one thing in this codebase a test cannot judge, and it fails by being *ugly*
+  rather than wrong.** M18's flowchart layout passed 20 exact-number assertions — layers stacked,
+  edges clipped to the right outlines, four directions mirroring correctly — while the first launch
+  drew a back edge as a straight line through four boxes and both edge labels. Nothing was
+  incorrect; it was unreadable, which no `#expect` can express. Two things follow. **Render it and
+  look at it before believing any of it**: an HTML file plus a 40-line `WKWebView` snapshot harness
+  (`takeSnapshot`, write a PNG) turns a layout into something the author can actually see, and it
+  found this in one pass and two more the same way. And **when the picture shows the bug, write the
+  assertion the picture would have made** — "the bend is outside every box it passes", "every point
+  is on the canvas" — so the fix has a guard even though the original defect did not.
+  - The specific lesson under it, for anyone laying out a graph: longest-path layering plus a
+    barycenter pass is *not enough*. An edge spanning layers needs a **dummy node in each layer it
+    crosses**, so the ordering pass can steer it between the real nodes. It is the one piece of
+    Sugiyama layering it is not worth skipping, and its corollary bites immediately after — a canvas
+    sized from the **boxes** leaves the bend outside it, so measure the bounds over what is *drawn*.
 - **Adding a second closure parameter silently re-points every bare trailing closure.**
   `size(of:using:) { true }` rebound to a new `excluding:` rather than the existing
   `isCancelled:`; only the differing arity made it fail loudly instead of inverting behavior.

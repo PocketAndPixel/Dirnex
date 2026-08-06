@@ -10,12 +10,15 @@ import DirnexCore
 /// pinned over its own list and (b) report the file under its cursor.
 extension PanelViewController {
     /// Cover this pane's file list with a live preview of `url` (the file under the *other* pane's
-    /// cursor). Lazily builds the surface on first use. `nil` clears it to a blank preview — the
-    /// cursor is on `..` or an empty directory, so there is nothing to show.
-    func showQuickViewPreview(of url: URL?) {
+    /// cursor), drawn in `style`. Lazily builds the surface on first use. `nil` clears it to a blank
+    /// preview — the cursor is on `..` or an empty directory, so there is nothing to show.
+    ///
+    /// The style is handed in rather than read here, so the window that owns the mode is the one
+    /// place that answers "which style are we in" for every surface it drives.
+    func showQuickViewPreview(of url: URL?, style: QuickViewRenderStyle) {
         let preview = ensureQuickViewPreview()
         preview.isHidden = false
-        preview.show(url)
+        preview.show(url, style: style)
     }
 
     /// Uncover the file list, restoring the normal pane. Safe to call when Quick View was never

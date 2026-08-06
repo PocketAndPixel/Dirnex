@@ -7878,6 +7878,95 @@
         }
       }
     },
+    "(no JavaScript)": {
+      "comment": "Quick View header mark: the rendered page was drawn with scripts refused.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(kein JavaScript)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(no JavaScript)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(sin JavaScript)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(sans JavaScript)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(senza JavaScript)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "（JavaScript なし）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(JavaScript 없음)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(geen JavaScript)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(bez JavaScriptu)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(sem JavaScript)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(без JavaScript)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(без JavaScript)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "（无 JavaScript）"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "（無 JavaScript）"
+          }
+        }
+      }
+    },
     "(unavailable)": {
       "comment": "Shown in place of a host-key fingerprint that couldn’t be read.",
       "localizations": {
@@ -7963,6 +8052,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "（不可用）"
+          }
+        }
+      }
+    },
+    "A Quick View set to show a page (2) renders it in place, and a self-contained report usually needs its own scripts to draw charts or formulas. Previews never reach the network whatever this says — every request to anything but the file itself is blocked — so a script can only change what you see. It is off by default, because a preview renders as the cursor moves: turn it on when a page needs its scripts.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A Quick View set to show a page (2) renders it in place, and a self-contained report usually needs its own scripts to draw charts or formulas. Previews never reach the network whatever this says — every request to anything but the file itself is blocked — so a script can only change what you see. It is off by default, because a preview renders as the cursor moves: turn it on when a page needs its scripts."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Übersicht im Seitenmodus (2) rendert die Seite direkt, und ein in sich geschlossener Bericht braucht meist eigene Skripte, um Diagramme oder Formeln zu zeichnen. Vorschauen erreichen unabhängig von dieser Einstellung nie das Netzwerk — jede Anfrage außer der Datei selbst wird blockiert —, ein Skript kann also nur ändern, was Sie sehen. Standardmäßig aus, weil eine Vorschau schon beim Bewegen des Cursors rendert: Schalten Sie es ein, wenn eine Seite ihre Skripte braucht."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una vista rápida en modo página (2) la renderiza ahí mismo, y un informe autocontenido suele necesitar sus propios scripts para dibujar gráficos o fórmulas. Las vistas previas nunca acceden a la red, diga lo que diga esta opción: se bloquea toda petición que no sea el propio archivo, así que un script solo puede cambiar lo que ves. Está desactivado por omisión, porque la vista previa se renderiza al mover el cursor: actívalo cuando una página necesite sus scripts."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un coup d’œil en mode page (2) affiche la page telle quelle, et un rapport autonome a généralement besoin de ses propres scripts pour tracer des graphiques ou des formules. Les aperçus n’atteignent jamais le réseau, quel que soit ce réglage — toute requête autre que le fichier lui-même est bloquée —, un script ne peut donc que modifier ce que vous voyez. Désactivé par défaut, car un aperçu s’affiche dès que le curseur se déplace : activez-le lorsqu’une page a besoin de ses scripts."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un’anteprima rapida in modalità pagina (2) la renderizza sul posto, e un report autonomo di solito ha bisogno dei propri script per disegnare grafici o formule. Le anteprime non raggiungono mai la rete, qualunque cosa dica questa opzione: ogni richiesta diversa dal file stesso è bloccata, quindi uno script può solo cambiare ciò che vedi. È disattivato per impostazione predefinita, perché l’anteprima si disegna al muoversi del cursore: attivalo quando una pagina ha bisogno dei suoi script."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ページ表示（2）のクイックビューはその場でページを描画します。自己完結型のレポートは、グラフや数式を描くために自身のスクリプトを必要とすることがほとんどです。この設定にかかわらず、プレビューがネットワークに接続することはありません（ファイル自体以外のリクエストはすべてブロックされます）。したがってスクリプトができるのは表示内容を変えることだけです。カーソルを動かすだけでプレビューが描画されるため、初期設定ではオフです。ページにスクリプトが必要なときにオンにしてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "페이지 보기(2)로 설정된 빠른 보기는 페이지를 그 자리에서 렌더링하며, 자체 완결형 보고서는 대개 차트나 수식을 그리기 위해 자체 스크립트가 필요합니다. 이 설정과 관계없이 미리보기는 네트워크에 접근하지 않습니다. 파일 자체를 제외한 모든 요청이 차단되므로 스크립트는 보이는 내용만 바꿀 수 있습니다. 커서를 옮기기만 해도 미리보기가 그려지므로 기본값은 꺼짐입니다. 페이지에 스크립트가 필요할 때 켜십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Een overzicht in paginaweergave (2) toont de pagina ter plekke, en een op zichzelf staand rapport heeft meestal eigen scripts nodig om grafieken of formules te tekenen. Voorbeelden bereiken nooit het netwerk, wat deze instelling ook zegt — elk verzoek behalve het bestand zelf wordt geblokkeerd — dus een script kan alleen veranderen wat u ziet. Standaard uit, omdat een voorbeeld al rendert zodra de cursor beweegt: zet het aan wanneer een pagina zijn scripts nodig heeft."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podgląd ustawiony na widok strony (2) renderuje ją na miejscu, a samodzielny raport zwykle potrzebuje własnych skryptów, by narysować wykresy lub wzory. Podglądy nigdy nie sięgają do sieci, niezależnie od tego ustawienia — każde żądanie inne niż sam plik jest blokowane — więc skrypt może zmienić tylko to, co widzisz. Domyślnie wyłączone, ponieważ podgląd renderuje się już przy przesuwaniu kursora: włącz je, gdy strona potrzebuje swoich skryptów."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uma vista rápida no modo página (2) a renderiza ali mesmo, e um relatório autocontido normalmente precisa dos próprios scripts para desenhar gráficos ou fórmulas. As pré-visualizações nunca acessam a rede, diga o que disser esta opção — toda requisição que não seja o próprio arquivo é bloqueada —, então um script só pode mudar o que você vê. Vem desativado, porque a pré-visualização é renderizada ao mover o cursor: ative quando uma página precisar dos seus scripts."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Быстрый просмотр в режиме страницы (2) отрисовывает её на месте, а самодостаточному отчёту обычно нужны собственные скрипты, чтобы построить графики или формулы. Предпросмотр никогда не выходит в сеть, что бы здесь ни стояло: любой запрос, кроме самого файла, блокируется, поэтому скрипт может изменить только то, что вы видите. По умолчанию выключено, потому что предпросмотр отрисовывается уже при движении курсора: включите, когда странице нужны её скрипты."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Швидкий перегляд у режимі сторінки (2) відтворює її на місці, а самодостатньому звіту зазвичай потрібні власні скрипти, щоб намалювати діаграми або формули. Перегляд ніколи не виходить у мережу, хоч би що тут стояло: будь-який запит, окрім самого файлу, блокується, тож скрипт може змінити лише те, що ви бачите. Типово вимкнено, бо перегляд відтворюється вже під час руху курсора: увімкніть, коли сторінці потрібні її скрипти."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设为网页显示（2）的快速查看会就地渲染该页面，而自包含的报告通常需要自己的脚本来绘制图表或公式。无论此项如何设置，预览都不会访问网络——除文件本身外的所有请求都会被阻止——因此脚本只能改变你看到的内容。默认关闭，因为光标一移动预览就会渲染：当页面确实需要脚本时再开启。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "設為網頁顯示（2）的快速預覽會就地算繪該頁面，而自足式報告通常需要自己的指令碼來繪製圖表或公式。無論此項如何設定，預覽都不會存取網路——除檔案本身以外的所有請求都會被封鎖——因此指令碼只能改變你看到的內容。預設關閉，因為游標一移動預覽就會算繪：當頁面確實需要指令碼時再開啟。"
           }
         }
       }
@@ -45663,6 +45841,96 @@
         }
       }
     },
+    "Page": {
+      "comment": "Quick View header, short name for the rendered style",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Page"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seite"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Página"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Page"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pagina"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ページ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "페이지"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pagina"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Strona"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Página"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Страница"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сторінка"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "网页"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "網頁"
+          }
+        }
+      }
+    },
     "Palette keywords (comma-separated)": {
       "comment": "Placeholder in the scripts organizer keywords field.",
       "localizations": {
@@ -53078,6 +53346,95 @@
         }
       }
     },
+    "Run JavaScript in rendered HTML previews": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Run JavaScript in rendered HTML previews"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JavaScript in gerenderten HTML-Vorschauen ausführen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ejecutar JavaScript en las vistas previas HTML renderizadas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exécuter le JavaScript dans les aperçus HTML rendus"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esegui JavaScript nelle anteprime HTML renderizzate"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "レンダリングされた HTML プレビューで JavaScript を実行"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "렌더링된 HTML 미리보기에서 JavaScript 실행"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JavaScript uitvoeren in weergegeven HTML-voorbeelden"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uruchamiaj JavaScript w renderowanych podglądach HTML"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Executar JavaScript nas pré-visualizações HTML renderizadas"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выполнять JavaScript в отрисованных HTML-предпросмотрах"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Виконувати JavaScript у відтворених HTML-переглядах"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在渲染的 HTML 预览中运行 JavaScript"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在算繪的 HTML 預覽中執行 JavaScript"
+          }
+        }
+      }
+    },
     "Run Search": {
       "comment": "Saved-search context-menu item: run the query.",
       "localizations": {
@@ -57526,6 +57883,96 @@
           "stringUnit": {
             "state": "translated",
             "value": "原始檔案夾中有一個同名檔案，所以它被留在垃圾桶中，而不是被取代。"
+          }
+        }
+      }
+    },
+    "Source": {
+      "comment": "Quick View header, short name for the source style",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Source"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quelltext"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Código"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Source"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sorgente"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ソース"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "소스"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Broncode"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Źródło"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Código"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Исходник"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Код"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "源代码"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "原始碼"
           }
         }
       }
@@ -67662,6 +68109,186 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在驗證「%@」…"
+          }
+        }
+      }
+    },
+    "View Rendered Page": {
+      "comment": "Quick View render style: the document the file describes, drawn as a page",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View Rendered Page"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Als Seite anzeigen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver página renderizada"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher la page rendue"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra la pagina renderizzata"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ページとして表示"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "페이지로 보기"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Als pagina tonen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokaż jako stronę"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver página renderizada"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показать как страницу"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показати як сторінку"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示为网页"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "顯示為網頁"
+          }
+        }
+      }
+    },
+    "View Source": {
+      "comment": "Quick View render style: the file's own text rather than the page it describes",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View Source"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quelltext anzeigen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver código fuente"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher le code source"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra il codice sorgente"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ソースを表示"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "소스 보기"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Broncode tonen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokaż źródło"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver código-fonte"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показать исходный код"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показати вихідний код"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示源代码"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "顯示原始碼"
           }
         }
       }
@@ -81447,6 +82074,366 @@
           "stringUnit": {
             "state": "translated",
             "value": "整個視窗快速查看"
+          }
+        }
+      }
+    },
+    "command.view.quickViewRenderedPage.keywords": {
+      "comment": "Extra command-palette search terms, comma-separated. Added to the English terms, not replacing them, so the English words keep working. Synonyms a user might type — not a translation of the title.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "quick view, html, render, page, web, browser, preview, 2"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "seite, html, rendern, web, browser, vorschau, 2"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "página, html, renderizar, web, navegador, vista previa, 2"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "page, html, rendu, web, navigateur, aperçu, 2"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pagina, html, rendering, web, browser, anteprima, 2"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ページ, html, レンダリング, ウェブ, ブラウザ, プレビュー, 2"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "페이지, html, 렌더링, 웹, 브라우저, 미리보기, 2"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pagina, html, weergave, web, browser, voorbeeld, 2"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "strona, html, renderowanie, web, przeglądarka, podgląd, 2"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "página, html, renderizar, web, navegador, pré-visualização, 2"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "страница, html, отрисовка, веб, браузер, просмотр, 2"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "сторінка, html, відтворення, веб, браузер, перегляд, 2"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "页面, html, 渲染, 网页, 浏览器, 预览, 2"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "頁面, html, 算繪, 網頁, 瀏覽器, 預覽, 2"
+          }
+        }
+      }
+    },
+    "command.view.quickViewRenderedPage.title": {
+      "comment": "Menu and command-palette title for the “view.quickViewRenderedPage” command.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View Rendered Page"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Als Seite anzeigen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver página renderizada"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher la page rendue"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra la pagina renderizzata"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ページとして表示"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "페이지로 보기"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Als pagina tonen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokaż jako stronę"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver página renderizada"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показать как страницу"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показати як сторінку"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示为网页"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "顯示為網頁"
+          }
+        }
+      }
+    },
+    "command.view.quickViewSource.keywords": {
+      "comment": "Extra command-palette search terms, comma-separated. Added to the English terms, not replacing them, so the English words keep working. Synonyms a user might type — not a translation of the title.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "quick view, html, source, markup, text, raw, code, 1"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "quelltext, html, markup, text, roh, code, quelle, 1"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "código, fuente, html, marcado, texto, crudo, 1"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "source, html, balisage, texte, brut, code, 1"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sorgente, html, markup, testo, grezzo, codice, 1"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ソース, html, マークアップ, テキスト, 生, コード, 1"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "소스, html, 마크업, 텍스트, 원본, 코드, 1"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "broncode, html, opmaak, tekst, ruw, code, 1"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "źródło, html, znaczniki, tekst, surowy, kod, 1"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "código, fonte, html, marcação, texto, bruto, 1"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "исходник, html, разметка, текст, код, сырой, 1"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "вихідний, html, розмітка, текст, код, сирий, 1"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "源代码, html, 标记, 文本, 原始, 代码, 1"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "原始碼, html, 標記, 文字, 原始, 程式碼, 1"
+          }
+        }
+      }
+    },
+    "command.view.quickViewSource.title": {
+      "comment": "Menu and command-palette title for the “view.quickViewSource” command.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View Source"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quelltext anzeigen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver código fuente"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher le code source"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra il codice sorgente"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ソースを表示"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "소스 보기"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Broncode tonen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokaż źródło"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver código-fonte"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показать исходный код"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показати вихідний код"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示源代码"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "顯示原始碼"
           }
         }
       }

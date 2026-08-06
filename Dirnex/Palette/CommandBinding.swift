@@ -77,6 +77,12 @@ enum CommandBinding {
             #selector(BrowserWindowController.toggleQuickViewFullWindow(_:)),
         "view.quickViewFullScreen":
             #selector(BrowserWindowController.toggleQuickViewFullScreen(_:)),
+        // The window controller for the same reason as the sizes above: at full size the preview
+        // is a sibling of the panes, so a pane-hosted selector would find no target the moment the
+        // user clicked into the document.
+        "view.quickViewSource": #selector(BrowserWindowController.showQuickViewSource(_:)),
+        "view.quickViewRenderedPage":
+            #selector(BrowserWindowController.showQuickViewRenderedPage(_:)),
         // The window controller, not a pane: the drawer spans both panes, and this is the one
         // command that must also fire while the *terminal* holds focus — where no pane is in the
         // responder chain, but the window controller still is.

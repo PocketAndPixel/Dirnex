@@ -24,20 +24,54 @@ extension QuickViewPreviewView {
         standDownPDF()
         standDownQuickLook()
         standDownImage()
+        standDownWeb()
         surface.isHidden = false
         loadToken += 1
         let token = loadToken
         Task { [weak self] in
-            let preview = await Task.detached(priority: .userInitiated) {
-                TextPreview.read(contentsOf: url)
+            let scan = await Task.detached(priority: .userInitiated) {
+                TextScan.read(url)
             }.value
             guard let self, token == loadToken else { return }
-            guard let preview else {
+            guard let scan else {
                 standDownText()
                 showQuickLook(url)
                 return
             }
-            surface.show(preview)
+            surface.show(scan.preview, tokens: scan.tokens)
+        }
+    }
+
+    /// A decoded file and its coloured spans — everything the detached read produces, crossing back
+    /// to the main actor as one value (PLAN.md §M17 ▸ Slice 3).
+    ///
+    /// The tokenize rides the read task rather than taking one of its own, for the reason the read
+    /// is detached at all: the preview re-runs on **every cursor step**, so both have to be off the
+    /// main actor and both have to be discarded together by the one `loadToken` guard. Measured
+    /// at the 4 MB ceiling `TextPreview.byteLimit` allows, the scan is ~58 ms; a source file of any
+    /// ordinary size is under 3 ms.
+    ///
+    /// `Sendable` is the whole reason this is a struct and not two `inout`s: an
+    /// `NSMutableAttributedString` cannot cross an actor boundary, so what crosses is the *tokens*,
+    /// and the app builds the attributed string on the main actor from them.
+    struct TextScan: Sendable {
+        let preview: TextPreview
+        let tokens: [SyntaxToken]
+
+        /// Blocking; call it off the main thread. `nil` for a file that is not text after all,
+        /// which is `TextPreview`'s own answer and sends the caller back to Quick Look.
+        static func read(_ url: URL) -> TextScan? {
+            guard let preview = TextPreview.read(contentsOf: url) else { return nil }
+            // By name, not by content type — the inversion is argued in `SyntaxLanguage`: `UTType`
+            // answers `public.c-header` for a `.h` and cannot say which of three languages it is.
+            // A file no grammar claims tokenizes to nothing and renders exactly as it did before.
+            guard let language = SyntaxLanguage.forFile(named: url.lastPathComponent) else {
+                return TextScan(preview: preview, tokens: [])
+            }
+            return TextScan(
+                preview: preview,
+                tokens: SyntaxHighlighter.tokens(in: preview.text, language: language)
+            )
         }
     }
 

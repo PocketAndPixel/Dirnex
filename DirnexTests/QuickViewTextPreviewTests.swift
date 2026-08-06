@@ -23,15 +23,19 @@ struct QuickViewTextPreviewTests {
         }
     }
 
-    /// Quick Look renders these as the *document* they describe — a rendered page, formatted text —
-    /// and showing their markup instead would be a regression wearing a feature's clothes.
-    @Test("HTML and RTF stay with Quick Look")
+    /// Quick Look renders RTF as the formatted document it describes, and showing its markup
+    /// instead would be a regression wearing a feature's clothes.
+    ///
+    /// HTML used to be in this list and is not any more (PLAN.md §M16) — but `isText` still refuses
+    /// it, deliberately. HTML reaches the text view only through `show(_:style:)` in `.source`, so
+    /// the rule "a file that is *only* ever text" keeps its single meaning.
+    @Test("RTF stays with Quick Look, and HTML is still not plain text")
     func leavesRenderedDocumentsAlone() throws {
         let tree = try TempDirectory()
         defer { tree.cleanup() }
         for name in ["page.html", "letter.rtf"] {
             let url = try tree.write(name, contents: "x")
-            #expect(!QuickViewPreviewView.isText(url), "\(name) should stay with Quick Look")
+            #expect(!QuickViewPreviewView.isText(url), "\(name) should not be plain text")
         }
     }
 
@@ -64,11 +68,14 @@ struct QuickViewTextPreviewTests {
 
     /// The other half of the same invariant: everything Quick Look renders must still be swallowed,
     /// or the covered pane's cursor moves under the preview with nothing on screen to say why.
+    ///
+    /// RTF rather than the HTML this used to use — §M16 moved HTML to an in-process backend that
+    /// *keeps* the mouse, so the file this test is written on has to be one Quick Look still draws.
     @Test("a click over a Quick Look preview is still swallowed by the surface")
     func quickLookKeepsBeingSwallowed() throws {
         let tree = try TempDirectory()
         defer { tree.cleanup() }
-        let url = try tree.write("page.html", contents: "<p>hi</p>")
+        let url = try tree.write("letter.rtf", contents: "{\\rtf1 hi}")
         let preview = try Self.loaded(url)
 
         #expect(preview.hitTest(NSPoint(x: 200, y: 200)) === preview)
@@ -138,7 +145,10 @@ struct QuickViewTextPreviewTests {
 
     /// A preview surface with a window and a real frame, showing `url` — awaiting the backend's
     /// asynchronous read, which is what puts the text view on screen.
-    private static func loaded(_ url: URL) throws -> QuickViewPreviewView {
+    static func loaded(
+        _ url: URL,
+        style: QuickViewRenderStyle = .source
+    ) throws -> QuickViewPreviewView {
         let preview = QuickViewPreviewView(backingColor: .textBackgroundColor, header: .none)
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 400, height: 400),
@@ -153,7 +163,7 @@ struct QuickViewTextPreviewTests {
             preview.topAnchor.constraint(equalTo: window.contentView!.topAnchor),
             preview.bottomAnchor.constraint(equalTo: window.contentView!.bottomAnchor)
         ])
-        preview.show(url)
+        preview.show(url, style: style)
         // The read runs off the main actor; spin the run loop until the layout it triggers settles.
         for _ in 0..<20 {
             RunLoop.current.run(until: Date().addingTimeInterval(0.01))
@@ -162,7 +172,7 @@ struct QuickViewTextPreviewTests {
         return preview
     }
 
-    private static func enclosingTextView(of view: NSView) -> NSTextView? {
+    static func enclosingTextView(of view: NSView) -> NSTextView? {
         var candidate: NSView? = view
         while let current = candidate {
             if let textView = current as? NSTextView { return textView }
@@ -173,8 +183,9 @@ struct QuickViewTextPreviewTests {
 }
 
 /// A throwaway directory for the files these tests classify. Content type resolution reads the real
-/// item, so the files have to exist.
-private struct TempDirectory {
+/// item, so the files have to exist. Internal rather than file-private: the HTML backend's suite
+/// classifies files the same way and there is no reason for two of these.
+struct TempDirectory {
     let root: URL
 
     init() throws {

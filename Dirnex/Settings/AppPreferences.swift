@@ -146,6 +146,64 @@ final class AppPreferences: ObservableObject {
     /// its size-bar column. `object` is the `AppPreferences` that changed.
     static let sizeVizDisplayModeDidChange = Notification.Name("Dirnex.sizeVizDisplayModeDidChange")
 
+    /// How Quick View draws a file that can be shown two ways — its source, or the page it
+    /// describes (PLAN.md §M16). Only HTML offers both today; every other file ignores it.
+    ///
+    /// App-wide like `rowDensity`, not per tab: it is a reading preference, not a question you ask
+    /// of one directory — and a per-file choice would reset on every cursor step, which is the
+    /// annoyance the two keys exist to remove. Changing it posts `quickViewRenderStyleDidChange` so
+    /// every open preview re-renders the file it is already showing.
+    @Published var quickViewRenderStyle: QuickViewRenderStyle {
+        didSet {
+            guard quickViewRenderStyle != oldValue else { return }
+            defaults.set(quickViewRenderStyle.rawValue, forKey: Keys.quickViewRenderStyle)
+            NotificationCenter.default.post(name: Self.quickViewRenderStyleDidChange, object: self)
+        }
+    }
+
+    /// Posted (on the main actor) when `quickViewRenderStyle` changes, so every open Quick View
+    /// re-delivers its current file in the new style. `object` is the `AppPreferences` that changed.
+    static let quickViewRenderStyleDidChange = Notification.Name(
+        "Dirnex.quickViewRenderStyleDidChange"
+    )
+
+    /// Panels ▸ whether a rendered HTML preview may run the page's own JavaScript (PLAN.md §M16).
+    ///
+    /// **Off** by default: a preview renders on every cursor step, so the file's code would run
+    /// because the cursor passed over it, not because anybody opened it — and "run no code from a
+    /// file I have not opened" is the answer that needs no argument. What the switch buys when it
+    /// is on is a self-contained report rendering as itself instead of showing raw LaTeX, which is
+    /// worth having and is one toggle away.
+    ///
+    /// The measured half is what makes turning it on defensible rather than reckless: the risk a
+    /// previewed page carries is the *network*, and that is closed unconditionally by a content
+    /// rule list nothing here can turn off (`QuickViewWebView`) — a script with no network cannot
+    /// report what it saw. Changing it posts `quickViewJavaScriptDidChange` so an open preview
+    /// re-renders under the new answer, and the full-size header says which answer is in force.
+    @Published var quickViewJavaScriptEnabled: Bool {
+        didSet {
+            guard quickViewJavaScriptEnabled != oldValue else { return }
+            defaults.set(quickViewJavaScriptEnabled, forKey: Keys.quickViewJavaScriptEnabled)
+            NotificationCenter.default.post(name: Self.quickViewJavaScriptDidChange, object: self)
+        }
+    }
+
+    /// Posted (on the main actor) when `quickViewJavaScriptEnabled` flips, so every open Quick View
+    /// reloads the page it is showing. `object` is the `AppPreferences` that changed.
+    static let quickViewJavaScriptDidChange = Notification.Name(
+        "Dirnex.quickViewJavaScriptDidChange"
+    )
+
+    /// A read of the same value for the one caller that needs it *per navigation* rather than per
+    /// change: `QuickViewWebView`'s policy delegate, which is handed a fresh `WKWebpagePreferences`
+    /// for every load and sets it there. Reading it at each navigation is what makes the toggle
+    /// take effect on a live web view — the value baked into a `WKWebViewConfiguration` at init
+    /// cannot be changed afterwards (probed: mutating `webView.configuration` is inert, and reads
+    /// back as though it worked).
+    static var quickViewJavaScriptValue: Bool {
+        shared.quickViewJavaScriptEnabled
+    }
+
     /// Panels ▸ the three colours the user owns (PLAN.md §M15 Slice 2), each as `#RRGGBB` or the
     /// empty string for **Follow System** — the default, so an untouched install renders exactly as
     /// it did before this setting existed and the default path stays AppKit's own drawing.
@@ -317,6 +375,14 @@ final class AppPreferences: ObservableObject {
         sizeVizDisplayMode = SizeVizDisplayMode(
             rawValue: defaults.string(forKey: Keys.sizeVizDisplayMode) ?? ""
         ) ?? .bar
+        // Defaults off (see the property), which is what `bool(forKey:)` already answers for a
+        // never-written key.
+        quickViewJavaScriptEnabled = defaults.bool(forKey: Keys.quickViewJavaScriptEnabled)
+        // Empty (never written) = the source, the shipped default, and so is anything an
+        // older/newer build can't parse.
+        quickViewRenderStyle = QuickViewRenderStyle(
+            rawValue: defaults.string(forKey: Keys.quickViewRenderStyle) ?? ""
+        ) ?? .default
         // Empty (never written) = Follow System, and so is anything `PanelPalette` can't parse.
         accentColorHex = defaults.string(forKey: Keys.accentColorHex) ?? ""
         cursorColorHex = defaults.string(forKey: Keys.cursorColorHex) ?? ""
@@ -344,6 +410,8 @@ final class AppPreferences: ObservableObject {
         static let showFunctionBar = "Dirnex.pref.showFunctionBar"
         static let rowDensity = "Dirnex.pref.rowDensity"
         static let sizeVizDisplayMode = "Dirnex.pref.sizeVizDisplayMode"
+        static let quickViewRenderStyle = "Dirnex.pref.quickViewRenderStyle"
+        static let quickViewJavaScriptEnabled = "Dirnex.pref.quickViewJavaScriptEnabled"
         static let accentColorHex = "Dirnex.pref.accentColorHex"
         static let cursorColorHex = "Dirnex.pref.cursorColorHex"
         static let markColorHex = "Dirnex.pref.markColorHex"

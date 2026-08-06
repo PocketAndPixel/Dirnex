@@ -139,6 +139,24 @@ extension CommandCatalog {
             shortcut: CommandShortcut(key: "q", modifiers: [.control, .option])
         ),
         Command(
+            id: "view.quickViewSource",
+            title: "View Source",
+            category: .view,
+            keywords: ["quick view", "html", "source", "markup", "text", "raw", "code", "1"],
+            // No shortcut here: `1` / `2` are taken by the window's Quick View key monitor while a
+            // preview is up, and only for a file that offers both renderings. A bare digit as a
+            // *menu* key equivalent is window-global, which would swallow `1` everywhere else in
+            // the app (PLAN.md §M16).
+            shortcut: nil
+        ),
+        Command(
+            id: "view.quickViewRenderedPage",
+            title: "View Rendered Page",
+            category: .view,
+            keywords: ["quick view", "html", "render", "page", "web", "browser", "preview", "2"],
+            shortcut: nil
+        ),
+        Command(
             id: "view.terminal",
             title: "Terminal Drawer",
             category: .view,

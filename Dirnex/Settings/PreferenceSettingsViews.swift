@@ -79,6 +79,26 @@ struct PanelsSettingsView: View {
                 .foregroundStyle(.secondary)
             }
 
+            Section {
+                Toggle(
+                    "Run JavaScript in rendered HTML previews",
+                    isOn: $preferences.quickViewJavaScriptEnabled
+                )
+            } footer: {
+                Text(
+                    """
+                    A Quick View set to show a page (2) renders it in place, and a self-contained \
+                    report usually needs its own scripts to draw charts or formulas. Previews never \
+                    reach the network whatever this says — every request to anything but the file \
+                    itself is blocked — so a script can only change what you see. It is off by \
+                    default, because a preview renders as the cursor moves: turn it on when a page \
+                    needs its scripts.
+                    """
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+
             PaletteSettingsSection(preferences: preferences)
 
             FileColorRulesSection()

@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M15 shipped (14 languages) · **no milestone in flight** · Created: 2026-07-05 ·
+Status: M0–M18 shipped (14 languages) · **nothing in flight** · Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md)
 
 ---
@@ -94,9 +94,9 @@ Dirnex/
 Sizes are relative (S ≈ days, M ≈ 1–2 weeks, L ≈ 3+ weeks of focused work).
 Each milestone ends in something runnable; no milestone depends on a later one.
 
-### Shipped: M0 → M15 (2026-07-05 → 2026-08-02)
+### Shipped: M0 → M18 (2026-07-05 → 2026-08-07)
 
-Every milestone through M15 is closed. The checklists and the full per-pass progress log —
+Every milestone through M18 is closed. The checklists and the full per-pass progress log —
 what was probed, decided, and rejected — live in
 **[docs/HISTORY.md](docs/HISTORY.md)**; source comments citing `PLAN.md §M5` and the like
 refer to those sections.
@@ -119,6 +119,9 @@ refer to those sections.
 | M13 | FTP and FTPS | 07-25 | `MLSD` (`curl` cannot send it); FTP-side `DirectorySync` by timestamp (unreliable by construction — LIST stamps are year- and zone-less); write-back for files edited in place over FTP (the shared edit-temp-watch-repack slice); an opportunistic "TLS optional" client mode (a password-downgrade vector — rejected 2026-07-26) |
 | M14 | Checksums and attributes | 07-30 (escalation 08-02) | Split/combine files (dropped 2026-07-29 — FAT32's ceiling, floppy/CD spanning and mail limits are all gone on macOS); multi-selection and recursive **privilege escalation** (the flat single-item path proves the mechanism; those sheets refuse a root-only change by name); escalating the *undo* of a non-owned change (still refused with `attributeRestoreNeedsAdministrator`, not escalated) |
 | M15 | The tree view, and colour the user chooses | 08-02 | The **thumbnail grid, brief view and the `PaneSurface` extraction** (cut 2026-08-02 — the three are one unit, and `FileTableView` is a 25-method contract a grid satisfies none of); a memo in front of `fnmatch` (measured unnecessary — 0.46 ms per full reload for 5 rules); size bars in tree mode, withdrawn at close and re-scoped per parent directory in a follow-up (`SizeVisualization(tree:)`) |
+| M16 | Quick View: source or page | 08-06 | Markdown and RTF as dual-style types — markdown was taken up at M18, RTF stays undone — and `.webarchive` / `.mhtml`, which need `loadData` rather than a file load; the JavaScript mark in the *pane*-size preview, which has no header to carry it |
+| M17 | Syntax highlighting in Quick View | 08-06 | A **theme picker** (the colours are a fixed light/dark table, no Settings surface); the constructs a regex-free single pass cannot reach — string interpolation, JS regex literals, heredocs, Swift raw strings, JSX, and semantic colouring of any kind; **line numbers, folding and a minimap**, which are editor features Dirnex hands to the user's own editor; highlighting inside the *rendered* HTML style, which is the page's own business; a **key-vs-value** distinction in JSON, and Markdown's **setext headings** and **indented code blocks**, all three of which need a lookahead or a previous line the single pass does not keep; Ruby's `=begin` block comment; and any third-party highlighter — Highlightr (a JS engine on every cursor step) and tree-sitter (a C dependency plus a grammar per language), both rejected 2026-08-06 |
+| M18 | Quick View: Markdown as a document | 08-07 | **Raw HTML passthrough** — CommonMark says to pass it and a preview that renders on *cursor movement* must not, which is also what keeps the generated page inert; **full CommonMark conformance** (the target is what the file's author sees on GitHub for an ordinary document, pinned by a corpus of real files, with an unreadable construct rendering as its literal text); **math and LaTeX, footnotes, definition lists, emoji shortcodes and wiki links**; every mermaid diagram type outside **flowchart and sequence** (a class diagram, gantt, state chart or ER diagram falls back to a code fence naming itself, as does an unsupported construct *inside* a supported type); **following a link to another file**, since turning a preview into a browser needs its own history and its own way out; **RTF**, the other type M16 left in the same sentence — `NSAttributedString`'s job, sharing nothing with a renderer; **rendering as you type** and editing of any kind (§M11's call, unchanged); and **exporting the rendered page** to HTML or PDF, which is a file operation and belongs in the operation engine with a destination and a conflict policy |
 
 The undone column is scope that was decided against, not forgotten — each one is argued in
 its HISTORY.md entry. The largest such call is the **built-in text editor** (2026-07-22): a
@@ -141,18 +144,16 @@ declared public scope and a folder that exists. Both are argued in HISTORY.md. T
 that approximation was reversed on 2026-07-21 (see M10): it used to also require a
 non-empty folder, which hid three folders Finder shows.
 
-### Next: nothing open yet
+### After M18
 
-M15 closed 2026-08-02 and no milestone has been opened since. Its section moved to
-[HISTORY.md](docs/HISTORY.md) §M15 whole, the way each milestone is archived as it closes — the four
-slices, the probes that inverted two of them, and the scope that was cut.
+Nothing is in flight: M18 closed on 2026-08-07 and no milestone has opened behind it.
 
-The scope that is already written down, rather than merely imaginable, is in the *undone* column
-above plus M15's cut: the **thumbnail grid, brief view and the `PaneSurface` extraction** (one unit,
-argued in HISTORY.md §M15, with the two constraints any future grid inherits — skip
-`FileEntry.isDataless` rows, and move sort off the column header first). The one item two separate
-milestones have asked for is **edit-temp-watch-repack write-back** — M11 named it for archives and
-SFTP, M13 for FTP — so it is the candidate that would close the most open ends at once.
+The scope that is already written down, rather than merely imaginable, is in the *undone* column above
+plus M15's cut: the **thumbnail grid, brief view and the `PaneSurface` extraction** (one unit, argued
+in HISTORY.md §M15, with the two constraints any future grid inherits — skip `FileEntry.isDataless`
+rows, and move sort off the column header first). The one item two separate milestones have asked for
+is **edit-temp-watch-repack write-back** — M11 named it for archives and SFTP, M13 for FTP — so it is
+the candidate that would close the most open ends at once.
 
 ## 5. Cross-cutting: testing strategy
 
@@ -175,11 +176,53 @@ SFTP, M13 for FTP — so it is the candidate that would close the most open ends
 | Full Disk Access friction kills onboarding | Dedicated flow in M7; app degrades gracefully (browse home dir) before grant |
 | Scope creep before the feel is right | M1 exit criteria are the gate; nothing from M3+ starts until M1 feels great |
 | A system-CLI quirk changes under us (M13's TLS-1.2 pin for FTPS is a workaround for `curl` 8.7.1, not a property of the protocol) | The flag lives in a pure, tested `FTPProcessArguments` with the reason in its doc comment, so it is one place to re-measure — and a listing that comes back empty is the *symptom*, so an FTPS smoke test asserts non-empty rather than merely "no error" |
+| M17's highlighter grows into a parser by accretion — one heredoc, one regex literal, one interpolation at a time, each individually reasonable | The scanner's boundary is written into the milestone as a list of *decisions*, and each one carries a comment at the place in the grammar where it would have been handled. The tell that the boundary is being crossed is a grammar gaining a **state stack**: a single pass with one lookahead is the whole design, and anything needing to remember where it has been is a parser, which is a compiler's job and not a preview's. The affordable escape hatch is that highlighting only ever *adds* foreground colour to a document that already renders correctly — so a construct the scanner gets wrong is a wrong colour, never a wrong character, and the honest fix for a hard one is to stop colouring it. **Held through the milestone, and the escape hatch was used**: `prefix` and `postfix` came out of the Swift keyword set rather than gaining a rule, because both are contextual and `prefix` is one of the language's most common method names (HISTORY.md §M17 ▸ Slice 1). No grammar gained a state stack; the closest anything came is one `Bool` inside `SyntaxMarkupScanner.scanAttributes`, which is a lookbehind of one token and is argued at the site |
+| M18's Markdown renderer chases CommonMark, and its mermaid subset chases mermaid — both indefinitely, one individually reasonable case at a time. The renderer has it worse than M17's scanner, because a wrong answer here is a wrong *document* rather than a wrong colour | Two different mitigations, because the two halves fail differently. For **markdown**, the target is named as a corpus rather than as a spec — this repo's own files, plus whatever real `.md` the next bug report arrives with — and the escape hatch is that an unreadable construct falls back to its literal text, so the worst outcome is a paragraph that looks like its source. For **mermaid** the boundary is a *list of diagram types*, and crossing it is loud by construction: an unsupported type renders its fence with a note naming it, so the pressure to add one shows up as a user asking rather than as a silently wrong drawing. The tell that the mermaid half is going wrong is the layout gaining knobs — mermaid has a config surface of its own, and reproducing it is how a subset becomes a port. **Held through the milestone, and both escape hatches were used**: the markdown half is pinned by a corpus suite over this repo's own `PLAN.md`, `README.md`, `NOTES.md` and `HISTORY.md` rather than against the spec's test cases, and the mermaid half reports by name — not only an unsupported diagram *type* but an unsupported construct inside a supported one (`subgraph`, `loop`, `alt`, `style`), which is more than the milestone asked for and in the same direction. The one thing that did arrive is the knob the risk names: a `diagramScale` and a shared `labelSize` (HISTORY.md §M18 Slice 4), both of them constants the *app* sets once rather than a config surface read out of the diagram's own source, which is the line worth keeping |
 | The tree becomes a *second* pane implementation by accretion — a refresh path, a mark gesture or a sort that quietly forks from the flat one | The tree is a flat projection over the same `NSTableView` and the same index space, not a parallel surface (HISTORY.md §M15 Slice 4); anything that forks is a signal the projection is wrong, not that the tree needs its own copy. Both fork points were answered in the slice — `SizeVisualization`'s per-directory assumption (the bars were withdrawn in tree mode at M15 close, then re-scoped *per parent directory* rather than forked — `SizeVisualization(tree:)` groups each row against its own level, so the projection stays one definition of "share of this folder") and the `installSortedModel` → `reloadEverything` → `syncCursorToTable` tail. It arrived once already, as the *second index space*: six `panel.model[row]` sites that crashed on the first click below the root's last entry, now routed through `displayedIndex(ofID:)` — NOTES.md ▸ AppKit |
 
 ## 7. Open questions
 
-**Open now:** none. M15's two closed with it (below), and nothing has been opened since.
+**Open now:** none. M18's one was posed and taken at open (below); M15's two closed with it, and
+M17's one closed at open and was then
+**re-taken twice** (2026-08-06, every time by the user):
+
+- **How much of a syntax theme the user owns** — resolved in favour of **a small fixed set of
+  semantic kinds, no Settings surface at all**. That half never moved. What moved, twice, is where
+  the colours come from. The question closed on *system dynamic colours*, on the ground that each
+  resolves per appearance for free — and Slice 3 measured them and found `.systemGreen` at
+  **2.22:1** on a white text background, with teal, cyan, mint, orange and yellow all between 1.5
+  and 2.4. The system palette is tuned for fills, not for text on white, so the premise held in
+  dark mode and collapsed in light. Re-taken as authored light values with the system colour in
+  dark; then re-taken again, the same day and on sight of the result, as **VS Code's Dark Modern
+  and Light Modern on both halves** — the `dark_plus` / `light_plus` token colours. The reason is
+  not aesthetic preference but *whose* theme: a preview is read next to the editor the file will be
+  opened in, and matching that editor is worth more than any hue chosen in isolation. It cost
+  nothing to check — every published value clears the same ≥ 4.5:1 floor `SyntaxThemeTests` already
+  pinned, in both appearances, because `.textBackgroundColor` resolves to exactly `#1E1E1E` in
+  dark, which *is* VS Code's editor background. Everything the original answer was *for* survives
+  both moves: one `NSColor` per kind, resolving itself, no picker, no persistence. Reopening the
+  *owned-theme* half still means the M15 palette machinery (persistence, a Settings section, a
+  derived-foreground rule), which is why it stays written down.
+- Kind count is the one detail the answer no longer pins: it opened at "six and no more" and is
+  **eight**, `.inserted` and `.deleted` having been added with the diff scanner (HISTORY.md §M17
+  ▸ Slice 2). That is two more entries in the same dictionary, not a Settings surface.
+
+Opened with M18 (2026-08-06) and **closed at open, by the user**:
+
+- **Where mermaid diagrams come from** — resolved in favour of **a hand-rolled SVG renderer in the
+  core, over a named subset (flowchart and sequence)**, against the alternative of vendoring
+  `mermaid.min.js` and running it in the preview. The fork is real because the two answers cost
+  opposite things: bundling buys every diagram type mermaid supports, at ~3 MB of third-party
+  JavaScript, a JS engine running on every cursor step, and output §2 cannot test — which is
+  Highlightr's and tree-sitter's rejection at M17 arriving in a different shape. Hand-rolling buys a
+  pure, tested renderer with no dependency and no script in the page at all, at the price of a
+  subset that will visibly diverge from what the user's editor draws. The security half turned out
+  *not* to be the deciding argument in either direction: escaping the file's raw HTML (M18, above)
+  already means no script from the `.md` reaches the page, so a bundled mermaid would have been
+  running our code over the file's data rather than the file's code — a materially different posture
+  from M16's toggle, and one that would have needed saying out loud in the JavaScript policy.
+  Reopening it means taking on a vendored asset with its own update cadence, which is why the
+  reasoning stays written down.
 
 All four opened before M1 are closed — the first three by shipping and living in the result,
 which was the stated way to decide them. Recorded because reopening one is a real design

@@ -1,10 +1,11 @@
-# Dirnex — build history (M0 → M15)
+# Dirnex — build history (M0 → M18)
 
 The shipped record of Dirnex's milestones: the milestone checklists as they were completed,
 plus the per-pass progress log — what was probed, what was decided, what was rejected and why.
 M0–M11 landed 2026-07-05 → 2026-07-22; M12 (localization) ran 07-22 → 07-29 and M13 (FTP/FTPS)
 landed 07-25 inside that span, so the two overlap in time — each sits in its own numeric slot below.
-M14 closed 07-30 (its escalation slice 08-02) and M15 opened and closed 08-02.
+M14 closed 07-30 (its escalation slice 08-02) and M15 opened and closed 08-02. M16 and M17 both
+opened and closed 08-06; M18 opened 08-06 and closed 08-07.
 
 This file is **archive, not instruction.** It moved out of [PLAN.md](../PLAN.md) once M7
 closed, so the plan could go back to being a plan, and each milestone since is archived
@@ -7640,3 +7641,736 @@ Verified live against the real binary on a restored session in tree mode. With t
 root-level file into `prod` leaving the original in place, and ⌥⌘V moved one in and out of the root; a
 paste of `xlms` into its own `prod` did nothing, as intended; a root-level row and the `..` row both
 still named the pane's own directory. 1646 core + 215 app tests green, both linters clean.
+
+### M16 — Quick View: source or page (S–M)
+
+Goal: an HTML file previews **as its source by default**, and as a real rendered page on demand,
+switched with `1` / `2` the way Lister's view modes are. Opened and closed 2026-08-06.
+
+The complaint that opened it was "the rendered page doesn't stretch to the available area", and
+reading the code found the larger half: HTML routes to `QLPreviewView`, which renders it as a
+fixed-width document *card* — and the surface deliberately swallows the mouse
+(`QuickViewPreviewView.hitTest`, NOTES.md), so **a page longer than the surface cannot be scrolled
+at all**. Neither is fixable from our side of an out-of-process view. So the rendered mode is a
+fourth in-process backend beside `PDFView`, `NSImageView` and `QuickViewTextView`, for the same
+reason each of those exists: something Quick Look cannot give the user here.
+
+App-only, with one core touch (two `CommandCatalog` entries, which are data). Nothing new reads
+bytes — `TextPreview` already does that, and `TextPreview`'s own doc comment already states the
+division this milestone leans on: *routing a file is a UTType question, and therefore a UI one*. The
+render-style enum is therefore an app type, the twin of `RowDensity` and `SizeVizDisplayMode`.
+
+Probed before any Swift (2026-08-06):
+
+- **`.xhtml` is `public.xhtml`, which does not conform to `public.html`** — so `isText`'s existing
+  `!type.conforms(to: .html)` exclusion never caught it and XHTML already previews as source today.
+  The dual-style set is therefore named explicitly (`.html` and `.xhtml`), not derived from one
+  conformance. `.mhtml` and `.webarchive` conform to neither text nor html and stay with Quick Look.
+- **A local page in a plain `WKWebView` reaches the network, and the page's own error handlers say
+  it didn't.** Measured against a real HTTP server on 127.0.0.1: a preview of one saved page issued
+  three GETs (a stylesheet, an image, a `fetch`) while `window.probe` reported `img: 'error'` and
+  `fetch: 'blocked'` — the responses fail CORS, the *requests* go out. A tracking pixel needs only
+  the request, so "the page reported an error" is not evidence of anything.
+- **A two-rule `WKContentRuleList` (block `.*`, then `ignore-previous-rules` for `^file://`) stops
+  all of it**: zero requests reached the server on the A/B rerun, while JavaScript still ran, the
+  page's local stylesheet still applied, and `data:` images — what a self-contained report inlines —
+  still loaded. `blob:` URLs are collateral and are blocked; nothing a preview needs.
+
+Hence the policy: **network off unconditionally, JavaScript switchable**. A local script with no
+network cannot exfiltrate, which is what makes running one *offerable* — and what it buys is a
+self-contained report rendering instead of showing raw LaTeX the way Quick Look does now. The switch
+opened on and closed off; Slice 4 argues the flip. A non-persistent data store, `loadFileURL(_:allowingReadAccessTo:)` scoped to the file's own
+directory, and a navigation delegate that refuses everything but the initial load complete it.
+
+#### Slice 1 — The rendered backend (S–M) — landed 2026-08-06
+
+- [x] `QuickViewWebView` + `QuickViewPreviewView+HTML` — a `WKWebView` pinned into `content`
+      alongside the other three backends, with the rule list, the ephemeral store and the scoped
+      file load. Added to `hitTest`'s interactive list so it scrolls and the mouse works.
+- [x] HTML routes here instead of to `QLPreviewView`. Ordered first on purpose: it is an
+      improvement on its own (the page fills the surface and scrolls) and never a regression, which
+      the reverse order would be — text-only would take rendered HTML away before anything gave it
+      back.
+
+Exit: a long local page fills the surface and scrolls at all three sizes; a page referencing a
+remote asset makes no request (verified against a local server, not against the page's own report).
+**Met** — a throwaway harness compiled against the *shipping* `QuickViewWebView.swift` reported the
+web view filling its container exactly (900×500 in a 900×500 surface, against Quick Look's card), a
+13 676 pt document scrolling inside a 500 pt viewport, JavaScript running, the local stylesheet
+applied, a link click declined (still on `page.html`), `clearPage` emptying the document — and **zero
+requests** in the server's log for the run.
+
+The image backend moved to `QuickViewPreviewView+Image.swift` on the way: the fourth backend pushed
+the class past `type_body_length`, and each in-process backend stating its own reason for existing
+in its own file is where they were all heading anyway.
+
+#### Slice 2 — The two styles, and the keys (S) — landed 2026-08-06
+
+- [x] `QuickViewRenderStyle` (`.source` / `.rendered`), persisted app-wide in `AppPreferences`,
+      defaulting to `.source`. A reading preference like `rowDensity`, not a per-tab question.
+- [x] `isText` takes HTML when the style is `.source`; the web backend takes it when `.rendered`.
+      RTF keeps its Quick Look rendering — it has no source anyone wants to read.
+- [x] `1` / `2` in the existing Quick View key monitor, gated on the mode being on *and* the file
+      offering both styles. Not menu key equivalents: a bare digit as a key equivalent is
+      window-global and would swallow `1` everywhere.
+- [x] Two `CommandCatalog` entries so the menu and the ⌘K palette can reach it, with the 13
+      translations `LocalizationCoverageTests` requires, and the full-size header naming the two
+      styles when the file offers both.
+
+Exit: `1` and `2` flip a previewed page between source and rendering, the choice survives walking
+the list and a relaunch, and a digit still types normally everywhere else. **Met**, verified live
+against the real binary at both sizes: ⌃⇧Q opened on the source with the header reading
+`1 Source · 2 Page`, `2` rendered the page edge to edge with its CSS and its JavaScript, two scrolls
+reached filler line 51 (the gesture that did nothing at all before), `1` came back to the source, and
+the choice survived a quit and relaunch into ⌃Q.
+
+The last clause is the one that found a bug, and only live: with a preview up, ⌘L and typing
+`/tmp/12` put **`/tmp/`** in the path field — the monitor ate both digits inside a text field. Esc's
+carve-outs were written into `escapeBelongsToQuickView`, so the digit branch three lines away
+inherited none of them; `digitBelongsToQuickView` is the fix, and it is deliberately *not* the same
+predicate (a `FileTableView` is exactly where these keys must work, and is where Esc must not).
+
+#### Slice 3 — The JavaScript switch (S) — landed 2026-08-06
+
+Added on request after Slice 2. Scripts shipped **on** here, for the reason the milestone opened
+with: the risk a previewed page carries is the network, and that is closed unconditionally by the
+rule list — a script with no network cannot report what it saw. The switch existed because "run no
+code from a file I have not opened" is a coherent position, and a preview that renders on every
+cursor step is where somebody may want it. Slice 4 made that the default instead.
+
+- [x] `AppPreferences.quickViewJavaScriptEnabled`, Settings ▸ Panels, translated in all 14.
+- [x] Applied **per navigation** in the policy delegate, not on the configuration. Probed on one live
+      web view over four loads: the delegate's `preferences` re-gated scripts off and on each time,
+      while assigning `webView.configuration.defaultWebpagePreferences.allowsContentJavaScript` did
+      nothing at all **and read back as though it had worked**.
+- [x] A change reloads open previews (`reloadPage`) rather than re-delivering them — the answer is
+      given per navigation, so a page already rendered has had its.
+
+Exit: the toggle changes an open preview live, both ways, and defaults on. **Met**, verified live —
+the visible page flipped between "JavaScript RAN" and "JavaScript did NOT run" with its CSS intact
+in both, and back again.
+
+**The slice's real find, in the code Slice 1 had already shipped.** Asserting the delegate callback
+in a test failed, and `class_copyMethodList` said why: on a `@MainActor` class in Swift 6 the
+*completion-handler* spelling of an `@objc` optional requirement compiles, reports
+`surface is WKNavigationDelegate == true`, and **is never emitted as an Objective-C method** — the
+class's whole method list was its two initializers. WebKit dispatches by `respondsToSelector:`, so
+the policy callback had never run and the "a link cannot navigate the preview away" rule was absent
+from the shipping build. The `async` variant is the witness Swift 6 recognizes; a link click is now
+declined live. Slice 1's harness had "verified" the broken version because a throwaway `swiftc`
+binary compiles in the **Swift 5** language mode, where that spelling *is* the witness — the whole
+trap is written up in NOTES.md.
+
+#### Slice 4 — Scripts off by default, and a header that says so (S) — landed 2026-08-06
+
+Slice 3's own argument, taken one step further on request. Everything it measured still holds — the
+network is closed unconditionally, so a local script cannot report what it saw — but that is what
+makes the switch *safe to offer*, not what makes it the right default. The deciding asymmetry is
+the one the preview is built around: it renders on **cursor movement**, so scripts left on run a
+file's code because the cursor passed over it rather than because anybody opened it. Off is the
+answer that needs no argument; on is one toggle away, and it is what makes a self-contained report
+draw its charts.
+
+- [x] `quickViewJavaScriptEnabled` defaults to `false`, which is what `defaults.bool(forKey:)`
+      already answers for a never-written key — the `object(forKey:) as? Bool ?? true` dance the
+      opposite default needed is gone. A user who turned it on keeps it on: only a `didSet` writes
+      the key, so an explicit choice is the only thing in the domain.
+- [x] The full-size header carries **"(no JavaScript)"** after `1 Source · 2 Page`, in
+      `tertiaryLabelColor`, only in `.rendered` and only while scripts are refused. A lowercase
+      parenthetical rather than a third `· item`: the two styles are a list of things a key selects,
+      and a note that reads like a third invites the user to hunt for the digit that picks it. In
+      source mode no script would have run either way, so the mark there would be true and useless.
+- [x] `QuickViewCaption.javaScriptDisabled`, set by the window controller beside `style` — both are
+      app-wide facts a pane cannot see, so the two arrived by the same route. `quickViewCaption(for:
+      style:from:)` now owns building the pair, and the JavaScript observer re-states the visible
+      header through it after reloading the pages: the caption is not something a reload touches.
+- [x] The Settings footer's last sentence flipped with it, in all 14 languages — it used to end
+      "Turn it off to render no code from a file you have not opened", which is the wrong direction
+      to point a user once that is what the app already does.
+
+Why the mark earns its place: this is the one thing about a rendered page that is invisible **in the
+page**. A report that needed its scripts simply shows less — an empty chart box, raw LaTeX — with
+nothing on screen to say why, and the setting that explains it is two panes away in Settings. The
+header is already the strip that tells you what you are looking at.
+
+Exit: a fresh install renders a page with scripts refused and says so, and the toggle changes both
+the page and the mark live. **Met**, verified live against the real binary with the key deleted from
+the defaults domain: ⌃⇧Q on a probe page showed "JavaScript did NOT run" under
+`1 Source · 2 Page  (no JavaScript)`; ticking the toggle in Settings ▸ Panels turned the page green
+("JavaScript RAN") and the mark vanished in the same beat; unticking brought both back; and `1`
+dropped the mark with the source on screen, as designed.
+
+Left deliberately undone: Markdown and RTF as dual-style types, and `.webarchive` / `.mhtml`, which
+need `loadData` rather than a file load. Also **the pane-size preview has no header at all**, so it
+cannot carry the mark — the file list is right there beside it, which is the same reason it has no
+name readout either.
+
+Closed with **1678 core + 229 app tests green** (157 and 43 suites), `swiftformat --lint` and
+`swiftlint --strict` clean over 569 files.
+
+### M17 — Syntax highlighting in Quick View (S–M)
+
+Goal: the text preview stops being one colour. M11 gave Quick View its own in-process text view so
+the user could select and copy; M16 made **source** the default rendering for a file that has two.
+Both decisions point here — a file manager that shows you the file should show it the way an editor
+would. Opened 2026-08-06.
+
+Measured before any Swift was written, because the numbers decide the design (§"How to work here":
+probe the real thing first). A hand-written single-pass scanner over the project's own Swift, and the
+cost of putting the result into the real `NSTextView` shape `QuickViewTextView` builds:
+
+| corpus | scan | attribute build | steady-state swap into the view |
+|---|---|---|---|
+| 128 KB | 1.1 ms | — | 2.5 ms (at 20 KB) |
+| 1 MB | 5.2 ms | 3.5 ms | 4.8 ms (plain: 2.7) |
+| 4 MB — `TextPreview.byteLimit` | 17.2 ms | 12.5 ms | — |
+
+And the one that would have changed everything: **an attributed string does not cost TextKit 2 its
+lazy layout.** `textLayoutManager` is still non-`nil` after a 4 MB rich `setAttributedString`, first
+display 12.1 ms against 11.6 plain, scroll-to-end 2.2 ms. So the whole buffer is scanned in one pass
+on the detached task that already does the read — **no viewport-incremental highlighting, no
+per-paragraph state machine, no lowering the 4 MB read limit.** Every one of those was on the table
+before the measurement and none of them is needed. (One artifact to re-measure in the app rather than
+trust: the *first* swap after a 4 MB document read 144 ms in the probe window — a teardown cost that
+did not survive a repeat.)
+
+Three slices, core-first (§2), each shippable alone.
+
+#### Slice 1 — The scanner and the grammar table (S, core-only) — landed 2026-08-06
+
+- [x] `SyntaxToken` — offset, length, `Kind`. Plain `Int` offsets over **UTF-16** code units, which
+      is what an `NSRange` indexes; the core stays AppKit-free but must hand back offsets the app can
+      use without re-walking the string.
+- [x] `LanguageGrammar` — a value type, not code per language: line-comment token, block-comment
+      delimiters, string and character delimiters with their escape, keyword set, number rule,
+      optional preprocessor sigil, and flags for nested block comments (Swift yes, C no) and
+      case-insensitive keywords (SQL).
+- [x] `SyntaxHighlighter.tokens(in:grammar:)` — one single-pass scanner, no regex, no
+      `NSRegularExpression`. Pure and fully tested: every token kind, a comment or string running to
+      EOF, a truncated buffer (`TextPreview` hands one over at the limit), CRLF (NOTES.md: a Swift
+      `Character` makes CRLF *one* grapheme, so nothing here may compare against `"\n"`), and an
+      empty file.
+- [x] The grammar table, which is where the ~25 types live and is data rather than code. Two shapes
+      cover almost all of it: the **C family** (Swift, ObjC, C/C++/headers, Java, Kotlin, C#, Go,
+      Rust, JS/TS/JSX, PHP, Dart, Scala, JSON — strings, numbers, and `true`/`false`/`null` as its
+      keywords — and SQL on the case-insensitive flag), and the **hash-comment family** (Python,
+      Ruby, shell/bash/zsh, Perl, Makefile, YAML, TOML, INI/conf, Dockerfile, CMake), which is the
+      same scanner with a different comment token and keyword set.
+- [x] `SyntaxLanguage.forFile(named:)` — extension-first, and the comment must say why it inverts the
+      rule beside it: the backend routing is content-type-first, but `UTType` cannot tell a `.h`
+      apart as C, C++ or ObjC. Watch the file-length ceiling from the start — the table gets its own
+      file, or two (NOTES.md ▸ lint ceilings: 500/250).
+
+Exit: a Swift file, a `Makefile`, a `.json` and a `.sql` each tokenize as expected in tests; nothing
+in the app has changed and it does not need a rebuild. **Met** — 37 new tests (1715 core, app suite
+green, both linters clean), the app target untouched.
+
+Six languages went beyond the table and into a **throwaway ANSI-colour probe over this repo's own
+files**, which is what the working rhythm buys here: the scan can be *read* rather than trusted, and
+three things came out of it that no unit test would have been written for.
+
+- **`prefix` and `postfix` are out of the Swift keyword set.** Both are contextual — they mean
+  something only before `func` or `operator` — and `prefix` is one of the most common method names in
+  the language: `data.prefix(n)` came back coloured as a keyword on three lines of `TextPreview.swift`
+  alone. A scanner with no parser cannot tell the two apart, and the false positive is louder than the
+  word it colours. The general shape, and the first live instance of the milestone's own escape hatch:
+  **the honest fix for a construct a scanner gets wrong is to stop colouring it.**
+- **`.xcstrings` is JSON, not XML.** Slice 2's bullet lists it with the markup family; probed against
+  this repo's own catalogs, they open `{ "sourceLanguage": … }`. It routes to `json` and Slice 2 keeps
+  four extensions, not five.
+- **A `.h` takes the *union* of C++ and Objective-C**, rather than a guess between three dialects.
+  `UTType` says `public.c-header` and no more — which is the whole reason the routing is
+  extension-first — so `cHeader` merges the keyword sets and keeps `@`. A word coloured that a dialect
+  never uses is invisible in the files that do not use it; picking one dialect leaves `class` or
+  `@interface` flat in the other two.
+
+Two shapes fell out of the scanner that are worth stating because they are what keeps it a scanner.
+Ordinary quotes **do not span lines** (`StringLiteral.spansLines`), so one stray quote costs its own
+line instead of painting the rest of the document — a robustness decision, not a grammatical one. And
+the compiled grammar **sorts string openers longest-first**, so `"""` claims its opening before `"`
+can; written the other way round a Python docstring's body scans as code, which is the quiet
+direction and exactly what a table hand-ordered by a human would eventually get wrong.
+
+#### Slice 2 — The three that need their own scanner (S, core-only) — landed 2026-08-06
+
+The languages that fit neither shape, ordered by traffic:
+
+- [x] **XML/HTML/SVG/plist** — tag, attribute name, attribute value, entity, comment, CDATA,
+      doctype. A genuinely different scanner (~100 lines) and worth it for covering four extensions
+      at once — and it is the one M16 makes load-bearing, since `.source` is the default style for
+      exactly these files. (`.xcstrings` was listed here and is JSON; Slice 1 routed it.)
+- [x] **Markdown** — heading, emphasis, code span and fence, link, list marker, blockquote.
+      Line-oriented, and the code fence is the one construct that spans lines.
+- [x] **Diff/patch** — `+`, `-`, `@@`, the file headers. Twenty lines, entirely line-oriented, and
+      the most satisfying-per-line in the milestone.
+- [x] CSS/SCSS/LESS ride the C-family grammar (block comments, strings, numbers, no keywords), which
+      looks acceptable and is honest about being approximate. A selector/property/value scanner is
+      **not** in scope. (Landed in Slice 1 with the rest of the table; `annotationSigil` gives it the
+      at-rules — `@media`, `@import`, `@mixin` — for free, which is most of what makes a stylesheet
+      readable.)
+
+Exit: the same tests, plus a real `.html` from this repo, `PLAN.md` itself, and a `git diff` capture.
+**Met** — 29 further tests (66 across the four syntax suites, 1744 core, app suite green, both
+linters clean), and all three exit corpora driven through the ANSI probe: a hand-written page with
+every bracketed form, `PLAN.md` (headings, fences, tables, links, bold), and a real
+`git diff docs/NOTES.md`.
+
+Three decisions, each of which changed something already written:
+
+- **`SyntaxToken.Kind` grew by two — `.inserted` and `.deleted`.** "Six and no more" was written
+  against a *theme* question (§7: how much the user owns — still "none"), and these are two more
+  entries in the same system-colour dictionary, not a Settings surface. The alternative was to borrow
+  `.comment` for an added line and `.string` for a removed one, which renders correctly against the
+  colours Slice 3 will likely pick and **couples the diff to a decision about something else**: the
+  day `.comment` becomes grey, as many themes have it, a diff silently loses its green and nothing in
+  the code says why.
+- **`SyntaxLanguage.grammar` is now optional, behind an internal `Scanning` enum.** The obvious
+  shape — an optional grammar plus a second switch for the three scanner-backed cases — needs a
+  `default` branch that can only ever mean "a case nobody wired up", and it would return an empty
+  token list rather than fail. One switch over `Scanning` makes the compiler name any case added
+  without being routed.
+- **The order of the diff scanner's tests *is* its correctness argument.** `--- a/file` and
+  `+++ b/file` open with the same characters as a removed and an added line, so the file headers have
+  to be tested first — written the other way round, every diff's own header reads as a deletion
+  followed by an insertion, which is a wrong colour exactly where a reader orients themselves.
+
+And one measurement that corrects the table at the top of this milestone. The pre-milestone probe
+projected **17.2 ms** for a 4 MB scan; the shipping scanner measures **58 ms** (three runs, 57–59,
+on 4 MB of this repo's own Swift), split 8.6 ms to build the `[UInt16]` and ~43 ms to walk it, of
+which ~18 ms is the keyword lookup (isolated by scanning the identical bytes as `.css` and `.json`,
+whose grammars have no words: 43 and 39 ms). Markdown is 22 ms and markup ~26 ms at the same size.
+The estimate was 3.4× optimistic and **the design it justified still stands** — the argument was that
+no viewport-incremental pass is needed, and 58 ms on the detached task that already reads the file is
+not perceptible, with a typical source file (< 200 KB) under 3 ms. `@inline(__always)` on the
+code-unit helpers was tried and measured as **noise** (52.5 against 51.6, i.e. slightly worse), so it
+is reverted rather than kept — the same call NOTES.md records for the three Quick View animation
+fixes that measured worse or identical.
+
+#### Slice 3 — Colour, in the app (S) — landed 2026-08-06
+
+- [x] `SyntaxTheme` — `SyntaxToken.Kind` → `NSColor`. **Authored light/dark pairs, not the system
+      palette**, which is a correction to the decision this milestone opened with and is argued
+      below.
+- [x] `QuickViewTextView.show` builds an `NSMutableAttributedString` instead of assigning `.string`.
+      The font and the `.textColor` default stay exactly as they are — highlighting *adds* foreground
+      colours to a document that already renders correctly, so the un-highlighted case is unchanged
+      by construction and an unknown extension is not a special case.
+- [x] The tokenize runs on the existing detached read task in `showText`, beside `TextPreview.read`,
+      under the same `loadToken` stale-guard. `TextPreview` gains no knowledge of languages: it
+      decodes bytes, and the highlighter is a second pure function over its result. What crosses the
+      actor boundary is a `TextScan` — the decoded preview plus its tokens, both `Sendable`, because
+      an `NSMutableAttributedString` is not and never could be.
+- [x] Live verification in all three Quick View sizes and **both appearances**, with the cursor
+      stepped through a folder of source.
+
+Exit: stepping the cursor down a folder of mixed source files shows each highlighted with no
+perceptible latency; a binary named `.swift` still falls back to Quick Look; a 4 MB log still shows
+its truncation notice; both linters clean and both suites green. **Met** — 8 further app tests (237
+app, 1744 core, both linters clean), and a folder of nine mixed files stepped through in ⌃Q, ⌃⇧Q and
+⌃⌥Q under both appearances: Python, shell, Swift, HTML, a `git diff`, `PLAN.md`, SQL, CSS and a JSON
+catalog, each correct, with no error on the process's stderr in either run.
+
+**The milestone's colour decision was reversed by a measurement, and re-taken with the user.** M17
+opened (PLAN.md §7) on *system dynamic colours*, on the stated ground that each resolves per
+appearance for free — "the only way to claim legible in both appearances without a screenshot of
+each". Measured against `.textBackgroundColor` in both appearances, alpha composited, before a line
+of `SyntaxTheme` was written:
+
+| | light, on `#FFFFFF` | dark, on `#1E1E1E` |
+|---|---|---|
+| `.systemGreen` | **2.22:1** | 8.25:1 |
+| `.systemTeal` / `.systemCyan` / `.systemMint` | **2.16 / 2.16 / 2.12** | 8.97 / 9.48 / 9.38 |
+| `.systemOrange` / `.systemYellow` | **2.31 / 1.51** | 7.47 / 11.81 |
+| `.systemRed` / `.systemBlue` / `.systemPurple` / `.systemIndigo` | 3.57 / 3.52 / 4.17 / 5.09 | 4.86 / 5.16 / 4.59 / 4.75 |
+
+The system palette is tuned for **fills** — a button, a badge, a selection — not for text on a white
+background, and the hues that fail are exactly the ones a syntax theme wants most. The premise held
+in dark mode and collapsed in light. So the light half is authored (Xcode's own Default Light values,
+each measured: keyword `#9B2393` 6.87:1, string `#C41A16` 5.99, comment `#267507` 5.79, number
+`#1C00CF` 10.77, type `#3E8087` 4.52) and the dark half stays the system colour. What the plan
+actually wanted is untouched — one `NSColor` per kind that resolves itself, no Settings, no
+persistence, no picker — and the claim is now **stronger** than the original could make, because
+`SyntaxThemeTests` pins ≥ 4.5:1 for every kind in *both* appearances rather than trusting a
+screenshot of one. Chosen by the user 2026-08-06 over the two alternatives (restrict to the system
+colours that pass, which leaves a diff with no green; or ship the washed-out ones).
+
+Two more things the wiring turned up:
+
+- **`NSTextView.textStorage` does *not* drop the view to TextKit 1**, which had to be probed because
+  the neighbouring rule is the opposite: reading `.layoutManager` does, and `textStorage` is
+  historically `layoutManager.textStorage`. On a real window, `textLayoutManager` is still non-`nil`
+  after reading `.textStorage` and after a 4 MB `setAttributedString` through it — first display
+  0.03 ms, scroll-to-end 2.7 ms, against 0.47 ms to install the same 4 MB as a plain string and
+  ~38 ms to build the attributed one. The lazy layout the whole design rests on is intact, and
+  `SyntaxThemeTests` now asserts it rather than leaving it to the probe.
+- **A test that spins the run loop is not a test that awaits.**
+  `QuickViewTextPreviewTests.loaded` pumps `RunLoop.run(until:)`, which is enough to lay the surface
+  out — every existing test there only hit-tests it, and all of them pass on that alone. It is *not*
+  enough to land the document, because the detached read's continuation needs the main actor to
+  suspend. The first content assertion written against it read an **empty string**, which is how the
+  gap surfaced; the fix is `await Task.sleep` in a loop, and the shape generalizes to any assertion
+  about what an async load put on screen.
+
+**Then the palette was re-taken a second time, same day, on sight of a README.** The Xcode-derived
+table above shipped and looked wrong in one specific way the user named immediately: *red, almost
+everywhere*. The cause was only half the colour table. `SyntaxMarkdownScanner` mapped a **fenced code
+block** to `.string`, so the layout tree and both `bash` blocks in this repo's own README rendered as
+one continuous red mass — a fence is routinely the largest thing on a page, so painting it all one
+literal colour makes the loudest region of the document the one carrying the least meaning. Two
+changes, and the second is the one that mattered:
+
+- **The palette is now VS Code's Dark Modern and Light Modern on both halves** (`dark_plus` /
+  `light_plus` token colours), replacing Xcode-light-plus-system-dark. Not an aesthetic preference
+  but a choice of *whose* theme: a file manager's preview is read beside the editor the file will be
+  opened in. It cost nothing to verify — measured against the real `.textBackgroundColor` in both
+  appearances before anything was written, every published value clears the same 4.5:1 floor
+  (light: keyword `#0000FF` 8.59, string `#A31515` 7.85, comment `#008000` 5.14, number `#098658`
+  4.60, type `#267F99` 4.59; dark: `#569CD6` 5.65, `#CE9178` 6.31, `#6A9955` 5.00, `#B5CEA8` 9.81,
+  `#4EC9B0` 8.18). The dark half needed no adjustment at all, and that is not luck:
+  `.textBackgroundColor` resolves to exactly `#1E1E1E` in dark mode, which *is* VS Code's classic
+  editor background — the dark values are measured on the background they were designed for.
+  `SyntaxThemeTests.mayShareAColour` gained one change: `inserted` now shares with `number` rather
+  than with `comment`, which is VS Code's own collision (both `#b5cea8` / `#098658` there too).
+- **A fence is three tokens, not one.** The two delimiter *lines* take `.keyword`, on the heading's
+  argument — they are the document's own structure — and the **body** is scanned as the language its
+  info string names, or left entirely uncoloured when it names none. `SyntaxLanguage.forFenceInfo`
+  is its own entry point rather than a call to `forFile(named:)`, because the two vocabularies
+  disagree in both directions: `makefile` and `dockerfile` are whole *names* on that side and would
+  be read as extensions, and the spelled-out `python`, `javascript`, `shell`, `objective-c` — what
+  people actually type above a fence — are neither, so they need a table of their own. What the two
+  share is the extension table, so `swift`, `bash`, `json`, `py` and the rest need no entry. The
+  re-entrant scan is bounded at **two levels by construction, not by a counter**: a fence closes on
+  the first run of its *own* character, so its body can contain no fence of that character at all —
+  an outer ``` block holds only `~~~` fences, whose bodies can hold neither.
+
+Live-verified on this repo's README in both appearances: the layout tree renders plain, the `bash`
+blocks render as bash, and flipping the system appearance with the preview already open re-resolves
+every colour in place — which is the dynamic-pair design doing what it was built for.
+
+#### Deliberately not in scope
+
+Stated up front, because this is the milestone whose scope has no natural floor, and the correctness
+tail is what would turn three days into three weeks. A regex-free single-pass scanner is about 95 %
+right, and the remaining 5 % is a list of *decisions*, not bugs: **string interpolation** (`\(…)` in
+Swift, `${…}` in JS and shell — a keyword inside a string will be coloured as a string, which is the
+quiet direction), **JS regex literals** (the `/` ambiguity with division is genuinely undecidable
+without a parser), **heredocs** in shell and PHP, **JSX**, and semantic colouring of any kind (a type
+is a type because of a declaration somewhere else — that is a compiler, not a scanner). Each gets a
+comment naming it where the grammar would otherwise have handled it, so the next reader knows it was
+chosen.
+
+Also not in scope, each for its own reason: a **theme picker** (costed alongside this at the estimate
+— per-appearance colour pairs, persistence, a Settings section; deferred in favour of system colours,
+and the M15 palette work is the precedent for what it costs if it is ever wanted); **line numbers,
+folding and a minimap**, which are editor features, and Dirnex hands editing to the user's own editor
+(§M11's largest deliberate call); highlighting inside the **rendered** HTML style, which is the page's
+own business; and any third-party highlighter — **Highlightr** (highlight.js in a `JSContext`) buys
+~190 languages at the price of a dependency, a JS engine on every cursor step and output §2 cannot
+test, and **tree-sitter** is a C dependency plus one compiled grammar per language. Both rejected
+2026-08-06 in favour of a hand-rolled scanner the core can test.
+
+### M18 — Quick View: Markdown as a document (M)
+
+Goal: `.md` becomes the **second dual-style type**. `1` keeps the source, coloured by M17's Markdown
+scanner; `2` renders the document those bytes describe — headings, tables, lists, coloured code,
+`[[_TOC_]]` and mermaid diagrams — **hand-rolled end to end**, with no JavaScript in the page and no
+third-party renderer anywhere in it. Opened 2026-08-06, closed 2026-08-07 with all four slices
+landed.
+
+M16 named this in its own undone column ("Markdown and RTF as dual-style types"), and it is the half
+worth taking: a `.md` is the format most likely to be *read in a file manager* rather than opened,
+and what Quick Look shows for one today is plain text with the syntax on display. Almost everything
+the milestone needs already exists — the render-style enum and its two keys, the sandboxed web view
+with its compiled block-remote rules, and the scanner that can colour a fence's contents. What is
+missing is a renderer.
+
+**Where the work lives.** Markdown → HTML is a pure function over bytes, so §2 puts it in
+`DirnexCore` with tests; the *stylesheet* is presentation and stays in the app — exactly the division
+M17 already draws between `SyntaxToken.Kind` and `SyntaxTheme`, and the one `TextPreview`'s own doc
+comment states. The core emits semantic HTML carrying class names and never a colour; the app hands
+the web view a `<style>` block built from `SyntaxTheme` and the system label colours. That is what
+makes the rendered page follow light and dark for free, diagrams included.
+
+**Raw HTML in a `.md` is escaped, not passed through.** CommonMark says to pass it; a preview that
+renders on *cursor movement* must not. That single decision is what keeps the generated page inert:
+there is no script for the JavaScript toggle to be about, no remote `<img>` for the content rules to
+have to catch, and therefore no reason for a markdown preview to carry M16's `(no JavaScript)` mark.
+It is also honest about what this surface is — a `<details>` block rendering as its own text is a
+much smaller surprise in a preview than a page that runs something because the cursor passed over it.
+
+**Mermaid is hand-rolled too, over a named subset** — decided 2026-08-06 with the user, against
+vendoring `mermaid.min.js`. Bundling it would have bought every diagram type at the price of a ~3 MB
+third-party asset, a JS engine running on every cursor step, and output §2 cannot test: the same three
+costs that got Highlightr and tree-sitter rejected at M17, arriving in a different shape. The subset
+is **flowchart and sequence**, and every other diagram type falls back to a code fence — visibly, and
+by name.
+
+Three things to probe before any Swift is written (§"How to work here"), because each can change the
+design rather than merely confirm it. All three were **answered** — the first two in Slice 3, the
+third before Slice 4 opened:
+
+- ~~**How a generated document reaches the file's own images.**~~ **Answered, after getting it wrong
+  once.** `loadHTMLString(_:baseURL:)` grants the page **no file access whatsoever** — the first
+  probe said otherwise and was measuring its own directory (Slice 3, and NOTES.md). The two shapes
+  that work are granting the whole disk or inlining as `data:`; the second ships, scoped to the
+  document's own directory. The failure mode the plan predicted is exactly the one that happened: a
+  missing image read as a broken *file*, not as a broken preview.
+- ~~**Whether a `#fragment` click still passes `decidePolicyFor`**~~ **Answered: yes, unchanged.**
+  The generated page is loaded with the document's directory as its base URL — for *identity*, not
+  for access — so a `#anchor` arrives as `<directory>#anchor` and `isPermitted`'s existing
+  fragment-stripping comparison allows it, while a sibling `.md` and a remote URL are both refused by
+  name. Verified live: a TOC link moves the reading position on a real click.
+- ~~**What a text metric costs, and where it comes from.**~~ **Answered: it is cheap, and it is safe
+  where it has to be.** `NSString.size(withAttributes:)` costs **5.4–6.7 µs a label** and agrees
+  exactly with `NSAttributedString.size()` and `CTLineGetTypographicBounds`, so a hundred-node
+  diagram is ~0.7 ms of measurement — per-node measurement is affordable and no cache is warranted.
+  `CTFontGetAdvancesForGlyphs` is ten times cheaper and was rejected: summed advances are not
+  shaping, and it measures `🐛 Bugs` 13 % too wide. The half that decided the seam's *shape*: it is
+  **safe and exact off the main actor**, where the render runs — four concurrent background queues
+  measuring 200 labels twenty times each produced **zero** disagreements with the main thread — so
+  the metric is a plain `@Sendable` closure with no actor hop, like `resolveImageSource`.
+
+Four slices, core-first (§2). The order is deliberate: the app wiring lands **third**, so the
+milestone is a usable feature before mermaid is written and mermaid can be cut without leaving
+anything half-built.
+
+#### Slice 1 — The block and inline renderer (M, core-only) — landed 2026-08-06
+
+- [x] `MarkdownBlockParser` — a line-oriented **block** pass, then an **inline** pass per block. Two
+      passes rather than M17's one, and the departure is the point: that scanner is single-pass with
+      one lookahead *because* it only ever adds colour, so a construct it gets wrong is a wrong
+      colour. A renderer produces the document itself, and gets the previous line and the block's
+      whole text. Which is also why **setext headings and indented code blocks** — both named in
+      M17's undone column as needing a lookahead the scanner does not keep — are in scope here, and
+      both landed.
+- [x] Blocks: ATX and setext headings, paragraphs, thematic breaks, fenced (``` and `~~~`, with info
+      string) and indented code, nesting blockquotes, ordered and unordered lists (nesting,
+      tight/loose), GFM tables with per-column alignment, task-list items, link reference definitions,
+      and **YAML front matter** — recognized rather than ignored, since an opening `---` otherwise
+      parses as a thematic break and the document opens looking broken. Rendered as a subdued
+      metadata table: a file manager shows what is in the file.
+- [x] Inline: emphasis and strong, inline code spans, links, images, autolinks, GFM strikethrough,
+      hard line breaks, entities, and backslash escapes. **Emphasis is what forced the inline pass
+      into two stages of its own** — scanning forward and matching the first legal closer gets
+      `*a **b** c*` wrong, because the `**` after `b` *is* a legal closer for the outer `*`. The
+      scan therefore emits finished nodes with the delimiter runs left in place, and a second pass
+      pairs them from the inside out.
+- [x] **Escaping is the renderer's contract, not a step inside it**: every text run reaches the
+      output HTML-escaped, and a raw tag in the source is text. A second wall behind it for the one
+      thing escaping cannot reach — `[click](javascript:…)` is *valid Markdown* with no raw HTML in
+      it, so `MarkdownURL` allow-lists the schemes and a refused link keeps its words and loses its
+      `href`.
+- [x] The output is a **fragment**, not a whole document. The `<html>` wrapper and the stylesheet are
+      the app's, because the app is the only side that knows which appearance is on screen. (The
+      heading list moves to Slice 2, where the TOC needs it.)
+- [x] `MarkdownRenderOptions.resolveImageSource` — the seam the milestone's **first probe** lands in,
+      added now with an identity default so no test in this slice depends on how that probe comes out.
+
+Exit: **met.** 77 new core tests, and the corpus suite renders this repo's own `PLAN.md`,
+`README.md`, `docs/NOTES.md` and `docs/HISTORY.md` structurally rather than against a golden file —
+the output is balanced, every tag and every attribute is in a **closed set** the renderer chose, no
+`href` carries a scheme outside the allow-list, and no heading is lost between source and page.
+1823 core + the app suite green, both linters clean; the app is untouched and was not rebuilt for it.
+
+Two findings worth carrying:
+
+- **Rendering is affordable at the sizes that exist, and only just at the ceiling.** Release build:
+  README 0.5 ms, `PLAN.md` (37 KB) 4.5 ms, `NOTES.md` (174 KB) 24 ms, `HISTORY.md` (683 KB) 96 ms,
+  and 482 ms at `TextPreview.byteLimit`'s 4 MB (debug is ~2.2× each). So Slice 3 puts this on the
+  detached read task beside `TextPreview.read`, exactly where M17 put the tokenizer and for the same
+  reason — the preview re-renders on **every cursor step**. A `.md` large enough to be a problem is
+  not a document anybody reads, and it already has the truncation notice.
+- **A security assertion that searches the rendered *text* for a dangerous string tests the
+  document, not the renderer** — three of this slice's own assertions were written that way and all
+  three were wrong. `onerror` as a word is legitimate prose (this plan contains one), `javascript:`
+  likewise, and `hr` matched a "starts with h" heading count. The assertions that hold ask what
+  reached a **tag**: the attribute names against a closed set, and every `href`/`src` scheme against
+  an allow-list. Now in docs/NOTES.md ▸ Testing.
+
+#### Slice 2 — `[[_TOC_]]`, anchors, and coloured fences (S, core-only) — landed 2026-08-06
+
+- [x] Heading slugs, GitHub's rule, emitted as `id` on every heading so any anchor in the document
+      resolves — including the ones the file's author already wrote by hand. **Measured, not read**:
+      there is no specification, so the rule was probed against 211 real `.md` files on this Mac
+      carrying 2282 hand-written `](#…)` links, and two of the three things it settled would have
+      been got wrong by reading `github-slugger`'s published regex (below).
+- [x] `[[_TOC_]]` — Azure DevOps' spelling, with `[TOC]` recognized beside it — as a block of its
+      own, replaced by a nested `<nav>` built from the heading list. Doing it in the block pass is
+      what makes a marker inside a code fence stay text, and it does.
+- [x] A fence whose info string names a language is tokenized through **M17's existing
+      `SyntaxHighlighter`** and emitted as one `<span class="tok-…">` per `SyntaxToken.Kind`, so the
+      fence in the rendered page and the file in source mode are coloured by the same scanner and the
+      same table. No language, or one no grammar claims, is plain `<code>` — the same "an unknown
+      type is not a special case" rule the text backend already keeps.
+
+Exit: **met.** `PLAN.md`'s own 17 headings produce a TOC whose links and emitted `id`s are the same
+set, counted as well as compared; README.md's ```` ```bash ```` fences carry the comment spans
+`SyntaxHighlighter` itself claims for the same bytes. 20 new core tests, 1843 core + the app suite
+green, both linters clean; the app is untouched.
+
+Three findings worth carrying:
+
+- **A corpus of files that already depend on an undocumented rule is an oracle for it.** Three
+  candidate slug rules were scored against those 2282 real links: an allow-list (keep letters,
+  digits, spaces, `-`, `_`) resolved **25 anchors the published block-list regex does not**, with
+  none going the other way. The 25 are emoji headings — `## 🐛 Bugs` really does anchor as `#-bugs`,
+  and `## Contributors ✨` as `#contributors-`. So **nothing is trimmed**, which is the tidying every
+  reasonable person would apply and which breaks real documents. The corpus also produced the
+  duplicate rule's own shape, in a file linking to `#all`, `#all-1` *and* `#all-2` — a counter that
+  steps past a collision the author wrote by hand, not "append the count".
+- **The anchors and the TOC's links are one derivation, not two.** The obvious arrangement — a
+  slugger in the renderer, another where the outline is built — agrees right up until it doesn't,
+  and the failure is a page that looks perfect with every TOC entry dead. So the parse gathers the
+  headings once, in render order, and the renderer consumes that list by position. The one thing
+  that could silently drift is the *order* the two walks visit headings in, and a test pins it
+  against a document with headings inside both a blockquote and a list.
+- **Highlighting costs nothing at the sizes that exist.** Release build, best of 20: README 0.95 ms,
+  `PLAN.md` 4.6 ms, `NOTES.md` 24.0 ms, `HISTORY.md` 94 ms — all within noise of Slice 1's figures.
+  The per-fence fixed cost (compiling a grammar) is **~7.5 µs**, so 1000 fences add 3.8 ms and no
+  cache is warranted. The new per-byte cost only shows at the ceiling: 4 MB that is *one* `swift`
+  fence renders in 564 ms against 177 ms untagged — still under the 579 ms the same 4 MB of prose
+  takes, so the fenced case does not move where the detached-task argument sits.
+
+#### Slice 3 — The app: routing, style, and the sites that name a backend (S) — landed 2026-08-06
+
+- [x] `QuickViewPreviewView+Markdown` — `isRenderableMarkdown` (named types, never one conformance
+      test: `.md`, `.markdown`, `.mdown`, `.mkd` and `net.daringfireball.markdown`, which is the
+      lesson `.xhtml` taught M16), the render on the detached read task that already exists under the
+      same `loadToken` guard, and the load into `QuickViewWebView`.
+- [x] **One `offersBothStyles(_:)` predicate**, replacing the three app sites that spell
+      `isRenderableHTML` today: the routing in `show(_:style:)`, `previewedFileOffersBothStyles`
+      (which gates the `1` / `2` keys) and `quickViewCaption` (which draws the header hint). This is
+      the trap NOTES.md names outright — a new backend has to be named at every site that lists the
+      old one and the compiler checks none of them. The quiet failure available here is `2` doing
+      nothing on a `.md` while the header says it should.
+- [x] The `(no JavaScript)` mark is **suppressed for markdown** — true and meaningless, since the page
+      we generate has no scripts to refuse. Same argument that already keeps it out of source mode.
+      It is the one site that deliberately keeps asking `isRenderableHTML`, so it has its own test.
+- [x] `QuickViewMarkdownStyle` — the stylesheet, built at load time from `SyntaxTheme` for fences and
+      the system label colours for the document, with the system font for prose and the fixed-pitch
+      font for code. **Not** re-generated on `viewDidChangeEffectiveAppearance`: probed, the page
+      follows the appearance itself, so it carries both palettes instead (below).
+- [x] `QuickViewMarkdownImages` — the answer to the milestone's first probe, which did not come out
+      the way it was written (below): a generated page has no file access, so the images are read and
+      inlined as `data:`, only from the document's own directory and inside a budget.
+- [x] A truncated document says so. `TextPreview` stops at 4 MB and its own doc comment makes the
+      caller responsible for saying it — the source view draws a floating strip, and a rendered page
+      that just *ends* is the version of that lie which is hardest to notice.
+- [x] Live verification at all three sizes and in **both appearances**, with the cursor stepped
+      through a folder of `.md`.
+
+Exit: **met**, live at all three sizes. `2` renders `PLAN.md` and a document exercising every
+construct; `1` still shows the coloured source; a TOC link moved the reading position by real click;
+← / → stepped and re-rendered even after clicking *into* the page; `⌘L` then `/tmp/12` put both
+digits in the path field with the preview up (M16's own regression); and flipping the system to light
+and back re-coloured the page **with the scroll position pixel-identical**. 29 new tests (16 app + 13
+core), 1844 core + 253 app green, both linters clean.
+
+Four findings worth carrying:
+
+- **The first probe was wrong, and the harness's own location is what made it wrong.** It reported
+  `loadHTMLString(_:baseURL:)` with the document's directory reaching sibling images — measured, with
+  JavaScript off, by snapshot pixel rather than by asking the page. The app showed broken images
+  within a minute of launching. The test directory had been created **inside the probe binary's own
+  directory**, which the WebContent sandbox already reads; moving the identical bytes one directory
+  sideways flips every answer. Re-measured honestly, only two shapes work: granting the page the
+  **whole disk** (`allowingReadAccessTo: /`), or handing it the bytes as `data:`. Now in NOTES.md,
+  with the general form — when the subject is "may this process read that file", the probe's own
+  location is part of the experiment.
+- **`data:` is the better answer on the merits, not just the simpler one.** A preview that renders on
+  cursor movement then reads exactly the files something decided to give it — here, only what
+  resolves inside the document's own directory, which is the same scope `loadFileURL` already grants
+  a saved HTML page. The price the plan worried about is small: **0.4 ms and 1.33× per megabyte**, so
+  a 4 MB screenshot costs 1.6 ms of the render it rides on. The seam Slice 1 added for this and Slice
+  3 briefly deleted is back, filled — and it is now load-bearing for *security*, so the renderer
+  sanitizes the resolver's **output**, not its input.
+- **The page follows light and dark by itself, live.** `prefers-color-scheme` tracks the web view's
+  effective appearance with no `color-scheme` declaration and re-evaluates with **no reload**, so the
+  stylesheet carries both palettes under one media query. The design this replaced (re-generate on
+  `viewDidChangeEffectiveAppearance`) would have thrown away the reading position on every flip.
+- **There is no system colour for "slightly off the text background".** `.windowBackgroundColor` and
+  `.controlBackgroundColor` are byte-identical to it in both appearances, `.gridColor` inverts in
+  dark, and even the gentlest fill takes `typeOrTag` from 4.59:1 to **3.68:1** — because M17 authored
+  that palette against `.textBackgroundColor`. So a code fence is bordered rather than filled. All in
+  NOTES.md.
+
+#### Slice 4 — Mermaid: flowchart and sequence, as SVG (M, core + a thin app seam) — landed 2026-08-07
+
+- [x] `MermaidDiagram.parse` — `graph` / `flowchart` with a direction (`TD`, `TB`, `LR`, `RL`, `BT`),
+      node shapes (`[]`, `()`, `(())`, `{}`, `[[]]`), edges (`-->`, `---`, `-.->`, `==>`, arrowheads
+      at either end) and edge labels (`-->|text|` and `-- text -->`); `sequenceDiagram` with
+      participants and aliases, `->>` / `-->>` / `->` / `--x`, activations and `Note over`.
+- [x] Layout, pure and fully tested: a flowchart is a layered DAG — longest-path layering, one
+      barycenter pass to order within a layer, x by centering — with **cycles broken by DFS back-edge
+      removal**, so `A --> B --> A` draws instead of hanging. A sequence diagram is positional and
+      needs no layout beyond column and row arithmetic. **One thing the plan did not name and the
+      first live run demanded: dummy nodes** (below).
+- [x] `MermaidSVG` — the emitter, in class names and `currentColor` and never a literal colour, so
+      Slice 3's stylesheet colours the diagram in both appearances the way it colours everything else.
+- [x] Text width through the injected metric from the probe above; the fixed-advance fake makes every
+      layout assertion in the tests exact.
+- [x] Anything else in a `mermaid` fence — a class diagram, a gantt, a state chart, an ER diagram —
+      falls back to Slice 2's code fence **with a one-line note naming the type as unsupported**.
+      Extended past what the plan asked for, in the same spirit: a construct inside a *supported*
+      type that the subset does not draw — `subgraph`, `loop`, `alt`, `style` — is reported the same
+      way, so the diagram still draws and the page still says what it left out.
+
+Exit: **met**, verified live at full-window size in both appearances. `PLAN.md`-style prose carrying
+a flowchart, an `LR` chart and a sequence diagram draws all three legibly; `stateDiagram-v2` shows
+its source and names itself; a `subgraph` chart draws *and* reports the frame it did not draw; `1`
+still shows the coloured source. 60 new tests (54 core + 6 app), 1902 core + 260 app green, both
+linters clean.
+
+Four findings worth carrying:
+
+- **The layout needed dummy nodes, and only a picture said so.** Every test passed and the first
+  launch showed `F ==> A` as one straight line through four boxes and both edge labels. Longest-path
+  layering plus a barycenter pass is not enough on its own: an edge spanning layers needs a *dummy
+  node in each layer it crosses*, so the ordering pass can steer it between the real nodes. That is
+  the one piece of Sugiyama it is not worth skipping. Its own corollary bit immediately after —
+  sizing the canvas from the **boxes** then leaves the bend outside it, and the back edge ran off the
+  right-hand side of the picture and back. Measure the bounds over what is *drawn*.
+- **An SVG with only a `viewBox` has no intrinsic size**, so the stylesheet's `max-width: 100%`
+  stretched a three-node flowchart to the full reading column — 11 pt labels drawn at twice that,
+  beside prose that was the right size. Emitting `width` and `height` **as well as** the `viewBox`
+  makes the diagram draw at the size it was laid out for and lets the rule only ever scale it *down*.
+  Both of these were invisible to 1902 tests and obvious in the first second of looking.
+- **The font size is in three places and nothing relates them**: the layout measures in it, the
+  stylesheet draws in it, and a disagreement is a diagram whose labels do not fit their outlines,
+  with every signal green. Hence one constant, `QuickViewMarkdownDiagram.labelSize`, read by both —
+  and a test that sweeps **every class the core emits** against the stylesheet, which found three
+  unstyled on its first run. The same "one rule, two spellings" family docs/NOTES.md keeps finding.
+- **Drawing is affordable, comfortably.** Release build, best of 20: a 10-node flowchart 0.24 ms,
+  100 nodes **2.1 ms**, 500 nodes 12.8 ms, a 100-message sequence diagram 1.1 ms — against the 6 ms
+  this repo's own `PLAN.md` already takes. The real metric adds ~6 µs a label on top. So a diagram
+  costs about what the document around it costs, and it rides the detached read task either way.
+
+Followed up 2026-08-07 after reading a page: a diagram laid out in the *small* system size reads
+noticeably smaller than the prose beside it, so a finished drawing is now **magnified** —
+`MarkdownRenderOptions.diagramScale`, 1.25 in the app — and the figure is centred in the reading
+column. Magnifying the `<svg>`'s displayed size while the `viewBox` stays put is what makes it one
+line rather than a second layout: boxes, gaps, strokes and labels all grow together, so no
+proportion the layout measured can drift, and `max-width: 100%` still shrinks the whole thing on a
+narrow window. Growing the label font instead would have grown the text inside boxes whose paddings
+and layer gaps are constants. The centring needs its own carve-out for the fallback — a `<pre>`
+inside a centred `<figure>` is *source code*, and it stays left-aligned.
+
+#### Deliberately not in scope
+
+- **Full CommonMark conformance.** The target is what the file's own author sees on GitHub for an
+  ordinary document, pinned by a corpus of real files (this repo's), not by the spec's test suite.
+  The escape hatch that makes that affordable is M17's, one step over: a construct the parser cannot
+  read renders as its **literal text**, never as a wrong document.
+- **Raw HTML passthrough** (argued above), **math and LaTeX**, **footnotes**, **definition lists**,
+  **emoji shortcodes** and **wiki links**.
+- **Following a link to another file.** `decidePolicyFor` refuses everything but the loaded document
+  and its own fragments — M16's rule, unchanged — so a `.md` linking to a sibling is a navigation the
+  preview will not make. Turning a preview into a browser needs its own history and its own way out,
+  which is a different feature.
+- **RTF**, the other type M16 left in the same sentence. It is `NSAttributedString`'s job, not a
+  renderer's, and shares nothing with this.
+- **Rendering as you type**, and editing of any kind — F4 hands the file to the user's own editor
+  (§M11's largest deliberate call) and nothing here changes that.
+- **Exporting the rendered page** to HTML or PDF. Plausible as a next thing, and it is a *file
+  operation*: it belongs in the operation engine with a destination and a conflict policy, not bolted
+  onto a preview.
