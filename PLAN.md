@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M17 shipped (14 languages) · Created: 2026-07-05 ·
+Status: M0–M17 shipped (14 languages) · **M18 in flight** · Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md)
 
 ---
@@ -143,7 +143,179 @@ declared public scope and a folder that exists. Both are argued in HISTORY.md. T
 that approximation was reversed on 2026-07-21 (see M10): it used to also require a
 non-empty folder, which hid three folders Finder shows.
 
-### After M17
+### In flight: M18 — Quick View: Markdown as a document (M)
+
+Goal: `.md` becomes the **second dual-style type**. `1` keeps the source, coloured by M17's Markdown
+scanner; `2` renders the document those bytes describe — headings, tables, lists, coloured code,
+`[[_TOC_]]` and mermaid diagrams — **hand-rolled end to end**, with no JavaScript in the page and no
+third-party renderer anywhere in it. Opened 2026-08-06.
+
+M16 named this in its own undone column ("Markdown and RTF as dual-style types"), and it is the half
+worth taking: a `.md` is the format most likely to be *read in a file manager* rather than opened,
+and what Quick Look shows for one today is plain text with the syntax on display. Almost everything
+the milestone needs already exists — the render-style enum and its two keys, the sandboxed web view
+with its compiled block-remote rules, and the scanner that can colour a fence's contents. What is
+missing is a renderer.
+
+**Where the work lives.** Markdown → HTML is a pure function over bytes, so §2 puts it in
+`DirnexCore` with tests; the *stylesheet* is presentation and stays in the app — exactly the division
+M17 already draws between `SyntaxToken.Kind` and `SyntaxTheme`, and the one `TextPreview`'s own doc
+comment states. The core emits semantic HTML carrying class names and never a colour; the app hands
+the web view a `<style>` block built from `SyntaxTheme` and the system label colours. That is what
+makes the rendered page follow light and dark for free, diagrams included.
+
+**Raw HTML in a `.md` is escaped, not passed through.** CommonMark says to pass it; a preview that
+renders on *cursor movement* must not. That single decision is what keeps the generated page inert:
+there is no script for the JavaScript toggle to be about, no remote `<img>` for the content rules to
+have to catch, and therefore no reason for a markdown preview to carry M16's `(no JavaScript)` mark.
+It is also honest about what this surface is — a `<details>` block rendering as its own text is a
+much smaller surprise in a preview than a page that runs something because the cursor passed over it.
+
+**Mermaid is hand-rolled too, over a named subset** — decided 2026-08-06 with the user, against
+vendoring `mermaid.min.js`. Bundling it would have bought every diagram type at the price of a ~3 MB
+third-party asset, a JS engine running on every cursor step, and output §2 cannot test: the same three
+costs that got Highlightr and tree-sitter rejected at M17, arriving in a different shape. The subset
+is **flowchart and sequence**, and every other diagram type falls back to a code fence — visibly, and
+by name.
+
+Three things to probe before any Swift is written (§"How to work here"), because each can change the
+design rather than merely confirm it:
+
+- **How a generated document reaches the file's own images.** `![](img/x.png)` is the common case and
+  there is no obviously right answer: `loadHTMLString(_:baseURL:)` with a `file://` base is the
+  classic technique and is promised nowhere; `loadFileURL(_:allowingReadAccessTo:)` wants the
+  document *inside* the directory it grants, which a temp file is not; and inlining each image as a
+  `data:` URI certainly works — M16 measured that neither rule touches `data:` — at the price of
+  holding the bytes twice. Measure against a real directory holding a real image. A wrong answer here
+  fails quietly and in the misleading direction: a missing image reads as a broken *file*.
+- **Whether a `#fragment` click still passes `decidePolicyFor`** once the document is generated
+  rather than loaded. `[[_TOC_]]` is nothing but in-page anchors, so this is the first thing anyone
+  will click. `isPermitted` compares against `loadedURL`, and the markdown path may not set that to
+  anything a link in the page resolves against.
+- **What a text metric costs, and where it comes from.** The core cannot measure a string in a font —
+  it imports no AppKit — and a flowchart node's width *is* its label's width. Inject the metric
+  (`(String) -> Double`, `NSFont`-backed in the app, fixed-advance in tests), the same seam the
+  `sftp` and `curl` transports already use; then measure whether per-node measurement is affordable
+  on a hundred-node diagram re-rendered on a cursor step.
+
+Four slices, core-first (§2). The order is deliberate: the app wiring lands **third**, so the
+milestone is a usable feature before mermaid is written and mermaid can be cut without leaving
+anything half-built.
+
+#### Slice 1 — The block and inline renderer (M, core-only)
+
+- [ ] `MarkdownParser` — a line-oriented **block** pass, then an **inline** pass per block. Two passes
+      rather than M17's one, and the departure is the point: that scanner is single-pass with one
+      lookahead *because* it only ever adds colour, so a construct it gets wrong is a wrong colour. A
+      renderer produces the document itself, and gets the previous line and the block's whole text.
+      Which is also why **setext headings and indented code blocks** — both named in M17's undone
+      column as needing a lookahead the scanner does not keep — are in scope here.
+- [ ] Blocks: ATX and setext headings, paragraphs, thematic breaks, fenced (``` and `~~~`, with info
+      string) and indented code, nesting blockquotes, ordered and unordered lists (nesting,
+      tight/loose), GFM tables with per-column alignment, task-list items, link reference definitions,
+      and **YAML front matter** — recognized rather than ignored, since an opening `---` otherwise
+      parses as a thematic break and the document opens looking broken. Rendered as a subdued
+      metadata table: a file manager shows what is in the file.
+- [ ] Inline: emphasis and strong, inline code spans, links, images, autolinks, GFM strikethrough,
+      hard line breaks, entities, and backslash escapes.
+- [ ] **Escaping is the renderer's contract, not a step inside it**: every text run reaches the output
+      HTML-escaped, and a raw tag in the source is text. Asserted directly rather than assumed — a
+      fixture carrying `<script>`, an `onerror` attribute and a `javascript:` link must render three
+      visible strings and no elements.
+- [ ] The output is a **fragment plus the heading list**, not a whole document. The `<html>` wrapper
+      and the stylesheet are the app's, because the app is the only side that knows which appearance
+      is on screen.
+
+Exit: this repo's own `PLAN.md`, `README.md` and `docs/NOTES.md` — the hardest file in the corpus,
+with lists five deep, tables, and inline code full of markdown punctuation — each render as expected
+in tests; nothing in the app has changed and it does not need a rebuild.
+
+#### Slice 2 — `[[_TOC_]]`, anchors, and coloured fences (S, core-only)
+
+- [ ] Heading slugs, GitHub's rule (lowercase, spaces to hyphens, punctuation dropped, duplicates
+      suffixed `-1`, `-2`), emitted as `id` on every heading so any anchor in the document resolves —
+      including the ones the file's author already wrote by hand.
+- [ ] `[[_TOC_]]` — Azure DevOps' spelling, with `[TOC]` recognized beside it — as a block of its
+      own, replaced by a nested `<nav>` built from Slice 1's heading list. Doing it in the block pass
+      is what makes a marker inside a code fence stay text.
+- [ ] A fence whose info string names a language is tokenized through **M17's existing
+      `SyntaxHighlighter`** and emitted as one `<span class="tok-…">` per `SyntaxToken.Kind`, so the
+      fence in the rendered page and the file in source mode are coloured by the same scanner and the
+      same table. No language, or one no grammar claims, is plain `<code>` — the same "an unknown
+      type is not a special case" rule the text backend already keeps.
+
+Exit: `PLAN.md`'s own headings produce a TOC whose every link matches an emitted `id`; a Swift fence
+carries the spans `SyntaxHighlighterTests` already pins.
+
+#### Slice 3 — The app: routing, style, and the sites that name a backend (S)
+
+- [ ] `QuickViewPreviewView+Markdown` — `isRenderableMarkdown` (named types, never one conformance
+      test: `.md`, `.markdown`, `.mdown`, `.mkd` and `net.daringfireball.markdown`, which is the
+      lesson `.xhtml` taught M16), the render on the detached read task that already exists under the
+      same `loadToken` guard, and the load into `QuickViewWebView`.
+- [ ] **One `offersBothStyles(_:)` predicate**, replacing the three app sites that spell
+      `isRenderableHTML` today: the routing in `show(_:style:)`, `previewedFileOffersBothStyles`
+      (which gates the `1` / `2` keys) and `quickViewCaption` (which draws the header hint). This is
+      the trap NOTES.md names outright — a new backend has to be named at every site that lists the
+      old one and the compiler checks none of them. The quiet failure available here is `2` doing
+      nothing on a `.md` while the header says it should.
+- [ ] The `(no JavaScript)` mark is **suppressed for markdown** — true and meaningless, since the page
+      we generate has no scripts to refuse. Same argument that already keeps it out of source mode.
+- [ ] `QuickViewMarkdownStyle` — the stylesheet, generated at load time from the live appearance:
+      `SyntaxTheme` for fences, `.textColor` / `.textBackgroundColor` / `.separatorColor` for the
+      document, the system font for prose and the fixed-pitch font for code. Re-generated on
+      `viewDidChangeEffectiveAppearance`, or a page keeps whichever appearance it was rendered in.
+- [ ] Live verification at all three sizes and in **both appearances**, with the cursor stepped
+      through a folder of `.md` — the preview re-renders on every step, which is the load that
+      matters.
+
+Exit: `2` on a README shows a document that fills the surface and scrolls; `1` still shows the
+coloured source; the TOC's links move the reading position; and a digit typed into the path bar with
+a preview up is still a digit (M16's own regression, and the reason `digitBelongsToQuickView` exists).
+
+#### Slice 4 — Mermaid: flowchart and sequence, as SVG (M, core + a thin app seam)
+
+- [ ] `MermaidDiagram.parse` — `graph` / `flowchart` with a direction (`TD`, `TB`, `LR`, `RL`, `BT`),
+      node shapes (`[]`, `()`, `(())`, `{}`, `[[]]`), edges (`-->`, `---`, `-.->`, `==>`, arrowheads
+      at either end) and edge labels (`-->|text|` and `-- text -->`); `sequenceDiagram` with
+      participants and aliases, `->>` / `-->>` / `->` / `--x`, activations and `Note over`.
+- [ ] Layout, pure and fully tested: a flowchart is a layered DAG — longest-path layering, one
+      barycenter pass to order within a layer, x by centering — with **cycles broken by DFS back-edge
+      removal**, so `A --> B --> A` draws instead of hanging. A sequence diagram is positional and
+      needs no layout beyond column and row arithmetic.
+- [ ] `MermaidSVG` — the emitter, in class names and `currentColor` and never a literal colour, so
+      Slice 3's stylesheet colours the diagram in both appearances the way it colours everything else.
+- [ ] Text width through the injected metric from the probe above; the fixed-advance fake makes every
+      layout assertion in the tests exact.
+- [ ] Anything else in a `mermaid` fence — a class diagram, a gantt, a state chart, an ER diagram —
+      falls back to Slice 2's code fence **with a one-line note naming the type as unsupported**.
+      Silently showing the source of a diagram somebody expected drawn is the failure worth avoiding,
+      and it is the one this subset makes likely.
+
+Exit: a `.md` carrying a flowchart and a sequence diagram draws both, legibly, in both appearances; a
+`stateDiagram` fence shows its source and says why; both suites green and both linters clean.
+
+#### Deliberately not in scope
+
+- **Full CommonMark conformance.** The target is what the file's own author sees on GitHub for an
+  ordinary document, pinned by a corpus of real files (this repo's), not by the spec's test suite.
+  The escape hatch that makes that affordable is M17's, one step over: a construct the parser cannot
+  read renders as its **literal text**, never as a wrong document.
+- **Raw HTML passthrough** (argued above), **math and LaTeX**, **footnotes**, **definition lists**,
+  **emoji shortcodes** and **wiki links**.
+- **Following a link to another file.** `decidePolicyFor` refuses everything but the loaded document
+  and its own fragments — M16's rule, unchanged — so a `.md` linking to a sibling is a navigation the
+  preview will not make. Turning a preview into a browser needs its own history and its own way out,
+  which is a different feature.
+- **RTF**, the other type M16 left in the same sentence. It is `NSAttributedString`'s job, not a
+  renderer's, and shares nothing with this.
+- **Rendering as you type**, and editing of any kind — F4 hands the file to the user's own editor
+  (§M11's largest deliberate call) and nothing here changes that.
+- **Exporting the rendered page** to HTML or PDF. Plausible as a next thing, and it is a *file
+  operation*: it belongs in the operation engine with a destination and a conflict policy, not bolted
+  onto a preview.
+
+### After M18
 
 The scope that is already written down, rather than merely imaginable, is in the *undone* column above
 plus M15's cut: the **thumbnail grid, brief view and the `PaneSurface` extraction** (one unit, argued
@@ -174,11 +346,13 @@ the candidate that would close the most open ends at once.
 | Scope creep before the feel is right | M1 exit criteria are the gate; nothing from M3+ starts until M1 feels great |
 | A system-CLI quirk changes under us (M13's TLS-1.2 pin for FTPS is a workaround for `curl` 8.7.1, not a property of the protocol) | The flag lives in a pure, tested `FTPProcessArguments` with the reason in its doc comment, so it is one place to re-measure — and a listing that comes back empty is the *symptom*, so an FTPS smoke test asserts non-empty rather than merely "no error" |
 | M17's highlighter grows into a parser by accretion — one heredoc, one regex literal, one interpolation at a time, each individually reasonable | The scanner's boundary is written into the milestone as a list of *decisions*, and each one carries a comment at the place in the grammar where it would have been handled. The tell that the boundary is being crossed is a grammar gaining a **state stack**: a single pass with one lookahead is the whole design, and anything needing to remember where it has been is a parser, which is a compiler's job and not a preview's. The affordable escape hatch is that highlighting only ever *adds* foreground colour to a document that already renders correctly — so a construct the scanner gets wrong is a wrong colour, never a wrong character, and the honest fix for a hard one is to stop colouring it. **Held through the milestone, and the escape hatch was used**: `prefix` and `postfix` came out of the Swift keyword set rather than gaining a rule, because both are contextual and `prefix` is one of the language's most common method names (HISTORY.md §M17 ▸ Slice 1). No grammar gained a state stack; the closest anything came is one `Bool` inside `SyntaxMarkupScanner.scanAttributes`, which is a lookbehind of one token and is argued at the site |
+| M18's Markdown renderer chases CommonMark, and its mermaid subset chases mermaid — both indefinitely, one individually reasonable case at a time. The renderer has it worse than M17's scanner, because a wrong answer here is a wrong *document* rather than a wrong colour | Two different mitigations, because the two halves fail differently. For **markdown**, the target is named as a corpus rather than as a spec — this repo's own files, plus whatever real `.md` the next bug report arrives with — and the escape hatch is that an unreadable construct falls back to its literal text, so the worst outcome is a paragraph that looks like its source. For **mermaid** the boundary is a *list of diagram types*, and crossing it is loud by construction: an unsupported type renders its fence with a note naming it, so the pressure to add one shows up as a user asking rather than as a silently wrong drawing. The tell that the mermaid half is going wrong is the layout gaining knobs — mermaid has a config surface of its own, and reproducing it is how a subset becomes a port |
 | The tree becomes a *second* pane implementation by accretion — a refresh path, a mark gesture or a sort that quietly forks from the flat one | The tree is a flat projection over the same `NSTableView` and the same index space, not a parallel surface (HISTORY.md §M15 Slice 4); anything that forks is a signal the projection is wrong, not that the tree needs its own copy. Both fork points were answered in the slice — `SizeVisualization`'s per-directory assumption (the bars were withdrawn in tree mode at M15 close, then re-scoped *per parent directory* rather than forked — `SizeVisualization(tree:)` groups each row against its own level, so the projection stays one definition of "share of this folder") and the `installSortedModel` → `reloadEverything` → `syncCursorToTable` tail. It arrived once already, as the *second index space*: six `panel.model[row]` sites that crashed on the first click below the root's last entry, now routed through `displayedIndex(ofID:)` — NOTES.md ▸ AppKit |
 
 ## 7. Open questions
 
-**Open now:** none. M15's two closed with it (below), and M17's one closed at open and was then
+**Open now:** none. M18's one was posed and taken at open (below); M15's two closed with it, and
+M17's one closed at open and was then
 **re-taken twice** (2026-08-06, every time by the user):
 
 - **How much of a syntax theme the user owns** — resolved in favour of **a small fixed set of
@@ -201,6 +375,23 @@ the candidate that would close the most open ends at once.
 - Kind count is the one detail the answer no longer pins: it opened at "six and no more" and is
   **eight**, `.inserted` and `.deleted` having been added with the diff scanner (HISTORY.md §M17
   ▸ Slice 2). That is two more entries in the same dictionary, not a Settings surface.
+
+Opened with M18 (2026-08-06) and **closed at open, by the user**:
+
+- **Where mermaid diagrams come from** — resolved in favour of **a hand-rolled SVG renderer in the
+  core, over a named subset (flowchart and sequence)**, against the alternative of vendoring
+  `mermaid.min.js` and running it in the preview. The fork is real because the two answers cost
+  opposite things: bundling buys every diagram type mermaid supports, at ~3 MB of third-party
+  JavaScript, a JS engine running on every cursor step, and output §2 cannot test — which is
+  Highlightr's and tree-sitter's rejection at M17 arriving in a different shape. Hand-rolling buys a
+  pure, tested renderer with no dependency and no script in the page at all, at the price of a
+  subset that will visibly diverge from what the user's editor draws. The security half turned out
+  *not* to be the deciding argument in either direction: escaping the file's raw HTML (M18, above)
+  already means no script from the `.md` reaches the page, so a bundled mermaid would have been
+  running our code over the file's data rather than the file's code — a materially different posture
+  from M16's toggle, and one that would have needed saying out loud in the JavaScript policy.
+  Reopening it means taking on a vendored asset with its own update cadence, which is why the
+  reasoning stays written down.
 
 All four opened before M1 are closed — the first three by shipping and living in the result,
 which was the stated way to decide them. Recorded because reopening one is a real design
