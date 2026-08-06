@@ -173,7 +173,10 @@ final class QuickViewTextView: NSView {
     /// `.memory`, not the `.file` style sizes are shown in: the limit is a power of two, and the
     /// decimal style renders it as the odd, over-precise "4.2 MB" for a number that was chosen as a
     /// round one.
-    private static var truncationText: String {
+    /// Internal, not private, and that is the point: the rendered-Markdown page ends with the same
+    /// sentence (`QuickViewMarkdownStyle`), and a display string that exists twice gets localized
+    /// once (docs/NOTES.md ▸ Localization).
+    static var truncationText: String {
         let size = ByteCountFormatter.string(
             fromByteCount: Int64(TextPreview.byteLimit),
             countStyle: .memory

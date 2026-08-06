@@ -102,7 +102,7 @@ extension BrowserWindowController {
     /// being quietly eaten by a mode it does not apply to.
     var previewedFileOffersBothStyles: Bool {
         guard isQuickViewEnabled, let url = focusedPanel.quickViewSourceURL else { return false }
-        return QuickViewPreviewView.isRenderableHTML(url)
+        return QuickViewPreviewView.offersBothStyles(url)
     }
 
     /// Subscribe to `quickViewRenderStyleDidChange`, so a window re-renders the file it is already
@@ -249,18 +249,25 @@ extension BrowserWindowController {
     /// being shown in, and whether that rendering ran the page's scripts. Both are stated only for
     /// a file that genuinely has two styles, so the hint appears exactly where `1` / `2` would do
     /// something and says nothing everywhere else.
+    ///
+    /// The two are *not* the same question, which is why the mark has its own test rather than
+    /// riding on `offersBothStyles`. A Markdown preview is a page **we** generated, with the file's
+    /// raw HTML escaped (PLAN.md §M18) — so there is no script in it to have refused, and
+    /// "(no JavaScript)" would be true and meaningless. Same argument that already keeps the mark
+    /// out of source mode.
     private func quickViewCaption(
         for url: URL?,
         style: QuickViewRenderStyle,
         from active: PanelViewController
     ) -> QuickViewCaption? {
         var caption = active.quickViewCaption
-        guard url.map(QuickViewPreviewView.isRenderableHTML) == true else {
+        guard let url, QuickViewPreviewView.offersBothStyles(url) else {
             caption?.style = nil
             return caption
         }
         caption?.style = style
         caption?.javaScriptDisabled = !AppPreferences.shared.quickViewJavaScriptEnabled
+            && QuickViewPreviewView.isRenderableHTML(url)
         return caption
     }
 

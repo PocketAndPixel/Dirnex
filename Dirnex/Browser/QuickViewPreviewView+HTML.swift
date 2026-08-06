@@ -60,7 +60,9 @@ extension QuickViewPreviewView {
 
     /// Build the web backend on first use and pin it over the surface, alongside the other three.
     /// Asynchronous where the others are not — see `showRenderedHTML`.
-    private func ensureWebSurface(_ completion: @escaping (QuickViewWebView?) -> Void) {
+    /// Internal, not private: the Markdown backend renders into the same surface from its own file,
+    /// and Swift's `private` does not cross files.
+    func ensureWebSurface(_ completion: @escaping (QuickViewWebView?) -> Void) {
         if let webSurface {
             completion(webSurface)
             return

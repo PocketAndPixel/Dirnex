@@ -170,14 +170,28 @@ struct MarkdownRendererTests {
         #expect(html(source) == "<p>See <a href=\"PLAN.md\" title=\"The plan\">the plan</a>.</p>")
     }
 
+    /// The seam PLAN.md §M18's first probe lands in: how a generated document reaches a sibling
+    /// file is a WebKit question, and the core must not have an opinion about it. The default is
+    /// identity, so every other test in this file renders the source the file wrote.
     @Test("the image resolver is the app's, and the core's default changes nothing")
     func imageResolver() {
-        // The seam PLAN.md §M18's first probe lands in: how a generated document reaches a sibling
-        // file is a WebKit question, and the core must not have an opinion about it.
         #expect(html("![x](img/a.png)").contains("src=\"img/a.png\""))
         let options = MarkdownRenderOptions { "data:image/png;base64,\($0.count)" }
         let rendered = MarkdownDocument.render("![x](img/a.png)", options: options).html
         #expect(rendered.contains("src=\"data:image/png;base64,9\""))
+    }
+
+    /// The resolver's answer is what lands in the `src`, so it is the string the scheme allow-list
+    /// has to be asked about — sanitizing the source *before* resolving would check a URL the page
+    /// never sees. A resolver that returned `javascript:` would otherwise walk straight through.
+    @Test("a resolver cannot smuggle a scheme past the allow-list")
+    func resolverOutputIsSanitized() {
+        let options = MarkdownRenderOptions { _ in "javascript:alert(1)" }
+        let rendered = MarkdownDocument.render("![alt words](img/a.png)", options: options).html
+        #expect(!rendered.contains("javascript:"))
+        #expect(!rendered.contains("<img"))
+        // Refused sources keep the author's own description of the picture.
+        #expect(rendered.contains("alt words"))
     }
 
     @Test("an empty document renders to nothing")

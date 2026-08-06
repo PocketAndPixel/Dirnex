@@ -46,9 +46,35 @@ final class QuickViewDocumentWebView: WKWebView {}
 /// looks right, and only a server somewhere else knows.
 @MainActor
 final class QuickViewWebView: NSView {
+    /// What this surface is showing, which is two different things and only one of them is a file.
+    ///
+    /// A `.md` has no HTML on disk — the page is generated from it (PLAN.md §M18) — so there is no
+    /// URL to re-load and the body has to be kept in order to draw it again. An enum rather than a
+    /// second pair of optionals because the two cases answer *every* question differently: what a
+    /// reload re-issues, and which URL `decidePolicyFor` measures a link against.
+    private enum Page {
+        /// An HTML file, loaded from disk with read access scoped to its own directory (§M16).
+        case file(URL)
+        /// A document rendered from a file's bytes, loaded with that file's **directory** as the
+        /// base URL — the page's identity, not its read access (see `showMarkdown`). The scan's
+        /// fragment is wrapped afresh on every load, so the stylesheet is the one the current
+        /// appearance calls for.
+        case generated(QuickViewPreviewView.MarkdownScan, directory: URL)
+
+        /// The one navigation `decidePolicyFor` allows, fragments aside. For a generated page that
+        /// is the base URL, because that is what the page's own links resolve against — measured:
+        /// a `#anchor` click arrives as `<directory>#anchor` and really moves the reading position.
+        var permittedURL: URL {
+            switch self {
+            case let .file(url): url
+            case let .generated(_, directory): directory
+            }
+        }
+    }
+
     private let webView: QuickViewDocumentWebView
-    /// The URL currently loaded, which is the *one* navigation `decidePolicyFor` allows.
-    private var loadedURL: URL?
+    /// What is on screen, which is the *one* navigation `decidePolicyFor` allows.
+    private var page: Page?
 
     /// The view the surface must let the mouse reach for the page to scroll at all.
     var interactiveSubtree: NSView { webView }
@@ -129,24 +155,54 @@ final class QuickViewWebView: NSView {
     /// Render `url`. The read access is scoped to the file's own directory, so a page reaches the
     /// sibling stylesheet and images that make it a saved page, and nothing above it.
     func show(_ url: URL) {
-        loadedURL = url.standardizedFileURL
-        webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+        load(.file(url.standardizedFileURL))
+    }
+
+    /// Render a document generated from `source`'s bytes — Markdown, today (PLAN.md §M18).
+    ///
+    /// The scan's fragment is `DirnexCore`'s; the wrapper and the stylesheet are added here, at load
+    /// time, so a page always carries the palette for the appearance it is being drawn in.
+    ///
+    /// The base URL is the file's **directory**, and it is not what reaches the file's images —
+    /// measured, `loadHTMLString(_:baseURL:)` grants no filesystem access at all, which is why the
+    /// images arrive already inlined (`QuickViewMarkdownImages`). What it is for is *identity*: it
+    /// gives the page a real URL, so a `#anchor` click resolves against something `isPermitted` can
+    /// compare exactly and a link to a sibling file resolves to a path it can refuse by name.
+    func showMarkdown(_ scan: QuickViewPreviewView.MarkdownScan, source: URL) {
+        load(.generated(scan, directory: source.deletingLastPathComponent().standardizedFileURL))
     }
 
     /// Load the current page again — what a changed JavaScript preference needs, since the answer
     /// is given per navigation and an already-rendered page has had its. A no-op when nothing is
     /// loaded.
+    ///
+    /// An appearance change deliberately does **not** come through here: probed, the page's own
+    /// `prefers-color-scheme` follows the web view's effective appearance and re-evaluates live, so
+    /// a light/dark flip keeps the reading position a reload would have thrown away.
     func reloadPage() {
-        guard let loadedURL else { return }
-        show(loadedURL)
+        guard let page else { return }
+        load(page)
     }
 
     /// Drop the rendered page, so nothing stays live while the surface is put away. Loading an
     /// empty document rather than merely stopping: a page that finished loading keeps its timers.
     func clearPage() {
-        loadedURL = nil
+        page = nil
         webView.stopLoading()
         webView.loadHTMLString("", baseURL: nil)
+    }
+
+    private func load(_ page: Page) {
+        self.page = page
+        switch page {
+        case let .file(url):
+            webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+        case let .generated(scan, directory):
+            webView.loadHTMLString(
+                QuickViewMarkdownStyle.document(body: scan.html, isTruncated: scan.isTruncated),
+                baseURL: directory
+            )
+        }
     }
 
     // MARK: - Setup
@@ -192,12 +248,21 @@ extension QuickViewWebView: WKNavigationDelegate {
         return (isPermitted(url) ? .allow : .cancel, preferences)
     }
 
+    /// The empty document `clearPage` loads, and the page this preview is showing — compared
+    /// without the fragment, so an in-page anchor still works.
+    ///
+    /// For a generated document that comparison is against the file's *directory*, which is what
+    /// the page's links resolve against. Probed, so the difference is stated rather than assumed: a
+    /// `#anchor` is allowed and scrolls; a sibling `other.md` is refused; a remote URL is refused;
+    /// `../` is never even attempted. A link to `.` or `""` does compare equal and is allowed — and
+    /// measured harmless, since WebKit leaves the generated document on screen. A tightening that
+    /// admitted only fragments was written and measured to change nothing else, so it was dropped
+    /// rather than carried: it would have had to carve out the initial load and the reload, both of
+    /// which arrive here too.
     private func isPermitted(_ url: URL) -> Bool {
-        // The empty document `clearPage` loads, and the file this preview is showing — compared
-        // without the fragment, so an in-page anchor still works.
         if url.absoluteString.hasPrefix("about:") { return true }
-        guard let loadedURL else { return false }
-        return url.standardizedFileURL.deletingFragment == loadedURL
+        guard let page else { return false }
+        return url.standardizedFileURL.deletingFragment == page.permittedURL
     }
 }
 

@@ -36,33 +36,12 @@ enum MarkdownCodeHighlighting {
             guard token.offset >= cursor, token.end <= units.count else { continue }
             if token.offset > cursor { html += escaped(units[cursor..<token.offset]) }
             let text = escaped(units[token.offset..<token.end])
-            html += className(for: token.kind)
+            html += MarkdownDocument.tokenClass(for: token.kind)
                 .map { MarkdownHTML.element("span", text, attributes: " class=\"\($0)\"") } ?? text
             cursor = token.end
         }
         if cursor < units.count { html += escaped(units[cursor...]) }
         return html
-    }
-
-    /// The class one token kind carries.
-    ///
-    /// An explicit switch rather than `"tok-" + kind.rawValue`, for the reason `SyntaxLanguage
-    /// .scanning` is one switch: a kind added later is named by the compiler here, and has to be
-    /// given a class deliberately — and Slice 3's stylesheet has to grow a rule for it. Deriving the
-    /// name from the raw value would emit `tok-typeOrTag`, a class no stylesheet author would guess.
-    private static func className(for kind: SyntaxToken.Kind) -> String? {
-        switch kind {
-        case .keyword: "tok-keyword"
-        case .string: "tok-string"
-        case .comment: "tok-comment"
-        case .number: "tok-number"
-        case .typeOrTag: "tok-type"
-        case .inserted: "tok-inserted"
-        case .deleted: "tok-deleted"
-        // Never emitted by the scanner — an unclaimed run is already the page's own text colour, so
-        // a span for it would change nothing and cost a tag.
-        case .plain: nil
-        }
     }
 
     private static func escaped(_ units: ArraySlice<UInt16>) -> String {

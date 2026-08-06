@@ -134,13 +134,29 @@ final class QuickViewPreviewView: NSView {
             showImage(url)
         } else if let url, Self.isRenderableHTML(url), style == .rendered {
             showRenderedHTML(url)
-        } else if let url, Self.isText(url) || Self.isRenderableHTML(url) {
+        } else if let url, Self.isRenderableMarkdown(url), style == .rendered {
+            showRenderedMarkdown(url)
+        } else if let url, Self.isText(url) || Self.offersBothStyles(url) {
             // HTML reaches the text backend only here, in `.source` — `isText` still refuses it, so
-            // that a file which is *only* ever text keeps the one rule it always had.
+            // that a file which is *only* ever text keeps the one rule it always had. Markdown
+            // needs no such exception: `isText` takes it already, which is what made `1` work on a
+            // `.md` before this milestone existed.
             showText(url)
         } else {
             showQuickLook(url)
         }
+    }
+
+    /// Whether `url` is a file Quick View can honestly draw two ways — the one predicate behind the
+    /// `1` / `2` keys, the header's hint, and the routing above (PLAN.md §M18 ▸ Slice 3).
+    ///
+    /// One place, deliberately. Until this milestone the same question was spelled `isRenderableHTML`
+    /// at three sites, and adding a second dual-style type meant finding all three by hand with the
+    /// compiler checking none of them — the trap docs/NOTES.md names for a new VFS backend, in a
+    /// different shape. The failure available here is quiet: `2` doing nothing on a `.md` while the
+    /// header says it should, or the digit being swallowed on a file that has one rendering.
+    static func offersBothStyles(_ url: URL) -> Bool {
+        isRenderableHTML(url) || isRenderableMarkdown(url)
     }
 
     /// Release both backends' loaded documents so nothing lingers in memory while the mode is off.

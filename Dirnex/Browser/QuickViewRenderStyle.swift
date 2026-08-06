@@ -7,9 +7,10 @@ import Foundation
 /// and `SizeVizDisplayMode`, and the same division `TextPreview`'s own doc comment draws: the core
 /// decodes bytes, the app decides which surface they land on.
 ///
-/// Only HTML offers both today (`QuickViewPreviewView.isRenderableHTML`). Everything else has one
-/// honest rendering and ignores this entirely — a photograph has no source, and a `.txt` has no
-/// document.
+/// Which files offer both is `QuickViewPreviewView.offersBothStyles` — HTML since §M16, Markdown
+/// since §M18, and the single predicate is the point: the same question used to be spelled three
+/// times. Everything else has one honest rendering and ignores this entirely — a photograph has no
+/// source, and a `.txt` has no document.
 enum QuickViewRenderStyle: String, CaseIterable, Identifiable {
     /// The file's own text, in the same monospaced, selectable view every other text file gets.
     case source

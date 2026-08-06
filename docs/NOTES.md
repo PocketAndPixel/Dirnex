@@ -254,12 +254,51 @@ at build time.
       it. Worth separating the two questions whenever a measurement clears a feature — "is this
       harmful" and "should this happen unasked" have different answers, and only the first is what
       an access log can settle.
+  - **`prefers-color-scheme` follows the web view's effective appearance, with no `color-scheme`
+    declaration, and re-evaluates live with no reload.** Probed on a real view: flipping
+    `view.appearance` moved the page across its own media query (`matchMedia` 0 → 1) while nothing
+    navigated. That inverts the natural design for a generated page — M18's plan said to re-generate
+    on `viewDidChangeEffectiveAppearance` — and the difference is not cosmetic: a reload throws away
+    the user's reading position every time the system crosses sunset. Emit **both** palettes under
+    one media query instead. Two neighbours from the same run: `underPageBackgroundColor` already
+    resolves to `#1E1E1E` in dark so there is no white flash to fix, and *assigning* it freezes it at
+    the current appearance (the captured-`cgColor` trap); and the system fonts have no usable CSS
+    family name (`.AppleSystemUIFont`), so the family comes from the CSS generics and only the
+    **size** is read from AppKit.
   - **The rules compile asynchronously, which makes them a precondition rather than a setting.**
     `QuickViewWebView` has no public initializer — `withContentRules` builds one only once the list
     exists, and hands back `nil` if it cannot be compiled, where the caller falls back to showing the
     file as text. A view built before the rules land would render exactly one page unprotected, and
     it is the quietest failure available: the preview looks perfect, and only a server somewhere else
     knows.
+- **`loadHTMLString(_:baseURL:)` grants the page no file access at all, and a probe put next to its
+  own test data will tell you it does.** M18 needed a *generated* document to reach the sibling image
+  a `.md` refers to. The first probe measured six candidates and reported the obvious one working —
+  base URL = the document's directory, relative `src`, image loads, even with JavaScript off. It was
+  wrong, and the app proved it within a minute of launching: every image a broken icon. The test
+  directory had been created **inside the probe binary's own directory**, which the WebContent
+  sandbox already lets it read, so what was being measured was the harness's own location. Moving the
+  identical bytes one directory sideways flips every answer, and copying the binary next to the data
+  flips them back — which is the A/B that settles it in one run.
+  - The honest matrix, re-measured against a directory far from every binary: `loadHTMLString` with a
+    file base URL **no** (relative *and* absolute `file://` src, so it is the sandbox and not URL
+    resolution); `loadFileURL(<temp>, allowingReadAccessTo: <the document's dir>)` **fails to load at
+    all** ("Ignoring request to load this main resource because it is outside the sandbox" — the main
+    resource must be inside the grant); `loadFileURL(<temp>, allowingReadAccessTo: <temp>)` loads but
+    reaches nothing outside it; `loadFileURL(<temp>, allowingReadAccessTo: /)` **yes**; a `data:` URI
+    **yes**. A `WKURLSchemeHandler` is asked for the subresource and can serve the *document*, but its
+    image responses did not render in either spelling — not pursued once two options measured working.
+  - So the two that work are "hand the page the whole disk" and "hand the page the bytes", and the
+    second is better on the merits rather than merely simpler: a preview that renders on cursor
+    movement then reads exactly the files something decided to give it. Inlining measured cheap —
+    **0.4 ms and 1.33× per megabyte** — so the price the plan worried about (holding the bytes twice)
+    is not what decides it.
+  - The generalizable half: **when a probe's subject is "may this process read that file", the
+    probe's own location is part of the experiment.** Nothing about the result looked suspicious —
+    six candidates, three clean noes, a control that behaved — and the two noes (`loadFileURL` cases)
+    were even *correct*, which is what made the whole matrix read as credible. Put the fixture
+    somewhere the harness has no claim on, and re-run one known-good case from a second location
+    before believing any of it.
 - **`.xhtml` does not conform to `public.html`.** Probed: it is `public.xhtml`, conforming to
   `public.xml` and `public.text` — so a `conforms(to: .html)` gate silently excludes it, which is how
   XHTML sat in the *text* backend unnoticed for the whole life of that exclusion. Name the family's
@@ -524,6 +563,18 @@ at build time.
     `usingColorSpace(.sRGB)` alone reports them as pure black at 21:1. Composite onto the background
     before measuring or the two most tempting "muted text" colours score wildly wrong — the tertiary
     one is really **1.88:1** in light and **2.26:1** in dark, i.e. unusable in both.
+  - **There is no system colour for "a panel slightly off the text background", and the two obvious
+    ones are the same colour.** Measured against `.textBackgroundColor` for M18's code fences:
+    `.windowBackgroundColor` and `.controlBackgroundColor` are **byte-identical** to it in both
+    appearances (`#FFFFFF` / `#1E1E1E`), so either as a fill draws an invisible box;
+    `.underPageBackgroundColor` is `#A1A1A1` in light and drops the M17 syntax palette to 1.77–3.31:1;
+    and `.gridColor` **inverts** — `#E6E6E6` in light but `#1A1A1A` in dark, *darker* than the surface
+    it would sit on (1.04:1), where `.separatorColor` behaves in both (1.25 / 1.34:1).
+  - **A fill under coloured text costs contrast the palette was measured without.** Even the gentlest
+    one — `.quaternaryLabelColor` composited, `#E6E6E6` — takes `typeOrTag` from 4.59:1 to **3.68:1**,
+    because M17 authored those values against `.textBackgroundColor` and they clear AA *there*. So a
+    code fence that carries syntax colours is delimited by a **border** and keeps the page's own
+    background; the fill is only safe on inline code, which carries `.textColor` and nothing else.
 - **`NSTableView` makes a plain `NSTableRowView` when the delegate declines — in every one of its
   five styles.** Probed rather than assumed, and it inverted a design: a row-view subclass that
   defers to `super` is byte-for-byte the stock drawing, so it can be installed **unconditionally**

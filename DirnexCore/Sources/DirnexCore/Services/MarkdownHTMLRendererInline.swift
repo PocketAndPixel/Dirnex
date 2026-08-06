@@ -58,7 +58,11 @@ extension MarkdownHTMLRenderer.Context {
     /// reaches its sibling files through a base URL, a scoped file load or a `data:` URI is a
     /// **WebKit** question, and the answer belongs to the app that owns the web view. The core's
     /// default is identity — the source exactly as the file wrote it — so the parser's tests never
-    /// depend on how that question came out.
+    /// depend on how that question came out. (It came out `data:`, because a generated page has no
+    /// file access at all; the app reads the bytes and hands them back here.)
+    ///
+    /// Sanitized **after** resolving, not before: the resolver's answer is what reaches the `src`
+    /// attribute, so it is the string the scheme allow-list has to be asked about.
     ///
     /// A refused source renders as its **alt text**, not as a broken-image icon: the alt is what
     /// the author wrote to describe the picture, and it is more use than a grey box.

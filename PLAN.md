@@ -179,24 +179,25 @@ is **flowchart and sequence**, and every other diagram type falls back to a code
 by name.
 
 Three things to probe before any Swift is written (§"How to work here"), because each can change the
-design rather than merely confirm it:
+design rather than merely confirm it. Two are **answered**, in Slice 3:
 
-- **How a generated document reaches the file's own images.** `![](img/x.png)` is the common case and
-  there is no obviously right answer: `loadHTMLString(_:baseURL:)` with a `file://` base is the
-  classic technique and is promised nowhere; `loadFileURL(_:allowingReadAccessTo:)` wants the
-  document *inside* the directory it grants, which a temp file is not; and inlining each image as a
-  `data:` URI certainly works — M16 measured that neither rule touches `data:` — at the price of
-  holding the bytes twice. Measure against a real directory holding a real image. A wrong answer here
-  fails quietly and in the misleading direction: a missing image reads as a broken *file*.
-- **Whether a `#fragment` click still passes `decidePolicyFor`** once the document is generated
-  rather than loaded. `[[_TOC_]]` is nothing but in-page anchors, so this is the first thing anyone
-  will click. `isPermitted` compares against `loadedURL`, and the markdown path may not set that to
-  anything a link in the page resolves against.
-- **What a text metric costs, and where it comes from.** The core cannot measure a string in a font —
-  it imports no AppKit — and a flowchart node's width *is* its label's width. Inject the metric
-  (`(String) -> Double`, `NSFont`-backed in the app, fixed-advance in tests), the same seam the
-  `sftp` and `curl` transports already use; then measure whether per-node measurement is affordable
-  on a hundred-node diagram re-rendered on a cursor step.
+- ~~**How a generated document reaches the file's own images.**~~ **Answered, after getting it wrong
+  once.** `loadHTMLString(_:baseURL:)` grants the page **no file access whatsoever** — the first
+  probe said otherwise and was measuring its own directory (Slice 3, and NOTES.md). The two shapes
+  that work are granting the whole disk or inlining as `data:`; the second ships, scoped to the
+  document's own directory. The failure mode the plan predicted is exactly the one that happened: a
+  missing image read as a broken *file*, not as a broken preview.
+- ~~**Whether a `#fragment` click still passes `decidePolicyFor`**~~ **Answered: yes, unchanged.**
+  The generated page is loaded with the document's directory as its base URL — for *identity*, not
+  for access — so a `#anchor` arrives as `<directory>#anchor` and `isPermitted`'s existing
+  fragment-stripping comparison allows it, while a sibling `.md` and a remote URL are both refused by
+  name. Verified live: a TOC link moves the reading position on a real click.
+- **What a text metric costs, and where it comes from.** Still open, and Slice 4's. The core cannot
+  measure a string in a font — it imports no AppKit — and a flowchart node's width *is* its label's
+  width. Inject the metric (`(String) -> Double`, `NSFont`-backed in the app, fixed-advance in
+  tests), the same seam the `sftp` and `curl` transports already use — and the same shape
+  `MarkdownRenderOptions.resolveImageSource` now has; then measure whether per-node measurement is
+  affordable on a hundred-node diagram re-rendered on a cursor step.
 
 Four slices, core-first (§2). The order is deliberate: the app wiring lands **third**, so the
 milestone is a usable feature before mermaid is written and mermaid can be cut without leaving
@@ -299,31 +300,68 @@ Three findings worth carrying:
   fence renders in 564 ms against 177 ms untagged — still under the 579 ms the same 4 MB of prose
   takes, so the fenced case does not move where the detached-task argument sits.
 
-#### Slice 3 — The app: routing, style, and the sites that name a backend (S)
+#### Slice 3 — The app: routing, style, and the sites that name a backend (S) — landed 2026-08-06
 
-- [ ] `QuickViewPreviewView+Markdown` — `isRenderableMarkdown` (named types, never one conformance
+- [x] `QuickViewPreviewView+Markdown` — `isRenderableMarkdown` (named types, never one conformance
       test: `.md`, `.markdown`, `.mdown`, `.mkd` and `net.daringfireball.markdown`, which is the
       lesson `.xhtml` taught M16), the render on the detached read task that already exists under the
       same `loadToken` guard, and the load into `QuickViewWebView`.
-- [ ] **One `offersBothStyles(_:)` predicate**, replacing the three app sites that spell
+- [x] **One `offersBothStyles(_:)` predicate**, replacing the three app sites that spell
       `isRenderableHTML` today: the routing in `show(_:style:)`, `previewedFileOffersBothStyles`
       (which gates the `1` / `2` keys) and `quickViewCaption` (which draws the header hint). This is
       the trap NOTES.md names outright — a new backend has to be named at every site that lists the
       old one and the compiler checks none of them. The quiet failure available here is `2` doing
       nothing on a `.md` while the header says it should.
-- [ ] The `(no JavaScript)` mark is **suppressed for markdown** — true and meaningless, since the page
+- [x] The `(no JavaScript)` mark is **suppressed for markdown** — true and meaningless, since the page
       we generate has no scripts to refuse. Same argument that already keeps it out of source mode.
-- [ ] `QuickViewMarkdownStyle` — the stylesheet, generated at load time from the live appearance:
-      `SyntaxTheme` for fences, `.textColor` / `.textBackgroundColor` / `.separatorColor` for the
-      document, the system font for prose and the fixed-pitch font for code. Re-generated on
-      `viewDidChangeEffectiveAppearance`, or a page keeps whichever appearance it was rendered in.
-- [ ] Live verification at all three sizes and in **both appearances**, with the cursor stepped
-      through a folder of `.md` — the preview re-renders on every step, which is the load that
-      matters.
+      It is the one site that deliberately keeps asking `isRenderableHTML`, so it has its own test.
+- [x] `QuickViewMarkdownStyle` — the stylesheet, built at load time from `SyntaxTheme` for fences and
+      the system label colours for the document, with the system font for prose and the fixed-pitch
+      font for code. **Not** re-generated on `viewDidChangeEffectiveAppearance`: probed, the page
+      follows the appearance itself, so it carries both palettes instead (below).
+- [x] `QuickViewMarkdownImages` — the answer to the milestone's first probe, which did not come out
+      the way it was written (below): a generated page has no file access, so the images are read and
+      inlined as `data:`, only from the document's own directory and inside a budget.
+- [x] A truncated document says so. `TextPreview` stops at 4 MB and its own doc comment makes the
+      caller responsible for saying it — the source view draws a floating strip, and a rendered page
+      that just *ends* is the version of that lie which is hardest to notice.
+- [x] Live verification at all three sizes and in **both appearances**, with the cursor stepped
+      through a folder of `.md`.
 
-Exit: `2` on a README shows a document that fills the surface and scrolls; `1` still shows the
-coloured source; the TOC's links move the reading position; and a digit typed into the path bar with
-a preview up is still a digit (M16's own regression, and the reason `digitBelongsToQuickView` exists).
+Exit: **met**, live at all three sizes. `2` renders `PLAN.md` and a document exercising every
+construct; `1` still shows the coloured source; a TOC link moved the reading position by real click;
+← / → stepped and re-rendered even after clicking *into* the page; `⌘L` then `/tmp/12` put both
+digits in the path field with the preview up (M16's own regression); and flipping the system to light
+and back re-coloured the page **with the scroll position pixel-identical**. 29 new tests (16 app + 13
+core), 1844 core + 253 app green, both linters clean.
+
+Four findings worth carrying:
+
+- **The first probe was wrong, and the harness's own location is what made it wrong.** It reported
+  `loadHTMLString(_:baseURL:)` with the document's directory reaching sibling images — measured, with
+  JavaScript off, by snapshot pixel rather than by asking the page. The app showed broken images
+  within a minute of launching. The test directory had been created **inside the probe binary's own
+  directory**, which the WebContent sandbox already reads; moving the identical bytes one directory
+  sideways flips every answer. Re-measured honestly, only two shapes work: granting the page the
+  **whole disk** (`allowingReadAccessTo: /`), or handing it the bytes as `data:`. Now in NOTES.md,
+  with the general form — when the subject is "may this process read that file", the probe's own
+  location is part of the experiment.
+- **`data:` is the better answer on the merits, not just the simpler one.** A preview that renders on
+  cursor movement then reads exactly the files something decided to give it — here, only what
+  resolves inside the document's own directory, which is the same scope `loadFileURL` already grants
+  a saved HTML page. The price the plan worried about is small: **0.4 ms and 1.33× per megabyte**, so
+  a 4 MB screenshot costs 1.6 ms of the render it rides on. The seam Slice 1 added for this and Slice
+  3 briefly deleted is back, filled — and it is now load-bearing for *security*, so the renderer
+  sanitizes the resolver's **output**, not its input.
+- **The page follows light and dark by itself, live.** `prefers-color-scheme` tracks the web view's
+  effective appearance with no `color-scheme` declaration and re-evaluates with **no reload**, so the
+  stylesheet carries both palettes under one media query. The design this replaced (re-generate on
+  `viewDidChangeEffectiveAppearance`) would have thrown away the reading position on every flip.
+- **There is no system colour for "slightly off the text background".** `.windowBackgroundColor` and
+  `.controlBackgroundColor` are byte-identical to it in both appearances, `.gridColor` inverts in
+  dark, and even the gentlest fill takes `typeOrTag` from 4.59:1 to **3.68:1** — because M17 authored
+  that palette against `.textBackgroundColor`. So a code fence is bordered rather than filled. All in
+  NOTES.md.
 
 #### Slice 4 — Mermaid: flowchart and sequence, as SVG (M, core + a thin app seam)
 
