@@ -265,6 +265,15 @@ at build time.
     the current appearance (the captured-`cgColor` trap); and the system fonts have no usable CSS
     family name (`.AppleSystemUIFont`), so the family comes from the CSS generics and only the
     **size** is read from AppKit.
+  - **A generated `<svg>` with only a `viewBox` has no intrinsic size, so `max-width: 100%` makes it
+    fill its container instead of constraining it.** M18's diagram emitter deliberately omitted
+    `width`/`height` on the reasoning that the stylesheet should own the size — and a three-node
+    flowchart came up stretched across the whole reading column, its 11 pt labels drawn at twice
+    that, beside prose that was the right size. Emit **both**: the natural `width`/`height` *and* the
+    `viewBox`, and the `max-width` rule can then only ever scale it down, on a window too narrow to
+    hold it. Worth stating because the failure is the exact opposite of what the rule reads as, and
+    because no assertion over the markup can see it — 1902 tests passed, and it was obvious in the
+    first second of looking at the app.
   - **The rules compile asynchronously, which makes them a precondition rather than a setting.**
     `QuickViewWebView` has no public initializer — `withContentRules` builds one only once the list
     exists, and hands back `nil` if it cannot be compiled, where the caller falls back to showing the
@@ -1948,6 +1957,21 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
 
 ## Design lessons that generalize
 
+- **A layout is the one thing in this codebase a test cannot judge, and it fails by being *ugly*
+  rather than wrong.** M18's flowchart layout passed 20 exact-number assertions — layers stacked,
+  edges clipped to the right outlines, four directions mirroring correctly — while the first launch
+  drew a back edge as a straight line through four boxes and both edge labels. Nothing was
+  incorrect; it was unreadable, which no `#expect` can express. Two things follow. **Render it and
+  look at it before believing any of it**: an HTML file plus a 40-line `WKWebView` snapshot harness
+  (`takeSnapshot`, write a PNG) turns a layout into something the author can actually see, and it
+  found this in one pass and two more the same way. And **when the picture shows the bug, write the
+  assertion the picture would have made** — "the bend is outside every box it passes", "every point
+  is on the canvas" — so the fix has a guard even though the original defect did not.
+  - The specific lesson under it, for anyone laying out a graph: longest-path layering plus a
+    barycenter pass is *not enough*. An edge spanning layers needs a **dummy node in each layer it
+    crosses**, so the ordering pass can steer it between the real nodes. It is the one piece of
+    Sugiyama layering it is not worth skipping, and its corollary bites immediately after — a canvas
+    sized from the **boxes** leaves the bend outside it, so measure the bounds over what is *drawn*.
 - **Adding a second closure parameter silently re-points every bare trailing closure.**
   `size(of:using:) { true }` rebound to a new `excluding:` rather than the existing
   `isCancelled:`; only the differing arity made it fail loudly instead of inverting behavior.

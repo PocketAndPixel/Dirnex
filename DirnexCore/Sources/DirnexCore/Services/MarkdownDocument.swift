@@ -13,11 +13,14 @@ public struct MarkdownRender: Equatable, Sendable {
 
 /// The caller's say over the parts of rendering that are not the core's to decide.
 ///
-/// One field, and it exists because of a *probe*: how a generated document reaches the sibling
-/// image a `.md` refers to is a WebKit question, and the answer turned out to be that a generated
-/// page has **no read access to the filesystem at all** — so the app has to hand the bytes over
-/// itself (PLAN.md §M18 ▸ Slice 3). The default is identity, so every parser test renders the
-/// source the file wrote and nothing here depends on how the app answers.
+/// Three fields, and each one is a seam a *probe* put there rather than a setting somebody wanted:
+/// how a generated document reaches a sibling image (a generated page has **no** filesystem access,
+/// so the app hands the bytes over — Slice 3), how wide a label is in the font the page will draw it
+/// in (the core imports no AppKit — Slice 4), and what to *call* a diagram construct that was not
+/// drawn (a sentence in the core is a sentence nobody can translate — docs/NOTES.md ▸ Localization).
+///
+/// Every default is the answer that depends on nothing, so no parser test's output turns on how the
+/// app fills these in.
 public struct MarkdownRenderOptions: Sendable {
     /// Maps an image's `src` as written to the one the page should load.
     ///
@@ -26,8 +29,29 @@ public struct MarkdownRenderOptions: Sendable {
     /// inline comes back unchanged.
     public var resolveImageSource: @Sendable (String) -> String
 
-    public init(resolveImageSource: @escaping @Sendable (String) -> String = { $0 }) {
+    /// How wide a string is in the page's font. See `MarkdownTextMetric` for what the probe
+    /// measured and why this is a plain `@Sendable` closure rather than a main-actor hop.
+    public var textMetric: MarkdownTextMetric
+
+    /// The sentence naming a diagram type or construct that was not drawn, given its bare name
+    /// (`stateDiagram-v2`, `subgraph`).
+    ///
+    /// A *closure*, not a string the core writes, and that is the whole reason it exists: the page
+    /// has to say what it left out, in the user's language, and the core ships no resources. The
+    /// default is the English fallback — readable, and the shape `VFSUnsupportedReason` already
+    /// established for the same problem.
+    public var describeUndrawnDiagram: @Sendable (String) -> String
+
+    public init(
+        resolveImageSource: @escaping @Sendable (String) -> String = { $0 },
+        textMetric: MarkdownTextMetric = .fixedAdvance,
+        describeUndrawnDiagram: @escaping @Sendable (String) -> String = {
+            "“\($0)” is not drawn in this preview."
+        }
+    ) {
         self.resolveImageSource = resolveImageSource
+        self.textMetric = textMetric
+        self.describeUndrawnDiagram = describeUndrawnDiagram
     }
 }
 

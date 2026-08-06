@@ -192,12 +192,15 @@ design rather than merely confirm it. Two are **answered**, in Slice 3:
   for access — so a `#anchor` arrives as `<directory>#anchor` and `isPermitted`'s existing
   fragment-stripping comparison allows it, while a sibling `.md` and a remote URL are both refused by
   name. Verified live: a TOC link moves the reading position on a real click.
-- **What a text metric costs, and where it comes from.** Still open, and Slice 4's. The core cannot
-  measure a string in a font — it imports no AppKit — and a flowchart node's width *is* its label's
-  width. Inject the metric (`(String) -> Double`, `NSFont`-backed in the app, fixed-advance in
-  tests), the same seam the `sftp` and `curl` transports already use — and the same shape
-  `MarkdownRenderOptions.resolveImageSource` now has; then measure whether per-node measurement is
-  affordable on a hundred-node diagram re-rendered on a cursor step.
+- ~~**What a text metric costs, and where it comes from.**~~ **Answered: it is cheap, and it is safe
+  where it has to be.** `NSString.size(withAttributes:)` costs **5.4–6.7 µs a label** and agrees
+  exactly with `NSAttributedString.size()` and `CTLineGetTypographicBounds`, so a hundred-node
+  diagram is ~0.7 ms of measurement — per-node measurement is affordable and no cache is warranted.
+  `CTFontGetAdvancesForGlyphs` is ten times cheaper and was rejected: summed advances are not
+  shaping, and it measures `🐛 Bugs` 13 % too wide. The half that decided the seam's *shape*: it is
+  **safe and exact off the main actor**, where the render runs — four concurrent background queues
+  measuring 200 labels twenty times each produced **zero** disagreements with the main thread — so
+  the metric is a plain `@Sendable` closure with no actor hop, like `resolveImageSource`.
 
 Four slices, core-first (§2). The order is deliberate: the app wiring lands **third**, so the
 milestone is a usable feature before mermaid is written and mermaid can be cut without leaving
@@ -363,27 +366,56 @@ Four findings worth carrying:
   that palette against `.textBackgroundColor`. So a code fence is bordered rather than filled. All in
   NOTES.md.
 
-#### Slice 4 — Mermaid: flowchart and sequence, as SVG (M, core + a thin app seam)
+#### Slice 4 — Mermaid: flowchart and sequence, as SVG (M, core + a thin app seam) — landed 2026-08-07
 
-- [ ] `MermaidDiagram.parse` — `graph` / `flowchart` with a direction (`TD`, `TB`, `LR`, `RL`, `BT`),
+- [x] `MermaidDiagram.parse` — `graph` / `flowchart` with a direction (`TD`, `TB`, `LR`, `RL`, `BT`),
       node shapes (`[]`, `()`, `(())`, `{}`, `[[]]`), edges (`-->`, `---`, `-.->`, `==>`, arrowheads
       at either end) and edge labels (`-->|text|` and `-- text -->`); `sequenceDiagram` with
       participants and aliases, `->>` / `-->>` / `->` / `--x`, activations and `Note over`.
-- [ ] Layout, pure and fully tested: a flowchart is a layered DAG — longest-path layering, one
+- [x] Layout, pure and fully tested: a flowchart is a layered DAG — longest-path layering, one
       barycenter pass to order within a layer, x by centering — with **cycles broken by DFS back-edge
       removal**, so `A --> B --> A` draws instead of hanging. A sequence diagram is positional and
-      needs no layout beyond column and row arithmetic.
-- [ ] `MermaidSVG` — the emitter, in class names and `currentColor` and never a literal colour, so
+      needs no layout beyond column and row arithmetic. **One thing the plan did not name and the
+      first live run demanded: dummy nodes** (below).
+- [x] `MermaidSVG` — the emitter, in class names and `currentColor` and never a literal colour, so
       Slice 3's stylesheet colours the diagram in both appearances the way it colours everything else.
-- [ ] Text width through the injected metric from the probe above; the fixed-advance fake makes every
+- [x] Text width through the injected metric from the probe above; the fixed-advance fake makes every
       layout assertion in the tests exact.
-- [ ] Anything else in a `mermaid` fence — a class diagram, a gantt, a state chart, an ER diagram —
+- [x] Anything else in a `mermaid` fence — a class diagram, a gantt, a state chart, an ER diagram —
       falls back to Slice 2's code fence **with a one-line note naming the type as unsupported**.
-      Silently showing the source of a diagram somebody expected drawn is the failure worth avoiding,
-      and it is the one this subset makes likely.
+      Extended past what the plan asked for, in the same spirit: a construct inside a *supported*
+      type that the subset does not draw — `subgraph`, `loop`, `alt`, `style` — is reported the same
+      way, so the diagram still draws and the page still says what it left out.
 
-Exit: a `.md` carrying a flowchart and a sequence diagram draws both, legibly, in both appearances; a
-`stateDiagram` fence shows its source and says why; both suites green and both linters clean.
+Exit: **met**, verified live at full-window size in both appearances. `PLAN.md`-style prose carrying
+a flowchart, an `LR` chart and a sequence diagram draws all three legibly; `stateDiagram-v2` shows
+its source and names itself; a `subgraph` chart draws *and* reports the frame it did not draw; `1`
+still shows the coloured source. 60 new tests (54 core + 6 app), 1902 core + 260 app green, both
+linters clean.
+
+Four findings worth carrying:
+
+- **The layout needed dummy nodes, and only a picture said so.** Every test passed and the first
+  launch showed `F ==> A` as one straight line through four boxes and both edge labels. Longest-path
+  layering plus a barycenter pass is not enough on its own: an edge spanning layers needs a *dummy
+  node in each layer it crosses*, so the ordering pass can steer it between the real nodes. That is
+  the one piece of Sugiyama it is not worth skipping. Its own corollary bit immediately after —
+  sizing the canvas from the **boxes** then leaves the bend outside it, and the back edge ran off the
+  right-hand side of the picture and back. Measure the bounds over what is *drawn*.
+- **An SVG with only a `viewBox` has no intrinsic size**, so the stylesheet's `max-width: 100%`
+  stretched a three-node flowchart to the full reading column — 11 pt labels drawn at twice that,
+  beside prose that was the right size. Emitting `width` and `height` **as well as** the `viewBox`
+  makes the diagram draw at the size it was laid out for and lets the rule only ever scale it *down*.
+  Both of these were invisible to 1902 tests and obvious in the first second of looking.
+- **The font size is in three places and nothing relates them**: the layout measures in it, the
+  stylesheet draws in it, and a disagreement is a diagram whose labels do not fit their outlines,
+  with every signal green. Hence one constant, `QuickViewMarkdownDiagram.labelSize`, read by both —
+  and a test that sweeps **every class the core emits** against the stylesheet, which found three
+  unstyled on its first run. The same "one rule, two spellings" family docs/NOTES.md keeps finding.
+- **Drawing is affordable, comfortably.** Release build, best of 20: a 10-node flowchart 0.24 ms,
+  100 nodes **2.1 ms**, 500 nodes 12.8 ms, a 100-message sequence diagram 1.1 ms — against the 6 ms
+  this repo's own `PLAN.md` already takes. The real metric adds ~6 µs a label on top. So a diagram
+  costs about what the document around it costs, and it rides the detached read task either way.
 
 #### Deliberately not in scope
 

@@ -241,6 +241,7 @@ enum QuickViewMarkdownStyle {
           font-size: \(small)px;
         }
         \(tokenRules)
+        \(QuickViewMarkdownDiagram.rules)
         """
     }
 

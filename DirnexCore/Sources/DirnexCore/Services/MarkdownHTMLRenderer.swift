@@ -91,6 +91,10 @@ enum MarkdownHTMLRenderer {
         /// other tool uses, and its body is coloured by M17's own scanner
         /// (`MarkdownCodeHighlighting`) when that info names a language.
         private func codeBlock(info: String?, code: String) -> String {
+            // A `mermaid` fence is a picture, not a listing — and when it cannot be drawn it is a
+            // listing *plus a note*, which is why the diagram path owns both outcomes rather than
+            // failing back into this one (`MarkdownHTMLRenderer+Diagram`).
+            if let diagram = diagram(info: info, code: code) { return diagram }
             // The first word only: an info string may carry more (`swift showLineNumbers`), and the
             // language is the part that names a grammar.
             let language = info?.split(whereSeparator: \.isWhitespace).first.map(String.init)

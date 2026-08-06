@@ -81,7 +81,12 @@ extension QuickViewPreviewView {
         static func read(_ url: URL) -> MarkdownScan? {
             guard let preview = TextPreview.read(contentsOf: url) else { return nil }
             let options = MarkdownRenderOptions(
-                resolveImageSource: QuickViewMarkdownImages.resolver(for: url)
+                resolveImageSource: QuickViewMarkdownImages.resolver(for: url),
+                // Both are safe here, off the main actor: the metric was probed against four
+                // concurrent queues and agreed exactly (`QuickViewMarkdownDiagram`), and the
+                // sentence is a catalog lookup.
+                textMetric: QuickViewMarkdownDiagram.metric,
+                describeUndrawnDiagram: { QuickViewMarkdownDiagram.describeUndrawn($0) }
             )
             return MarkdownScan(
                 html: MarkdownDocument.render(preview.text, options: options).html,
