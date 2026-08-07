@@ -42,7 +42,13 @@ extension PanelViewController {
             ?? FileCellView(showsImage: column == .name, identifier: identifier)
         cell.marked = false
         cell.dimmed = false
-        cell.accentColor = nil
+        // No tag dots, no cloud badge, no Git letter: `..` is not an entry, so there is nothing to
+        // report about it. Cleared rather than left alone because this cell comes out of the *same*
+        // reuse pool as the real name cells — `makeView(withIdentifier:)` keys on the column — so a
+        // tagged file scrolled off the top would otherwise lend the way out of the folder its dots.
+        // Only reachable by scrolling: a `reloadData` empties the pool (see `FileCellView.density`),
+        // which is why it survived until a third badge made it worth looking for.
+        cell.clearBadges()
         // Never type-coloured (PLAN.md §M15 Slice 3), for the same reason it never carries a size
         // bar: `..` is a way out, not an entry. `Panel` has never heard of it, so there is nothing to
         // match a rule against — and a `*` rule painting the way out of the folder would be reading
@@ -67,9 +73,8 @@ extension PanelViewController {
             cell.imageView?.image = FileIconProvider.parentIcon
             cell.textField?.stringValue = ".."
             cell.textField?.alignment = .natural
-        // `..` is a way out, not a file: it has no size, no date, and no Git status — the folder it
-        // points at may not even be in this repository.
-        case .size, .date, .git:
+        // `..` is a way out, not a file: it has no size and no date.
+        case .size, .date:
             cell.textField?.stringValue = ""
         // Unreachable: the bar column is answered by `sizeBarCell` before the parent row is ever
         // considered, because its cell is not a `FileCellView`. Listed for exhaustiveness.

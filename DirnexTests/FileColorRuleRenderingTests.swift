@@ -39,16 +39,24 @@ struct FileColorRuleRenderingTests {
         #expect(textColor(of: view) == .systemTeal)
     }
 
-    /// Git keeps the top slot it already had: the letter *is* the information, and there is nowhere
-    /// else on the row to put it. A modified `.jpg` in a repository still shows its orange `M`.
-    @Test("Git status outranks both the mark and a type colour")
-    func gitOutranksEverything() {
+    /// Git used to hold the slot *above* the mark, because in the status gutter the coloured letter
+    /// was the whole cell and there was nowhere else to put it. Now that the letter is a badge with
+    /// a colour of its own (`GitBadgeView`), it competes with nothing: a marked, modified `.jpg`
+    /// keeps the mark's red on its name *and* shows its orange `M`, where before the mark's colour
+    /// was the thing that gave way.
+    @Test("Git status no longer claims the row's text colour")
+    func gitDoesNotTouchTheText() {
         let view = cell()
         view.palette = PanelPalette(mark: .systemRed)
         view.typeColor = .systemTeal
         view.marked = true
-        view.accentColor = GitStatusStyle.color(for: .modified)
-        #expect(textColor(of: view) == GitStatusStyle.color(for: .modified))
+        view.gitStatus = .modified
+        #expect(textColor(of: view) == .systemRed)
+
+        view.marked = false
+        #expect(textColor(of: view) == .systemTeal)
+        // …and the status is still on the row, in the badge that owns it.
+        #expect(view.gitStatus == .modified)
     }
 
     /// And the cursor still wins over all three, with the foreground derived from whatever colour the

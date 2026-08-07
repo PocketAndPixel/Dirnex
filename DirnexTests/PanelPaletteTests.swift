@@ -268,10 +268,31 @@ struct PanelPaletteTests {
         cell.applyStyle()
         #expect(cell.textField?.textColor == .systemGreen)
 
-        // The Git letter still outranks the mark — a marked modified file keeps its orange `M`.
-        cell.accentColor = .systemOrange
+        // A Git status leaves the mark's colour alone — the letter is a badge of its own now
+        // (`GitBadgeView`), where it used to be a cell whose colour outranked everything.
+        cell.gitStatus = .modified
         cell.applyStyle()
-        #expect(cell.textField?.textColor == .systemOrange)
+        #expect(cell.textField?.textColor == .systemGreen)
+    }
+
+    /// The one badge with a legibility stake in the cursor's colour: the dots and the cloud are
+    /// shapes read by colour, while a small orange character on a colour the user picked can simply
+    /// disappear. So the letter takes the same derived foreground the name does — which is what the
+    /// status *gutter* did too, being an ordinary cell whose emphasized branch outranked its colour.
+    @Test("the Git letter takes the cursor row's derived foreground")
+    func gitBadgeFollowsTheCursorColour() throws {
+        let cell = FileCellView(showsImage: true, identifier: NSUserInterfaceItemIdentifier("name"))
+        cell.gitStatus = .modified
+        let badge = try #require(cell.gitBadge)
+        #expect(!badge.isEmphasized)
+
+        cell.palette = PanelPalette(cursor: .systemYellow)
+        cell.backgroundStyle = .emphasized
+        #expect(badge.isEmphasized)
+        #expect(badge.emphasizedInk == cell.palette.cursorForeground)
+        // A pale cursor derives black, which is the case the derivation exists for — an orange `M`
+        // on yellow is the version that reads as a bug.
+        #expect(badge.emphasizedInk == .black)
     }
 
     /// The cursor row's own text: derived when custom, the system's colour when not — and the

@@ -8,10 +8,10 @@ import DirnexCore
 /// in step with the directory on screen.
 ///
 /// **The dots live inside the name cell, not in a column of their own** — where Finder puts them,
-/// and what the plan's word "column" turned out to mean in practice. The Git gutter needs its own
-/// column because it is *text*, competing for the name field's colour with the mark's red and the
-/// hidden-file dim, and F2 swaps that field for an editor. Dots are their own view, so none of that
-/// applies: they cost a tagged row a few points of name width and an untagged row nothing at all,
+/// and what the plan's word "column" turned out to mean in practice — three times out of three, as
+/// it happens: Git's status letter, the last one still in a column of its own, joined the cluster on
+/// 2026-08-07 (`GitBadgeView`). The dots are their own view rather than styled text, so they cost a
+/// tagged row a few points of name width and an untagged row nothing at all,
 /// which is a better bargain than a column that is blank for most people in most folders.
 ///
 /// **Why there is no second watcher here, unlike Git.** The Git side had to watch the *repository

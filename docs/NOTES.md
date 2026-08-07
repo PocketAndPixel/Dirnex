@@ -55,6 +55,10 @@ at build time.
   (`.../Dirnex.app/Contents/MacOS/Dirnex > log 2>&1 &`) to capture stderr.
 - **SF Symbols carry ~1.25–1.5 pt of transparent margin inside their box**, so a symbol is
   never flush with its view's edge. Measure the ink, not the box.
+  - **The corollary is that a gap constant copied from a symbol buys less space next to text.** The
+    Git badge took the cloud badge's 3 pt leading gap and read visibly tighter beside a tag dot,
+    because a glyph drawn as *text* has no such margin — the same number, ~1.5 pt less air. 5 puts
+    the ink the same distance apart. Nothing catches this but looking at the two side by side.
 - **A screenshot only verifies what you actually look at.** A bug once sat visible in a pass's
   own verification shots and went unnoticed.
 - **Synthetic Escape is not delivered into the app** during computer-use — it is swallowed
@@ -142,6 +146,17 @@ at build time.
   it catches every collapse; capture whether the sidebar held focus *before* `super` (deterministic —
   a post-hoc KVO observer races the first-responder move) and hand focus to a pane after. Only
   reachable once the sidebar itself can hold focus, which it could not before M8.
+- **A synthesized row's cell comes out of the *same* reuse pool as the real ones, so everything the
+  real rows set has to be cleared on it — and the compiler cannot tell you what "everything" is.**
+  `makeView(withIdentifier:)` keys on the **column**, so the `..` row's name cell is a recycled file
+  cell; `parentRowCell` diligently reset the mark, the dim, the type colour, the density, the palette
+  and all four tree properties, and never touched the tag dots or the cloud badge — so scrolling a
+  tagged file's cell up to the top hung its dots on the way *out of* the folder. It survived two
+  milestones because a `reloadData` empties the pool outright (measured, see `FileCellView.density`),
+  which is what makes it **scroll-only**: every code path that changes what a pane shows repairs it,
+  and only the mouse can reach it. The shape to watch for is a per-row property added to the *real*
+  render path with no matching line in the synthesized one, which is exactly what a diff does not
+  show. One `clearBadges()` the two paths share is the fix; a checklist of properties is not.
 - **A background `reloadData` while an inline rename field is open destroys the edit.** An
   FSEvents refresh or a directory-size total tears the shared field editor out of its cell and,
   because `NSTableView` recycles cell views, strands it on the `..` row — the rename silently
@@ -1972,6 +1987,17 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     crosses**, so the ordering pass can steer it between the real nodes. It is the one piece of
     Sugiyama layering it is not worth skipping, and its corollary bites immediately after — a canvas
     sized from the **boxes** leaves the bend outside it, so measure the bounds over what is *drawn*.
+- **"Column" in a plan is a claim about *information*, not about an `NSTableColumn`, and three times
+  out of three here the answer was a badge in the name cell.** M6 asked for a tags column, a
+  sync-status column and a Git status column; tags and sync went into the name cell on the day they
+  were built (that is where Finder puts them), and the Git gutter shipped as a real column and was
+  moved on 2026-08-07. The arithmetic is what settles it: a column costs its own width **plus one
+  intercell spacing** — 20 + 17 = 37 pt here — to draw a letter about 20 pt to the right of where the
+  name cell's trailing edge already is, and a badge right-aligned in a fixed-width column lines its
+  letters up in the same vertical run the gutter was bought for. A column earns its width when the
+  content is *data the user sorts, resizes or reads across* (size, date); a per-row **state** with a
+  glyph-sized rendering is a badge. The tell that a column is the wrong shape is a `title` that has to
+  be `""` because one letter leaves no room for a heading.
 - **Adding a second closure parameter silently re-points every bare trailing closure.**
   `size(of:using:) { true }` rebound to a new `excluding:` rather than the existing
   `isCancelled:`; only the differing arity made it fail loudly instead of inverting behavior.

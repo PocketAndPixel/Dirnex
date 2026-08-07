@@ -5,7 +5,7 @@ import DirnexCore
 /// place and show their children indented. The whole design bet is that this is **not a second
 /// surface** — it is the same `FileTableView` over the same `VFSPath` index space the flat list uses,
 /// with `DirnexCore.TreeProjection` supplying the rows (the sidebar's shape, HISTORY.md §M8). So the
-/// columns, the git gutter, marks, inline rename, drag/drop and the Quick View overlay all keep
+/// columns, the name cell's badges, marks, inline rename, drag/drop and the Quick View overlay keep
 /// working unchanged; this file only adds the mode toggle, the expand/collapse keys, the lazy
 /// per-level listing, and the one watcher over the whole expanded set.
 ///

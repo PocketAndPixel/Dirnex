@@ -51,10 +51,9 @@ extension PanelViewController: NSTableViewDelegate {
 
         cell.marked = panel.isMarked(entry)
         cell.dimmed = entry.isHidden
-        cell.accentColor = nil
         // The file-type rule (PLAN.md §M15 Slice 3), on every column: Total Commander colours the
-        // whole row, and the Git gutter keeps its own letter colour because that cell overwrites
-        // `accentColor` below, which outranks this.
+        // whole row. Git no longer competes with it — its letter is a badge with a colour of its
+        // own rather than a coloured cell.
         cell.typeColor = typeColor(for: entry)
         // Set on every render, not only when the preference changes: a recycled cell was built at
         // whatever density was current when it was made (PLAN.md §M15; see `FileCellView.density`).
@@ -70,10 +69,12 @@ extension PanelViewController: NSTableViewDelegate {
             cell.imageView?.image = icon
             cell.textField?.stringValue = entry.name
             cell.textField?.alignment = .natural
-            // Finder tags and the cloud badge ride at the name's right edge (PLAN.md §M6) — no
-            // column of their own, and in Finder's order: dots first, cloud outermost.
+            // Finder tags, the cloud badge and Git's status letter all ride at the name's right
+            // edge (PLAN.md §M6) — none of them a column of their own, in Finder's order for the
+            // two it has: dots first, then the cloud, with Git outermost.
             cell.tags = tags(for: entry)
             cell.syncStatus = syncStatus(for: entry)
+            cell.gitStatus = gitStatus(for: entry)
             // The tree's indentation and disclosure triangle (PLAN.md §M15 Slice 4), reset per
             // render on the name cell — a recycled cell may have last drawn a different depth (or a
             // list-mode row). A no-op visually in list mode: `isTreeRow == false` keeps the shipped
@@ -89,12 +90,6 @@ extension PanelViewController: NSTableViewDelegate {
         case .date:
             cell.textField?.stringValue = FileFormatting.dateString(for: entry)
             cell.textField?.alignment = .natural
-        case .git:
-            // Git's own letter, in the app's colour for it — blank for the unmodified majority.
-            let status = gitStatus(for: entry)
-            cell.textField?.stringValue = status?.code ?? ""
-            cell.textField?.alignment = .center
-            cell.accentColor = status.map(GitStatusStyle.color(for:))
         case .sizeBar:
             // Handled above — it isn't a `FileCellView` at all.
             break
@@ -149,8 +144,8 @@ extension PanelViewController: NSTableViewDelegate {
     }
 
     func tableView(_ tableView: NSTableView, didClick tableColumn: NSTableColumn) {
-        // An unsortable column (the Git gutter) has no header behaviour — clicking it does nothing
-        // rather than silently re-sorting by whatever was last picked.
+        // An unsortable column has no header behaviour — clicking it does nothing rather than
+        // silently re-sorting by whatever was last picked.
         guard let column = Column(rawValue: tableColumn.identifier.rawValue),
               let sortKey = column.sortKey else { return }
         var sort = panel.model.sort

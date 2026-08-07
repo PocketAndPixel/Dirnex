@@ -6,21 +6,22 @@ import Testing
 /// The app layer's own decisions about size-visualization mode (PLAN.md §M6). What the bytes *mean*
 /// is `DirnexCore`'s (`SizeVisualization`, `SizeBar.inkWidth`, `DirectorySizeCache`) and is tested
 /// there; the walks and their cache are non-hermetic and are exercised live. What is left — and is
-/// here — is the column contract, which is where a second *contextual* column could go wrong: the
-/// Git gutter got away with hardcoded bookkeeping precisely because it was the only one.
+/// here — is the column contract, which is where a *contextual* column can go wrong: the Git gutter
+/// got away with hardcoded bookkeeping precisely because it was the only one, and adding this column
+/// beside it is what exposed that. The bar has since outlived the gutter — Git's status is a badge in
+/// the name cell now (`GitBadgeView`) — so this is the only contextual column left.
 @Suite("Size bar column")
 @MainActor
 struct SizeBarColumnTests {
-    @Test("the size-bar column is contextual, like the Git gutter and unlike the real columns")
+    @Test("the size-bar column is contextual and the real columns are not")
     func contextual() {
         #expect(PanelViewController.Column.sizeBar.isContextual)
-        #expect(PanelViewController.Column.git.isContextual)
         for column in [PanelViewController.Column.name, .size, .date] {
             #expect(!column.isContextual)
         }
     }
 
-    @Test("the default layout excludes every contextual column, not just Git")
+    @Test("the default layout excludes every contextual column")
     func defaultLayoutOmitsContextualColumns() {
         // The reason the mode is free to come and go: a column that never enters a stored layout
         // cannot make toggling it look like the user rearranging their columns — and be persisted
@@ -32,8 +33,8 @@ struct SizeBarColumnTests {
 
     @Test("clicking the bar's header sorts by size — the quantity it draws")
     func sortsBySize() {
-        // Deliberately *not* nil, unlike the Git gutter: the bar is a picture of size, so the
-        // obvious meaning of clicking it is available, and it must agree with the Size header
+        // Deliberately *not* nil, unlike the Git gutter that used to sit beside it: the bar is a
+        // picture of size, so the obvious meaning of clicking it is available, and it must agree with the Size header
         // rather than invent a second ordering.
         #expect(PanelViewController.Column.sizeBar.sortKey == .size)
         #expect(
@@ -41,9 +42,9 @@ struct SizeBarColumnTests {
         )
     }
 
-    @Test("the bar column is resizable, unlike the one-letter gutter")
+    @Test("the bar column is resizable")
     func resizable() {
-        // The gutter is fixed because a letter needs no room to breathe. This column is a chart:
+        // This column is a chart:
         // how much room it gets changes how much it can say, so the user gets to decide.
         let column = PanelViewController.Column.sizeBar
         #expect(column.minWidth < column.defaultWidth)

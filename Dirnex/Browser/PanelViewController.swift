@@ -298,8 +298,8 @@ final class PanelViewController: NSViewController {
     }
 
     private func configureTable() {
-        // A contextual column (the Git gutter) is installed by the code that owns its condition,
-        // not here — at setup no directory has been listed yet, so nothing is known about it.
+        // A contextual column (the size bar) is installed by the code that owns its condition, not
+        // here — at setup nothing is known about the mode or the directory yet.
         for column in Column.allCases where !column.isContextual {
             let tableColumn = NSTableColumn(
                 identifier: NSUserInterfaceItemIdentifier(column.rawValue)

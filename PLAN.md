@@ -148,6 +148,22 @@ non-empty folder, which hid three folders Finder shows.
 
 Nothing is in flight: M18 closed on 2026-08-07 and no milestone has opened behind it.
 
+**2026-08-07 — the Git status gutter became a badge.** M6's "status column (M/A/?/ignored)" was a
+contextual 20 pt column installed beside Name for the length of a stay in a repository; it is now
+`GitBadgeView`, at the trailing edge of the name cell outside the tag dots and the cloud badge —
+the order is dots, cloud, Git. Same information (Git's own letter, in the same colours), and the
+letters still line up in a vertical run, because the badge is right-aligned inside a fixed-width
+column and centred in a slot sized to the widest code. What it gives back is **37 pt of Name** — the
+column's 20 plus the 17 pt intercell spacing `NSTableView` charges per column — to put a letter about
+20 pt from where it lands now. That is the third time a "column" in the plan turned out to mean a
+badge in the name cell: tags and sync status made the same move at M6. Two things came with it: a
+per-status **tooltip** (the gutter could only name itself in its header, and `!` or `U` is nobody's
+vocabulary), and the fix for a latent `..` bug the third badge made worth looking for — the parent
+row's cell comes out of the same reuse pool as the real name cells and was clearing none of them.
+The one thing left alone deliberately: `GitStatusStyle`'s **colours** are unchanged, so `.systemGreen`
+still sits near 2.22:1 on a light background (docs/NOTES.md's palette table). That is a pre-existing
+call about the whole `.system*` palette, not this change's to make quietly.
+
 The scope that is already written down, rather than merely imaginable, is in the *undone* column above
 plus M15's cut: the **thumbnail grid, brief view and the `PaneSurface` extraction** (one unit, argued
 in HISTORY.md §M15, with the two constraints any future grid inherits — skip `FileEntry.isDataless`
