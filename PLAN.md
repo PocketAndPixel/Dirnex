@@ -4,7 +4,8 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M18 shipped (14 languages) · **nothing in flight** · Created: 2026-07-05 ·
+Status: M0–M18 shipped (14 languages) · **M19 Encryption in flight** (core landed, app pending) ·
+Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md)
 
 ---
@@ -144,9 +145,47 @@ declared public scope and a folder that exists. Both are argued in HISTORY.md. T
 that approximation was reversed on 2026-07-21 (see M10): it used to also require a
 non-empty folder, which hid three folders Finder shows.
 
+### M19 — Encryption (in flight, opened 2026-08-09)
+
+Two halves, deliberately separate products sharing a milestone: **a vault you live in** (an encrypted
+APFS sparsebundle, unlocked into a mounted volume the existing `LocalBackend` already browses) and
+**a password on an archive you send someone** (WinZip AES-256, the format 7-Zip and WinRAR read on
+Windows).
+
+**Slice 1 — core, landed.** Purely additive; the app is untouched and did not rebuild. 46 new tests,
+1971 total green, both linters clean.
+
+- `CArchiveShim` + `EncryptedArchiveWriter` / `EncryptedArchiveReader` — the encrypted zip path,
+  through the **system libarchive** rather than `bsdtar`. This is an explicit, scoped exception to
+  §2's "bsdtar over libarchive", taken on measurement: `bsdtar`'s only interface for a passphrase is
+  `--passphrase` in argv, readable by any `ps`, and its interactive fallback loops forever on a
+  non-tty stdin. `archive_write_set_passphrase` takes a buffer `ArchivePassphrase` owns and wipes.
+  libarchive ships *with macOS* and the SDK carries its link stub, so this adds no dependency. The
+  exception is confined to the encrypted path; browsing and ordinary packing still use `bsdtar`.
+- `ArchiveEntryPath` — the traversal defence, in two independent layers (a name rule, and an `lstat`
+  walk that refuses to descend through a symlink), with both attack fixtures produced by `bsdtar`
+  itself and a negative control proving each layer does real work.
+- `ArchiveNamePrivacy` — the answer to zip's permanent plaintext central directory: wrap the payload
+  in one inner tar so the outer archive lists a single entry. Off by default (agreed with Oleg,
+  2026-08-09), because the recipient otherwise unpacks twice.
+- `DiskImageArguments` / `DiskImageMount` / `DiskImageProgress` / `VaultLocation` / `VaultError` —
+  the vault's pure half, over `hdiutil -stdinpass` (the passphrase never enters any argv, verified
+  across the whole process tree) with `-puppetstrings` progress and plist parsing tested against
+  captured real output.
+
+**Slice 2 — the app, not started.** Pack sheet gains Encrypt + passphrase + confirm + "Hide file
+names"; a passphrase prompt on extract; New Vault / Lock / Unlock in the command registry; a sidebar
+Vaults section; Keychain storage through the existing `KeychainAddressable`; and the ~40 new strings
+across 14 languages.
+
+Two decisions taken at open, both by Oleg: **AES-256 only** (never `zipcrypt`, which is broken, and
+not AES-128, which buys nothing on hardware AES), and **sparsebundle** for vaults. One risk is
+recorded in §6 below and is the one that matters most: a forgotten passphrase is unrecoverable, and
+no undo journal helps.
+
 ### After M18
 
-Nothing is in flight: M18 closed on 2026-08-07 and no milestone has opened behind it.
+M18 closed on 2026-08-07. M19 opened 2026-08-09 (above).
 
 **2026-08-08 — the tree draws indent guides.** VS Code's vertical lines, one per ancestor level,
 always drawn faintly, with the ancestor line of the *focused* row drawn stronger — the focus being the
@@ -206,6 +245,8 @@ the candidate that would close the most open ends at once.
 | Undo journal correctness (the scariest feature) | Property tests from M2 day one; non-reversible ops explicitly marked in UI, never silently dropped |
 | FSEvents refresh fighting the cursor/selection | DirectoryModel diffs snapshots and reapplies cursor by identity, not row index; test with high-churn fixture |
 | Archive writes corrupting user data | Always rewrite to temp + atomic swap; never in-place |
+| M19: a forgotten passphrase is **unrecoverable**, and it is the only feature in Dirnex whose failure is silent, total and permanent — no undo journal, no Trash, no support call | The confirmation wording matters more than any code here, so it is a milestone deliverable rather than a detail: the create sheet says plainly that a lost passphrase means lost data, and both the pack sheet and the vault sheet require the passphrase **twice** before a byte is written (`passphrasesDoNotMatch` is a named error, not an assertion). Dirnex never deletes the originals after encrypting them — it creates and populates, and the user removes, because "encrypt these files" naively implemented is create → copy → delete, and that delete puts **plaintext in the Trash**. Spotlight's index, Quick View's caches and the thumbnail store are the same family of leak and are a stated Slice 2 decision rather than silence |
+| M19: linking libarchive is an exception to §2, and exceptions spread | It is confined by construction, not by discipline: `CArchiveShim` declares only the ~30 symbols the encrypted path calls, so reaching for anything else is a visible edit to a header whose doc comment argues the whole exception. The tell that the boundary is going is a `bsdtar` call site being replaced with a libarchive one for a reason *other* than a passphrase — performance, or progress, or tidiness. Those are real benefits (all three measured) and none of them is this exception's justification |
 | Full Disk Access friction kills onboarding | Dedicated flow in M7; app degrades gracefully (browse home dir) before grant |
 | Scope creep before the feel is right | M1 exit criteria are the gate; nothing from M3+ starts until M1 feels great |
 | A system-CLI quirk changes under us (M13's TLS-1.2 pin for FTPS is a workaround for `curl` 8.7.1, not a property of the protocol) | The flag lives in a pure, tested `FTPProcessArguments` with the reason in its doc comment, so it is one place to re-measure — and a listing that comes back empty is the *symptom*, so an FTPS smoke test asserts non-empty rather than merely "no error" |

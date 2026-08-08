@@ -1626,6 +1626,88 @@ next to a download has no stock way to check it.
   is 274 MiB/s, which is what makes "compute everything while the bytes are in hand" affordable.
   Chunk size is irrelevant between 64 KiB and 4 MiB.
 
+### Encryption: encrypted archives (libarchive) and vaults (`hdiutil`)
+
+M19's two halves. Everything here was probed before any Swift was written, and the first probe
+overturned the decision the milestone opened on.
+
+- **`bsdtar` cannot be given a passphrase safely, and that is what broke §2's "bsdtar over
+  libarchive".** Measured by capturing the live process's argv by PID: `--passphrase` sits in
+  `argv` in plain text (`bsdtar -c -f … --passphrase SUPERSECRET123 …`), readable by any `ps` —
+  the exact practice this file already forbids for `curl -u`. Unlike `curl` there is **no escape
+  hatch**: `--passphrase` is undocumented in `--help`, and the only alternative is the interactive
+  prompt, which on a non-tty stdin **loops `Enter passphrase:` forever** rather than failing (the
+  first probe produced 166 KB of prompts before it was killed). A `-K -`-style config on stdin does
+  not exist.
+  - **The system libarchive is linkable and takes the passphrase in memory.**
+    `/usr/lib/libarchive.2.dylib` (3.7.4) ships with macOS and the SDK carries `libarchive.2.tbd`
+    with all 427 symbols, so this is a *system* library, not a dependency — `archive_write_set_
+    passphrase`, `archive_read_add_passphrase` and both callback variants are all exported. No
+    `archive.h` in the SDK, so declare what you use by hand; Swift 6 mode imports it through a module
+    map with `link "archive"` and it builds clean. Confine the exception to the encrypted path:
+    browsing and ordinary packing have no reason to leave `bsdtar`.
+  - Three things came free and are the reason to reach for it again: byte-accurate progress, real
+    cancellation between chunks, and errors as return codes instead of scraped English.
+- **An AES-256 zip is unopenable by everything Apple ships.** `unzip` says `skipping: … unsupported
+  compression method 99`, `ditto` says `Unknown compression type`, and Archive Utility is the same
+  code — so a Mac recipient needs Keka or The Unarchiver, and a Windows recipient needs 7-Zip or
+  WinRAR (Explorer's built-in zip cannot either). The format is right — verified from the bytes:
+  local-header method **99**, extra field `0x9901` carrying AE version **2**, vendor `AE`, strength
+  **3** = AES-256, inner method 8 — it is the *platform* support that is missing. Say so in the UI
+  rather than letting the recipient discover it. The only interoperable-everywhere option is
+  `zipcrypt`, which has a published known-plaintext break, so it must never be offered under a
+  checkbox saying "Encrypt".
+- **No zip encrypts file names**, ever — the central directory is plaintext by design. `bsdtar -tvf`
+  on an AES-256 archive, with no passphrase, prints every name, size and mtime. The only fix is to
+  wrap the payload in one inner archive and encrypt *that* single entry. Make the inner container a
+  **tar**, not a second zip: tar stores bytes verbatim so the outer zip's deflate is the only
+  compression pass (nesting zip in zip compresses everything twice and produces a *larger* file), and
+  tar carries permissions and symlinks losslessly. Give the wrapper a fixed mode and the current time
+  — a real file's mode or mtime would leak a fact about the contents into the part that stays
+  readable.
+- **A zip probe that reads "the first entry" reads the *directory*.** Packing a folder puts its own
+  entry first, and a directory has no data, so it is stored with method 0 and carries no AES field
+  however the archive was encrypted — a probe written that way reports method 0 for a perfectly good
+  AES-256 archive. Look entries up by name. Same run: scan the extra-field area as (id, size,
+  payload) triples rather than searching for the `0x9901` marker bytes, which occur inside compressed
+  data often enough to fool a global scan.
+- **An archive is untrusted input, and `bsdtar` will happily build the attack for you.** `bsdtar -s
+  '|payload.txt|../../escaped.txt|'` stores a literal `../../escaped.txt` member (it strips a leading
+  `/` but not `../`), which is Zip Slip in one stock command. The second shape is the one that
+  survives a naive fix — an archive holding `escape -> /tmp` *and* `escape/pwned.txt`, where every
+  **name** is innocent and it is the symlink created one entry earlier that puts the write outside.
+  So a name check is necessary and not sufficient: hold link *targets* to the same rule (judged by
+  where they end up, since `../sibling` is an ordinary symlink), and `lstat` every directory
+  component on the way down, refusing to descend through a link — the path-shaped equivalent of
+  `openat(O_NOFOLLOW)`. Both layers earn their keep: with the name rule deliberately neutered as a
+  negative control, the `lstat` walk still blocked the write.
+- **`hdiutil -stdinpass` keeps the passphrase out of argv entirely** — confirmed by scanning the
+  whole process tree mid-run (`hdiutil`, `diskimages-helper`, `copy-helper`, `diskimagesiod`) for a
+  known passphrase and finding it in none of them. That is what makes an encrypted disk image the
+  right shape for a vault. `-puppetstrings` turns the drawn meter into machine-readable
+  `PERCENT:25.897619` lines, so a real progress bar is available; **`-1.000000` is a sentinel, not a
+  percentage**, and it brackets the run at *both* ends — read literally it drives the bar to −1 % at
+  the start and back to −1 % at the moment of success. Values also repeat, so anything driven from
+  them must tolerate a value that does not advance.
+  - `attach -plist` reports **several** `system-entities` and only one carries a `mount-point` —
+    "the first entity" is the GUID partition scheme, which reads as "attach didn't work". Detaching
+    an **already-detached** image exits **1** with "No such file or directory": treat that as
+    success, or a second Lock (or a Lock after ejecting in Finder) looks broken. A wrong passphrase
+    and a missing image *both* exit 1, so the "Authentication error" phrase is the only separator —
+    same shape as libarchive's "Incorrect passphrase", and worth a test driving the real failure so
+    a reworded message fails loudly instead of degrading every wrong passphrase into "damaged".
+  - A growable encrypted `SPARSEBUNDLE` costs **23 MB** for a declared 10 GB APFS volume, so a vault
+    need not ask the user to predict how much they will ever store. It is a *directory*, though, so
+    it is awkward to send — which is fine, that is the archive half's job.
+- **`resolvingSymlinksInPath` and `standardizingPath` fold `/private` only for paths that currently
+  exist.** Probed on macOS 26: `/private/tmp/x` → `/tmp/x` when `x` is there, and stays
+  `/private/tmp/x` when it is not. So neither is a normalizer — both are filesystem *queries* wearing
+  one's clothes, and a stable identity built on either changes the moment the file moves or is
+  deleted, which is exactly when you still need to find its Keychain entry in order to clean it up.
+  `hdiutil` answers with the `/private` spelling while the user says `/tmp`, so the comparison is
+  unavoidable; fold the three firmlink prefixes in string space instead. Generalizes past vaults: any
+  path used as a persistent key needs an existence-independent normalizer.
+
 ### ACLs and file attributes (`acl_*`, `chmod`/`chflags`, `mbr_*`)
 
 The M14 attributes work rests on syscalls and the ACL C API, probed live before any Swift was

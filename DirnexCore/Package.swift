@@ -14,8 +14,17 @@ let package = Package(
         .library(name: "DirnexCore", targets: ["DirnexCore"])
     ],
     targets: [
+        // The system libarchive's declarations. macOS ships the dylib and the SDK ships its link
+        // stub, so this adds no dependency — it is the only way to hand libarchive a passphrase
+        // that never becomes a `ps`-readable argument. See `CArchiveShim/include/shim.h` for why
+        // the encrypted path departs from §2's "bsdtar over libarchive".
         .target(
-            name: "DirnexCore"
+            name: "CArchiveShim",
+            linkerSettings: [.linkedLibrary("archive")]
+        ),
+        .target(
+            name: "DirnexCore",
+            dependencies: ["CArchiveShim"]
         ),
         .testTarget(
             name: "DirnexCoreTests",
