@@ -34,7 +34,7 @@ extension ChecksumReportController: NSTableViewDelegate {
         field.font = .systemFont(ofSize: 13, weight: .semibold)
         // A glyph is silent to VoiceOver, and here it carries the entire verdict.
         field.setAccessibilityLabel(style.detail)
-        return field
+        return centered(field)
     }
 
     private func nameCell(for entry: ChecksumVerificationEntry) -> NSView {
@@ -43,7 +43,31 @@ extension ChecksumReportController: NSTableViewDelegate {
         // tail truncation on a relative path hides exactly the half that identifies the file.
         field.lineBreakMode = .byTruncatingMiddle
         field.toolTip = entry.name
-        return field
+        return centered(field)
+    }
+
+    /// Vertical centring, which a label handed to `NSTableView` does not do for itself: the table
+    /// stretches the view it is given to the whole cell, and a label draws its text at the *top* of
+    /// whatever frame it has. Measured in a 20 pt row, the ink started 3.5 pt down for the 13 pt
+    /// name and 2.5 pt for the 11 pt detail — so the two columns of one row sat a point apart and
+    /// the whole line rode high. Pinned to `centerY` all three cells' cap-heights land at 5.5 pt.
+    ///
+    /// The tooltip rides on the container as well: the label no longer fills the cell, and a
+    /// tooltip that dies in the 2 pt margin above the text is one the user finds by accident.
+    private func centered(_ field: NSTextField) -> NSView {
+        let box = NSView()
+        box.toolTip = field.toolTip
+        field.translatesAutoresizingMaskIntoConstraints = false
+        // The label must yield to the column's width so its own truncation runs; at the default 750
+        // it is the cell that would have to give, and there is nothing for it to give.
+        field.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        box.addSubview(field)
+        NSLayoutConstraint.activate([
+            field.leadingAnchor.constraint(equalTo: box.leadingAnchor),
+            field.trailingAnchor.constraint(equalTo: box.trailingAnchor),
+            field.centerYAnchor.constraint(equalTo: box.centerYAnchor)
+        ])
+        return box
     }
 
     /// The detail column. For a mismatch this is the *expected* digest, abbreviated: the whole
@@ -56,7 +80,7 @@ extension ChecksumReportController: NSTableViewDelegate {
         field.textColor = .secondaryLabelColor
         field.lineBreakMode = .byTruncatingTail
         field.toolTip = style.tooltip ?? style.detail
-        return field
+        return centered(field)
     }
 
     /// Glyph, colour, and words for one verdict.
@@ -115,8 +139,12 @@ extension ChecksumReportController: NSTableViewDelegate {
                 )
             )
         case .unreadable:
+            // `⊘` rather than `!`, which the extras row below now carries: two verdicts sharing a
+            // glyph would leave colour as the only thing separating them, which is the one thing
+            // this table promises not to do. Not in the system font, so it falls back to Apple
+            // Symbols — the same fallback `✕` and `☁` here already take, and a real glyph, not tofu.
             return RowStyle(
-                "!",
+                "⊘",
                 .systemOrange,
                 String(
                     localized: "Couldn’t be read",
@@ -124,8 +152,11 @@ extension ChecksumReportController: NSTableViewDelegate {
                 )
             )
         case .extra:
+            // Never `+`: a plus in a table reads as a control — "click to add this file to the
+            // checksum file" — and nothing in this dialog is actionable. A verification is a
+            // statement, and every mark in the glyph column has to look like one.
             return RowStyle(
-                "+",
+                "!",
                 .tertiaryLabelColor,
                 String(
                     localized: "Here, but not in the checksum file",
