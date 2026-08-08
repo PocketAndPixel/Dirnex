@@ -43,6 +43,78 @@ extension FileCellView {
         }
     }
 
+    // MARK: - Indent guides
+
+    /// One vertical hairline per ancestor level, the way VS Code draws them: a deep tree stays
+    /// readable because the line answers "which folder is this row in" without anyone counting
+    /// points of indentation. The line for the *focused* row's own folder is drawn stronger — which
+    /// level that is arrives as `activeTreeGuideLevel` from `TreeProjection.activeGuide`.
+    ///
+    /// **Drawn by the name cell rather than by `PanelRowView`, for a measured reason**: the pane's
+    /// `intercellSpacing` is (17, **0**) — probed on a table configured exactly like this one — so a
+    /// cell's frame is the full row height and consecutive cells tile with no vertical gap. The
+    /// segments therefore join into one continuous line with nothing to coordinate between rows. The
+    /// row view would also have to convert the name column's origin into its own coordinates, and
+    /// would draw *under* the cursor fill rather than over it.
+    ///
+    /// A row draws a guide for every level `0..<treeDepth` and none of its own: the leftmost column
+    /// belongs to the tree's root, which has no line. That is the same arithmetic
+    /// `TreeIndentGuide.rows` describes from the other side, which is what lets the level index be
+    /// pushed down as a bare `Int`.
+    func drawTreeGuides() {
+        guard isTreeRow, treeDepth > 0 else { return }
+        for level in 0..<treeDepth {
+            treeGuideColor(active: level == activeTreeGuideLevel).setFill()
+            NSRect(
+                x: Self.treeGuideX(forLevel: level),
+                y: 0,
+                width: Self.treeGuideWidth,
+                height: bounds.height
+            ).fill()
+        }
+    }
+
+    /// The guide for `level`, in this cell's own coordinates: centred on the disclosure slot of the
+    /// ancestor sitting at that depth, so the line runs straight through where its triangle is
+    /// drawn. Rounded to a whole point — a hairline on a half-point boundary is crisp at 2× and
+    /// blurred at 1×, and half a point of offset from the chevron's centre is not visible at either.
+    static func treeGuideX(forLevel level: Int) -> CGFloat {
+        (treeLeadingInset
+            + CGFloat(level) * treeIndentPerLevel
+            + treeDisclosureSlot / 2
+            - treeGuideWidth / 2).rounded()
+    }
+
+    /// A hairline, like every other rule macOS draws.
+    static let treeGuideWidth: CGFloat = 1
+
+    /// The ink for a guide, and the one part of this that was **measured rather than picked**.
+    /// Composited onto the pane's own two row stripes in both appearances:
+    ///
+    /// | | light (`#FFFFFF` / `#F4F5F5`) | dark (`#1E1E1E` / `#282828`) |
+    /// |---|---|---|
+    /// | `.separatorColor` (= `.quaternaryLabelColor`) | 1.25 · 1.25 | 1.34 · 1.36 |
+    /// | `.tertiaryLabelColor` | 1.88 · 1.87 | 2.26 · 2.24 |
+    /// | `.secondaryLabelColor` | 3.95 · 3.88 | 5.89 · 5.48 |
+    ///
+    /// The obvious pairing — the faintest line AppKit has, stepped up one — is the wrong one, and
+    /// only the numbers say so: VS Code's own inactive guide sits at ~2.4:1 against its background,
+    /// i.e. at **`.tertiaryLabelColor`**, so `.separatorColor` is fainter than the thing being
+    /// imitated and `.tertiaryLabelColor` as the *active* line lands exactly on its resting state.
+    /// One step up each: tertiary at rest, `.secondaryLabelColor` active — a 2× step, still quieter
+    /// than the names it runs beside, which is the ceiling worth respecting for something drawn on
+    /// every row of a deep tree.
+    ///
+    /// On the cursor row the cell draws over a fill the user chose, so both are *derived* from
+    /// `cursorForeground` exactly as the Git letter and the size bar's ink are: a fixed grey would
+    /// disappear into a dark cursor colour and shout on a pale one.
+    private func treeGuideColor(active: Bool) -> NSColor {
+        guard backgroundStyle == .emphasized else {
+            return active ? .secondaryLabelColor : .tertiaryLabelColor
+        }
+        return palette.cursorForeground.withAlphaComponent(active ? 0.55 : 0.22)
+    }
+
     /// Paint the triangle in the same foreground the name draws in — on the cursor row the derived
     /// `cursorForeground`, elsewhere the secondary label colour AppKit's own outline disclosure uses.
     /// Runs from both `applyTreeLayout` (which has just chosen the glyph) and `applyStyle` (which

@@ -124,10 +124,27 @@ final class FileCellView: NSTableCellView {
     /// byte-for-byte as the shipped flat list — the icon flush at its original inset, no triangle,
     /// no reserved slot. When `true` every row reserves the disclosure slot so files line up under
     /// their sibling folders. Only the name cell (the one that carries an icon) reads this.
-    var isTreeRow = false
+    ///
+    /// The three tree properties redraw on change rather than only re-laying out: the indent guides
+    /// are `draw(_:)`'s work, and moving a *constraint* does not mark a view for display — so a
+    /// recycled cell that scrolled in at a new depth would keep the last one's lines.
+    var isTreeRow = false {
+        didSet { if isTreeRow != oldValue { needsDisplay = true } }
+    }
+
     /// The row's indentation depth (0 = the tree root's own entries). Drives the leading inset so a
-    /// child sits under its parent. Always 0 in list mode.
-    var treeDepth = 0
+    /// child sits under its parent, and the number of indent guides drawn. Always 0 in list mode.
+    var treeDepth = 0 {
+        didSet { if treeDepth != oldValue { needsDisplay = true } }
+    }
+
+    /// Which of this row's indent guides is the *active* one — the ancestor line belonging to the
+    /// folder the focused row sits in (`TreeProjection.activeGuide`). `nil` on every row outside
+    /// that run, which is most of them, and on every row in list mode.
+    var activeTreeGuideLevel: Int? {
+        didSet { if activeTreeGuideLevel != oldValue { needsDisplay = true } }
+    }
+
     /// Whether this row shows a disclosure triangle, and which way it points — `nil` for a file, a
     /// symlink-to-file, and `..`, which cannot be opened.
     var treeDisclosure: TreeDisclosure?
@@ -315,7 +332,20 @@ final class FileCellView: NSTableCellView {
     }
 
     override var backgroundStyle: NSView.BackgroundStyle {
-        didSet { applyStyle() }
+        didSet {
+            applyStyle()
+            // The guides are drawn over whatever the row view put down, so they take their colour
+            // from the cursor's fill when this row is it (`FileCellView+Tree.treeGuideColor`).
+            needsDisplay = true
+        }
+    }
+
+    /// The tree's indent guides, and nothing else — a cell has no background of its own. The
+    /// drawing and the geometry behind it live in `FileCellView+Tree`; the override stays here
+    /// because Swift will not let an extension override a superclass method.
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+        drawTreeGuides()
     }
 
     func applyStyle() {

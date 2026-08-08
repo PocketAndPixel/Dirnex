@@ -24,6 +24,13 @@ extension PanelViewController: FileTableViewInput {
         contextMenu(forRow: row)
     }
 
+    /// Hovering changes nothing but the tree's active indent guide — never the cursor, never the
+    /// marks. A pane where the pointer resting somewhere moved the target of F5 would be a
+    /// different application.
+    func fileTable(_ tableView: FileTableView, didHoverRow row: Int) {
+        updateTreeGuides()
+    }
+
     func fileTableBackspace(_ tableView: FileTableView) {
         if panel.model.filter.isEmpty {
             goToParent()

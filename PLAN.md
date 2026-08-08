@@ -148,6 +148,23 @@ non-empty folder, which hid three folders Finder shows.
 
 Nothing is in flight: M18 closed on 2026-08-07 and no milestone has opened behind it.
 
+**2026-08-08 — the tree draws indent guides.** VS Code's vertical lines, one per ancestor level,
+always drawn faintly, with the ancestor line of the *focused* row drawn stronger — the focus being the
+pointer while it is over the pane and the **cursor** otherwise. That last part is the whole design
+difference: VS Code renders its guides `onHover` because a tree there is a mouse surface, and a
+keyboard-first pane where the guides only appear under the pointer would show them to nobody. Which
+line is active is the core's (`TreeProjection.activeGuide`, 13 tests): an open folder highlights the
+run its own children stand beside, anything else the run of the folder it is *in*. Two measurements
+decided the rest. The pane's `intercellSpacing` is **(17, 0)** — zero vertically — so a name cell's
+frame is the full row height and consecutive cells tile with no gap, which is what lets each row draw
+its own segment and have them join into one line with nothing coordinated between rows; no row-view
+drawing, no overlay. And the colours came from a contrast table over the pane's own two row stripes
+rather than from taste: the obvious pairing (`.separatorColor` at rest, `.tertiaryLabelColor` active)
+puts the *active* line at 1.88–2.26:1, which is where VS Code's **inactive** guide sits — so both moved
+up one, to `.tertiaryLabelColor` and `.secondaryLabelColor`. A 1 pt hairline is below what a
+computer-use screenshot resolves, so the geometry and the active/inactive step are pinned by a bitmap
+probe in the app suite (`TreeIndentGuideRenderingTests`) instead of by looking.
+
 **2026-08-07 — the Git status gutter became a badge.** M6's "status column (M/A/?/ignored)" was a
 contextual 20 pt column installed beside Name for the length of a stay in a repository; it is now
 `GitBadgeView`, at the trailing edge of the name cell outside the tag dots and the cloud badge —

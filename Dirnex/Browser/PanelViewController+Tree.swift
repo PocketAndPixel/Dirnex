@@ -72,12 +72,14 @@ extension PanelViewController {
     func applyTreeLayout(to cell: FileCellView, entry: FileEntry, entryIndex index: Int) {
         guard let tree = panel.tree, tree.rows.indices.contains(index) else {
             cell.isTreeRow = false
+            cell.activeTreeGuideLevel = nil
             cell.onDisclosureToggle = nil
             cell.applyTreeLayout()
             return
         }
         cell.isTreeRow = true
         cell.treeDepth = tree[index].depth
+        cell.activeTreeGuideLevel = activeTreeGuideLevel(forEntryIndex: index)
         if entry.isDirectoryLike {
             cell.treeDisclosure = tree.isExpanded(entry.path) ? .expanded : .collapsed
             let path = entry.path
@@ -87,6 +89,59 @@ extension PanelViewController {
             cell.onDisclosureToggle = nil
         }
         cell.applyTreeLayout()
+    }
+
+    // MARK: - Indent guides
+
+    /// Re-derive which indent guide is the active one and, if it moved, repaint the rows on screen.
+    ///
+    /// The focus is the **pointer** while it is over this pane and the **cursor** otherwise. That
+    /// order is the one thing here worth arguing: VS Code's guides are hover-driven because a tree
+    /// there is a mouse surface, and this pane is not — a user arrowing through a tree would never
+    /// see the highlight at all, so the cursor has to carry it. The pointer still wins while it is
+    /// in the pane, which is what makes the guide answer the question the *hand* is asking.
+    ///
+    /// Called from `updateChrome`, the funnel every cursor move already goes through, and from the
+    /// hover callback. Deriving it costs one scan of the rows, so it is done once here and read back
+    /// per row from `tableView.activeTreeGuide` rather than recomputed in the render path.
+    func updateTreeGuides() {
+        let guide = treeGuideFocusIndex.flatMap { panel.tree?.activeGuide(forRow: $0) }
+        guard guide != tableView.activeTreeGuide else { return }
+        tableView.activeTreeGuide = guide
+        repaintTreeGuides()
+    }
+
+    /// The row the active guide is derived from, as a `panel` entry index — the hovered row when the
+    /// pointer is over a real one, else the cursor. `nil` on `..` (hovered or the cursor), which is
+    /// not an entry and belongs to no folder in the tree.
+    private var treeGuideFocusIndex: Int? {
+        if let hovered = entryIndex(forRow: tableView.hoveredRow) { return hovered }
+        return cursorOnParentRow ? nil : panel.cursor
+    }
+
+    /// The guide level entry `index` should draw as the active one, or `nil` — read per row by
+    /// `applyTreeLayout(to:entry:entryIndex:)`, so a cell built while scrolling arrives correct.
+    func activeTreeGuideLevel(forEntryIndex index: Int) -> Int? {
+        guard let guide = tableView.activeTreeGuide, guide.rows.contains(index) else { return nil }
+        return guide.level
+    }
+
+    /// Push the new active level onto the name cells already on screen. A `reloadData` would do it
+    /// too and is far too much for a pointer moving one row: the cursor row's editor, the scroll
+    /// position and every badge would be rebuilt to change the colour of one hairline.
+    ///
+    /// Reaches the cell through the row view's own subviews rather than `view(atColumn:row:)`, which
+    /// was measured to answer `nil` for a freshly built row (`FileTableView.disclosureCell`).
+    private func repaintTreeGuides() {
+        let rows = tableView.rows(in: tableView.visibleRect)
+        guard rows.length > 0 else { return }
+        for row in rows.lowerBound..<rows.upperBound {
+            guard let rowView = tableView.rowView(atRow: row, makeIfNecessary: false) else { continue }
+            let level = entryIndex(forRow: row).flatMap(activeTreeGuideLevel(forEntryIndex:))
+            for case let cell as FileCellView in rowView.subviews where cell.isNameCell {
+                cell.activeTreeGuideLevel = level
+            }
+        }
     }
 
     // MARK: - Keys (→ expand / step in, ← collapse / step out)

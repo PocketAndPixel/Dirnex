@@ -66,6 +66,9 @@ extension PanelViewController {
         cell.isTreeRow = panel.isTree
         cell.treeDepth = 0
         cell.treeDisclosure = nil
+        // Depth 0 draws no indent guide, and a recycled cell arrives carrying whichever level it
+        // last drew as active — the same reuse-pool trap `clearBadges` above exists for.
+        cell.activeTreeGuideLevel = nil
         cell.onDisclosureToggle = nil
         cell.applyTreeLayout()
         switch column {

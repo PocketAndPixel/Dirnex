@@ -1,4 +1,5 @@
 import AppKit
+import DirnexCore
 
 /// Keyboard commands a file pane's table forwards to its controller. Kept as an
 /// explicit protocol (rather than target/action) so the Total Commander key model —
@@ -74,6 +75,9 @@ protocol FileTableViewInput: AnyObject {
         didClickRow row: Int,
         modifiers: NSEvent.ModifierFlags
     ) -> Bool
+    /// The pointer moved onto `row`, or `-1` when it left the pane's rows. Only the tree's active
+    /// indent guide reads it today; the cursor and the marks are deliberately untouched by hovering.
+    func fileTable(_ tableView: FileTableView, didHoverRow row: Int)
 }
 
 /// `NSTableView` subclass that intercepts the file-manager key model before the
@@ -83,7 +87,94 @@ protocol FileTableViewInput: AnyObject {
 final class FileTableView: NSTableView {
     weak var inputDelegate: FileTableViewInput?
 
+    /// The row under the pointer, or `-1`. View-level state on purpose: it is *where the mouse is*,
+    /// which no model here has an opinion about.
+    private(set) var hoveredRow = -1
+
+    /// The tree indent guide currently drawn as the active one, or `nil`. Derived by the controller
+    /// (`updateTreeGuides`) and parked here because it is a fact about what is on screen — the
+    /// render path reads it back per row, which is what keeps an O(rows) derivation from being paid
+    /// once per row.
+    var activeTreeGuide: TreeIndentGuide?
+
+    /// Our own hover tracking area, held so `updateTrackingAreas` replaces exactly it. `NSTableView`
+    /// installs tracking areas of its own and also owns them, so "remove every area owned by self"
+    /// would take the table's with it.
+    private var hoverTracking: NSTrackingArea?
+
     override var acceptsFirstResponder: Bool { true }
+
+    // MARK: - Hover (the tree's active indent guide)
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        // A tracking area carrying `.mouseMoved` is **not** enough on its own — a window posts no
+        // mouse-moved events at all until it is asked to (docs/NOTES.md ▸ AppKit). Without this the
+        // pointer's row is only ever learned on entry, and the guide sticks on the first row hit.
+        window?.acceptsMouseMovedEvents = true
+        observeScrolling()
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let hoverTracking { removeTrackingArea(hoverTracking) }
+        let area = NSTrackingArea(
+            // `.inVisibleRect` keeps it sized to whatever is scrolled into view, so a 100k-row table
+            // needs no rect maintenance of its own.
+            rect: .zero,
+            options: [.mouseEnteredAndExited, .mouseMoved, .activeInKeyWindow, .inVisibleRect],
+            owner: self
+        )
+        addTrackingArea(area)
+        hoverTracking = area
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        super.mouseEntered(with: event)
+        updateHoveredRow(atWindowPoint: event.locationInWindow)
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        super.mouseMoved(with: event)
+        updateHoveredRow(atWindowPoint: event.locationInWindow)
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        setHoveredRow(-1)
+    }
+
+    /// The rows move under a stationary pointer when the list scrolls, and AppKit sends no
+    /// mouse-moved event for that — so the hovered row has to be re-read from where the pointer
+    /// still is. `NSClipView` posts this by default.
+    private func observeScrolling() {
+        NotificationCenter.default.removeObserver(
+            self, name: NSView.boundsDidChangeNotification, object: nil
+        )
+        guard let clipView = enclosingScrollView?.contentView else { return }
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(contentViewDidScroll),
+            name: NSView.boundsDidChangeNotification,
+            object: clipView
+        )
+    }
+
+    @objc private func contentViewDidScroll() {
+        guard hoveredRow >= 0, let location = window?.mouseLocationOutsideOfEventStream else { return }
+        updateHoveredRow(atWindowPoint: location)
+    }
+
+    private func updateHoveredRow(atWindowPoint windowPoint: NSPoint) {
+        let point = convert(windowPoint, from: nil)
+        setHoveredRow(visibleRect.contains(point) ? row(at: point) : -1)
+    }
+
+    private func setHoveredRow(_ row: Int) {
+        guard row != hoveredRow else { return }
+        hoveredRow = row
+        inputDelegate?.fileTable(self, didHoverRow: row)
+    }
 
     override func becomeFirstResponder() -> Bool {
         let didBecome = super.becomeFirstResponder()

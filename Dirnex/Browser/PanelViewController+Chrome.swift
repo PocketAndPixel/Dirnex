@@ -9,6 +9,9 @@ extension PanelViewController {
         pathBar.setPath(panel.path, archiveAncestry: archiveBreadcrumbAncestry())
         pathBar.setBranch(gitSnapshot?.branch)
         statusLabel.stringValue = statusText()
+        // The cursor may have moved, and in a tree it carries the active indent guide with it. A
+        // no-op in list mode and whenever the guide has not actually changed.
+        updateTreeGuides()
         // If this is the active pane and Quick View is on, the file under the cursor just
         // changed — re-drive the preview showing in the inactive pane. A no-op otherwise.
         host?.panelCursorDidChange(self)
