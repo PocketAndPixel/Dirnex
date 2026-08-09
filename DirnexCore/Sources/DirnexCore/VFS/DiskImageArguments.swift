@@ -45,6 +45,17 @@ public enum DiskImageArguments {
             case .fixed: return "dmg"
             }
         }
+
+        /// Whether `fileName` carries one of the suffixes above — "this file could be a vault
+        /// image", in one place.
+        ///
+        /// Two gestures ask it (the Unlock command's cursor test, and the pane's Enter), which is
+        /// exactly the shape docs/NOTES.md keeps finding: one rule, two spellings, and the compiler
+        /// checks neither. A `Kind` added later is covered by both for free.
+        public static func isImageName(_ fileName: String) -> Bool {
+            let suffix = (fileName as NSString).pathExtension.lowercased()
+            return allCases.contains { $0.pathExtension == suffix }
+        }
     }
 
     /// Creating a new, empty encrypted vault.

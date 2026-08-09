@@ -147,6 +147,26 @@ struct VaultTests {
             == "/v/Vault.sparsebundle")
     }
 
+    @Test("a vault image is recognized by suffix, case-insensitively, and nothing else is")
+    func imageNames() {
+        // The one spelling of "this could be a vault image", asked by the Unlock command and by the
+        // pane's Enter. The negatives are the ones that matter: Enter routes a *saved* vault to the
+        // unlock funnel and everything else to the ordinary directory walk, so a false positive here
+        // would send a plain folder somewhere it has no business going.
+        #expect(DiskImageArguments.Kind.isImageName("SecDocs.sparsebundle"))
+        #expect(DiskImageArguments.Kind.isImageName("Personal.dmg"))
+        #expect(DiskImageArguments.Kind.isImageName("SHOUTING.DMG"))
+        #expect(DiskImageArguments.Kind.isImageName("Mixed.SparseBundle"))
+        #expect(!DiskImageArguments.Kind.isImageName("Documents"))
+        #expect(!DiskImageArguments.Kind.isImageName("notes.dmg.txt"))
+        // A `.sparseimage` is a disk image and is *not* a shape Dirnex creates, so it is not one of
+        // the two suffixes — asserted so widening `Kind` is a deliberate edit rather than a surprise.
+        #expect(!DiskImageArguments.Kind.isImageName("old.sparseimage"))
+        for kind in DiskImageArguments.Kind.allCases {
+            #expect(DiskImageArguments.Kind.isImageName("Vault.\(kind.pathExtension)"))
+        }
+    }
+
     // MARK: - Reading hdiutil's answers
 
     @Test("the mount point is found among the several entities an attach reports")

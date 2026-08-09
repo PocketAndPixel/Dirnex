@@ -1811,6 +1811,30 @@ overturned the decision the milestone opened on.
     sheet — a measurement that deleted a whole piece of planned UI rather than confirming it. It is
     also why the size field can offer a generous default: a bigger ceiling costs nothing, in bytes or
     in seconds.
+- **A vault is a *place* the app knows about through the sidebar and an ordinary *file* on disk, and
+  every gesture that reaches it by path knows nothing.** A `.sparsebundle` is a directory, so the
+  pane's generic "enter the directory under the cursor" branch swallowed it whole: an unlocked vault
+  — open padlock in the sidebar, eject button beside it — read as **locked** from the pane, showing
+  `bands/`, `Info.plist`, `lock` and `token`, with the files on a mounted volume the user was never
+  taken to. Reported by a user 2026-08-10, and it had been true since vaults shipped. Nothing catches
+  it: the sidebar is correct, the mount is real, `hdiutil info` agrees, no test is wrong, and the
+  screenshot is of a perfectly ordinary directory listing. The tell to grep for is a **feature whose
+  entire surface is one control** (a sidebar row, a menu item) over a thing that is *also* a path —
+  the pane can always reach the path, and the knowledge lives somewhere the pane cannot see.
+  - The fix belongs **ahead of** the generic branch, not inside it, and the funnel it calls has to be
+    the same one the control uses — otherwise the two spellings drift, which is this file's most
+    repeated finding. Here that meant lifting the suffix test both callers had written out
+    (`DiskImageArguments.Kind.isImageName`) rather than adding a second copy at the new site.
+  - **The narrowness is the design decision, and it is not the same one the deliberate command
+    makes.** The Unlock command takes *any* `.dmg` or `.sparsebundle` because the user named it;
+    Enter is pressed on everything, so widening it identically would attach a stranger's disk image,
+    prompt for a passphrase and file it in the sidebar's Vaults section — three things nobody asked
+    for, from a key that means "show me what is in there". Same fork as Quick View's "is this safe"
+    vs. "should this happen unasked": a gesture the cursor makes and a gesture the user makes are
+    allowed different answers.
+  - Test the decision with the store **handed in**. The obvious app test seeds `Dirnex.vaults` in
+    `UserDefaults.standard` — which, in a target that runs *inside the app*, is the sidebar the
+    person running the tests is looking at.
 - **Renaming a vault is `diskutil`'s job, not `hdiutil`'s, and the volume — not a row label — is the
   only name a vault has.** `VaultLocation.volumeName` is re-derived from the mount point on every
   unlock, so a Favorites-style nickname would be silently reverted the next time the vault opened,

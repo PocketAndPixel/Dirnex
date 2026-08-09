@@ -92,6 +92,12 @@ protocol PanelHost: AnyObject {
     /// window re-validate the titlebar Back/Forward buttons against the active pane's history.
     func panelDidNavigate(_ panel: PanelViewController)
 
+    /// Open a saved vault in `pane`, unlocking it first if it is locked (PLAN.md §M19). The window
+    /// owns the unlock funnel — the sidebar click, the Unlock command and Enter on the image are one
+    /// gesture as far as the user is concerned — so the pane hands the vault over rather than
+    /// growing a second copy of it.
+    func panelRequestsVaultOpen(_ vault: VaultLocation, showingIn pane: PanelViewController)
+
     /// The window's shared cache of archive members extracted for preview (Quick Look / Quick
     /// View inside a browsed archive). Owned by the window so both panes and both preview
     /// surfaces resolve the same extracted temp file.

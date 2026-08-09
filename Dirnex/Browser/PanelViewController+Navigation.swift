@@ -10,6 +10,14 @@ extension PanelViewController {
     /// file with its default app.
     func openCurrentEntry() {
         guard let entry = panel.currentEntry else { return }
+        // Before the directory branch, because a `.sparsebundle` *is* a directory: entering one shows
+        // `bands/`, `Info.plist` and `token` — the container's machinery — while the files the user
+        // came for are on a mounted volume somewhere else entirely. An unlocked vault therefore read
+        // as locked from the pane, and the only way in was the sidebar (user-reported 2026-08-10).
+        if let vault = savedVault(for: entry) {
+            host?.panelRequestsVaultOpen(vault, showingIn: self)
+            return
+        }
         if let target = panel.openTarget(for: entry) {
             // A folder opened from a results tab must not replace the results in place — route it
             // elsewhere so the listing survives (PLAN.md §M4 search, §M8 Recents and Trash).
@@ -57,6 +65,28 @@ extension PanelViewController {
             // because nothing writes an edit back into the archive (PLAN.md §M4).
             beginArchiveMemberOpen(for: entry)
         }
+    }
+
+    /// The saved vault `entry` is the image of, if it is one.
+    ///
+    /// The store read is behind the suffix test rather than beside it: this runs on every Enter, and
+    /// the overwhelming majority of them are on ordinary folders.
+    private func savedVault(for entry: FileEntry) -> VaultLocation? {
+        savedVault(for: entry, in: VaultStore.load())
+    }
+
+    /// The decision half, with the store handed in — so the rule is testable without a test writing
+    /// a fake vault into the user's own `Dirnex.vaults`, which is the sidebar they are looking at.
+    ///
+    /// **Saved vaults only**, deliberately narrower than the Unlock command's `vaultImageUnderCursor`,
+    /// which takes any image because the user named it. Enter is what you press to look inside things,
+    /// so widening it to every `.dmg` would attach a stranger's disk image, ask for a passphrase, and
+    /// file it in the sidebar's Vaults section — none of which anyone requested. An image Dirnex has
+    /// no record of goes on browsing as the directory (or file) it is.
+    func savedVault(for entry: FileEntry, in vaults: SavedVaults) -> VaultLocation? {
+        guard entry.path.backend == .local, !isVirtualDirectory,
+              DiskImageArguments.Kind.isImageName(entry.name) else { return nil }
+        return vaults.vault(atPath: entry.path.path)
     }
 
     /// Open a directory picked from a results tab (search hits, Recents, or the Trash). The listing

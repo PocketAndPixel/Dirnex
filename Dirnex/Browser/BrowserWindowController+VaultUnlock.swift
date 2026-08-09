@@ -20,6 +20,12 @@ extension BrowserWindowController {
         lock(vault)
     }
 
+    // MARK: - Panes
+
+    func panelRequestsVaultOpen(_ vault: VaultLocation, showingIn pane: PanelViewController) {
+        openVault(vault, showingIn: pane)
+    }
+
     // MARK: - Commands
 
     /// Unlock the vault image under the cursor — how an image that is not in the sidebar yet gets
@@ -49,10 +55,8 @@ extension BrowserWindowController {
     /// than silently doing nothing.
     var vaultImageUnderCursor: FileEntry? {
         guard focusedPanel.panel.path.backend == .local, !focusedPanel.isVirtualDirectory,
-              let entry = focusedPanel.panel.currentEntry else { return nil }
-        let suffix = (entry.name as NSString).pathExtension.lowercased()
-        guard DiskImageArguments.Kind.allCases.contains(where: { $0.pathExtension == suffix })
-        else { return nil }
+              let entry = focusedPanel.panel.currentEntry,
+              DiskImageArguments.Kind.isImageName(entry.name) else { return nil }
         return entry
     }
 

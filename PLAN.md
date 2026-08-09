@@ -182,6 +182,21 @@ path is missing from disk, which is why it needs no expiry. Verified live across
 unlocked rename and a ⌘Z: the row kept working, the Keychain item moved each time with no orphan left
 at any of the three paths, and the alias stopped applying by itself once the old path existed again.
 
+**2026-08-10 — Enter on a vault's image opens the vault.** A `.sparsebundle` *is* a directory, so
+the pane's generic directory branch walked into it: an unlocked vault, its sidebar row showing an
+open padlock and an eject button, read as **locked** from the pane — `bands/`, `Info.plist`, `lock`,
+`token` — and the only way to the files was the sidebar (user-reported). `openCurrentEntry` now
+checks for a **saved** vault ahead of that branch and hands it to the window's existing unlock
+funnel, so the sidebar click, the Unlock command and Enter are one gesture. Deliberately narrower
+than the command's `vaultImageUnderCursor`, which takes any image because the user named it: Enter
+is pressed on everything, and attaching a stranger's `.dmg` would ask for a passphrase and file it
+in the sidebar's Vaults section, none of which anyone requested. The suffix test that both now share
+moved into `DiskImageArguments.Kind.isImageName`, and the store read sits behind it since Enter is
+overwhelmingly pressed on ordinary folders. The decision half takes the `SavedVaults` as a
+parameter, so its tests never write a fake vault into the user's own sidebar. Verified live in both
+directions — unlocked jumped straight to `/Volumes/SecDocs`, and after locking, Enter unlocked
+silently from the Keychain and landed in the same place.
+
 **2026-08-09 — 26 strings that were wrapped but never translated.** The whole of Settings ▸ Panels as
 M15 built it — the row-height and size-visualization pickers with their footers, the three color
 wells, the file-type color rules editor — plus M18's "not drawn in this preview" and M14's
