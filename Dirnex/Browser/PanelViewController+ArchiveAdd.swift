@@ -102,6 +102,7 @@ extension PanelViewController {
         )
         alert.addButton(withTitle: String(localized: "Replace"))
         alert.addButton(withTitle: String(localized: "Cancel"))
+        alert.enableEscapeToCancel()
 
         let handler: (NSApplication.ModalResponse) -> Void = { response in
             if response == .alertFirstButtonReturn { proceed() }

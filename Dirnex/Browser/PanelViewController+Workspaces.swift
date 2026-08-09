@@ -174,6 +174,7 @@ extension PanelViewController {
             comment: "Confirm button of the Save Workspace prompt."
         ))
         alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
+        alert.enableEscapeToCancel()
 
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
         field.placeholderString = String(
@@ -206,6 +207,7 @@ extension PanelViewController {
             comment: "Confirm button of the replace-workspace prompt."
         ))
         alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
+        alert.enableEscapeToCancel()
         return alert.runModal() == .alertFirstButtonReturn
     }
 }

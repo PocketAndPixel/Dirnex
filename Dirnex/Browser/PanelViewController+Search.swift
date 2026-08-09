@@ -182,6 +182,7 @@ extension PanelViewController {
         alert.addButton(
             withTitle: String(localized: "Cancel", comment: "Button that dismisses a dialog.")
         )
+        alert.enableEscapeToCancel()
 
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
         field.placeholderString = String(
@@ -219,6 +220,7 @@ extension PanelViewController {
         alert.addButton(
             withTitle: String(localized: "Cancel", comment: "Button that dismisses a dialog.")
         )
+        alert.enableEscapeToCancel()
         return alert.runModal() == .alertFirstButtonReturn
     }
 }

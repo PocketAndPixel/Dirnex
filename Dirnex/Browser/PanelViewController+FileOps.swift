@@ -70,6 +70,7 @@ extension PanelViewController {
             )
         )
         alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
+        alert.enableEscapeToCancel()
 
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
         field.stringValue = String(
@@ -218,6 +219,7 @@ extension PanelViewController {
             )
         )
         alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
+        alert.enableEscapeToCancel()
 
         let handler: (NSApplication.ModalResponse) -> Void = { response in
             if response == .alertFirstButtonReturn { proceed() }
@@ -255,6 +257,7 @@ extension PanelViewController {
             )
         )
         alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
+        alert.enableEscapeToCancel()
 
         let handler: (NSApplication.ModalResponse) -> Void = { response in
             if response == .alertFirstButtonReturn { proceed() }

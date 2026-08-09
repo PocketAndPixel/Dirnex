@@ -47,6 +47,7 @@ extension SidebarViewController {
             )
             alert.informativeText = error.localizedDescription
             alert.alertStyle = .warning
+            alert.enableEscapeToCancel() // ⎋ → OK; the only button, so it dismisses either way.
             if let window = view.window {
                 alert.beginSheetModal(for: window)
             } else {

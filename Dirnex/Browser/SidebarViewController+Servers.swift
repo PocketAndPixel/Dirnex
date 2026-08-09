@@ -119,6 +119,7 @@ extension SidebarViewController {
             comment: "Confirm button that removes a saved server."
         ))
         alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
+        alert.enableEscapeToCancel()
 
         let commit = { [weak self] (response: NSApplication.ModalResponse) in
             guard response == .alertFirstButtonReturn else { return }

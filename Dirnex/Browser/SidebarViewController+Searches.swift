@@ -121,6 +121,7 @@ extension SidebarViewController {
             comment: "Confirm button that deletes a saved search."
         ))
         alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
+        alert.enableEscapeToCancel()
 
         let commit = { [weak self] (response: NSApplication.ModalResponse) in
             guard response == .alertFirstButtonReturn else { return }
@@ -146,6 +147,7 @@ extension SidebarViewController {
             withTitle: String(localized: "Rename", comment: "Confirm button of a rename dialog.")
         )
         alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
+        alert.enableEscapeToCancel()
 
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
         field.stringValue = current
@@ -170,6 +172,7 @@ extension SidebarViewController {
             localized: "Another saved search already uses that name. Pick a different one.",
             comment: "Body of the saved-search rename-collision alert."
         )
+        alert.enableEscapeToCancel() // ⎋ → OK; the only button, so it dismisses either way.
         if let window = view.window {
             alert.beginSheetModal(for: window)
         } else {

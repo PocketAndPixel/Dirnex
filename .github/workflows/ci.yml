@@ -66,3 +66,8 @@ jobs:
         run: swiftformat --lint .
       - name: SwiftLint
         run: swiftlint --strict
+      # A pure source scan, so it needs no build. `NSAlert` binds Escape by matching the byte
+      # string "Cancel", so an alert that skips `enableEscapeToCancel()` is Escape-dead in every
+      # language but English — invisible at build time and in any English screenshot.
+      - name: Every alert can be dismissed with Escape
+        run: python3 scripts/check_alert_escape.py

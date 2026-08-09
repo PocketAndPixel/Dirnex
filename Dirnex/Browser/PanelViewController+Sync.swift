@@ -105,6 +105,7 @@ extension PanelViewController {
             comment: "Confirm button of the sync delete prompt and the sync sheet."
         ))
         alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
+        alert.enableEscapeToCancel()
         let apply: (NSApplication.ModalResponse) -> Void = { [weak self] response in
             guard response == .alertFirstButtonReturn else { return }
             self?.applySync(decisions, leftDir: leftDir, rightDir: rightDir)

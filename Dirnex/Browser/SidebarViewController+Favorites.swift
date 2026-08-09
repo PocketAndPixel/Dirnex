@@ -138,6 +138,7 @@ extension SidebarViewController {
             comment: "Confirm button of a rename dialog."
         ))
         alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
+        alert.enableEscapeToCancel()
 
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
         field.stringValue = current

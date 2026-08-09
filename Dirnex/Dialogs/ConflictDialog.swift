@@ -48,6 +48,7 @@ enum ConflictDialog {
         alert.addButton(withTitle: String(localized: "Skip"))
         alert.addButton(withTitle: String(localized: "Replace If Newer"))
         alert.addButton(withTitle: String(localized: "Cancel"))
+        alert.enableEscapeToCancel()
 
         let response = await runAlert(alert, in: window)
         let applyToAll = alert.suppressionButton?.state == .on

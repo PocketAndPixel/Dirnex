@@ -30,6 +30,7 @@ extension PanelViewController {
         alert.informativeText = String(localized: "This rewrites the archive and can’t be undone.")
         alert.addButton(withTitle: String(localized: "Delete"))
         alert.addButton(withTitle: String(localized: "Cancel"))
+        alert.enableEscapeToCancel()
 
         let handler: (NSApplication.ModalResponse) -> Void = { response in
             if response == .alertFirstButtonReturn { proceed() }

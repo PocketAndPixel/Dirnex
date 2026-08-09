@@ -1156,6 +1156,28 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
     know to look (`titles.contains($0.title)`, `if button.title == …`); what makes them expensive is
     that they fail as *behavior*, so no string sweep and no coverage test over the catalog can see
     them. Key off an identity the display layer doesn't own.
+  - **Having the fix is not having applied it, and 21 of 60 alerts had not — including F7 New
+    Folder, both deletes and the conflict dialog.** Found 2026-08-09 by a user pressing ⎋ on a
+    Russian New Folder sheet. `enableEscapeToCancel` had existed since the audit above, correct and
+    tested, with this very note explaining why every alert needs it; the sites that never called it
+    simply inherited AppKit's English-only binding and were Escape-dead in all thirteen
+    translations. Nothing logs, both suites and both linters stayed green, and the English
+    screenshot is perfect — the same "a check living in prose is not a check" lesson the
+    `.stringsdata` sweep had already taught one section below, arriving from the other direction:
+    there a *documented check* was never run, here a *documented fix* was never applied.
+    `scripts/check_alert_escape.py` now scans every `let alert = NSAlert()` in CI and fails on any
+    that reaches a runner without the call. It also fails on an `NSAlert` built in any *other*
+    shape, so the scan cannot quietly go blind the day someone writes one differently.
+  - Two facts from re-probing the helper's edges, both load-bearing and neither obvious. A **fresh
+    `NSAlert` already reports AppKit's synthesized `OK` in `.buttons`** (count 1, Return bound)
+    before anything lays out — which is what lets the lone-button branch cover the plain
+    "something went wrong" alerts that add no button at all; had it come back empty the helper
+    would have done nothing, silently. And **with a text-field accessory the confirming button's
+    Return moves off `keyEquivalent` onto the window's `defaultButtonCell`** — so reading the
+    buttons of a live New Folder sheet shows `Создать=none`, which looks like a broken default
+    button and is not one. Verify Escape on such a sheet with
+    `NSWindow.performKeyEquivalent(with:)`; Return is not reachable that way at all, since it is no
+    longer a key equivalent.
 - **An `NSAlert` reserves vertical space for its `accessoryView` from that view's *frame*, so a
   pure-Auto-Layout accessory (only `translatesAutoresizingMaskIntoConstraints = false` + internal
   constraints) reports a **zero frame** and the alert draws it *overlapping* the informative text.**

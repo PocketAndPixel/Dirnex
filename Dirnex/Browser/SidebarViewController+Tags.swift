@@ -255,6 +255,7 @@ extension SidebarViewController {
             comment: "Confirm button that deletes a custom tag."
         ))
         alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
+        alert.enableEscapeToCancel()
 
         return await runTagAlert(alert) == .alertFirstButtonReturn
     }
@@ -276,6 +277,7 @@ extension SidebarViewController {
             """,
             comment: "Body of the partial tag-deletion failure; %1$lld removed of %2$lld, %3$@ is the error."
         )
+        alert.enableEscapeToCancel() // ⎋ → OK; the only button, so it dismisses either way.
         Task { _ = await runTagAlert(alert) }
     }
 

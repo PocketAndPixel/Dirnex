@@ -85,6 +85,29 @@ struct EscapeToDismissTests {
         #expect(alert.accessoryView is EscapeDismissingView)
     }
 
+    /// The three plain "something went wrong" alerts add no button at all and let AppKit supply the
+    /// OK. Probed: `buttons` already reports that synthesized button before anything lays out, so
+    /// the lone-button branch above covers them unchanged — worth pinning, because if `buttons`
+    /// ever came back empty the helper would do *nothing* and say so to no one.
+    @Test("an alert that adds no button still gets a catcher for AppKit's synthesized OK")
+    func synthesizedButtonGetsAccessory() {
+        let alert = alert([])
+        #expect(alert.buttons.count == 1) // precondition: AppKit's doing, not ours
+        alert.enableEscapeToCancel()
+        #expect(alert.accessoryView is EscapeDismissingView)
+    }
+
+    /// Escape is the only thing the helper may touch. A sheet whose Return commits real work (the
+    /// New Folder name field) must keep committing it in every language.
+    @Test("the confirming button's Return survives")
+    func returnIsUntouched() {
+        let alert = alert(["Создать", "Отмена"])
+        #expect(alert.buttons.first?.keyEquivalent == "\r") // AppKit's, before we touch anything
+        alert.enableEscapeToCancel()
+        #expect(alert.buttons.first?.keyEquivalent == "\r")
+        #expect(alert.buttons.last?.keyEquivalent == Self.escape)
+    }
+
     /// An out-of-range response must not crash or bind nothing — it falls back to the default.
     @Test("a response naming a button that isn't there falls back to the last one")
     func outOfRangeResponseFallsBack() {
