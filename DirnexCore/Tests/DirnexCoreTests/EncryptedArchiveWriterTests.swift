@@ -118,6 +118,15 @@ struct EncryptedArchiveWriterTests {
     // MARK: - Fixture helpers
 
     /// A scratch directory with two files and a nested folder, plus the items describing them.
+    ///
+    /// Every archive these tests write goes **inside** this directory rather than beside it in
+    /// `NSTemporaryDirectory()`, and that is load-bearing rather than tidiness. The writer puts its
+    /// `.dirnex-pack-` temporary next to the destination, so an archive written at the shared temp
+    /// root makes every *other* suite's in-flight temporary a sibling of this one's — which is
+    /// exactly what `cancellationCleansUp` scans for. Rooted there it failed about one full
+    /// `swift test` run in three, and never under `--filter`, because the suites that also pack into
+    /// that root (`ArchiveNamePrivacyTests` above all, whose hidden-names path opens a second
+    /// temporary for its inner tar) only run alongside it in the full suite.
     private func makeSource() throws -> (directory: String, items: [ArchiveSourceItem]) {
         let root = NSTemporaryDirectory() + "dirnex-writer-\(UUID().uuidString)"
         let nested = root + "/notes/nested"
@@ -140,8 +149,7 @@ struct EncryptedArchiveWriterTests {
     func writesWinZipAES256() throws {
         let source = try makeSource()
         defer { remove(source.directory) }
-        let archive = source.directory + ".zip"
-        defer { remove(archive) }
+        let archive = source.directory + "/archive.zip"
 
         try EncryptedArchiveWriter.write(
             items: source.items,
@@ -166,8 +174,7 @@ struct EncryptedArchiveWriterTests {
     func directoryEntriesAreNotEncrypted() throws {
         let source = try makeSource()
         defer { remove(source.directory) }
-        let archive = source.directory + ".zip"
-        defer { remove(archive) }
+        let archive = source.directory + "/archive.zip"
 
         try EncryptedArchiveWriter.write(
             items: source.items,
@@ -188,8 +195,7 @@ struct EncryptedArchiveWriterTests {
     func unencryptedArchiveIsOrdinary() throws {
         let source = try makeSource()
         defer { remove(source.directory) }
-        let archive = source.directory + ".zip"
-        defer { remove(archive) }
+        let archive = source.directory + "/archive.zip"
 
         try EncryptedArchiveWriter.write(
             items: source.items, toArchiveAt: archive, encryption: .none, passphrase: nil
@@ -204,8 +210,7 @@ struct EncryptedArchiveWriterTests {
     func encryptionDoesNotHideNames() throws {
         let source = try makeSource()
         defer { remove(source.directory) }
-        let archive = source.directory + ".zip"
-        defer { remove(archive) }
+        let archive = source.directory + "/archive.zip"
 
         try EncryptedArchiveWriter.write(
             items: source.items,
@@ -230,7 +235,7 @@ struct EncryptedArchiveWriterTests {
     func emptyPassphraseIsRefused() throws {
         let source = try makeSource()
         defer { remove(source.directory) }
-        let archive = source.directory + ".zip"
+        let archive = source.directory + "/archive.zip"
 
         #expect(throws: EncryptedArchiveError.emptyPassphrase) {
             try EncryptedArchiveWriter.write(
@@ -251,7 +256,7 @@ struct EncryptedArchiveWriterTests {
         #expect(throws: EncryptedArchiveError.emptyPassphrase) {
             try EncryptedArchiveWriter.write(
                 items: source.items,
-                toArchiveAt: source.directory + ".zip",
+                toArchiveAt: source.directory + "/archive.zip",
                 encryption: .aes256,
                 passphrase: nil
             )
@@ -273,8 +278,7 @@ struct EncryptedArchiveWriterTests {
     func progressReachesTheTotal() throws {
         let source = try makeSource()
         defer { remove(source.directory) }
-        let archive = source.directory + ".zip"
-        defer { remove(archive) }
+        let archive = source.directory + "/archive.zip"
 
         var last: EncryptedArchiveWriter.Progress?
         try EncryptedArchiveWriter.write(
@@ -298,8 +302,7 @@ struct EncryptedArchiveWriterTests {
     func cancellationCleansUp() throws {
         let source = try makeSource()
         defer { remove(source.directory) }
-        let archive = source.directory + ".zip"
-        defer { remove(archive) }
+        let archive = source.directory + "/archive.zip"
 
         #expect(throws: CancellationError.self) {
             try EncryptedArchiveWriter.write(
@@ -312,7 +315,9 @@ struct EncryptedArchiveWriterTests {
         }
 
         #expect(!FileManager.default.fileExists(atPath: archive))
-        // The temporary is a hidden sibling of the destination, so a leak would show up here.
+        // The temporary is a hidden sibling of the destination, so a leak would show up here — and
+        // because the destination lives in this test's own scratch directory (see `makeSource`),
+        // nothing another suite is packing at the same moment can show up here as well.
         let siblings = try FileManager.default.contentsOfDirectory(
             atPath: (archive as NSString).deletingLastPathComponent
         )
@@ -323,8 +328,7 @@ struct EncryptedArchiveWriterTests {
     func failureDoesNotDestroyTheOldArchive() throws {
         let source = try makeSource()
         defer { remove(source.directory) }
-        let archive = source.directory + ".zip"
-        defer { remove(archive) }
+        let archive = source.directory + "/archive.zip"
 
         try EncryptedArchiveWriter.write(
             items: source.items, toArchiveAt: archive, encryption: .none, passphrase: nil

@@ -9,6 +9,14 @@ import Testing
 /// `salary` anywhere in the file does.
 @Suite("ArchiveNamePrivacy")
 struct ArchiveNamePrivacyTests {
+    /// A scratch directory holding the tree to pack, and everything these tests then write.
+    ///
+    /// Archives and extraction destinations go **inside** it rather than beside it in
+    /// `NSTemporaryDirectory()`: the writer puts its `.dirnex-pack-` temporary next to the
+    /// destination, and the hidden-names path here opens a second one for its inner tar, so packing
+    /// into the shared root would strew temporaries through every other archive suite's view of its
+    /// own siblings. `EncryptedArchiveWriterTests.cancellationCleansUp` scans exactly that, and was
+    /// failing about one full `swift test` run in three because of it.
     private func makeSource() throws -> (directory: String, items: [ArchiveSourceItem]) {
         let root = NSTemporaryDirectory() + "dirnex-privacy-\(UUID().uuidString)"
         try FileManager.default.createDirectory(
@@ -33,8 +41,7 @@ struct ArchiveNamePrivacyTests {
     func namesAreAbsentFromTheBytes() throws {
         let source = try makeSource()
         defer { remove(source.directory) }
-        let archive = source.directory + ".zip"
-        defer { remove(archive) }
+        let archive = source.directory + "/archive.zip"
 
         try EncryptedArchiveWriter.write(
             items: source.items,
@@ -58,8 +65,7 @@ struct ArchiveNamePrivacyTests {
     func namesArePresentWithoutHiding() throws {
         let source = try makeSource()
         defer { remove(source.directory) }
-        let archive = source.directory + ".zip"
-        defer { remove(archive) }
+        let archive = source.directory + "/archive.zip"
 
         try EncryptedArchiveWriter.write(
             items: source.items,
@@ -78,8 +84,7 @@ struct ArchiveNamePrivacyTests {
     func outerArchiveHasOneEntry() throws {
         let source = try makeSource()
         defer { remove(source.directory) }
-        let archive = source.directory + ".zip"
-        defer { remove(archive) }
+        let archive = source.directory + "/archive.zip"
 
         try EncryptedArchiveWriter.write(
             items: source.items, toArchiveAt: archive, encryption: .aes256,
@@ -95,15 +100,14 @@ struct ArchiveNamePrivacyTests {
     func roundTripIsTransparent() throws {
         let source = try makeSource()
         defer { remove(source.directory) }
-        let archive = source.directory + ".zip"
-        defer { remove(archive) }
+        let archive = source.directory + "/archive.zip"
 
         try EncryptedArchiveWriter.write(
             items: source.items, toArchiveAt: archive, encryption: .aes256,
             passphrase: ArchivePassphrase("hunter2"), namePrivacy: .hidden
         )
 
-        let destination = source.directory + "-out"
+        let destination = source.directory + "/out"
         try FileManager.default.createDirectory(
             atPath: destination,
             withIntermediateDirectories: true
@@ -130,15 +134,14 @@ struct ArchiveNamePrivacyTests {
     func unwrappingCanBeDeclined() throws {
         let source = try makeSource()
         defer { remove(source.directory) }
-        let archive = source.directory + ".zip"
-        defer { remove(archive) }
+        let archive = source.directory + "/archive.zip"
 
         try EncryptedArchiveWriter.write(
             items: source.items, toArchiveAt: archive, encryption: .aes256,
             passphrase: ArchivePassphrase("hunter2"), namePrivacy: .hidden
         )
 
-        let destination = source.directory + "-raw"
+        let destination = source.directory + "/raw"
         try FileManager.default.createDirectory(
             atPath: destination,
             withIntermediateDirectories: true
@@ -160,7 +163,7 @@ struct ArchiveNamePrivacyTests {
 
         #expect(throws: EncryptedArchiveError.emptyPassphrase) {
             try EncryptedArchiveWriter.write(
-                items: source.items, toArchiveAt: source.directory + ".zip",
+                items: source.items, toArchiveAt: source.directory + "/archive.zip",
                 encryption: .aes256, passphrase: ArchivePassphrase(""), namePrivacy: .hidden
             )
         }
