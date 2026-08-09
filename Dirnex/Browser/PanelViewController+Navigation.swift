@@ -51,9 +51,12 @@ extension PanelViewController {
                     self?.refreshCurrentDirectory(selecting: entry.path)
                 }
             }
+        } else if entry.path.backend.isArchive {
+            // A plain file member — it has no local URL to hand `NSWorkspace`, so extract it to
+            // temp and open *that* with its default app, the Total Commander gesture. Read-only,
+            // because nothing writes an edit back into the archive (PLAN.md §M4).
+            beginArchiveMemberOpen(for: entry)
         }
-        // Any other non-directory entry inside an archive (a plain file member) can't be launched
-        // in place, so it's a no-op rather than opening a meaningless local URL.
     }
 
     /// Open a directory picked from a results tab (search hits, Recents, or the Trash). The listing

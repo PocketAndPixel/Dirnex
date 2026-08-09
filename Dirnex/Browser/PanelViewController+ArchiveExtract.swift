@@ -33,98 +33,49 @@ extension PanelViewController {
             return
         }
 
-        // The encryption question is settled before any work starts, off the one cheap read that
-        // answers it (headers only — measured at 3–4 ms for a 600 MB archive).
-        guard ArchiveExtractor.needsPassphrase(forArchiveAt: archivePath) else {
-            runExtraction(sources: sources, archivePath: archivePath, destination: destination)
-            return
-        }
-        askAndExtract(
-            sources: sources,
-            archivePath: archivePath,
-            destination: destination,
-            retrying: false
-        )
-    }
-
-    /// Prompt, extract, and — if the passphrase was refused — prompt again saying so.
-    ///
-    /// The retry loop is the whole reason this is a separate function: a wrong passphrase is an
-    /// ordinary typo, and answering it with a dead-end error alert would make the user re-select the
-    /// files and press F5 again to get another go.
-    private func askAndExtract(
-        sources: [FileEntry],
-        archivePath: String,
-        destination: VFSPath,
-        retrying: Bool
-    ) {
-        PassphrasePrompt.ask(
-            forItemNamed: (archivePath as NSString).lastPathComponent,
-            retrying: retrying,
-            over: view.window
-        ) { [weak self] passphrase in
-            guard let self, let passphrase else { return }
-            runExtraction(
-                sources: sources,
-                archivePath: archivePath,
-                destination: destination,
-                passphrase: passphrase
+        // The encryption question, the prompt and its retry all live in `withArchivePassphrase`,
+        // shared with preview, member-open and nested-archive entry — so an archive unlocked by any
+        // of them is not asked about again.
+        let innerPaths = sources.map(\.path.path)
+        let backend = backend
+        withArchivePassphrase(forArchiveAt: archivePath) { passphrase in
+            try await Task.detached(priority: .userInitiated) { () throws -> [FileEntry] in
+                let extraction = try ArchiveExtractor.extract(
+                    innerPaths: innerPaths,
+                    fromArchiveAt: archivePath,
+                    passphrase: passphrase
+                )
+                // Stat each extracted file into a local source entry; a member that never landed —
+                // bsdtar couldn't find it, or the reader refused its name as a traversal attempt —
+                // fails its stat and is dropped from the copy.
+                return extraction.extractedPaths.compactMap { try? backend.stat(at: .local($0)) }
+            }.value
+        } onSuccess: { [weak self] localSources in
+            self?.finishArchiveExtraction(localSources: localSources, destination: destination)
+        } onFailure: { [weak self] error in
+            self?.presentOperationFailure(
+                message: String(localized: "Couldn’t extract from the archive"),
+                detail: self?.describe(error) ?? ""
             )
         }
     }
 
-    private func runExtraction(
-        sources: [FileEntry],
-        archivePath: String,
-        destination: VFSPath,
-        passphrase: ArchivePassphrase? = nil
-    ) {
-        let innerPaths = sources.map(\.path.path)
-        let backend = backend
-        Task {
-            do {
-                let localSources = try await Task.detached(priority: .userInitiated) {
-                    () throws -> [FileEntry] in
-                    let extraction = try ArchiveExtractor.extract(
-                        innerPaths: innerPaths,
-                        fromArchiveAt: archivePath,
-                        passphrase: passphrase
-                    )
-                    // Stat each extracted file into a local source entry; a member that never
-                    // landed — bsdtar couldn't find it, or the reader refused its name as a
-                    // traversal attempt — fails its stat and is dropped from the copy.
-                    return extraction.extractedPaths.compactMap { try? backend.stat(at: .local($0)) }
-                }.value
-
-                guard !localSources.isEmpty else {
-                    presentOperationFailure(
-                        message: String(localized: "Couldn’t extract the selected items"),
-                        detail: String(
-                            localized: "The archive may be damaged or the items may be missing."
-                        )
-                    )
-                    return
-                }
-                submitTransfer(kind: .copy, sources: localSources, destination: destination)
-                // Marks are consumed the moment the copy is queued, matching F5/delete; the
-                // window re-lists both panes as the job finishes.
-                panel.clearSelection()
-                reloadEverything()
-                focusTable()
-            } catch EncryptedArchiveError.incorrectPassphrase {
-                // A typo, not a failure worth an alert of its own — ask again, saying so.
-                askAndExtract(
-                    sources: sources,
-                    archivePath: archivePath,
-                    destination: destination,
-                    retrying: true
+    /// Hand what landed on disk to the normal copy queue, or say that nothing did.
+    private func finishArchiveExtraction(localSources: [FileEntry], destination: VFSPath) {
+        guard !localSources.isEmpty else {
+            presentOperationFailure(
+                message: String(localized: "Couldn’t extract the selected items"),
+                detail: String(
+                    localized: "The archive may be damaged or the items may be missing."
                 )
-            } catch {
-                presentOperationFailure(
-                    message: String(localized: "Couldn’t extract from the archive"),
-                    detail: describe(error)
-                )
-            }
+            )
+            return
         }
+        submitTransfer(kind: .copy, sources: localSources, destination: destination)
+        // Marks are consumed the moment the copy is queued, matching F5/delete; the window re-lists
+        // both panes as the job finishes.
+        panel.clearSelection()
+        reloadEverything()
+        focusTable()
     }
 }

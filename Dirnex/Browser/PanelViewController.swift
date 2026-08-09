@@ -101,6 +101,11 @@ protocol PanelHost: AnyObject {
     /// was extracted from (PLAN.md §M4 "nested archives"). Owned by the window so a mount entered
     /// in one pane still resolves its outer chain (walk-out, breadcrumb) if browsed from either.
     var nestedArchiveRegistry: NestedArchiveRegistry { get }
+
+    /// The window's shared record of which encrypted archives have been unlocked this session
+    /// (PLAN.md §M19). Owned by the window so a passphrase typed to preview a member also opens it,
+    /// extracts it with F5, and enters a nested archive inside it — from either pane.
+    var archivePassphrases: ArchivePassphraseStore { get }
 }
 
 /// One file pane: a path bar, an `NSTableView` of the current directory, and a status

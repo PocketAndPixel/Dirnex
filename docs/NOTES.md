@@ -2182,6 +2182,35 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
 
 ## Design lessons that generalize
 
+- **A credential-shaped feature has to split its entry point in two, and the half that follows the
+  cursor is the one that must stay silent.** An encrypted archive browses fine — a zip's central
+  directory is never encrypted — so the passphrase is wanted only when *bytes* are, and the natural
+  implementation asks for it wherever the bytes are read. That is wrong for exactly one reason: the
+  preview reads them on **cursor movement**, so a prompt raised there is a modal sheet on an arrow
+  key. `withArchivePassphrase` is therefore only reachable from the gesture the user actually made
+  (⌘Y, ⌃Q turning on, Enter, F5), and the passive refreshes read an already-unlocked passphrase and
+  do nothing when there is none. Same split the Quick View JavaScript switch needed, arriving from
+  the other side: there the question was "should this run unasked", here it is "should this *ask*
+  unasked", and both are separate from whether the operation is safe.
+  - **The gap it papered over stayed invisible because the passive path swallows errors, which it is
+    right to do.** `prepareArchivePreview`'s `try?` exists so a damaged member does not raise an
+    alert on every arrow key — correct, and it is also why an encrypted archive silently previewed
+    nothing for the whole life of the feature. A swallow that is right for the cursor path is wrong
+    for the key press; the fix is a second entry point that reports, not a narrower `catch`.
+  - **`ArchiveExtractor`'s own doc comment named this as "its own slice", and PLAN.md named it twice
+    more.** Three written records, no check, and it shipped — the third instance in this file of "a
+    check living in prose is not a check" (the `.stringsdata` sweep and `enableEscapeToCancel` are
+    the other two), and the first where what was documented was a *known missing feature* rather than
+    a fix or a check. A user found it, which is the only instrument prose leaves available.
+  - **Ask which gesture the user actually made before designing the fix.** "I can't open a file in
+    it" was two independent bugs sharing one symptom: the passphrase gap, *and* Enter on a plain file
+    member having never opened anything in **any** archive, encrypted or not — a deliberate no-op
+    with a comment explaining itself. Fixing only the first would have left the report standing, and
+    nothing in the code connects the two.
+  - **The retry is the branch to verify, not the happy path.** A wrong passphrase re-raising the
+    prompt (rather than dead-ending in an alert that makes the user re-select and press the key
+    again) is the whole reason the funnel exists, and it is one line away from being a `catch` that
+    reports. Type a wrong one first when checking it live; the correct one proves less.
 - **A layout is the one thing in this codebase a test cannot judge, and it fails by being *ugly*
   rather than wrong.** M18's flowchart layout passed 20 exact-number assertions — layers stacked,
   edges clipped to the right outlines, four directions mirroring correctly — while the first launch

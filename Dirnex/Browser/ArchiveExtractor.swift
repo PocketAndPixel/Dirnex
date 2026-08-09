@@ -18,6 +18,10 @@ enum ArchiveExtractor {
     struct Extraction {
         let directory: URL
         let extractedPaths: [String]
+        /// The directory holds the **whole** archive, not just the requested members — true of the
+        /// encrypted route, which reads sequentially and has no member filter. A caller extracting
+        /// one member at a time can serve the next one from here instead of decrypting it all again.
+        let isWholeArchive: Bool
     }
 
     /// The shared temp root every extraction writes beneath, under the user's temp directory.
@@ -78,7 +82,8 @@ enum ArchiveExtractor {
             }
             return Extraction(
                 directory: directory,
-                extractedPaths: locations(of: innerPaths, in: directory)
+                extractedPaths: locations(of: innerPaths, in: directory),
+                isWholeArchive: true
             )
         }
 
@@ -108,7 +113,9 @@ enum ArchiveExtractor {
             let name = (archiveOnDiskPath as NSString).lastPathComponent
             throw VFSError.unsupported(.archiveExtractFailed(archive: name))
         }
-        return Extraction(directory: directory, extractedPaths: extractedPaths)
+        return Extraction(
+            directory: directory, extractedPaths: extractedPaths, isWholeArchive: false
+        )
     }
 
     /// Where each requested member landed. Both routes place an entry at its own archive-relative

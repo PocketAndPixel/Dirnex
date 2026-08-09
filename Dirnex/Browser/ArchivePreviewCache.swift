@@ -26,6 +26,11 @@ struct ArchiveMember: Hashable {
 @MainActor
 final class ArchivePreviewCache {
     private var extracted: [ArchiveMember: URL] = [:]
+    /// Where an *encrypted* archive's one whole-archive extraction landed. libarchive reads
+    /// sequentially and has no member filter, so extracting one member decrypts and writes them
+    /// all; without this, arrowing through five members of a 600 MB archive would do that five
+    /// times, on a keystroke. Keyed by archive, so each is paid for exactly once per session.
+    private var wholeArchiveExtractions: [String: URL] = [:]
 
     /// The extracted on-disk URL for `member` if it has already been extracted this session,
     /// else `nil` — a synchronous lookup the preview surfaces use to resolve the file to show.
@@ -33,21 +38,51 @@ final class ArchivePreviewCache {
         extracted[member]
     }
 
-    /// Extract `member` to disk (off-main via `bsdtar`) and cache it, returning its on-disk URL.
-    /// Reuses the cached copy when the same member is requested again. Throws when extraction
-    /// fails (a damaged or missing member) — the caller then simply leaves it unpreviewable.
-    func extractedURL(for member: ArchiveMember) async throws -> URL {
+    /// Extract `member` to disk (off-main) and cache it, returning its on-disk URL. Reuses the
+    /// cached copy when the same member is requested again, and — for an encrypted archive — the
+    /// sibling members that came out of the same extraction.
+    ///
+    /// `passphrase` is required for an encrypted archive and ignored otherwise, so a caller holding
+    /// one may pass it speculatively; without one, an encrypted archive throws
+    /// ``EncryptedArchiveError/passphraseRequired`` rather than reaching `bsdtar`, whose interactive
+    /// prompt cannot be answered from here at all (see `ArchiveExtractor.extract`). Throws too when
+    /// extraction fails, and the caller then leaves the member unpreviewable.
+    func extractedURL(
+        for member: ArchiveMember,
+        passphrase: ArchivePassphrase? = nil
+    ) async throws -> URL {
         if let url = extracted[member] { return url }
-        let url = try await Task.detached(priority: .userInitiated) { () throws -> URL in
-            let extraction = try ArchiveExtractor.extract(
+        if let url = wholeArchiveURL(for: member) {
+            extracted[member] = url
+            return url
+        }
+        let extraction = try await Task.detached(priority: .userInitiated) {
+            () throws -> ArchiveExtractor.Extraction in
+            try ArchiveExtractor.extract(
                 innerPaths: [member.innerPath],
-                fromArchiveAt: member.archivePath
+                fromArchiveAt: member.archivePath,
+                passphrase: passphrase
             )
-            // A single member extracts to exactly one location; `ArchiveExtractor` already threw
-            // if nothing landed, so this file exists.
-            return URL(fileURLWithPath: extraction.extractedPaths[0])
         }.value
+        if extraction.isWholeArchive {
+            wholeArchiveExtractions[member.archivePath] = extraction.directory
+        }
+        // A single member extracts to exactly one location; `ArchiveExtractor` already threw if
+        // nothing landed, so this file exists.
+        let url = URL(fileURLWithPath: extraction.extractedPaths[0])
         extracted[member] = url
         return url
+    }
+
+    /// `member`'s file inside its archive's earlier whole-archive extraction, if there was one and
+    /// the file is still there. Checked before spawning anything, and `nil` when the extraction has
+    /// since been cleared out of the temp directory — in which case the ordinary route re-does it.
+    private func wholeArchiveURL(for member: ArchiveMember) -> URL? {
+        guard let directory = wholeArchiveExtractions[member.archivePath] else { return nil }
+        let path = ArchiveExtraction.extractedLocation(
+            ofInnerPath: member.innerPath, inDirectory: directory.path
+        )
+        guard FileManager.default.fileExists(atPath: path) else { return nil }
+        return URL(fileURLWithPath: path)
     }
 }

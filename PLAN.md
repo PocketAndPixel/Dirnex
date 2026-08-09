@@ -122,7 +122,7 @@ refer to those sections.
 | M16 | Quick View: source or page | 08-06 | Markdown and RTF as dual-style types — markdown was taken up at M18, RTF stays undone — and `.webarchive` / `.mhtml`, which need `loadData` rather than a file load; the JavaScript mark in the *pane*-size preview, which has no header to carry it |
 | M17 | Syntax highlighting in Quick View | 08-06 | A **theme picker** (the colors are a fixed light/dark table, no Settings surface); the constructs a regex-free single pass cannot reach — string interpolation, JS regex literals, heredocs, Swift raw strings, JSX, and semantic coloring of any kind; **line numbers, folding and a minimap**, which are editor features Dirnex hands to the user's own editor; highlighting inside the *rendered* HTML style, which is the page's own business; a **key-vs-value** distinction in JSON, and Markdown's **setext headings** and **indented code blocks**, all three of which need a lookahead or a previous line the single pass does not keep; Ruby's `=begin` block comment; and any third-party highlighter — Highlightr (a JS engine on every cursor step) and tree-sitter (a C dependency plus a grammar per language), both rejected 2026-08-06 |
 | M18 | Quick View: Markdown as a document | 08-07 | **Raw HTML passthrough** — CommonMark says to pass it and a preview that renders on *cursor movement* must not, which is also what keeps the generated page inert; **full CommonMark conformance** (the target is what the file's author sees on GitHub for an ordinary document, pinned by a corpus of real files, with an unreadable construct rendering as its literal text); **math and LaTeX, footnotes, definition lists, emoji shortcodes and wiki links**; every mermaid diagram type outside **flowchart and sequence** (a class diagram, gantt, state chart or ER diagram falls back to a code fence naming itself, as does an unsupported construct *inside* a supported type); **following a link to another file**, since turning a preview into a browser needs its own history and its own way out; **RTF**, the other type M16 left in the same sentence — `NSAttributedString`'s job, sharing nothing with a renderer; **rendering as you type** and editing of any kind (§M11's call, unchanged); and **exporting the rendered page** to HTML or PDF, which is a file operation and belongs in the operation engine with a destination and a conflict policy |
-| M19 | Encryption | 08-09 | **`zipcrypt` and AES-128** (the first is broken, the second buys nothing on hardware AES — both taken at open); **encryption for any container but zip**, since libarchive's 7-Zip writer refuses it and tar has no notion of it; **a passphrase for the paths that are not F5** — preview and *nested*-archive entry still fail with `passphraseRequired` rather than prompting, and the encrypted route extracts the whole archive rather than the requested members, so a member filter plus a per-archive passphrase held for the session is its own slice; **encrypting in place**, or any gesture that removes the plaintext afterwards, because that delete belongs to the user with the Trash's own rules in view; and **vault paths in anything the user saved on purpose** — a named workspace or a favorite pointing inside a vault is kept, since §6's rule is about what Dirnex remembers *without being asked* (the derived-data clause itself was closed 08-09 by fixing the frecency index and session restore, not by stating the leak — see HISTORY.md §M19 ▸ Follow-up) |
+| M19 | Encryption | 08-09 | **`zipcrypt` and AES-128** (the first is broken, the second buys nothing on hardware AES — both taken at open); **encryption for any container but zip**, since libarchive's 7-Zip writer refuses it and tar has no notion of it; **a passphrase for the paths that are not F5** — preview and *nested*-archive entry failed with `passphraseRequired` rather than prompting, and the encrypted route extracts the whole archive rather than the requested members, so a member filter plus a per-archive passphrase held for the session is its own slice (the passphrase half **landed 2026-08-09**, user-reported — see §4 ▸ After M19; the member filter is still open); **encrypting in place**, or any gesture that removes the plaintext afterwards, because that delete belongs to the user with the Trash's own rules in view; and **vault paths in anything the user saved on purpose** — a named workspace or a favorite pointing inside a vault is kept, since §6's rule is about what Dirnex remembers *without being asked* (the derived-data clause itself was closed 08-09 by fixing the frecency index and session restore, not by stating the leak — see HISTORY.md §M19 ▸ Follow-up) |
 
 The undone column is scope that was decided against, not forgotten — each one is argued in
 its HISTORY.md entry. The largest such call is the **built-in text editor** (2026-07-22): a
@@ -208,12 +208,21 @@ rows, and move sort off the column header first). The one item two separate mile
 is **edit-temp-watch-repack write-back** — M11 named it for archives and SFTP, M13 for FTP — so it is
 the candidate that would close the most open ends at once.
 
-M19 leaves one of its own: **a per-archive passphrase held for the session**, plus a member filter,
-so preview and nested-archive entry work inside an encrypted zip the way F5 already does — today they
-fail with `passphraseRequired` rather than asking, which is the shape the F5 path itself had before
-its prompt was written. (Its other loose end, §6's derived-data clause, closed on 08-09 — measuring
-the three leaks it named found none of them real and found a fourth that was ours, so it was fixed
-rather than documented: HISTORY.md §M19 ▸ Follow-up.)
+M19's own loose end — **a per-archive passphrase held for the session** — **closed on 2026-08-09**,
+reported by a user who could not open a file inside an archive they had just packed. Preview, opening
+a member, and nested-archive entry all failed with `passphraseRequired`, and each swallowed it, so
+the keys read as broken rather than locked. `ArchivePassphraseStore` (one per window, memory only)
+now holds what the user typed and `withArchivePassphrase` is the single ask-once-retry-on-typo funnel
+all four gestures share, F5 included — so an archive unlocked by any of them is not asked about again.
+The *passive* half is the part with a rule behind it: a preview follows the cursor, so those paths
+read the store and stay quiet when it is empty, and only the gesture the user actually made may raise
+a sheet. Two things the same pass settled: Enter on a plain file member had never opened anything in
+*any* archive (it extracts to temp and launches the default app now, read-only, since nothing writes
+an edit back), and an encrypted archive's whole-archive extraction is reused for its later members
+rather than re-decrypted per arrow key. **A member filter is still open** — one member of a 600 MB
+encrypted archive still decrypts all of it, once. (Its other loose end, §6's derived-data clause,
+closed on 08-09 too — measuring the three leaks it named found none of them real and found a fourth
+that was ours, so it was fixed rather than documented: HISTORY.md §M19 ▸ Follow-up.)
 
 ## 5. Cross-cutting: testing strategy
 

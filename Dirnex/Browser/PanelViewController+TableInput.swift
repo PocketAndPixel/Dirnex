@@ -112,7 +112,9 @@ extension PanelViewController: FileTableViewInput {
             previewPanel.makeKeyAndOrderFront(nil)
             // Opening on an archive member: it has no on-disk file yet, so extract it on demand
             // and reload the panel once it lands. A no-op for a local file or empty selection.
-            prepareArchivePreview { [weak self] in self?.refreshQuickLookIfVisible() }
+            // The *open* spelling, because this is the key the user pressed — an encrypted archive
+            // asks for its passphrase here rather than showing nothing (PLAN.md §M19).
+            openArchivePreview { [weak self] in self?.refreshQuickLookIfVisible() }
         }
     }
 

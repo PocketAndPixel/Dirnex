@@ -59,7 +59,9 @@ extension BrowserWindowController {
         // the full-screen space while the preview lays itself out at the size it will land at.
         syncFullScreenSpace(for: mode)
         lockCoveredDividers(for: mode)
-        updateQuickView()
+        // Turning the mode *on* is the user asking to see the file under the cursor, so an encrypted
+        // archive may ask for its passphrase; turning it off has nothing to unlock.
+        updateQuickView(unlocking: mode != .off)
         // Keep focus on a real pane. Matters most when closing: Esc may arrive while the preview
         // (a `PDFView` the user clicked into) is first responder, and that view is about to hide.
         focusedPanel.focusTable()
@@ -175,7 +177,11 @@ extension BrowserWindowController {
     /// Reconcile every preview surface with the current mode: exactly one of them shows the file
     /// under the active pane's cursor and the rest stand down. Run on every mode change and
     /// whenever the active pane or its cursor changes, so the preview always tracks the focus.
-    func updateQuickView() {
+    ///
+    /// `unlocking` says the user just pressed the key that turned Quick View on, which is the one
+    /// arrival that may ask an encrypted archive for its passphrase; a focus switch or a re-render
+    /// under a changed preference is the preview following along and must stay quiet.
+    func updateQuickView(unlocking: Bool = false) {
         // The panes' own surfaces are only used by `.pane`; the full modes cover them anyway, and
         // leaving one up would put a stale preview behind the new one.
         if quickViewMode != .pane {
@@ -193,18 +199,23 @@ extension BrowserWindowController {
         // with no list beside it to say why, so start on the first file instead. Here rather than in
         // `setQuickViewMode` because switching panes with the preview up arrives the same way.
         if quickViewMode.isFullSize { active.stepOffParentRowForQuickView() }
-        showActivePreview(from: active)
+        showActivePreview(from: active, unlocking: unlocking)
     }
 
     /// Point the current surface at the file under `active`'s cursor. A local file (or an
     /// already-extracted archive member) shows at once; an archive member not yet on disk is
     /// extracted on demand and shown when it lands — provided Quick View is still on and the
     /// cursor hasn't moved on in the meantime.
-    private func showActivePreview(from active: PanelViewController) {
+    private func showActivePreview(from active: PanelViewController, unlocking: Bool = false) {
         deliverPreview(from: active)
-        active.prepareArchivePreview { [weak self, weak active] in
+        let onReady: @MainActor () -> Void = { [weak self, weak active] in
             guard let self, let active, isQuickViewEnabled, active === focusedPanel else { return }
             deliverPreview(from: active)
+        }
+        if unlocking {
+            active.openArchivePreview(onReady: onReady)
+        } else {
+            active.prepareArchivePreview(onReady: onReady)
         }
     }
 

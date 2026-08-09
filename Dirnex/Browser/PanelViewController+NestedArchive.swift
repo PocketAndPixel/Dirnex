@@ -59,25 +59,28 @@ extension PanelViewController {
         }
 
         let innerPath = origin.path
-        Task {
-            do {
-                let mountPath = try await Task.detached(priority: .userInitiated) { () throws -> String in
-                    let extraction = try ArchiveExtractor.extract(
-                        innerPaths: [innerPath],
-                        fromArchiveAt: outerArchivePath
-                    )
-                    // A single member extracts to exactly one location; `ArchiveExtractor` already
-                    // threw if nothing landed, so this file exists.
-                    return extraction.extractedPaths[0]
-                }.value
-                host?.nestedArchiveRegistry.record(mountOnDiskPath: mountPath, origin: origin)
-                navigate(to: nestedArchiveRoot(atOnDiskPath: mountPath))
-            } catch {
-                presentOperationFailure(
-                    message: String(localized: "Couldn’t open the nested archive"),
-                    detail: describe(error)
+        // Enter is an explicit request for the member's bytes, so an encrypted outer archive asks
+        // for its passphrase here — once per archive per session (PLAN.md §M19).
+        withArchivePassphrase(forArchiveAt: outerArchivePath) { passphrase in
+            try await Task.detached(priority: .userInitiated) { () throws -> String in
+                let extraction = try ArchiveExtractor.extract(
+                    innerPaths: [innerPath],
+                    fromArchiveAt: outerArchivePath,
+                    passphrase: passphrase
                 )
-            }
+                // A single member extracts to exactly one location; `ArchiveExtractor` already
+                // threw if nothing landed, so this file exists.
+                return extraction.extractedPaths[0]
+            }.value
+        } onSuccess: { [weak self] mountPath in
+            guard let self else { return }
+            host?.nestedArchiveRegistry.record(mountOnDiskPath: mountPath, origin: origin)
+            navigate(to: nestedArchiveRoot(atOnDiskPath: mountPath))
+        } onFailure: { [weak self] error in
+            self?.presentOperationFailure(
+                message: String(localized: "Couldn’t open the nested archive"),
+                detail: self?.describe(error) ?? ""
+            )
         }
     }
 }
