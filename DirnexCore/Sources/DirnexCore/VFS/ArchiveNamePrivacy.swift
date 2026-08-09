@@ -57,4 +57,15 @@ public enum ArchiveNamePrivacy: String, CaseIterable, Sendable, Hashable {
     public static func looksWrapped(_ entryNames: [String]) -> Bool {
         entryNames == [wrappedEntryName]
     }
+
+    /// Whether `innerPaths` — VFS inner paths like `/Contents.tar` — name the wrapper itself.
+    ///
+    /// The reader undoes the wrap transparently, which is right for everything that wants the files
+    /// and wrong for the one caller that wants the **container**: a pane browsing such an archive
+    /// lists exactly one row, `Contents.tar`, and every gesture aimed at that row asks for it by
+    /// name. Unwrapped out from under them, the file they were promised is never placed at all — so
+    /// entering it mounted a path that did not exist and reported the archive as unreadable.
+    public static func requestsWrapper(_ innerPaths: [String]) -> Bool {
+        looksWrapped(innerPaths.map { path in String(path.drop { $0 == "/" }) })
+    }
 }

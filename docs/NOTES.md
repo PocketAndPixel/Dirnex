@@ -2269,6 +2269,41 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     prompt (rather than dead-ending in an alert that makes the user re-select and press the key
     again) is the whole reason the funnel exists, and it is one line away from being a `catch` that
     reports. Type a wrong one first when checking it live; the correct one proves less.
+- **A transparent unwrap is exactly wrong for the one caller that wants the container, and the pane
+  is that caller.** `EncryptedArchiveReader.extract` undoes a hidden-names archive's wrapper and
+  deletes it, which is right for everything that wants the *files* — and a browsed archive lists the
+  wrapper as its only row, so Enter, F5, ⌘Y and F4 all ask for `Contents.tar` **by name**. The reader
+  placed the payload, removed the very file that was requested, and the extractor handed back its
+  nominal location anyway; entering it then mounted a path that had never existed and reported
+  **"Couldn't read the archive “Contents.tar”"** — a claim about the archive where the truth was
+  about the extraction. Reported by a user 2026-08-09. Two halves, and each is a shape worth watching
+  for on its own:
+  - **A guard living in one branch of a two-route function is a guard the other route does not have —
+    and the callers will carry comments resting on it regardless.** The "did anything land" check sat
+    in `ArchiveExtractor`'s `bsdtar` branch only, while *both* call sites said "`ArchiveExtractor`
+    already threw if nothing landed, so this file exists". That is what turned a no-op into a phantom
+    path travelling three files before anyone noticed. The fix is structural rather than a third copy
+    of the check: split the engine choice into its own function and let the one `extract` own the tail
+    both routes end on.
+  - **The unwrap is the reader's default and the wrapper request is the exception, so state the
+    exception where the request is read** — `ArchiveNamePrivacy.requestsWrapper(_:)`, matching the
+    whole inner path and not a suffix, since a `Contents.tar` *inside* the payload is an ordinary file
+    whose caller still wants the unwrap. `unwrappingHiddenNames: false` already existed and was
+    already tested; what was missing was anybody passing it.
+  - It is invisible to every automated signal — 2013 core tests, 313 app tests and both linters were
+    green — and it fails in the quiet direction for the *neighbouring* gestures: F5 says "Couldn't
+    extract the selected items", the preview simply shows nothing, and F8 on that row **silently does
+    nothing at all**, because the rewrite unwraps too and its `try? removeItem` misses. That last one
+    is still true and is design A's stated omission: under it the pane's row is the container while
+    every write path speaks the payload, so the two disagree by construction. Making the *browse*
+    transparent — prompt on entering a wrapped archive, list the real tree, never show the wrapper —
+    is the fix that retires the disagreement, at the price of a passphrase prompt where entry has
+    never asked for one.
+  - The negative control is what makes the tests evidence, and it is cheap: neuter both halves
+    (`unwrappingHiddenNames: true`, delete the guard) and re-run. The mount test then fails with
+    `.unsupported(archiveUnreadable(archive: "Contents.tar"))` — the user's alert, verbatim — and the
+    guard test fails by *returning* an extraction whose path is not on disk. The two narrowness
+    controls keep passing throughout, which is the point of having them.
 - **A layout is the one thing in this codebase a test cannot judge, and it fails by being *ugly*
   rather than wrong.** M18's flowchart layout passed 20 exact-number assertions — layers stacked,
   edges clipped to the right outlines, four directions mirroring correctly — while the first launch

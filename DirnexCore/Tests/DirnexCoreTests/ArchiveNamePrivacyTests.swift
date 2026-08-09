@@ -169,6 +169,19 @@ struct ArchiveNamePrivacyTests {
         }
     }
 
+    @Test("asking for the wrapper is recognized by inner path, and only for the wrapper itself")
+    func requestsWrapper() {
+        // What a pane browsing such an archive hands over — its one row, as a VFS inner path.
+        #expect(ArchiveNamePrivacy.requestsWrapper(["/Contents.tar"]))
+        #expect(ArchiveNamePrivacy.requestsWrapper(["Contents.tar"]))
+        // A member of that name *inside* the payload is an ordinary file, and unwrapping is still
+        // what a caller asking for it wants — the rule must not widen to a suffix match.
+        #expect(!ArchiveNamePrivacy.requestsWrapper(["/payload/Contents.tar"]))
+        #expect(!ArchiveNamePrivacy.requestsWrapper(["/contents.tar"]))
+        #expect(!ArchiveNamePrivacy.requestsWrapper(["/Contents.tar", "/notes.txt"]))
+        #expect(!ArchiveNamePrivacy.requestsWrapper([]))
+    }
+
     @Test("the wrapped shape is recognized by its exact contents, nothing looser")
     func looksWrapped() {
         #expect(ArchiveNamePrivacy.looksWrapped(["Contents.tar"]))

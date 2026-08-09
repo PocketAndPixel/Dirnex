@@ -57,6 +57,12 @@ enum ArchiveExtractor {
     /// libarchive is read sequentially and the reader has no member filter yet. Correct, and
     /// wasteful for one member of a large archive; a filter (and a per-archive passphrase for the
     /// session, so preview and nested-archive entry can use it too) is its own slice.
+    ///
+    /// **Both routes end on the same guard, and the encrypted one used not to.** The check that
+    /// something actually landed sat only in the `bsdtar` branch, while both callers carried a
+    /// comment resting on it — so a member the reader placed *somewhere else* came back as a path
+    /// that had never existed, and the caller found out by mounting it. See
+    /// ``DirnexCore/ArchiveNamePrivacy/requestsWrapper(_:)`` for the case where that happened.
     static func extract(
         innerPaths: [String],
         fromArchiveAt archiveOnDiskPath: String,
@@ -65,26 +71,52 @@ enum ArchiveExtractor {
         let directory = temporaryRoot.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 
-        if needsPassphrase(forArchiveAt: archiveOnDiskPath) {
-            guard let passphrase else {
-                try? FileManager.default.removeItem(at: directory)
-                throw EncryptedArchiveError.passphraseRequired
-            }
-            do {
-                try EncryptedArchiveReader.extract(
-                    archiveAt: archiveOnDiskPath,
-                    into: directory.path,
-                    passphrase: passphrase
-                )
-            } catch {
-                try? FileManager.default.removeItem(at: directory)
-                throw error
-            }
-            return Extraction(
-                directory: directory,
-                extractedPaths: locations(of: innerPaths, in: directory),
-                isWholeArchive: true
+        let isWholeArchive: Bool
+        do {
+            isWholeArchive = try unpack(
+                innerPaths: innerPaths,
+                fromArchiveAt: archiveOnDiskPath,
+                into: directory,
+                passphrase: passphrase
             )
+        } catch {
+            try? FileManager.default.removeItem(at: directory)
+            throw error
+        }
+
+        let extractedPaths = locations(of: innerPaths, in: directory)
+        guard extractedPaths.contains(where: { FileManager.default.fileExists(atPath: $0) }) else {
+            try? FileManager.default.removeItem(at: directory)
+            let name = (archiveOnDiskPath as NSString).lastPathComponent
+            throw VFSError.unsupported(.archiveExtractFailed(archive: name))
+        }
+        return Extraction(
+            directory: directory, extractedPaths: extractedPaths, isWholeArchive: isWholeArchive
+        )
+    }
+
+    /// Unpack into `directory` by whichever engine the archive's format needs, answering whether the
+    /// whole archive landed there rather than only the requested members. Leaves the directory in
+    /// place; the caller owns it, including cleaning it up when this throws.
+    private static func unpack(
+        innerPaths: [String],
+        fromArchiveAt archiveOnDiskPath: String,
+        into directory: URL,
+        passphrase: ArchivePassphrase?
+    ) throws -> Bool {
+        if needsPassphrase(forArchiveAt: archiveOnDiskPath) {
+            guard let passphrase else { throw EncryptedArchiveError.passphraseRequired }
+            try EncryptedArchiveReader.extract(
+                archiveAt: archiveOnDiskPath,
+                into: directory.path,
+                passphrase: passphrase,
+                // Asked for the wrapper by name, hand over the wrapper. Unwrapping is right for
+                // every other caller and is what makes an encrypted archive extract to the files
+                // the user packed; for the one row a hidden-names archive lists, it places the
+                // payload and deletes the very file that was requested.
+                unwrappingHiddenNames: !ArchiveNamePrivacy.requestsWrapper(innerPaths)
+            )
+            return true
         }
 
         let process = Process()
@@ -102,20 +134,10 @@ enum ArchiveExtractor {
         do {
             try process.run()
         } catch {
-            try? FileManager.default.removeItem(at: directory)
             throw VFSError.unsupported(.archiveToolUnavailableForExtract)
         }
         process.waitUntilExit()
-
-        let extractedPaths = locations(of: innerPaths, in: directory)
-        guard extractedPaths.contains(where: { FileManager.default.fileExists(atPath: $0) }) else {
-            try? FileManager.default.removeItem(at: directory)
-            let name = (archiveOnDiskPath as NSString).lastPathComponent
-            throw VFSError.unsupported(.archiveExtractFailed(archive: name))
-        }
-        return Extraction(
-            directory: directory, extractedPaths: extractedPaths, isWholeArchive: false
-        )
+        return false
     }
 
     /// Where each requested member landed. Both routes place an entry at its own archive-relative
