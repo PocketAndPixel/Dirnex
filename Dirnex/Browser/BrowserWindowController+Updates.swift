@@ -12,7 +12,7 @@ import DirnexCore
 /// It is hidden, not disabled, when nothing is pending: an always-visible badge would train the eye
 /// to ignore it, which is exactly what an update indicator must not do.
 extension BrowserWindowController {
-    /// Prepare the indicator — behaviour, tight glyph-sized footprint, and state observer. Like the
+    /// Prepare the indicator — behavior, tight glyph-sized footprint, and state observer. Like the
     /// hidden-files eye it installs no accessory of its own: `installSidebarToggle` places it just
     /// right of the sidebar button in the leading accessory, where a badge that comes and goes
     /// extends the row rightwards into empty title bar instead of moving anything already there.
@@ -29,7 +29,7 @@ extension BrowserWindowController {
         )
         image?.isTemplate = true
         updateIndicatorButton.image = image
-        // Accented rather than the cluster's plain template grey: this is the one button in the
+        // Accented rather than the cluster's plain template gray: this is the one button in the
         // titlebar that is asking for attention, and it only ever shows when it has something to ask.
         // The user's accent, `.controlAccentColor` untouched (PLAN.md §M15 Slice 2).
         updateIndicatorButton.contentTintColor = AppPreferences.shared.palette.resolvedAccent

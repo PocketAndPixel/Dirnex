@@ -12,7 +12,7 @@ extension QuickViewPreviewView {
     static let swipeAnimation = "quickViewSwipe"
     static let flipInDuration: CFTimeInterval = 0.16
 
-    /// Draw the file `offset` points from centre while a two-finger swipe is under way
+    /// Draw the file `offset` points from center while a two-finger swipe is under way
     /// (PLAN.md §M11). Driven straight from `NSEvent.trackSwipeEvent`'s progress, so this is called
     /// at the system's tracking rate both while the fingers are down and through the animation it
     /// runs after they lift.
@@ -68,7 +68,7 @@ extension QuickViewPreviewView {
         )
     }
 
-    /// Put the file back at centre with no animation. The belt to `trackSwipeEvent`'s braces: its
+    /// Put the file back at center with no animation. The belt to `trackSwipeEvent`'s braces: its
     /// handler always terminates, but a surface torn down mid-gesture must not come back shifted.
     func resetSwipe() {
         content.layer?.removeAnimation(forKey: Self.swipeAnimation)

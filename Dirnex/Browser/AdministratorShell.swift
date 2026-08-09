@@ -63,7 +63,7 @@ enum AdministratorShell {
 
         let message = String(data: errorData, encoding: .utf8)?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        // Cancelling the auth dialog is AppleScript error -128 ("User canceled") — a choice, not a
+        // Canceling the auth dialog is AppleScript error -128 ("User canceled") — a choice, not a
         // failure, so it closes nothing and shows no error.
         if message.contains("-128") { throw Failure.cancelled }
         throw Failure.failed(message)

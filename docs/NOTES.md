@@ -12,7 +12,7 @@ at build time.
 - **Probe the real thing before writing any Swift.** Capture real `git` / `sftp` / `xattr`
   bytes, or measure the real syscall, and design from what was observed. This has caught a
   wrong assumption in *every* pass that used it: the `-z` rename pair is reversed; `sftp`'s
-  `ls` is not GNU's; Finder's tag colour indices are not its display order;
+  `ls` is not GNU's; Finder's tag color indices are not its display order;
   `intercellSpacing.width` is 17 pt, not 2–3; the terminal drawer needs no shell-integration
   snippet because `proc_pidinfo` already knows. The one pass that assumed a format
   (`SFTPListingParser`) had to be reworked against reality.
@@ -139,7 +139,7 @@ at build time.
   instead of shifting the controls already there. Only launching catches this.
 - **Collapsing a split-view sidebar that holds first responder strands keyboard focus on the bare
   window.** When the focused view is hidden by the collapse, AppKit drops first responder to the
-  `NSWindow` itself rather than to a sibling — so every pane goes grey and *Tab cannot recover it*,
+  `NSWindow` itself rather than to a sibling — so every pane goes gray and *Tab cannot recover it*,
   because Tab is a pane key that only fires while a pane is first responder (there is no window-level
   key-view loop to fall back on). `NSSplitViewController.toggleSidebar(_:)` is the one funnel both
   the menu/palette (`toggleSidebar:` selector) and the titlebar button call, so a subclass overriding
@@ -149,7 +149,7 @@ at build time.
 - **A synthesized row's cell comes out of the *same* reuse pool as the real ones, so everything the
   real rows set has to be cleared on it — and the compiler cannot tell you what "everything" is.**
   `makeView(withIdentifier:)` keys on the **column**, so the `..` row's name cell is a recycled file
-  cell; `parentRowCell` diligently reset the mark, the dim, the type colour, the density, the palette
+  cell; `parentRowCell` diligently reset the mark, the dim, the type color, the density, the palette
   and all four tree properties, and never touched the tag dots or the cloud badge — so scrolling a
   tagged file's cell up to the top hung its dots on the way *out of* the folder. It survived two
   milestones because a `reloadData` empties the pool outright (measured, see `FileCellView.density`),
@@ -192,7 +192,7 @@ at build time.
   test at all: with a preview up, ⌘L and typing `/tmp/12` put **`/tmp/`** in the path field, both
   digits eaten, caret visibly in the text. It cannot be caught by a test that drives the monitor
   (the monitor did exactly what it was told) and it is invisible in every screenshot that does not
-  include someone typing. When adding a branch to a monitor, **read the predicate the neighbouring
+  include someone typing. When adding a branch to a monitor, **read the predicate the neighboring
   branch guards on, not just its name** — and expect the answer to differ: `digitBelongsToQuickView`
   deliberately drops Esc's `FileTableView` exemption, because the table is where the digits must
   work and is where Esc must not.
@@ -203,7 +203,7 @@ at build time.
   ⎋ did not close it, and the only way out was a double-click or clicking outside. It fails in the
   quiet direction twice over — nothing logs, and the *keystrokes are silently dropped* rather than
   misrouted. The one visible tell reads as cosmetic: AppKit draws the same selection unemphasized
-  (grey) without focus and emphasized (blue) with it, so "the row turns blue when I click it" is not
+  (gray) without focus and emphasized (blue) with it, so "the row turns blue when I click it" is not
   a second highlight, it is the focus moving. Fix at the source — `acceptsFirstResponder = false` on
   the list subclass. `mouseDown:` still selects, so clicking keeps working and the selection settles
   on one appearance for mouse and keyboard alike.
@@ -275,7 +275,7 @@ at build time.
     navigated. That inverts the natural design for a generated page — M18's plan said to re-generate
     on `viewDidChangeEffectiveAppearance` — and the difference is not cosmetic: a reload throws away
     the user's reading position every time the system crosses sunset. Emit **both** palettes under
-    one media query instead. Two neighbours from the same run: `underPageBackgroundColor` already
+    one media query instead. Two neighbors from the same run: `underPageBackgroundColor` already
     resolves to `#1E1E1E` in dark so there is no white flash to fix, and *assigning* it freezes it at
     the current appearance (the captured-`cgColor` trap); and the system fonts have no usable CSS
     family name (`.AppleSystemUIFont`), so the family comes from the CSS generics and only the
@@ -431,7 +431,7 @@ at build time.
   — 1.00× for a slow swipe against **5.18×** for a fast one over the same glass — so any threshold
   expressed in it silently demands more distance the slower you move, which reads as "I have to flick
   it to make it work". `trackSwipeEvent` answers all of that and gives the feel every other app on the
-  machine has. Honour `NSEvent.isSwipeTrackingFromScrollEventsEnabled` rather than substituting your
+  machine has. Honor `NSEvent.isSwipeTrackingFromScrollEventsEnabled` rather than substituting your
   own gesture: a user who turned "Swipe between pages" off has already said what they want.
   - **But its *post-lift animation* is not yours to want.** Measured over 17 real swipes: the fingers
     are down **41–123 ms** (median 82) and the animation the OS then runs takes **177–745 ms**
@@ -460,7 +460,7 @@ at build time.
     it in a minute. Prove the log path works with a synthetic event *first* (it reaches the monitor
     even though it fails the gate), then ask.
   - The corollary is the expensive one: **tested, headless code is not automatically the right place
-    for a decision.** `SwipeStepper` was pure, and had 23 passing tests pinning behaviour that should
+    for a decision.** `SwipeStepper` was pure, and had 23 passing tests pinning behavior that should
     never have been Dirnex's to define. Tests keep a decision from drifting; they cannot tell you it
     was yours to make.
 - **A preview the user can click into takes the mode's own keys away with it, and a *gesture* that
@@ -504,7 +504,7 @@ at build time.
   - **Three plausible fixes measured worse or identical, and all three are reverted.** Decoding
     images off-main via `CGImageSourceCreateThumbnailAtIndex` (so `NSImage(data:)`'s draw-time decode
     can't stall the slide) was *worse* — 36 dropped frames against 19 — because it re-pays a full
-    decode per visit where `NSImage`'s own caching did not; adding an LRU store and neighbour
+    decode per visit where `NSImage`'s own caching did not; adding an LRU store and neighbor
     prefetching on top brought it back to exactly par (13/13 against the plain path's 11/15), not
     better; and deferring the animation one run-loop turn so the texture lands first was worse again.
     A/B them in one binary behind an env var and alternate the runs — run-to-run variance is large
@@ -541,11 +541,11 @@ at build time.
 - **Right-click menu items must capture their paths at build time** into `representedObject`,
   and entry-vs-`..` must be decided from the clicked row, not a cursor flag — a right-click on a
   marked row leaves that flag stale.
-- **Two colours separated only by alpha will invert somewhere.** A progress track and its ink
-  drawn in the same colour at 0.25 alpha made an *empty* bar read as the heaviest row on screen,
+- **Two colors separated only by alpha will invert somewhere.** A progress track and its ink
+  drawn in the same color at 0.25 alpha made an *empty* bar read as the heaviest row on screen,
   because the track owns the full column width where the ink may own a point. No test catches
   this; it was caught in a screenshot.
-- **"Maximum contrast" is not the rule for text on a colour — the system does not follow it, and
+- **"Maximum contrast" is not the rule for text on a color — the system does not follow it, and
   copying the system is what a user is comparing against.** Measured in both appearances before
   designing the M15 palette: `.controlAccentColor` is `#007AFF`, relative luminance **0.2114**,
   where white scores **4.02:1** and black **5.23:1**. So a WCAG-maximum rule picks *black*, while
@@ -555,20 +555,20 @@ at build time.
   works is **white unless it drops below 3:1, black otherwise**: 3:1 is the floor the system itself
   clears with room to spare, and whenever it *is* black's turn the background is above L=0.3, where
   black scores at least 7:1 — so it never trades legibility for familiarity, it only breaks the tie
-  in the band where both choices are legible. Note the two are measured against *different* colours:
+  in the band where both choices are legible. Note the two are measured against *different* colors:
   AppKit's emphasized selection is `.selectedContentBackgroundColor` (`#0064E1`, L=0.1455), a darker
   relative of the accent and not the accent itself, and there white wins under either rule.
-  - **The corollary is that the Follow-System path must fall back to the system colour, not derive
+  - **The corollary is that the Follow-System path must fall back to the system color, not derive
     one.** "An untouched install renders byte-identically" is only a claim you can make if nothing
     is recomputed for it, and the measurement above is exactly why: the derivation and the system
-    disagree on the one colour that matters most.
+    disagree on the one color that matters most.
   - **A derived foreground is appearance-independent, and that is the only way to claim "legible in
     both appearances".** Only one appearance is on screen at a time, so no screenshot can check the
-    other; a luminance test over the user's own sRGB colour resolves identically under `.aqua` and
+    other; a luminance test over the user's own sRGB color resolves identically under `.aqua` and
     `.darkAqua`, which is a claim a test can pin.
 - **The `.system*` palette is tuned for *fills*, not for text, and in light mode most of it is
-  unreadable on white.** "Use a system dynamic colour, it resolves per appearance for free" is the
-  natural answer to any two-appearance colour problem — it is what M17 opened on — and it is only
+  unreadable on white.** "Use a system dynamic color, it resolves per appearance for free" is the
+  natural answer to any two-appearance color problem — it is what M17 opened on — and it is only
   half true. Measured against `.textBackgroundColor` in both appearances with alpha composited:
 
   | | light, on `#FFFFFF` | dark, on `#1E1E1E` |
@@ -581,43 +581,43 @@ at build time.
   and the failures are the hues anything text-shaped wants most. It fails in the direction that hides
   it, too: a developer working in dark mode sees a perfect palette and has no reason to look. The
   shape that works is `NSColor(name:dynamicProvider:)` with an **authored** light value and the system
-  colour in dark, which keeps everything the system-colour answer was *for* (one colour object per
+  color in dark, which keeps everything the system-color answer was *for* (one color object per
   role, resolving itself, no persistence, no Settings) while making the claim testable.
   - `.secondaryLabelColor` and `.tertiaryLabelColor` carry **alpha** (0.50 and 0.26 in light), so
     `usingColorSpace(.sRGB)` alone reports them as pure black at 21:1. Composite onto the background
-    before measuring or the two most tempting "muted text" colours score wildly wrong — the tertiary
+    before measuring or the two most tempting "muted text" colors score wildly wrong — the tertiary
     one is really **1.88:1** in light and **2.26:1** in dark, i.e. unusable in both.
-  - **There is no system colour for "a panel slightly off the text background", and the two obvious
-    ones are the same colour.** Measured against `.textBackgroundColor` for M18's code fences:
+  - **There is no system color for "a panel slightly off the text background", and the two obvious
+    ones are the same color.** Measured against `.textBackgroundColor` for M18's code fences:
     `.windowBackgroundColor` and `.controlBackgroundColor` are **byte-identical** to it in both
     appearances (`#FFFFFF` / `#1E1E1E`), so either as a fill draws an invisible box;
     `.underPageBackgroundColor` is `#A1A1A1` in light and drops the M17 syntax palette to 1.77–3.31:1;
     and `.gridColor` **inverts** — `#E6E6E6` in light but `#1A1A1A` in dark, *darker* than the surface
     it would sit on (1.04:1), where `.separatorColor` behaves in both (1.25 / 1.34:1).
-  - **A fill under coloured text costs contrast the palette was measured without.** Even the gentlest
+  - **A fill under colored text costs contrast the palette was measured without.** Even the gentlest
     one — `.quaternaryLabelColor` composited, `#E6E6E6` — takes `typeOrTag` from 4.59:1 to **3.68:1**,
     because M17 authored those values against `.textBackgroundColor` and they clear AA *there*. So a
-    code fence that carries syntax colours is delimited by a **border** and keeps the page's own
+    code fence that carries syntax colors is delimited by a **border** and keeps the page's own
     background; the fill is only safe on inline code, which carries `.textColor` and nothing else.
 - **`NSTableView` makes a plain `NSTableRowView` when the delegate declines — in every one of its
   five styles.** Probed rather than assumed, and it inverted a design: a row-view subclass that
   defers to `super` is byte-for-byte the stock drawing, so it can be installed **unconditionally**
-  instead of switched in only when a custom colour is set. Switching classes as a preference changes
+  instead of switched in only when a custom color is set. Switching classes as a preference changes
   leaves a reuse pool of the other kind to reason about; deferring leaves nothing to get wrong.
   `interiorBackgroundStyle` is derived from `isEmphasized` (probed: `true` → `.emphasized`, `false`
   → `.normal`), so a custom `drawSelection(in:)` and the cell's own `backgroundStyle` are driven by
-  the *same* flag and cannot disagree — which is what lets a cell pick its text colour without the
+  the *same* flag and cannot disagree — which is what lets a cell pick its text color without the
   row view telling it anything.
-  - **Only the emphasized half is worth owning.** AppKit's *unemphasized* selection is a pure grey
+  - **Only the emphasized half is worth owning.** AppKit's *unemphasized* selection is a pure gray
     in both appearances — `#DCDCDC` light, `#464646` dark, zero saturation in each — so it discards
     the accent's hue on purpose, and in dark mode it is **darker** than the emphasized fill
     (L=0.0612 against 0.1175) rather than fainter. There is no relationship to re-derive: hand the
     inactive pane back to `super` and both panes keep the focus signal they already had.
   - A `swift`-script probe cannot make its window key, so `isEmphasized` reads `false` throughout
     and the two states cannot be told apart that way. Probe the *derivation* (`isEmphasized` set by
-    hand on a detached row view) and leave the focus behaviour to the app that already ships it.
+    hand on a detached row view) and leave the focus behavior to the app that already ships it.
 - **A source list's selection is the same `drawSelection(in:)` — but the shape is a pill, and the
-  probe that measures it needs its own override to exist at all.** Owning the sidebar's cursor colour
+  probe that measures it needs its own override to exist at all.** Owning the sidebar's cursor color
   (the same one the panes draw) meant reproducing AppKit's geometry rather than filling a rectangle:
   measured by letting `super` draw into a bitmap and counting the ink, it is inset **10 pt** on each
   side, the **full row height**, with a corner radius of **8 pt** — constant across widths
@@ -630,29 +630,29 @@ at build time.
     AppKit's own drawing — and put no cell view in the row, or the label's glyphs are what the alpha
     scan finds.
   - **Tinting `super`'s output instead of drawing it was measured and is worse.** Rendering `super`
-    into a `CGLayer` and painting the colour through its alpha (`.sourceIn`) looks like the
+    into a `CGLayer` and painting the color through its alpha (`.sourceIn`) looks like the
     shape-proof answer and came out **half a point wide on each side** — a fatter pill than AppKit's.
     The hand-drawn path matched more closely than the one that reuses AppKit's own pixels.
   - **A cell cannot tell a selected-but-unfocused row from an ordinary one**: `backgroundStyle` is
     `.normal` for both (probed). That matters because a source list tints the *unfocused* selected
-    row's glyph with the accent — a second place the cursor colour belongs — so the row view has to
-    **push** the colour down to its cells from `isSelected`/`isEmphasized`, plus `didAddSubview`,
-    since the controller hands the row its colour before the cell is attached.
+    row's glyph with the accent — a second place the cursor color belongs — so the row view has to
+    **push** the color down to its cells from `isSelected`/`isEmphasized`, plus `didAddSubview`,
+    since the controller hands the row its color before the cell is attached.
     - **The glyph and the label are two pushed values, not one.** They looked like one — both need a
-      colour on the filled pill — but the colours mean opposite things: the glyph wears the *cursor
-      colour itself*, while the label only ever takes the **derived** foreground that stays legible
-      *on* that fill. Collapsing them into a single push therefore carried the raw colour into the
-      unfocused row's text too, so a custom palette recoloured the sidebar's names — a change nothing
-      asked for, in the one place the user reads rather than scans. Push the glyph's colour and the
+      color on the filled pill — but the colors mean opposite things: the glyph wears the *cursor
+      color itself*, while the label only ever takes the **derived** foreground that stays legible
+      *on* that fill. Collapsing them into a single push therefore carried the raw color into the
+      unfocused row's text too, so a custom palette recolored the sidebar's names — a change nothing
+      asked for, in the one place the user reads rather than scans. Push the glyph's color and the
       label's separately: the label is then untouched in every state but the pill, and the sidebar's
       text reads the same whatever palette is set.
   - **`NSImageView.contentTintColor` is ignored for a template image in an *emphasized*
     `NSTableCellView`** — the cell draws it white regardless, pixel-identical to an untinted control,
     in either assignment order (probed both). It works while the cell is `.normal`, which is the
     half that already looked right, so the bug reads as "the icon didn't follow the label" on
-    exactly one of two states: a pale cursor colour gave a **black label beside a white glyph**.
-    Bake the colour into the image instead — draw it and `fill(using: .sourceAtop)`, which replaces
-    the colour and keeps the coverage, then clear `isTemplate` so there is nothing left for AppKit to
+    exactly one of two states: a pale cursor color gave a **black label beside a white glyph**.
+    Bake the color into the image instead — draw it and `fill(using: .sourceAtop)`, which replaces
+    the color and keeps the coverage, then clear `isTemplate` so there is nothing left for AppKit to
     re-tint. `NSImage.SymbolConfiguration(paletteColors:)` measured identical and is worse: it only
     answers for SF Symbols, while `.sourceAtop` tints any template image. Keep the *original* around
     and re-derive from it, or successive tints compound onto the last copy.
@@ -676,7 +676,7 @@ at build time.
       Iterate `rep.pixelsWide`/`pixelsHigh`.
     - **This is also the class of bug a computer-use screenshot cannot judge**, and it was called
       *fixed* off one: a zoom of a 2 pt chevron over a pale row read as dark when the glyph was
-      provably white. The capture is downsampled below 1x (the geometry note above), and colour goes
+      provably white. The capture is downsampled below 1x (the geometry note above), and color goes
       the same way as geometry once the ink is a couple of points wide. `screencapture` from the shell
       tool is refused (no permission), so the bitmap probe is the instrument — not the screen.
   - The window-key state is a third one and is not reachable from either side: states 2 (window key,
@@ -778,7 +778,7 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   Merge into one literal, using `\` line continuations inside a `"""` literal to keep it readable —
   the *literal* has to be single, the source line does not.
 - **The same overload pair has a second, opposite trap: a literal that *does* bind to
-  `LocalizedStringKey` is parsed as Markdown, so a glob example loses its wildcards.** The M15 colour
+  `LocalizedStringKey` is parsed as Markdown, so a glob example loses its wildcards.** The M15 color
   rules teach their syntax with `*.jpg;*.png`, which is a valid **emphasis pair** — `*…*` — so the
   rule editor's placeholder and its footer both rendered as an italic ".jpg;" followed by ".png",
   in the two strings whose entire job is to show what a pattern looks like. Note the symmetry with
@@ -947,7 +947,7 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   there is nothing to widen, nothing to compress, and the placeholder is the *only* thing in the
   pill. Measured in the pill's own font, "Add Shortcut" is 89 pt and its translations reach 215 pt
   (uk, de) and **252 pt** (it) — 7 of the 14 shipped languages over budget, and "Type shortcut…"
-  another 5 — and because the label was merely centred with no width constraint it *overran* on both
+  another 5 — and because the label was merely centered with no width constraint it *overran* on both
   sides rather than truncating, so the words spilled outside the rounded rect. A `plus` symbol
   (recording: `keyboard`) fits every language by construction, and the tooltip has no width to
   overrun: the existing keys were reused, so all 14 translations carried over unchanged and their
@@ -1040,8 +1040,8 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   never see because they only check symbolic registry keys.
   - **That cross-check was written down here and never run, and 26 strings shipped English for two
     milestones because of it.** Found 2026-08-09: the whole Settings ▸ Panels surface M15 added — the
-    row-height and size-visualization pickers with their footers, the three colour wells, the
-    file-type colour rules editor — plus M18's undrawn-diagram sentence and M14's multi-selection
+    row-height and size-visualization pickers with their footers, the three color wells, the
+    file-type color rules editor — plus M18's undrawn-diagram sentence and M14's multi-selection
     failure detail. Every one was correctly `String(localized:)`-wrapped, so no bare-literal sweep
     could see it; every one was absent from the catalog, so it compiled **to itself** and rendered in
     English inside a fully translated build. Nothing logs, `swift test` and `xcodebuild test` were
@@ -1138,7 +1138,7 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   - The general shape, and the one worth carrying: **a decision keyed off displayed text is a
     localization bug waiting for a translator.** The title-matching sites are easy to grep once you
     know to look (`titles.contains($0.title)`, `if button.title == …`); what makes them expensive is
-    that they fail as *behaviour*, so no string sweep and no coverage test over the catalog can see
+    that they fail as *behavior*, so no string sweep and no coverage test over the catalog can see
     them. Key off an identity the display layer doesn't own.
 - **An `NSAlert` reserves vertical space for its `accessoryView` from that view's *frame*, so a
   pure-Auto-Layout accessory (only `translatesAutoresizingMaskIntoConstraints = false` + internal
@@ -1163,7 +1163,7 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
     **synchronously** right after the call — so `styleMask.remove(.resizable)` belongs there, with
     nothing deferred. Removing it leaves the frame untouched and disables the zoom button. Worth
     doing for any controller that pins a fixed width *and* height: a resize corner Auto Layout then
-    refuses to honour is a worse lie than no corner.
+    refuses to honor is a worse lie than no corner.
   - The window draws its content view controller's `title`, and a **`nil` one renders as the literal
     word "Untitled"** — so a controller with no name gets a visibly broken title bar rather than an
     empty one. Set it in the designated initializer, before the animator builds the window.
@@ -1204,7 +1204,7 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
     themselves** — an origin of 99 999 came back as 1688, off-screen negatives came back with the
     title bar reachable — so a hand-rolled clamp only second-guesses AppKit. What AppKit *cannot*
     catch is a saved position that is perfectly valid on a display the app is no longer using: that
-    needs its own check (is the restored centre on the parent window's screen?), or every dialog
+    needs its own check (is the restored center on the parent window's screen?), or every dialog
     opens back on the laptop screen the day an external display arrives.
 - **A SwiftUI-hosted window can consume Escape before any AppKit handler runs, and a local key
   monitor is the way in.** A monitor runs *ahead of responder dispatch*, so it sees the key whatever
@@ -1283,7 +1283,7 @@ against a fake.
   - **Level 0 means three different things**, so it is not offerable as one "Store" item: a true
     stored container for zip and gzip (output larger than the input), silently clamped to 1 by
     bzip2, and still compressing for the 7z writer (540 259 — *smaller* than its own level 1).
-  - `.normal` is therefore modelled as **passing no option at all**, not as an explicit `6`:
+  - `.normal` is therefore modeled as **passing no option at all**, not as an explicit `6`:
     libarchive's per-format defaults are not all 6, and the default is what "normal" means.
 
 ### sftp / ssh
@@ -1368,7 +1368,7 @@ off a man page.
   **only** together with a pin — that pairing is trust-on-first-use with SSH's teeth; `--insecure`
   alone is the blanket "don't verify" that must never ship. Making it an enum rather than two
   booleans is what keeps a later edit from setting one without the other.
-- **`curl -w '%{certs}'` prints the chain as PEM** plus labelled subject/issuer/dates, so the app
+- **`curl -w '%{certs}'` prints the chain as PEM** plus labeled subject/issuer/dates, so the app
   needs no `openssl` to show the user what it is being asked to trust.
 - **What `--pinnedpubkey` hashes is the `SubjectPublicKeyInfo`, not the certificate**, so it must be
   walked out of the DER (skip the optional `[0]` version, then five fields of `TBSCertificate`) and
@@ -1803,7 +1803,7 @@ written. Several results changed the model, not just confirmed it.
   text. So model the **13 bits** `acl_to_text` produces, not `chmod(1)`'s 17 input tokens, or a
   directory ACL carries the same bit twice under two names. The UI count still holds: a file offers
   12, a directory 13 rights + 4 inheritance flags = 17 checkboxes, with the four data bits
-  *relabelled* per kind at the display layer.
+  *relabeled* per kind at the display layer.
 - **The canonical entry form `acl_from_text` accepts needs GUID + name + numeric id, all three.**
   Probed: `user:GUID:oleg:501:allow:read` round-trips, but `user:GUID::allow:read` (empty name) and
   `user:GUID:allow:read` (no id) are both `EINVAL`. So the serializer must carry the resolved name
@@ -1821,9 +1821,9 @@ written. Several results changed the model, not just confirmed it.
       still displaying one it finds.
     - **A subject whose GUID answers to no account comes back with an empty name *and* an empty id**
       (`user:GUID:::allow:read`), which `ls -le` shows as the bare GUID. Ordinary for a file copied
-      from another Mac or an account since deleted, so the numeric id has to be modelled as optional.
+      from another Mac or an account since deleted, so the numeric id has to be modeled as optional.
     - Both shapes are **accepted back** by `acl_from_text`, so they round-trip losslessly and an edit
-      to a neighbouring entry leaves them untouched — which is the case that actually reaches a user,
+      to a neighboring entry leaves them untouched — which is the case that actually reaches a user,
       since the editor writes the whole list back.
     - **The GUID is the identity and the name/id are its resolution, which the kernel re-derives.**
       Hand `acl_from_text` a GUID with a name and id it does not believe (`…:ghost:31337:allow:read`)
@@ -1866,7 +1866,7 @@ written. Several results changed the model, not just confirmed it.
     ordering rule above reads as if it covered this and does not — it only fires when the user is also
     changing the mode. Both bits go; the fix is to re-write the *current* mode after the chown
     whenever the file carries either. This is the general shape worth carrying: **a syscall that
-    rewrites a neighbouring field breaks the diff-based contract** ("a field left alone is never
+    rewrites a neighboring field breaks the diff-based contract** ("a field left alone is never
     written"), so the plan owes a repair step, not just an ordering.
 - **Setting `st_mtime` earlier than `st_birthtime` drags the birth time back to match** — the same
   family, found in the same probe. A file born today, given an mtime of 2001, reports a *creation*
@@ -2009,7 +2009,7 @@ probed live (2026-08-01/02) before any Swift; several results decided the shape.
   argv) with administrator privileges' -e 'end run' -- "<body>"`. Probed: a body carrying single
   quotes, backslashes and `$(touch pwned)` came back through `argv` **inert** (returned as data, no
   substitution). Embedding it in the AppleScript text instead would add a third quoting layer (escape
-  `\` and `"`) on top of the shell quoting inside the body — this avoids it entirely. Cancelling the
+  `\` and `"`) on top of the shell quoting inside the body — this avoids it entirely. Canceling the
   auth dialog is AppleScript error **-128** ("User canceled"), surfaced on stderr with a nonzero exit;
   treat it as a choice, not a failure. `do shell script` runs `/bin/sh` and, on a nonzero exit, reports
   `execution error: <stderr> (<code>)`.
@@ -2023,14 +2023,14 @@ probed live (2026-08-01/02) before any Swift; several results decided the shape.
   it (probed: order preserved on readback via `ls -le`). The spec is the friendly form
   `<user|group>:<name> <allow|deny> <rights,inherit-keywords>`, and `read/write/execute/append` are
   accepted **verbatim on a directory** — `chmod` translates them to `list/add_file/search/
-  add_subdirectory` itself — so no per-kind relabelling. Three entries `chmod` *cannot* express, which
+  add_subdirectory` itself — so no per-kind relabeling. Three entries `chmod` *cannot* express, which
   make the whole ACL a stated omission rather than a wrong write: a **bare-GUID / unresolved subject**
   (`chmod: Unable to translate '…' to a UUID`), an **inherited** entry (`+a#` creates it explicit,
   losing the `inherited` flag), and a token this build only keeps verbatim.
 - **No stock shell tool sets the birth/Created date** — `SetFile` is Xcode-CLT-only (and whole-second,
   US-format), so a `setCreationDate` step is omitted and named, never faked. `touch -t` is
   **whole-second**, which matches `NSDatePicker`'s own resolution; set only the time that changed
-  (`touch -a` / `touch -m` separately, since `touch -t` writes one value) so an untouched neighbour
+  (`touch -a` / `touch -m` separately, since `touch -t` writes one value) so an untouched neighbor
   keeps its sub-second value. `chmod`/`chflags`/`chown`/`chgrp`/`touch` all take `-h` to act on a
   symlink itself, matching the `l*` syscalls the read path uses.
 - **Verify the translation on an *owned* file, unprivileged.** The whole point is that the *same*
@@ -2211,7 +2211,7 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   passed: the two strings genuinely differ, just not in any pixel the user sees. Front-load the
   varying part (`someone@gmail.com — Google Drive`) and assert on a *prefix* rather than on
   inequality, so the test fails for the same reason the screenshot did. Only a screenshot caught it.
-- **A window-level completion handler has to name *which* pane it means, and the neighbour it was
+- **A window-level completion handler has to name *which* pane it means, and the neighbor it was
   copied from is usually answering a different question.** An encrypted pack runs on the operation
   queue, so its outcome lands on the window rather than the pane that started it — and
   `presentPackOutcome` reached for `focusedPanel`, copied from the checksum outcome three files away.
@@ -2224,10 +2224,10 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   `nil` when neither is, since the user may have navigated both away during a job that runs for
   minutes. Same family as the two below: one question, two spellings, and the compiler checks
   neither.
-- **A "can this apply here" predicate lives in *two* places — the behaviour and the menu that gates
+- **A "can this apply here" predicate lives in *two* places — the behavior and the menu that gates
   it — and they drift silently.** Bringing size bars into the tree meant widening `areSizeBarsVisible`
   (drop `!panel.isTree`), and every core test, the app suite, both linters and the build passed with
-  the bars fully wired — but the View ▸ Size Visualization menu item stayed **greyed out in a tree**,
+  the bars fully wired — but the View ▸ Size Visualization menu item stayed **grayed out in a tree**,
   because `validateToggleItem` carried its own hand-copied twin of the same predicate
   (`… && !panel.isTree`). Nothing could catch it but launching: a disabled menu item swallows its own
   key equivalent too, so ⌃B was dead as well, and the feature was unreachable while every automated

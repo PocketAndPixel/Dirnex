@@ -29,7 +29,7 @@ public actor FileOperationQueue {
     private let maxConcurrent: Int
     private let now: @Sendable () -> Date
 
-    /// Every job ever enqueued, keyed by id; finished and cancelled jobs stay so the
+    /// Every job ever enqueued, keyed by id; finished and canceled jobs stay so the
     /// snapshot can show their outcome until the caller clears them.
     private var jobs: [OperationJobID: Job] = [:]
     /// Enqueue order — the FIFO the scheduler scans, and the render order of the snapshot.
@@ -224,7 +224,7 @@ public actor FileOperationQueue {
         guard var job = jobs[id] else { return }
         job.report = report
         // The engine sets `wasCancelled` when it unwound on a cancel — reflect that as a
-        // cancelled job rather than a finished one, even though it produced a report.
+        // canceled job rather than a finished one, even though it produced a report.
         job.status = report.wasCancelled ? .cancelled : .finished
         jobs[id] = job
         runningIDs.remove(id)
@@ -271,7 +271,7 @@ public actor FileOperationQueue {
 
     /// Cancel one job. A waiting job is dropped before it starts; a running (or paused) job
     /// is told to unwind — the engine cleans up any half-written file and reports back with
-    /// `wasCancelled`, at which point `complete` marks it cancelled.
+    /// `wasCancelled`, at which point `complete` marks it canceled.
     public func cancel(_ id: OperationJobID) {
         guard var job = jobs[id] else { return }
         switch job.status {
@@ -281,7 +281,7 @@ public actor FileOperationQueue {
             publish()
             checkIdle()
         case .running, .paused:
-            controls[id]?.cancel() // completion arrives via the engine's cancelled report
+            controls[id]?.cancel() // completion arrives via the engine's canceled report
         case .finished, .cancelled:
             break
         }
@@ -293,7 +293,7 @@ public actor FileOperationQueue {
 
     // MARK: - Housekeeping
 
-    /// Drop every finished or cancelled job from the queue, leaving waiting, running, and
+    /// Drop every finished or canceled job from the queue, leaving waiting, running, and
     /// paused jobs untouched. The aggregate rolls up *all* known jobs, so without this a
     /// later batch would inherit the bytes of jobs already done — its progress bar would
     /// start part-full. The app calls this once the queue drains, matching a queue bar that
@@ -447,17 +447,17 @@ extension FileOperationQueue {
 /// The engine polls one closure — its `isCancelled` — between chunks and items. We route
 /// that through `checkpoint`, which does double duty: it reports cancellation, and while
 /// the queue is paused it *blocks the copy thread* on a condition variable until the job
-/// is resumed or cancelled. That gives a real mid-flight pause without the engine needing
+/// is resumed or canceled. That gives a real mid-flight pause without the engine needing
 /// to know the queue exists. A plain lock-guarded flag pair, safe to touch from the actor
 /// and the copy thread alike.
 private final class JobControl: @unchecked Sendable {
     private let condition = NSCondition()
-    private var cancelled = false
+    private var canceled = false
     private var paused = false
 
     func cancel() {
         condition.lock()
-        cancelled = true
+        canceled = true
         condition.broadcast() // wake a parked checkpoint so it can unwind
         condition.unlock()
     }
@@ -474,7 +474,7 @@ private final class JobControl: @unchecked Sendable {
     func checkpoint() -> Bool {
         condition.lock()
         defer { condition.unlock() }
-        while paused, !cancelled { condition.wait() }
-        return cancelled
+        while paused, !canceled { condition.wait() }
+        return canceled
     }
 }

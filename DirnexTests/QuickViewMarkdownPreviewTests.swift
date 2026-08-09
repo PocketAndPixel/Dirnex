@@ -9,7 +9,7 @@ import WebKit
 /// and where each one lands. What the page then *looks like* — the inlined images and the
 /// stylesheet — is `QuickViewMarkdownPageTests`.
 ///
-/// What is deliberately *not* here is anything about WebKit's own behaviour — whether a `#fragment`
+/// What is deliberately *not* here is anything about WebKit's own behavior — whether a `#fragment`
 /// click still passes `decidePolicyFor`, whether a base URL reaches a sibling image. Those are
 /// claims about a framework, and they were settled where such claims can be settled: against a real
 /// web view in a throwaway harness, with the numbers recorded in `QuickViewWebView` and

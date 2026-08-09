@@ -204,7 +204,7 @@ struct FileOperationQueueTests {
 
     // MARK: - Cancellation
 
-    @Test("cancelling a waiting job drops it before it ever starts")
+    @Test("canceling a waiting job drops it before it ever starts")
     func cancelWaitingJob() async throws {
         let tree = try TempTree()
         defer { tree.cleanup() }
@@ -226,7 +226,7 @@ struct FileOperationQueueTests {
 
         gate.releaseAll()
         await queue.waitUntilIdle()
-        // The cancelled job never entered the (gated) clone.
+        // The canceled job never entered the (gated) clone.
         #expect(gate.startedCount == 1)
         let final = await queue.snapshot()
         #expect(final.jobs.first { $0.id == second }?.status == .cancelled)
@@ -234,7 +234,7 @@ struct FileOperationQueueTests {
         #expect(!FileManager.default.fileExists(atPath: tree.path("dest/b.txt")))
     }
 
-    @Test("cancelling a running job unwinds the transfer and reports it cancelled")
+    @Test("canceling a running job unwinds the transfer and reports it canceled")
     func cancelRunningJob() async throws {
         let tree = try TempTree()
         defer { tree.cleanup() }
@@ -428,7 +428,7 @@ private struct GatedBackend: VFSBackend {
 }
 
 /// `LocalBackend` that forces the chunked copy path and then *spins* on the cancel hook
-/// instead of moving bytes — a transfer that runs until it's cancelled, so the queue's
+/// instead of moving bytes — a transfer that runs until it's canceled, so the queue's
 /// running-job cancellation is exercised without a race on file size.
 private struct BlockingCopyBackend: VFSBackend {
     let latch: Latch
@@ -459,7 +459,7 @@ private struct BlockingCopyBackend: VFSBackend {
     ) throws {
         latch.signal() // announce the copy is in flight
         while !isCancelled() { Thread.sleep(forTimeInterval: 0.005) }
-        throw CancellationError() // the queue cancelled us — unwind like the real copyFile
+        throw CancellationError() // the queue canceled us — unwind like the real copyFile
     }
 
     func createSymbolicLink(at destination: VFSPath, withDestination target: String) throws {

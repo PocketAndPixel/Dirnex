@@ -14,7 +14,7 @@ import Foundation
 /// and errors as return codes instead of scraped English.
 ///
 /// **The archive is built under a temporary name and renamed into place.** PLAN.md §6 requires it
-/// for archive *rewrites*; it matters just as much for a create, because a cancelled or failed pack
+/// for archive *rewrites*; it matters just as much for a create, because a canceled or failed pack
 /// otherwise leaves a plausible-looking archive that opens and is missing most of its contents.
 public enum EncryptedArchiveWriter {
     /// How far along the pack is. Byte counts cover regular-file data only — directories and

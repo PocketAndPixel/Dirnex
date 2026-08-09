@@ -11,7 +11,7 @@ extension PanelViewController: NSTableViewDataSource {
 }
 
 extension PanelViewController: NSTableViewDelegate {
-    /// Every row, so the cursor's background can be a colour the user chose (PLAN.md §M15 Slice 2).
+    /// Every row, so the cursor's background can be a color the user chose (PLAN.md §M15 Slice 2).
     /// Supplied unconditionally — `PanelRowView` hands an untouched palette straight back to `super`
     /// — so there is never a pool of one kind of row view to reconcile with the other; see the type
     /// for the probe that makes that identical rather than merely equivalent.
@@ -51,9 +51,9 @@ extension PanelViewController: NSTableViewDelegate {
 
         cell.marked = panel.isMarked(entry)
         cell.dimmed = entry.isHidden
-        // The file-type rule (PLAN.md §M15 Slice 3), on every column: Total Commander colours the
-        // whole row. Git no longer competes with it — its letter is a badge with a colour of its
-        // own rather than a coloured cell.
+        // The file-type rule (PLAN.md §M15 Slice 3), on every column: Total Commander colors the
+        // whole row. Git no longer competes with it — its letter is a badge with a color of its
+        // own rather than a colored cell.
         cell.typeColor = typeColor(for: entry)
         // Set on every render, not only when the preference changes: a recycled cell was built at
         // whatever density was current when it was made (PLAN.md §M15; see `FileCellView.density`).
@@ -122,7 +122,7 @@ extension PanelViewController: NSTableViewDelegate {
         let cell = tableView.makeView(withIdentifier: identifier, owner: self) as? SizeBarCellView
             ?? SizeBarCellView(identifier: identifier)
         // The bar, its track and its percentage are the other fill that has to survive the cursor's
-        // background (PLAN.md §M15 Slice 2) — derived from the same colour the text is.
+        // background (PLAN.md §M15 Slice 2) — derived from the same color the text is.
         cell.barView.emphasizedInk = AppPreferences.shared.palette.cursorForeground
         cell.barView.displayMode = AppPreferences.shared.sizeVizDisplayMode
         guard !isParentRow(row), let index = entryIndex(forRow: row),
@@ -144,7 +144,7 @@ extension PanelViewController: NSTableViewDelegate {
     }
 
     func tableView(_ tableView: NSTableView, didClick tableColumn: NSTableColumn) {
-        // An unsortable column has no header behaviour — clicking it does nothing rather than
+        // An unsortable column has no header behavior — clicking it does nothing rather than
         // silently re-sorting by whatever was last picked.
         guard let column = Column(rawValue: tableColumn.identifier.rawValue),
               let sortKey = column.sortKey else { return }

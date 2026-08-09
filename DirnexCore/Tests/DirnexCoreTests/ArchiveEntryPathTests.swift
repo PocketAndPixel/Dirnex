@@ -3,7 +3,7 @@ import Testing
 
 @testable import DirnexCore
 
-/// The traversal defence, at both levels: the pure rule, and a real hostile archive driven end to
+/// The traversal defense, at both levels: the pure rule, and a real hostile archive driven end to
 /// end through the extractor.
 ///
 /// The two attack fixtures were produced by **`bsdtar`**, which is the fact worth keeping. This is
@@ -36,8 +36,8 @@ struct ArchiveEntryPathTests {
         #expect(ArchiveEntryPath.sanitized("../escaped.txt") == .refused(.parentTraversal))
         #expect(ArchiveEntryPath.sanitized("../../escaped.txt") == .refused(.parentTraversal))
         #expect(ArchiveEntryPath.sanitized("notes/../../escaped.txt") == .refused(.parentTraversal))
-        // Refused rather than resolved even though this one happens to stay inside. Cancelling
-        // `a/../b` into `b` is one edit away from cancelling `a/../../b` into `../b`, and no
+        // Refused rather than resolved even though this one happens to stay inside. Canceling
+        // `a/../b` into `b` is one edit away from canceling `a/../../b` into `../b`, and no
         // legitimate archive needs it.
         #expect(ArchiveEntryPath.sanitized("a/../b") == .refused(.parentTraversal))
     }

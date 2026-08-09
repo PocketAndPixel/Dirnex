@@ -1,7 +1,7 @@
 import AppKit
 import DirnexCore
 
-/// The pack sheet's accessory controls, and the behaviour between them.
+/// The pack sheet's accessory controls, and the behavior between them.
 ///
 /// Three rules, each a fact about the formats rather than a style choice:
 /// - the format popup drives whether the **compression** popup is enabled, because `.tar` has no
@@ -108,10 +108,10 @@ final class PackAccessory: NSObject {
         syncEncryptionEnabled()
     }
 
-    /// Grey the compression row out for a format that compresses nothing, rather than leaving a
+    /// Gray the compression row out for a format that compresses nothing, rather than leaving a
     /// live control whose setting is silently dropped. The label is dimmed by hand: an
     /// `NSTextField` label is not a subview of the popup and so does not inherit its enabled
-    /// state, which leaves a fully-lit caption over a greyed control unless it is set here.
+    /// state, which leaves a fully-lit caption over a grayed control unless it is set here.
     private func syncLevelEnabled() {
         let enabled = format.supportsCompressionLevel
         levelPopup.isEnabled = enabled
@@ -121,7 +121,7 @@ final class PackAccessory: NSObject {
     /// Follow the format into the encryption row, and the encryption row into everything below it.
     ///
     /// Moving away from zip **resets the popup to None** rather than merely disabling it, so what
-    /// the sheet shows is what it will do: a greyed "AES-256" over a `.tar.gz` reads as a promise
+    /// the sheet shows is what it will do: a grayed "AES-256" over a `.tar.gz` reads as a promise
     /// the writer cannot keep. `encryption` refuses it either way, and this is what stops the two
     /// answers disagreeing on screen.
     private func syncEncryptionEnabled() {

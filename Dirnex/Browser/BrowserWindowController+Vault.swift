@@ -32,7 +32,7 @@ extension BrowserWindowController {
     }
 
     /// Whether a new vault can be made from here — a real, writable, on-disk folder. The New Vault
-    /// menu item and the palette entry both gate on this, so the command is greyed rather than
+    /// menu item and the palette entry both gate on this, so the command is grayed rather than
     /// failing into an alert once clicked.
     var canCreateVaultHere: Bool {
         guard let directory = focusedPanel.writeDirectory else { return false }

@@ -22,7 +22,7 @@ public enum PackRunner {
     ///   trapping, so a queue dispatch bug degrades to "nothing happened" instead of a crash.
     /// - `onProgress` reports bytes written against the byte total the *walk* measured, so the bar is
     ///   determinate from the first update rather than growing as directories are discovered.
-    /// - `isCancelled` is polled between chunks and between entries. A cancelled pack leaves nothing
+    /// - `isCancelled` is polled between chunks and between entries. A canceled pack leaves nothing
     ///   behind: the archive is built under a temporary name and only renamed into place on success,
     ///   so there is no half-archive to find later and mistake for a whole one.
     public static func run(

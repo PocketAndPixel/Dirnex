@@ -57,7 +57,7 @@ extension PanelViewController {
     /// whatever folder happens to be open would defeat the point of having tagged them.
     ///
     /// Matched by name only, because a name is all Spotlight indexes (`SpotlightQuery.tags`) — which
-    /// costs nothing here, since a tag *is* its name to macOS and the colour is only how it is drawn.
+    /// costs nothing here, since a tag *is* its name to macOS and the color is only how it is drawn.
     func runTagSearch(_ tag: FinderTag) {
         performSearch(SpotlightQuery(tags: [tag.name]), scope: nil, title: tag.name)
     }
@@ -115,7 +115,7 @@ extension PanelViewController {
 
     // MARK: - Virtual results tab
 
-    /// Install the hits as a virtual results tab (`PanelViewController+Results`), labelled by the
+    /// Install the hits as a virtual results tab (`PanelViewController+Results`), labeled by the
     /// query that produced them and carrying it so "Save Search…" can persist it.
     private func openSearchResults(
         _ entries: [FileEntry],

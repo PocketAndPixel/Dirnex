@@ -53,7 +53,7 @@ struct SyntaxLanguageTests {
 
     @Test("an unclaimed file is nil, which is not a failure")
     func unknownFiles() {
-        // Renders exactly as it did before the milestone: one colour, correct.
+        // Renders exactly as it did before the milestone: one color, correct.
         #expect(SyntaxLanguage.forFile(named: "notes.txt") == nil)
         #expect(SyntaxLanguage.forFile(named: "archive.zip") == nil)
         #expect(SyntaxLanguage.forFile(named: "README") == nil)

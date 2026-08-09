@@ -52,7 +52,7 @@ extension SidebarViewController {
         guard rows.indices.contains(row) else { return }
         if let section = rows[row].section {
             // On a header: collapse it if open; an already-closed header has nowhere further left to
-            // go, so it holds still rather than jumping to a neighbour.
+            // go, so it holds still rather than jumping to a neighbor.
             if !sectionCollapse.isCollapsed(section) {
                 foldFromKeyboard(section, collapsed: true)
             }

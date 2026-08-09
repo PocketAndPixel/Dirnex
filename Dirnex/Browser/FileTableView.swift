@@ -224,7 +224,7 @@ final class FileTableView: NSTableView {
         // loop — where a trackpad's small drift off the narrow glyph released outside it and the
         // toggle never fired. Deciding on mouse-down from the pointer's geometry removes tracking,
         // drift and the drag that `super.mouseDown` would otherwise start, and leaves the cursor put
-        // (Finder's behaviour — clicking a triangle never moves the selection).
+        // (Finder's behavior — clicking a triangle never moves the selection).
         if flags.isEmpty, row >= 0,
            let cell = disclosureCell(atRow: row, windowPoint: event.locationInWindow) {
             cell.onDisclosureToggle?()

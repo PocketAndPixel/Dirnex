@@ -79,15 +79,15 @@ public enum LocalizationKey {
         "search.age.\(age.rawValue).title"
     }
 
-    /// A Finder tag colour's name for the New Tag colour popup, e.g. `tag.color.red.title`.
+    /// A Finder tag color's name for the New Tag color popup, e.g. `tag.color.red.title`.
     /// `FinderTagColor.title` is `DirnexCore` data reached through a variable, so it gets the registry
     /// treatment. Keyed by a stable string token rather than the enum's `Int` raw value (Apple's tag
-    /// colour index) so the catalog reads as colour names, not indices, for the translator.
+    /// color index) so the catalog reads as color names, not indices, for the translator.
     public static func tagColor(_ color: FinderTagColor) -> String {
         let token: String
         switch color {
         case .none: token = "none"
-        case .grey: token = "grey"
+        case .gray: token = "gray"
         case .green: token = "green"
         case .purple: token = "purple"
         case .blue: token = "blue"

@@ -8,7 +8,7 @@ import Testing
 /// A flat list has only one answer and always did; a tree draws several directories at once, so the
 /// same question resolves to the folder the cursor's *row* lives in. Its own suite because
 /// `PanelTreeTests` sits at SwiftLint's `type_body_length` ceiling, and because this is a concept
-/// rather than another tree behaviour.
+/// rather than another tree behavior.
 @Suite("Panel — where a create lands")
 struct PanelCursorDirectoryTests {
     private let root = VFSPath.local("/root")

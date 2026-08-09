@@ -6,7 +6,7 @@ import DirnexCore
 /// The shape is the same in every case and is what makes each of those features cheap: the tab's
 /// *container* path is synthetic (`search:…`, `trash:…`) while every entry in it carries its real
 /// on-disk path, so Quick Look, copying to the other pane, tags and sync badges all reach the actual
-/// file. The pane recognises such a tab through `isResultsListing` and suppresses the behavior that
+/// file. The pane recognizes such a tab through `isResultsListing` and suppresses the behavior that
 /// assumes a real directory underneath: watching it, re-listing it by path, the `..` row, and the
 /// in-place mutations (New Folder, rename, paste).
 ///

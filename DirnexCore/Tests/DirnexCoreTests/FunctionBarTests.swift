@@ -142,7 +142,7 @@ struct FunctionBarTests {
         #expect(!slots.contains { $0.commandID == "userScript.Notes" })
     }
 
-    @Test("a script holding a reserved key is skipped, not honoured")
+    @Test("a script holding a reserved key is skipped, not honored")
     func scriptOnReservedKeyIsSkipped() {
         // F5 is Copy's menu equivalent; F11 belongs to macOS. Neither may be taken, however the
         // store came to hold it (a preset switch, or a hand edit).

@@ -115,14 +115,14 @@ public enum ConflictResolution: Sendable, Equatable {
     /// Transfer under a fresh non-colliding name (like `ConflictPolicy.keepBoth`).
     case keepBoth
     /// Stop the whole operation now, leaving already-completed items in place — the engine
-    /// reports it as cancelled, exactly like a mid-copy cancel.
+    /// reports it as canceled, exactly like a mid-copy cancel.
     case cancel
 }
 
 /// One item's error handed to `CopyEngine.run(onError:)` when a source can't be transferred —
 /// the hook behind TC's per-file "Skip / Retry / Abort" error dialog. Delivered synchronously
 /// on the engine's copy thread (like `ConflictContext`), so the resolver may block it while a
-/// prompt is on screen. A missing resolver means the engine keeps its default behaviour:
+/// prompt is on screen. A missing resolver means the engine keeps its default behavior:
 /// collect the failure and carry on to the remaining sources.
 public struct OperationErrorContext: Sendable, Equatable {
     /// Whether the operation is a copy or a move, for the dialog's wording.
@@ -148,7 +148,7 @@ public enum ErrorResolution: Sendable, Equatable {
     /// resolver is supplied, so an unattended run still finishes and summarizes.
     case skip
     /// Stop the whole operation now, leaving already-completed items in place. Reported as
-    /// cancelled, exactly like a mid-copy cancel or a conflict `.cancel`.
+    /// canceled, exactly like a mid-copy cancel or a conflict `.cancel`.
     case abort
 }
 
@@ -220,7 +220,7 @@ public struct OperationItemOutcome: Sendable, Equatable {
 }
 
 /// The outcome of running an operation: what got through, what was skipped by the
-/// conflict policy, what failed, and whether the user cancelled partway.
+/// conflict policy, what failed, and whether the user canceled partway.
 public struct OperationReport: Sendable, Equatable {
     public let completedItems: Int
     public let completedBytes: Int64

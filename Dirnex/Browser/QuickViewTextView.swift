@@ -50,7 +50,7 @@ final class QuickViewTextView: NSView {
 
     // MARK: - Content
 
-    /// Show a decoded file, coloured by `tokens` — which is empty for a file no grammar claims, and
+    /// Show a decoded file, colored by `tokens` — which is empty for a file no grammar claims, and
     /// that case is not special: an empty loop leaves the document in the view's own `.textColor`,
     /// exactly as it rendered before M17 existed.
     func show(_ preview: TextPreview, tokens: [SyntaxToken]) {
@@ -61,10 +61,10 @@ final class QuickViewTextView: NSView {
         truncationNotice.isHidden = !preview.isTruncated
     }
 
-    /// The document as one attributed string: the view's font and default colour over the whole of
-    /// it, then a foreground colour per token.
+    /// The document as one attributed string: the view's font and default color over the whole of
+    /// it, then a foreground color per token.
     ///
-    /// `textStorage` is measured safe here, which is worth stating because the neighbouring rule is
+    /// `textStorage` is measured safe here, which is worth stating because the neighboring rule is
     /// the opposite: reading `.layoutManager` drops the view back to TextKit 1, where forcing layout
     /// on a large document takes seconds (docs/NOTES.md), and `NSTextView.textStorage` is
     /// historically `layoutManager.textStorage`. Probed on a real window before this was written —
@@ -80,13 +80,13 @@ final class QuickViewTextView: NSView {
         for token in tokens {
             // The core promises in-range, ordered, non-overlapping offsets and its tests pin all
             // three — but an out-of-range `NSRange` here would *raise*, so a mismatched pair (a
-            // string and tokens scanned from a different one) has to fail as a missing colour
+            // string and tokens scanned from a different one) has to fail as a missing color
             // rather than as a crash in a preview. Ordered, so the first miss ends the loop.
             guard token.end <= length else { break }
-            guard let colour = SyntaxTheme.color(for: token.kind) else { continue }
+            guard let color = SyntaxTheme.color(for: token.kind) else { continue }
             attributed.addAttribute(
                 .foregroundColor,
-                value: colour,
+                value: color,
                 range: NSRange(location: token.offset, length: token.length)
             )
         }
@@ -139,7 +139,7 @@ final class QuickViewTextView: NSView {
     }
 
     /// The "first N of this file" strip, floating over the bottom of the text. A vibrant bar for the
-    /// same reason the header is one: it sits over the user's own content, where any fixed colour is
+    /// same reason the header is one: it sits over the user's own content, where any fixed color is
     /// wrong against half of it.
     private func buildNotice() {
         truncationNotice.material = .hudWindow

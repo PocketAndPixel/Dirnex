@@ -60,7 +60,7 @@ struct FullDiskAccessTests {
         #expect(FullDiskAccess.outcome(domain: NSPOSIXErrorDomain, code: Int(ENOENT)) == .missing)
     }
 
-    @Test("an unrecognised code or foreign domain reads as other failure")
+    @Test("an unrecognized code or foreign domain reads as other failure")
     func otherErrorsMapToOtherFailure() {
         #expect(FullDiskAccess.outcome(domain: NSCocoaErrorDomain, code: 999_999) == .otherFailure)
         #expect(FullDiskAccess.outcome(domain: NSURLErrorDomain, code: 257) == .otherFailure)

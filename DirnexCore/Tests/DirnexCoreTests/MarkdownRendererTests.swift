@@ -92,7 +92,7 @@ struct MarkdownRendererTests {
 
     @Test("a fence names its language in the class every other tool uses")
     func codeBlocks() {
-        // A named language is also *coloured* from Slice 2 on, by M17's scanner — so the plain
+        // A named language is also *colored* from Slice 2 on, by M17's scanner — so the plain
         // shape is the one an unclaimed info string keeps.
         #expect(html("```swift\nlet x = 1\n```").hasPrefix("<pre><code class=\"language-swift\">"))
         #expect(html("```\nplain\n```") == "<pre><code>plain\n</code></pre>")
@@ -127,7 +127,7 @@ struct MarkdownRendererTests {
         #expect(rendered.contains("<th class=\"align-left\">a</th>"))
         #expect(rendered.contains("<th class=\"align-right\">b</th>"))
         #expect(rendered.contains("<tbody>"))
-        // Appearance is the app's, so nothing here carries a colour or a length.
+        // Appearance is the app's, so nothing here carries a color or a length.
         #expect(!rendered.contains("style="))
     }
 
@@ -137,7 +137,7 @@ struct MarkdownRendererTests {
         #expect(rendered.contains("<td>1</td><td></td>"))
     }
 
-    @Test("front matter renders as a labelled table")
+    @Test("front matter renders as a labeled table")
     func frontMatter() {
         let rendered = html("---\ntitle: A note\n---\n\nBody.")
         #expect(rendered.contains("<table class=\"front-matter\">"))

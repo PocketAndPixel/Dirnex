@@ -45,7 +45,7 @@ extension BrowserWindowController {
     }
 
     /// The image under the cursor, if it is one — a `.sparsebundle` or a `.dmg` in a real local
-    /// pane. Also what the menu item and the palette entry gate on, so the command is greyed rather
+    /// pane. Also what the menu item and the palette entry gate on, so the command is grayed rather
     /// than silently doing nothing.
     var vaultImageUnderCursor: FileEntry? {
         guard focusedPanel.panel.path.backend == .local, !focusedPanel.isVirtualDirectory,

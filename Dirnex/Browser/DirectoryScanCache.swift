@@ -31,7 +31,7 @@ final class DirectoryScanCache<Input: Sendable, Snapshot: Sendable> {
     /// `willReplay` is true when a request arrived mid-scan and this key is about to be re-read.
     /// Every provider posts its notification either way — the snapshot just stored is real, and a
     /// pane should paint it rather than wait — but work that *schedules* something (the cloud
-    /// follow-up poll) must sit out, or it would be cancelled by the replay a line later while
+    /// follow-up poll) must sit out, or it would be canceled by the replay a line later while
     /// still counting against its own budget.
     typealias Completion = (VFSPath, Snapshot?, _ willReplay: Bool) -> Void
 
@@ -55,7 +55,7 @@ final class DirectoryScanCache<Input: Sendable, Snapshot: Sendable> {
     /// The input for each key, as of its most recent request — kept so a debounced or replayed run
     /// uses the *latest* listing rather than the one that happened to schedule it.
     private var requested: [VFSPath: Input] = [:]
-    /// The pending debounce timer per key — cancelled and replaced by each new request.
+    /// The pending debounce timer per key — canceled and replaced by each new request.
     private var scheduled: [VFSPath: Task<Void, Never>] = [:]
     /// Keys with a scan in flight, and those whose changes arrived while it ran (so the snapshot we
     /// are about to store is already known to be stale and must be re-read once).

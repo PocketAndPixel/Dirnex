@@ -6,7 +6,7 @@ import Testing
 
 /// The app-side runner that spawns a `UserScript` (PLAN.md §M6 "user actions — shell scripts
 /// receiving selection as argv/env"). `DirnexCore.UserScript` is unit-tested for the argv/env it
-/// *builds*; these tests spawn real `/bin/sh` processes to prove the runner honours that contract
+/// *builds*; these tests spawn real `/bin/sh` processes to prove the runner honors that contract
 /// end-to-end — the working directory, the merged `DIRNEX_*` environment, the per-file fan-out,
 /// exit-code/stderr reporting, and — the load-bearing one — that an attacker-controlled filename
 /// rides in `argv` as inert data and cannot execute.

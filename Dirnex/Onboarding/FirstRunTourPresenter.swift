@@ -12,7 +12,7 @@ enum FirstRunTourPresenter {
 
     /// Launch-time policy: on a fresh install, walk the user through the tour once and then hand off
     /// to Full Disk Access onboarding. On every later launch (tour already seen) skip straight to
-    /// the FDA check, so its own one-shot first-run behaviour is preserved untouched.
+    /// the FDA check, so its own one-shot first-run behavior is preserved untouched.
     static func presentIfNeeded(over window: NSWindow?) {
         // Never during `xcodebuild test`: the app test host launches the real delegate, and a
         // first-run window has no business popping up mid-suite or flipping the shared latch. FDA's

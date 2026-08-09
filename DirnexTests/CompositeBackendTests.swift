@@ -3,12 +3,12 @@ import Testing
 
 @testable import Dirnex
 
-/// The pane's routing backend reports capabilities *per path* so the panel greys operations
+/// The pane's routing backend reports capabilities *per path* so the panel grays operations
 /// off the current location's real backend (PLAN.md §M5 "capability degradation"). Local paths
 /// keep the full disk capability set; a connected SFTP account is writable but Trash-less and
 /// clone-less (so a delete degrades to a confirmed permanent one); a virtual location (a browsed
 /// `archive:…` tree or a search-results listing) — and an SFTP path with no live connection —
-/// degrades to read-only, its `deleteStrategy` `.unsupported`, so New Folder / rename / delete grey
+/// degrades to read-only, its `deleteStrategy` `.unsupported`, so New Folder / rename / delete gray
 /// out. (An archive's *writes* travel a separate rewrite path gated by `isWritableArchive`, not
 /// these VFS capabilities.)
 @Suite("CompositeBackend capabilities")
@@ -41,7 +41,7 @@ struct CompositeBackendTests {
         #expect(backend.capabilities(for: results).deleteStrategy == .unsupported)
     }
 
-    @Test("an sftp path with no live connection reports read-only, so writes grey out")
+    @Test("an sftp path with no live connection reports read-only, so writes gray out")
     func unconnectedSFTPPathIsReadOnly() {
         let remote = VFSPath(backend: .sftp(SFTPLocation(host: "h", username: "u")), path: "/home/u")
         #expect(backend.capabilities(for: remote) == .read)

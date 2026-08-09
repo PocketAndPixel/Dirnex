@@ -87,7 +87,7 @@ enum LocalizedCatalog {
         L10n.string(LocalizationKey.searchAge(age), fallback: age.title)
     }
 
-    /// A Finder tag colour's name for the New Tag colour popup, translated. `FinderTagColor.title`
+    /// A Finder tag color's name for the New Tag color popup, translated. `FinderTagColor.title`
     /// is `DirnexCore` data reached through a variable, so it is joined here rather than wrapped at
     /// the display site.
     static func title(for color: FinderTagColor) -> String {

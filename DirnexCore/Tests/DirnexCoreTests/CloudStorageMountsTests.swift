@@ -37,8 +37,8 @@ struct CloudStorageMountsTests {
         #expect(account == "some-one@gmail.com")
     }
 
-    @Test("a provider that mounts one unlabelled folder has no account")
-    func unlabelledMountHasNoAccount() {
+    @Test("a provider that mounts one unlabeled folder has no account")
+    func unlabeledMountHasNoAccount() {
         let (provider, account) = CloudStorageMounts.split(directoryName: "Dropbox")
         #expect(provider == "Dropbox")
         #expect(account == nil)

@@ -6,12 +6,12 @@ import DirnexCore
 /// toggling that tag across every target. The writing itself is the core's `FinderTagStorage`,
 /// which is where all the hard-won knowledge about the format lives; this is the AppKit shell.
 ///
-/// **Why the menu offers a colour only for a name it has never seen.** The core established, by
-/// watching Finder rewrite bytes on disk, that a colour belongs to the *name*, system-wide — not to
-/// the file. Finder reconciles a file's stored copy against its own name → colour database, so
-/// re-colouring one file's `Work` is not a change macOS keeps. Offering per-file colour would be
+/// **Why the menu offers a color only for a name it has never seen.** The core established, by
+/// watching Finder rewrite bytes on disk, that a color belongs to the *name*, system-wide — not to
+/// the file. Finder reconciles a file's stored copy against its own name → color database, so
+/// re-coloring one file's `Work` is not a change macOS keeps. Offering per-file color would be
 /// offering an edit that silently reverts, so the menu doesn't: an existing tag toggles on and off,
-/// and only "New Tag…" picks a colour, at the one moment the choice is real.
+/// and only "New Tag…" picks a color, at the one moment the choice is real.
 extension PanelViewController {
     // MARK: - Command (dispatched to the focused pane via the responder chain)
 
@@ -99,7 +99,7 @@ extension PanelViewController {
         return items
     }
 
-    /// One tag item: a dot in its colour, checked when **every** target carries it and mixed when
+    /// One tag item: a dot in its color, checked when **every** target carries it and mixed when
     /// only some do — so a menu over a marked set says what it will change before it changes it.
     private func tagItem(for tag: FinderTag, current: [FinderTag: Int], targetCount: Int) -> NSMenuItem {
         let item = NSMenuItem(title: tag.name, action: #selector(toggleTag(_:)), keyEquivalent: "")
@@ -128,15 +128,15 @@ extension PanelViewController {
     /// here than alphabetical — then the custom names sorted. The same list, in the same order, that
     /// the sidebar's Tags section shows.
     ///
-    /// A tag's name is spelled the way the targets spell it when they carry it; its colour comes from
+    /// A tag's name is spelled the way the targets spell it when they carry it; its color comes from
     /// what that *name* is known to be, never from the targets' stored byte.
     ///
-    /// The colour half used to work the other way — the files' own copy was preferred — and that is
+    /// The color half used to work the other way — the files' own copy was preferred — and that is
     /// exactly the bug `FinderTagIndex` documents, twice over. A target inside iCloud Drive carries
-    /// `Red\n1`, so the menu drew Red's swatch grey; worse, the item's `representedObject` *is* the
+    /// `Red\n1`, so the menu drew Red's swatch gray; worse, the item's `representedObject` *is* the
     /// tag `toggleTag` writes, so tagging an iCloud file and a local one Red together wrote `Red\n1`
-    /// to the local file too — where the byte is not normalised and simply persists, leaving a
-    /// permanently grey Red behind. Resolving by name fixes the swatch and what gets written.
+    /// to the local file too — where the byte is not normalized and simply persists, leaving a
+    /// permanently gray Red behind. Resolving by name fixes the swatch and what gets written.
     private func offeredTags(including current: [FinderTag: Int]) -> [FinderTag] {
         var seen = Set(FinderTag.systemTags)
         let custom = (FinderTagProvider.shared.knownTags + current.keys)
@@ -220,7 +220,7 @@ extension PanelViewController {
         }
     }
 
-    /// Name a new tag, and pick the colour it is introduced in — the one moment the colour choice
+    /// Name a new tag, and pick the color it is introduced in — the one moment the color choice
     /// is the user's to make (see this file's header).
     private func presentNewTagPrompt(completion: @escaping (FinderTag) -> Void) {
         let alert = NSAlert()

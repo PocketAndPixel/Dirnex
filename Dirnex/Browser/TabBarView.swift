@@ -32,7 +32,7 @@ final class TabBarView: NSView {
     private(set) var activeIndex = 0
 
     /// Re-apply the user's accent to every chip after it changes (PLAN.md §M15 Slice 2). Unlike
-    /// `isActivePane`, nothing about a chip's own state has moved — only the colour it resolves —
+    /// `isActivePane`, nothing about a chip's own state has moved — only the color it resolves —
     /// so this restyles them all rather than pushing a value down.
     func restyleForPalette() {
         for chip in chips { chip.restyleForPalette() }

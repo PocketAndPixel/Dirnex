@@ -68,7 +68,7 @@ struct MultiRenameTests {
         #expect(plan.map(\.newName) == ["img001.txt", "img002.txt", "img003.txt"])
     }
 
-    @Test("counter honours start and step")
+    @Test("counter honors start and step")
     func counterStartAndStep() {
         let items = (0..<3).map { entry("f\($0)") }
         let spec = RenameSpec(

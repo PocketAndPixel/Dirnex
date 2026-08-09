@@ -30,7 +30,7 @@ final class CloudDownloadPrompt {
     /// Anything that is not an evicted local file proceeds immediately and synchronously, so this
     /// can wrap an open path wholesale without making the common case async or conditional at the
     /// call site. `proceed` does not run at all if the user cancels or the download fails — a
-    /// cancelled open opens nothing, and a failure is reported instead.
+    /// canceled open opens nothing, and a failure is reported instead.
     static func materialize(
         _ entry: FileEntry,
         using backend: any VFSBackend,

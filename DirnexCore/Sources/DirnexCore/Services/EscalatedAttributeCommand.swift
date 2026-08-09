@@ -31,7 +31,7 @@ import Foundation
 ///
 /// Everything else is faithful. `chmod` and `chflags` carry the whole target word (the setuid digit
 /// included); `touch` sets times whole-second, which is exactly the `NSDatePicker`'s own resolution,
-/// and only the time that actually changed, so an untouched neighbour keeps its sub-second value.
+/// and only the time that actually changed, so an untouched neighbor keeps its sub-second value.
 /// `chflags` is **additive** (probed: `chflags hidden` then `chflags uchg` yields `uchg,hidden`), so
 /// each flags step is emitted as the minimal `keyword` / `nokeyword` delta against the word on disk at
 /// that point in the plan — which is also the readable form for the copyable field.
@@ -228,7 +228,7 @@ public struct EscalatedAttributeCommand: Sendable, Equatable {
 
     /// One entry as `chmod +a`'s friendly form: `user:name allow read,write,file_inherit`. The
     /// canonical `read/write/execute/append` spelling is accepted verbatim on a directory too —
-    /// `chmod` translates it to `list/add_file/…` itself (probed) — so no per-kind relabelling here.
+    /// `chmod` translates it to `list/add_file/…` itself (probed) — so no per-kind relabeling here.
     private static func accessControlEntrySpec(_ entry: ACLEntry) -> String? {
         var rights = ACLRight.allCases.filter { entry.rights.contains($0) }.map(\.rawValue)
         for (token, option) in ACLInheritance.tokenTable
@@ -255,7 +255,7 @@ public struct EscalatedAttributeCommand: Sendable, Equatable {
         return formatter.string(from: date)
     }
 
-    /// Each modelled flag bit and the `chflags` keyword for it. `SF_DATALESS` has none — it is never
+    /// Each modeled flag bit and the `chflags` keyword for it. `SF_DATALESS` has none — it is never
     /// user-set and never appears in a delta.
     private static let flagKeywords: [(option: BSDFileFlags, keyword: String)] = [
         (.noDump, "nodump"),

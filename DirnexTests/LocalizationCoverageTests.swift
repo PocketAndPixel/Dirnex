@@ -157,7 +157,7 @@ struct LocalizationCoverageTests {
         }
     }
 
-    @Test("every Finder tag colour name is translated in every shipped language")
+    @Test("every Finder tag color name is translated in every shipped language")
     func everyTagColorIsTranslated() throws {
         for language in LocalizedBundles.translated {
             let bundle = try LocalizedBundles.bundle(for: language)

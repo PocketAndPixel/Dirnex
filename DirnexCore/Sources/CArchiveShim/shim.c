@@ -4,6 +4,6 @@
 //
 // Nothing is *defined* here on purpose. A wrapper written in C would be a second place for the
 // encryption logic to live, untested by `swift test`; every line above the raw calls belongs in
-// `LibArchive.swift` and its neighbours, where it has coverage.
+// `LibArchive.swift` and its neighbors, where it has coverage.
 
 #include "include/shim.h"

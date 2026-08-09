@@ -2,7 +2,7 @@ import AppKit
 import DirnexCore
 
 /// The sidebar's Tags section (PLAN.md §M6 "Finder tags: … filter chips in search") — Finder's own
-/// bottom-of-the-sidebar list of coloured tags, each one a click away from every file carrying it.
+/// bottom-of-the-sidebar list of colored tags, each one a click away from every file carrying it.
 /// Split out of `SidebarViewController` so that file stays under the length limit, exactly as the
 /// saved-search and server sections are; the main file's `rebuild`, `viewFor` and `rowClicked`
 /// dispatch here.
@@ -45,12 +45,12 @@ extension SidebarViewController {
 
     // MARK: - Cells
 
-    /// A tag row: its colour as a dot where the other sections put an icon, and its name.
+    /// A tag row: its color as a dot where the other sections put an icon, and its name.
     ///
     /// The dot is **not** a template image, unlike every other glyph in the sidebar — those are
     /// tinted to match their label, which for a tag would erase the one thing it has to say. It is
-    /// the same `TagDotStyle` the name-cell dots and the ⌃T menu items draw, so a colour reads
-    /// identically everywhere; a colourless custom tag gets that style's hollow ring.
+    /// the same `TagDotStyle` the name-cell dots and the ⌃T menu items draw, so a color reads
+    /// identically everywhere; a colorless custom tag gets that style's hollow ring.
     func tagCell(for tag: FinderTag) -> NSView {
         let cell = tagRowCell()
         cell.configure(

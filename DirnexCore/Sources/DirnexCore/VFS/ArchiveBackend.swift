@@ -7,7 +7,7 @@ import Foundation
 /// archive never re-reads it: the app's `ArchiveMounter` runs `bsdtar` once, off-main, to
 /// build the TOC and construct the backend. Extraction (Quick Look inside, F5 copy-out) and
 /// packing are a later M4 pass — hence `capabilities == .read` and the write primitives
-/// stay at their `.unsupported` defaults, which the panel greys out (§M5 "capability
+/// stay at their `.unsupported` defaults, which the panel grays out (§M5 "capability
 /// degradation").
 ///
 /// The backend's `id` encodes the archive's on-disk path, so a `VFSPath` under it identifies

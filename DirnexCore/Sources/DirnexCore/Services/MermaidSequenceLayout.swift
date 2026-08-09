@@ -17,7 +17,7 @@ struct MermaidSequenceDrawing: Equatable {
         let text: String
         let style: MermaidSequence.MessageStyle
         /// The text's anchor. Above the line for an ordinary message, beside the loop for a self.
-        let labelCentre: MermaidPoint
+        let labelCenter: MermaidPoint
         let isSelf: Bool
     }
 
@@ -62,13 +62,13 @@ enum MermaidSequenceLayout {
     ) -> MermaidSequenceDrawing {
         let boxHeight = metric.lineHeight + 2 * padY
         let widths = diagram.participants.map { max(metric.width($0.label) + 2 * padX, 56) }
-        let centres = columns(diagram, widths: widths, metric: metric)
-        let participants = zip(zip(diagram.participants, widths), centres).map { pair, centre in
+        let centers = columns(diagram, widths: widths, metric: metric)
+        let participants = zip(zip(diagram.participants, widths), centers).map { pair, center in
             MermaidSequenceDrawing.Participant(
                 label: pair.0.label,
                 isActor: pair.0.isActor,
                 frame: MermaidRect(
-                    x: centre - pair.1 / 2,
+                    x: center - pair.1 / 2,
                     y: margin,
                     width: pair.1,
                     height: boxHeight
@@ -76,7 +76,7 @@ enum MermaidSequenceLayout {
             )
         }
         var walker = Walker(
-            centres: centres,
+            centers: centers,
             index: Dictionary(
                 uniqueKeysWithValues: diagram.participants.enumerated().map { ($1.id, $0) }
             ),
@@ -90,7 +90,7 @@ enum MermaidSequenceLayout {
         let activations = walker.close(at: bottom)
         return MermaidSequenceDrawing(
             width: max(
-                (centres.last ?? 0) + (widths.last ?? 0) / 2 + margin,
+                (centers.last ?? 0) + (widths.last ?? 0) / 2 + margin,
                 walker.rightReach + margin
             ),
             height: bottom + margin,
@@ -104,7 +104,7 @@ enum MermaidSequenceLayout {
 
     // MARK: - Columns
 
-    /// Each participant's centre x.
+    /// Each participant's center x.
     ///
     /// Two demands set a gap: the two header boxes must not touch, and any message label crossing
     /// that gap must fit. The second is spread across the gaps the message *spans*, so a wide label
@@ -133,9 +133,9 @@ enum MermaidSequenceLayout {
                 gaps[gap] = max(gaps[gap], needed)
             }
         }
-        var centres = [margin + widths[0] / 2]
-        for gap in gaps { centres.append(centres[centres.count - 1] + gap) }
-        return centres
+        var centers = [margin + widths[0] / 2]
+        for gap in gaps { centers.append(centers[centers.count - 1] + gap) }
+        return centers
     }
 
     // MARK: - Rows
@@ -146,7 +146,7 @@ enum MermaidSequenceLayout {
     /// is — a self-message needs its loop, a note needs its box — and the next row starts wherever
     /// the last one finished.
     private struct Walker {
-        let centres: [Double]
+        let centers: [Double]
         let index: [String: Int]
         let metric: MarkdownTextMetric
         var cursor: Double
@@ -199,7 +199,7 @@ enum MermaidSequenceLayout {
             guard let start = index[from], let end = index[to] else { return }
             let y = cursor
             if start == end {
-                let x = centres[start]
+                let x = centers[start]
                 let bottom = y + metric.lineHeight + 4
                 messages.append(MermaidSequenceDrawing.Message(
                     points: [
@@ -210,7 +210,7 @@ enum MermaidSequenceLayout {
                     ],
                     text: text,
                     style: style,
-                    labelCentre: MermaidPoint(x: x + selfLoopWidth + 6, y: y + metric.lineHeight / 2),
+                    labelCenter: MermaidPoint(x: x + selfLoopWidth + 6, y: y + metric.lineHeight / 2),
                     isSelf: true
                 ))
                 rightReach = max(rightReach, x + selfLoopWidth + 6 + metric.width(text))
@@ -220,13 +220,13 @@ enum MermaidSequenceLayout {
             }
             messages.append(MermaidSequenceDrawing.Message(
                 points: [
-                    MermaidPoint(x: centres[start], y: y),
-                    MermaidPoint(x: centres[end], y: y)
+                    MermaidPoint(x: centers[start], y: y),
+                    MermaidPoint(x: centers[end], y: y)
                 ],
                 text: text,
                 style: style,
-                labelCentre: MermaidPoint(
-                    x: (centres[start] + centres[end]) / 2,
+                labelCenter: MermaidPoint(
+                    x: (centers[start] + centers[end]) / 2,
                     y: y - metric.lineHeight * 0.7
                 ),
                 isSelf: false
@@ -247,18 +247,18 @@ enum MermaidSequenceLayout {
             let x: Double
             switch placement {
             case .over:
-                let span = centres[last] - centres[first]
-                x = centres[first] + span / 2 - max(width, span + 20) / 2
+                let span = centers[last] - centers[first]
+                x = centers[first] + span / 2 - max(width, span + 20) / 2
             case .leftOf:
-                x = centres[first] - width - 12
+                x = centers[first] - width - 12
             case .rightOf:
-                x = centres[last] + 12
+                x = centers[last] + 12
             }
             let frame = MermaidRect(
                 x: x,
                 y: cursor - metric.lineHeight * 0.5,
                 width: placement == .over
-                    ? max(width, centres[last] - centres[first] + 20)
+                    ? max(width, centers[last] - centers[first] + 20)
                     : width,
                 height: height
             )
@@ -272,7 +272,7 @@ enum MermaidSequenceLayout {
         /// activations are visibly nested rather than drawn on top of each other.
         private func bar(column: Int, top: Double, bottom: Double, depth: Int) -> MermaidRect {
             MermaidRect(
-                x: centres[column] - activationWidth / 2 + Double(depth) * activationWidth / 2,
+                x: centers[column] - activationWidth / 2 + Double(depth) * activationWidth / 2,
                 y: top,
                 width: activationWidth,
                 height: max(bottom - top, metric.lineHeight)

@@ -29,7 +29,7 @@ struct TextEditingShortcutsTests {
         let cut = try #require(items.first { $0.action == #selector(NSText.cut(_:)) })
         #expect(cut.keyEquivalent == "x")
         #expect(cut.keyEquivalentModifierMask == .command)
-        // Nil target: the field editor answers `cut:` and no pane does, so it greys itself out
+        // Nil target: the field editor answers `cut:` and no pane does, so it grays itself out
         // everywhere else through the responder chain rather than through a validator.
         #expect(cut.target == nil)
     }

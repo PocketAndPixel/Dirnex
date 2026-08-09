@@ -28,7 +28,7 @@ extension BrowserWindowController {
     // MARK: - Observation
 
     /// Drain the queue's snapshot stream into the UI for the window's lifetime. The task is
-    /// cancelled in `deinit`; `[weak self]` with a per-iteration re-bind keeps the window
+    /// canceled in `deinit`; `[weak self]` with a per-iteration re-bind keeps the window
     /// from being pinned alive by the loop while it waits for the next snapshot.
     func startObservingQueue() {
         queueObservation = Task { [weak self] in
@@ -62,7 +62,7 @@ extension BrowserWindowController {
         }
     }
 
-    /// For each newly-finished (or cancelled) job, re-list both panes so the source (for a
+    /// For each newly-finished (or canceled) job, re-list both panes so the source (for a
     /// move) and destination reflect the change at once, and surface any failures. The
     /// FSEvents watchers would catch up on their own, but an explicit refresh is immediate.
     private func finalizeCompletedJobs(in snapshot: QueueSnapshot) {
@@ -70,7 +70,7 @@ extension BrowserWindowController {
             guard finalizedJobs.insert(job.id).inserted else { continue }
             refreshPanes()
             guard let report = job.report else { continue }
-            // Journal whatever landed (even a cancelled job's partial work) so Cmd+Z can
+            // Journal whatever landed (even a canceled job's partial work) so Cmd+Z can
             // reverse it; `transfer` returns nil when nothing is reversible.
             if let record = UndoRecord.transfer(kind: job.kind, outcomes: report.outcomes) {
                 undoController.record(record)

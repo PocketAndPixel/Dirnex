@@ -9,7 +9,7 @@ import DirnexCore
 /// choice: a right-click offers what you'd do to the thing under the pointer, not everything.
 ///
 /// Items carry a nil target and dispatch through the responder chain, which means `validateMenuItem`
-/// greys them out exactly as it does in the menu bar — a read-only location, an archive, a results
+/// grays them out exactly as it does in the menu bar — a read-only location, an archive, a results
 /// pane all degrade for free rather than needing a second set of rules here.
 extension PanelViewController {
     /// The menu for a right-click on `row` (`-1` in the empty space below the rows).
@@ -24,7 +24,7 @@ extension PanelViewController {
         let onParentRow = isParentRow(row)
         retargetSelection(forClickedRow: row)
         let onEntry = row >= 0 && !onParentRow
-        // The Trash gets its own pair. Not a matter of greying the ordinary menu down: what a
+        // The Trash gets its own pair. Not a matter of graying the ordinary menu down: what a
         // trashed file offers is a *different* list — there is no folder to make something in, no
         // in-place rename (the merged container advertises no `.rename`), and the one delete that
         // means anything here is the permanent one, which "Move to Trash" would have named wrong.

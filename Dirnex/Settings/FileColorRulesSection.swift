@@ -1,8 +1,8 @@
 import DirnexCore
 import SwiftUI
 
-/// The file-type colour rules editor (PLAN.md §M15 Slice 3) — Total Commander's signature ordered
-/// glob → colour list: add, remove, reorder, first match wins.
+/// The file-type color rules editor (PLAN.md §M15 Slice 3) — Total Commander's signature ordered
+/// glob → color list: add, remove, reorder, first match wins.
 ///
 /// **Order is meaning**, so the list is presented exactly as stored and never sorted: a user puts
 /// the specific rule above the general one and that arrangement is the whole content of their
@@ -11,7 +11,7 @@ import SwiftUI
 /// rather than something you discover.
 ///
 /// Every edit writes straight through to `FileColorRuleStore`, which posts its change notification,
-/// so the open panes recolour while the sheet is still up — the same commit-as-you-go the favorites,
+/// so the open panes recolor while the sheet is still up — the same commit-as-you-go the favorites,
 /// saved-search and scripts organizers use.
 struct FileColorRulesSection: View {
     @State private var rules = FileColorRuleStore.rules
@@ -70,7 +70,7 @@ struct FileColorRulesSection: View {
     /// Every glyph sits in the same `iconSize` square: `.bordered` hugs its label, and `plus`/`minus`
     /// have a near-square layout box while `chevron.up`/`chevron.down` are short, wide carets — so left
     /// to their natural sizes the four buttons come out at three different heights. A shared frame
-    /// centres each glyph at its own drawn size in an identical box, so the buttons match.
+    /// centers each glyph at its own drawn size in an identical box, so the buttons match.
     private var controls: some View {
         HStack(spacing: 8) {
             Button {
@@ -123,7 +123,7 @@ struct FileColorRulesSection: View {
         .buttonStyle(.bordered)
     }
 
-    /// Side of the square each control glyph is centred in — large enough to contain the tallest
+    /// Side of the square each control glyph is centered in — large enough to contain the tallest
     /// (`plus`) at the default control font, so nothing overflows its box.
     private let iconSize: CGFloat = 14
 
@@ -133,8 +133,8 @@ struct FileColorRulesSection: View {
         selection.flatMap { id in rules.rules.firstIndex { $0.id == id } }
     }
 
-    /// A new rule starts on the accent colour rather than on nothing: an empty hex would draw no
-    /// colour at all, so the row a user just added would appear to do nothing until they opened the
+    /// A new rule starts on the accent color rather than on nothing: an empty hex would draw no
+    /// color at all, so the row a user just added would appear to do nothing until they opened the
     /// well. Its patterns are left empty, which matches nothing — the harmless direction — so the
     /// pane does not flicker while they type the first one.
     private func add() {
@@ -149,7 +149,7 @@ struct FileColorRulesSection: View {
     private func removeSelected() {
         guard let index = selectedIndex else { return }
         rules.remove(at: index)
-        // Keep a neighbour selected so a run of deletions doesn't need a click between each.
+        // Keep a neighbor selected so a run of deletions doesn't need a click between each.
         selection = rules.rules.indices.contains(index)
             ? rules.rules[index].id
             : rules.rules.last?.id
@@ -177,12 +177,12 @@ struct FileColorRulesSection: View {
     }
 }
 
-/// One rule: its colour, what it is called, what it matches, and which kind of row it claims.
+/// One rule: its color, what it is called, what it matches, and which kind of row it claims.
 ///
-/// **The name is drawn in the rule's own colour, and that is the live preview** — the row renders
+/// **The name is drawn in the rule's own color, and that is the live preview** — the row renders
 /// the way a file will, over the same window background, with no separate swatch to compare against.
-/// A colour that turns out to be illegible here would be illegible in the pane too, which is
-/// precisely what a preview is for; the well and the pattern field stay in the standard colour, so
+/// A color that turns out to be illegible here would be illegible in the pane too, which is
+/// precisely what a preview is for; the well and the pattern field stay in the standard color, so
 /// the row can always be edited its way back out.
 private struct FileColorRuleRow: View {
     let rule: FileColorRule
@@ -226,7 +226,7 @@ private struct FileColorRuleRow: View {
         }
     }
 
-    /// What the name draws in — the rule's colour, or the standard label colour while the stored hex
+    /// What the name draws in — the rule's color, or the standard label color while the stored hex
     /// is unusable, which is exactly what the pane does with the same value.
     private var previewColor: Color {
         PanelPalette.color(fromHex: rule.colorHex).map(Color.init(nsColor:)) ?? Color(
@@ -235,7 +235,7 @@ private struct FileColorRuleRow: View {
     }
 
     /// Both closures name their parameter: nesting `edit { $0… }` inside `set: { $0… }` shadows the
-    /// new colour with the rule being edited, which is the same bare-closure rebinding NOTES.md
+    /// new color with the rule being edited, which is the same bare-closure rebinding NOTES.md
     /// records under "adding a second closure parameter silently re-points every trailing closure".
     private var colorBinding: Binding<Color> {
         Binding(

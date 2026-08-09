@@ -10,9 +10,9 @@ import Testing
 /// A separate suite from `QuickViewMarkdownPreviewTests`, which is about *routing* — which files
 /// offer two renderings and where each one lands. Split by concept rather than to shave lines, per
 /// docs/NOTES.md: what is on screen and what decided to put it there are two subjects, and the
-/// helpers below (a colour parser, two real PNGs) belong to exactly one of them.
+/// helpers below (a color parser, two real PNGs) belong to exactly one of them.
 ///
-/// What is deliberately *not* here is WebKit's own behaviour — whether a base URL reaches a sibling
+/// What is deliberately *not* here is WebKit's own behavior — whether a base URL reaches a sibling
 /// image, whether `prefers-color-scheme` follows the view. Those are claims about a framework and
 /// were settled against a real web view in a throwaway harness, with the numbers recorded in
 /// `QuickViewMarkdownImages` and `QuickViewMarkdownStyle`.
@@ -103,11 +103,11 @@ struct QuickViewMarkdownPageTests {
 
     // MARK: - The stylesheet
 
-    /// The coupling this slice made compiler-visible. The class a coloured run carries is the
+    /// The coupling this slice made compiler-visible. The class a colored run carries is the
     /// **core's** name, published for exactly this reason: a stylesheet that spelled them a second
     /// time would drift, and the failure is a fence rendering in flat text with every automated
     /// signal green.
-    @Test("every class the renderer can emit has a colour rule")
+    @Test("every class the renderer can emit has a color rule")
     func stylesheetNamesEveryTokenClass() {
         let fragment = MarkdownDocument.render("""
         ```swift
@@ -116,23 +116,23 @@ struct QuickViewMarkdownPageTests {
         ```
         """).html
         let emitted = Self.tokenClasses(in: fragment)
-        #expect(!emitted.isEmpty, "the fence should have produced coloured spans")
+        #expect(!emitted.isEmpty, "the fence should have produced colored spans")
 
         let page = QuickViewMarkdownStyle.document(body: fragment)
         // What this document happened to produce, and then the whole vocabulary — so a kind that no
         // snippet here exercises still has to be styled.
         for name in emitted.union(Self.everyTokenClass) {
             #expect(page.contains(".\(name) {"), "no rule for .\(name)")
-            #expect(page.contains("--\(name):"), "no colour for --\(name)")
+            #expect(page.contains("--\(name):"), "no color for --\(name)")
         }
-        // `.plain` is deliberately unnamed: an unclaimed run is already the page's own colour.
+        // `.plain` is deliberately unnamed: an unclaimed run is already the page's own color.
         #expect(MarkdownDocument.tokenClass(for: .plain) == nil)
         #expect(!page.contains("tok-plain"))
     }
 
     /// Both palettes, in one stylesheet, because the page switches appearance **itself**: probed,
     /// `prefers-color-scheme` follows the web view's effective appearance and re-evaluates live. A
-    /// media query whose two halves were the same colour would look right in whichever appearance
+    /// media query whose two halves were the same color would look right in whichever appearance
     /// the developer happened to be in — which is the failure this pins.
     @Test("the page carries a light palette and a dark one, and they differ")
     func bothPalettesArePresent() throws {
@@ -149,7 +149,7 @@ struct QuickViewMarkdownPageTests {
     /// lose it is one plausible line. M17 authored the syntax palette against `.textBackgroundColor`
     /// and it clears 4.5:1 there; the gentlest fill anybody would reach for composites to `#E6E6E6`
     /// in light and takes `typeOrTag` down to **3.68:1**. So the fence is delimited by a border and
-    /// keeps the page's own background, while *inline* code — which carries no coloured spans — gets
+    /// keeps the page's own background, while *inline* code — which carries no colored spans — gets
     /// the fill.
     @Test("a code fence is bordered rather than filled")
     func fencesAreNotFilled() throws {
@@ -162,10 +162,10 @@ struct QuickViewMarkdownPageTests {
     }
 
     /// The page's own text has to be legible on the page's own background, in both appearances —
-    /// the same claim `SyntaxThemeTests` makes about the token colours, extended to the two colours
+    /// the same claim `SyntaxThemeTests` makes about the token colors, extended to the two colors
     /// that came from AppKit rather than from M17's authored table.
     @Test("text and links clear 4.5:1 on the page background, in both appearances")
-    func documentColoursAreLegible() throws {
+    func documentColorsAreLegible() throws {
         let page = QuickViewMarkdownStyle.document(body: "<p>x</p>")
         let backgrounds = Self.values(of: "--background", in: page)
         for property in ["--text", "--link"] {

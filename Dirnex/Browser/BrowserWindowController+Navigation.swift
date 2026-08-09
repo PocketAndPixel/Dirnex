@@ -8,7 +8,7 @@ import DirnexCore
 /// navigation, tab switch, and focus change (`updateNavigationButtons`).
 extension BrowserWindowController {
     /// Width of one chevron's cell, and — because the cells touch — the distance between the two
-    /// glyph centres. This is the one dial for how far apart the chevrons *read*, and it is also
+    /// glyph centers. This is the one dial for how far apart the chevrons *read*, and it is also
     /// the whole of each button's hit target, so the two pull against each other.
     ///
     /// The visible gap is neither of those numbers. Measured by rasterizing the symbols and
@@ -17,7 +17,7 @@ extension BrowserWindowController {
     /// `cellWidth − 6`, i.e. 16pt here. Measure the ink, not the box.
     ///
     /// 22 keeps each target 6pt wider than the 16pt buttons this shipped with while closing the
-    /// gap they had: those sat 12pt apart, which put their centres 28pt apart and their ink 22pt
+    /// gap they had: those sat 12pt apart, which put their centers 28pt apart and their ink 22pt
     /// apart. Anything narrower trades hit target for tightness point for point.
     ///
     /// Verified live at this value by sweeping `hitTest` a point at a time: Forward owns 7…28pt in
@@ -99,7 +99,7 @@ extension BrowserWindowController {
         updateNavigationButtons()
     }
 
-    /// Enable each button only when the active pane's trail can move that way, so they grey out at
+    /// Enable each button only when the active pane's trail can move that way, so they gray out at
     /// its ends exactly as ⌘[ / ⌘] disable in the Go menu (`validateMenuItem`).
     func updateNavigationButtons() {
         backButton.isEnabled = focusedPanel.canGoBack
@@ -134,7 +134,7 @@ extension BrowserWindowController {
         button.toolTip = tooltip
         button.translatesAutoresizingMaskIntoConstraints = false
         // A `.toolbar` button is intrinsically far wider than its glyph and its size is not pinned
-        // to the glyph's, so both dimensions are stated: the glyph stays centred whatever the cell
+        // to the glyph's, so both dimensions are stated: the glyph stays centered whatever the cell
         // is, and the cell is sized for the *pointer* rather than for the ink.
         //
         // These are the numbers a click actually sees, which is not obvious from the frames: the

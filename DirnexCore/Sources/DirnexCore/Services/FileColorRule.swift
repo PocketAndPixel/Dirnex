@@ -1,10 +1,10 @@
 import Foundation
 
-/// What kind of row a colour rule is allowed to claim (PLAN.md §M15 Slice 3).
+/// What kind of row a color rule is allowed to claim (PLAN.md §M15 Slice 3).
 ///
 /// A name glob cannot express "every folder" — a folder is ordinarily named like anything else, so
 /// `*` would take every file with it. This is the one thing the pattern genuinely cannot say, which
-/// is why it is a field rather than a convention, and colouring folders apart from files is one of
+/// is why it is a field rather than a convention, and coloring folders apart from files is one of
 /// the first things a Total Commander user reaches for.
 ///
 /// Raw `String` rather than an `Int`, and read back tolerantly (see `FileColorRule.init(from:)`):
@@ -19,8 +19,8 @@ public enum FileColorTarget: String, Sendable, Hashable, CaseIterable, Codable {
 
     /// Whether a row of this kind is eligible for a rule carrying this target.
     ///
-    /// `isDirectory` is the *caller's* judgement, not a re-derivation: the app hands over
-    /// `FileEntry.isDirectoryLike`, so a symlink pointing at a folder is coloured as the folder it
+    /// `isDirectory` is the *caller's* judgment, not a re-derivation: the app hands over
+    /// `FileEntry.isDirectoryLike`, so a symlink pointing at a folder is colored as the folder it
     /// opens into — which is what the pane does with it everywhere else.
     public func admits(isDirectory: Bool) -> Bool {
         switch self {
@@ -31,15 +31,15 @@ public enum FileColorTarget: String, Sendable, Hashable, CaseIterable, Codable {
     }
 }
 
-/// One colour rule: some globs, and the colour a row matching any of them draws in.
+/// One color rule: some globs, and the color a row matching any of them draws in.
 ///
-/// **The colour rides as user data (`#RRGGBB`), not as a decision this module authored** — the
-/// `FinderTag` split, where the core carries the colour and the app maps it to pixels. Nothing here
-/// resolves a colour or produces a display string, so nothing here is a presentation choice that
+/// **The color rides as user data (`#RRGGBB`), not as a decision this module authored** — the
+/// `FinderTag` split, where the core carries the color and the app maps it to pixels. Nothing here
+/// resolves a color or produces a display string, so nothing here is a presentation choice that
 /// could never be translated (NOTES.md ▸ Localization).
 ///
 /// Identity is a `UUID`, unlike `SavedSearch`/`UserScript`, whose identity is their name. Those are
-/// looked up by name; a colour rule never is, and neither its name nor its patterns are unique by
+/// looked up by name; a color rule never is, and neither its name nor its patterns are unique by
 /// nature — two rules legitimately claim `*.txt` with different targets, and a user is free to leave
 /// both unnamed. So a stable id is what lets an editor reorder and delete without acting on the
 /// wrong row.
@@ -53,13 +53,13 @@ public struct FileColorRule: Sendable, Equatable, Identifiable, Codable {
     /// The globs, in the `Glob` dialect `+`/`-` pattern select already uses — `*`, `?` and `[…]`,
     /// matched case-insensitively against the **name alone**, never the path.
     ///
-    /// A list rather than one string so "Images" is one rule with one colour. Any pattern matching
+    /// A list rather than one string so "Images" is one rule with one color. Any pattern matching
     /// is enough; an empty list never matches, which is what a rule being typed into an editor looks
     /// like and is the harmless direction for it to fail in.
     public var patterns: [String]
 
     /// `#RRGGBB`. Kept as the string the user's defaults hold, not parsed here: this module has no
-    /// colour type, and a value it cannot make sense of is the app's to degrade (it draws no colour
+    /// color type, and a value it cannot make sense of is the app's to degrade (it draws no color
     /// at all), exactly as a hand-edited palette hex already does.
     public var colorHex: String
 
@@ -92,7 +92,7 @@ public struct FileColorRule: Sendable, Equatable, Identifiable, Codable {
     ///
     /// **A malformed pattern matches nothing rather than everything.** Probed: `fnmatch` answers its
     /// error code (2), not `FNM_NOMATCH`, for `[`, `[a-` and a lone `\`, and `Glob` tests for `== 0`
-    /// — so a half-typed `[` in a live editor quietly colours nothing while the user keeps typing,
+    /// — so a half-typed `[` in a live editor quietly colors nothing while the user keeps typing,
     /// instead of flooding the pane. Worth stating because the failure is silent either way, and only
     /// one of the two directions is survivable.
     public func matches(name: String) -> Bool {
@@ -115,7 +115,7 @@ extension FileColorRule {
     /// one level up — there a bad tab dropped out of the session, here a bad *anything* would empty
     /// the list.
     ///
-    /// An unrecognised `target` becomes `.any` rather than dropping the rule: a rule that colours
+    /// An unrecognized `target` becomes `.any` rather than dropping the rule: a rule that colors
     /// more than it should is visible and one popup away from being fixed, where a rule that
     /// silently vanished leaves nothing to fix. Same call `AppPreferences` makes reading
     /// `rowDensity`, and the reason a missing `id` is replaced rather than fatal — a hand-edited

@@ -8,16 +8,16 @@ import Testing
 /// in `DirnexCore`, the way `SyncBadgeTests` and `RowDensityTests` already are.
 ///
 /// The claims worth pinning are the two the feature can fail *quietly* at: that leaving the
-/// preference alone reproduces the shipped `NSColor`s exactly, and that no colour the picker can
+/// preference alone reproduces the shipped `NSColor`s exactly, and that no color the picker can
 /// produce yields an unreadable cursor row.
 @Suite("Panel palette")
 @MainActor
 struct PanelPaletteTests {
     // MARK: - Follow System
 
-    /// The whole bargain of the slice: an untouched install must resolve to the very colours the
+    /// The whole bargain of the slice: an untouched install must resolve to the very colors the
     /// app named before `PanelPalette` existed — not to a copy of them, and not to a derivation.
-    @Test("following the system hands back the system's own colours, identically")
+    @Test("following the system hands back the system's own colors, identically")
     func followSystemIsTheShippedRendering() {
         let palette = PanelPalette.followSystem
         #expect(palette.isFollowingSystem)
@@ -29,9 +29,9 @@ struct PanelPaletteTests {
         #expect(palette.accentForeground == .alternateSelectedControlTextColor)
     }
 
-    /// A palette with one colour set must leave the other two alone — the shape a per-role
+    /// A palette with one color set must leave the other two alone — the shape a per-role
     /// copy-paste in the settings rows would break.
-    @Test("each colour is independent of the other two")
+    @Test("each color is independent of the other two")
     func rolesDoNotBleed() {
         let marked = PanelPalette(mark: .systemGreen)
         #expect(marked.resolvedMark == .systemGreen)
@@ -46,12 +46,12 @@ struct PanelPaletteTests {
 
     // MARK: - The derived foreground
 
-    /// The failure this exists to prevent: a pale cursor colour with white text on it. Whatever the
+    /// The failure this exists to prevent: a pale cursor color with white text on it. Whatever the
     /// user picks, the derived foreground must clear 3:1 — the floor macOS's own white-on-accent
     /// (4.02:1) sits above.
-    @Test("no colour yields an unreadable cursor row")
+    @Test("no color yields an unreadable cursor row")
     func derivedForegroundAlwaysClearsTheFloor() {
-        // A sweep of the whole RGB cube at a coarse step, plus the system colours a user is most
+        // A sweep of the whole RGB cube at a coarse step, plus the system colors a user is most
         // likely to reach for from the picker's own swatches.
         var backgrounds: [NSColor] = []
         for red in stride(from: 0.0, through: 1.0, by: 0.1) {
@@ -106,14 +106,14 @@ struct PanelPaletteTests {
     @Test("choosing black is never a close call")
     func blackIsOnlyChosenWithRoomToSpare() {
         for value in stride(from: 0.0, through: 1.0, by: 0.02) {
-            let grey = NSColor(srgbRed: value, green: value, blue: value, alpha: 1)
-            guard PanelPalette.foreground(on: grey) == .black else { continue }
-            #expect(PanelPalette.contrastRatio(between: .black, and: grey) >= 7)
+            let gray = NSColor(srgbRed: value, green: value, blue: value, alpha: 1)
+            guard PanelPalette.foreground(on: gray) == .black else { continue }
+            #expect(PanelPalette.contrastRatio(between: .black, and: gray) >= 7)
         }
     }
 
     /// "Legible in both appearances" is a claim the derivation has to make *by construction*, since
-    /// only one appearance can be on screen at a time: the cursor colour is the user's own and the
+    /// only one appearance can be on screen at a time: the cursor color is the user's own and the
     /// rule is a luminance test over its sRGB components, so neither half can vary with the
     /// appearance. Pinned rather than argued — a foreground that drifted would be readable in the
     /// mode it was checked in and unreadable in the other, which no single screenshot can catch.
@@ -150,7 +150,7 @@ struct PanelPaletteTests {
 
     // MARK: - Persistence
 
-    @Test("a colour round-trips through its hex form")
+    @Test("a color round-trips through its hex form")
     func hexRoundTrips() throws {
         for hex in ["#000000", "#FFFFFF", "#007AFF", "#1A2B3C", "#FF383C"] {
             let color = try #require(PanelPalette.color(fromHex: hex))
@@ -161,7 +161,7 @@ struct PanelPaletteTests {
         #expect(PanelPalette.color(fromHex: " #007AFF ") == PanelPalette.color(fromHex: "#007AFF"))
     }
 
-    /// Anything unparseable must read as Follow System rather than as a colour nobody chose — the
+    /// Anything unparseable must read as Follow System rather than as a color nobody chose — the
     /// same tolerance `AppPreferences` gives `rowDensity`. The `+`/`-` cases are the ones a plain
     /// `UInt32(_:radix:)` accepts, which is why the digit check is not redundant.
     @Test("a value this build can't parse falls back to Follow System")
@@ -171,7 +171,7 @@ struct PanelPaletteTests {
             "+FF000", "-FF000", "rgb(1,2,3)", "#00 7AFF"
         ]
         for junk in junkValues {
-            #expect(PanelPalette.color(fromHex: junk) == nil, "\(junk) parsed as a colour")
+            #expect(PanelPalette.color(fromHex: junk) == nil, "\(junk) parsed as a color")
         }
     }
 
@@ -198,7 +198,7 @@ struct PanelPaletteTests {
         #expect(AppPreferences(defaults: defaults).palette.accent == nil)
     }
 
-    @Test("changing a colour posts the notification open panes restyle on")
+    @Test("changing a color posts the notification open panes restyle on")
     func changePostsNotification() throws {
         let suiteName = "PanelPaletteTests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suiteName))
@@ -222,7 +222,7 @@ struct PanelPaletteTests {
         #expect(posts == 2)
     }
 
-    /// The reset is one gesture, so it must be one repaint however many colours it clears — three
+    /// The reset is one gesture, so it must be one repaint however many colors it clears — three
     /// notifications would drive three full re-renders of every open pane.
     @Test("resetting all three posts exactly once, and is inert when nothing is custom")
     func resetPostsOnce() throws {
@@ -255,7 +255,7 @@ struct PanelPaletteTests {
 
     // MARK: - The drawing sites
 
-    /// A cell built before the user picked anything must still draw the shipped colours — the
+    /// A cell built before the user picked anything must still draw the shipped colors — the
     /// recycled-cell case, the same one `RowDensityTests` pins for the icon box.
     @Test("a cell carries the palette it was last rendered with, not the one it was built at")
     func cellFollowsThePalette() throws {
@@ -268,19 +268,19 @@ struct PanelPaletteTests {
         cell.applyStyle()
         #expect(cell.textField?.textColor == .systemGreen)
 
-        // A Git status leaves the mark's colour alone — the letter is a badge of its own now
-        // (`GitBadgeView`), where it used to be a cell whose colour outranked everything.
+        // A Git status leaves the mark's color alone — the letter is a badge of its own now
+        // (`GitBadgeView`), where it used to be a cell whose color outranked everything.
         cell.gitStatus = .modified
         cell.applyStyle()
         #expect(cell.textField?.textColor == .systemGreen)
     }
 
-    /// The one badge with a legibility stake in the cursor's colour: the dots and the cloud are
-    /// shapes read by colour, while a small orange character on a colour the user picked can simply
+    /// The one badge with a legibility stake in the cursor's color: the dots and the cloud are
+    /// shapes read by color, while a small orange character on a color the user picked can simply
     /// disappear. So the letter takes the same derived foreground the name does — which is what the
-    /// status *gutter* did too, being an ordinary cell whose emphasized branch outranked its colour.
+    /// status *gutter* did too, being an ordinary cell whose emphasized branch outranked its color.
     @Test("the Git letter takes the cursor row's derived foreground")
-    func gitBadgeFollowsTheCursorColour() throws {
+    func gitBadgeFollowsTheCursorColor() throws {
         let cell = FileCellView(showsImage: true, identifier: NSUserInterfaceItemIdentifier("name"))
         cell.gitStatus = .modified
         let badge = try #require(cell.gitBadge)
@@ -295,10 +295,10 @@ struct PanelPaletteTests {
         #expect(badge.emphasizedInk == .black)
     }
 
-    /// The cursor row's own text: derived when custom, the system's colour when not — and the
+    /// The cursor row's own text: derived when custom, the system's color when not — and the
     /// derivation has to happen for a *pale* cursor or the name goes white-on-white.
-    @Test("the cursor row's text is derived from the cursor colour")
-    func cursorRowTextFollowsTheCursorColour() {
+    @Test("the cursor row's text is derived from the cursor color")
+    func cursorRowTextFollowsTheCursorColor() {
         let cell = FileCellView(showsImage: true, identifier: NSUserInterfaceItemIdentifier("name"))
         cell.backgroundStyle = .emphasized
         #expect(cell.textField?.textColor == .alternateSelectedControlTextColor)
@@ -313,8 +313,8 @@ struct PanelPaletteTests {
     }
 
     /// The row view is installed for every row, so the untouched path has to be `super`'s drawing —
-    /// which it is exactly when there is no colour to draw instead.
-    @Test("a row view with no cursor colour has nothing of its own to draw")
+    /// which it is exactly when there is no color to draw instead.
+    @Test("a row view with no cursor color has nothing of its own to draw")
     func rowViewDefersWhenFollowingSystem() {
         let row = PanelRowView()
         #expect(row.cursorColor == nil)
@@ -324,9 +324,9 @@ struct PanelPaletteTests {
     }
 
     /// The size bar is the other fill that has to survive the cursor's background, and it defaults
-    /// to the same system colour the text does.
-    @Test("the size bar's emphasized ink defaults to the system's and takes a derived colour")
-    func sizeBarInkFollowsTheCursorColour() {
+    /// to the same system color the text does.
+    @Test("the size bar's emphasized ink defaults to the system's and takes a derived color")
+    func sizeBarInkFollowsTheCursorColor() {
         let bar = SizeBarView()
         #expect(bar.emphasizedInk == .alternateSelectedControlTextColor)
 

@@ -68,7 +68,7 @@ final class AppPreferences: ObservableObject {
 
     /// View ▸ show each file's cloud sync state as a badge at the right edge of its name, where
     /// Finder puts it (PLAN.md §M6 "iCloud/provider sync status"). Default **on**, and it can afford
-    /// to be: a folder that isn't a cloud folder is recognised in a single read and never scanned,
+    /// to be: a folder that isn't a cloud folder is recognized in a single read and never scanned,
     /// so someone with no provider pays one attribute read per folder visit and sees nothing.
     @Published var showSyncStatus: Bool {
         didSet {
@@ -90,7 +90,7 @@ final class AppPreferences: ObservableObject {
 
     /// View ▸ show the Total-Commander-style function-key bar along the window bottom (PLAN.md
     /// §M6). Default **on**: the bar is a signature discoverability win — it puts Copy/Move/
-    /// NewFolder/Delete on labelled buttons a new user can find without the manual, the exact
+    /// NewFolder/Delete on labeled buttons a new user can find without the manual, the exact
     /// "fix TC's adoption problem" goal — and someone who works entirely by keyboard can turn it
     /// off. App-wide, not per-window, like the tags column: every window shows or hides it
     /// together.
@@ -204,13 +204,13 @@ final class AppPreferences: ObservableObject {
         shared.quickViewJavaScriptEnabled
     }
 
-    /// Panels ▸ the three colours the user owns (PLAN.md §M15 Slice 2), each as `#RRGGBB` or the
+    /// Panels ▸ the three colors the user owns (PLAN.md §M15 Slice 2), each as `#RRGGBB` or the
     /// empty string for **Follow System** — the default, so an untouched install renders exactly as
     /// it did before this setting existed and the default path stays AppKit's own drawing.
     ///
     /// Stored as hex strings rather than as archived `NSColor`s so the defaults domain stays
     /// readable and hand-editable (PLAN.md §2, "boring and debuggable"), and so the change guard is
-    /// an exact string comparison rather than `NSColor`'s colour-space-sensitive equality. What each
+    /// an exact string comparison rather than `NSColor`'s color-space-sensitive equality. What each
     /// one paints, and what "the system's own" resolves to, is `PanelPalette`'s.
     @Published var accentColorHex: String {
         didSet { paletteValueChanged(accentColorHex, oldValue, key: Keys.accentColorHex) }
@@ -234,9 +234,9 @@ final class AppPreferences: ObservableObject {
         )
     }
 
-    /// Posted (on the main actor) when any of the three colours changes, so every open pane, tab
+    /// Posted (on the main actor) when any of the three colors changes, so every open pane, tab
     /// strip, path bar and titlebar indicator restyles live. One notification for all three rather
-    /// than three: every observer repaints the same surfaces regardless of which colour moved, and
+    /// than three: every observer repaints the same surfaces regardless of which color moved, and
     /// splitting them would only invite a site that listens for two of the three.
     static let paletteDidChange = Notification.Name("Dirnex.paletteDidChange")
 

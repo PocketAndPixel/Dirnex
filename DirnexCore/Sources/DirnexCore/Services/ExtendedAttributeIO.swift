@@ -68,7 +68,7 @@ public enum ExtendedAttributeIO {
     /// Remove an attribute. **Removing one the item does not carry succeeds**, because the caller's
     /// intent — "this must not be here" — is already satisfied.
     ///
-    /// This is `xattr -dr`'s behaviour rather than `xattr -d`'s, and the difference is the reason
+    /// This is `xattr -dr`'s behavior rather than `xattr -d`'s, and the difference is the reason
     /// docs/NOTES.md records it: `xattr -d com.apple.quarantine *` exits 1 over an ordinary
     /// selection because most of the files never had the attribute, which surfaces as a failure
     /// alert for a command that did exactly what was asked. Idempotence is what keeps a
@@ -82,7 +82,7 @@ public enum ExtendedAttributeIO {
     // MARK: - Helpers
 
     /// Split the kernel's NUL-separated name buffer. A trailing NUL terminates the last name, so an
-    /// empty run is a separator artefact rather than a nameless attribute. A name that is not valid
+    /// empty run is a separator artifact rather than a nameless attribute. A name that is not valid
     /// UTF-8 is dropped rather than replacement-charactered — it could not be passed back to
     /// `getxattr` as the same bytes anyway.
     static func splitNames(_ buffer: some Collection<CChar>) -> [String] {

@@ -66,7 +66,7 @@ struct LocalizationEnglishKeyCoverageTests {
     ///
     /// "Compact" is the ordinary French and Dutch word, so demanding a difference here would buy
     /// a translation written for the test rather than for the user — the same carve-out the tag
-    /// colours make for German and French "Orange". The check is kept rather than dropped because
+    /// colors make for German and French "Orange". The check is kept rather than dropped because
     /// the other two carry real translations in every language, and a "Roomy" left standing in a
     /// French build is precisely what this suite exists to catch.
     private let densitiesThatCoincideWithEnglish: [String: Set<String>] = [

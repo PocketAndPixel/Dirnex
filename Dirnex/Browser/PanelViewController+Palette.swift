@@ -1,6 +1,6 @@
 import AppKit
 
-/// The user's colours (PLAN.md §M15 Slice 2). App-wide like row density and show-hidden rather than
+/// The user's colors (PLAN.md §M15 Slice 2). App-wide like row density and show-hidden rather than
 /// per tab — it is a matter of taste, not a question you ask of one directory — so the pane only
 /// observes the shared value and re-renders; `AppPreferences` is the one place that writes it.
 ///
@@ -28,7 +28,7 @@ extension PanelViewController {
     /// refresh: each styles itself once, when its own state changes, and the accent it resolves is
     /// not part of that state. They are restyled *before* the rename guard, and unconditionally —
     /// they hold no field editor to protect, so an open inline rename must not leave the window half
-    /// recoloured until the user presses Return.
+    /// recolored until the user presses Return.
     ///
     /// The rows themselves go through `renderRefresh` rather than `reloadEverything`, for the reason
     /// the density observer gives: nothing *moved*, so the cursor is re-applied without scrolling

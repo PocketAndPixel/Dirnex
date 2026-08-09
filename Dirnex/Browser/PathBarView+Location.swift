@@ -19,7 +19,7 @@ extension PathBarView {
             if let mount = CloudStorageMounts.mount(containing: path) {
                 rebuildCrumbs(for: path, under: mount)
             } else if let trail = ICloudLocation.trail(for: path, fallbackName: Self.localizedName) {
-                // Same judgement one level over: a folder opened from the merged iCloud listing is
+                // Same judgment one level over: a folder opened from the merged iCloud listing is
                 // a real local directory, but its real path runs through container machinery
                 // (`com~apple~Pages/Documents`) the user never asked to see (PLAN.md §M9).
                 rebuildICloudCrumbs(trail)
@@ -68,7 +68,7 @@ extension PathBarView {
     /// real directory, so the breadcrumb affordance tells the truth. The trail simply *starts*
     /// lower. Walking above the mount is what the pane's Go Up does, not something the path bar has
     /// to keep a crumb for — the machinery under `~/Library/CloudStorage` is not a place the user
-    /// asked to see, the same judgement the merged iCloud listing makes about its containers.
+    /// asked to see, the same judgment the merged iCloud listing makes about its containers.
     func rebuildCrumbs(for path: VFSPath, under mount: CloudStorageMount) {
         let trail = path.ancestorsFromRoot.filter { $0.isSelfOrDescendant(of: mount.path) }
         installCrumbs(

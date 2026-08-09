@@ -1,15 +1,15 @@
 import Foundation
 
-/// The single-pass scanner that turns a previewed file into coloured spans (PLAN.md §M17).
+/// The single-pass scanner that turns a previewed file into colored spans (PLAN.md §M17).
 ///
 /// One pass, one lookahead, no regex and no `NSRegularExpression`. That is the whole design, and
 /// the milestone's stated boundary (PLAN.md §6): the tell that a scanner is turning into a parser
 /// is a grammar that needs to remember *where it has been*, and nothing here does — the block
 /// comment's nesting depth is a counter, not a stack of contexts.
 ///
-/// What makes the boundary affordable is that highlighting only ever *adds* foreground colour to a
-/// document that already renders correctly. A construct the scanner gets wrong is a wrong colour,
-/// never a wrong character, so the honest fix for a hard one is to stop colouring it. The list of
+/// What makes the boundary affordable is that highlighting only ever *adds* foreground color to a
+/// document that already renders correctly. A construct the scanner gets wrong is a wrong color,
+/// never a wrong character, so the honest fix for a hard one is to stop coloring it. The list of
 /// constructs deliberately left alone — string interpolation, JS regex literals, heredocs, JSX —
 /// is in PLAN.md §M17, and each carries a comment where the scanner would otherwise have handled it.
 ///
@@ -31,7 +31,7 @@ public enum SyntaxHighlighter {
 
     /// Tokenize `text` against `grammar`, in order, non-overlapping, and never zero-length.
     ///
-    /// Only coloured spans come back: a run the grammar makes no claim about is absent rather than
+    /// Only colored spans come back: a run the grammar makes no claim about is absent rather than
     /// present as `.plain`, because the text view already draws it in its own `.textColor`.
     public static func tokens(in text: String, grammar: LanguageGrammar) -> [SyntaxToken] {
         guard !text.isEmpty else { return [] }
@@ -76,7 +76,7 @@ private struct CompiledGrammar {
         blockCommentsNest = grammar.blockCommentsNest
         // Longest opener first, so `"""` claims its own opening before `"` can. Sorted here rather
         // than left to the table: a grammar written in the wrong order would fail quietly, by
-        // colouring a multi-line string's body as code.
+        // coloring a multi-line string's body as code.
         strings = grammar.strings
             .sorted { $0.open.utf16.count > $1.open.utf16.count }
             .map {
@@ -169,7 +169,7 @@ private struct Scanner {
     ///
     /// This is where **string interpolation** would be handled — Swift's `\(…)`, JavaScript's and
     /// the shell's `${…}` — and deliberately is not (PLAN.md §M17). A keyword inside an
-    /// interpolation stays the string's colour, which is the quiet direction: the alternative is
+    /// interpolation stays the string's color, which is the quiet direction: the alternative is
     /// re-entering the scanner from inside a literal, which is the state stack the milestone's
     /// boundary is drawn against.
     private mutating func scanString() -> Bool {
@@ -199,7 +199,7 @@ private struct Scanner {
     // MARK: Directives, numbers, words
 
     /// `#include`, and only where a directive can legally be: first on its line. The line-start test
-    /// is what keeps C's stringify operator inside a macro body from colouring as one.
+    /// is what keeps C's stringify operator inside a macro body from coloring as one.
     private mutating func scanDirective() -> Bool {
         guard !grammar.preprocessorSigil.isEmpty, matches(grammar.preprocessorSigil) else {
             return false
@@ -219,7 +219,7 @@ private struct Scanner {
     /// radices, separators and suffixes with — `0xFF`, `0b1010`, `1_000_000`, `3.14f`, `1e-9`, `10L`.
     ///
     /// One rule for every language in the table, because there is nothing here they disagree about
-    /// that a preview can see. It starts at a *digit*, so a leading-dot literal (`.5`) colours from
+    /// that a preview can see. It starts at a *digit*, so a leading-dot literal (`.5`) colors from
     /// the `5` — the alternative is deciding whether the `.` is a decimal point or a member access,
     /// which needs to know what came before it.
     private mutating func scanNumber() -> Bool {
@@ -246,7 +246,7 @@ private struct Scanner {
 
     /// An identifier, or a sigil-plus-identifier annotation.
     ///
-    /// Always consumes the *whole* run even when it colours nothing, which is what keeps
+    /// Always consumes the *whole* run even when it colors nothing, which is what keeps
     /// `class_name` from matching the keyword `class` at its front.
     private mutating func scanWord() -> Bool {
         let start = index

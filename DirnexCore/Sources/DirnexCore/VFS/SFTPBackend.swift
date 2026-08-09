@@ -81,7 +81,7 @@ public struct SFTPBackend: RemoteTransportBackend {
     /// Copy one file's bytes between this remote account and the local disk — a **download**
     /// (remote source → local destination, via `get`) or an **upload** (local source → remote
     /// destination, via `put`). The whole file transfers as one `sftp` command, so `progress` is
-    /// reported once with the transferred byte count and `isCancelled` is honoured at the file
+    /// reported once with the transferred byte count and `isCancelled` is honored at the file
     /// boundary (the queue's pause/cancel still acts between files). A copy that is neither
     /// direction — remote-to-remote, or between two different accounts — has no `sftp` expression
     /// yet and is refused.

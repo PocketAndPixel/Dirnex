@@ -87,15 +87,15 @@ public enum MarkdownDocument {
         ))
     }
 
-    /// The class a coloured run inside a fence carries, or `nil` for a run the scanner made no
+    /// The class a colored run inside a fence carries, or `nil` for a run the scanner made no
     /// claim about — which is emitted as bare text, since an unclaimed run is already the page's
-    /// own colour and a span for it would change nothing.
+    /// own color and a span for it would change nothing.
     ///
     /// Public because the *stylesheet* is the app's, and a stylesheet has to name these. Deriving
     /// the name on both sides is the trap docs/NOTES.md keeps finding — one rule, two spellings,
     /// and the compiler checks neither; the failure here would be a fence rendering in flat text
     /// with every automated signal green. Handing the name over instead means the app writes one
-    /// rule per `SyntaxToken.Kind` and a kind added later cannot be silently uncoloured.
+    /// rule per `SyntaxToken.Kind` and a kind added later cannot be silently uncolored.
     public static func tokenClass(for kind: SyntaxToken.Kind) -> String? {
         switch kind {
         case .keyword: "tok-keyword"

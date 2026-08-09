@@ -5,7 +5,7 @@ import Testing
 
 @Suite("ChecksumAlgorithm")
 struct ChecksumAlgorithmTests {
-    /// The whole unlabelled-line parse rests on this: a GNU or `.sfv` line carries only hex, so
+    /// The whole unlabeled-line parse rests on this: a GNU or `.sfv` line carries only hex, so
     /// the width has to name the algorithm on its own.
     @Test("the four digest widths are distinct")
     func widthsAreDistinct() {

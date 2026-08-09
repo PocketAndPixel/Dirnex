@@ -1,6 +1,6 @@
 import Foundation
 
-/// A language the Quick View text preview knows how to colour, and the routing that picks one for a
+/// A language the Quick View text preview knows how to color, and the routing that picks one for a
 /// file (PLAN.md §M17).
 ///
 /// **Extension first**, which inverts the rule the preview backends beside it follow — those route
@@ -118,7 +118,7 @@ public enum SyntaxLanguage: String, Sendable, CaseIterable {
     // MARK: - Routing
 
     /// The language for `name`, or `nil` for a file nothing here claims — which is not a failure.
-    /// An unknown extension renders exactly as it did before this milestone: one colour, correct.
+    /// An unknown extension renders exactly as it did before this milestone: one color, correct.
     ///
     /// Takes a file *name*, and tolerates a path by reading its last component, so a caller with a
     /// `URL` and a caller with a `FileEntry` can both ask without preparing the string first.
@@ -226,7 +226,7 @@ public enum SyntaxLanguage: String, Sendable, CaseIterable {
 
 public extension SyntaxLanguage {
     /// The language a Markdown fence's info string names — ```` ```swift ````, ```` ```bash ```` —
-    /// or `nil` for one nothing here claims, which is what leaves an undecorated fence uncoloured
+    /// or `nil` for one nothing here claims, which is what leaves an undecorated fence uncolored
     /// (PLAN.md §M17 ▸ Slice 3).
     ///
     /// Its own entry point rather than a call to `forFile(named:)`, because an info string is not a

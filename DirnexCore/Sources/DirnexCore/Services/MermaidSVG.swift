@@ -2,8 +2,8 @@ import Foundation
 
 /// A laid-out diagram, written as SVG (PLAN.md §M18 ▸ Slice 4).
 ///
-/// **Class names and `currentColor`, never a literal colour.** The same division the rest of the
-/// milestone keeps: the core says what a thing is, the app's stylesheet says what colour it takes,
+/// **Class names and `currentColor`, never a literal color.** The same division the rest of the
+/// milestone keeps: the core says what a thing is, the app's stylesheet says what color it takes,
 /// and a diagram therefore follows light and dark exactly the way the prose around it does — for
 /// free, live, with no reload (`QuickViewMarkdownStyle`). A single `#333` written here would be the
 /// one element on the page that stays dark when the user's Mac crosses sunset.
@@ -73,9 +73,9 @@ enum MermaidSVG {
     /// An arrowhead, as a filled triangle pointing along `direction`.
     ///
     /// Drawn as an explicit polygon rather than through a `<marker>`, and that is a decision rather
-    /// than an omission: a marker inherits the *line's* colour through `context-stroke`, which is
-    /// not supported everywhere, and otherwise needs a colour written into the marker — the one
-    /// thing this emitter must never do. A polygon carrying `currentColor` is coloured by the same
+    /// than an omission: a marker inherits the *line's* color through `context-stroke`, which is
+    /// not supported everywhere, and otherwise needs a color written into the marker — the one
+    /// thing this emitter must never do. A polygon carrying `currentColor` is colored by the same
     /// CSS rule as everything else.
     static func tip(
         _ tip: MermaidFlowchart.Tip,
@@ -104,17 +104,17 @@ enum MermaidSVG {
             return "<polygon class=\"\(classes)-arrow\" points=\"\(path)\"/>"
         case .circle:
             let radius = 4.0
-            let centre = MermaidPoint(x: point.x - ux * radius, y: point.y - uy * radius)
+            let center = MermaidPoint(x: point.x - ux * radius, y: point.y - uy * radius)
             return """
-            <circle class="\(classes)-circle" cx="\(number(centre.x))" cy="\(number(centre.y))" \
+            <circle class="\(classes)-circle" cx="\(number(center.x))" cy="\(number(center.y))" \
             r="\(number(radius))"/>
             """
         case .cross:
             let size = 5.0
-            let centre = MermaidPoint(x: point.x - ux * size, y: point.y - uy * size)
+            let center = MermaidPoint(x: point.x - ux * size, y: point.y - uy * size)
             return [
-                segment(centre, dx: size, dy: size, classes: "\(classes)-cross"),
-                segment(centre, dx: size, dy: -size, classes: "\(classes)-cross")
+                segment(center, dx: size, dy: size, classes: "\(classes)-cross"),
+                segment(center, dx: size, dy: -size, classes: "\(classes)-cross")
             ].joined()
         case .none:
             return ""
@@ -122,14 +122,14 @@ enum MermaidSVG {
     }
 
     private static func segment(
-        _ centre: MermaidPoint,
+        _ center: MermaidPoint,
         dx: Double,
         dy: Double,
         classes: String
     ) -> String {
         """
-        <line class="\(classes)" x1="\(number(centre.x - dx))" y1="\(number(centre.y - dy))" \
-        x2="\(number(centre.x + dx))" y2="\(number(centre.y + dy))"/>
+        <line class="\(classes)" x1="\(number(center.x - dx))" y1="\(number(center.y - dy))" \
+        x2="\(number(center.x + dx))" y2="\(number(center.y + dy))"/>
         """
     }
 

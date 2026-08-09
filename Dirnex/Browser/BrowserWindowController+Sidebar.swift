@@ -101,7 +101,7 @@ extension BrowserWindowController: SidebarViewControllerDelegate {
 
 /// The window's split controller, subclassed only to keep keyboard focus alive across a sidebar
 /// collapse (PLAN.md §M8). When the source list holds first responder and the sidebar is hidden, its
-/// table goes with it and AppKit drops focus to the bare window — both panes grey, and Tab dead
+/// table goes with it and AppKit drops focus to the bare window — both panes gray, and Tab dead
 /// because Tab is a pane key that only fires while a pane is first responder.
 ///
 /// `toggleSidebar(_:)` is the one funnel both the menu/palette (via the `toggleSidebar:` selector)

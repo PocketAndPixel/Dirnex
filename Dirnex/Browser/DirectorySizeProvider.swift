@@ -5,7 +5,7 @@ import Foundation
 /// .gitignore-aware folder sizes").
 ///
 /// An enum rather than a `scope` flag plus an optional snapshot, so "git-aware sizing with no idea
-/// what is ignored" — which would silently count everything while labelling the answer filtered — is
+/// what is ignored" — which would silently count everything while labeling the answer filtered — is
 /// not a state anyone can construct.
 enum DirectorySizeRule {
     /// Every byte beneath the folder: Finder's answer, and Space-on-dir's since §M1.
@@ -119,7 +119,7 @@ final class DirectorySizeProvider {
     /// reverse. Newest-first is the whole point: navigating to a new folder must not wait behind the
     /// queue of one the user has already left.
     private var order: [DirectorySizeKey] = []
-    /// The running drain loop, or `nil` when idle. Cancelling it cancels every walk in flight, which
+    /// The running drain loop, or `nil` when idle. Canceling it cancels every walk in flight, which
     /// is why the walks go through `DirectoryLoader.cancellableSize`.
     private var drain: Task<Void, Never>?
     /// Children with a walk in flight right now.
@@ -250,7 +250,7 @@ final class DirectorySizeProvider {
     private func nextWork() -> Work? {
         while let key = order.last {
             guard var scan = queue[key], !scan.children.isEmpty else {
-                // Spent or cancelled — drop it and look at the next-newest.
+                // Spent or canceled — drop it and look at the next-newest.
                 queue.removeValue(forKey: key)
                 order.removeLast()
                 continue
@@ -277,7 +277,7 @@ final class DirectorySizeProvider {
 
     /// Walk the queue, `width` at a time, until it runs dry.
     ///
-    /// A child task, not a detached one, so cancelling `drain` reaches the walks themselves. The
+    /// A child task, not a detached one, so canceling `drain` reaches the walks themselves. The
     /// loop re-reads `nextWork` after every landing rather than snapshotting the queue up front —
     /// that is what lets a directory requested *while the scan runs* (the user navigated) jump the
     /// rest, and what lets `cancelScan` take effect immediately.
@@ -308,7 +308,7 @@ final class DirectorySizeProvider {
                 running -= 1
                 inFlight.remove(DirectorySizeKey(path: landing.child, scope: landing.scope))
                 guard !Task.isCancelled else { break }
-                // A failed or cancelled walk banks nothing: an absent total re-walks next visit,
+                // A failed or canceled walk banks nothing: an absent total re-walks next visit,
                 // where a wrong one would be believed. The core's cache is a latency optimization
                 // and never an authority — this is the boundary that keeps it honest.
                 guard let bytes = landing.bytes else { continue }

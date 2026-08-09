@@ -4,7 +4,7 @@ import Testing
 
 @testable import Dirnex
 
-/// The colour half of M17 (PLAN.md §M17 ▸ Slice 3), and the reason the theme is a table of
+/// The color half of M17 (PLAN.md §M17 ▸ Slice 3), and the reason the theme is a table of
 /// light/dark pairs rather than the system palette the milestone opened with.
 ///
 /// The contrast tests here are the point of the whole file. Only one appearance is ever on screen,
@@ -20,25 +20,25 @@ struct SyntaxThemeTests {
     /// narrowest is `typeOrTag` in light mode at 4.52:1.
     private static let floor = 4.5
 
-    // MARK: - The colour table
+    // MARK: - The color table
 
-    @Test("every kind the scanner emits has a colour, and .plain has none")
-    func everyEmittedKindIsColoured() {
+    @Test("every kind the scanner emits has a color, and .plain has none")
+    func everyEmittedKindIsColored() {
         for kind in SyntaxToken.Kind.allCases where kind != .plain {
-            #expect(SyntaxTheme.color(for: kind) != nil, "\(kind) has no colour")
+            #expect(SyntaxTheme.color(for: kind) != nil, "\(kind) has no color")
         }
         // Never emitted, and deliberately absent rather than mapped to `.textColor`: a run with no
-        // colour is a run left exactly as the text view already drew it.
+        // color is a run left exactly as the text view already drew it.
         #expect(SyntaxTheme.color(for: .plain) == nil)
     }
 
-    @Test("every colour clears 4.5:1 on the text background, in both appearances")
+    @Test("every color clears 4.5:1 on the text background, in both appearances")
     func contrastHoldsInBothAppearances() throws {
         for name in [NSAppearance.Name.aqua, .darkAqua] {
             let appearance = try #require(NSAppearance(named: name))
             for kind in SyntaxToken.Kind.allCases {
-                guard let colour = SyntaxTheme.color(for: kind) else { continue }
-                let ratio = Self.contrast(colour, onTextBackgroundIn: appearance)
+                guard let color = SyntaxTheme.color(for: kind) else { continue }
+                let ratio = Self.contrast(color, onTextBackgroundIn: appearance)
                 #expect(
                     ratio >= Self.floor,
                     "\(kind) scores \(ratio) in \(name.rawValue), below \(Self.floor)"
@@ -47,22 +47,22 @@ struct SyntaxThemeTests {
         }
     }
 
-    @Test("the dark half really is a different colour from the light half")
+    @Test("the dark half really is a different color from the light half")
     func thePairIsAPair() throws {
         // A `dynamicProvider` that ignored its argument would still pass the contrast test in one
         // appearance and fail silently in the other, so this pins that the switch happens at all.
         let light = try #require(NSAppearance(named: .aqua))
         let dark = try #require(NSAppearance(named: .darkAqua))
         for kind in SyntaxToken.Kind.allCases {
-            guard let colour = SyntaxTheme.color(for: kind) else { continue }
+            guard let color = SyntaxTheme.color(for: kind) else { continue }
             #expect(
-                Self.resolved(colour, in: light) != Self.resolved(colour, in: dark),
+                Self.resolved(color, in: light) != Self.resolved(color, in: dark),
                 "\(kind) resolves identically in both appearances"
             )
         }
     }
 
-    @Test("no two kinds resolve to the same colour, except the pair that means to")
+    @Test("no two kinds resolve to the same color, except the pair that means to")
     func kindsAreTellableApart() throws {
         // A reader has to see keyword and string as different things. Two pairs share a value on
         // purpose, and both are VS Code's own: `deleted` takes `string`'s salmon, and `inserted`
@@ -74,9 +74,9 @@ struct SyntaxThemeTests {
         var seen: [String: SyntaxToken.Kind] = [:]
         var clashes: [String] = []
         for kind in SyntaxToken.Kind.allCases {
-            guard let colour = SyntaxTheme.color(for: kind) else { continue }
-            let key = Self.resolved(colour, in: appearance)
-            if let other = seen[key], !Self.mayShareAColour(kind, other) {
+            guard let color = SyntaxTheme.color(for: kind) else { continue }
+            let key = Self.resolved(color, in: appearance)
+            if let other = seen[key], !Self.mayShareAColor(kind, other) {
                 clashes.append("\(kind) == \(other)")
             }
             seen[key] = kind
@@ -86,7 +86,7 @@ struct SyntaxThemeTests {
 
     // MARK: - End to end
 
-    @Test("a previewed Swift file arrives with coloured runs in its text storage")
+    @Test("a previewed Swift file arrives with colored runs in its text storage")
     func highlightingReachesTheScreen() async throws {
         let tree = try TempDirectory()
         defer { tree.cleanup() }
@@ -96,31 +96,31 @@ struct SyntaxThemeTests {
         let name: String = "hi"
         """)
         let textView = try await Self.previewedTextView(url)
-        let colours = Self.foregroundColours(in: textView)
+        let colors = Self.foregroundColors(in: textView)
 
-        #expect(colours.contains(SyntaxTheme.comment))
-        #expect(colours.contains(SyntaxTheme.keyword))
-        #expect(colours.contains(SyntaxTheme.string))
-        #expect(colours.contains(SyntaxTheme.typeOrTag))
-        // The document is unchanged — highlighting only ever adds colour.
+        #expect(colors.contains(SyntaxTheme.comment))
+        #expect(colors.contains(SyntaxTheme.keyword))
+        #expect(colors.contains(SyntaxTheme.string))
+        #expect(colors.contains(SyntaxTheme.typeOrTag))
+        // The document is unchanged — highlighting only ever adds color.
         #expect(textView.string.hasPrefix("// a comment\nimport Foundation"))
     }
 
-    @Test("a file no grammar claims renders in one colour, exactly as it did before M17")
+    @Test("a file no grammar claims renders in one color, exactly as it did before M17")
     func unknownExtensionsAreNotASpecialCase() async throws {
         let tree = try TempDirectory()
         defer { tree.cleanup() }
         let url = try tree.write("notes.txt", contents: "class if let \"quoted\" 42\n")
         let textView = try await Self.previewedTextView(url)
 
-        #expect(Self.foregroundColours(in: textView) == [NSColor.textColor])
+        #expect(Self.foregroundColors(in: textView) == [NSColor.textColor])
     }
 
     @Test("an out-of-range token is dropped rather than raising inside a preview")
     func mismatchedTokensDoNotCrash() {
         // The core promises in-range offsets and its tests pin that — but `addAttribute` with a bad
         // `NSRange` *raises*, and a preview is the wrong place to find out. The guard has to fail as
-        // a missing colour.
+        // a missing color.
         let surface = QuickViewTextView()
         surface.show(
             TextPreview(text: "abc", isTruncated: false),
@@ -131,8 +131,8 @@ struct SyntaxThemeTests {
         )
         let textView = Self.documentTextView(of: surface)
         #expect(textView?.string == "abc")
-        #expect(Self.foregroundColours(in: textView).contains(SyntaxTheme.keyword))
-        #expect(!Self.foregroundColours(in: textView).contains(SyntaxTheme.string))
+        #expect(Self.foregroundColors(in: textView).contains(SyntaxTheme.keyword))
+        #expect(!Self.foregroundColors(in: textView).contains(SyntaxTheme.string))
     }
 
     @Test("TextKit 2's lazy layout survives an attributed document")
@@ -149,9 +149,9 @@ struct SyntaxThemeTests {
 
     // MARK: - Helpers
 
-    /// Whether two kinds are allowed to share a colour: only the diff pair, which no source file
+    /// Whether two kinds are allowed to share a color: only the diff pair, which no source file
     /// can put beside the code kinds it borrows a hue from.
-    private static func mayShareAColour(_ one: SyntaxToken.Kind, _ other: SyntaxToken.Kind) -> Bool {
+    private static func mayShareAColor(_ one: SyntaxToken.Kind, _ other: SyntaxToken.Kind) -> Bool {
         let pair: Set<SyntaxToken.Kind> = [one, other]
         return pair == [.deleted, .string] || pair == [.inserted, .number]
     }
@@ -178,27 +178,27 @@ struct SyntaxThemeTests {
         (surface.interactiveSubtree as? NSScrollView)?.documentView as? NSTextView
     }
 
-    /// Every distinct `.foregroundColor` in the document, as the colour objects themselves — the
+    /// Every distinct `.foregroundColor` in the document, as the color objects themselves — the
     /// theme's own `NSColor`s, so a comparison against `SyntaxTheme.comment` is exact.
-    private static func foregroundColours(in textView: NSTextView?) -> Set<NSColor> {
+    private static func foregroundColors(in textView: NSTextView?) -> Set<NSColor> {
         guard let storage = textView?.textStorage else { return [] }
         var found: Set<NSColor> = []
         storage.enumerateAttribute(
             .foregroundColor,
             in: NSRange(location: 0, length: storage.length)
         ) { value, _, _ in
-            if let colour = value as? NSColor { found.insert(colour) }
+            if let color = value as? NSColor { found.insert(color) }
         }
         return found
     }
 
-    /// `colour` composited on `.textBackgroundColor`, against that same background.
-    private static func contrast(_ colour: NSColor, onTextBackgroundIn appearance: NSAppearance)
+    /// `color` composited on `.textBackgroundColor`, against that same background.
+    private static func contrast(_ color: NSColor, onTextBackgroundIn appearance: NSAppearance)
         -> Double {
-        var top = colour
+        var top = color
         var under = NSColor.textBackgroundColor
         appearance.performAsCurrentDrawingAppearance {
-            top = colour.usingColorSpace(.sRGB) ?? colour
+            top = color.usingColorSpace(.sRGB) ?? color
             under = NSColor.textBackgroundColor.usingColorSpace(.sRGB) ?? .white
         }
         let flat = flattened(top, on: under)
@@ -206,10 +206,10 @@ struct SyntaxThemeTests {
         return (max(ink, paper) + 0.05) / (min(ink, paper) + 0.05)
     }
 
-    private static func resolved(_ colour: NSColor, in appearance: NSAppearance) -> String {
-        var srgb = colour
+    private static func resolved(_ color: NSColor, in appearance: NSAppearance) -> String {
+        var srgb = color
         appearance.performAsCurrentDrawingAppearance {
-            srgb = colour.usingColorSpace(.sRGB) ?? colour
+            srgb = color.usingColorSpace(.sRGB) ?? color
         }
         return String(
             format: "%.4f,%.4f,%.4f",
@@ -217,7 +217,7 @@ struct SyntaxThemeTests {
         )
     }
 
-    /// A semantic colour can carry alpha (`.secondaryLabelColor` is black at 50 %), so it has to be
+    /// A semantic color can carry alpha (`.secondaryLabelColor` is black at 50 %), so it has to be
     /// measured as it is seen rather than as its opaque value.
     private static func flattened(_ top: NSColor, on under: NSColor) -> NSColor {
         let alpha = top.alphaComponent
@@ -229,13 +229,13 @@ struct SyntaxThemeTests {
         )
     }
 
-    private static func luminance(_ colour: NSColor) -> Double {
+    private static func luminance(_ color: NSColor) -> Double {
         func channel(_ value: CGFloat) -> Double {
             let raw = Double(value)
             return raw <= 0.03928 ? raw / 12.92 : pow((raw + 0.055) / 1.055, 2.4)
         }
-        return 0.2126 * channel(colour.redComponent)
-            + 0.7152 * channel(colour.greenComponent)
-            + 0.0722 * channel(colour.blueComponent)
+        return 0.2126 * channel(color.redComponent)
+            + 0.7152 * channel(color.greenComponent)
+            + 0.0722 * channel(color.blueComponent)
     }
 }

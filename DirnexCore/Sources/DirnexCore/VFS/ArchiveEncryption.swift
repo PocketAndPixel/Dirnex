@@ -11,7 +11,7 @@ import Foundation
 /// **Only one cipher is offered, on purpose.** libarchive also accepts `zipcrypt`, the original
 /// PKWARE stream cipher, and it is the *only* choice macOS's own `unzip` can read — which makes it
 /// permanently tempting and permanently wrong. It has a published known-plaintext break; offering it
-/// under a checkbox labelled "Encrypt" would tell the user something untrue about their own files.
+/// under a checkbox labeled "Encrypt" would tell the user something untrue about their own files.
 /// AES-128 is left out for a smaller reason: it is exactly as compatible as AES-256 (both are the
 /// same WinZip AE-2 extension) and AES is hardware-accelerated on every Mac Dirnex runs on, so the
 /// weaker option would buy nothing measurable and would still be a way to choose wrong. This

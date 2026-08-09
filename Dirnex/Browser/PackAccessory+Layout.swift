@@ -35,7 +35,7 @@ extension PackAccessory {
         static let fieldHeight: CGFloat = 24
         static let popupHeight: CGFloat = 26
         static let labelHeight: CGFloat = 18
-        /// How far a caption sits above its control's origin so the two read as centred: a 24 pt
+        /// How far a caption sits above its control's origin so the two read as centered: a 24 pt
         /// field and a 26 pt popup put an 18 pt label at different heights.
         static let labelRiseOverField: CGFloat = 3
         static let labelRiseOverPopup: CGFloat = 4

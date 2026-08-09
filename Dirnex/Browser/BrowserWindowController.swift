@@ -60,7 +60,7 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     /// already full-screen before they ever pressed the key.
     var didEnterFullScreenForQuickView = false
 
-    /// How far a two-finger swipe had travelled when the fingers left the trackpad, held only for
+    /// How far a two-finger swipe had traveled when the fingers left the trackpad, held only for
     /// the frame or two it takes to read which way the system then moves — see
     /// `trackQuickViewSwipe`. `nil` whenever no gesture is being finished.
     var quickViewSwipeAmountAtLift: CGFloat?
@@ -268,7 +268,7 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     /// *that*. A `.leading` titlebar accessory is the standard slot for both; the sidebar button
     /// drives the split controller's `toggleSidebar`, the same action as View ▸ Show Sidebar (⌃⌘S).
     ///
-    /// Assumes `installUpdateIndicator` has already prepared its button (behaviour + size); this
+    /// Assumes `installUpdateIndicator` has already prepared its button (behavior + size); this
     /// only places it. The row is pinned at its *leading* edge so the sidebar toggle keeps its spot
     /// beside the traffic lights whether or not an update is waiting, and the indicator — hidden at
     /// rest, and `NSStackView` detaches hidden arranged subviews — leaves no gap behind it.

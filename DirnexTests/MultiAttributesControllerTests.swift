@@ -103,7 +103,7 @@ struct MultiAttributesControllerTests {
         let patch = controller.buildPatch()
         #expect(patch.permissionMask[.group, .read])
         #expect(patch.permissionValues[.group, .read])
-        // A neighbour the user never touched stays out of the mask.
+        // A neighbor the user never touched stays out of the mask.
         #expect(patch.permissionMask[.other, .read] == false)
     }
 

@@ -1,7 +1,7 @@
 import AppKit
 import DirnexCore
 
-/// Menu-item validation for a file pane: every checkmark, and every item that has to grey out where
+/// Menu-item validation for a file pane: every checkmark, and every item that has to gray out where
 /// it cannot apply (PLAN.md §M1 "menu items reflect what the focused pane can actually do").
 ///
 /// Split out of `PanelViewController+FileOps`, which had grown past its length budget, along the
@@ -146,7 +146,7 @@ extension PanelViewController: NSMenuItemValidation {
             // Lights up only on a recognized checksum file under the cursor.
             return canVerifyChecksums
         case #selector(createChecksumFile(_:)):
-            // Needs a real writable folder on disk and something selected. Remote panes stay grey:
+            // Needs a real writable folder on disk and something selected. Remote panes stay gray:
             // neither `sftp` nor `curl` can hash server-side (PLAN.md §M14 Slice 2).
             return canCreateChecksumFile
         default:
@@ -171,7 +171,7 @@ extension PanelViewController: NSMenuItemValidation {
 
     /// This pane can create/paste into its directory — driven off the *owning* backend's
     /// capabilities (PLAN.md §M5): a virtual pane (search results or a browsed archive) reports
-    /// `.read`, so `.write` is absent and the op greys out; a real disk (and a future writable
+    /// `.read`, so `.write` is absent and the op grays out; a real disk (and a future writable
     /// SFTP mount) reports `.write`.
     ///
     /// `creationDirectory` is the second half because the merged Trash is a virtual location that
@@ -179,7 +179,7 @@ extension PanelViewController: NSMenuItemValidation {
     /// create or paste into. Without it, New Folder lit up in a Trash tab and the flow behind it
     /// bailed out silently at its own guard. The merged iCloud listing is the mirror image: also
     /// virtual, also writable, but it *does* have a directory underneath (CloudDocs), so it enables
-    /// rather than greys — which is exactly why both ask the same question the flows themselves ask.
+    /// rather than grays — which is exactly why both ask the same question the flows themselves ask.
     ///
     /// It is the same property those flows resolve their destination from, spelled the same way so it
     /// cannot drift into a second predicate. Safe in a validator, which does not reconcile the cursor
@@ -223,7 +223,7 @@ extension PanelViewController: NSMenuItemValidation {
             // an SFTP volume or in search results the bars are suppressed because there is nothing
             // sane to walk, and that is not the user having switched the mode off.
             menuItem.state = isSizeVisualizationEnabled ? .on : .off
-            // Disabled where it cannot apply, so the greying explains the suppression that the
+            // Disabled where it cannot apply, so the graying explains the suppression that the
             // checkmark alone would leave looking like a bug. A tree *is* allowed now — its bars are
             // re-scoped per level (`SizeVisualization(tree:)`, PLAN.md §M15) — so the gate matches
             // `areSizeBarsVisible`.
@@ -239,7 +239,7 @@ extension PanelViewController: NSMenuItemValidation {
             // The tab's flag again, not `areGitAwareSizesActive` — browsing out of a repository
             // suppresses the filtering, and unchecking the box would blame the user's setting.
             menuItem.state = isGitAwareSizesEnabled ? .on : .off
-            // Greyed outside a repository, where there is nothing to exclude. `isInGitRepository`
+            // Grayed outside a repository, where there is nothing to exclude. `isInGitRepository`
             // rather than the snapshot: a repository whose first `git status` is still in flight is
             // one you are in, and the item must not flicker enabled a moment after the folder opens.
             return isInGitRepository

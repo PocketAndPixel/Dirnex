@@ -24,7 +24,7 @@ struct FileColorRuleTests {
         #expect(!images.matches(name: "holiday.jpeg"))
     }
 
-    @Test("any pattern in the rule is enough — one colour, several extensions")
+    @Test("any pattern in the rule is enough — one color, several extensions")
     func matchesAnyPattern() {
         let images = rule(["*.jpg", "*.png", "*.gif"])
         #expect(images.matches(name: "a.jpg"))
@@ -43,8 +43,8 @@ struct FileColorRuleTests {
     /// rather than `FNM_NOMATCH` for these, and `Glob` tests for `== 0` — so they fall on the safe
     /// side of the line. The editor is live, so every one of these is a state the user's list passes
     /// through while they type, and the alternative (an error read as "matches") would flood the
-    /// pane with colour mid-keystroke.
-    @Test("a malformed pattern colours nothing rather than everything")
+    /// pane with color mid-keystroke.
+    @Test("a malformed pattern colors nothing rather than everything")
     func malformedPatternMatchesNothing() {
         #expect(!rule(["["]).matches(name: "["))
         #expect(!rule(["[a-"]).matches(name: "b"))
@@ -52,7 +52,7 @@ struct FileColorRuleTests {
         #expect(!rule(["\\"]).matches(name: "\\"))
     }
 
-    /// The two `fnmatch` behaviours a user will actually meet, pinned so a later "fix" to `Glob`
+    /// The two `fnmatch` behaviors a user will actually meet, pinned so a later "fix" to `Glob`
     /// (setting `FNM_PERIOD`, say) has to argue with a test: `*` takes dotfiles, and `*.*` does not
     /// take a name with no extension.
     @Test("* covers dotfiles; *.* means 'has an extension'")
@@ -115,7 +115,7 @@ struct FileColorRuleTests {
 
     @Test("a hand-edited rule missing fields decodes rather than throwing")
     func missingFieldsDegrade() throws {
-        // `##"…"##`, not `#"…"#`: a colour hex is preceded by a quote, so `"#` inside the literal
+        // `##"…"##`, not `#"…"#`: a color hex is preceded by a quote, so `"#` inside the literal
         // would close a single-pound raw string early.
         let decoded = try JSONDecoder().decode(
             FileColorRule.self,
@@ -173,7 +173,7 @@ struct FileColorRulesTests {
 
     /// The same two rules the other way round: the general one now shadows the specific one
     /// completely. This is a list a user is allowed to build — and to see, while they drag it
-    /// straight — so it is pinned as correct behaviour rather than repaired.
+    /// straight — so it is pinned as correct behavior rather than repaired.
     @Test("a general rule above a specific one shadows it, and that is not repaired")
     func shadowingIsPreserved() {
         let rules = FileColorRules(rules: [
@@ -218,7 +218,7 @@ struct FileColorRulesTests {
     }
 
     /// `isDirectoryLike`, not `isDirectory`: a symlink pointing at a folder opens into that folder
-    /// everywhere else in the pane, so it is coloured as one here too.
+    /// everywhere else in the pane, so it is colored as one here too.
     @Test("a symlink to a folder counts as a folder")
     func symlinkToFolderIsAFolder() {
         let rules = FileColorRules(rules: [rule(["*"], color: "#4A90D9", target: .foldersOnly)])

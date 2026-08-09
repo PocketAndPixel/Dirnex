@@ -74,10 +74,10 @@ enum QuickViewMarkdownDiagram {
 
     /// The rules a diagram is drawn with.
     ///
-    /// Every colour is a custom property `QuickViewMarkdownStyle` already resolves for both
+    /// Every color is a custom property `QuickViewMarkdownStyle` already resolves for both
     /// appearances, and every shape takes `currentColor` — which is what makes a diagram follow
     /// light and dark exactly the way the prose around it does, live and with no reload. The core
-    /// emits class names and never a colour precisely so that this file can be the only one that
+    /// emits class names and never a color precisely so that this file can be the only one that
     /// knows which appearance is on screen.
     static var rules: String {
         """

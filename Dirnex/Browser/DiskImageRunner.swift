@@ -106,7 +106,7 @@ enum DiskImageRunner {
     /// Unmount and detach the volume at `mountPoint`.
     ///
     /// Detaching something already detached exits 1 and is **success** — the user's intent is
-    /// satisfied, and `VaultError.fromDetachFailure` is where that judgement lives, so a second Lock
+    /// satisfied, and `VaultError.fromDetachFailure` is where that judgment lives, so a second Lock
     /// (or a Lock after the user ejected the volume in Finder) does not look broken.
     static func detach(mountPoint: String, name: String) throws {
         let run = try Run(arguments: DiskImageArguments.detach(mountPoint: mountPoint))

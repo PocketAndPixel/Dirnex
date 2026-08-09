@@ -120,7 +120,7 @@ struct CopyEngineTests {
 
     // MARK: - Cancellation & progress
 
-    @Test("cancelling before any work leaves a cancelled report and copies nothing")
+    @Test("canceling before any work leaves a canceled report and copies nothing")
     func cancelledCopiesNothing() throws {
         let tree = try TempTree()
         defer { tree.cleanup() }
@@ -316,7 +316,7 @@ private struct CrossVolumeBackend: VFSBackend {
     }
 }
 
-/// A two-namespace routing fake, modelling the app's `CompositeBackend` for an upload: real on-disk
+/// A two-namespace routing fake, modeling the app's `CompositeBackend` for an upload: real on-disk
 /// files under `.local`, plus an in-memory "remote" backend under a distinct id that advertises no
 /// clone (like SFTP). `cloneItem` traps a cross-backend call — a clone can only be same-backend, so
 /// the engine must never route one here across backends; if it does (the pre-fix bug), the trap

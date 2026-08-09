@@ -13,7 +13,7 @@ import DirnexCore
 ///   of "what is in scope", free to drift from the one that applies.
 /// - **Whether it can be undone.** An undo step encodes to a dead-constant 246 bytes and the journal
 ///   is re-encoded on every later operation, so past ``AttributeApplyJob/journalLimit`` the run
-///   journals nothing at all. That is a fact about the operation the user is authorising, not a
+///   journals nothing at all. That is a fact about the operation the user is authorizing, not a
 ///   detail to discover when ⌘Z does nothing.
 ///
 /// The count is a real directory walk, so it runs off the main thread; on this machine a 5 000-entry

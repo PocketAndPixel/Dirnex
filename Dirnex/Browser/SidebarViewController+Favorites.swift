@@ -115,7 +115,7 @@ extension SidebarViewController {
 
     /// Remove a pin. No confirmation: unlike deleting a saved search — which discards a query the
     /// user composed and cannot get back — this discards a pointer to a folder that is still
-    /// exactly where it was, and re-adding it is one drag. A sheet here would be theatre.
+    /// exactly where it was, and re-adding it is one drag. A sheet here would be theater.
     @objc private func removeFavoriteItem(_ sender: NSMenuItem) {
         guard let path = sender.representedObject as? VFSPath else { return }
         var favorites = FavoritesStore.load()

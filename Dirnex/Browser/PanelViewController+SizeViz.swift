@@ -411,7 +411,7 @@ extension PanelViewController {
         tableView.addTableColumn(column)
         // Immediately after Size, where the bar reads as a picture *of* the number beside it. That
         // adjacency is the whole reason the core measures logical bytes rather than ncdu's allocated
-        // ones: a bar twice its neighbour's beside a size column reading smaller is incoherent.
+        // ones: a bar twice its neighbor's beside a size column reading smaller is incoherent.
         let sizeIdentifier = NSUserInterfaceItemIdentifier(Column.size.rawValue)
         let sizeIndex = tableView.column(withIdentifier: sizeIdentifier)
         guard sizeIndex >= 0 else { return }

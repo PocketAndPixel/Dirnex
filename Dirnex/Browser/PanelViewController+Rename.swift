@@ -154,12 +154,12 @@ extension PanelViewController: NSTextFieldDelegate {
     }
 
     /// Editing ended — via Return (commit), Esc (cancel, flagged above), or focus loss
-    /// (commit). Revert the cell to a label and, unless cancelled, perform the rename.
+    /// (commit). Revert the cell to a label and, unless canceled, perform the rename.
     func controlTextDidEndEditing(_ notification: Notification) {
         guard let entryID = renamingEntryID,
               let field = notification.object as? NSTextField else { return }
         let newName = field.stringValue
-        let cancelled = renameWasCancelled
+        let canceled = renameWasCancelled
         // A live refresh (FSEvents / directory-size total) that arrived mid-edit was deferred
         // rather than allowed to tear the field editor apart; replay it now so the pane catches
         // up on the change it skipped. The commit path re-lists anyway, but the cancel/no-op
@@ -177,7 +177,7 @@ extension PanelViewController: NSTextFieldDelegate {
             columnIndexes: IndexSet(integersIn: 0..<tableView.numberOfColumns)
         )
 
-        guard !cancelled else {
+        guard !canceled else {
             focusTable()
             if owedRefresh { refreshCurrentDirectory() }
             return

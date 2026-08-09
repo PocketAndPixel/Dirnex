@@ -177,7 +177,7 @@ enum AttributeFormatting {
 
     /// One right's label for an item of this kind.
     ///
-    /// The four aliased bits are relabelled on a directory — `read` reads as "List", `write` as "Add
+    /// The four aliased bits are relabeled on a directory — `read` reads as "List", `write` as "Add
     /// File" and so on — because that is what `ls -le` and `chmod +a` call them there, and a folder
     /// whose ACL says "read" would not match what every other tool on the Mac shows. The *stored*
     /// token never changes; this is only the word (docs/NOTES.md).

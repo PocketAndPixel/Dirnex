@@ -229,7 +229,7 @@ public enum SFTPKnownHosts {
 
 /// Builds the `sftp` batch commands the transport feeds on stdin. Pure and tested so the escaping —
 /// the one place a remote path with spaces or quotes could break the command — is verified without
-/// a server. `sftp`'s batch parser splits on whitespace but honours double quotes and backslash
+/// a server. `sftp`'s batch parser splits on whitespace but honors double quotes and backslash
 /// escapes, so a path is wrapped in quotes with `\` and `"` escaped.
 public enum SFTPBatchCommand {
     /// The batch line that lists (or stats) `remotePath`: `ls -la "…"`.

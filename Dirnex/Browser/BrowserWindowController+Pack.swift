@@ -20,8 +20,8 @@ extension BrowserWindowController {
         case let .failed(error):
             presentPackFailure(error)
         case nil:
-            // A cancelled pack. It left nothing behind — the writer builds under a temporary name
-            // and only renames on success — and the user is the one who cancelled it, so there is
+            // A canceled pack. It left nothing behind — the writer builds under a temporary name
+            // and only renames on success — and the user is the one who canceled it, so there is
             // nothing to tell them that the queue bar disappearing has not already said.
             break
         }
@@ -32,7 +32,7 @@ extension BrowserWindowController {
         // standing in — Pack writes into the other pane, like F5. So the pane to re-list is the one
         // showing the archive's own directory, never `focusedPanel`: selecting there asks the source
         // pane to put its cursor on a file it does not contain, which fails silently and leaves the
-        // new archive sitting unselected in the pane that does. (The neighbouring checksum outcome
+        // new archive sitting unselected in the pane that does. (The neighboring checksum outcome
         // reads `focusedPanel` correctly, because a manifest is written beside the files it covers.)
         paneShowing(summary.archive.parent)?.refreshCurrentDirectory(selecting: summary.archive)
         let name = summary.archive.lastComponent

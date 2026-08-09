@@ -98,7 +98,7 @@ enum DirectoryLoader {
     /// task (this is not detached), it inherits cancellation from the scan queue's task group, and
     /// `DirectorySizer` checks the flag at every directory it pops.
     ///
-    /// Returns `nil` when cancelled, exactly as it does when the walk fails — both mean "no total",
+    /// Returns `nil` when canceled, exactly as it does when the walk fails — both mean "no total",
     /// and the cache stores neither.
     ///
     /// `isExcluded` prunes subtrees out of the total — `.gitignore`-aware sizing, whose predicate is

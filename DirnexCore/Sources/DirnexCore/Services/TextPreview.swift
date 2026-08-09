@@ -32,7 +32,7 @@ public struct TextPreview: Sendable, Equatable {
     /// Read up to `byteLimit` bytes of a local file and decode them.
     ///
     /// `nil` for anything that isn't text after all — an unreadable file, or bytes no encoding
-    /// claims (a binary mislabelled `.txt`). The caller falls back to Quick Look, which is exactly
+    /// claims (a binary mislabeled `.txt`). The caller falls back to Quick Look, which is exactly
     /// what such a file got before.
     ///
     /// The read is synchronous and blocking; call it off the main thread.

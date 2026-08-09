@@ -5,7 +5,7 @@ import Testing
 
 /// `SizeVisualization` over a `TreeProjection` (PLAN.md §M15, size bars re-scoped per level): each
 /// row is measured against its **own parent directory**, so an expanded folder's children compare
-/// among themselves rather than against the whole tree. The flat-listing behaviour is pinned in
+/// among themselves rather than against the whole tree. The flat-listing behavior is pinned in
 /// `SizeVisualizationTests`; this suite is only the per-level story.
 @Suite("SizeVisualization — tree")
 struct SizeVisualizationTreeTests {

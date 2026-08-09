@@ -1,7 +1,7 @@
 import CArchiveShim
 import Foundation
 
-/// Where an extracted entry actually lands on disk — the second half of the traversal defence.
+/// Where an extracted entry actually lands on disk — the second half of the traversal defense.
 ///
 /// Split from `EncryptedArchiveReader` by concept rather than to shave lines: that type reads the
 /// archive, and this one writes the filesystem, which is where every rule about *not* writing
@@ -60,7 +60,7 @@ extension EncryptedArchiveReader {
         in session: Session
     ) throws -> Int64 {
         let handle = session.handle
-        // `O_NOFOLLOW` is the last line of the traversal defence: if `destination` already exists as
+        // `O_NOFOLLOW` is the last line of the traversal defense: if `destination` already exists as
         // a symlink — planted by an earlier entry of this very archive, or sitting in the
         // destination beforehand — this refuses rather than writing through it. `unlink` first so a
         // re-extract overwrites a real file normally.
@@ -107,7 +107,7 @@ extension EncryptedArchiveReader {
     /// Resolves (creating as needed) the directory `components` name under `root`, refusing to walk
     /// through a symlink at any level.
     ///
-    /// This is the half of the traversal defence that ``ArchiveEntryPath/sanitized(_:)`` cannot
+    /// This is the half of the traversal defense that ``ArchiveEntryPath/sanitized(_:)`` cannot
     /// provide. A clean entry name still lands in the wrong place if one of the directories on the
     /// way to it is a link — and an archive can create exactly that, because it may contain both
     /// `docs -> /tmp` and `docs/notes.txt`, each of which passes a name check on its own.

@@ -172,10 +172,10 @@ struct MermaidRendererTests {
         }
     }
 
-    @Test("the emitter writes no colour, so the page's stylesheet owns the appearance")
-    func noLiteralColours() {
+    @Test("the emitter writes no color, so the page's stylesheet owns the appearance")
+    func noLiteralColors() {
         // A single `#333` here would be the one element on the page that stays dark when the user's
-        // Mac crosses sunset — the whole reason the core emits class names and never a colour.
+        // Mac crosses sunset — the whole reason the core emits class names and never a color.
         let output = fence("graph TD\nA --> B{yes}\nB -.-> C((c))")
         #expect(!output.contains("style="))
         #expect(!output.contains("#"))

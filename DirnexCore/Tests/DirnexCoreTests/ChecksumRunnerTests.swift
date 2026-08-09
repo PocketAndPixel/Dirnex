@@ -246,7 +246,7 @@ struct ChecksumRunnerTests {
         #expect(seen.last?.fraction == 1)
     }
 
-    @Test("cancelling a create leaves no manifest behind")
+    @Test("canceling a create leaves no manifest behind")
     func cancelledCreateWritesNothing() throws {
         let tree = try TempTree()
         defer { tree.cleanup() }

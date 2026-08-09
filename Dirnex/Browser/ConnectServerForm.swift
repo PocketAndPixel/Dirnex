@@ -356,7 +356,7 @@ enum ConnectFormFactory {
         return field
     }
 
-    /// A small secondary-colour explanatory line under a control — used for the plain-FTP cleartext
+    /// A small secondary-color explanatory line under a control — used for the plain-FTP cleartext
     /// note. Wraps, so a longer translation grows downward instead of being clipped.
     static func note(_ text: String) -> NSTextField {
         let field = NSTextField(wrappingLabelWithString: text)

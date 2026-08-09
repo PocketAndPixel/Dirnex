@@ -6,7 +6,7 @@ import DirnexCore
 ///
 /// It is its own object rather than more stored properties on `ConnectServerForm` because that class
 /// already sits at SwiftLint's `type_body_length` with two protocols in it; a third would not fit,
-/// and the FTP rows have enough behaviour of their own (the security picker retargets the port, the
+/// and the FTP rows have enough behavior of their own (the security picker retargets the port, the
 /// anonymous checkbox hides the credential rows) to be worth reading in one place.
 ///
 /// **The security picker defaults to FTPS**, which is the resolution of PLAN.md §7's open question:

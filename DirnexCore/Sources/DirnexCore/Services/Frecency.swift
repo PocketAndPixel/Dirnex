@@ -76,8 +76,8 @@ public struct Frecency: Sendable, Equatable, Codable {
     /// only the app — holding the live mount points — can answer.
     ///
     /// The `Bool` is what lets a caller skip a needless write: this runs on every lock, and most
-    /// locks have nothing to remove. No ageing afterwards, deliberately — removal is not a visit,
-    /// and re-ranking the survivors because a neighbour left would move results the user has been
+    /// locks have nothing to remove. No aging afterwards, deliberately — removal is not a visit,
+    /// and re-ranking the survivors because a neighbor left would move results the user has been
     /// getting used to.
     @discardableResult
     public mutating func forget(where shouldForget: (VFSPath) -> Bool) -> Bool {

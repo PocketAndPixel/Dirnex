@@ -27,10 +27,10 @@ the stock tools disagree over — and a Get Info attributes editor covers mode,
 BSD flags, owner/group, the three dates, extended attributes and ordered ACLs,
 editable in place for files you own and escalated through the system auth
 dialog for the ones you don't. A pane draws its folders as a **tree** when you
-want the branch view, in a palette you pick — including per-type colour rules —
+want the branch view, in a palette you pick — including per-type color rules —
 and Quick View shows a file as source or as page: ~25 languages highlighted by a
 scanner with no third-party engine, and Markdown rendered as the document it
-describes, tables, table of contents, coloured fences and hand-drawn mermaid
+describes, tables, table of contents, colored fences and hand-drawn mermaid
 flowcharts included. Encryption closes it out: **vaults** you unlock into an
 ordinary volume from the sidebar, and **AES-256 archives** you send someone,
 both with the passphrase kept out of every process's arguments. The whole UI

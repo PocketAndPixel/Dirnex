@@ -78,7 +78,7 @@ extension SyncDirectoriesController: NSTableViewDelegate {
         return field
     }
 
-    /// Glyph, colour, and tooltip for an action's cell — an arrow toward the side that changes
+    /// Glyph, color, and tooltip for an action's cell — an arrow toward the side that changes
     /// for a copy, a red ✕ for a delete (which side is clear from the populated detail column),
     /// and a warning for a conflict the run skips.
     private func actionDisplay(_ action: SyncAction) -> ActionStyle {

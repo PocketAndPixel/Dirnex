@@ -32,7 +32,7 @@ struct QuickViewCaption: Equatable {
 
 /// The name-and-position strip a full-size Quick View draws across its top. A vibrant bar rather
 /// than a flat one because it sits over arbitrary content — a white page in full window, a photo
-/// bled to the edges in full screen — where any fixed colour is wrong against half of it.
+/// bled to the edges in full screen — where any fixed color is wrong against half of it.
 @MainActor
 final class QuickViewHeaderView: NSVisualEffectView {
     static let height: CGFloat = 30
@@ -131,10 +131,10 @@ final class QuickViewHeaderView: NSVisualEffectView {
                     attributes: [.foregroundColor: NSColor.tertiaryLabelColor]
                 ))
             }
-            let colour = candidate == style ? NSColor.labelColor : .secondaryLabelColor
+            let color = candidate == style ? NSColor.labelColor : .secondaryLabelColor
             text.append(NSAttributedString(
                 string: "\(candidate.digit) \(candidate.headerLabel)",
-                attributes: [.foregroundColor: colour]
+                attributes: [.foregroundColor: color]
             ))
         }
         if style == .rendered, javaScriptDisabled {

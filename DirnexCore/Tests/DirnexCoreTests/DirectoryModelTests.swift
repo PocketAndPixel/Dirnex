@@ -229,7 +229,7 @@ struct DirectoryModelTests {
     @Test("recording a size under a name sort updates the total without reordering rows")
     func sizeRecordUnderNameSortKeepsOrder() {
         // Under a name sort, directory totals feed the size column but never the row order, so
-        // `setDirectorySize` must not disturb `visibleEntries` — the optimisation that keeps a
+        // `setDirectorySize` must not disturb `visibleEntries` — the optimization that keeps a
         // streaming size-visualization scan from re-sorting a 100k listing on every result.
         var subject = model(
             [
@@ -308,7 +308,7 @@ struct DirectoryModelTests {
 
 /// The perf pass split the projection into a cached sort stage and a cheap re-filter
 /// stage, and added an ASCII byte fast path with a Unicode fallback. These pin that the
-/// split preserves the observable behaviour across every input that drives a re-filter.
+/// split preserves the observable behavior across every input that drives a re-filter.
 private extension DirectoryModelTests {
     @Test("mutating the filter re-narrows without disturbing sort order")
     func filterMutationPreservesOrder() {

@@ -67,7 +67,7 @@ enum HashFamilyGrammars {
     )
 
     /// A **heredoc** (`<<EOF`) is not scanned — its terminator is named at the opening and has to
-    /// be remembered, which is the boundary PLAN.md §6 draws. Its body simply colours as code.
+    /// be remembered, which is the boundary PLAN.md §6 draws. Its body simply colors as code.
     ///
     /// Single quotes take the escape-free form: inside `'…'` a shell has no escape character at
     /// all, so `'\'` is a complete, correct literal ending at its second quote.

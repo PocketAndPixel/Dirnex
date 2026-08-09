@@ -220,7 +220,7 @@ final class SidebarViewController: NSViewController {
         // whether it can be read is the pane's answer to give, not a reason to hide the row.
         //
         // Having no header of its own, it would otherwise sit flush against the section above and
-        // read as a member of it — with Tags shown, as an eighth tag colour. The spacer restores the
+        // read as a member of it — with Tags shown, as an eighth tag color. The spacer restores the
         // separation a header used to provide, at exactly the gap AppKit itself puts above a section
         // (see `heightOfRow`).
         rows.append(.spacer)

@@ -24,7 +24,7 @@ public enum ChecksumRunner {
     ///   trapping, so a queue dispatch bug degrades to "nothing happened" instead of a crash.
     /// - `onProgress` reports bytes hashed against the byte total measured by the walk, so the bar
     ///   is determinate from the first update.
-    /// - `isCancelled` is polled between chunks *and* between files; cancelling a `.create` leaves
+    /// - `isCancelled` is polled between chunks *and* between files; canceling a `.create` leaves
     ///   no manifest behind at all — a half-written checksum file is worse than none, because it
     ///   verifies clean while covering a fraction of the tree.
     public static func run(

@@ -46,7 +46,7 @@ extension ChecksumReportController: NSTableViewDelegate {
         return centered(field)
     }
 
-    /// Vertical centring, which a label handed to `NSTableView` does not do for itself: the table
+    /// Vertical centering, which a label handed to `NSTableView` does not do for itself: the table
     /// stretches the view it is given to the whole cell, and a label draws its text at the *top* of
     /// whatever frame it has. Measured in a 20 pt row, the ink started 3.5 pt down for the 13 pt
     /// name and 2.5 pt for the 11 pt detail — so the two columns of one row sat a point apart and
@@ -83,9 +83,9 @@ extension ChecksumReportController: NSTableViewDelegate {
         return centered(field)
     }
 
-    /// Glyph, colour, and words for one verdict.
+    /// Glyph, color, and words for one verdict.
     ///
-    /// Colour is never the only signal — every row carries a distinct glyph *and* a sentence — so
+    /// Color is never the only signal — every row carries a distinct glyph *and* a sentence — so
     /// the table reads the same to someone who cannot tell the red from the green.
     private static func style(for status: ChecksumEntryStatus) -> RowStyle {
         switch status {
@@ -140,7 +140,7 @@ extension ChecksumReportController: NSTableViewDelegate {
             )
         case .unreadable:
             // `⊘` rather than `!`, which the extras row below now carries: two verdicts sharing a
-            // glyph would leave colour as the only thing separating them, which is the one thing
+            // glyph would leave color as the only thing separating them, which is the one thing
             // this table promises not to do. Not in the system font, so it falls back to Apple
             // Symbols — the same fallback `✕` and `☁` here already take, and a real glyph, not tofu.
             return RowStyle(

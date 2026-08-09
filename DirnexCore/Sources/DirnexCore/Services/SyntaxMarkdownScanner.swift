@@ -18,7 +18,7 @@ import Foundation
 ///
 /// Two constructs are deliberately absent, both because they need to remember a *previous* line:
 /// the **setext heading** (text underlined with `===`) and the **indented code block**, which is
-/// only code when a blank line precedes it. Each is a wrong colour at worst, never a wrong
+/// only code when a blank line precedes it. Each is a wrong color at worst, never a wrong
 /// character (PLAN.md §6).
 enum SyntaxMarkdownScanner {
     static func tokens(in text: String) -> [SyntaxToken] {
@@ -76,9 +76,9 @@ enum SyntaxMarkdownScanner {
         ///
         /// **Three tokens, not one.** The two fence *lines* take `.keyword`, on the heading's
         /// argument — they are the document's own structure — and the block's **content** is
-        /// scanned as the language its info string names, or left entirely uncoloured when it names
+        /// scanned as the language its info string names, or left entirely uncolored when it names
         /// none. That is what VS Code shows and what the block wants: a fence is routinely the
-        /// largest thing on a page, so painting it all one literal colour makes the loudest region
+        /// largest thing on a page, so painting it all one literal color makes the loudest region
         /// of the document the one carrying the least meaning. Whatever a fence holds, it is not a
         /// string.
         private mutating func scanFence(from content: Int, lineEnd: Int) -> Int? {
@@ -113,7 +113,7 @@ enum SyntaxMarkdownScanner {
             let text = String(decoding: units[start..<end], as: UTF16.self)
             // The slice is cut at line boundaries, so it cannot split a surrogate pair — but a
             // re-encode that changed length would slide every offset below it, and a wrong offset
-            // is the one failure that is not merely a wrong colour. Checked rather than argued.
+            // is the one failure that is not merely a wrong color. Checked rather than argued.
             guard text.utf16.count == end - start else { return }
             for token in SyntaxHighlighter.tokens(in: text, language: language) {
                 tokens.append(
@@ -195,7 +195,7 @@ enum SyntaxMarkdownScanner {
         // MARK: Inline constructs
 
         /// Code spans, emphasis and links, within one line. Anything whose closer is not on the
-        /// same line colours nothing at all — silence beats painting the paragraph.
+        /// same line colors nothing at all — silence beats painting the paragraph.
         private mutating func scanInline(from start: Int, to end: Int) {
             var position = start
             while position < end {

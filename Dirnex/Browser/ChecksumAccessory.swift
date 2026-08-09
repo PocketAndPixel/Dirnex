@@ -2,7 +2,7 @@ import AppKit
 import DirnexCore
 
 /// The create-checksum sheet's accessory: a name field over an algorithm popup, and the one piece
-/// of behaviour between them — picking an algorithm re-suffixes the name, so choosing CRC32 turns
+/// of behavior between them — picking an algorithm re-suffixes the name, so choosing CRC32 turns
 /// `Downloads.sha256` into `Downloads.sfv` without the user editing anything.
 ///
 /// An object rather than a struct because it is the popup's target/action. Kept alive by the
@@ -11,7 +11,7 @@ import DirnexCore
 ///
 /// SHA-256 leads. The M14 probe inverted the usual intuition — it is simultaneously the strongest
 /// of the four *and* among the fastest, because SHA-1 and SHA-256 are ARMv8 crypto instructions
-/// while MD5 and CRC32 are ordinary code. The other three are labelled as what they are: formats
+/// while MD5 and CRC32 are ordinary code. The other three are labeled as what they are: formats
 /// carried to match a checksum someone else published, never a security property.
 @MainActor
 final class ChecksumAccessory: NSObject {
@@ -79,7 +79,7 @@ final class ChecksumAccessory: NSObject {
     /// The manifest's file name, with the algorithm's own extension enforced.
     ///
     /// The user may type anything, but a `.sha256` file holding CRC32 digests is a file every other
-    /// tool will misread — and the width is the only signal an unlabelled line carries, so the
+    /// tool will misread — and the width is the only signal an unlabeled line carries, so the
     /// extension is the one part of the name that is not theirs to get wrong. An empty field falls
     /// back to the algorithm's extension alone rather than writing a nameless file.
     var manifestFileName: String {

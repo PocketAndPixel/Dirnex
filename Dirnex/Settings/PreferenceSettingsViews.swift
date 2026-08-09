@@ -199,7 +199,7 @@ struct OperationsSettingsView: View {
     }
 
     /// Says which tool Compare By Contents will actually open — including the case that needs it
-    /// most, where the user has installed none and the command is greyed out with no explanation.
+    /// most, where the user has installed none and the command is grayed out with no explanation.
     private var diffToolFooter: String {
         guard !installedDiffTools.isEmpty else {
             return String(localized: """

@@ -158,7 +158,7 @@ struct AccessControlListTests {
         #expect(subject.displayName == "FFFFEEEE-DDDD-CCCC-BBBB-AAAA00007A69")
     }
 
-    /// Both shapes must survive an edit to a *neighbouring* entry untouched, which is the case that
+    /// Both shapes must survive an edit to a *neighboring* entry untouched, which is the case that
     /// actually reaches a user: the editor writes the whole list back, so a lossy round-trip here
     /// would rewrite an entry nobody selected.
     @Test("both awkward shapes round-trip through serialize and re-parse")

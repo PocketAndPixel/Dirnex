@@ -29,7 +29,7 @@ struct AttributeBatchTests {
     }
 
     @Test("forcing one bit across two files leaves each file's other bits untouched")
-    func forcedBitPreservesNeighbours() throws {
+    func forcedBitPreservesNeighbors() throws {
         let tree = try TempTree()
         defer { tree.cleanup() }
         let fileA = VFSPath.local(try tree.writeFile("a.txt", contents: "a"))

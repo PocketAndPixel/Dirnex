@@ -102,8 +102,8 @@ struct AppLanguageTests {
         #expect(AppLanguages.bestMatch(forPreferred: ["ru-Latn"]).code == "ru")
     }
 
-    @Test("resolve honours a pin and otherwise follows the system")
-    func resolveHonoursPreference() {
+    @Test("resolve honors a pin and otherwise follows the system")
+    func resolveHonorsPreference() {
         let russian = AppLanguage(code: "ru", endonym: "Русский")
         #expect(AppLanguages.resolve(.explicit(russian), systemPreferred: ["en-US"]) == russian)
         #expect(AppLanguages.resolve(.system, systemPreferred: ["ru-RU"]).code == "ru")

@@ -216,7 +216,7 @@ struct PackRunnerTests {
         #expect(report.completedBytes == 1_600_000)
     }
 
-    @Test("cancelling leaves no archive behind at all")
+    @Test("canceling leaves no archive behind at all")
     func cancellationLeavesNothing() throws {
         let tree = try TempTree()
         defer { tree.cleanup() }
@@ -225,13 +225,13 @@ struct PackRunnerTests {
         }
         let names = (0..<12).map { "file-\($0).bin" }
 
-        let cancelled = Locked(false)
+        let canceled = Locked(false)
         let report = PackRunner.run(
             operation(tree, names: names),
             onProgress: { progress in
-                if progress.completedBytes > 0 { cancelled.withValue { $0 = true } }
+                if progress.completedBytes > 0 { canceled.withValue { $0 = true } }
             },
-            isCancelled: { cancelled.withValue { $0 } }
+            isCancelled: { canceled.withValue { $0 } }
         )
         #expect(report.wasCancelled)
         #expect(report.pack == nil)

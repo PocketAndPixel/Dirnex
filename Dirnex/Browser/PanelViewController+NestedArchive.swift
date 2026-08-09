@@ -11,7 +11,7 @@ import DirnexCore
 ///
 /// A nested mount is the extracted temp copy, so writing to it wouldn't reach the enclosing
 /// archive; `isNestedArchive` keeps it read-only this pass (writing back through nesting is a
-/// later item), matching how the app greys out unsupported ops (§M5 "capability degradation").
+/// later item), matching how the app grays out unsupported ops (§M5 "capability degradation").
 extension PanelViewController {
     /// The archive pane is browsing a nested mount (an archive-inside-an-archive extracted to
     /// temp), not a real on-disk archive — the gate that keeps its contents read-only.

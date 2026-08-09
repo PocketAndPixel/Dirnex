@@ -180,7 +180,7 @@ extension BrowserWindowController {
     }
 
     /// Finish a lifted swipe with the *keyboard's* flip — the same call ← / → make, so the two ways
-    /// of changing file are one behaviour rather than two that resemble each other.
+    /// of changing file are one behavior rather than two that resemble each other.
     ///
     /// Nothing is carried out of the surface first. The file was ~30 % dragged when the fingers
     /// left (measured across 17 swipes: 0.07–0.38 of a width, median 0.30), and running that
@@ -201,7 +201,7 @@ extension BrowserWindowController {
         let steps = lift < 0 ? 1 : -1
         // Belt to the dampening's braces: a dampened amount is pulled back towards the threshold
         // rather than clamped at it, so the end of the list is checked again here before anything
-        // is dealt. Nothing to flip to means the file goes back to centre.
+        // is dealt. Nothing to flip to means the file goes back to center.
         guard committing, focusedPanel.canStepCursor(by: steps) else {
             preview.returnSwipe(from: offset)
             return
@@ -274,8 +274,8 @@ extension BrowserWindowController {
 /// The two render styles (§M16) are the same shape, with one difference: they are *disabled* unless
 /// the previewed file genuinely offers both. That predicate is `previewedFileOffersBothStyles` —
 /// the same one the `1` / `2` monitor gates on, called rather than restated here, because a menu
-/// validator carrying its own hand-copied twin of a behaviour's predicate is how a shipped feature
-/// ends up greyed out with every test green (docs/NOTES.md).
+/// validator carrying its own hand-copied twin of a behavior's predicate is how a shipped feature
+/// ends up grayed out with every test green (docs/NOTES.md).
 extension BrowserWindowController: NSMenuItemValidation {
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         switch menuItem.action {
@@ -293,7 +293,7 @@ extension BrowserWindowController: NSMenuItemValidation {
             return previewedFileOffersBothStyles
         // The vault commands each name a target that may not be there. Each validator *calls* the
         // predicate the command itself uses rather than restating it — a hand-copied twin is how a
-        // shipped feature ends up permanently greyed with every test green (docs/NOTES.md).
+        // shipped feature ends up permanently grayed with every test green (docs/NOTES.md).
         case #selector(newVault(_:)):
             return canCreateVaultHere
         case #selector(unlockVault(_:)):

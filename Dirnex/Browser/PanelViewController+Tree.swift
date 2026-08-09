@@ -68,7 +68,7 @@ extension PanelViewController {
     /// Apply this row's depth and disclosure state to its name cell, or reset a recycled cell back to
     /// the flat-list layout in list mode. Called per render from `PanelViewController+Table`. The
     /// disclosure toggle carries the row's own path, so clicking the triangle opens that folder
-    /// without moving the cursor (Finder's behaviour).
+    /// without moving the cursor (Finder's behavior).
     func applyTreeLayout(to cell: FileCellView, entry: FileEntry, entryIndex index: Int) {
         guard let tree = panel.tree, tree.rows.indices.contains(index) else {
             cell.isTreeRow = false
@@ -128,7 +128,7 @@ extension PanelViewController {
 
     /// Push the new active level onto the name cells already on screen. A `reloadData` would do it
     /// too and is far too much for a pointer moving one row: the cursor row's editor, the scroll
-    /// position and every badge would be rebuilt to change the colour of one hairline.
+    /// position and every badge would be rebuilt to change the color of one hairline.
     ///
     /// Reaches the cell through the row view's own subviews rather than `view(atColumn:row:)`, which
     /// was measured to answer `nil` for a freshly built row (`FileTableView.disclosureCell`).

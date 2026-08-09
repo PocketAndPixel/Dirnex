@@ -6,7 +6,7 @@ import DirnexCore
 /// the add/close/select/reorder plumbing — plus the `TabBarView` delegate and the
 /// menu actions that drive it from the keyboard — lives here to keep the controller
 /// proper focused on a single directory. Writing those tabs to disk and bringing them
-/// back is the neighbouring concern, in `PanelViewController+Restore`.
+/// back is the neighboring concern, in `PanelViewController+Restore`.
 extension PanelViewController {
     // MARK: - Activation
 

@@ -102,8 +102,8 @@ public struct SpotlightQuery: Sendable, Equatable, Codable {
     /// "Urgent" to "Work" is asking for the overlap, not for more results. Empty = any tags.
     ///
     /// Only names are matched, because only names are indexed: Spotlight reports
-    /// `kMDItemUserTags = (Red)` with no colour, for a tag written either way. That suits the chip
-    /// — tags are identified by name anyway (`FinderTag`), and the colour is the swatch the chip
+    /// `kMDItemUserTags = (Red)` with no color, for a tag written either way. That suits the chip
+    /// — tags are identified by name anyway (`FinderTag`), and the color is the swatch the chip
     /// draws itself with, not part of the question.
     public var tags: Set<String>
 

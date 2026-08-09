@@ -294,7 +294,7 @@ struct EncryptedArchiveWriterTests {
         #expect(expectedBytes == 29)
     }
 
-    @Test("cancelling leaves neither an archive nor a temporary file behind")
+    @Test("canceling leaves neither an archive nor a temporary file behind")
     func cancellationCleansUp() throws {
         let source = try makeSource()
         defer { remove(source.directory) }

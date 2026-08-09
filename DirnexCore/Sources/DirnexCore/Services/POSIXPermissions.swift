@@ -1,7 +1,7 @@
 import Foundation
 
 /// The POSIX permission word (`mode & 0o7777`) — the nine `rwx` bits plus set-uid, set-gid and the
-/// sticky bit — modelled so the attributes panel can toggle one checkbox without hand-masking, and
+/// sticky bit — modeled so the attributes panel can toggle one checkbox without hand-masking, and
 /// so a `chmod` is expressed against a whole word rather than a literal (PLAN.md §M14 Slice 3).
 ///
 /// `FileEntry.permissions` keeps only the low nine bits (`mode & 0o777`) for the row's rendering;

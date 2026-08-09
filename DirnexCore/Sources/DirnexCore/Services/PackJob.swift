@@ -25,7 +25,7 @@ public struct PackJob: Sendable {
     public let names: [String]
 
     /// Where the finished archive lands. Written under a temporary name beside itself and renamed
-    /// into place by the writer, so a cancelled pack leaves nothing here.
+    /// into place by the writer, so a canceled pack leaves nothing here.
     public let archive: VFSPath
 
     /// Which cipher, or none. `.none` is representable so the type does not need a second shape for

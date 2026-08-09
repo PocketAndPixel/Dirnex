@@ -169,7 +169,7 @@ struct EncryptedArchiveReaderTests {
         #expect(final.totalBytes == 29)
     }
 
-    @Test("cancelling stops the extraction")
+    @Test("canceling stops the extraction")
     func cancellation() throws {
         let destination = try scratchDirectory()
         defer { remove(destination) }

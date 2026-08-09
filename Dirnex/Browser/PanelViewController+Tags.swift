@@ -144,9 +144,9 @@ extension PanelViewController {
     /// preference work with no column to install: the cells simply render no dots, and the names take
     /// back the width.
     ///
-    /// The colours come from the tag's *name*, not from the file: `FinderTagProvider.resolve` — and
+    /// The colors come from the tag's *name*, not from the file: `FinderTagProvider.resolve` — and
     /// the core's `FinderTagIndex` behind it — explains why the byte on disk is unusable for drawing
-    /// anywhere inside iCloud Drive, where every tagged file stores grey and Finder paints it red
+    /// anywhere inside iCloud Drive, where every tagged file stores gray and Finder paints it red
     /// regardless. Resolving here, at the point of drawing, rather than folding it into the snapshot,
     /// keeps `FinderTagSnapshot` meaning *what the files say* — which is what `FinderTagSnapshot.==`
     /// compares to decide a repaint, and what a later scan can legitimately find changed.

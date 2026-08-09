@@ -45,7 +45,7 @@ extension PanelViewController {
     /// cyclomatic-complexity limit (a recurring gotcha in this file).
     ///
     /// Both are gated on the *targets*, not the pane, so they work from a results tab (virtual
-    /// pane, real local hits) and go grey inside an archive or on an SFTP volume. Like ⌃T, they
+    /// pane, real local hits) and go gray inside an archive or on an SFTP volume. Like ⌃T, they
     /// must reach a field editor rather than being stolen to open a popup mid-rename.
     func validateHandoffItem(_ menuItem: NSMenuItem) -> Bool? {
         switch menuItem.action {

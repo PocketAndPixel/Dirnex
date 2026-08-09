@@ -18,7 +18,7 @@ public enum ShellQuoting {
     /// `'` → `'\''` closes the string, escapes a literal quote, and reopens it.
     ///
     /// `fish` is the exception, and the reason `ShellKind` distinguishes it at all: its single
-    /// quotes *do* honour backslash escapes, so a POSIX `'\''` would leave a stray backslash in the
+    /// quotes *do* honor backslash escapes, so a POSIX `'\''` would leave a stray backslash in the
     /// path. It needs `\` and `'` backslash-escaped instead.
     ///
     /// Verified against real shells: a directory named

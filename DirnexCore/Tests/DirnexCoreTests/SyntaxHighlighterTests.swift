@@ -58,7 +58,7 @@ struct SyntaxHighlighterTests {
         ])
     }
 
-    @Test("JSON colours its three literals and nothing else")
+    @Test("JSON colors its three literals and nothing else")
     func json() {
         let source = #"{"on": true, "off": false, "gone": null, "n": -1.5e3}"#
         #expect(spans(source, .json) == [
@@ -191,7 +191,7 @@ struct SyntaxHighlighterTests {
         #expect(spans("class_name classy class", .swift) == [Span("class", .keyword)])
     }
 
-    @Test("a preprocessor directive colours only at the start of its line")
+    @Test("a preprocessor directive colors only at the start of its line")
     func preprocessorNeedsLineStart() {
         #expect(spans("  #include <a.h>", .cLanguage) == [Span("#include", .keyword)])
         // The stringify operator inside a macro body is the case the line-start test exists for.
@@ -294,7 +294,7 @@ struct SyntaxHighlighterTests {
 
     @Test("the scanner never emits .plain")
     func plainIsNeverEmitted() {
-        // `.plain` names the text view's own colour, which is already on screen — a token for it
+        // `.plain` names the text view's own color, which is already on screen — a token for it
         // would be a span that changes nothing.
         var seen = false
         for language in SyntaxLanguage.allCases {

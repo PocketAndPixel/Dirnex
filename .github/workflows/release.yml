@@ -144,7 +144,7 @@ jobs:
         # The feed lives on one persistent `appcast` release and always holds both channels' latest
         # items. Pull it here — early, because it also decides the build number below — so this
         # release's item can be merged in while keeping the other channel's. Absent on the very
-        # first channelled release; make_appcast.sh then starts the feed fresh. Always fetched (a
+        # first channeled release; make_appcast.sh then starts the feed fresh. Always fetched (a
         # draft still wants a correct merged artifact to inspect); only *publishing* is draft-gated.
         env:
           GH_TOKEN: ${{ github.token }}

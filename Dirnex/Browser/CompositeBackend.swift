@@ -92,7 +92,7 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
     }
 
     /// The composite presents the local backend's identity and capabilities as its primary,
-    /// but `capabilities(for:)` degrades per path so the panel greys operations off the
+    /// but `capabilities(for:)` degrades per path so the panel grays operations off the
     /// *current* location's backend (PLAN.md §M5 "capability degradation").
     var id: VFSBackendID { local.id }
     var capabilities: VFSCapabilities { local.capabilities }
@@ -103,7 +103,7 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
     /// search-results listing). A browsed archive is read-only *through the VFS primitives* — its
     /// writes (F8 delete, add-into) go through the app's separate rewrite path, gated by
     /// `isWritableArchive`, not these caps. An SFTP path whose connection has dropped falls back to
-    /// `.read` so the pane greys writes rather than offering ones it can't perform. Cheap by design
+    /// `.read` so the pane grays writes rather than offering ones it can't perform. Cheap by design
     /// (no archive mount, no network), like `volumeIdentifier(for:)`.
     func capabilities(for path: VFSPath) -> VFSCapabilities {
         if path.backend == .local {

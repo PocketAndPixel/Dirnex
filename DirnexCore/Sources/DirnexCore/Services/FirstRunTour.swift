@@ -8,7 +8,7 @@ import Foundation
 /// highlighted actions by `CommandCatalog` **id** rather than baking in a title or a glyph: the app
 /// resolves each id to the command's title and its *effective* shortcut (through the user's
 /// `KeyBindings`), so the tour prints exactly what the menu and the ⌘K palette print, and a rebind
-/// is reflected here too — the tour can never advertise a key the app no longer honours.
+/// is reflected here too — the tour can never advertise a key the app no longer honors.
 public struct TourScreen: Sendable, Equatable, Identifiable {
     /// Stable, dotted identity ("tour.palette") — the persistence-free key a test pins a screen by,
     /// never localized.

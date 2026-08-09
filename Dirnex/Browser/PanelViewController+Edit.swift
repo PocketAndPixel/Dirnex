@@ -60,9 +60,9 @@ extension PanelViewController {
                 localized: "Edit",
                 comment: "F4 menu title when no specific editor is chosen."
             )
-            // Enabled exactly where the key does something, so "inert" is a *greyed* item rather
+            // Enabled exactly where the key does something, so "inert" is a *grayed* item rather
             // than a keystroke that vanishes: a local file to open, or nothing under the cursor at
-            // all, where F4 becomes the ⇧F4 dialog. A folder or a non-local file greys out.
+            // all, where F4 becomes the ⇧F4 dialog. A folder or a non-local file grays out.
             guard editor != nil else { return false }
             if let entry = cursorEntryToEdit() { return entry.path.backend == .local }
             return isCursorOnNothing && canCreateFileHere

@@ -14,7 +14,7 @@ import Foundation
 /// **What differs from the Git provider, and why.** Its unit of caching is the *repository*,
 /// because one `git status` answers for a whole tree. There is no such command for tags: the answer
 /// is per file, so the unit here is the **directory**, and the caller passes the paths to read. Two
-/// panes on the same folder still share one scan; a pane and its neighbour on different folders
+/// panes on the same folder still share one scan; a pane and its neighbor on different folders
 /// legitimately do their own.
 @MainActor
 final class FinderTagProvider {
@@ -44,7 +44,7 @@ final class FinderTagProvider {
     )
 
     /// Every tag seen this session, plus the seven macOS ships with — the app's approximation of the
-    /// name → colour database Finder resolves dots against. The tag editor offers these, the
+    /// name → color database Finder resolves dots against. The tag editor offers these, the
     /// sidebar's Tags section lists them, the search sheet completes against them, and `resolve`
     /// paints with them.
     ///
@@ -52,11 +52,11 @@ final class FinderTagProvider {
     /// store that is Finder's business, not a contract. So this accumulates tags as directories are
     /// scanned, which is honest about what it knows — it grows as the user browses rather than
     /// pretending to be authoritative, and the stock seven are always offered because they always
-    /// exist. The rules for what a sighting is allowed to teach it — and why an iCloud file's colour
+    /// exist. The rules for what a sighting is allowed to teach it — and why an iCloud file's color
     /// byte teaches it nothing — live in the core's `FinderTagIndex`.
     private var index = FinderTagIndex()
 
-    /// Every known tag with its colour: the stock seven in Finder's order, then the custom ones
+    /// Every known tag with its color: the stock seven in Finder's order, then the custom ones
     /// sorted by name. This is what a list of tags should show.
     var knownTags: [FinderTag] { index.tags }
 
@@ -64,12 +64,12 @@ final class FinderTagProvider {
     /// which matches by name because names are all Spotlight indexes.
     var knownTagNames: Set<String> { index.names }
 
-    /// `tags` as they should be **drawn**: each one's colour taken from what its name is known to
+    /// `tags` as they should be **drawn**: each one's color taken from what its name is known to
     /// carry, rather than from the byte the file happens to hold.
     ///
-    /// This is what keeps iCloud Drive's dots honest. Every tagged file in the drive stores colour
+    /// This is what keeps iCloud Drive's dots honest. Every tagged file in the drive stores color
     /// 1 — Finder's own Tags UI writes it that way, as does everything else, because the provider
-    /// rewrites the byte — so a pane that trusts the file paints the whole drive grey while Finder
+    /// rewrites the byte — so a pane that trusts the file paints the whole drive gray while Finder
     /// two inches away paints it red. See `FinderTagIndex` for the probe that established it.
     func resolve(_ tags: [FinderTag]) -> [FinderTag] {
         index.resolve(tags)
@@ -164,12 +164,12 @@ struct FinderTagSnapshot: Equatable {
     }
 
     /// Hand-rolled, and it must be: `FinderTag`'s own `==` compares **names, case-insensitively,
-    /// ignoring the colour** — the right rule for identity (macOS folds case to identify a tag, and
+    /// ignoring the color** — the right rule for identity (macOS folds case to identify a tag, and
     /// a file cannot hold `Work` and `work` as two tags), and the wrong one for "did the pixels
-    /// change". The synthesized version would answer "equal" when a tag was recoloured — which the
-    /// core documented as something Finder *does* on its own, reconciling a file's stored colour
-    /// against the system's name → colour database — and the column would keep painting the old
-    /// dot. So this compares what is actually drawn: names verbatim and colours.
+    /// change". The synthesized version would answer "equal" when a tag was recolored — which the
+    /// core documented as something Finder *does* on its own, reconciling a file's stored color
+    /// against the system's name → color database — and the column would keep painting the old
+    /// dot. So this compares what is actually drawn: names verbatim and colors.
     static func == (lhs: FinderTagSnapshot, rhs: FinderTagSnapshot) -> Bool {
         guard lhs.tagsByPath.count == rhs.tagsByPath.count else { return false }
         return lhs.tagsByPath.allSatisfy { path, tags in

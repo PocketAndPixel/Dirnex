@@ -65,7 +65,7 @@ extension MarkdownHTMLRenderer.Context {
     /// attribute, so it is the string the scheme allow-list has to be asked about.
     ///
     /// A refused source renders as its **alt text**, not as a broken-image icon: the alt is what
-    /// the author wrote to describe the picture, and it is more use than a grey box.
+    /// the author wrote to describe the picture, and it is more use than a gray box.
     private func image(source: String, title: String?, alt: String) -> String {
         let resolved = options.resolveImageSource(source)
         guard let src = MarkdownURL.sanitized(resolved, isImage: true) else {

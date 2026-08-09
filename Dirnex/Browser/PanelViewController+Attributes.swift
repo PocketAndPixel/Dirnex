@@ -132,7 +132,7 @@ extension PanelViewController {
     ///
     /// Local-only, and that is structural rather than an oversight: a mode, a BSD flags word and an
     /// ACL are things a real inode has. An archive member and an SFTP listing have none, so a remote
-    /// or virtual pane yields nothing and the menu item greys out.
+    /// or virtual pane yields nothing and the menu item grays out.
     func attributesTargets() -> [FileEntry] {
         guard !isVirtualDirectory else { return [] }
         let candidates: [FileEntry]

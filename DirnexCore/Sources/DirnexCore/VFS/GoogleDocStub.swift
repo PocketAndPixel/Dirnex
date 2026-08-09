@@ -42,12 +42,12 @@ public enum GoogleDocKind: String, Sendable, CaseIterable {
     /// The kind a file name announces, or `nil` for anything that is not a Google stub.
     ///
     /// Matched case-insensitively on the suffix alone, the way `ArchiveType.isBrowsable` matches
-    /// archives: a stub is recognised by its name before anything reads it, so an ordinary file
+    /// archives: a stub is recognized by its name before anything reads it, so an ordinary file
     /// never pays for this feature.
     ///
     /// Deliberately covers only the five kinds that live under `docs.google.com/<segment>/d/<id>`.
     /// Drive writes a handful of others (`.gmap`, `.gscript`, `.gsite`, `.gjam`) whose URLs are on
-    /// different hosts with different shapes — an unrecognised suffix falls back to the ordinary
+    /// different hosts with different shapes — an unrecognized suffix falls back to the ordinary
     /// open, which is a working outcome, while a *guessed* URL is a broken one.
     public init?(fileNamed name: String) {
         let suffix = (name as NSString).pathExtension.lowercased()

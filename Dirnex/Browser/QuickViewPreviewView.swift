@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 /// How large the Quick View preview is, and therefore what it is anchored over (PLAN.md §M11).
 /// Owned by `BrowserWindowController` — the mode spans both panes and follows the active one, so
 /// no single pane can hold it. Every size drives the same `QuickViewPreviewView`; only the anchor,
-/// the backing colour and the header differ.
+/// the backing color and the header differ.
 enum QuickViewMode {
     /// No preview anywhere; the two panes show their file lists.
     case off
@@ -46,8 +46,8 @@ final class QuickViewPreviewView: NSView {
         case floating
     }
 
-    /// The solid colour behind a preview that doesn't fill the view — a small image, a failed
-    /// preview. Dynamic colours are honoured: this is re-resolved at draw time, where a captured
+    /// The solid color behind a preview that doesn't fill the view — a small image, a failed
+    /// preview. Dynamic colors are honored: this is re-resolved at draw time, where a captured
     /// `cgColor` would freeze at whichever appearance was current when it was taken.
     private let backingColor: NSColor
     private let headerStyle: Header

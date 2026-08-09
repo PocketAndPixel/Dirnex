@@ -38,7 +38,7 @@ public struct FTPBackend: RemoteTransportBackend {
     ///
     /// Symbolic links are absent from the write set too, and that is a protocol fact rather than a
     /// choice: FTP has no standard verb that creates one. The default `createSymbolicLink` refusal
-    /// is therefore the correct behaviour, and a mirrored tree containing a link reports it.
+    /// is therefore the correct behavior, and a mirrored tree containing a link reports it.
     public var capabilities: VFSCapabilities { [.read, .write, .rename] }
 
     public func listDirectory(at path: VFSPath) throws -> [FileEntry] {
@@ -94,7 +94,7 @@ public struct FTPBackend: RemoteTransportBackend {
 
     /// Copy one file's bytes between this account and the local disk — a **download** (remote source
     /// → local destination) or an **upload**. The whole file transfers as one `curl` invocation, so
-    /// `progress` is reported once with the byte count and `isCancelled` is honoured at the file
+    /// `progress` is reported once with the byte count and `isCancelled` is honored at the file
     /// boundary, matching `SFTPBackend`; the queue's pause/cancel still acts between files.
     ///
     /// (Measured 2026-07-25: `curl`'s own progress meter updates about once a second and rounds to
@@ -191,7 +191,7 @@ public struct FTPBackend: RemoteTransportBackend {
                 throw VFSError.permissionDenied(path)
             // The certificate and TLS-mode cases surface on the connect probe, where the app can
             // act on them (trust the cert, or tell the user to change the security mode); reaching
-            // one down here means a server changed behaviour mid-session, which is an I/O failure
+            // one down here means a server changed behavior mid-session, which is an I/O failure
             // from this layer's point of view.
             case .certificateUntrusted, .certificateChanged, .unreachable, .timedOut,
                  .tlsNotAvailable, .tlsRequired, .failure:

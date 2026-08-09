@@ -23,7 +23,7 @@ public struct CloudStorageMount: Sendable, Hashable, Identifiable {
     public let providerID: String
     /// Which account this mount belongs to — the part after the first hyphen, an email address
     /// for Google Drive and a tenant or plan name for the others. `nil` for a provider that
-    /// mounts one unlabelled folder.
+    /// mounts one unlabeled folder.
     public let accountLabel: String?
     /// What the sidebar row is called, already disambiguated against the other mounts.
     public let name: String
@@ -75,7 +75,7 @@ public struct CloudStorageMount: Sendable, Hashable, Identifiable {
 ///
 /// Every File Provider-based sync client macOS 12+ hosts puts its folder here under a
 /// `<Provider>-<account>` name, so one scan covers Google Drive and everything alongside it.
-/// The scan is deliberately provider-agnostic: recognising only `GoogleDrive-*` would be the
+/// The scan is deliberately provider-agnostic: recognizing only `GoogleDrive-*` would be the
 /// same code with a narrower answer, and would need rewriting the first time Dropbox is
 /// installed.
 public enum CloudStorageMounts {

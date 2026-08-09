@@ -262,7 +262,7 @@ extension SFTPBackendTests {
         #expect(transport.downloads.isEmpty && transport.uploads.isEmpty)
     }
 
-    @Test("copyFile honours cancellation before transferring")
+    @Test("copyFile honors cancellation before transferring")
     func copyFileCancels() {
         let transport = FakeSFTPTransport()
         #expect(throws: CancellationError.self) {

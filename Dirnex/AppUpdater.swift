@@ -45,7 +45,7 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
         startProbing()
     }
 
-    /// Whether a real updater came up. The menu item greys out when it did not.
+    /// Whether a real updater came up. The menu item grays out when it did not.
     var isEnabled: Bool { updaterController != nil }
 
     /// Posted whenever `availability` changes, so the titlebar indicator can restyle itself. No
@@ -113,7 +113,7 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
 
     /// One silent check. `checkForUpdateInformation()` is Sparkle's *probing* check: it runs the real
     /// appcast fetch through this same delegate — so `allowedChannels(for:)` still applies and a beta
-    /// opt-in is honoured — but it presents no UI whatsoever. All it does here is drive
+    /// opt-in is honored — but it presents no UI whatsoever. All it does here is drive
     /// `availability`, which lights the titlebar glyph; clicking that glyph is what opens Sparkle's
     /// actual install flow. A check the user did not ask for must never put a window on their screen.
     private func runProbe() {

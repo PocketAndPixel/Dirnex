@@ -156,7 +156,7 @@ final class ChecksumRunContext {
 /// One file's hashing result, in the three shapes both modes need.
 ///
 /// Not a `Result`: the two non-answers are ordinary outcomes a report has a row for, not errors to
-/// throw. Modelling them as failures is what would let a caller `try?` them away.
+/// throw. Modeling them as failures is what would let a caller `try?` them away.
 enum ChecksumDigestOutcome {
     case digest(String)
     case unreadable

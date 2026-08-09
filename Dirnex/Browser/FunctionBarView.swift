@@ -57,7 +57,7 @@ final class FunctionBarButton: NSButton {
     }
 
     override func draw(_ dirtyRect: NSRect) {
-        // Transparent at rest so each cell reads flush over the panel-coloured bar; a label-tinted
+        // Transparent at rest so each cell reads flush over the panel-colored bar; a label-tinted
         // wash appears on hover and deepens while pressed.
         let alpha: CGFloat = isHighlighted ? 0.20 : (isHovered ? 0.12 : 0)
         if alpha > 0 {
@@ -72,7 +72,7 @@ final class FunctionBarButton: NSButton {
         super.draw(dirtyRect)
     }
 
-    /// "F5" (secondary, monospaced) then the caption (primary), centred and truncating.
+    /// "F5" (secondary, monospaced) then the caption (primary), centered and truncating.
     private static func title(for slot: FunctionBarSlot) -> NSAttributedString {
         let result = NSMutableAttributedString(
             string: slot.keyName + " ",
@@ -109,7 +109,7 @@ final class FunctionBarButton: NSButton {
     }
 }
 
-/// The Total-Commander-style function-key bar (PLAN.md §M6), a strip of labelled rounded buttons
+/// The Total-Commander-style function-key bar (PLAN.md §M6), a strip of labeled rounded buttons
 /// along the bottom of the panes column: Copy/Move/NewFolder/Delete and friends on visible buttons
 /// a new user can find without the manual. A click reports its slot to `onRun`; the window
 /// controller focuses the active pane and dispatches the slot's command there (a nil-target
@@ -131,7 +131,7 @@ final class FunctionBarView: NSView {
     init(slots: [FunctionBarSlot] = FunctionBar.defaultSlots) {
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
-        wantsLayer = true // the panel-coloured fill is painted in updateLayer, tracking appearance
+        wantsLayer = true // the panel-colored fill is painted in updateLayer, tracking appearance
 
         stack.orientation = .horizontal
         stack.distribution = .fillEqually
@@ -174,7 +174,7 @@ final class FunctionBarView: NSView {
             button.target = self
             button.action = #selector(runSlot(_:))
             stack.addArrangedSubview(button)
-            // Stretch each cell to the bar's full height — the stack centres arranged views at
+            // Stretch each cell to the bar's full height — the stack centers arranged views at
             // their intrinsic height otherwise, leaving a gap above and below.
             button.heightAnchor.constraint(equalTo: stack.heightAnchor).isActive = true
         }

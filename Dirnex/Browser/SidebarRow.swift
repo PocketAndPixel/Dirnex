@@ -11,10 +11,10 @@ extension SidebarViewController {
         /// (PLAN.md §M8). Like `.recents` it carries nothing — the Trash is not one directory, so
         /// there is no path to hold.
         case trash
-        /// Blank vertical space, carrying no content and no behaviour — the one row that exists for
+        /// Blank vertical space, carrying no content and no behavior — the one row that exists for
         /// layout alone. It sits above the headerless Trash row so that row reads as its own thing
         /// rather than as the last entry of whatever section happens to precede it (with Tags shown,
-        /// Trash otherwise looks like an eighth tag colour).
+        /// Trash otherwise looks like an eighth tag color).
         ///
         /// A row rather than extra height on Trash itself, because `NSTableRowView` draws the
         /// selection across its **whole** height — measured: a 40 pt row gets a 40 pt capsule — so a

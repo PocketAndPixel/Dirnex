@@ -1,7 +1,7 @@
 import Foundation
 
 /// Executes a `FileOperation` (copy or move) against a backend, reporting progress and
-/// honouring cancellation — TC's queued, non-blocking file operations (PLAN.md §M2).
+/// honoring cancellation — TC's queued, non-blocking file operations (PLAN.md §M2).
 ///
 /// It lives in `DirnexCore` because it touches bytes ("if it touches bytes, it lives in
 /// DirnexCore and has tests" — §2) and is a plain synchronous entry point: the caller
@@ -24,11 +24,11 @@ public enum CopyEngine {
     ///   per-file "Skip / Retry / Abort" dialog. Like `resolveConflict` it runs synchronously
     ///   on the copy thread, so the caller may block it: `.retry` re-attempts the same source
     ///   (discarding any partial bytes first), `.skip` collects the failure and moves on, and
-    ///   `.abort` unwinds the whole operation as cancelled. A missing resolver behaves as
+    ///   `.abort` unwinds the whole operation as canceled. A missing resolver behaves as
     ///   `.skip`, so an unattended run still finishes and summarizes its failures.
     /// - `onProgress` is called periodically (throttled by byte volume and at each item
     ///   boundary) — never per chunk, so a 50 GB copy doesn't flood the caller.
-    /// - `isCancelled` is polled between chunks and items; cancelling leaves a report with
+    /// - `isCancelled` is polled between chunks and items; canceling leaves a report with
     ///   `wasCancelled == true` and cleans up any half-written file (a partially copied
     ///   directory tree is left in place for the user to remove).
     public static func run(
@@ -100,12 +100,12 @@ private final class CopyRun {
         emit(current: nil, force: true)
 
         for item in sized {
-            if isCancelled() { return report(cancelled: true) }
+            if isCancelled() { return report(canceled: true) }
             if !transfer(item.entry, bytes: item.bytes) {
-                return report(cancelled: true) // cancelled mid-item
+                return report(canceled: true) // canceled mid-item
             }
         }
-        return report(cancelled: false)
+        return report(canceled: false)
     }
 
     // MARK: - Pre-scan
@@ -163,7 +163,7 @@ private final class CopyRun {
                     failures.append(OperationItemFailure(path: entry.path, error: failure))
                     return true
                 case .abort:
-                    return false // unwind the whole op, reported cancelled like a user cancel
+                    return false // unwind the whole op, reported canceled like a user cancel
                 }
             }
         }
@@ -297,13 +297,13 @@ private final class CopyRun {
         ))
     }
 
-    private func report(cancelled: Bool) -> OperationReport {
+    private func report(canceled: Bool) -> OperationReport {
         OperationReport(
             completedItems: completedItems,
             completedBytes: completedBytes,
             skipped: skipped,
             failures: failures,
-            wasCancelled: cancelled,
+            wasCancelled: canceled,
             outcomes: outcomes
         )
     }
@@ -339,7 +339,7 @@ private extension CopyRun {
     }
 
     /// Consult the operation's resolver for one conflict and translate its answer into a
-    /// `Plan`. A missing resolver degrades to the safe `.fail` behaviour; `.cancel` aborts
+    /// `Plan`. A missing resolver degrades to the safe `.fail` behavior; `.cancel` aborts
     /// the whole operation through the engine's normal cancellation path.
     func askPlan(for entry: FileEntry, existing: FileEntry, at destination: VFSPath) throws -> Plan {
         guard let resolveConflict else { throw VFSError.alreadyExists(destination) }

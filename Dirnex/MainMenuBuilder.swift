@@ -169,7 +169,7 @@ enum MainMenuBuilder {
     /// It has to exist at all because ⌘X reaches a field editor **only** as a menu key equivalent:
     /// Cocoa's key bindings map no key to `cut:`, so with no such item ⌘X is a dead no-op in every
     /// text field in the app — measured, the same trap as ⌘A (docs/NOTES.md). `NSTextView` answers
-    /// `cut:` and nothing in a pane's responder chain does, so the nil target greys it out
+    /// `cut:` and nothing in a pane's responder chain does, so the nil target grays it out
     /// everywhere else on its own; ⌘C and ⌘V already work for the same reason, via `edit.copy`.
     private static func cutItem() -> NSMenuItem {
         let item = NSMenuItem(

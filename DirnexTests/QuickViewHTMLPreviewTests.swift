@@ -8,7 +8,7 @@ import WebKit
 /// picks which, and that each style really lands on its own backend.
 ///
 /// What is *not* here is the network gate, and deliberately so: "this page cannot reach the
-/// network" is a claim about WebKit's behaviour, and the only honest way to check it is a real
+/// network" is a claim about WebKit's behavior, and the only honest way to check it is a real
 /// server's access log — which a unit test has no business starting. That was measured against one
 /// (`QuickViewWebView`'s doc comment records the numbers), and what is pinned here is everything
 /// around it that a future edit could quietly get wrong.

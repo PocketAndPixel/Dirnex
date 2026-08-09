@@ -49,7 +49,7 @@ extension PanelViewController {
         // Only reachable by scrolling: a `reloadData` empties the pool (see `FileCellView.density`),
         // which is why it survived until a third badge made it worth looking for.
         cell.clearBadges()
-        // Never type-coloured (PLAN.md §M15 Slice 3), for the same reason it never carries a size
+        // Never type-colored (PLAN.md §M15 Slice 3), for the same reason it never carries a size
         // bar: `..` is a way out, not an entry. `Panel` has never heard of it, so there is nothing to
         // match a rule against — and a `*` rule painting the way out of the folder would be reading
         // the row as a file called "..".

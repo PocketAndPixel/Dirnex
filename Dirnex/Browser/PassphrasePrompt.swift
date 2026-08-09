@@ -15,7 +15,7 @@ import DirnexCore
 /// limit actually lives.
 enum PassphrasePrompt {
     /// Raise the prompt over `window`, calling `completion` with the passphrase, or with `nil` when
-    /// the user cancelled.
+    /// the user canceled.
     ///
     /// `retrying` says a previous attempt was refused, which changes the message rather than adding
     /// a second alert on top: the first thing the user needs to know is that this one was wrong, and

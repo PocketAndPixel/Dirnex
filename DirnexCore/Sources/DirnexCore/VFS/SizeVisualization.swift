@@ -15,7 +15,7 @@ public struct SizeBar: Sendable, Hashable {
     /// directions and by up to 2x (a `.git` full of small files allocates ~2x its logical bytes
     /// in block round-up; one 64 MB sparse LMDB file in a Swift `.build` allocates 27 MB), so the
     /// choice is real. The bar must agree with the number rendered beside it: a row whose bar is
-    /// twice its neighbour's while its size column reads smaller is incoherent, and Dirnex is a
+    /// twice its neighbor's while its size column reads smaller is incoherent, and Dirnex is a
     /// file manager with a size column, where ncdu is a disk-usage tool without one.
     public let bytes: Int64
     /// Bar length in `0...1`, relative to the largest visible sibling — ncdu's *graph* rule. The

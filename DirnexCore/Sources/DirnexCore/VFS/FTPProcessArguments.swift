@@ -229,7 +229,7 @@ public enum FTPProcessArguments {
 /// The escaping is not cosmetic. Probed 2026-07-25: a value containing an unescaped newline makes
 /// `curl` read the remainder as further *config directives* and abort with
 /// `'"' is unknown` — so an unescaped newline in a password is a config-injection surface, not a
-/// formatting bug. `curl`'s config parser honours `\\`, `\"`, `\t`, `\r` and `\n` inside a
+/// formatting bug. `curl`'s config parser honors `\\`, `\"`, `\t`, `\r` and `\n` inside a
 /// double-quoted value; all five are emitted.
 public enum FTPConfigFile {
     /// The config text authenticating `location`, with `password` for a named account. Returns the

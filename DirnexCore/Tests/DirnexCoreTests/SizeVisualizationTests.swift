@@ -224,7 +224,7 @@ struct SizeVisualizationTests {
         #expect(viz.pendingDirectories.isEmpty)
     }
 
-    @Test("excluding nothing is the default and changes no existing behaviour")
+    @Test("excluding nothing is the default and changes no existing behavior")
     func defaultExcludesNothing() {
         let rows = [entry("a.bin", size: 100), entry("b.bin", size: 300)]
         let plain = SizeVisualization(model: model(rows))

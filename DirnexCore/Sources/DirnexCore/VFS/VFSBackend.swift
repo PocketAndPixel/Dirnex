@@ -1,6 +1,6 @@
 import Foundation
 
-/// What a backend can do. Panels grey out operations a backend lacks
+/// What a backend can do. Panels gray out operations a backend lacks
 /// (PLAN.md §M5 "capability degradation"), so this is descriptive, not aspirational.
 public struct VFSCapabilities: OptionSet, Sendable, Hashable {
     public let rawValue: Int
@@ -39,7 +39,7 @@ public enum DeleteStrategy: Sendable, Equatable {
     /// No Trash here, but the backend can delete: a permanent delete the UI confirms first,
     /// because it can't be undone.
     case permanent
-    /// The backend can't delete at all — the operation is greyed out.
+    /// The backend can't delete at all — the operation is grayed out.
     case unsupported
 }
 
@@ -81,7 +81,7 @@ public enum VFSError: Error, Sendable, Equatable {
 /// copy/move with progress is layered on top by the M2 operation engine, not here.
 ///
 /// A backend that lacks a capability need not implement its write methods: the
-/// default implementations throw `.unsupported`, and the panel greys the operation
+/// default implementations throw `.unsupported`, and the panel grays the operation
 /// out via `capabilities` (PLAN.md §M5 "capability degradation").
 public protocol VFSBackend: Sendable {
     var id: VFSBackendID { get }
@@ -90,9 +90,9 @@ public protocol VFSBackend: Sendable {
     /// The capabilities that apply to `path` specifically. Single-backend implementations
     /// return their backend-wide `capabilities` (the default), but a *routing* backend that
     /// composes several concrete backends (the app's `CompositeBackend`) overrides this to
-    /// report the capabilities of whichever backend owns `path` — so a panel greys out
+    /// report the capabilities of whichever backend owns `path` — so a panel grays out
     /// operations per the *current* location's backend, not the composite's primary
-    /// (PLAN.md §M5 "panels grey out unsupported ops per backend").
+    /// (PLAN.md §M5 "panels gray out unsupported ops per backend").
     func capabilities(for path: VFSPath) -> VFSCapabilities
 
     /// List the immediate children of `path` (excluding `.` and `..`), unsorted.

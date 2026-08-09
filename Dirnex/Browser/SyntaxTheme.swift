@@ -1,19 +1,19 @@
 import AppKit
 import DirnexCore
 
-/// What colour each kind of token is drawn in (PLAN.md §M17 ▸ Slice 3).
+/// What color each kind of token is drawn in (PLAN.md §M17 ▸ Slice 3).
 ///
 /// Pure presentation, so it lives in the app rather than in `DirnexCore` — the same division
-/// `QuickViewRenderStyle` and `SyntaxBadge`'s neighbours draw, and the one `TextPreview`'s own doc
+/// `QuickViewRenderStyle` and `SyntaxBadge`'s neighbors draw, and the one `TextPreview`'s own doc
 /// comment states: the core decides *what a span is*, the app decides what it looks like.
 ///
 /// **The palette is VS Code's, Dark Modern and Light Modern** — the `dark_plus` / `light_plus`
-/// token colours those two themes inherit. That is a deliberate choice of *whose* theme rather
+/// token colors those two themes inherit. That is a deliberate choice of *whose* theme rather
 /// than an invented one: a file manager's preview is read next to the editor the file will be
 /// opened in, and matching the editor is worth more than any hue picked in isolation.
 ///
-/// **Every colour is a light/dark pair, and both halves are authored.** M17 opened with "system
-/// dynamic colours, because each resolves per appearance for free" — which is right in dark mode
+/// **Every color is a light/dark pair, and both halves are authored.** M17 opened with "system
+/// dynamic colors, because each resolves per appearance for free" — which is right in dark mode
 /// and wrong in light, measured before a line of this file was written (2026-08-06, both
 /// appearances, against `.textBackgroundColor` with alpha composited):
 ///
@@ -26,7 +26,7 @@ import DirnexCore
 ///
 /// The system palette is tuned for **fills** — a button, a badge, a selection — not for text on a
 /// white background, and the hues that fail are exactly the ones a syntax theme wants most. So no
-/// `.system*` colour appears here in either appearance.
+/// `.system*` color appears here in either appearance.
 ///
 /// Both halves were then re-measured as published, and **neither needed adjusting**: the narrowest
 /// is `typeOrTag` at 4.59:1 in light, and every dark value clears 5:1. That is not luck —
@@ -36,10 +36,10 @@ import DirnexCore
 /// no Settings surface, no persistence and no picker — and `SyntaxThemeTests` pins the ratio in
 /// both appearances rather than trusting a screenshot of one.
 enum SyntaxTheme {
-    /// The colour for `kind`, or `nil` for text the scanner made no claim about.
+    /// The color for `kind`, or `nil` for text the scanner made no claim about.
     ///
-    /// `nil` rather than `.textColor` on purpose: highlighting *adds* foreground colour to a
-    /// document that already renders correctly, so a run with no colour is a run left exactly as it
+    /// `nil` rather than `.textColor` on purpose: highlighting *adds* foreground color to a
+    /// document that already renders correctly, so a run with no color is a run left exactly as it
     /// was — which is what makes an unknown file type not a special case.
     static func color(for kind: SyntaxToken.Kind) -> NSColor? {
         switch kind {
@@ -75,7 +75,7 @@ enum SyntaxTheme {
     /// `#A31515` / `#CE9178` — 7.85:1 light, 6.31:1 dark.
     static let deleted = pair("deleted", light: 0xA3_1515, dark: 0xCE_9178)
 
-    /// One dynamic colour from an authored light value and an authored dark one.
+    /// One dynamic color from an authored light value and an authored dark one.
     ///
     /// A single `NSColor` rather than two, so the *caller* never asks which appearance it is in —
     /// which is what lets the same attributed string keep rendering correctly when the user flips
@@ -88,7 +88,7 @@ enum SyntaxTheme {
     }
 
     /// An authored value, always in **sRGB** — a raw `NSColor(red:green:blue:)` is in the generic
-    /// calibrated space, where the same numbers are a visibly different colour.
+    /// calibrated space, where the same numbers are a visibly different color.
     private static func sRGB(_ hex: Int) -> NSColor {
         NSColor(
             srgbRed: CGFloat((hex >> 16) & 0xFF) / 255,

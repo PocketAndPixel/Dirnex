@@ -32,7 +32,7 @@ struct SyntaxMarkdownAndDiffTests {
         #expect(md("- item") == [Span("-", .number)])
     }
 
-    @Test("list markers colour, ordered and unordered, and the space after them does not")
+    @Test("list markers color, ordered and unordered, and the space after them does not")
     func listMarkers() {
         #expect(md("- a\n* b\n+ c\n1. d\n2) e\n") == [
             Span("-", .number),
@@ -45,7 +45,7 @@ struct SyntaxMarkdownAndDiffTests {
         #expect(md("-notalist\n1.notalist").isEmpty)
     }
 
-    @Test("a blockquote is an aside, and takes the comment colour")
+    @Test("a blockquote is an aside, and takes the comment color")
     func blockquote() {
         #expect(md("> quoted") == [Span("> quoted", .comment)])
     }
@@ -60,14 +60,14 @@ struct SyntaxMarkdownAndDiffTests {
             Span("# after", .keyword)
         ])
         // A ``` block may contain ~~~, and vice versa. Neither names a language, so the body of
-        // each is left in the document's own colour.
+        // each is left in the document's own color.
         #expect(md("~~~\n```\n~~~") == [Span("~~~", .keyword), Span("~~~", .keyword)])
     }
 
-    @Test("a fence names its own language, and an undecorated one colours nothing inside")
+    @Test("a fence names its own language, and an undecorated one colors nothing inside")
     func fenceBodyTakesItsInfoStringsLanguage() {
         // The whole point of the change: a tree diagram or a plain transcript is the largest thing
-        // on a README's page, and painting it one colour makes the loudest region the least
+        // on a README's page, and painting it one color makes the loudest region the least
         // meaningful one.
         #expect(md("```\nDirnex/\n├── PLAN.md\n```") == [
             Span("```", .keyword),
@@ -196,7 +196,7 @@ struct SyntaxMarkdownAndDiffTests {
         ])
     }
 
-    @Test("git's extended headers colour rather than sitting plain between hunks")
+    @Test("git's extended headers color rather than sitting plain between hunks")
     func gitExtendedHeaders() {
         let source = """
         diff --git a/x b/x

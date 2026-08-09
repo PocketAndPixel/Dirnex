@@ -87,7 +87,7 @@ enum MermaidSequenceSVG {
         if !message.text.isEmpty {
             parts.append(MermaidSVG.text(
                 message.text,
-                at: message.labelCentre,
+                at: message.labelCenter,
                 classes: message.isSelf ? "mm-edge-label mm-edge-label-start" : "mm-edge-label"
             ))
         }
@@ -96,7 +96,7 @@ enum MermaidSequenceSVG {
 
     /// The head an arrow style ends in. An **open** arrow (`->`) and a filled one (`->>`) are drawn
     /// the same triangle here: the distinction mermaid draws is a stroke against a fill, and the
-    /// emitter writes no colours, so it would have to invent one. The line style — solid against
+    /// emitter writes no colors, so it would have to invent one. The line style — solid against
     /// dashed — is the difference that survives, and it is the one that carries the meaning.
     private static func tip(for style: MermaidSequence.MessageStyle) -> MermaidFlowchart.Tip {
         if case .crossed = style { return .cross }

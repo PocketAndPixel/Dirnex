@@ -13,7 +13,7 @@ import DirnexCore
 /// up just as well. So the gutter is gone and Name keeps the 37 pt.
 ///
 /// Text rather than a symbol, unlike `SyncBadgeView`: the letters are Git's own vocabulary
-/// (`GitFileStatus.code`), and the colour alone cannot carry the state — added and untracked are both
+/// (`GitFileStatus.code`), and the color alone cannot carry the state — added and untracked are both
 /// green, deleted and conflicted both red. A dot would say "something is up with this file" where the
 /// letter says which thing.
 final class GitBadgeView: NSView {
@@ -28,7 +28,7 @@ final class GitBadgeView: NSView {
         }
     }
 
-    /// Whether this row is the cursor, so the letter can be drawn in a colour that survives the
+    /// Whether this row is the cursor, so the letter can be drawn in a color that survives the
     /// emphasized background behind it. Pushed down by `FileCellView` — `backgroundStyle` is
     /// `NSTableCellView`'s property, not `NSView`'s, so this view cannot observe it directly. Same
     /// wiring as `SizeBarView`.
@@ -39,12 +39,12 @@ final class GitBadgeView: NSView {
         }
     }
 
-    /// What the letter is drawn in on the cursor row. Derived from the cursor colour rather than
+    /// What the letter is drawn in on the cursor row. Derived from the cursor color rather than
     /// chosen (`PanelPalette.cursorForeground`), for the reason `FileCellView.applyStyle` gives: a
-    /// status colour picked for a white background is not legible on a colour the user chose. This is
+    /// status color picked for a white background is not legible on a color the user chose. This is
     /// what the gutter did too — its cell was an ordinary `FileCellView`, and the emphasized branch
-    /// of `applyStyle` already outranked the status colour there — so the cursor row has always
-    /// traded the colour for legibility and keeps the letter, which carries the state anyway.
+    /// of `applyStyle` already outranked the status color there — so the cursor row has always
+    /// traded the color for legibility and keeps the letter, which carries the state anyway.
     var emphasizedInk: NSColor = .alternateSelectedControlTextColor {
         didSet {
             guard emphasizedInk != oldValue else { return }
@@ -55,13 +55,13 @@ final class GitBadgeView: NSView {
     /// Empty space held at the trailing edge, so this badge can share the cloud's trailing anchor —
     /// which deliberately hangs `FileCellView.badgeOverhang` into the table's intercell gutter — while
     /// its own ink stops short of it. The cloud wants the overhang because its 19 pt symbol has to
-    /// centre where a 9 pt dot does; a letter in an 11 pt slot centres there with none. Reserving it
+    /// center where a 9 pt dot does; a letter in an 11 pt slot centers there with none. Reserving it
     /// here rather than giving this badge a trailing anchor of its own is what keeps the cloud's
     /// measured position untouched on the rows that have no Git status: an empty badge is zero-width,
     /// so it lands exactly on the cloud's own edge and constrains nothing.
     private let gutterInset: CGFloat
 
-    /// The slot the letter is centred in. Sized to the widest code Git has — measured at this font,
+    /// The slot the letter is centered in. Sized to the widest code Git has — measured at this font,
     /// `M` is 10.74 pt and every other letter is narrower — so the run of letters down a repository's
     /// rows is a column rather than a ragged edge, whatever mix of states it holds.
     private static let slotWidth: CGFloat = 11
@@ -108,7 +108,7 @@ final class GitBadgeView: NSView {
         ]
         let text = code as NSString
         let size = text.size(withAttributes: attributes)
-        // Centred in the slot, not right-aligned in it: the letters differ in width by 7 pt between
+        // Centered in the slot, not right-aligned in it: the letters differ in width by 7 pt between
         // `!` and `M`, so aligning their edges would leave the column visibly ragged.
         let slotMidX = bounds.maxX - gutterInset - Self.slotWidth / 2
         text.draw(
@@ -122,16 +122,16 @@ final class GitBadgeView: NSView {
 
     /// What this badge is saying, in words — the cell hands it to the row's tooltip. One letter is
     /// exactly as much as the gutter ever showed, and `!` or `U` means nothing to someone who has not
-    /// memorised `git status`'s short format; the gutter could only name itself in its header.
+    /// memorized `git status`'s short format; the gutter could only name itself in its header.
     var accessibilityText: String? {
         status.map(GitStatusStyle.label(for:))
     }
 }
 
 /// How a status is painted and named. The letters are Git's own (`GitFileStatus.code` in the core);
-/// the colours and the words are the app's — the same core-decides-meaning / app-decides-look split
-/// as `SyncBadgeStyle` and `TagDotStyle`. The colours follow the convention every Git client has
-/// converged on: green for what is new, orange for what changed, red for what is gone or broken, grey
+/// the colors and the words are the app's — the same core-decides-meaning / app-decides-look split
+/// as `SyncBadgeStyle` and `TagDotStyle`. The colors follow the convention every Git client has
+/// converged on: green for what is new, orange for what changed, red for what is gone or broken, gray
 /// for what Git is deliberately not looking at.
 enum GitStatusStyle {
     static func color(for status: GitFileStatus) -> NSColor {
@@ -143,7 +143,7 @@ enum GitStatusStyle {
         case .renamed: .systemBlue
         // Ignored is the one status that means "pay no attention" — it must recede, not announce.
         case .ignored: .tertiaryLabelColor
-        // A conflict is the only status that is *blocking* something; it gets the loudest colour
+        // A conflict is the only status that is *blocking* something; it gets the loudest color
         // the palette has.
         case .conflicted: .systemRed
         }

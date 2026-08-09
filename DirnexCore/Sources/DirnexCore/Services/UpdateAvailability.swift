@@ -33,7 +33,7 @@ public struct UpdateAvailability: Sendable, Equatable {
     /// Nothing pending — the state at launch, and after a check that found no newer build.
     public static let none = UpdateAvailability(pendingVersion: nil, isAvailable: false)
 
-    /// An update is waiting. A blank or whitespace-only version is normalised to `nil` so the
+    /// An update is waiting. A blank or whitespace-only version is normalized to `nil` so the
     /// tooltip falls back rather than rendering "Dirnex  is available".
     public static func available(version: String?) -> UpdateAvailability {
         let trimmed = version?.trimmingCharacters(in: .whitespacesAndNewlines)

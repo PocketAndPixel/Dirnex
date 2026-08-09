@@ -10,15 +10,15 @@ import Testing
 ///
 /// **These read the rendered bitmap rather than the properties**, because the properties were never
 /// in doubt: what a screenshot cannot settle is whether a 1 pt hairline landed where it should and
-/// whether the two greys are distinguishable at all. docs/NOTES.md records the same class of bug
-/// being called *fixed* off a computer-use screenshot when the ink was provably the wrong colour —
+/// whether the two grays are distinguishable at all. docs/NOTES.md records the same class of bug
+/// being called *fixed* off a computer-use screenshot when the ink was provably the wrong color —
 /// the capture is downsampled below 1×, so a couple of points of ink is not resolvable. A bitmap is.
 @Suite("Tree indent guides — rendering")
 @MainActor
 struct TreeIndentGuideRenderingTests {
     private func cell(depth: Int, active: Int?, tree: Bool = true) -> FileCellView {
         let view = FileCellView(showsImage: true, identifier: NSUserInterfaceItemIdentifier("name"))
-        // A light appearance so the two label greys resolve to something; the assertions are all
+        // A light appearance so the two label grays resolve to something; the assertions are all
         // relative, so they hold in either.
         view.appearance = NSAppearance(named: .aqua)
         view.frame = NSRect(x: 0, y: 0, width: 300, height: 22)
@@ -32,7 +32,7 @@ struct TreeIndentGuideRenderingTests {
 
     /// The strongest alpha found in each 1 pt column of the rendered cell. The bitmap starts fully
     /// transparent (a cell paints no background of its own), so any alpha at all is ink the guides
-    /// put there — and its *value* is the colour's own alpha, which is what makes "is the active one
+    /// put there — and its *value* is the color's own alpha, which is what makes "is the active one
     /// stronger" a measurable question rather than an opinion.
     ///
     /// Iterates the rep's own pixel dimensions, not point space: in a window the rep comes back at
@@ -68,15 +68,15 @@ struct TreeIndentGuideRenderingTests {
         #expect(ink[column(3)] == nil)
     }
 
-    @Test("the guides sit one indent apart, centred on each ancestor's disclosure slot")
+    @Test("the guides sit one indent apart, centered on each ancestor's disclosure slot")
     func guideSpacing() {
         // The arithmetic the drawing and `TreeProjection`'s levels have to agree on.
         #expect(column(1) - column(0) == Int(FileCellView.treeIndentPerLevel))
         #expect(column(2) - column(1) == Int(FileCellView.treeIndentPerLevel))
-        // Centred in the slot the ancestor's chevron occupies, within the half point the rounding
+        // Centered in the slot the ancestor's chevron occupies, within the half point the rounding
         // to a whole (crisp) point can cost.
-        let slotCentre = FileCellView.treeLeadingInset + FileCellView.treeDisclosureSlot / 2
-        #expect(abs(CGFloat(column(0)) + FileCellView.treeGuideWidth / 2 - slotCentre) <= 0.5)
+        let slotCenter = FileCellView.treeLeadingInset + FileCellView.treeDisclosureSlot / 2
+        #expect(abs(CGFloat(column(0)) + FileCellView.treeGuideWidth / 2 - slotCenter) <= 0.5)
     }
 
     @Test("a depth-0 row draws nothing, and neither does a list-mode row")
@@ -89,7 +89,7 @@ struct TreeIndentGuideRenderingTests {
 
     // MARK: - Whether the highlight is visible
 
-    /// The assertion a screenshot could not make. Both greys are faint by design, so "the active one
+    /// The assertion a screenshot could not make. Both grays are faint by design, so "the active one
     /// is stronger" is a claim about a difference of a few percent of alpha — invisible in a
     /// downsampled capture and unmissable here.
     @Test("the active guide is drawn stronger than the inactive ones")

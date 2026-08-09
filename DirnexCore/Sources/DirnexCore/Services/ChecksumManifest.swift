@@ -54,7 +54,7 @@ public struct ChecksumManifestEntry: Sendable, Equatable {
 /// pass over a tree can only produce one verdict.
 public struct ChecksumManifest: Sendable, Equatable {
     /// The algorithm every entry uses, recovered from a `MD5 (…)` label or from the digest width —
-    /// the four widths (8 · 32 · 40 · 64) are distinct, which is what makes an unlabelled line
+    /// the four widths (8 · 32 · 40 · 64) are distinct, which is what makes an unlabeled line
     /// readable at all.
     public let algorithm: ChecksumAlgorithm
     /// The entries, in file order. Duplicates are kept: a file listed twice is verified twice, and

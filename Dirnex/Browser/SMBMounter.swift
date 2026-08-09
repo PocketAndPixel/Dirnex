@@ -190,7 +190,7 @@ struct SMBMountError: LocalizedError {
     static let kNetAuthErrorGuestNotSupported: Int32 = -6004
     /// The NetFS-layer spelling of "no shares available". `<NetFS/NetFS.h>`.
     static let eNetFSNoSharesAvail: Int32 = -5998
-    /// The mount was cancelled (Carbon `userCanceledErr`), the negative-OSStatus twin of `ECANCELED`.
+    /// The mount was canceled (Carbon `userCanceledErr`), the negative-OSStatus twin of `ECANCELED`.
     static let userCanceledErr: Int32 = -128
 
     let status: Int32

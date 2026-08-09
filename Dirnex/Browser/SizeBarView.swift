@@ -37,8 +37,8 @@ final class SizeBarView: NSView {
     }
 
     /// What draws on the cursor row — the bar, its track and the percentage alike (PLAN.md §M15
-    /// Slice 2). The one fill that has to survive whatever colour is behind it, so it is *derived*
-    /// from the cursor colour rather than chosen: `PanelPalette.cursorForeground`, which hands back
+    /// Slice 2). The one fill that has to survive whatever color is behind it, so it is *derived*
+    /// from the cursor color rather than chosen: `PanelPalette.cursorForeground`, which hands back
     /// `.alternateSelectedControlTextColor` verbatim while the user is following the system.
     var emphasizedInk: NSColor = .alternateSelectedControlTextColor {
         didSet {
@@ -106,7 +106,7 @@ final class SizeBarView: NSView {
     /// sibling" instead of "a stray mark". Without it the tail rows are ambiguous smudges.
     ///
     /// **The track must read as a recess, never as ink, and the cursor row is where that is hard to
-    /// get right.** Off the cursor the two are different colours and the distinction is free. On it,
+    /// get right.** Off the cursor the two are different colors and the distinction is free. On it,
     /// both are `emphasizedInk` — the only fill that survives the cursor's own background —
     /// separated by alpha alone, and the track has the whole column's width to shout with where the
     /// ink may have a point and a half. At 0.25 an *empty* track therefore read as a *full* bar:
@@ -139,9 +139,9 @@ final class SizeBarView: NSView {
         ).fill()
     }
 
-    /// The bar's fill. On the cursor row the background is a strong colour already, so an ordinary
-    /// grey bar would vanish into it — the same contrast problem `FileCellView.applyStyle` solves
-    /// for text, solved the same way and from the same derived colour.
+    /// The bar's fill. On the cursor row the background is a strong color already, so an ordinary
+    /// gray bar would vanish into it — the same contrast problem `FileCellView.applyStyle` solves
+    /// for text, solved the same way and from the same derived color.
     private var barColor: NSColor {
         isEmphasized ? emphasizedInk : .secondaryLabelColor
     }
@@ -165,7 +165,7 @@ final class SizeBarView: NSView {
 ///
 /// A cell of its own rather than a `FileCellView` variant, because `FileCellView` is built around an
 /// `NSTextField` (mark styling, the hidden-file dim, the F2 rename editor) and this column has no
-/// text field at all. It still honours the two states a row can be in — `marked` and `dimmed` —
+/// text field at all. It still honors the two states a row can be in — `marked` and `dimmed` —
 /// because a bar that ignored them would be the one cell in the row that did.
 final class SizeBarCellView: NSTableCellView {
     let barView = SizeBarView()

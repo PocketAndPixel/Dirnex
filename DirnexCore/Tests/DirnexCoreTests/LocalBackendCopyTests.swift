@@ -86,7 +86,7 @@ struct LocalBackendCopyTests {
         #expect(try backend.stat(at: tree.vfsPath("secret-copy.txt")).permissions == 0o600)
     }
 
-    @Test("copyFile cancelled mid-stream throws and leaves no partial file")
+    @Test("copyFile canceled mid-stream throws and leaves no partial file")
     func copyFileCancelCleansUp() throws {
         let tree = try TempTree()
         defer { tree.cleanup() }

@@ -115,7 +115,7 @@ struct GitStatusBadgeTests {
         #expect(badge.intrinsicContentSize.width == 0)
     }
 
-    /// Every letter is centred in one slot, so a repository's rows read as a column rather than a
+    /// Every letter is centered in one slot, so a repository's rows read as a column rather than a
     /// ragged edge: `!` is 4 pt wide and `M` is 11, and right-aligning them would show it.
     @Test("the badge is the same width whichever letter it holds")
     func widthDoesNotFollowTheLetter() {

@@ -255,7 +255,7 @@ public struct DirectoryModel: Sendable {
     /// needle's bytes against each name's lowercased UTF-8. This is provably identical to the
     /// old `name.lowercased().contains(needle)` for ASCII needles — an ASCII byte can only
     /// occur at a real ASCII character position, never inside a multi-byte UTF-8 sequence — so
-    /// it is a speedup with no behaviour change. A non-ASCII needle (rare) falls back to the
+    /// it is a speedup with no behavior change. A non-ASCII needle (rare) falls back to the
     /// exact grapheme-aware path so canonical-equivalence matching is preserved.
     private mutating func refilter() {
         guard !filter.isEmpty else {

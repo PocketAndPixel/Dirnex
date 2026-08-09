@@ -33,7 +33,7 @@ enum MarkdownFrontMatter {
         guard !MarkdownLine.isBlank(line) else { return nil }
         guard let end = keyEnd(of: line) else {
             // A continuation or a list item under the key above it. Kept, under an empty key, so
-            // the value is shown rather than silently dropped — the panel draws it unlabelled.
+            // the value is shown rather than silently dropped — the panel draws it unlabeled.
             return MarkdownFrontMatterEntry(
                 key: "",
                 value: line.trimmingCharacters(in: .whitespaces)

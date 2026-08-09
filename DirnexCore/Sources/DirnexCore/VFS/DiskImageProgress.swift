@@ -43,7 +43,7 @@ public enum DiskImageProgress {
         guard let percent = Double(value) else { return .other(trimmed) }
         guard percent >= 0 else { return .indeterminate }
         // Clamped rather than trusted: a bar is a promise about a range, and there is no useful
-        // behaviour for 101 %.
+        // behavior for 101 %.
         return .fraction(min(percent, 100) / 100)
     }
 

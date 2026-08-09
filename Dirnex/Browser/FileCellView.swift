@@ -17,27 +17,27 @@ import DirnexCore
 final class FileCellView: NSTableCellView {
     var marked = false
     /// Fades the whole cell — icon and text alike — for a hidden (dot) entry, the way
-    /// Finder greys out invisibles once you reveal them. Set per render alongside `marked`.
+    /// Finder grays out invisibles once you reveal them. Set per render alongside `marked`.
     var dimmed = false
 
-    /// The colour a file-type rule gives this row (PLAN.md §M15 Slice 3), or `nil` when no rule
+    /// The color a file-type rule gives this row (PLAN.md §M15 Slice 3), or `nil` when no rule
     /// claims it — which is every row on an untouched install.
     ///
     /// **Ranks below the mark, deliberately, and that is the one thing about it worth arguing.** A
-    /// type colour says what a file already announces through its name and icon, while the mark says
+    /// type color says what a file already announces through its name and icon, while the mark says
     /// the user picked this one and is about to act on it. Let `*.jpg`'s teal outrank the mark and a
     /// marked photograph becomes indistinguishable from an unmarked one at the exact moment F5 is
     /// aimed at it — silent, and in the expensive direction. So the ranking is: cursor → mark → type
-    /// rule → label colour.
+    /// rule → label color.
     ///
-    /// It used to rank below one more thing. Git's status colour sat above the mark, because in the
+    /// It used to rank below one more thing. Git's status color sat above the mark, because in the
     /// gutter the letter *was* the information and it had nowhere else to go; now that the letter
-    /// rides in `GitBadgeView`, which carries its own colour, no Git state reaches the text at all.
+    /// rides in `GitBadgeView`, which carries its own color, no Git state reaches the text at all.
     var typeColor: NSColor?
 
     /// The Finder-tag dots at the right edge of the name (PLAN.md §M6), or `nil` on the cells that
     /// aren't the name. Where Finder puts them, and their own view rather than styled text, because
-    /// the content *is* the colour.
+    /// the content *is* the color.
     private(set) var tagDots: TagDotsView?
 
     /// The cloud sync badge, next out from the dots (PLAN.md §M6), or `nil` on the cells that aren't
@@ -96,7 +96,7 @@ final class FileCellView: NSTableCellView {
     /// Measured, in a throwaway harness against a real 300-row table: `reloadData` empties
     /// `NSTableView`'s reuse pool outright — every row after one is a fresh build, even at an
     /// unchanged density — so a density change *today* happens to hand out correctly sized cells
-    /// with no help from here. That is undocumented behaviour, and it fails in the quiet direction:
+    /// with no help from here. That is undocumented behavior, and it fails in the quiet direction:
     /// a macOS that kept the pool would draw 16 pt icons in a 28 pt row with nothing logged. So the
     /// cell owns the invariant instead of relying on the table to. Re-assigning the same value
     /// costs one comparison.
@@ -108,7 +108,7 @@ final class FileCellView: NSTableCellView {
         }
     }
 
-    /// The user's colours (PLAN.md §M15 Slice 2). **Stored** rather than passed into `applyStyle`,
+    /// The user's colors (PLAN.md §M15 Slice 2). **Stored** rather than passed into `applyStyle`,
     /// for the same reason `density` is stored: `applyStyle` also runs from `backgroundStyle`'s
     /// `didSet`, which fires when the cursor moves onto or off this row — outside any render pass,
     /// with no caller to hand it anything. Re-set on every render alongside `density`.
@@ -149,7 +149,7 @@ final class FileCellView: NSTableCellView {
     /// symlink-to-file, and `..`, which cannot be opened.
     var treeDisclosure: TreeDisclosure?
     /// Invoked when the disclosure triangle is clicked — toggles this row's expansion **without
-    /// moving the cursor** (Finder's behaviour), which is why it carries the row's own path rather
+    /// moving the cursor** (Finder's behavior), which is why it carries the row's own path rather
     /// than acting on the pane's cursor. Set per render on directory rows; the closure pattern
     /// mirrors `SidebarCellView.onEject`.
     var onDisclosureToggle: (() -> Void)?
@@ -174,7 +174,7 @@ final class FileCellView: NSTableCellView {
     /// its own click, so toggling never disturbs the row selection underneath.
     var disclosureButton: NSButton?
     /// The untinted chevron this row currently shows, kept so `applyDisclosureForeground` can
-    /// re-derive a cursor-coloured copy from it without knowing which way the triangle points — and
+    /// re-derive a cursor-colored copy from it without knowing which way the triangle points — and
     /// so successive tints never compound onto the last copy.
     var disclosureBaseImage: NSImage?
     /// The two leading constraints tree layout moves: the icon's own inset and the triangle's. Held
@@ -222,7 +222,7 @@ final class FileCellView: NSTableCellView {
         disclosure.bezelStyle = .accessoryBarAction
         disclosure.imagePosition = .imageOnly
         // The tint is not set here: `applyDisclosureForeground` owns it, and on the cursor row it
-        // has to bake the colour into the glyph rather than tint the control.
+        // has to bake the color into the glyph rather than tint the control.
         disclosure.isHidden = true
         addSubview(disclosure)
         disclosureButton = disclosure
@@ -260,8 +260,8 @@ final class FileCellView: NSTableCellView {
             width,
             height,
             disclosureLead,
-            // Pin the triangle top-to-bottom rather than centring it: `.imageOnly` keeps the glyph
-            // vertically centred, but the *button* now fills the whole row height, so its click
+            // Pin the triangle top-to-bottom rather than centering it: `.imageOnly` keeps the glyph
+            // vertically centered, but the *button* now fills the whole row height, so its click
             // target spans the row instead of the ~10 pt chevron — a folder is easy to aim at.
             disclosure.topAnchor.constraint(equalTo: topAnchor),
             disclosure.bottomAnchor.constraint(equalTo: bottomAnchor),
@@ -279,7 +279,7 @@ final class FileCellView: NSTableCellView {
     /// an outer badge's overhang drags the inner ones out into the gutter with it — which is exactly
     /// the 5 pt the dots once lost to the cloud. So each sits flush at `.defaultHigh` and yields at
     /// `.required`, which also means an *empty* outer badge (zero-width, sitting on its own anchor)
-    /// constrains nothing and leaves its neighbour where it was measured.
+    /// constrains nothing and leaves its neighbor where it was measured.
     private func installBadges(besides text: NSTextField) -> [NSLayoutConstraint] {
         // Innermost first: Finder's order for a file that is both tagged and not downloaded is
         // name, dots, cloud. Git's letter goes outermost, sharing the cloud's trailing anchor and
@@ -302,12 +302,12 @@ final class FileCellView: NSTableCellView {
         // Positive — the cluster's outermost badge deliberately hangs past the cell, into the
         // table's own 17pt intercell gutter. Right-aligning the cloud flush like the dots *looks*
         // wrong even though it is the same alignment: a dot is 9pt and the cloud's ink is 16pt, so
-        // flush right puts the cloud's centre ~7pt left of where a dot's lands, and the eye reads
-        // the centre. Measured against the live table: this puts the cloud's centre on the dot's
+        // flush right puts the cloud's center ~7pt left of where a dot's lands, and the eye reads
+        // the center. Measured against the live table: this puts the cloud's center on the dot's
         // (x=296) and under the header's sort arrow (x=298), where the dots already sit. The gutter
         // is empty space between cells — nothing else draws there, and the column's padding is
         // untouched. `GitBadgeView` reserves the same distance inside itself, so its 11pt letter
-        // slot centres on that spot too.
+        // slot centers on that spot too.
         let cloudFlush = cloud.trailingAnchor.constraint(
             equalTo: trailingAnchor, constant: Self.badgeOverhang
         )
@@ -334,7 +334,7 @@ final class FileCellView: NSTableCellView {
     override var backgroundStyle: NSView.BackgroundStyle {
         didSet {
             applyStyle()
-            // The guides are drawn over whatever the row view put down, so they take their colour
+            // The guides are drawn over whatever the row view put down, so they take their color
             // from the cursor's fill when this row is it (`FileCellView+Tree.treeGuideColor`).
             needsDisplay = true
         }
@@ -359,14 +359,14 @@ final class FileCellView: NSTableCellView {
 
         applyDisclosureForeground()
         // The Git letter is the one badge with a *legibility* stake in the cursor's background: the
-        // dots and the cloud are shapes read by colour, while a small character in `.systemOrange`
-        // on a colour the user chose can simply disappear. Pushed down for the same reason the
-        // chevron's colour is — `backgroundStyle` is this cell's property, not the badge's.
+        // dots and the cloud are shapes read by color, while a small character in `.systemOrange`
+        // on a color the user chose can simply disappear. Pushed down for the same reason the
+        // chevron's color is — `backgroundStyle` is this cell's property, not the badge's.
         gitBadge?.isEmphasized = backgroundStyle == .emphasized
         gitBadge?.emphasizedInk = palette.cursorForeground
 
         if backgroundStyle == .emphasized {
-            // Derived from the cursor colour, never picked: a user who could choose both would
+            // Derived from the cursor color, never picked: a user who could choose both would
             // reach a white-on-pale-yellow row on their first try. Untouched, this *is*
             // `.alternateSelectedControlTextColor` — see `PanelPalette.cursorForeground`.
             textField.textColor = palette.cursorForeground

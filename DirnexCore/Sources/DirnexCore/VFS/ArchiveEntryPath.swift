@@ -17,7 +17,7 @@ import Foundation
 ///
 /// - An **absolute** path is refused. There is no sane reading of `/etc/passwd` as a member name.
 /// - Any `..` component is refused, wherever it appears. Not resolved, not clamped — refused. A
-///   resolver that cancels `a/../b` into `b` is one bug away from cancelling `a/../../b` into `../b`,
+///   resolver that cancels `a/../b` into `b` is one bug away from canceling `a/../../b` into `../b`,
 ///   and there is no legitimate archive that needs the feature.
 /// - A `.` component and an empty component are dropped, since `./notes/x` and `notes//x` are
 ///   ordinary spellings that mean something unambiguous.
@@ -43,7 +43,7 @@ public enum ArchiveEntryPath {
     /// Where an entry may go, or why it may not go anywhere.
     ///
     /// Deliberately not a `Result`: a refusal here is a *report*, something the extraction summary
-    /// lists back to the user, not an error that aborts the archive. Modelling it as a thrown
+    /// lists back to the user, not an error that aborts the archive. Modeling it as a thrown
     /// failure would make the natural implementation stop at the first hostile entry and lose the
     /// nine good files after it.
     public enum Placement: Sendable, Equatable {

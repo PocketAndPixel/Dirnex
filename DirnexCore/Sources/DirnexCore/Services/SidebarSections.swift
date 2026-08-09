@@ -52,7 +52,7 @@ public enum SidebarSection: String, CaseIterable, Sendable, Hashable {
 /// install would hide the feature that put the rows there.
 ///
 /// **Collapsed sections are stored as raw strings, not as `SidebarSection` values.** Decoding a
-/// `Set<SidebarSection>` throws on the first name it doesn't recognise, and a throwing decode
+/// `Set<SidebarSection>` throws on the first name it doesn't recognize, and a throwing decode
 /// resets *every* section's state — so one unknown name would silently unfold the whole sidebar.
 /// Section names come *and go* (Recents and Trash were both sections through M15 and are now
 /// headerless rows, so their names are unknown to this build) and betas do get rolled back, so the

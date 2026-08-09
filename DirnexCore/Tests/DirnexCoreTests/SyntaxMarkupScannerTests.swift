@@ -4,7 +4,7 @@ import Testing
 @testable import DirnexCore
 
 /// The XML/HTML/SVG/plist scanner (PLAN.md §M17 ▸ Slice 2), which M16 makes load-bearing: an
-/// `.html` now previews as its source by default, so this is what stops it being one colour.
+/// `.html` now previews as its source by default, so this is what stops it being one color.
 @Suite("SyntaxMarkupScanner")
 struct SyntaxMarkupScannerTests {
     private typealias Span = SyntaxSpan
@@ -94,7 +94,7 @@ struct SyntaxMarkupScannerTests {
 
     // MARK: - Entities
 
-    @Test("named, decimal and hex entities colour; a bare ampersand does not")
+    @Test("named, decimal and hex entities color; a bare ampersand does not")
     func entities() {
         #expect(spans("a &amp; b &#160; c &#x1F600; d") == [
             Span("&amp;", .number),

@@ -32,7 +32,7 @@ struct ChecksumManifestTests {
     }
 
     @Test("BSD md5: MD5 (<name>) = <hex>")
-    func bsdLabelled() throws {
+    func bsdLabeled() throws {
         let manifest = try ChecksumManifest.parse("MD5 (plain.txt) = \(Self.helloMD5)\n")
         #expect(manifest.algorithm == .md5)
         #expect(manifest.entries.first?.name == "plain.txt")
@@ -41,7 +41,7 @@ struct ChecksumManifestTests {
 
     /// The form `shasum -c` refuses outright — reading it is the whole point of a tolerant parser.
     @Test("openssl dgst: SHA256(<name>)= <hex>")
-    func opensslLabelled() throws {
+    func opensslLabeled() throws {
         let manifest = try ChecksumManifest.parse("SHA256(plain.txt)= \(Self.helloSHA256)\n")
         #expect(manifest.algorithm == .sha256)
         #expect(manifest.entries.first?.name == "plain.txt")

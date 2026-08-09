@@ -202,7 +202,7 @@ public struct UserScript: Sendable, Hashable, Identifiable, Codable {
 
 public extension UserScript {
     /// The prefix that namespaces a user script inside the flat command-id space the palette and
-    /// key bindings share, keeping it clear of the static `file.*`/`go.*` ids. The app recognises
+    /// key bindings share, keeping it clear of the static `file.*`/`go.*` ids. The app recognizes
     /// this prefix to route a palette pick to the script runner rather than an AppKit selector.
     static let commandIDPrefix = "userScript."
 

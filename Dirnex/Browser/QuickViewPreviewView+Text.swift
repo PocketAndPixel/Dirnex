@@ -42,7 +42,7 @@ extension QuickViewPreviewView {
         }
     }
 
-    /// A decoded file and its coloured spans — everything the detached read produces, crossing back
+    /// A decoded file and its colored spans — everything the detached read produces, crossing back
     /// to the main actor as one value (PLAN.md §M17 ▸ Slice 3).
     ///
     /// The tokenize rides the read task rather than taking one of its own, for the reason the read

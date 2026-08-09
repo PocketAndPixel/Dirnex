@@ -19,13 +19,13 @@ public struct LanguageGrammar: Equatable, Sendable {
     /// Quote-delimited literals, longest opener first — see `SyntaxHighlighter`, which matches them
     /// in the order given so `"""` claims its opening before `"` does.
     public var strings: [StringLiteral]
-    /// Words that colour as `.keyword`. Stored lowercased when `keywordsAreCaseInsensitive`.
+    /// Words that color as `.keyword`. Stored lowercased when `keywordsAreCaseInsensitive`.
     public var keywords: Set<String>
-    /// Built-in type names, which colour as `.typeOrTag`. Only names the language itself defines:
+    /// Built-in type names, which color as `.typeOrTag`. Only names the language itself defines:
     /// a type the *user* declared is a type because of a declaration somewhere else, which is a
     /// compiler's knowledge and explicitly out of scope (PLAN.md §M17 ▸ not in scope).
     public var typeNames: Set<String>
-    /// A character that, immediately followed by an identifier, colours the pair as one keyword —
+    /// A character that, immediately followed by an identifier, colors the pair as one keyword —
     /// Swift's `@MainActor`, Java's `@Override`, ObjC's `@interface`. `nil` where the language has
     /// no such form.
     ///
@@ -38,7 +38,7 @@ public struct LanguageGrammar: Equatable, Sendable {
     /// SQL, and nothing else in the shipped table: `SELECT` and `select` are the same word.
     public var keywordsAreCaseInsensitive: Bool
     /// Swift nests block comments and C does not, which is the difference between `/* /* */ */`
-    /// ending where the file says it does and colouring the rest of the file as a comment.
+    /// ending where the file says it does and coloring the rest of the file as a comment.
     public var blockCommentsNest: Bool
 
     public init(
