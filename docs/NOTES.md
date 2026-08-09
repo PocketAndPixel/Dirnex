@@ -1837,6 +1837,38 @@ overturned the decision the milestone opened on.
     characters are the one rule that has to be ours, and they are the one nothing else will catch.
     A leading `-` is taken as the name, not a flag (probed: a volume really was called `-force`), so
     with an argv rather than a shell there is nothing to escape.
+- **A vault is addressed by its image's *path*, in two stores, so moving that file in a pane breaks
+  it — and the one funnel that already knows is the undo journal.** A saved vault's row and its
+  Keychain account are both keyed on the image path, so an ordinary F2 on the `.sparsebundle` left
+  the row pointing at nothing and the passphrase filed under a path nothing would ever ask about
+  again. It fails in the quiet direction: the row looks perfectly normal until it is clicked, and
+  then says the image "may have been moved or damaged" — true, and unhelpful, since the app is what
+  moved it. `UndoRecord` is where every rename, move, multi-rename and sync already reports, so one
+  hook covers gestures that share nothing else.
+  - **Read *both* ends of each step and let the disk decide, rather than tracking direction.** An
+    `UndoStep.restore(from:to:)` names both paths, so pairing a vault with the *other* end in both
+    directions makes undo and redo need no inverse of their own — and a half-applied revert still
+    lands each vault on wherever its own image actually ended up. Judge by `fileExists`, not by what
+    the operation was nominally doing.
+  - **`moveToTrash` journals the identical step and must *not* be followed.** Following it re-points
+    the row into `~/.Trash`, where the vault still unlocks — not what throwing something away means
+    — and leaving the path alone is also what makes Put Back repair the row by itself. So it is a
+    decision, not something the shape rules out; a copy is excluded for free, since it journals
+    `removeCopy` rather than `restore`.
+  - **The trap underneath: `hdiutil info` reports an image by the path it had when it was attached,
+    forever.** Probed — renaming a *mounted* `.sparsebundle` succeeds, the volume stays mounted, and
+    the info plist goes on naming the old path until detach, with **no other identifier to match on**
+    (no inode, no device id for the image file). So the moment the saved list follows the move, every
+    "is this vault unlocked?" question — all six of them, asked by path — starts answering *no* for a
+    vault the user can see mounted: shut padlock, no eject, Lock unreachable. Correct it once, on the
+    way out of the function that produces that answer, and every caller is fixed with no API changed.
+    Honor the alias **only while the reported path is missing from disk**, which is precisely the
+    state a rename-while-attached creates: it needs no expiry, and it stops applying by itself the
+    moment something occupies that path again.
+  - Measured before designing any of it, and it is what kept the fix small: attaching the *same*
+    image under its new name exits **0**, mounts nothing extra, and hands back the existing mount
+    point. So the failure this guards against is cosmetic rather than dangerous — worth knowing
+    before spending effort proportionate to a corruption risk that isn't there.
 - **`resolvingSymlinksInPath` and `standardizingPath` fold `/private` only for paths that currently
   exist.** Probed on macOS 26: `/private/tmp/x` → `/tmp/x` when `x` is there, and stays
   `/private/tmp/x` when it is not. So neither is a normalizer — both are filesystem *queries* wearing

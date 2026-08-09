@@ -97,6 +97,18 @@ public struct SavedVaults: Sendable, Equatable, Codable {
         return true
     }
 
+    /// Re-point the vault at `imagePath` to `newPath`, **keeping its place in the list**.
+    ///
+    /// A remove-then-add would send the row to the bottom of the Vaults section, so renaming a
+    /// vault's image file would silently reorder the sidebar — a change nobody asked for, made by a
+    /// gesture that was about a file name. Returns whether there was a vault to move.
+    @discardableResult
+    public mutating func move(imagePath: String, to newPath: String) -> Bool {
+        guard let index = index(ofPath: imagePath) else { return false }
+        vaults[index].imagePath = newPath
+        return true
+    }
+
     /// Remove the vault at `imagePath`, whichever spelling it is given in. Returns whether it was
     /// there.
     @discardableResult

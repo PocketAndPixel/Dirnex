@@ -25,6 +25,18 @@ public enum DiskImageMount {
         public let imagePath: String
         public let isEncrypted: Bool
         public let mountPoint: String?
+
+        public init(imagePath: String, isEncrypted: Bool, mountPoint: String?) {
+            self.imagePath = imagePath
+            self.isEncrypted = isEncrypted
+            self.mountPoint = mountPoint
+        }
+
+        /// The same image, reported at a different path — what the app rewrites an entry to when
+        /// `hdiutil` is still naming an image by the path it had when it was attached.
+        public func relocated(to imagePath: String) -> AttachedImage {
+            AttachedImage(imagePath: imagePath, isEncrypted: isEncrypted, mountPoint: mountPoint)
+        }
     }
 
     /// The mount point from `hdiutil attach -plist`.

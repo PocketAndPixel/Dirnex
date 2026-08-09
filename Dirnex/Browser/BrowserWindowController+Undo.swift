@@ -9,6 +9,10 @@ import DirnexCore
 extension BrowserWindowController {
     func recordUndoableAction(_ record: UndoRecord) {
         undoController.record(record)
+        // Every rename, move, multi-rename and sync reports through here, which is what makes this
+        // the one place a saved vault's image can be followed when the user moves the file itself
+        // (`+VaultMoves`). Undo and redo need the same call below — they move things too.
+        followVaultImageMoves(in: record)
     }
 
     /// A pane reports a completed marking change; journal it as a `SelectionChange` so Cmd+Z can
@@ -49,6 +53,11 @@ extension BrowserWindowController {
                 // once; the FSEvents watchers would catch up anyway, but this is immediate.
                 leftPanel.refreshCurrentDirectory()
                 rightPanel.refreshCurrentDirectory()
+                // A reverted move puts a vault's image back where it was, so the saved list has to
+                // come back with it. The record names both ends and the disk decides which one is
+                // real, so undo needs no inverse of its own — and a partial revert still lands
+                // each vault on wherever its own image actually ended up.
+                followVaultImageMoves(in: record)
                 presentUndoOutcome(record: record, report: report)
             case let .selection(change):
                 applySelectionChange(change)
@@ -64,6 +73,7 @@ extension BrowserWindowController {
             case let .fileOperation(record, report):
                 leftPanel.refreshCurrentDirectory()
                 rightPanel.refreshCurrentDirectory()
+                followVaultImageMoves(in: record)
                 presentRedoOutcome(record: record, report: report)
             case let .selection(change):
                 applySelectionChange(change)

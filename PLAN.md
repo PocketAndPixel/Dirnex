@@ -166,6 +166,22 @@ the number. Verified against real encrypted sparsebundles end to end (including 
 the F2 routing is pinned by selector string with a negative control, since a drifted `@objc`
 signature is exactly how that key would go quietly dead. docs/NOTES.md ▸ Encryption.
 
+**2026-08-10 — a vault now survives having its image file moved.** The other half of the same
+addressing problem, found while verifying the rename: a saved vault is keyed on its image's path in
+*two* stores — the sidebar list and the Keychain account — so an ordinary F2 on the `.sparsebundle`
+(or an F6, or a move of any folder above it) left the row pointing at nothing and the passphrase
+orphaned, with the row looking completely normal until it was clicked. The hook is `UndoRecord`, the
+one funnel every rename, move, multi-rename and sync already reports through; reading **both** ends
+of each step and letting the disk decide is what makes undo, redo and a half-applied revert all come
+out right with no direction bookkeeping. A trashed vault is deliberately *not* followed — leaving the
+path alone is what lets Put Back repair the row. The trap underneath took the measurement: `hdiutil`
+reports an image by the path it had when it was attached, forever, and carries no other identifier —
+so following a move would have made an unlocked vault read as locked with Lock unreachable.
+`MovedVaultImages` corrects that one answer where it is produced, honored only while the reported
+path is missing from disk, which is why it needs no expiry. Verified live across a locked rename, an
+unlocked rename and a ⌘Z: the row kept working, the Keychain item moved each time with no orphan left
+at any of the three paths, and the alias stopped applying by itself once the old path existed again.
+
 **2026-08-09 — 26 strings that were wrapped but never translated.** The whole of Settings ▸ Panels as
 M15 built it — the row-height and size-visualization pickers with their footers, the three color
 wells, the file-type color rules editor — plus M18's "not drawn in this preview" and M14's

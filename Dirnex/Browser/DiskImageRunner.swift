@@ -156,11 +156,18 @@ enum DiskImageRunner {
     /// leave Dirnex showing a vault as open. Returns an empty list if `hdiutil` cannot be run at all,
     /// which reads as "nothing is unlocked" — the safe direction, since the alternative is offering a
     /// Lock for a vault that is not there.
+    ///
+    /// The one correction applied to `hdiutil`'s answer is ``MovedVaultImages``: an image renamed
+    /// while it was attached goes on being reported under its *old* path for as long as it stays
+    /// mounted (probed — there is no other identifier in the plist to match on). Correcting it here,
+    /// where the answer is produced, fixes every caller at once rather than at six call sites.
     static func attachedImages() -> [DiskImageMount.AttachedImage] {
         guard let run = try? Run(arguments: DiskImageArguments.info()) else { return [] }
         let result = run.drainToEnd()
         guard result.exitCode == 0 else { return [] }
-        return DiskImageMount.attachedImages(fromInfoPlist: result.output)
+        return MovedVaultImages.shared.resolving(
+            DiskImageMount.attachedImages(fromInfoPlist: result.output)
+        )
     }
 
     // MARK: - One process
