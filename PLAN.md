@@ -147,8 +147,26 @@ non-empty folder, which hid three folders Finder shows.
 
 ### After M19
 
-Nothing is in flight: M19 closed on 2026-08-09 and no milestone has opened behind it. Two things
+Nothing is in flight: M19 closed on 2026-08-09 and no milestone has opened behind it. Three things
 landed between it and M18, which closed on 2026-08-07.
+
+**2026-08-09 — 26 strings that were wrapped but never translated.** The whole of Settings ▸ Panels as
+M15 built it — the row-height and size-visualization pickers with their footers, the three colour
+wells, the file-type colour rules editor — plus M18's "not drawn in this preview" and M14's
+multi-selection failure detail. All correctly `String(localized:)`-wrapped and all absent from
+`Localizable.xcstrings`, which compiles such a key **to itself**: the strings rendered in English
+inside a fully translated build, with both suites green and a perfect English screenshot. M12's own
+audit had already named the class in docs/NOTES.md and prescribed the cross-check that finds it —
+diff the compiler's `.stringsdata` against the catalog — and nobody had run it, which is the actual
+lesson: a check that lives in prose is not a check. It is now
+`scripts/check_localization_keys.py`, run in CI immediately after the app build, with the two keys
+that are legitimately absent named in its allow-list. The `allCases` pickers get a test as well
+(`LocalizationEnglishKeyCoverageTests`), since the sweep only fires once a key exists and a new enum
+case arrives with its catalog entry in the same commit. All 26 are translated into the 13 shipped
+languages and verified in the compiled bundle; the two segmented controls — the shape docs/NOTES.md
+records collapsing under a longer translation — were checked in a live Russian build rather than
+argued about, and the colour-rule footer's `` `*.jpg;*.png` `` keeps its backticks so the wildcards
+survive SwiftUI's Markdown parser in every language.
 
 **2026-08-08 — the tree draws indent guides.** VS Code's vertical lines, one per ancestor level,
 always drawn faintly, with the ancestor line of the *focused* row drawn stronger — the focus being the

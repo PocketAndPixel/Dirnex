@@ -8769,6 +8769,95 @@
         }
       }
     },
+    "Accent": {
+      "comment": "Settings ▸ Panels: color of the current path crumb and active tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Akzent"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accent"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acento"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accent"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accento"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アクセント"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "강조 색상"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accent"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Akcent"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destaque"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Акцент"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Акцент"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "强调色"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "強調色彩"
+          }
+        }
+      }
+    },
     "Access:": {
       "comment": "Info panel field label: the grid of read/write/execute mode bits.",
       "localizations": {
@@ -9299,6 +9388,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "加入快速鍵"
+          }
+        }
+      }
+    },
+    "Add a color rule": {
+      "comment": "Tooltip on the add button of the file-type colors editor in Settings.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Farbregel hinzufügen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add a color rule"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir una regla de color"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter une règle de couleur"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiungi una regola di colore"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カラールールを追加"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "색상 규칙 추가"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kleurregel toevoegen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dodaj regułę koloru"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adicionar uma regra de cor"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавить правило цвета"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Додати правило кольору"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加颜色规则"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "加入顏色規則"
           }
         }
       }
@@ -12591,6 +12769,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "空白腳本"
+          }
+        }
+      }
+    },
+    "Both": {
+      "comment": "Size-viz display mode: bar and percentage together",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beides"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Both"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ambos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les deux"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrambi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "両方"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "둘 다"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beide"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oba"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ambos"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оба"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обидва"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "两者"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "兩者"
           }
         }
       }
@@ -17952,6 +18219,94 @@
         }
       }
     },
+    "Colors": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Farben"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Colors"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Colores"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couleurs"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Colori"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "色"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "색상"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kleuren"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kolory"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cores"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цвета"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Кольори"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "颜色"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "顏色"
+          }
+        }
+      }
+    },
     "Command": {
       "comment": "Scripts organizer field label: the shell command body.",
       "localizations": {
@@ -18037,6 +18392,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "指令"
+          }
+        }
+      }
+    },
+    "Compact": {
+      "comment": "Row density: the tightest file rows",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kompakt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compact"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compacta"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compact"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compatta"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コンパクト"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "좁게"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compact"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zwarty"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compacta"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Компактно"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Компактно"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "紧凑"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "緊湊"
           }
         }
       }
@@ -27183,6 +27627,95 @@
         }
       }
     },
+    "Cursor row": {
+      "comment": "Settings ▸ Panels: background color of the selected file row",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cursorzeile"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cursor row"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fila del cursor"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ligne du curseur"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riga del cursore"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カーソル行"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커서 행"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cursorregel"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiersz kursora"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linha do cursor"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Строка курсора"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Рядок курсора"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "光标行"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "游標列"
+          }
+        }
+      }
+    },
     "Custom": {
       "comment": "Shortcuts preset picker: hand-edited state.",
       "localizations": {
@@ -30759,6 +31292,94 @@
         }
       }
     },
+    "Each color follows macOS until you change it. Text on the cursor row is chosen for you — black or white, whichever stays readable — so a pale cursor color can’t hide the file names.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jede Farbe folgt macOS, bis Sie sie ändern. Die Textfarbe der Cursorzeile wird für Sie gewählt – Schwarz oder Weiß, je nachdem, was lesbar bleibt –, sodass eine helle Cursorfarbe die Dateinamen nicht verstecken kann."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Each color follows macOS until you change it. Text on the cursor row is chosen for you — black or white, whichever stays readable — so a pale cursor color can’t hide the file names."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cada color sigue a macOS hasta que lo cambies. El texto de la fila del cursor se elige por ti —negro o blanco, el que siga siendo legible—, de modo que un color de cursor claro no pueda ocultar los nombres de archivo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chaque couleur suit macOS jusqu’à ce que vous la changiez. La couleur du texte de la ligne du curseur est choisie pour vous — noir ou blanc, selon ce qui reste lisible — afin qu’une couleur de curseur claire ne puisse pas masquer les noms de fichiers."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ogni colore segue macOS finché non lo cambi. Il colore del testo della riga del cursore viene scelto per te — nero o bianco, a seconda di quale resta leggibile — così un colore del cursore chiaro non può nascondere i nomi dei file."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "各色は、変更するまで macOS に従います。カーソル行の文字色は自動的に選ばれるため（読みやすいほうの黒または白）、明るいカーソル色でもファイル名が見えなくなることはありません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "각 색상은 변경하기 전까지 macOS를 따릅니다. 커서 행의 글자색은 읽기 쉬운 검정 또는 흰색으로 자동 선택되므로, 밝은 커서 색상이 파일 이름을 가리지 않습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elke kleur volgt macOS totdat je hem wijzigt. De tekstkleur op de cursorregel wordt voor je gekozen — zwart of wit, wat leesbaar blijft — zodat een lichte cursorkleur de bestandsnamen niet kan verbergen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Każdy kolor podąża za macOS, dopóki go nie zmienisz. Kolor tekstu w wierszu kursora jest dobierany automatycznie — czarny lub biały, zależnie od tego, który pozostaje czytelny — więc jasny kolor kursora nie ukryje nazw plików."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cada cor segue o macOS até você mudá-la. A cor do texto da linha do cursor é escolhida para você — preto ou branco, o que continuar legível —, então uma cor de cursor clara não pode esconder os nomes dos arquivos."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Каждый цвет следует macOS, пока вы его не измените. Цвет текста в строке курсора подбирается автоматически — чёрный или белый, тот, что остаётся читаемым, — поэтому светлый цвет курсора не скроет имена файлов."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Кожен колір слідує macOS, доки ви його не зміните. Колір тексту в рядку курсора добирається автоматично — чорний або білий, той, що лишається читабельним, — тож світлий колір курсора не сховає імена файлів."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在你更改之前，每种颜色都跟随 macOS。光标行的文字颜色由系统自动选择——黑色或白色，取更易读的那个——因此浅色的光标颜色不会遮住文件名。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在你更改之前，每種顏色都跟隨 macOS。游標列的文字顏色會自動選擇——黑色或白色，取較易讀的那個——因此淺色的游標顏色不會遮住檔案名稱。"
+          }
+        }
+      }
+    },
     "Each item returns to the folder it was deleted from.": {
       "comment": "Restore-All confirmation body.",
       "localizations": {
@@ -34319,6 +34940,94 @@
         }
       }
     },
+    "File type colors": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Farben nach Dateityp"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "File type colors"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Colores por tipo de archivo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couleurs par type de fichier"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Colori per tipo di file"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルタイプの色"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 종류별 색상"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kleuren per bestandstype"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kolory typów plików"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cores por tipo de arquivo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цвета по типу файлов"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Кольори за типом файлів"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文件类型颜色"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "檔案類型顏色"
+          }
+        }
+      }
+    },
     "Files": {
       "comment": "Shortcuts action category for the file verbs.",
       "localizations": {
@@ -34493,6 +35202,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "檔案與檔案夾"
+          }
+        }
+      }
+    },
+    "Files are drawn in the color of the first rule they match, so put the specific rules above the general ones. Separate several patterns with a semicolon — `*.jpg;*.png`. A marked file keeps its mark color, and a file’s Git status still wins over both.": {
+      "comment": "Settings ▸ Panels footer. Keep `*.jpg;*.png` in backticks — the literal is parsed as Markdown and unquoted asterisks are eaten as emphasis.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dateien werden in der Farbe der ersten passenden Regel gezeichnet – stellen Sie die spezifischen Regeln daher über die allgemeinen. Mehrere Muster werden durch ein Semikolon getrennt – `*.jpg;*.png`. Eine markierte Datei behält ihre Markierungsfarbe, und der Git-Status einer Datei hat weiterhin Vorrang vor beidem."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Files are drawn in the color of the first rule they match, so put the specific rules above the general ones. Separate several patterns with a semicolon — `*.jpg;*.png`. A marked file keeps its mark color, and a file’s Git status still wins over both."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los archivos se muestran con el color de la primera regla que coincide, así que pon las reglas específicas por encima de las generales. Separa varios patrones con un punto y coma: `*.jpg;*.png`. Un archivo marcado conserva su color de marca, y el estado de Git de un archivo sigue teniendo prioridad sobre ambos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les fichiers s’affichent dans la couleur de la première règle qui correspond : placez donc les règles spécifiques au-dessus des générales. Séparez plusieurs motifs par un point-virgule — `*.jpg;*.png`. Un fichier marqué conserve sa couleur de marque, et l’état Git d’un fichier l’emporte toujours sur les deux."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I file vengono mostrati con il colore della prima regola che corrisponde, quindi metti le regole specifiche sopra quelle generali. Separa più pattern con un punto e virgola — `*.jpg;*.png`. Un file contrassegnato mantiene il colore del contrassegno e lo stato Git di un file ha comunque la precedenza su entrambi."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルは最初に一致したルールの色で表示されるので、具体的なルールを一般的なルールより上に置いてください。複数のパターンはセミコロンで区切ります — `*.jpg;*.png`。マークしたファイルはマークの色を保ち、ファイルの Git ステータスは引き続きどちらよりも優先されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일은 가장 먼저 일치하는 규칙의 색상으로 표시되므로, 구체적인 규칙을 일반적인 규칙 위에 두십시오. 여러 패턴은 세미콜론으로 구분합니다 — `*.jpg;*.png`. 표시된 파일은 표시 색상을 유지하며, 파일의 Git 상태는 여전히 둘 모두보다 우선합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bestanden worden getoond in de kleur van de eerste regel die past, dus zet de specifieke regels boven de algemene. Scheid meerdere patronen met een puntkomma — `*.jpg;*.png`. Een gemarkeerd bestand houdt zijn markeerkleur, en de Git-status van een bestand gaat nog steeds boven beide."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pliki są rysowane w kolorze pierwszej pasującej reguły, więc umieszczaj reguły szczegółowe nad ogólnymi. Kilka wzorców rozdziel średnikiem — `*.jpg;*.png`. Zaznaczony plik zachowuje kolor zaznaczenia, a status Git pliku nadal ma pierwszeństwo przed obydwoma."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Os arquivos são exibidos com a cor da primeira regra que corresponde, então coloque as regras específicas acima das gerais. Separe vários padrões com ponto e vírgula — `*.jpg;*.png`. Um arquivo marcado mantém a cor da marca, e o status do Git de um arquivo continua tendo prioridade sobre ambos."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файлы отображаются цветом первого подошедшего правила, поэтому размещайте частные правила выше общих. Несколько шаблонов разделяются точкой с запятой — `*.jpg;*.png`. Выделенный файл сохраняет цвет выделения, а статус Git у файла по-прежнему важнее обоих."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файли показуються кольором першого правила, яке збіглося, тож розміщуйте конкретні правила вище за загальні. Кілька шаблонів розділяйте крапкою з комою — `*.jpg;*.png`. Позначений файл зберігає колір позначення, а статус Git файлу все одно переважає обидва."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文件以第一条匹配规则的颜色显示，因此请把具体的规则放在通用规则之上。多个模式用分号分隔——`*.jpg;*.png`。已标记的文件保留标记颜色，而文件的 Git 状态仍然优先于两者。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "檔案以第一條符合規則的顏色顯示，因此請把具體的規則放在通用規則之上。多個樣式用分號分隔——`*.jpg;*.png`。已標記的檔案保留標記顏色，而檔案的 Git 狀態仍然優先於兩者。"
           }
         }
       }
@@ -35650,6 +36448,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "僅檔案夾"
+          }
+        }
+      }
+    },
+    "Follow the system color": {
+      "comment": "Tooltip on the button that clears a custom color in Settings ▸ Panels",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Systemfarbe folgen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Follow the system color"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seguir el color del sistema"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suivre la couleur du système"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Segui il colore di sistema"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "システムの色に従う"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "시스템 색상 따르기"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De systeemkleur volgen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Używaj koloru systemowego"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seguir a cor do sistema"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Использовать системный цвет"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Використовувати системний колір"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跟随系统颜色"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跟隨系統顏色"
           }
         }
       }
@@ -37342,6 +38229,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "主機："
+          }
+        }
+      }
+    },
+    "How much vertical room each file row gets, in every pane and tab. Compact fits more on screen; Roomy is easier to aim at. The icons follow along.": {
+      "comment": "Settings ▸ Panels footer. “Compact” and “Roomy” name the segments above it — translate them the same way here.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wie viel vertikaler Raum jeder Dateizeile zusteht – in jedem Bereich und jedem Tab. Kompakt zeigt mehr auf dem Bildschirm, Weit ist leichter zu treffen. Die Symbole passen sich an."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How much vertical room each file row gets, in every pane and tab. Compact fits more on screen; Roomy is easier to aim at. The icons follow along."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuánto espacio vertical recibe cada fila de archivo, en todos los paneles y pestañas. Compacta muestra más en pantalla; Amplia es más fácil de acertar. Los iconos se ajustan."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’espace vertical accordé à chaque ligne de fichier, dans tous les panneaux et onglets. Compact affiche plus à l’écran ; Aéré est plus facile à viser. Les icônes suivent."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quanto spazio verticale ottiene ogni riga di file, in ogni pannello e scheda. Compatta mostra di più sullo schermo; Ampia è più facile da centrare. Le icone si adeguano."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "各ファイル行に与える縦方向の余白です（すべてのパネルとタブに適用）。コンパクトは画面により多く表示でき、ゆったりは狙いやすくなります。アイコンのサイズも一緒に変わります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "모든 패널과 탭에서 각 파일 행이 차지하는 세로 공간입니다. 좁게는 화면에 더 많이 표시되고, 넓게는 겨냥하기 쉽습니다. 아이콘도 함께 조정됩니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoeveel verticale ruimte elke bestandsregel krijgt, in elk paneel en tabblad. Compact toont meer op het scherm; Ruim is makkelijker te raken. De symbolen passen zich aan."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ile pionowego miejsca otrzymuje każdy wiersz pliku, w każdym panelu i każdej karcie. Zwarty mieści więcej na ekranie, a Luźny ułatwia trafienie. Ikony dostosowują się."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quanto espaço vertical cada linha de arquivo recebe, em todos os painéis e abas. Compacta mostra mais na tela; Ampla é mais fácil de acertar. Os ícones acompanham."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сколько места по вертикали отводится каждой строке файла — во всех панелях и вкладках. «Компактно» вмещает на экране больше, «Просторно» — проще попасть по строке. Значки меняются вместе с высотой."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скільки місця по вертикалі відводиться кожному рядку файлу — в усіх панелях і вкладках. «Компактно» вміщує на екрані більше, «Просторо» — легше поцілити в рядок. Піктограми змінюються разом із висотою."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每个文件行获得多少垂直空间，适用于所有面板和标签页。紧凑在屏幕上显示更多，宽松更容易点中。图标也会随之变化。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每個檔案列獲得多少垂直空間，適用於所有面板和標籤頁。緊湊在螢幕上顯示更多，寬鬆更容易點中。圖像也會隨之變化。"
           }
         }
       }
@@ -40207,6 +41183,95 @@
         }
       }
     },
+    "Marked files": {
+      "comment": "Settings ▸ Panels: text color of files selected with Space/Insert",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Markierte Dateien"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marked files"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archivos marcados"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fichiers marqués"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "File contrassegnati"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "マークしたファイル"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "표시된 파일"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gemarkeerde bestanden"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zaznaczone pliki"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arquivos marcados"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выделенные файлы"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Позначені файли"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已标记的文件"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已標記的檔案"
+          }
+        }
+      }
+    },
     "Matches": {
       "comment": "Checksum report row: the file’s digest is the one claimed.",
       "localizations": {
@@ -41196,6 +42261,184 @@
           "stringUnit": {
             "state": "translated",
             "value": "將項目下移"
+          }
+        }
+      }
+    },
+    "Move the rule down, so it is matched later": {
+      "comment": "Tooltip on the move-down button of the file-type colors editor in Settings.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regel nach unten verschieben, damit sie später greift"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move the rule down, so it is matched later"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mover la regla hacia abajo para que coincida después"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déplacer la règle vers le bas pour qu’elle s’applique plus tard"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sposta la regola in basso, così viene applicata dopo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ルールを下に移動して、後で一致させます"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "규칙을 아래로 이동하여 더 나중에 일치하도록 함"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regel omlaag verplaatsen, zodat hij later past"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przenieś regułę w dół, aby pasowała później"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mover a regra para baixo, para que corresponda depois"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переместить правило ниже, чтобы оно срабатывало позже"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перемістити правило нижче, щоб воно спрацьовувало пізніше"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将规则下移，使其更晚匹配"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "將規則下移，使其更晚符合"
+          }
+        }
+      }
+    },
+    "Move the rule up, so it is matched sooner": {
+      "comment": "Tooltip on the move-up button of the file-type colors editor in Settings.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regel nach oben verschieben, damit sie früher greift"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move the rule up, so it is matched sooner"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mover la regla hacia arriba para que coincida antes"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déplacer la règle vers le haut pour qu’elle s’applique plus tôt"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sposta la regola in alto, così viene applicata prima"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ルールを上に移動して、先に一致させます"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "규칙을 위로 이동하여 더 먼저 일치하도록 함"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regel omhoog verplaatsen, zodat hij eerder past"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przenieś regułę w górę, aby pasowała wcześniej"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mover a regra para cima, para que corresponda antes"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переместить правило выше, чтобы оно срабатывало раньше"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перемістити правило вище, щоб воно спрацьовувало раніше"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将规则上移，使其更早匹配"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "將規則上移，使其更早符合"
           }
         }
       }
@@ -43865,6 +45108,94 @@
           "stringUnit": {
             "state": "translated",
             "value": "未選取總和檢查碼檔案"
+          }
+        }
+      }
+    },
+    "No color rules. Files draw in the standard text color.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Farbregeln. Dateien werden in der Standardtextfarbe gezeichnet."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No color rules. Files draw in the standard text color."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin reglas de color. Los archivos se muestran con el color de texto estándar."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune règle de couleur. Les fichiers s’affichent dans la couleur de texte standard."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna regola di colore. I file vengono mostrati con il colore di testo standard."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カラールールはありません。ファイルは標準の文字色で表示されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "색상 규칙이 없습니다. 파일은 표준 텍스트 색상으로 표시됩니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen kleurregels. Bestanden worden in de standaardtekstkleur getoond."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak reguł kolorów. Pliki są rysowane w standardowym kolorze tekstu."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sem regras de cor. Os arquivos são exibidos com a cor de texto padrão."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Правил цвета нет. Файлы отображаются стандартным цветом текста."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Правил кольору немає. Файли показуються стандартним кольором тексту."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有颜色规则。文件以标准文字颜色显示。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "沒有顏色規則。檔案以標準文字顏色顯示。"
           }
         }
       }
@@ -49402,6 +50733,95 @@
         }
       }
     },
+    "Percentage": {
+      "comment": "Size-viz display mode: the folder-share number alone",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prozent"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Percentage"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Porcentaje"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pourcentage"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Percentuale"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "パーセント"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "백분율"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Percentage"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Procent"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Porcentagem"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проценты"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Відсотки"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "百分比"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "百分比"
+          }
+        }
+      }
+    },
     "Permanent delete always asks for confirmation, regardless of this setting.": {
       "comment": "Operations footer: confirm trash.",
       "localizations": {
@@ -50658,6 +52078,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "私鑰"
+          }
+        }
+      }
+    },
+    "Progress bar": {
+      "comment": "Size-viz display mode: the bar alone, no number",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Balken"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Progress bar"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Barra"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Barre"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Barra"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バー"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "막대"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Balk"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pasek"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Barra"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Полоса"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Смуга"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "进度条"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "進度列"
           }
         }
       }
@@ -52366,6 +53875,95 @@
         }
       }
     },
+    "Regular": {
+      "comment": "Row density: the default file rows",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Normal"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regular"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Normal"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Normal"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Normale"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "標準"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "보통"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Normaal"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Normalny"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Normal"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обычно"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Стандартно"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标准"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "標準"
+          }
+        }
+      }
+    },
     "Regular expression": {
       "comment": "Multi-rename tool: checkbox toggling regex find & replace.",
       "localizations": {
@@ -52985,6 +54583,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "移除所選項目"
+          }
+        }
+      }
+    },
+    "Remove the selected rule": {
+      "comment": "Tooltip on the remove button of the file-type colors editor in Settings.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausgewählte Regel entfernen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove the selected rule"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar la regla seleccionada"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer la règle sélectionnée"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rimuovi la regola selezionata"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択したルールを削除"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 규칙 제거"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geselecteerde regel verwijderen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usuń zaznaczoną regułę"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remover a regra selecionada"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить выбранное правило"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вилучити вибране правило"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移除所选规则"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移除所選規則"
           }
         }
       }
@@ -56368,6 +58055,183 @@
           "stringUnit": {
             "state": "translated",
             "value": "右鍵按一下一行以變更其操作"
+          }
+        }
+      }
+    },
+    "Roomy": {
+      "comment": "Row density: the tallest file rows",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weit"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Roomy"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Amplia"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aéré"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ampia"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ゆったり"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "넓게"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ruim"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Luźny"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ampla"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Просторно"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Просторо"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "宽松"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "寬鬆"
+          }
+        }
+      }
+    },
+    "Row height": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeilenhöhe"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Row height"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Altura de fila"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hauteur de ligne"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Altezza riga"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "行の高さ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "행 높이"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rijhoogte"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wysokość wiersza"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Altura da linha"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Высота строки"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Висота рядка"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "行高"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "列高"
           }
         }
       }
@@ -60197,6 +62061,94 @@
           "stringUnit": {
             "state": "translated",
             "value": "大小和日期"
+          }
+        }
+      }
+    },
+    "Size visualization": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Größenvisualisierung"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Size visualization"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Visualización de tamaños"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Visualisation de la taille"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Visualizzazione delle dimensioni"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サイズの視覚化"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "크기 시각화"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Groottevisualisatie"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wizualizacja rozmiarów"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Visualização de Tamanho"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Визуализация размеров"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Візуалізація розміру"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大小可视化"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大小可視化"
           }
         }
       }
@@ -71495,6 +73447,94 @@
         }
       }
     },
+    "Use System Colors": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Systemfarben verwenden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use System Colors"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar los colores del sistema"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utiliser les couleurs du système"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa i colori di sistema"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "システムの色を使用"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "시스템 색상 사용"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Systeemkleuren gebruiken"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Użyj kolorów systemowych"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar as Cores do Sistema"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Использовать системные цвета"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Використовувати системні кольори"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用系统颜色"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用系統顏色"
+          }
+        }
+      }
+    },
     "User:": {
       "comment": "Connect field label: user name.",
       "localizations": {
@@ -72294,6 +74334,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "等待上傳"
+          }
+        }
+      }
+    },
+    "What the size-bar column shows when a pane is in Size Visualization (View menu): the ncdu-style bar, each row’s share of the folder as a percentage, or both.": {
+      "comment": "Settings ▸ Panels footer. “Size Visualization” and “View” name a command and a menu — use the same words the menu bar uses.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Was die Größenbalken-Spalte zeigt, wenn ein Bereich auf Größenvisualisierung steht (Menü „Darstellung“): den Balken im ncdu-Stil, den Anteil jeder Zeile am Ordner in Prozent oder beides."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What the size-bar column shows when a pane is in Size Visualization (View menu): the ncdu-style bar, each row’s share of the folder as a percentage, or both."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo que muestra la columna de barras de tamaño cuando un panel está en Visualización de tamaños (menú Visualización): la barra al estilo de ncdu, la parte de la carpeta que ocupa cada fila en porcentaje, o ambos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce qu’affiche la colonne des barres de taille quand un panneau est en Visualisation de la taille (menu Présentation) : la barre façon ncdu, la part de chaque ligne dans le dossier en pourcentage, ou les deux."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cosa mostra la colonna delle barre delle dimensioni quando un pannello è in Visualizzazione delle dimensioni (menu Vista): la barra in stile ncdu, la quota di ogni riga sulla cartella in percentuale, o entrambi."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "パネルが「サイズの視覚化」（表示メニュー）のときに、サイズバーの列に表示する内容です。ncdu 風のバー、各行がフォルダに占める割合（パーセント）、またはその両方。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "패널이 크기 시각화(보기 메뉴) 상태일 때 크기 막대 열에 표시할 내용입니다. ncdu 스타일 막대, 각 행이 폴더에서 차지하는 비율(백분율), 또는 둘 다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wat de kolom met groottebalken toont als een paneel in Groottevisualisatie staat (menu Weergave): de balk in ncdu-stijl, het aandeel van elke regel in de map als percentage, of beide."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Co pokazuje kolumna paska rozmiaru, gdy panel jest w trybie Wizualizacja rozmiarów (menu Widok): pasek w stylu ncdu, udział każdego wiersza w folderze w procentach albo oba."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O que a coluna da barra de tamanho mostra quando um painel está em Visualização de Tamanho (menu Visualizar): a barra no estilo ncdu, a fatia de cada linha na pasta em porcentagem, ou ambos."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Что показывает столбец размерной полосы, когда панель находится в режиме «Визуализация размеров» (меню «Вид»): полосу в стиле ncdu, долю каждой строки в папке в процентах или и то и другое."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Що показує стовпець смуги розміру, коли панель у режимі «Візуалізація розміру» (меню «Вигляд»): смугу в стилі ncdu, частку кожного рядка в папці у відсотках або і те, і те."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当面板处于大小可视化（显示菜单）时，大小条列显示的内容：ncdu 风格的进度条、每行在文件夹中所占的百分比，或两者。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "當面板處於大小可視化（顯示選單）時，大小列所顯示的內容：ncdu 風格的進度列、每列在檔案夾中所佔的百分比，或兩者。"
           }
         }
       }
@@ -104944,6 +107073,95 @@
         }
       }
     },
+    "“%@” is not drawn in this preview.": {
+      "comment": "Quick View: a mermaid diagram type not drawn. %@ is the file's own keyword.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ wird in dieser Vorschau nicht gezeichnet."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is not drawn in this preview."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» no se dibuja en esta vista previa."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» n’est pas dessiné dans cet aperçu."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” non viene disegnato in questa anteprima."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”はこのプレビューでは描画されません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 미리보기에서는 “%@”을(를) 그리지 않습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” wordt niet getekend in deze voorvertoning."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@” nie jest rysowany w tym podglądzie."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” não é desenhado nesta pré-visualização."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» не отрисовывается в этом предпросмотре."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» не відтворюється в цьому перегляді."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此预览中不绘制“%@”。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此預覽中不會繪製「%@」。"
+          }
+        }
+      }
+    },
     "“%@” isn’t available": {
       "comment": "Missing-favorite alert title; %@ is the folder name.",
       "localizations": {
@@ -106049,6 +108267,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "「%@」會對每個檔案執行一次。請先選取一個或多個項目。"
+          }
+        }
+      }
+    },
+    "“%@”: %@": {
+      "comment": "Multi-selection failure detail; %1$@ is an item name, %2$@ the reason.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@»: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» : %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”：%@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”: %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”: %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@”: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%1$@»: %2$@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%1$@»: %2$@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”：%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」：%@"
           }
         }
       }

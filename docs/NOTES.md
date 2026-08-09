@@ -1038,6 +1038,29 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   auto-extracted. Cross-check the survivors against the compiler-emitted `.stringsdata`: a key that
   is *extracted but absent from the catalog* is wrapped-but-untranslated, which the coverage tests
   never see because they only check symbolic registry keys.
+  - **That cross-check was written down here and never run, and 26 strings shipped English for two
+    milestones because of it.** Found 2026-08-09: the whole Settings ▸ Panels surface M15 added — the
+    row-height and size-visualization pickers with their footers, the three colour wells, the
+    file-type colour rules editor — plus M18's undrawn-diagram sentence and M14's multi-selection
+    failure detail. Every one was correctly `String(localized:)`-wrapped, so no bare-literal sweep
+    could see it; every one was absent from the catalog, so it compiled **to itself** and rendered in
+    English inside a fully translated build. Nothing logs, `swift test` and `xcodebuild test` were
+    green throughout, and the English screenshot is perfect — the only surface that shows it is a
+    translated build of the one Settings tab nobody opens while working in their own language.
+  - **The lesson is not the class, which was already named above; it is that a check living in prose
+    is not a check.** `scripts/check_localization_keys.py` now diffs every `.stringsdata` key against
+    both catalogs and runs in CI right after the app build (it needs the build directory, which is
+    why it cannot be a test). Two keys are legitimately absent and are named in its `ALLOWED` with
+    the reason: the empty label of a `.labelsHidden()` control, and a `DisplayRepresentation`'s bare
+    `%@` whose every argument is already localized.
+  - **The `allCases` enums need a test as well as the sweep**, because the sweep only fires once the
+    key exists — a `RowDensity` case added in the same commit as its catalog entry passes it while
+    still being untranslated in thirteen languages. `LocalizationEnglishKeyCoverageTests` pins those,
+    and it has to spell the English keys out in a table: `title` is what the **running** language
+    resolves to, and the app test target inherits the developer's own `AppleLanguages` pin, so asking
+    a Russian build for its key hands back the Russian. A second test guards that table against
+    drifting off the strings it names, and skips itself under a non-English pin — which means on this
+    Mac it is CI that runs it, so prove it with a negative control rather than a green run.
 - **A presentation decision in the core is a string that can never be translated.** Three surfaces
   were fixed by *deleting* core API rather than keying it: `UpdateAvailability.tooltip`,
   `GitBranch.displayName`'s `"detached HEAD"`, and `SFTPTransportError.classify`'s empty-stderr

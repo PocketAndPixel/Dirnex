@@ -38,6 +38,11 @@ jobs:
             -scheme Dirnex \
             -destination 'platform=macOS' \
             -resultBundlePath TestResults.xcresult
+      # Reads the .stringsdata the build above emitted, so it runs after it rather than in the
+      # lint job. A key the compiler extracted but the catalog never received renders in English
+      # inside every translated build, with no error and a perfect English screenshot.
+      - name: Every extracted string is in the catalog
+        run: python3 scripts/check_localization_keys.py
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v7
