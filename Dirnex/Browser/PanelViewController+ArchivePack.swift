@@ -72,10 +72,16 @@ extension PanelViewController {
         )
         alert.addButton(withTitle: String(localized: "Pack"))
         alert.addButton(withTitle: String(localized: "Cancel"))
+        alert.enableEscapeToCancel()
 
         let accessory = PackAccessory.make(defaults)
         alert.accessoryView = accessory.view
         alert.window.initialFirstResponder = accessory.nameField
+        // Choosing a cipher grows the accessory and choosing None shrinks it again; an `NSAlert`
+        // takes the height from that frame, so it has to be told to re-fit around it (measured:
+        // `layout()` does this synchronously on a live sheet — docs/NOTES.md). Weak because the
+        // completion handler below already owns `accessory`, and `alert` owns the accessory's view.
+        accessory.onHeightChange = { [weak alert] in alert?.layout() }
 
         // `accessory` is captured (and so kept alive) by this closure for the sheet's lifetime,
         // which is what keeps the popups' target — the accessory itself — from being deallocated
@@ -216,6 +222,7 @@ extension PanelViewController {
         )
         alert.addButton(withTitle: String(localized: "Replace"))
         alert.addButton(withTitle: String(localized: "Cancel"))
+        alert.enableEscapeToCancel()
         let proceed: (NSApplication.ModalResponse) -> Void = { response in
             guard response == .alertFirstButtonReturn else { return }
             run()

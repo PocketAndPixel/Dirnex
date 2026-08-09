@@ -9,20 +9,37 @@ import DirnexCore
 /// - the format popup drives whether the **encryption** popup is enabled, because zip is the only
 ///   container that can be encrypted at all — libarchive's 7-Zip writer refuses the option and tar
 ///   has no notion of it (`ArchiveEncryption`);
-/// - the encryption popup drives the two passphrase fields, the "Hide file names" checkbox and the
-///   footer note, because none of them means anything without a cipher.
+/// - the encryption popup drives whether the two passphrase rows, the "Hide file names" checkbox and
+///   the footer note are on screen **at all**, because none of them means anything without a cipher.
 ///
-/// The passphrase rows are **disabled rather than hidden**. An `NSAlert` reserves vertical space for
-/// its accessory from that view's frame (docs/NOTES.md), so a view that grows and shrinks under the
-/// popup would need the alert re-laid out mid-sheet; a constant frame has nothing to get wrong. The
-/// footer is sized for its *longest* state at build time for the same reason, and emptied rather
-/// than removed when there is nothing to say.
+/// The last of those is a *collapse*, and it took measuring to be sure it was affordable. An
+/// `NSAlert` reserves vertical space for its accessory from that view's **frame** (docs/NOTES.md), so
+/// a form that grows and shrinks under a popup needs the alert re-laid out around it mid-sheet —
+/// which is why these rows started out merely grayed. Probed on a live sheet: `NSAlert.layout()`
+/// does exactly that, synchronously, and the sheet re-fits to the pixel (content 438 → 288 pt for a
+/// 150 pt accessory) while staying centered on its parent, so nothing jumps. The height change is
+/// therefore one call, handed to the presenter through ``onHeightChange`` — the accessory owns the
+/// arithmetic, the sheet owns the alert.
 ///
 /// An object rather than a struct because it is the popups' target/action, and it reads every
 /// control back as a core value so the sheet's completion handler never touches an index. Kept alive
 /// by the completion closure that captures it — `NSControl.target` is weak, so the accessory would
 /// otherwise be gone by the time the user changes anything.
 final class PackAccessory: NSObject {
+    /// The rows that exist only while a cipher is chosen, and what putting them away costs.
+    ///
+    /// `delta` is the y the encryption popup sits at in the built (expanded) layout — which is
+    /// exactly the height everything below it occupies — so a collapse is "hide those, slide these
+    /// down by `delta`, lose `delta` of height", and an expansion is the same in reverse.
+    struct EncryptionRows {
+        /// Hidden outright when there is no cipher: both passphrase captions and their fields, the
+        /// "Hide file names" checkbox, and the footer note.
+        let hidden: [NSView]
+        /// Everything above the passphrase block, which slides down onto the new floor.
+        let shifted: [NSView]
+        let delta: CGFloat
+    }
+
     let view: NSView
     let nameField: NSTextField
     let formatPopup: NSPopUpButton
@@ -31,10 +48,16 @@ final class PackAccessory: NSObject {
     let passphraseField: NSSecureTextField
     let confirmField: NSSecureTextField
     let hideNamesCheckbox: NSButton
+
+    /// Called after ``view``'s frame changes, for the presenter to re-lay out the alert around it.
+    /// Left `nil` while the sheet is being built: the initializer collapses a no-cipher form before
+    /// the alert has ever measured it, so there is nothing to re-lay out yet.
+    var onHeightChange: (() -> Void)?
+
     private let levelLabel: NSTextField
-    private let passphraseLabel: NSTextField
-    private let confirmLabel: NSTextField
-    private let footer: NSTextField
+    private let encryptionRows: EncryptionRows
+    /// The built layout is the expanded one; `init` collapses it if the defaults carry no cipher.
+    private var showingEncryptionRows = true
 
     init(
         view: NSView,
@@ -45,10 +68,8 @@ final class PackAccessory: NSObject {
         encryptionPopup: NSPopUpButton,
         passphraseField: NSSecureTextField,
         confirmField: NSSecureTextField,
-        passphraseLabel: NSTextField,
-        confirmLabel: NSTextField,
         hideNamesCheckbox: NSButton,
-        footer: NSTextField
+        encryptionRows: EncryptionRows
     ) {
         self.view = view
         self.nameField = nameField
@@ -58,10 +79,8 @@ final class PackAccessory: NSObject {
         self.encryptionPopup = encryptionPopup
         self.passphraseField = passphraseField
         self.confirmField = confirmField
-        self.passphraseLabel = passphraseLabel
-        self.confirmLabel = confirmLabel
         self.hideNamesCheckbox = hideNamesCheckbox
-        self.footer = footer
+        self.encryptionRows = encryptionRows
         super.init()
         formatPopup.target = self
         formatPopup.action = #selector(formatChanged)
@@ -124,21 +143,35 @@ final class PackAccessory: NSObject {
     /// the sheet shows is what it will do: a grayed "AES-256" over a `.tar.gz` reads as a promise
     /// the writer cannot keep. `encryption` refuses it either way, and this is what stops the two
     /// answers disagreeing on screen.
+    ///
+    /// The encryption popup itself is *disabled* rather than hidden for a format that cannot carry a
+    /// cipher — it is the answer to "can I encrypt this?", which a user asks by looking for the row.
+    /// Only what a cipher would *configure* goes away.
     private func syncEncryptionEnabled() {
         let canEncrypt = format == .zip
         encryptionPopup.isEnabled = canEncrypt
         if !canEncrypt {
             encryptionPopup.selectItem(at: 0)
         }
-        let encrypting = encryption.isEncrypted
-        for field in [passphraseField, confirmField] {
-            field.isEnabled = encrypting
+        setEncryptionRowsVisible(encryption.isEncrypted)
+    }
+
+    /// Put the passphrase block on screen, or take it away, and resize the accessory to match.
+    ///
+    /// Guarded on the current state so a format change that leaves the cipher alone — every one of
+    /// them but the move off zip — costs no relayout at all.
+    private func setEncryptionRowsVisible(_ visible: Bool) {
+        guard visible != showingEncryptionRows else { return }
+        showingEncryptionRows = visible
+        let shift = visible ? encryptionRows.delta : -encryptionRows.delta
+        for row in encryptionRows.hidden {
+            row.isHidden = !visible
         }
-        for label in [passphraseLabel, confirmLabel] {
-            label.textColor = encrypting ? .labelColor : .disabledControlTextColor
+        for row in encryptionRows.shifted {
+            row.frame.origin.y += shift
         }
-        hideNamesCheckbox.isEnabled = encrypting
-        footer.stringValue = encrypting ? Self.encryptionNote : ""
+        view.frame.size.height += shift
+        onHeightChange?()
     }
 
     /// The two things a user must know *before* typing a passphrase, in the order they matter.
@@ -149,8 +182,8 @@ final class PackAccessory: NSObject {
     /// to infer it. The compatibility sentence is second and is measured fact: macOS's own `unzip`
     /// reports `unsupported compression method 99` and Archive Utility `Unknown compression type`,
     /// and Windows Explorer's built-in zip cannot read it either.
-    /// Internal because the layout has to *measure* it: the footer is sized for its longest state
-    /// at build time so the accessory's frame never changes under the popup.
+    /// Internal because the layout has to *measure* it: the footer is built holding this text so its
+    /// height is the real one, then hidden with the rest of the block until a cipher is chosen.
     static let encryptionNote = String(
         localized: """
         If you forget this passphrase the files are gone — there is no way to recover them. \

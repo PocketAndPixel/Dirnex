@@ -14,6 +14,12 @@ import DirnexCore
 ///   is running, and the whole view is that much taller. An `NSAlert` takes its accessory's height
 ///   from the view's *frame*, and a wrapping `NSTextField` with no width constraint does not wrap —
 ///   it overruns — so both halves of that have to be settled here rather than left to Auto Layout.
+///
+/// Everything is built in the **expanded** state, passphrase block and all, and `PackAccessory`
+/// collapses it if no cipher is chosen. That order is what keeps the footer honest: measuring it
+/// while it is on screen holding its real text is the only way to know how tall the sheet has to be
+/// when a cipher *is* chosen, and a footer measured empty would leave the sentence saying the files
+/// are unrecoverable drawn outside the sheet.
 extension PackAccessory {
     /// What the sheet opens with. Carried as a value so a sheet re-raised after a rejected
     /// passphrase comes back with every other choice the user already made still in it — the one
@@ -127,10 +133,18 @@ extension PackAccessory {
             encryptionPopup: encryptionPopup,
             passphraseField: passphraseField,
             confirmField: confirmField,
-            passphraseLabel: labels[4],
-            confirmLabel: labels[5],
             hideNamesCheckbox: hideNames,
-            footer: footer
+            // The split is the encryption row: it and everything above it survive a collapse and
+            // slide down onto the floor the block below them vacates. That distance needs no
+            // arithmetic of its own — the encryption row already sits `rows.encryption` points up,
+            // which is by construction exactly the height of everything under it.
+            encryptionRows: PackAccessory.EncryptionRows(
+                hidden: [labels[4], labels[5], passphraseField, confirmField, hideNames, footer],
+                shifted: Array(labels[0...3]) + [
+                    nameField, formatPopup, levelPopup, encryptionPopup
+                ],
+                delta: rows.encryption
+            )
         )
     }
 

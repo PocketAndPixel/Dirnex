@@ -65,6 +65,22 @@ at build time.
   before the responder chain *and* before a raw `NSEvent` local keyDown monitor. Any
   Escape-driven behavior needs a physical key press to verify. Letters arrive as `keyCode = 0`
   with the character set, so route typed input by character, not keyCode.
+  - **`NSApp.postEvent` is the documented way in for a *monitor*, and it does not reach
+    key-equivalent dispatch at all** — so it cannot verify a button's Escape or ⌘-key binding, and
+    it fails in the quiet direction: the sheet simply stays open, which reads as a broken binding.
+    Measured on a live `NSAlert` sheet, where a posted **Return** did not fire the default button
+    either; that positive control is the whole finding, because without it the Escape run looked
+    like a real bug in the code under test. The instrument that works is
+    **`NSWindow.performKeyEquivalent(with:)` called directly** — it is the exact entry point
+    `NSWindow.sendEvent` uses for a keyDown, so it measures the mechanism in question and leaves
+    only "does a physical key reach the app" to the human. All four cases then behaved: Return →
+    first button, bound Escape → last button, unbound → nothing.
+  - **A field editor does *not* eat a button's Escape key equivalent.** Probed against a sheet whose
+    accessory text field held first responder (the pack sheet's shape — `initialFirstResponder` is
+    its name field): `performKeyEquivalent` returned `true` and the alert closed on the Cancel
+    button. Key equivalents run ahead of `keyDown:`, so the field editor's own "revert the edit"
+    never gets the key. Worth stating because the opposite is the natural worry, and it is the
+    reason `enableEscapeToCancel` needs no carve-out for a sheet that opens with a field focused.
 - **A transparent overlay from another app can gate every mouse click.** LanguageTool for
   Desktop did this for four passes; keyboard input still reached Dirnex, which masked it.
   Quitting the overlay app restored mouse verification.
@@ -1150,6 +1166,19 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   definite inner width (a fixed-width command field) so `fittingSize` resolves. Same family as the
   `NSStackView`-compression traps above: an AppKit container that is under-informed about size fails
   by drawing wrong rather than by complaining.
+  - **The corollary everyone assumes is false: an accessory *may* change height while the sheet is
+    up, and `NSAlert.layout()` re-fits around it synchronously.** "The alert takes its height from
+    the frame" reads as "so the frame must be constant", and the pack sheet shipped a whole design on
+    that — its passphrase rows were grayed rather than hidden, with the reasoning written into the
+    doc comment. Measured on a live sheet: set the accessory's frame, call `layout()`, and the
+    content is re-fitted in the same turn, to the pixel (438 → 288 pt for a 150 pt accessory) and
+    back again with no drift; a modern alert sheet is *centered*, so it grows and shrinks about its
+    own center and nothing jumps. So a form whose lower half is meaningless until a popup says
+    otherwise can simply collapse — hide those rows, slide the survivors down by the height they
+    vacated, resize the container, call `layout()`. Two things still hold and are what the original
+    reasoning was really protecting: build the view **expanded** so anything that has to be
+    *measured* (a wrapping footer) is measured holding its real text, and collapse before the alert
+    first lays out, since there is nothing to re-fit yet.
 - **`presentAsModalWindow(_:)` is the sheet replacement when a dialog has to be *movable*, and —
   against every expectation the word "modal" sets up — it does not block the caller.** A sheet is
   nailed to its window, so a verification report or a Get Info panel can never be dragged aside to
