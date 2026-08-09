@@ -2296,6 +2296,39 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
 - **To browse a second VFS backend without touching every `self.backend` site**, wrap them in a
   `CompositeBackend` that dispatches on `path.backend`. A per-tab backend field is a much larger
   refactor.
+- **A cache keyed by a path outlives the file that path named, and "invalidate on our own writes" is
+  the fix that looks complete and is not.** An archive's mount, its preview extractions and its
+  nested temp mount are all remembered under its on-disk path — right, since the `bsdtar -tvf` and
+  the decrypt behind them are the expensive part — and `invalidateMountedArchive(at:)` covers every
+  edit Dirnex *makes*. It cannot cover the edit a user makes by **deleting the archive and packing a
+  new one under the same name**, which is the ordinary way to redo one and does not go through the
+  rewrite path at all. Reported live 2026-08-09: an archive repacked with one file went on listing
+  the two the previous archive held, for the life of the window, while `bsdtar -tvf` on the same path
+  from a shell printed the one. It fails in the quiet direction twice over — the pane shows a
+  *plausible* listing rather than an empty or broken one, and nothing logs — and it is unreachable
+  from any headless test that only drives the app's own writes.
+  - The fix is to make each cache a cache rather than a memory: stamp it with what the file *is*
+    (`ArchiveIdentity` — device, inode, size, mtime) and compare on every read. One `stat` against a
+    subprocess spawn saved, so the freshness check is free at the scale that matters. **The inode is
+    the load-bearing field**, since a repack writes a new file whatever the name, size and timestamp
+    do; size and mtime only cover an in-place rewrite. Note it is the exact inverse of
+    `EditedFileRevision`, which watches for a *save* and must therefore ignore the inode, because a
+    macOS editor's atomic save replaces the file it was handed — same two quantities, opposite rule,
+    decided by whether replacement is the event you are hunting or the event you are tolerating.
+  - **Fix the sibling caches in the same pass, and rank them by what they hand the user.** The
+    reported symptom was the *listing*; `ArchivePreviewCache` had the identical bug and is worse,
+    because it hands over the previous archive's **bytes** under the new archive's member name, and
+    `NestedArchiveRegistry.reusableMount` the same one level in. Grep for the archive path used as a
+    dictionary key — all three were one `[String: …]` apiece.
+  - **A missing file is a miss, never "unchanged".** Reading `nil` identity as "no change" would let
+    a pane browse a deleted archive's ghost; treating it as a miss makes the re-read surface the real
+    reason the file cannot be opened.
+  - The tests need the negative control to mean anything, and it is cheap here: neuter the two
+    identity checks, re-run, and confirm the three staleness assertions fail while the two
+    "still cached when untouched" ones keep passing. The second half is what stops the fix from
+    quietly becoming "re-read every time" — proved by withdrawing *read* permission after the first
+    mount, since `stat` still answers while `bsdtar` could not open the file, so a second listing
+    that succeeds could only have come from the cache.
 - **A per-directory scan silently produces nothing for a virtual listing.** The cloud-badge scan
   gates on `isCloudDirectory(directory)` — a real read on a real path — which is exactly right for a
   folder and answers `false` for a synthetic `icloud:`/`trash:` container, so the merged iCloud

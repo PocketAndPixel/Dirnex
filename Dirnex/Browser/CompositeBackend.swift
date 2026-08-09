@@ -11,13 +11,17 @@ import Foundation
 /// the routing is new. An archive is mounted on its first list/stat by spawning `bsdtar`
 /// off-main (`ArchiveMounter`, the non-hermetic I/O boundary like `SpotlightSearchRunner`)
 /// and cached, so navigating within one never re-reads it. A rewrite that mutates an archive
-/// (F8 delete) drops its mount via `invalidateMountedArchive(at:)`, so the next list re-reads it.
+/// (F8 delete) drops its mount via `invalidateMountedArchive(at:)`, so the next list re-reads it;
+/// a change made *outside* Dirnex — or by deleting the archive and packing a new one under the same
+/// name — is caught by the `ArchiveIdentity` each mount is stamped with.
 final class CompositeBackend: VFSBackend, @unchecked Sendable {
     let local: LocalBackend
-    /// Mounted archives keyed by their on-disk path. Guarded by `lock` because listing runs
+    /// Mounted archives keyed by their on-disk path, each stamped with the identity of the file it
+    /// was read from so a path that has since been given a *different* archive re-reads instead of
+    /// answering from the old one's table of contents. Guarded by `lock` because listing runs
     /// on detached tasks — two panes can mount the same archive concurrently.
     private let lock = NSLock()
-    private var mounted: [String: ArchiveBackend] = [:]
+    private var mounted: [String: Mount] = [:]
     /// Live SFTP connections keyed by the account descriptor (`sftp://user@host:port`). A connection
     /// is established by the Connect-to-Server flow (`connectSFTP`) before a pane navigates onto it;
     /// each holds a `Process`-driven transport, so listing an SFTP pane routes here (PLAN.md §M5
@@ -243,13 +247,32 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         return sftpConnections[backendID.rawValue]
     }
 
+    /// One mounted archive and the file it was read from.
+    private struct Mount {
+        let identity: ArchiveIdentity
+        let backend: ArchiveBackend
+    }
+
+    /// The backend for the archive at `archivePath`, mounting it on first use and re-mounting it
+    /// whenever the file there is no longer the one that was read.
+    ///
+    /// The identity check is what makes the mount a cache rather than a memory: an archive that is
+    /// deleted and repacked under the same name — the ordinary way to redo one — would otherwise go
+    /// on listing the members it held when the pane first entered it, for the life of the window.
+    /// One `stat` per list, against a `bsdtar` spawn saved, so it costs nothing worth measuring.
     private func mountedArchive(at archivePath: String) throws -> ArchiveBackend {
+        let identity = ArchiveIdentity.current(ofFileAt: archivePath)
         lock.lock()
         defer { lock.unlock() }
-        if let cached = mounted[archivePath] { return cached }
+        if let identity, let cached = mounted[archivePath], cached.identity == identity {
+            return cached.backend
+        }
         let toc = try ArchiveMounter.readTableOfContents(ofArchiveAt: archivePath)
         let backend = ArchiveBackend(archiveOnDiskPath: archivePath, toc: toc)
-        mounted[archivePath] = backend
+        // An archive that vanished between the stat and the read has no identity to stamp, and the
+        // read above has already thrown; one that appears in that window is stamped on its next
+        // list. Either way an unstamped mount is never cached, so it can never go stale.
+        if let identity { mounted[archivePath] = Mount(identity: identity, backend: backend) }
         return backend
     }
 }

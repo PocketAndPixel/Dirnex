@@ -16,10 +16,14 @@ import Foundation
 @MainActor
 final class NestedArchiveRegistry {
     private var map = NestedArchiveMap()
+    /// Which enclosing archive each extraction came out of, so a reused temp mount is only offered
+    /// while the outer archive is still the one it was extracted from.
+    private var enclosing: [VFSPath: ArchiveIdentity] = [:]
 
     /// Record that the inner archive member at `origin` was extracted to `mountOnDiskPath`.
     func record(mountOnDiskPath: String, origin: VFSPath) {
         map.record(mountOnDiskPath: mountOnDiskPath, origin: origin)
+        enclosing[origin] = enclosingArchiveIdentity(of: origin)
     }
 
     /// The inner member a nested mount came from — the anchor "go up" returns to instead of the
@@ -42,10 +46,20 @@ final class NestedArchiveRegistry {
     }
 
     /// A temp file already extracted for `origin` and still on disk, so re-entering the same inner
-    /// archive skips a fresh `bsdtar` extraction. `nil` if never entered or the temp was cleared.
+    /// archive skips a fresh `bsdtar` extraction. `nil` if never entered or the temp was cleared —
+    /// and `nil` too once the *enclosing* archive is no longer the file the member came out of,
+    /// since a re-packed outer archive's member of the same name is different bytes, and reusing
+    /// the extraction would browse the previous archive's contents.
     func reusableMount(forOrigin origin: VFSPath) -> String? {
         guard let path = map.mountOnDiskPath(forOrigin: origin),
+              enclosing[origin] == enclosingArchiveIdentity(of: origin),
               FileManager.default.fileExists(atPath: path) else { return nil }
         return path
+    }
+
+    /// The identity of the archive file `origin` lives inside — `origin`'s backend names it.
+    private func enclosingArchiveIdentity(of origin: VFSPath) -> ArchiveIdentity? {
+        guard let archivePath = origin.backend.archivePath else { return nil }
+        return ArchiveIdentity.current(ofFileAt: archivePath)
     }
 }

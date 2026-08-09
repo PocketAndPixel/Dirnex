@@ -31,11 +31,31 @@ final class ArchivePreviewCache {
     /// all; without this, arrowing through five members of a 600 MB archive would do that five
     /// times, on a keystroke. Keyed by archive, so each is paid for exactly once per session.
     private var wholeArchiveExtractions: [String: URL] = [:]
+    /// Which archive each cached extraction came out of, so a path that has since been given a
+    /// different archive drops its entries instead of previewing bytes that are no longer in it.
+    private var identities: [String: ArchiveIdentity] = [:]
 
     /// The extracted on-disk URL for `member` if it has already been extracted this session,
     /// else `nil` — a synchronous lookup the preview surfaces use to resolve the file to show.
     func cachedURL(for member: ArchiveMember) -> URL? {
-        extracted[member]
+        dropExtractionsIfReplaced(archivePath: member.archivePath)
+        return extracted[member]
+    }
+
+    /// Forget everything extracted from `archivePath` when the file there is not the archive those
+    /// extractions came out of — deleting an archive and packing a new one under the same name is
+    /// the ordinary way to redo one, and the entries left behind would otherwise show the previous
+    /// archive's contents under the new archive's members. Worse than the stale *listing* the same
+    /// replacement causes in `CompositeBackend`, because here the user is looking at file bytes.
+    ///
+    /// One `stat` per cursor movement over an archive member, which is the same order as the
+    /// listing already costs and far below the extraction it guards.
+    private func dropExtractionsIfReplaced(archivePath: String) {
+        let identity = ArchiveIdentity.current(ofFileAt: archivePath)
+        guard identities[archivePath] != identity else { return }
+        identities[archivePath] = identity
+        extracted = extracted.filter { $0.key.archivePath != archivePath }
+        wholeArchiveExtractions[archivePath] = nil
     }
 
     /// Extract `member` to disk (off-main) and cache it, returning its on-disk URL. Reuses the
@@ -51,6 +71,7 @@ final class ArchivePreviewCache {
         for member: ArchiveMember,
         passphrase: ArchivePassphrase? = nil
     ) async throws -> URL {
+        dropExtractionsIfReplaced(archivePath: member.archivePath)
         if let url = extracted[member] { return url }
         if let url = wholeArchiveURL(for: member) {
             extracted[member] = url
