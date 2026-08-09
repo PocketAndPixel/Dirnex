@@ -24,10 +24,17 @@ extension PanelViewController {
             if isCursorOnNothing { promptForFileToEdit() }
             return
         }
+        // A member of a writable archive edits its extracted copy and offers to write the save back
+        // (PLAN.md §M4) — the restriction below existed only because that write-back didn't.
+        if entry.path.backend.isArchive, isWritableArchive, !entry.isDirectoryLike {
+            beginArchiveMemberEdit(for: entry)
+            return
+        }
         guard entry.path.backend == .local else {
-            // An archive member or a remote file would edit an extracted temp copy whose saves go
-            // nowhere. Said out loud rather than silently declined: a no-op that looks like it
-            // worked is the expensive kind of wrong.
+            // A remote file, or a member of a *nested* archive — whose bytes are themselves an
+            // extracted copy, so a write-back would land somewhere thrown away. Both would edit a
+            // temp copy whose saves go nowhere. Said out loud rather than silently declined: a
+            // no-op that looks like it worked is the expensive kind of wrong.
             showTransientStatus(
                 String(
                     localized: "Only files on this Mac can be edited — copy it out first (F5).",
@@ -124,7 +131,9 @@ extension PanelViewController {
     /// Hand a local path to the editor and say so. The launch is asynchronous and a cold editor
     /// takes seconds to draw its first window, so without this line the app looks like it swallowed
     /// the keystroke.
-    private func openInEditor(_ path: VFSPath) {
+    /// Internal, not private: `PanelViewController+ArchiveOpen` hands it the extracted copy of an
+    /// archive member, and Swift's `private` is per-file.
+    func openInEditor(_ path: VFSPath) {
         showTransientStatus(String(
             localized: "Opening \(path.lastComponent)…",
             comment: "In-progress status while opening a file; %@ is the file name."

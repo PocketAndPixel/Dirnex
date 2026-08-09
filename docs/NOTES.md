@@ -2182,6 +2182,44 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
 
 ## Design lessons that generalize
 
+- **A restriction whose comment explains *why* it exists is a feature request with a date on it, and
+  the fix usually retires several of them at once.** F4 declined archive members with "would edit an
+  extracted temp copy whose saves go nowhere"; the extracted copy Enter opened was `chmod 0444` for
+  the same reason, argued at length in its own doc comment. Both were honest, both were correct, and
+  both were the *absence* of one mechanism — watch the copy, offer to repack. Writing it deleted the
+  chmod, the F4 refusal, and a paragraph of justification each. Worth grepping for the shape: a guard
+  that names the missing capability rather than a rule.
+  - **Watch the member's temp *directory*, never the file.** Nearly every macOS editor saves
+    atomically — write a sibling, rename over the original — so the file the editor leaves behind is
+    a different inode from the one handed to it. A descriptor- or inode-based watcher sits on a file
+    nobody will ever write to again and fails in the silent direction: no error, no callback, and the
+    user's edit simply never offered. Each extraction already has its own directory, so the watch
+    costs nothing extra; the price is the editor's scratch files waking it, which a size+mtime
+    comparison (`EditedFileRevision`) filters. Treat `nil` — the file momentarily absent mid-rename —
+    as "not yet", not as a change.
+  - **Advance the recorded revision when the offer is *raised*, not when it is answered.** The offer
+    is a sheet, so an editor autosaving twice while it is up queues a second identical question
+    behind the first.
+- **`bsdtar` cannot rewrite an encrypted archive, and the failure is quiet enough to read as "not
+  implemented".** Every archive write (F8 delete, F5/paste add) went through `ArchiveWriter.rewrite`
+  → `bsdtar -x`, which on a real AES-256 zip **exits 1 having written nothing** — measured; it does
+  not prompt and does not hang, unlike the member-list `-xf` form this file already documents. So the
+  rewrite threw `archiveUnreadable` before touching the original, which is the *safe* direction and
+  is exactly why it sat unnoticed: no corruption, no hang, just an operation that never worked.
+  `ArchiveRewriteFormat` now picks the libarchive route off one header read.
+  - **A rewrite has to re-state what it cannot re-derive.** An extracted tree says nothing about
+    whether it came out of an *encrypted* archive, and — because the reader unwraps a hidden-names
+    archive transparently — nothing about whether its names were hidden. Both must be read off the
+    original's headers and passed to the repack. Forgetting the second is the expensive one: the
+    contents would be perfectly correct while every file name of an archive whose whole purpose was
+    hiding them became public, with nothing on screen to say so.
+  - **libarchive's reader does not report a zip's cipher strength**, so an AES-128 archive made
+    elsewhere comes back AES-256. Stated rather than guessed — the alternative is inferring a weaker
+    cipher from no evidence.
+  - The two routes spell entry names differently and that is pre-existing: `bsdtar` packs `.`, so its
+    rewrites carry `./name`, while the libarchive route enumerates the top level and writes bare
+    names (what the pack sheet produces). Both browse identically. Enumerate **including dot-files**
+    or a rewrite silently drops the `.gitignore` somebody packed.
 - **A credential-shaped feature has to split its entry point in two, and the half that follows the
   cursor is the one that must stay silent.** An encrypted archive browses fine — a zip's central
   directory is never encrypted — so the passphrase is wanted only when *bytes* are, and the natural

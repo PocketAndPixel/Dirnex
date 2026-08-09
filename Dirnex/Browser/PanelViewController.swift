@@ -106,6 +106,12 @@ protocol PanelHost: AnyObject {
     /// (PLAN.md §M19). Owned by the window so a passphrase typed to preview a member also opens it,
     /// extracts it with F5, and enters a nested archive inside it — from either pane.
     var archivePassphrases: ArchivePassphraseStore { get }
+
+    /// The window's record of archive members opened for editing, watched so a save can be offered
+    /// back into the archive (PLAN.md §M4 write-back). Owned by the window because an edit outlives
+    /// whatever the panes are showing — the tab that started it may be long gone by the time the
+    /// user saves.
+    var archiveMemberEdits: ArchiveMemberEditRegistry { get }
 }
 
 /// One file pane: a path bar, an `NSTableView` of the current directory, and a status

@@ -125,30 +125,33 @@ extension PanelViewController {
     ) {
         let localPaths = sources.map(\.path.path)
         let name = (archivePath as NSString).lastPathComponent
-        Task {
-            do {
-                try await Task.detached(priority: .userInitiated) {
-                    try ArchiveWriter.add(
-                        localPaths: localPaths,
-                        toInnerDirectory: innerDirectory,
-                        ofArchiveAt: archivePath
-                    )
-                }.value
-                // The mounted TOC is now stale — drop it so the re-list re-reads the rewritten archive.
-                (backend as? CompositeBackend)?.invalidateMountedArchive(at: archivePath)
-                panel.clearSelection()
-                refreshArchiveDirectory()
-                focusTable()
-                // F6 move: the archive add is a copy, so remove the originals now that it succeeded.
-                if kind == .move { sourcePane?.removeArchiveMoveOriginals(sources) }
-            } catch {
-                presentOperationFailure(
-                    message: sources.count == 1
-                        ? String(localized: "Couldn’t add “\(sources[0].name)”")
-                        : String(localized: "Couldn’t add \(sources.count) items to “\(name)”"),
-                    detail: describe(error)
+        // As with delete: an encrypted archive rewrites through libarchive, and the passphrase comes
+        // from the one funnel that asks once per archive and retries on a typo.
+        withArchivePassphrase(forArchiveAt: archivePath) { passphrase in
+            try await Task.detached(priority: .userInitiated) {
+                try ArchiveWriter.add(
+                    localPaths: localPaths,
+                    toInnerDirectory: innerDirectory,
+                    ofArchiveAt: archivePath,
+                    passphrase: passphrase
                 )
-            }
+            }.value
+        } onSuccess: { [weak self] in
+            guard let self else { return }
+            // The mounted TOC is now stale — drop it so the re-list re-reads the rewritten archive.
+            (backend as? CompositeBackend)?.invalidateMountedArchive(at: archivePath)
+            panel.clearSelection()
+            refreshArchiveDirectory()
+            focusTable()
+            // F6 move: the archive add is a copy, so remove the originals now that it succeeded.
+            if kind == .move { sourcePane?.removeArchiveMoveOriginals(sources) }
+        } onFailure: { [weak self] error in
+            self?.presentOperationFailure(
+                message: sources.count == 1
+                    ? String(localized: "Couldn’t add “\(sources[0].name)”")
+                    : String(localized: "Couldn’t add \(sources.count) items to “\(name)”"),
+                detail: self?.describe(error) ?? ""
+            )
         }
     }
 

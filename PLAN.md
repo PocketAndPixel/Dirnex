@@ -204,9 +204,12 @@ call about the whole `.system*` palette, not this change's to make quietly.
 The scope that is already written down, rather than merely imaginable, is in the *undone* column above
 plus M15's cut: the **thumbnail grid, brief view and the `PaneSurface` extraction** (one unit, argued
 in HISTORY.md §M15, with the two constraints any future grid inherits — skip `FileEntry.isDataless`
-rows, and move sort off the column header first). The one item two separate milestones have asked for
-is **edit-temp-watch-repack write-back** — M11 named it for archives and SFTP, M13 for FTP — so it is
-the candidate that would close the most open ends at once.
+rows, and move sort off the column header first). The item two separate milestones had asked for —
+**edit-temp-watch-repack write-back**, M11 for archives and SFTP, M13 for FTP — **landed for archives
+on 2026-08-09** and is still open for the two remote backends, which is where the rest of its value
+is: `ArchiveMemberEditRegistry` and `EditedFileRevision` are backend-agnostic (watch a temp copy,
+notice a save, offer to put it back), so SFTP and FTP need an upload in place of the repack rather
+than a second mechanism.
 
 M19's own loose end — **a per-archive passphrase held for the session** — **closed on 2026-08-09**,
 reported by a user who could not open a file inside an archive they had just packed. Preview, opening
@@ -220,7 +223,18 @@ a sheet. Two things the same pass settled: Enter on a plain file member had neve
 *any* archive (it extracts to temp and launches the default app now, read-only, since nothing writes
 an edit back), and an encrypted archive's whole-archive extraction is reused for its later members
 rather than re-decrypted per arrow key. **A member filter is still open** — one member of a 600 MB
-encrypted archive still decrypts all of it, once. (Its other loose end, §6's derived-data clause,
+encrypted archive still decrypts all of it, once.
+
+The same day, **editing a member in place** landed on top of it, and needed one thing nobody had
+noticed was missing: every archive *write* went through `bsdtar`, which cannot be given a
+passphrase — so F8 delete and F5/paste add inside an encrypted archive had never worked. They failed
+safely (the rewrite throws before the original is touched), which is why it read as unimplemented
+rather than broken. `ArchiveRewriteFormat` now picks the libarchive route off one header read and
+re-states what the extracted tree cannot say — that the archive was encrypted, and whether its names
+were hidden. On top of that, an opened member is watched (`ArchiveMemberEditRegistry`) and a save
+offers to repack it; the read-only `chmod` that stood in for this for one day is gone, and F4 works
+inside a writable archive. A **nested** archive stays read-only, since its bytes are themselves a
+temp copy. (Its other loose end, §6's derived-data clause,
 closed on 08-09 too — measuring the three leaks it named found none of them real and found a fourth
 that was ours, so it was fixed rather than documented: HISTORY.md §M19 ▸ Follow-up.)
 

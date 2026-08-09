@@ -73,6 +73,10 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     /// extracting from one asks once rather than once per gesture (PLAN.md §M19). In memory only.
     let archivePassphrases = ArchivePassphraseStore()
 
+    /// Archive members the user has opened for editing, watched so a save can be offered back into
+    /// the archive (PLAN.md §M4 write-back). Wired to its handler in `windowDidLoad`.
+    let archiveMemberEdits = ArchiveMemberEditRegistry()
+
     /// Where each nested-archive mount was extracted from, shared across both panes so walking out
     /// of and breadcrumbing an archive-inside-an-archive resolves its outer chain (PLAN.md §M4
     /// "nested archives").
@@ -267,6 +271,7 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         installQuickViewSupport()
         observeVolumeUnmount()
         installFunctionBar()
+        archiveMemberEdits.onEdited = { [weak self] edit in self?.offerArchiveWriteBack(edit) }
     }
 
     /// Put a sidebar show/hide button immediately to the right of the traffic lights, in
