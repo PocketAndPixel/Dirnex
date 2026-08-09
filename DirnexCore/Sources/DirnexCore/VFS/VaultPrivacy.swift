@@ -80,6 +80,27 @@ public enum VaultPrivacy {
         return false
     }
 
+    /// Where `path` moves to when the volume mounted at `old` is renamed and comes back at `new`, or
+    /// `nil` if it was never inside `old` to begin with.
+    ///
+    /// Beside ``isInside(_:mountPoints:)`` rather than in the app, because it is the *same*
+    /// component-boundary rule read the other way round — and two spellings of one rule is the trap
+    /// this project keeps meeting. A rebase that disagreed with the inside-ness test would either
+    /// move a pane that was never in the vault or strand one that was, and the compiler checks
+    /// neither.
+    ///
+    /// `new` is returned as it was given: it comes from `hdiutil`, which is the authority on where a
+    /// renamed volume actually landed (probed — a name collision remounts at `/Volumes/<name> 1`, so
+    /// it is never safe to build from what the user typed).
+    public static func rebase(_ path: String, from old: String, to new: String) -> String? {
+        let mount = VaultLocation.normalizedPath(old)
+        let wanted = VaultLocation.normalizedPath(path)
+        guard !mount.isEmpty, mount != "/" else { return nil }
+        if wanted == mount { return new }
+        guard wanted.hasPrefix(mount + "/") else { return nil }
+        return new + wanted.dropFirst(mount.count)
+    }
+
     /// Whether `path` is inside one of `mountPoints`. The `VFSPath` overload, which every caller in
     /// the app actually holds.
     ///

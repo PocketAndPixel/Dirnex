@@ -121,6 +121,18 @@ extension SidebarViewController {
         menu.addItem(.separator())
         menu.addItem(vaultMenuItem(
             String(
+                localized: "Rename…",
+                // Verbatim at all three sidebar sites that key this string (favorites and saved
+                // searches are the others). `String(localized:comment:)` takes a `StaticString`, so
+                // a shared comment cannot be hoisted — and two sites keying one string with
+                // different comments hand the translator whichever `xcstringstool` kept.
+                comment: "Sidebar context-menu item: the Rename verb."
+            ),
+            #selector(renameVaultItem(_:)),
+            vault
+        ))
+        menu.addItem(vaultMenuItem(
+            String(
                 localized: "Remove from Sidebar",
                 comment: """
                 Vault context-menu item: forget the vault. Deliberately not just "Remove" — the \
@@ -160,9 +172,46 @@ extension SidebarViewController {
         delegate?.sidebar(self, didRequestLockOf: vault)
     }
 
+    @objc private func renameVaultItem(_ sender: NSMenuItem) {
+        guard let vault = vault(from: sender) else { return }
+        delegate?.sidebar(self, didRequestRenameOf: vault)
+    }
+
     @objc private func removeVaultItem(_ sender: NSMenuItem) {
         guard let vault = vault(from: sender) else { return }
         confirmRemoveVault(vault)
+    }
+
+    // MARK: - F2
+
+    /// F2 on a selected vault row, reaching here the same way the panes' F2 reaches them: the menu
+    /// item carries a nil target, so AppKit walks the responder chain from whatever holds focus and
+    /// finds this controller when the focus is the sidebar. (`PanelViewController` is in a sibling
+    /// branch of the chain, so a focused pane still gets its own inline rename — the two can't
+    /// collide.)
+    ///
+    /// Deliberately the *selected* row and not `clickedRow`: this arrives from the keyboard, where
+    /// there is no click, and a stale `clickedRow` would rename whatever was last right-clicked.
+    @objc func renameSelection(_ sender: Any?) {
+        guard let vault = selectedVault else { return }
+        delegate?.sidebar(self, didRequestRenameOf: vault)
+    }
+
+    /// The vault under the keyboard cursor, if this row is one.
+    var selectedVault: VaultLocation? {
+        let row = tableView.selectedRow
+        guard rows.indices.contains(row) else { return nil }
+        return rows[row].vault
+    }
+}
+
+/// F2 is the only command the sidebar answers, so this stays narrow: every other selector is left
+/// enabled, which costs nothing because AppKit only asks the responder it has already found — and it
+/// finds this controller for `renameSelection(_:)` alone.
+extension SidebarViewController: NSMenuItemValidation {
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        guard menuItem.action == #selector(renameSelection(_:)) else { return true }
+        return selectedVault != nil
     }
 
     /// Confirm before forgetting a vault.

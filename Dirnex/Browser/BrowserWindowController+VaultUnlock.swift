@@ -90,16 +90,34 @@ extension BrowserWindowController {
         showingIn pane: PanelViewController? = nil
     ) {
         let destination = pane ?? focusedPanel
+        withUnlockedVault(vault, using: passphrase) { [weak destination] point in
+            destination?.navigate(to: .local(point))
+            destination?.focusTable()
+        }
+    }
+
+    /// Make sure `vault` is unlocked, then hand `body` the mount point it landed on.
+    ///
+    /// The unlock funnel itself, with the navigation lifted out of it — because Rename needs a vault
+    /// open without the pane going anywhere. The user asked to rename it, not to browse it, and a
+    /// pane that jumped into the vault would be the gesture answering a question nobody asked.
+    ///
+    /// `body` runs only on success: a cancelled passphrase prompt, or a failure that has already
+    /// raised its own alert, simply ends here.
+    func withUnlockedVault(
+        _ vault: VaultLocation,
+        using passphrase: ArchivePassphrase? = nil,
+        then body: @escaping @MainActor (String) -> Void
+    ) {
         if let point = DiskImageMount.isMounted(
             imageAtPath: vault.imagePath,
             in: DiskImageRunner.attachedImages()
         ) {
-            destination.navigate(to: .local(point))
-            destination.focusTable()
+            body(point)
             return
         }
         if let passphrase {
-            attach(vault, with: passphrase, showingIn: destination, retrying: false)
+            attach(vault, with: passphrase, retrying: false, then: body)
             return
         }
         // A passphrase filed in the Keychain is tried silently first — that is what "Dirnex saves it
@@ -107,16 +125,16 @@ extension BrowserWindowController {
         // the prompt rather than to an error, since a stale item is exactly what a re-created vault
         // at the same path leaves behind.
         if let stored = SecretKeychain.passphrase(for: vault) {
-            attach(vault, with: stored, showingIn: destination, retrying: false, isStored: true)
+            attach(vault, with: stored, retrying: false, isStored: true, then: body)
             return
         }
-        askAndAttach(vault, showingIn: destination, retrying: false)
+        askAndAttach(vault, retrying: false, then: body)
     }
 
     private func askAndAttach(
         _ vault: VaultLocation,
-        showingIn pane: PanelViewController,
-        retrying: Bool
+        retrying: Bool,
+        then body: @escaping @MainActor (String) -> Void
     ) {
         PassphrasePrompt.ask(
             forItemNamed: vault.volumeName,
@@ -124,7 +142,7 @@ extension BrowserWindowController {
             over: window
         ) { [weak self] passphrase in
             guard let self, let passphrase else { return }
-            attach(vault, with: passphrase, showingIn: pane, retrying: true)
+            attach(vault, with: passphrase, retrying: true, then: body)
         }
     }
 
@@ -134,9 +152,9 @@ extension BrowserWindowController {
     private func attach(
         _ vault: VaultLocation,
         with passphrase: ArchivePassphrase,
-        showingIn pane: PanelViewController,
         retrying: Bool,
-        isStored: Bool = false
+        isStored: Bool = false,
+        then body: @escaping @MainActor (String) -> Void
     ) {
         SidebarRowActivity.shared.begin(vault.resolvedImagePath)
         let imagePath = vault.imagePath
@@ -157,11 +175,10 @@ extension BrowserWindowController {
                 VaultMounts.shared.note(mountPoint: mounted.mountPoint)
                 VaultStore.remember(opened)
                 SecretKeychain.store(passphrase: passphrase, for: opened)
-                pane.navigate(to: .local(mounted.mountPoint))
-                pane.focusTable()
+                body(mounted.mountPoint)
             } catch VaultError.incorrectPassphrase {
                 // A typo, not a dead end. A refused *stored* passphrase asks for the first time.
-                self?.askAndAttach(vault, showingIn: pane, retrying: retrying && !isStored)
+                self?.askAndAttach(vault, retrying: retrying && !isStored, then: body)
             } catch {
                 self?.presentVaultError((error as? VaultError) ?? .couldNotUnlock)
             }

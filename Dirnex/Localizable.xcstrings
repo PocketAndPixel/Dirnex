@@ -26367,6 +26367,95 @@
         }
       }
     },
+    "Couldn’t rename the vault": {
+      "comment": "Title of the alert shown when a vault's volume could not be renamed.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tresor konnte nicht umbenannt werden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t rename the vault"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo renombrar la caja fuerte"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de renommer le coffre-fort"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile rinominare la cassaforte"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保管庫の名前を変更できませんでした"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "보관함 이름을 변경하지 못했습니다"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kluis kon niet worden hernoemd"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się zmienić nazwy sejfu"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível renomear o cofre"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось переименовать сейф"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося перейменувати сейф"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法重新命名保险库"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法重新命名保險庫"
+          }
+        }
+      }
+    },
     "Couldn’t rename “%@”": {
       "comment": "Multi-rename failure naming the single file that failed; %@ is the name.",
       "localizations": {
@@ -55859,6 +55948,95 @@
         }
       }
     },
+    "Rename Vault": {
+      "comment": "Title of the dialog that renames a vault's volume.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tresor umbenennen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rename Vault"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renombrar caja fuerte"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renommer le coffre-fort"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rinomina cassaforte"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保管庫の名前を変更"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "보관함 이름 변경"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kluis hernoemen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zmień nazwę sejfu"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renomear Cofre"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переименовать сейф"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перейменувати сейф"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新命名保险库"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新命名保險庫"
+          }
+        }
+      }
+    },
     "Renamed": {
       "comment": "Git status badge tooltip: the file was moved or copied from another path.",
       "localizations": {
@@ -71574,6 +71752,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "這會重新命名側邊欄列。檔案夾本身不會重新命名。"
+          }
+        }
+      }
+    },
+    "This renames the volume itself, so the vault has to be unlocked first. Its image file keeps the name it has.": {
+      "comment": "Body of the rename-vault dialog, saying what is and isn’t renamed.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dadurch wird das Volume selbst umbenannt, der Tresor muss also zuerst entsperrt werden. Die Image-Datei behält ihren Namen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This renames the volume itself, so the vault has to be unlocked first. Its image file keeps the name it has."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esto renombra el propio volumen, por lo que la caja fuerte debe desbloquearse primero. Su archivo de imagen conserva su nombre."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cela renomme le volume lui-même, le coffre-fort doit donc d’abord être déverrouillé. Son fichier image conserve son nom."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo rinomina il volume stesso, quindi la cassaforte deve prima essere sbloccata. Il suo file immagine mantiene il nome."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ボリューム自体の名前を変更するため、先に保管庫のロックを解除する必要があります。イメージファイルの名前はそのままです。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "볼륨 자체의 이름을 변경하므로 보관함을 먼저 잠금 해제해야 합니다. 이미지 파일의 이름은 그대로 유지됩니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dit hernoemt het volume zelf, dus de kluis moet eerst worden ontgrendeld. Het schijfkopiebestand behoudt zijn naam."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zmienia nazwę samego woluminu, więc sejf trzeba najpierw odblokować. Plik obrazu zachowuje swoją nazwę."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Isto renomeia o próprio volume, portanto o cofre precisa ser desbloqueado primeiro. Seu arquivo de imagem mantém o nome."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переименуется сам том, поэтому сейф сначала нужно разблокировать. Файл образа сохранит своё имя."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перейменується сам том, тому сейф спершу потрібно розблокувати. Файл образу збереже свою назву."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这将重新命名宗卷本身，因此需要先解锁保险库。其映像文件的名称保持不变。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "這會重新命名宗卷本身，因此需要先解鎖保險庫。其映像檔的名稱維持不變。"
           }
         }
       }
@@ -103150,6 +103417,96 @@
         }
       }
     },
+    "vault.error.couldNotRename": {
+      "comment": "Vault failure reason; DirnexCore data, keyed by VaultError's case name.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Tresor konnte nicht umbenannt werden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The vault couldn’t be renamed."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo renombrar la caja fuerte."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de renommer le coffre-fort."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile rinominare la cassaforte."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保管庫の名前を変更できませんでした。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "보관함 이름을 변경하지 못했습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De kluis kon niet worden hernoemd."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się zmienić nazwy sejfu."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível renomear o cofre."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось переименовать сейф."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося перейменувати сейф."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法重新命名保险库。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法重新命名保險庫。"
+          }
+        }
+      }
+    },
     "vault.error.couldNotUnlock": {
       "comment": "Vault failure reason; DirnexCore data, keyed by VaultError's case name.",
       "extractionState": "manual",
@@ -103506,6 +103863,96 @@
           "stringUnit": {
             "state": "translated",
             "value": "此通行密語無法解鎖這個保險庫。"
+          }
+        }
+      }
+    },
+    "vault.error.invalidVolumeName": {
+      "comment": "Vault failure reason; DirnexCore data, keyed by VaultError's case name.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Name kann nicht für ein Volume verwendet werden. Versuche einen kürzeren ohne Zeilenumbrüche."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That name can’t be used for a volume. Try a shorter one, without line breaks."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ese nombre no se puede usar para un volumen. Prueba con uno más corto y sin saltos de línea."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce nom ne peut pas être utilisé pour un volume. Essayez-en un plus court, sans saut de ligne."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo nome non può essere usato per un volume. Provane uno più corto, senza interruzioni di riga."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "その名前はボリュームには使用できません。改行を含まない、より短い名前をお試しください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그 이름은 볼륨에 사용할 수 없습니다. 줄바꿈이 없는 더 짧은 이름을 사용해 보십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die naam kan niet voor een volume worden gebruikt. Probeer een kortere naam zonder regeleinden."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tej nazwy nie można użyć dla woluminu. Spróbuj krótszej, bez znaków nowego wiersza."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esse nome não pode ser usado para um volume. Tente um mais curto, sem quebras de linha."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Такое имя нельзя использовать для тома. Попробуйте покороче и без переносов строк."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Таку назву не можна використати для тому. Спробуйте коротшу й без розривів рядка."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该名称不能用于宗卷。请尝试更短且不含换行符的名称。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "該名稱不能用於宗卷。請嘗試更短且不含換行符號的名稱。"
           }
         }
       }

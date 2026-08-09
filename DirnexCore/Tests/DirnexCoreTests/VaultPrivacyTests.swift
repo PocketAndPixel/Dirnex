@@ -107,6 +107,39 @@ struct VaultPrivacyTests {
         #expect(!VaultPrivacy.isInside("/Users/oleg/Documents", mountPoints: ["", "/"]))
     }
 
+    @Test("a renamed volume carries the path inside it along")
+    func rebaseFollowsTheRename() {
+        #expect(
+            VaultPrivacy.rebase("/Volumes/Personal", from: "/Volumes/Personal", to: "/Volumes/Work")
+                == "/Volumes/Work"
+        )
+        #expect(VaultPrivacy.rebase(
+            "/Volumes/Personal/taxes/2026", from: "/Volumes/Personal", to: "/Volumes/Work"
+        ) == "/Volumes/Work/taxes/2026")
+        // The destination is used exactly as `hdiutil` reported it, never rebuilt from the typed
+        // name: a collision remounts at `/Volumes/Work 1` (probed), and the pane has to follow the
+        // volume rather than the wish.
+        #expect(VaultPrivacy.rebase(
+            "/Volumes/Personal/taxes", from: "/Volumes/Personal", to: "/Volumes/Work 1"
+        ) == "/Volumes/Work 1/taxes")
+    }
+
+    @Test("a rebase draws the same boundary the inside-ness test does")
+    func rebaseAgreesWithIsInside() {
+        // The whole reason it lives beside `isInside`: a sibling volume that merely shares a prefix
+        // is not inside, and must not be dragged along by a rename either.
+        #expect(VaultPrivacy.rebase(
+            "/Volumes/PersonalBackup/x", from: "/Volumes/Personal", to: "/Volumes/Work"
+        ) == nil)
+        #expect(VaultPrivacy.rebase("/Users/oleg", from: "/Volumes/Personal", to: "/Volumes/Work")
+            == nil)
+        #expect(VaultPrivacy.rebase("/Users/oleg", from: "/", to: "/Volumes/Work") == nil)
+        #expect(VaultPrivacy.rebase("/Users/oleg", from: "", to: "/Volumes/Work") == nil)
+        // Both spellings of one place, as everywhere else in this type.
+        #expect(VaultPrivacy.rebase("/private/tmp/mnt/x", from: "/tmp/mnt", to: "/Volumes/Work")
+            == "/Volumes/Work/x")
+    }
+
     @Test("only a local path can be inside a vault")
     func remoteBackendsAreNeverInside() {
         let points = ["/Volumes/Vault"]

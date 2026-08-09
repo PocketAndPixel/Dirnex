@@ -175,6 +175,11 @@ extension BrowserWindowController {
                 localized: "Couldn’t unlock the vault",
                 comment: "Title of the alert shown when a vault could not be opened."
             )
+        case .invalidVolumeName, .couldNotRename:
+            return String(
+                localized: "Couldn’t rename the vault",
+                comment: "Title of the alert shown when a vault's volume could not be renamed."
+            )
         }
     }
 

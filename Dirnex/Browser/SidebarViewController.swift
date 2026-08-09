@@ -34,6 +34,10 @@ protocol SidebarViewControllerDelegate: AnyObject {
     func sidebar(_ sidebar: SidebarViewController, didActivateVault vault: VaultLocation)
     /// A vault's "Lock" was chosen — unmount it, moving any pane standing inside it out first.
     func sidebar(_ sidebar: SidebarViewController, didRequestLockOf vault: VaultLocation)
+    /// A vault's "Rename…" was chosen, from the context menu or F2 — rename the volume itself,
+    /// unlocking it first if it is locked (PLAN.md §M19). Unlike a favorite's rename this is not a
+    /// row label: a vault has no name but its volume's.
+    func sidebar(_ sidebar: SidebarViewController, didRequestRenameOf vault: VaultLocation)
     /// A tag row was picked — search for the files carrying it and show the hits in a virtual
     /// results panel (PLAN.md §M6 "Finder tags: … filter chips in search"), like Finder's own
     /// sidebar tags.

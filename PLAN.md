@@ -148,7 +148,23 @@ non-empty folder, which hid three folders Finder shows.
 ### After M19
 
 Nothing is in flight: M19 closed on 2026-08-09 and no milestone has opened behind it. Three things
-landed between it and M18, which closed on 2026-08-07.
+landed between it and M18, which closed on 2026-08-07, and one after it.
+
+**2026-08-10 — a vault can be renamed.** The sidebar's vault row grew a Rename… item, and F2 on a
+selected vault row does the same thing. It renames the **volume**, not the row: `volumeName` is
+re-derived from the mount point on every unlock, so a Favorites-style nickname would be silently
+reverted the next time the vault opened, and until then the sidebar would disagree with the pane's
+own path bar. The image file is deliberately left alone — `VaultLocation.volumeName`'s doc comment
+already notes it is the one thing a user may have made unrevealing on purpose. `diskutil rename`
+needs the volume mounted, so a locked vault unlocks first through the existing funnel (silent when
+the passphrase is in the Keychain), which is why `openVault` was split into `withUnlockedVault` plus
+a navigation the rename does not want. Everything measured before it was written, and two findings
+changed the code: a name already in use still renames and **remounts at `/Volumes/<name> 1`**, so the
+mount point is re-read rather than rebuilt from what was typed, and the name limit is 255 UTF-8
+**bytes** — 127 Cyrillic characters — so the check counts bytes and the refusal sentence never names
+the number. Verified against real encrypted sparsebundles end to end (including the collision), and
+the F2 routing is pinned by selector string with a negative control, since a drifted `@objc`
+signature is exactly how that key would go quietly dead. docs/NOTES.md ▸ Encryption.
 
 **2026-08-09 — 26 strings that were wrapped but never translated.** The whole of Settings ▸ Panels as
 M15 built it — the row-height and size-visualization pickers with their footers, the three color

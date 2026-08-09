@@ -72,7 +72,9 @@ extension SidebarViewController {
         menu.addItem(favoriteMenuItem(
             String(
                 localized: "Rename…",
-                comment: "Sidebar favorite context-menu item: rename the row."
+                // Verbatim at all three sidebar sites that key this string — see the note in
+                // `SidebarViewController+Vaults`.
+                comment: "Sidebar context-menu item: the Rename verb."
             ),
             #selector(renameFavoriteItem(_:)),
             entry.path

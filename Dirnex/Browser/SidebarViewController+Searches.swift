@@ -61,7 +61,9 @@ extension SidebarViewController {
         ))
         menu.addItem(.separator())
         menu.addItem(savedSearchMenuItem(
-            String(localized: "Rename…", comment: "Saved-search context-menu item: rename it."),
+            // Comment verbatim at all three sidebar sites keying this string — see the note in
+            // `SidebarViewController+Vaults`.
+            String(localized: "Rename…", comment: "Sidebar context-menu item: the Rename verb."),
             #selector(renameSavedSearchItem(_:)),
             search.name
         ))

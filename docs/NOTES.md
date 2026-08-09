@@ -1811,6 +1811,32 @@ overturned the decision the milestone opened on.
     sheet — a measurement that deleted a whole piece of planned UI rather than confirming it. It is
     also why the size field can offer a generous default: a bigger ceiling costs nothing, in bytes or
     in seconds.
+- **Renaming a vault is `diskutil`'s job, not `hdiutil`'s, and the volume — not a row label — is the
+  only name a vault has.** `VaultLocation.volumeName` is re-derived from the mount point on every
+  unlock, so a Favorites-style nickname would be silently reverted the next time the vault opened,
+  and until then the sidebar would disagree with the pane's own path bar. `diskutil rename
+  <mountPoint> <name>` does it for real, **unprivileged**, on a mounted encrypted sparsebundle: the
+  mount point moves synchronously (`/Volumes/Personal` → `/Volumes/Work`), it works with a process
+  standing inside the volume, and the new name survives a detach-and-reattach because it lives in the
+  encrypted filesystem. Nothing readable does — a locked bundle's `Info.plist` carries no volume name
+  at all, which is why the name has to be stored in the first place. The price is that the vault must
+  be unlocked, so Rename goes through the unlock funnel rather than graying itself out.
+  - **The volume does not land where you asked.** A name already in use still succeeds and remounts
+    at **`/Volumes/<name> 1`**, and a `/` in a name is legal and reaches the path as `:` (`a/b` →
+    `/Volumes/a:b`). So *re-read* the mount point from `hdiutil info` afterwards and derive the
+    sidebar's label from that — building `/Volumes/` + what the user typed names a directory that
+    may not exist, and would send a pane following the rename to nowhere.
+  - **The name limit is 255 UTF-8 *bytes*, not characters**, and this is the localization trap in its
+    purest form: 255 ASCII characters are accepted and 256 refused, while **127** Cyrillic characters
+    (254 bytes) are accepted and **128** (256 bytes) refused. A character count passes every English
+    test and rejects nothing a Russian user would notice — until the file system does. For the same
+    reason the refusal sentence must not name the number: "255 characters" is a lie in half the
+    shipped languages.
+  - `diskutil` refuses empty, `.` and `..` itself (exit 1, "does not appear to be a valid volume
+    name for its file system") and **accepts** a name containing a newline or a tab — so control
+    characters are the one rule that has to be ours, and they are the one nothing else will catch.
+    A leading `-` is taken as the name, not a flag (probed: a volume really was called `-force`), so
+    with an argv rather than a shell there is nothing to escape.
 - **`resolvingSymlinksInPath` and `standardizingPath` fold `/private` only for paths that currently
   exist.** Probed on macOS 26: `/private/tmp/x` → `/tmp/x` when `x` is there, and stays
   `/private/tmp/x` when it is not. So neither is a normalizer — both are filesystem *queries* wearing

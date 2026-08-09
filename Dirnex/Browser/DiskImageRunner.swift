@@ -1,11 +1,17 @@
 import DirnexCore
 import Foundation
 
-/// Runs `hdiutil` — the non-hermetic half of a Dirnex vault (PLAN.md §M19 Slice 2).
+/// Runs `hdiutil` — and, for the one thing `hdiutil` does not own, `diskutil` — the non-hermetic
+/// half of a Dirnex vault (PLAN.md §M19 Slice 2).
 ///
-/// The same split every external tool in this app takes: `DirnexCore.DiskImageArguments` builds the
-/// argv and `DirnexCore.DiskImageMount` / `DiskImageProgress` read the answers, both pure and tested;
-/// this spawns the process, feeds it the passphrase and classifies what came back (PLAN.md §2).
+/// The same split every external tool in this app takes: `DirnexCore.DiskImageArguments` /
+/// `DiskVolumeArguments` build the argv and `DirnexCore.DiskImageMount` / `DiskImageProgress` read
+/// the answers, all pure and tested; this spawns the process, feeds it the passphrase and classifies
+/// what came back (PLAN.md §2).
+///
+/// The two tools live here together rather than in two files because what is delicate is the
+/// *spawning* — a passphrase that must never reach argv, and two pipes that must be drained
+/// concurrently or the child deadlocks — and that is one piece of machinery, not two.
 ///
 /// ## Two rules this file exists to keep
 ///
@@ -24,6 +30,9 @@ import Foundation
 /// Every entry point blocks on a subprocess, so call them off the main actor.
 enum DiskImageRunner {
     private static let executable = URL(fileURLWithPath: "/usr/bin/hdiutil")
+    /// The volume inside the image belongs to `diskutil`, not to `hdiutil` — the one place a vault
+    /// reaches for a second tool.
+    private static let volumeExecutable = URL(fileURLWithPath: "/usr/sbin/diskutil")
 
     // MARK: - Create
 
@@ -120,6 +129,27 @@ enum DiskImageRunner {
         }
     }
 
+    // MARK: - Rename
+
+    /// Rename the volume mounted at `mountPoint`.
+    ///
+    /// The vault has to be unlocked for this to be reachable at all — `diskutil` addresses the
+    /// volume, and a locked vault has none — so unlike the three above this can never be a
+    /// passphrase failure, and there is nothing to classify: exit 0 or `couldNotRename`.
+    ///
+    /// **Where the volume ends up is not what was asked for.** Probed: renaming onto a name already
+    /// in use succeeds and mounts at `/Volumes/<name> 1`, and a `/` in the name appears in the path
+    /// as `:`. So the caller re-reads the mount point from `attachedImages()` afterwards rather than
+    /// building it from the string it passed in.
+    static func renameVolume(mountPoint: String, to name: String) throws {
+        let run = try Run(
+            executable: volumeExecutable,
+            arguments: DiskVolumeArguments.rename(mountPoint: mountPoint, to: name),
+            launchFailure: .couldNotRename
+        )
+        guard run.drainToEnd().exitCode == 0 else { throw VaultError.couldNotRename }
+    }
+
     /// Every image `hdiutil` currently has attached — the answer to "is this vault unlocked?".
     ///
     /// Asked rather than remembered, so a `hdiutil detach` in Terminal or an eject in Finder cannot
@@ -154,8 +184,13 @@ enum DiskImageRunner {
         private let errorPipe = Pipe()
         private let collectedError = Collector()
 
-        init(arguments: [String], passphrase: ArchivePassphrase? = nil) throws {
-            process.executableURL = DiskImageRunner.executable
+        init(
+            executable: URL = DiskImageRunner.executable,
+            arguments: [String],
+            passphrase: ArchivePassphrase? = nil,
+            launchFailure: VaultError = .couldNotCreate
+        ) throws {
+            process.executableURL = executable
             process.arguments = arguments
             process.standardOutput = output
             process.standardError = errorPipe
@@ -173,7 +208,7 @@ enum DiskImageRunner {
             do {
                 try process.run()
             } catch {
-                throw VaultError.couldNotCreate
+                throw launchFailure
             }
 
             // The passphrase, then EOF — and nothing between them. `hdiutil` reads to EOF, so the

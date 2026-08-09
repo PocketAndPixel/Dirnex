@@ -28,10 +28,19 @@ public enum VaultError: Error, Sendable, Equatable {
     /// The image file is missing, or is not a disk image at all.
     case imageUnreadable(name: String)
 
+    /// The new name is not one a volume can have — empty, `.`/`..`, longer than
+    /// ``VolumeName/maximumByteCount``, or carrying a control character. Caught before `diskutil` is
+    /// run so the reason is a translated sentence rather than the tool's scraped English.
+    case invalidVolumeName
+
     /// `hdiutil` failed for a reason Dirnex cannot name more precisely.
     case couldNotCreate
     case couldNotUnlock
     case couldNotLock
+
+    /// `diskutil rename` refused. Unlike the three above this can only happen with the vault already
+    /// unlocked, so it is never a passphrase problem.
+    case couldNotRename
 
     /// The volume is in use, so it cannot be unmounted — a file open in another app, or a Terminal
     /// sitting inside it. `hdiutil` calls this "Resource busy".
@@ -45,9 +54,11 @@ public enum VaultError: Error, Sendable, Equatable {
         case .passphrasesDoNotMatch: return "passphrasesDoNotMatch"
         case .alreadyExists: return "alreadyExists"
         case .imageUnreadable: return "imageUnreadable"
+        case .invalidVolumeName: return "invalidVolumeName"
         case .couldNotCreate: return "couldNotCreate"
         case .couldNotUnlock: return "couldNotUnlock"
         case .couldNotLock: return "couldNotLock"
+        case .couldNotRename: return "couldNotRename"
         case .volumeInUse: return "volumeInUse"
         }
     }
@@ -108,12 +119,22 @@ public extension VaultError {
             return ("A vault named “%@” is already here.", [name])
         case let .imageUnreadable(name):
             return ("“%@” couldn’t be opened. It may have been moved or damaged.", [name])
+        case .invalidVolumeName:
+            // Deliberately not "255 bytes": the limit is in UTF-8 bytes, so the number that would
+            // be true in English is wrong in Russian (127 characters, measured). "Shorter" is true
+            // in every language.
+            return (
+                "That name can’t be used for a volume. Try a shorter one, without line breaks.",
+                []
+            )
         case .couldNotCreate:
             return ("The vault couldn’t be created.", [])
         case .couldNotUnlock:
             return ("The vault couldn’t be unlocked.", [])
         case .couldNotLock:
             return ("The vault couldn’t be locked.", [])
+        case .couldNotRename:
+            return ("The vault couldn’t be renamed.", [])
         case let .volumeInUse(name):
             return (
                 "“%@” is still in use, so it couldn’t be locked. Close anything open inside it.",
@@ -130,9 +151,11 @@ public extension VaultError {
             .passphrasesDoNotMatch,
             .alreadyExists(name: ""),
             .imageUnreadable(name: ""),
+            .invalidVolumeName,
             .couldNotCreate,
             .couldNotUnlock,
             .couldNotLock,
+            .couldNotRename,
             .volumeInUse(name: "")
         ]
     }
