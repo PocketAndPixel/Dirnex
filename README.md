@@ -8,7 +8,7 @@ undo.
 See [PLAN.md](PLAN.md) for architecture decisions and what's planned next, and
 [docs/HISTORY.md](docs/HISTORY.md) for the milestone-by-milestone build log.
 
-**Status:** M0–M14 shipped — dual-pane browsing, the queued/undoable operation
+**Status:** dual-pane browsing, the queued/undoable operation
 engine, the ⌘K palette, archive and SFTP/SMB backends, the Mac-native layer
 (Finder tags, Git awareness, Quick Look, AppleScript + Shortcuts), a notarized
 Developer ID release pipeline with Sparkle beta/stable channels, a
@@ -26,7 +26,14 @@ create and verify across CRC32, MD5, SHA-1 and SHA-256 — reading every format
 the stock tools disagree over — and a Get Info attributes editor covers mode,
 BSD flags, owner/group, the three dates, extended attributes and ordered ACLs,
 editable in place for files you own and escalated through the system auth
-dialog for the ones you don't. The whole UI
+dialog for the ones you don't. A pane draws its folders as a **tree** when you
+want the branch view, in a palette you pick — including per-type colour rules —
+and Quick View shows a file as source or as page: ~25 languages highlighted by a
+scanner with no third-party engine, and Markdown rendered as the document it
+describes, tables, table of contents, coloured fences and hand-drawn mermaid
+flowcharts included. Encryption closes it out: **vaults** you unlock into an
+ordinary volume from the sidebar, and **AES-256 archives** you send someone,
+both with the passphrase kept out of every process's arguments. The whole UI
 speaks **14 languages** — English, Deutsch, Español, Français, Italiano, 日本語,
 한국어, Nederlands, Polski, Português (Brasil), Русский, Українська, 简体中文 and
 繁體中文 — matched from your system settings or pinned in Settings ▸ General.

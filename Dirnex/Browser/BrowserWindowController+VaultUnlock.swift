@@ -151,6 +151,10 @@ extension BrowserWindowController {
                 // vault opened from the pane (named after its file) gets the name it will keep.
                 var opened = vault
                 opened.volumeName = (mounted.mountPoint as NSString).lastPathComponent
+                // Before the navigation below, not after: `navigate` records a frecency visit, and
+                // the whole point of `VaultPrivacy` is that this one must not be recorded. Waiting
+                // for the mount notification would lose the race with our own next line.
+                VaultMounts.shared.note(mountPoint: mounted.mountPoint)
                 VaultStore.remember(opened)
                 SecretKeychain.store(passphrase: passphrase, for: opened)
                 pane.navigate(to: .local(mounted.mountPoint))
@@ -194,6 +198,7 @@ extension BrowserWindowController {
                 try await Task.detached(priority: .userInitiated) {
                     try DiskImageRunner.detach(mountPoint: point, name: name)
                 }.value
+                self?.forgetVaultContents(under: point)
                 self?.sidebar.rebuild()
             } catch {
                 self?.presentVaultError((error as? VaultError) ?? .couldNotLock)
@@ -201,13 +206,26 @@ extension BrowserWindowController {
         }
     }
 
-    /// Whether `path` is `mountPoint` or somewhere under it. Compared as **path components**, not as
-    /// a string prefix: `/Volumes/Vault2` starts with `/Volumes/Vault` and is a different volume, so
-    /// a prefix test would drag a pane out of a vault nobody asked to lock.
+    /// A vault has just locked: nothing Dirnex keeps implicitly may still name what was in it
+    /// (PLAN.md §M19 / ``VaultPrivacy``).
+    ///
+    /// Both stores are guarded on the way *in* as well, so on the ordinary path there is nothing
+    /// here to remove and both calls are no-ops. This is the second wall, for the case the guard
+    /// cannot cover: an image unlocked outside Dirnex, browsed in the window between the mount and
+    /// the notification that reports it. Re-persisting the panes is what rewrites a tab list saved
+    /// while the vault was open — they have already been navigated out, above.
+    private func forgetVaultContents(under mountPoint: String) {
+        VaultMounts.shared.forget(mountPoint: mountPoint)
+        FrecencyStore.shared.forget(pathsUnder: mountPoint)
+        leftPanel.persistState()
+        rightPanel.persistState()
+    }
+
+    /// Whether `path` is `mountPoint` or somewhere under it — ``VaultPrivacy/isInside(_:mountPoints:)``
+    /// under this file's own name, so the pane-eviction rule and the privacy rule cannot drift into
+    /// two different answers to one question (the trap docs/NOTES.md keeps finding: one rule, two
+    /// spellings, and the compiler checks neither).
     private func isPath(_ path: String, inside mountPoint: String) -> Bool {
-        let inside = (path as NSString).standardizingPath
-        let root = (mountPoint as NSString).standardizingPath
-        if inside == root { return true }
-        return inside.hasPrefix(root.hasSuffix("/") ? root : root + "/")
+        VaultPrivacy.isInside(path, mountPoints: [mountPoint])
     }
 }

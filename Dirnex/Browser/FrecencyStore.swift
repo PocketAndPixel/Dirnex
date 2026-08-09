@@ -38,7 +38,21 @@ final class FrecencyStore {
         // fragment and picks the first candidate that still exists on disk, which a remote SFTP
         // location or a virtual archive/search path can't satisfy.
         guard path.backend == .local else { return }
+        // And nothing from inside an unlocked vault, ever (PLAN.md §M19 / `VaultPrivacy`). This
+        // index is written to `UserDefaults` in the clear and outlives the vault being locked, so
+        // without this line browsing a vault leaves a list of its folder names sitting outside the
+        // encrypted image — which is the one thing a vault exists to prevent.
+        guard !VaultMounts.shared.contains(path) else { return }
         frecency.visit(path)
+        persist()
+    }
+
+    /// Drop every remembered directory under `mountPoint` — called when a vault locks, so that
+    /// anything recorded before Dirnex knew it was a vault (an image unlocked in Disk Utility, in
+    /// the moment before the mount notification landed) goes with it.
+    func forget(pathsUnder mountPoint: String) {
+        let removed = frecency.forget { VaultPrivacy.isInside($0, mountPoints: [mountPoint]) }
+        guard removed else { return }
         persist()
     }
 

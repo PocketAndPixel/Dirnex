@@ -4,9 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M18 shipped (14 languages) · **M19 Encryption in flight** (core and app landed, both
-halves live-verified) ·
-Created: 2026-07-05 ·
+Status: M0–M19 shipped (14 languages) · **nothing in flight** · Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md)
 
 ---
@@ -76,7 +74,7 @@ it lives in `DirnexCore` and has tests.
 ```
 Dirnex/
 ├── PLAN.md                     (this file: decisions + what's next)
-├── docs/                       (NOTES.md gotchas · HISTORY.md M0–M14 log · RELEASING.md)
+├── docs/                       (NOTES.md gotchas · HISTORY.md M0–M19 log · RELEASING.md)
 ├── Dirnex.xcodeproj            (app target, thin)
 ├── Dirnex/                     (AppKit/SwiftUI app sources)
 │   ├── Panels/                 (NSTableView pane, tabs, path bar)
@@ -96,9 +94,9 @@ Dirnex/
 Sizes are relative (S ≈ days, M ≈ 1–2 weeks, L ≈ 3+ weeks of focused work).
 Each milestone ends in something runnable; no milestone depends on a later one.
 
-### Shipped: M0 → M18 (2026-07-05 → 2026-08-07)
+### Shipped: M0 → M19 (2026-07-05 → 2026-08-09)
 
-Every milestone through M18 is closed. The checklists and the full per-pass progress log —
+Every milestone through M19 is closed. The checklists and the full per-pass progress log —
 what was probed, decided, and rejected — live in
 **[docs/HISTORY.md](docs/HISTORY.md)**; source comments citing `PLAN.md §M5` and the like
 refer to those sections.
@@ -124,6 +122,7 @@ refer to those sections.
 | M16 | Quick View: source or page | 08-06 | Markdown and RTF as dual-style types — markdown was taken up at M18, RTF stays undone — and `.webarchive` / `.mhtml`, which need `loadData` rather than a file load; the JavaScript mark in the *pane*-size preview, which has no header to carry it |
 | M17 | Syntax highlighting in Quick View | 08-06 | A **theme picker** (the colours are a fixed light/dark table, no Settings surface); the constructs a regex-free single pass cannot reach — string interpolation, JS regex literals, heredocs, Swift raw strings, JSX, and semantic colouring of any kind; **line numbers, folding and a minimap**, which are editor features Dirnex hands to the user's own editor; highlighting inside the *rendered* HTML style, which is the page's own business; a **key-vs-value** distinction in JSON, and Markdown's **setext headings** and **indented code blocks**, all three of which need a lookahead or a previous line the single pass does not keep; Ruby's `=begin` block comment; and any third-party highlighter — Highlightr (a JS engine on every cursor step) and tree-sitter (a C dependency plus a grammar per language), both rejected 2026-08-06 |
 | M18 | Quick View: Markdown as a document | 08-07 | **Raw HTML passthrough** — CommonMark says to pass it and a preview that renders on *cursor movement* must not, which is also what keeps the generated page inert; **full CommonMark conformance** (the target is what the file's author sees on GitHub for an ordinary document, pinned by a corpus of real files, with an unreadable construct rendering as its literal text); **math and LaTeX, footnotes, definition lists, emoji shortcodes and wiki links**; every mermaid diagram type outside **flowchart and sequence** (a class diagram, gantt, state chart or ER diagram falls back to a code fence naming itself, as does an unsupported construct *inside* a supported type); **following a link to another file**, since turning a preview into a browser needs its own history and its own way out; **RTF**, the other type M16 left in the same sentence — `NSAttributedString`'s job, sharing nothing with a renderer; **rendering as you type** and editing of any kind (§M11's call, unchanged); and **exporting the rendered page** to HTML or PDF, which is a file operation and belongs in the operation engine with a destination and a conflict policy |
+| M19 | Encryption | 08-09 | **`zipcrypt` and AES-128** (the first is broken, the second buys nothing on hardware AES — both taken at open); **encryption for any container but zip**, since libarchive's 7-Zip writer refuses it and tar has no notion of it; **a passphrase for the paths that are not F5** — preview and *nested*-archive entry still fail with `passphraseRequired` rather than prompting, and the encrypted route extracts the whole archive rather than the requested members, so a member filter plus a per-archive passphrase held for the session is its own slice; **encrypting in place**, or any gesture that removes the plaintext afterwards, because that delete belongs to the user with the Trash's own rules in view; and **vault paths in anything the user saved on purpose** — a named workspace or a favorite pointing inside a vault is kept, since §6's rule is about what Dirnex remembers *without being asked* (the derived-data clause itself was closed 08-09 by fixing the frecency index and session restore, not by stating the leak — see HISTORY.md §M19 ▸ Follow-up) |
 
 The undone column is scope that was decided against, not forgotten — each one is argued in
 its HISTORY.md entry. The largest such call is the **built-in text editor** (2026-07-22): a
@@ -146,78 +145,10 @@ declared public scope and a folder that exists. Both are argued in HISTORY.md. T
 that approximation was reversed on 2026-07-21 (see M10): it used to also require a
 non-empty folder, which hid three folders Finder shows.
 
-### M19 — Encryption (in flight, opened 2026-08-09)
+### After M19
 
-Two halves, deliberately separate products sharing a milestone: **a vault you live in** (an encrypted
-APFS sparsebundle, unlocked into a mounted volume the existing `LocalBackend` already browses) and
-**a password on an archive you send someone** (WinZip AES-256, the format 7-Zip and WinRAR read on
-Windows).
-
-**Slice 1 — core, landed.** Purely additive; the app is untouched and did not rebuild. 46 new tests,
-1971 total green, both linters clean.
-
-- `CArchiveShim` + `EncryptedArchiveWriter` / `EncryptedArchiveReader` — the encrypted zip path,
-  through the **system libarchive** rather than `bsdtar`. This is an explicit, scoped exception to
-  §2's "bsdtar over libarchive", taken on measurement: `bsdtar`'s only interface for a passphrase is
-  `--passphrase` in argv, readable by any `ps`, and its interactive fallback loops forever on a
-  non-tty stdin. `archive_write_set_passphrase` takes a buffer `ArchivePassphrase` owns and wipes.
-  libarchive ships *with macOS* and the SDK carries its link stub, so this adds no dependency. The
-  exception is confined to the encrypted path; browsing and ordinary packing still use `bsdtar`.
-- `ArchiveEntryPath` — the traversal defence, in two independent layers (a name rule, and an `lstat`
-  walk that refuses to descend through a symlink), with both attack fixtures produced by `bsdtar`
-  itself and a negative control proving each layer does real work.
-- `ArchiveNamePrivacy` — the answer to zip's permanent plaintext central directory: wrap the payload
-  in one inner tar so the outer archive lists a single entry. Off by default (agreed with Oleg,
-  2026-08-09), because the recipient otherwise unpacks twice.
-- `DiskImageArguments` / `DiskImageMount` / `DiskImageProgress` / `VaultLocation` / `VaultError` —
-  the vault's pure half, over `hdiutil -stdinpass` (the passphrase never enters any argv, verified
-  across the whole process tree) with `-puppetstrings` progress and plist parsing tested against
-  captured real output.
-
-**Slice 2 — the app, landed 2026-08-09.** Both halves are wired and were verified by driving the
-built app, which is the only judge a layout has. 1983 core tests and 276 app tests green, both
-linters clean, 36 new strings across 14 languages.
-
-- **Encrypted archives.** The pack sheet gained Encryption / Passphrase / Repeat / "Hide file names"
-  and the footer that says plainly what a lost passphrase costs. An encrypted pack goes on the
-  **operation queue** as `FileOperation.Kind.pack` (`PackJob` / `PackRunner`, `ChecksumRunner`'s
-  shape) rather than on a detached task, because it is the one pack that can run for minutes and the
-  queue already owns the determinate bar, the cancel and the one-job-per-volume rule. Extraction asks
-  for the passphrase only when the archive needs one — a headers-only read, measured at 3–4 ms on a
-  600 MB archive — and a refused passphrase re-asks instead of dead-ending. That gate also closed a
-  live hang that predated the milestone: `bsdtar` prompts forever on a non-tty stdin (170 KB of
-  prompts in 8 s), reachable from every extract path.
-- **Vaults.** New Vault… / Unlock Vault / Lock Vault in the registry (beside Connect to Server, since
-  all four open a *place*), a sidebar Vaults section between Volumes and Servers whose padlock is
-  asked of `hdiutil` rather than remembered, `SavedVaults` + `VaultStore` for the list, and the
-  passphrase in the Keychain through the same `KeychainAddressable` the servers use — the type
-  formerly called `ServerKeychain`, renamed `SecretKeychain` once a vault, which is not a server,
-  needed the identical call. Creating one writes the image where you stand and opens the volume in
-  the *other* pane; locking moves any pane standing inside it out first.
-
-Three decisions taken during the slice, each from a measurement rather than a preference:
-
-- **No progress UI for a vault create, and no image-kind choice.** A sparse bundle's creation is
-  constant-time in its declared ceiling — 100 GB, 500 GB and 2 TB each took 1.02 s and each cost
-  34 MB — and emits no `PERCENT:` lines at all. So the planned deferred progress sheet was deleted
-  rather than built, and the sheet asks for a name, a size ceiling and the passphrase and nothing
-  else. `DiskImageArguments.Kind.fixed` stays in the core, tested, for whatever wants it later.
-- **The passphrase reaches `hdiutil` as bytes and a close, never a line.** `-stdinpass` takes that
-  pipe verbatim to EOF, so an appended `\n` becomes a permanent, invisible part of the passphrase and
-  the vault stops opening to the phrase its owner typed. `ArchivePassphrase.withUnsafeBytes` is the
-  one spelling that cannot get it wrong.
-- **Unlocking an image adds it to the sidebar.** A vault you have opened is one you will open again,
-  and Remove from Sidebar — which says in as many words that the file and its contents are untouched
-  — is one right-click away. The alternative is a Vaults section you have to populate by hand.
-
-Two decisions taken at open, both by Oleg: **AES-256 only** (never `zipcrypt`, which is broken, and
-not AES-128, which buys nothing on hardware AES), and **sparsebundle** for vaults. One risk is
-recorded in §6 below and is the one that matters most: a forgotten passphrase is unrecoverable, and
-no undo journal helps.
-
-### After M18
-
-M18 closed on 2026-08-07. M19 opened 2026-08-09 (above).
+Nothing is in flight: M19 closed on 2026-08-09 and no milestone has opened behind it. Two things
+landed between it and M18, which closed on 2026-08-07.
 
 **2026-08-08 — the tree draws indent guides.** VS Code's vertical lines, one per ancestor level,
 always drawn faintly, with the ancestor line of the *focused* row drawn stronger — the focus being the
@@ -259,6 +190,13 @@ rows, and move sort off the column header first). The one item two separate mile
 is **edit-temp-watch-repack write-back** — M11 named it for archives and SFTP, M13 for FTP — so it is
 the candidate that would close the most open ends at once.
 
+M19 leaves one of its own: **a per-archive passphrase held for the session**, plus a member filter,
+so preview and nested-archive entry work inside an encrypted zip the way F5 already does — today they
+fail with `passphraseRequired` rather than asking, which is the shape the F5 path itself had before
+its prompt was written. (Its other loose end, §6's derived-data clause, closed on 08-09 — measuring
+the three leaks it named found none of them real and found a fourth that was ours, so it was fixed
+rather than documented: HISTORY.md §M19 ▸ Follow-up.)
+
 ## 5. Cross-cutting: testing strategy
 
 | Layer | Approach |
@@ -277,8 +215,8 @@ the candidate that would close the most open ends at once.
 | Undo journal correctness (the scariest feature) | Property tests from M2 day one; non-reversible ops explicitly marked in UI, never silently dropped |
 | FSEvents refresh fighting the cursor/selection | DirectoryModel diffs snapshots and reapplies cursor by identity, not row index; test with high-churn fixture |
 | Archive writes corrupting user data | Always rewrite to temp + atomic swap; never in-place |
-| M19: a forgotten passphrase is **unrecoverable**, and it is the only feature in Dirnex whose failure is silent, total and permanent — no undo journal, no Trash, no support call | The confirmation wording matters more than any code here, so it is a milestone deliverable rather than a detail: the create sheet says plainly that a lost passphrase means lost data, and both the pack sheet and the vault sheet require the passphrase **twice** before a byte is written (`passphrasesDoNotMatch` is a named error, not an assertion). Dirnex never deletes the originals after encrypting them — it creates and populates, and the user removes, because "encrypt these files" naively implemented is create → copy → delete, and that delete puts **plaintext in the Trash**. Spotlight's index, Quick View's caches and the thumbnail store are the same family of leak and are a stated Slice 2 decision rather than silence |
-| M19: linking libarchive is an exception to §2, and exceptions spread | It is confined by construction, not by discipline: `CArchiveShim` declares only the ~30 symbols the encrypted path calls, so reaching for anything else is a visible edit to a header whose doc comment argues the whole exception. The tell that the boundary is going is a `bsdtar` call site being replaced with a libarchive one for a reason *other* than a passphrase — performance, or progress, or tidiness. Those are real benefits (all three measured) and none of them is this exception's justification |
+| M19: a forgotten passphrase is **unrecoverable**, and it is the only feature in Dirnex whose failure is silent, total and permanent — no undo journal, no Trash, no support call | The confirmation wording matters more than any code here, so it is a milestone deliverable rather than a detail: the create sheet says plainly that a lost passphrase means lost data, and both the pack sheet and the vault sheet require the passphrase **twice** before a byte is written (`passphrasesDoNotMatch` is a named error, not an assertion). Dirnex never deletes the originals after encrypting them — it creates and populates, and the user removes, because "encrypt these files" naively implemented is create → copy → delete, and that delete puts **plaintext in the Trash**. Spotlight's index, Quick View's caches and the thumbnail store are the same family of leak and are a stated Slice 2 decision rather than silence. **Held, and the derived-data clause was closed by fixing rather than by stating (2026-08-09).** The wording shipped in both sheets as a `static let` whose doc comment names this row as its reason (`VaultCreateAccessory.passphraseNote`, `PackAccessory.encryptionNote`), `passphrasesDoNotMatch` is a named case in both error enums checked before a byte is written, and nothing is ever deleted after encrypting. The three leaks this row *named* were then measured and **none of them is real**: a disk-image volume is not Spotlight-indexed at all (controls: the boot volume is, and an unencrypted image is not either, so it is the image and not the encryption), and a real `QLThumbnailGenerator` request cached nothing anywhere. What was real was Dirnex's own — the frecency index records every local directory and `PersistedTab` carries the cursor's and marks' file names, both surviving the lock — so `VaultPrivacy` (core) and `VaultMounts` (app) now keep vault paths out of **implicit** memory, while an explicitly saved workspace or favorite keeps working. Verified live with a control token that had to appear. HISTORY.md §M19 ▸ Follow-up |
+| M19: linking libarchive is an exception to §2, and exceptions spread | It is confined by construction, not by discipline: `CArchiveShim` declares only the ~30 symbols the encrypted path calls, so reaching for anything else is a visible edit to a header whose doc comment argues the whole exception. The tell that the boundary is going is a `bsdtar` call site being replaced with a libarchive one for a reason *other* than a passphrase — performance, or progress, or tidiness. Those are real benefits (all three measured) and none of them is this exception's justification. **Held through the milestone**: the header carries 38 prototypes and no constants, every `bsdtar` call site that existed still exists, and the one new *queued* path (`PackJob` / `PackRunner`) is encryption-only by its own doc comment — the queue is where encrypting happens, not where packing moved to. The place to watch next is that boundary from the other side: an unencrypted `.none` job is legal and runs through the same writer, kept so the two cannot drift, and it would be the cheapest way for "ordinary packing" to arrive on this path without anyone deciding to move it |
 | Full Disk Access friction kills onboarding | Dedicated flow in M7; app degrades gracefully (browse home dir) before grant |
 | Scope creep before the feel is right | M1 exit criteria are the gate; nothing from M3+ starts until M1 feels great |
 | A system-CLI quirk changes under us (M13's TLS-1.2 pin for FTPS is a workaround for `curl` 8.7.1, not a property of the protocol) | The flag lives in a pure, tested `FTPProcessArguments` with the reason in its doc comment, so it is one place to re-measure — and a listing that comes back empty is the *symptom*, so an FTPS smoke test asserts non-empty rather than merely "no error" |
@@ -288,8 +226,8 @@ the candidate that would close the most open ends at once.
 
 ## 7. Open questions
 
-**Open now:** none. M18's one was posed and taken at open (below); M15's two closed with it, and
-M17's one closed at open and was then
+**Open now:** none. M19's two were taken at open and M18's one likewise (both below); M15's two
+closed with it, and M17's one closed at open and was then
 **re-taken twice** (2026-08-06, every time by the user):
 
 - **How much of a syntax theme the user owns** — resolved in favour of **a small fixed set of
@@ -329,6 +267,23 @@ Opened with M18 (2026-08-06) and **closed at open, by the user**:
   from M16's toggle, and one that would have needed saying out loud in the JavaScript policy.
   Reopening it means taking on a vendored asset with its own update cadence, which is why the
   reasoning stays written down.
+
+Opened with M19 (2026-08-09) and **closed at open, by the user** — both are format commitments that
+outlive the code, which is why they are written down rather than left in the implementation:
+
+- **Which cipher an encrypted archive uses** — resolved: **AES-256 and nothing else.** `zipcrypt` is
+  the only choice every Windows and macOS unzip can read and it has a published known-plaintext
+  break, so offering it under a checkbox saying "Encrypt" would be the app lying; AES-128 is sound
+  and buys nothing on hardware AES. The price is paid by the recipient rather than by us and is
+  therefore stated in the sheet: nothing Apple ships opens an AES-256 zip (measured — `unzip`,
+  `ditto` and Archive Utility all refuse it), so Keka, 7-Zip or WinRAR is required at the other end.
+  Reopening it means deciding that reach is worth a broken cipher, which is the whole argument in
+  one sentence.
+- **What a vault is made of** — resolved: an encrypted APFS **sparsebundle**. It is growable, so the
+  user is never asked to predict how much they will ever store (23 MB for a declared 10 GB), and
+  unlocked it is an ordinary mounted volume `LocalBackend` already browses, so the milestone added
+  no backend. What it costs is that a vault is a *directory* and therefore awkward to send — which
+  is the archive half's job, and the reason the milestone has two halves.
 
 All four opened before M1 are closed — the first three by shipping and living in the result,
 which was the stated way to decide them. Recorded because reopening one is a real design

@@ -1725,6 +1725,42 @@ overturned the decision the milestone opened on.
   `hdiutil` answers with the `/private` spelling while the user says `/tmp`, so the comparison is
   unavoidable; fold the three firmlink prefixes in string space instead. Generalizes past vaults: any
   path used as a persistent key needs an existence-independent normalizer.
+- **What remembers an unlocked vault's file names is *this app*, not the OS caches everyone worries
+  about.** PLAN.md §6 named three leaks to warn users about — Spotlight's index, Quick View's caches,
+  the thumbnail store — and measuring all three found nothing, while the thing nobody had named was
+  writing the file names to `UserDefaults` in the clear.
+  - **Spotlight does not index a disk-image volume at all.** `mdutil -s` on a mounted encrypted
+    sparsebundle reports `Indexing disabled`, no `.Spotlight-V100` is created, and `mdfind -onlyin`
+    over it returns nothing. Two controls in the same run are what make that worth trusting: the boot
+    volume reports `Indexing enabled`, and an **unencrypted** sparsebundle is *also* disabled — so it
+    is a property of disk images rather than something encryption is buying. The corollary is that
+    Recents, which is an `mdfind` query, can never show a vault's contents and needs no rule.
+  - **A thumbnail request cached nothing.** A real `QLThumbnailGenerator` call against a file on the
+    volume produced a 512×512 thumbnail, after which no file anywhere under
+    `getconf DARWIN_USER_CACHE_DIR` named it and the thumbnail agent's own store held no files.
+    Nothing survived the detach.
+  - **The real leak was ours, and it was two stores deep.** `FrecencyStore.recordVisit` records every
+    `.local` directory — a mounted vault is local — and `PersistedTab` carries the directory, the
+    cursor's file name, the marked names and the expanded folders. Both outlive the lock. Hence
+    `VaultPrivacy` in the core and `VaultMounts` in the app: **implicit** memory refuses a vault path,
+    while a store the user filled *explicitly* (a named workspace, a favorite) keeps working, because
+    silently dropping half of something someone asked for by name is the worse surprise.
+  - The lesson that generalizes past vaults: **when the question is "what still remembers this", audit
+    your own preferences before the system's caches.** The OS caches are the famous answer, they are
+    the ones a risk register writes down, and here all three were clean — while the app's own two
+    were not, precisely because nobody thinks of a fuzzy-jump index as storage.
+- **Verifying "the app did not write that down" is headless, and needs a control token in the same
+  run.** `defaults export com.dirnex.Dirnex` plus a script that decodes each JSON blob answers "does
+  any key mention this string" exactly; the AppleScript `reveal` verb drives a pane to a path with no
+  screenshot and no accessibility grant. The half that makes it evidence rather than absence: browse a
+  **control** folder carrying its own token in the same session, and require that one to *appear* —
+  it goes through the identical `recordVisit` / `persistState` code, so a probe that cannot see it is
+  blind rather than reassuring. To reach the app's own unlock path (not just an image mounted from a
+  shell), pre-file the passphrase with `security add-generic-password -A -s com.dirnex.Dirnex.vault
+  -a <resolved image path>`: `-A` is what stops the Keychain prompting an app that did not create the
+  item, and `go.unlockVault` then attaches silently through `run operation`. Back the domain up with
+  `defaults export` first and `defaults import` it afterwards — the probe overwrites the real
+  session's tabs.
 
 ### ACLs and file attributes (`acl_*`, `chmod`/`chflags`, `mbr_*`)
 

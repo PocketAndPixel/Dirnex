@@ -1,11 +1,12 @@
-# Dirnex — build history (M0 → M18)
+# Dirnex — build history (M0 → M19)
 
 The shipped record of Dirnex's milestones: the milestone checklists as they were completed,
 plus the per-pass progress log — what was probed, what was decided, what was rejected and why.
 M0–M11 landed 2026-07-05 → 2026-07-22; M12 (localization) ran 07-22 → 07-29 and M13 (FTP/FTPS)
 landed 07-25 inside that span, so the two overlap in time — each sits in its own numeric slot below.
 M14 closed 07-30 (its escalation slice 08-02) and M15 opened and closed 08-02. M16 and M17 both
-opened and closed 08-06; M18 opened 08-06 and closed 08-07.
+opened and closed 08-06; M18 opened 08-06 and closed 08-07; M19 (encryption) opened and closed
+08-09.
 
 This file is **archive, not instruction.** It moved out of [PLAN.md](../PLAN.md) once M7
 closed, so the plan could go back to being a plan, and each milestone since is archived
@@ -8374,3 +8375,268 @@ inside a centred `<figure>` is *source code*, and it stays left-aligned.
 - **Exporting the rendered page** to HTML or PDF. Plausible as a next thing, and it is a *file
   operation*: it belongs in the operation engine with a destination and a conflict policy, not bolted
   onto a preview.
+
+### M19 — Encryption (M)
+
+Goal: two halves, deliberately separate products sharing a milestone — **a vault you live in** (an
+encrypted APFS sparsebundle, unlocked into a mounted volume the existing `LocalBackend` already
+browses) and **a password on an archive you send someone** (WinZip AES-256, the format 7-Zip and
+WinRAR read on Windows). Opened 2026-08-09 and closed the same day, both slices landed and both
+halves verified by driving the built app.
+
+The two share a milestone because they share everything that is hard about the feature and nothing
+else: one passphrase type that owns and wipes its own buffer, one rule that a secret never reaches
+`argv`, and one piece of wording for the failure that cannot be undone. What they do *not* share is
+a code path — a vault is `hdiutil` and a mounted volume, an encrypted archive is libarchive and a
+file — which is why the sidebar gained a section and the pack sheet gained four controls, and
+neither knows about the other.
+
+#### What was probed first (2026-08-09)
+
+Everything below was measured before any Swift was written (§"How to work here"), and the **first
+probe overturned the architecture decision the milestone opened on**. All of it is in docs/NOTES.md
+▸ Encryption; the short form and what each one decided:
+
+- **`bsdtar` cannot be given a passphrase safely** — captured live from the running process's argv:
+  `--passphrase SUPERSECRET123` sits in `argv` in plain text, readable by any `ps`, which is the
+  exact practice this repo already forbids for `curl -u`. Unlike `curl` there is no escape hatch: no
+  `-K -`-style config on stdin exists, and the interactive prompt on a non-tty stdin **loops
+  forever** rather than failing (166 KB of `Enter passphrase:` before the probe was killed). This is
+  what broke §2's "bsdtar over libarchive" and produced the scoped exception below.
+- **The system libarchive is linkable and takes the passphrase in memory.**
+  `/usr/lib/libarchive.2.dylib` (3.7.4) ships *with* macOS and the SDK carries `libarchive.2.tbd`
+  with all 427 symbols, so this is a system library and not a dependency. No `archive.h` in the SDK,
+  so the prototypes are declared by hand. Three things came free and are the reason to reach for it
+  again: byte-accurate progress, real cancellation between chunks, and errors as return codes
+  instead of scraped English.
+- **An AES-256 zip is unopenable by everything Apple ships** — `unzip` says `skipping: …
+  unsupported compression method 99`, `ditto` `Unknown compression type`, Archive Utility is the
+  same code, and Windows Explorer's built-in zip cannot read it either. The *format* is right
+  (verified from the bytes: method 99, extra field `0x9901`, AE-2, strength 3, inner method 8); it
+  is the platform support that is missing. So the sheet says which apps can open it, rather than
+  letting the recipient find out. The only interoperable-everywhere alternative is `zipcrypt`, which
+  has a published known-plaintext break and must never ship under a checkbox saying "Encrypt".
+- **No zip encrypts file names, ever** — the central directory is plaintext by design, and
+  `bsdtar -tvf` on an AES-256 archive prints every name, size and mtime with no passphrase. The only
+  fix is one inner archive holding the payload, and it must be a **tar**: tar stores bytes verbatim
+  so the outer zip's deflate is the only compression pass (zip-in-zip compresses twice and comes out
+  *larger*), and it carries permissions and symlinks losslessly. The wrapper gets a fixed mode and
+  the current time, because a real file's would leak a fact about the contents into the part that
+  stays readable.
+- **An archive is untrusted input, and `bsdtar` will happily build the attack for you.**
+  `bsdtar -s '|payload.txt|../../escaped.txt|'` stores a literal traversal member in one stock
+  command; the second shape is the one that survives a naive fix — `escape -> /tmp` followed by
+  `escape/pwned.txt`, where every *name* is innocent and the symlink written one entry earlier is
+  what puts the write outside. Hence two independent layers, with the fixtures produced by `bsdtar`
+  itself.
+- **`hdiutil -stdinpass` keeps the passphrase out of argv entirely** — confirmed by scanning the
+  whole process tree mid-run (`hdiutil`, `diskimages-helper`, `copy-helper`, `diskimagesiod`) for a
+  known passphrase and finding it in none of them. That is what makes an encrypted disk image the
+  right shape for a vault at all.
+- **A growable encrypted `SPARSEBUNDLE` costs 23 MB for a declared 10 GB APFS volume**, so a vault
+  need not ask the user to predict how much they will ever store. It is a *directory*, which makes
+  it awkward to send — which is fine, that is the archive half's job.
+- **`-stdinpass` reads that pipe verbatim to EOF**, so a trailing newline becomes part of the
+  passphrase. Measured both ways: an image created with `printf 'p\n'` refuses to attach with
+  `printf 'p'`. Writing a *line* to a subprocess is the natural thing to do, and doing it here would
+  mint vaults whose real passphrase is not the one their owner typed — locked out of Disk Utility,
+  Finder and Dirnex on any other Mac, permanently, with nothing on screen ever hinting why.
+- **`resolvingSymlinksInPath` and `standardizingPath` fold `/private` only for paths that currently
+  exist**, so neither is a normalizer — both are filesystem *queries* wearing one's clothes, and an
+  identity built on either changes the moment the image is deleted, which is exactly when its
+  Keychain entry still has to be found in order to be cleaned up. `hdiutil` answers with the
+  `/private` spelling while the user says `/tmp`, so the comparison is unavoidable; the three
+  firmlink prefixes are folded in string space instead.
+
+#### Slice 1 — the core (additive, app untouched) — landed 2026-08-09
+
+- [x] `CArchiveShim` + `LibArchive` — the C declarations and the Swift side of the **system
+      libarchive**. An explicit, scoped exception to §2, taken on the measurement above:
+      `archive_write_set_passphrase` takes a buffer `ArchivePassphrase` owns and wipes. The header
+      declares **38 prototypes and nothing else** — each checked against the SDK stub, so a drifted
+      name fails at link time — and the integer constants deliberately live on the Swift side rather
+      than arriving as imported macros. The exception is confined to the encrypted path; browsing
+      and ordinary packing still use `bsdtar`.
+- [x] `EncryptedArchiveWriter` / `EncryptedArchiveReader` (+ `…+Wrapping` / `…+Placing`) — write and
+      read an AES-256 zip, with byte progress, cancellation between chunks and entries, and the
+      archive built under a temporary name and renamed into place only on success, so a cancelled
+      pack leaves nothing to mistake for a whole archive later. `inspect` reads headers only, which
+      is what lets the app ask "does this need a passphrase" for free.
+- [x] `ArchivePassphrase` — the type the secret lives in, from the field to the syscall. Two
+      spellings that differ by exactly the byte that would break a vault forever: `withUnsafeBytes`
+      (the passphrase and then a close — what `-stdinpass` needs) beside `withUnsafeCString`. Both
+      look right at the call site, which is the whole reason they are one type's two methods and not
+      two call sites' improvisations.
+- [x] `ArchiveEntryPath` — the traversal defence, in two independent layers: a name rule, and an
+      `lstat` walk that refuses to descend through a symlink (the path-shaped equivalent of
+      `openat(O_NOFOLLOW)`). Both attack fixtures were produced by `bsdtar` itself, and each layer
+      has a **negative control** — with the name rule deliberately neutered, the `lstat` walk still
+      blocked the write.
+- [x] `ArchiveNamePrivacy` — the answer to zip's permanent plaintext central directory: wrap the
+      payload in one inner tar so the outer archive lists a single entry. **Off by default** (agreed
+      with Oleg, 2026-08-09), because the recipient otherwise unpacks twice.
+- [x] `DiskImageArguments` / `DiskImageMount` / `DiskImageProgress` / `VaultLocation` / `VaultError`
+      — the vault's pure half over `hdiutil`, with the plist and `-puppetstrings` parsing tested
+      against **captured real output** rather than invented output (`hdiutil-attach.plist`,
+      `hdiutil-info.plist`). `attach -plist` reports several `system-entities` and only one carries a
+      mount point, and `PERCENT:-1.000000` is a sentinel that brackets a run at both ends — two
+      shapes a hand-written fixture would not have had.
+- [x] `EncryptedArchiveError` / `VaultError` — named cases with stable key tokens, never a free-form
+      `String` payload, so every sentence a user can see is translatable (the `VFSError.unsupported`
+      trap, docs/NOTES.md ▸ Localization). `passphrasesDoNotMatch` is one of them: the two-field
+      confirmation §6 asks for is a named error rather than an assertion.
+
+Exit: **met.** 46 new tests, 1971 total green, both linters clean; the app was untouched and did not
+rebuild.
+
+#### Slice 2 — the app — landed 2026-08-09
+
+**Encrypted archives.**
+
+- [x] The pack sheet gained Encryption / Passphrase / Repeat / "Hide file names", and a footer that
+      says plainly what a lost passphrase costs *and* which apps can open the result. Moving away
+      from zip **resets** the popup rather than merely disabling it — a greyed "AES-256" over a
+      `.tar.gz` reads as a promise the writer cannot keep — and the footer is measured at build time
+      for its longest state so the accessory's frame never moves under the popup.
+- [x] An encrypted pack goes on the **operation queue** as `FileOperation.Kind.pack`
+      (`PackJob` / `PackRunner`, `ChecksumRunner`'s shape) rather than on a detached task. It is the
+      one pack that can run for minutes, and the queue already owns the determinate bar, the cancel,
+      the pause and the one-job-per-volume rule. The queue is therefore not "where packing happens"
+      — it is where *encrypting* happens, which is the boundary the libarchive exception drew.
+- [x] Extraction asks for the passphrase **only when the archive needs one** — a headers-only read,
+      measured at 3–4 ms on a 600 MB, 301-entry archive, so it can be asked unconditionally — and a
+      refused passphrase re-asks instead of dead-ending, because a wrong passphrase is an ordinary
+      typo and an error alert would make the user re-select the files to get another go.
+      `PassphrasePrompt` is one field, never two: here the passphrase is checked against something
+      that already exists, so a typo costs a retry rather than an unopenable archive.
+- [x] That gate also closed a **live hang that predated the milestone**: `bsdtar -xf` on an AES-256
+      zip with stdin closed writes 170 KB of `Enter passphrase:` in eight seconds and never exits
+      (it re-prompts on EOF), which was reachable from every extract path and would have hung a
+      thread with nothing on screen to say why.
+
+**Vaults.**
+
+- [x] New Vault… / Unlock Vault / Lock Vault in the registry, **beside Connect to Server**, since
+      all four open a *place*; the commands live on the window rather than a pane, because what they
+      do spans both panes and the sidebar.
+- [x] A sidebar **Vaults** section between Volumes and Servers — a local volume that has to be
+      unlocked before it appears, so it sits between the two things it is half of. **The padlock is
+      asked of `hdiutil`, never remembered**, so a `detach` in Terminal or an eject in Finder cannot
+      leave a row lying: one subprocess per rebuild (12–14 ms), asked once for the whole section
+      rather than once per row, and not at all when the user has no vaults.
+- [x] `SavedVaults` + `VaultStore` for the list — addressing only, in boring JSON, with the
+      passphrase in the Keychain through the same `KeychainAddressable` the servers use. That type
+      is the one formerly called `ServerKeychain`, renamed **`SecretKeychain`** once a vault, which
+      is not a server, needed the identical call.
+- [x] Creating a vault writes the image **where you stand** and opens the volume in the *other* pane
+      — the dual-pane shape the app is built around, since what you want next is to copy things in.
+      Locking moves any pane standing inside it out first, and to the **image's own folder with the
+      cursor on the image**, not to Home: the thing you were just working with stays under the
+      cursor, ready to unlock again.
+
+Exit: **met**, both halves verified by driving the built app. 1983 core tests and 276 app tests
+green, both linters clean, 36 new strings across 14 languages.
+
+Three decisions taken during the slice, each from a measurement rather than a preference:
+
+- **No progress UI for a vault create, and no image-kind choice.** A sparse bundle's creation is
+  constant-time in its declared ceiling — 100 GB, 500 GB and 2 TB each took 1.02 s and each cost
+  34 MB — and emits no `PERCENT:` lines at all. So the planned deferred progress sheet was **deleted
+  rather than built**, and the sheet asks for a name, a size ceiling and the passphrase and nothing
+  else. It is also why the size field can offer a generous default: a bigger ceiling costs nothing,
+  in bytes or in seconds. `DiskImageArguments.Kind.fixed` stays in the core, tested, for whatever
+  wants it later — a fixed `UDIF` image does report progress properly, which is why the reader keeps
+  reading it.
+- **The passphrase reaches `hdiutil` as bytes and a close, never a line.** `-stdinpass` takes that
+  pipe verbatim to EOF, so an appended `\n` becomes a permanent, invisible part of the passphrase
+  and the vault stops opening to the phrase its owner typed.
+  `ArchivePassphrase.withUnsafeBytes` is the one spelling that cannot get it wrong.
+- **Unlocking an image adds it to the sidebar.** A vault you have opened is one you will open again,
+  and Remove from Sidebar — which says in as many words that the file and its contents are untouched
+  — is one right-click away. The alternative is a Vaults section you have to populate by hand.
+
+Two decisions taken at open, both by Oleg: **AES-256 only** (never `zipcrypt`, which is broken, and
+not AES-128, which buys nothing on hardware AES), and **sparsebundle** for vaults.
+
+Two findings worth carrying:
+
+- **A vault introduces no new backend, and that is what kept it clear of the trap.** Unlocked, it is
+  a mounted volume `LocalBackend` already browses, so every gesture is about *reaching* a directory
+  rather than about a new kind of place — which is why none of the "name the new backend at every
+  site that lists the old ones" audit (docs/NOTES.md ▸ AppKit) was owed here.
+- **The confirmation wording is a deliverable, and it shipped in both sheets.** §6 made it one
+  because a forgotten passphrase is the only failure in Dirnex that is silent, total and permanent.
+  The vault note pairs the warning with where the passphrase is kept — "Dirnex saves it in your
+  Keychain so this Mac won’t ask again" — which is what makes the first sentence actionable rather
+  than merely frightening; the pack note pairs it with the compatibility fact, because those are the
+  two things a user must know *before* typing, in the order they matter.
+
+#### Deliberately not in scope
+
+- **`zipcrypt` and AES-128** — the first has a published known-plaintext break and must never appear
+  under a checkbox saying "Encrypt"; the second buys nothing on hardware AES. Taken at open.
+- **Encryption for any container but zip.** libarchive's 7-Zip writer refuses `encryption` and tar
+  has no notion of it, so `PackJob` carries no `format` field: it would be a setting with one legal
+  value and a way to ask for an illegal one.
+- **A passphrase for the paths that are not F5.** Preview (`ArchivePreviewCache`) and entering a
+  **nested** archive still fail with `passphraseRequired` rather than prompting, and the encrypted
+  route extracts the **whole** archive rather than the requested members, since libarchive is read
+  sequentially and the reader has no member filter. A member filter plus a per-archive passphrase
+  held for the session — so preview and nested entry can use the one the user already typed — is its
+  own slice, and the doc comment at `ArchiveExtractor.extract` says so at the site.
+- **Encrypting in place, or a "protect these files" gesture that removes the plaintext.** The delete
+  is the dangerous half, and it belongs to the user, with the Trash's own rules in view. Dirnex
+  creates and populates; it never removes the originals, because "encrypt these files" naively
+  implemented is create → copy → delete, and that delete puts plaintext in the Trash.
+
+#### Follow-up (2026-08-09): the leak §6 named, and the one it did not
+
+The milestone closed with one clause of its own §6 mitigation unshipped — Spotlight's index, Quick
+View's caches and the thumbnail store were to be "a stated Slice 2 decision rather than silence", and
+nothing in the app or the docs said anything about them. Closing it started with measuring the three,
+and the measurement inverted the whole item: **none of them is real, and the leak that is real
+belongs to Dirnex.**
+
+- **Spotlight does not index a disk-image volume at all.** `mdutil -s` on the mounted vault reports
+  `Indexing disabled`, no `.Spotlight-V100` appears, `mdfind -onlyin` returns nothing. The two
+  controls are what make that a finding rather than a hope: the boot volume reports `Indexing
+  enabled` in the same run, and an **unencrypted** sparsebundle is also disabled — so it is a
+  property of disk images, not something the encryption is buying. It also settles Recents for free,
+  since that is an `mdfind` query.
+- **Nothing was cached for a thumbnail.** A real `QLThumbnailGenerator` request against a file on the
+  volume produced one, after which no file under the user's caches directory named it and the
+  thumbnail agent's store held nothing — before or after the detach.
+- **Dirnex's own two stores were writing the file names to `UserDefaults` in the clear.**
+  `FrecencyStore.recordVisit` records every `.local` directory and a mounted vault is local;
+  `PersistedTab` carries the directory, the cursor's file name, the marked names and the expanded
+  folders. Both survive locking. A vault's entire promise is that locking puts its contents out of
+  reach, and a list of what was in it — written by the file manager, sitting outside the encrypted
+  image — is the exact shape of thing that promise is about.
+
+So the clause was closed by **fixing** rather than by stating. `VaultPrivacy` (core, 12 tests) owns
+the rule — which mount points count, and whether a path is inside one, on a whole-component boundary
+and with both spellings normalized — and `VaultMounts` (app) holds the live list, told directly by
+Dirnex's own unlock and lock and by `NSWorkspace`'s mount notifications for a vault opened in Disk
+Utility. `Frecency.forget(where:)` is the second wall, run at lock, for anything recorded before the
+notification landed. The app's existing `isPath(_:inside:)` now defers to the core predicate, so the
+pane-eviction rule and the privacy rule cannot become two answers to one question.
+
+**The line drawn, and it is the interesting part: implicit memory only.** Frecency and session
+restore are things the user never asked for, so they refuse a vault path. A named workspace, a
+favorite, a saved search are things the user filled deliberately, and they keep working — silently
+dropping half of something someone saved by name is a worse surprise than remembering it, and it is
+visible to them where a frecency index is not.
+
+Verified live, headlessly, with a control: the AppleScript `reveal` verb drives a pane, `defaults
+export` plus a decoder answers "does any stored key mention this token", and a **control folder**
+browsed in the same session must *appear* — it travels the identical `recordVisit` / `persistState`
+code, so its absence would mean a blind probe rather than a clean app. Three runs. A vault mounted
+from a shell and browsed: control present in `Dirnex.frecency` **and** `Dirnex.tabs.right`, vault
+token in neither. A quit with a pane still standing inside the vault: that pane persisted an **empty**
+tab list — the fallback-to-Home case `PersistedPane` already documents — and named nothing. And the
+whole cycle driven by Dirnex itself (`go.unlockVault` off a Keychain passphrase, two directories
+deep, then `go.lockVault` from inside): nothing under the volume in any key afterwards. The only
+mentions left are the ones that must be there — the vault's own image path and volume name in
+`Dirnex.vaults`, which is the sidebar row, and the *folder holding the image* in the pane that lock
+evicted. Both live outside the vault. The measurements and the probe's own shape are in
+docs/NOTES.md ▸ Encryption.

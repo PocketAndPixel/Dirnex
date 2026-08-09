@@ -45,6 +45,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // would render an empty section for one launch.
         FavoritesStore.seedStandardPlacesIfNeeded()
 
+        // Start watching which volumes are unlocked vaults (PLAN.md §M19) before the first window
+        // restores its tabs, so a session restored *into* a vault that is still mounted is guarded
+        // by the first navigation rather than by the second.
+        VaultMounts.start()
+
         // Rebuild the registry-driven menu whenever the user rebinds a shortcut, so the new
         // key equivalents take effect immediately (PLAN.md §M3 "rebindable shortcuts").
         NotificationCenter.default.addObserver(

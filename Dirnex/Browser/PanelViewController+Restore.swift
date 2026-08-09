@@ -23,7 +23,17 @@ extension PanelViewController {
     /// `BrowserWindowController.persistTabState`.
     func persistState() {
         guard let restorationKey else { return }
-        let persisted = tabs.map { tab in
+        // A tab standing in an unlocked vault is not written down (PLAN.md §M19 / `VaultPrivacy`).
+        // Two reasons, and either would do: this file's own fields — the directory, the cursor's
+        // file name, the marked names, the expanded folders — are a list of what is in the vault,
+        // stored in the clear and outliving the lock; and a tab pointing into a volume that only
+        // exists while unlocked cannot be restored anyway, which is the case `PersistedPane` already
+        // falls back to Home for. Dropping every tab is therefore a legal state, not a hole.
+        let kept = tabs.filter { !VaultMounts.shared.contains($0.panel.path) }
+        let activeIndex = tabs.indices.contains(activeTabIndex)
+            ? kept.firstIndex(where: { $0 === tabs[activeTabIndex] }) ?? 0
+            : 0
+        let persisted = kept.map { tab in
             PersistedTab(
                 path: tab.panel.path,
                 sort: tab.panel.model.sort,
@@ -40,7 +50,7 @@ extension PanelViewController {
             )
         }
         TabPersistence.save(
-            PersistedPane(tabs: persisted, activeIndex: activeTabIndex),
+            PersistedPane(tabs: persisted, activeIndex: activeIndex),
             paneKey: restorationKey
         )
     }

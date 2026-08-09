@@ -68,6 +68,24 @@ public struct Frecency: Sendable, Equatable, Codable {
         age()
     }
 
+    /// Drop every entry `shouldForget` claims, returning whether anything went.
+    ///
+    /// Added for the vault rule (PLAN.md §M19, ``VaultPrivacy``): a directory browsed inside an
+    /// unlocked vault must not still be in the index once it locks. The caller supplies the
+    /// predicate rather than a path list because the question is "is this inside a vault", which
+    /// only the app — holding the live mount points — can answer.
+    ///
+    /// The `Bool` is what lets a caller skip a needless write: this runs on every lock, and most
+    /// locks have nothing to remove. No ageing afterwards, deliberately — removal is not a visit,
+    /// and re-ranking the survivors because a neighbour left would move results the user has been
+    /// getting used to.
+    @discardableResult
+    public mutating func forget(where shouldForget: (VFSPath) -> Bool) -> Bool {
+        let before = entries.count
+        entries.removeAll { shouldForget($0.path) }
+        return entries.count != before
+    }
+
     // MARK: - Scoring
 
     /// The frecency score for `entry` at time `now` — its rank scaled by how recently it was
