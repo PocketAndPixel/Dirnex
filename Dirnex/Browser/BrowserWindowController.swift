@@ -269,6 +269,7 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         queueBar.onPreferredHeightChanged = { [weak self] in self?.updateQueueBarHeight() }
         startObservingQueue()
         installQuickViewSupport()
+        installQuickLookSheetGuard()
         observeVolumeUnmount()
         installFunctionBar()
         archiveMemberEdits.onEdited = { [weak self] edit in self?.offerArchiveWriteBack(edit) }

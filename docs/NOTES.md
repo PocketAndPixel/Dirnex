@@ -349,6 +349,26 @@ at build time.
   not the table. `QLPreviewView` is not opaque and `init(frame:style:)` is failable — an
   embedded preview needs an opaque backing or the covered view bleeds through. It also only
   wires magnify-to-zoom for single-page PDFs, so multi-page PDFs route to a PDFKit `PDFView`.
+  - **A sheet cannot cover it and cannot keep the keyboard away from it, so a preview left open
+    makes every confirmation *unanswerable by keyboard*.** It is a floating panel and it is not the
+    window's, so the two halves compound: a delete confirmation raised while ⌘Y is up opens
+    **behind** the preview — measured once as entirely hidden but for a sliver of the default
+    button — and clicking the panel to move it aside is what then takes key focus away from the
+    sheet for good. Return lands on a panel with no default button and **beeps**, while the sheet
+    goes on drawing its Delete button as the default *and* on answering the mouse. That is what
+    makes it read as "the Enter key isn't bound" rather than as a focus problem, and it is invisible
+    to every automated signal: no log, both suites green, and the screenshot is of a perfectly
+    ordinary alert. It is also intermittent in a way that hides the cause — ⌘Y → ⇧F8 → ⏎ **works**,
+    because the sheet takes key as it opens; only ⌘Y → ⇧F8 → *click the panel* → ⏎ is dead. Reported
+    by a user 2026-08-09; three plausible mechanisms (a key monitor, a menu key equivalent stealing
+    ⏎, keypad Enter not matching `"\r"`) were each probed and each cleared before the panel was
+    suspected. The fix is one `willBeginSheetNotification` observer on the window that orders the
+    panel out, rather than a line at each of the ~40 `beginSheetModal` sites — and it must ask
+    `sharedPreviewPanelExists()` first, since `QLPreviewPanel.shared()` *creates* the panel.
+    - `orderOut` on it is **not synchronous** — it animates — and a panel raised in the *test host*
+      (no controller, no preview items) never reports `isVisible == false` afterwards however long
+      it is polled. So the close is not assertable there; what a test can pin is that the guard
+      never brings a panel into existence.
 - **`NSView.clipsToBounds` is `false` by default, and `draw(_:)`'s `dirtyRect` can be larger than
   the view's bounds.** A backing fill of `dirtyRect` therefore paints over the view's *siblings*:
   the full-window Quick View overlay blacked out the sidebar and the function-key bar while its own
