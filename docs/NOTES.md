@@ -1699,6 +1699,24 @@ overturned the decision the milestone opened on.
   - A growable encrypted `SPARSEBUNDLE` costs **23 MB** for a declared 10 GB APFS volume, so a vault
     need not ask the user to predict how much they will ever store. It is a *directory*, though, so
     it is awkward to send — which is fine, that is the archive half's job.
+  - **`-stdinpass` reads that pipe verbatim to EOF, so a trailing newline is part of the
+    passphrase.** Measured both ways on macOS 26: an image created with `printf 'p\n'` refuses to
+    attach with `printf 'p'` (`hdiutil: attach failed - Authentication error`) and vice versa; with
+    the newline on both sides, or neither, it attaches. Writing a *line* to a subprocess is the
+    natural thing to do — and doing it here mints vaults whose real passphrase is not the phrase
+    their owner typed, so Disk Utility, Finder and Dirnex on any other Mac are locked out of them
+    permanently, with no recovery and nothing on screen ever hinting why. The bytes and then a
+    close, and nothing else: `ArchivePassphrase.withUnsafeBytes` exists to be the one spelling of
+    that, sitting next to a `withUnsafeCString` that differs from it by exactly the byte that would
+    break this. Both spellings look right at the call site, which is the whole problem.
+  - **A sparse bundle's creation is constant-time in its declared ceiling, and reports no progress at
+    all.** Measured: 100 GB, 500 GB and 2 TB each took **1.02 s** and each cost **34 MB** on disk,
+    with `-puppetstrings` emitting **zero** `PERCENT:` lines in all three (a *fixed* `UDIF` image
+    reports properly — 2 GB in 4.0 s over six lines). So the progress machinery above is real and is
+    for the kind nobody should pick, and the growable vault needs no bar, no cancel and no deferred
+    sheet — a measurement that deleted a whole piece of planned UI rather than confirming it. It is
+    also why the size field can offer a generous default: a bigger ceiling costs nothing, in bytes or
+    in seconds.
 - **`resolvingSymlinksInPath` and `standardizingPath` fold `/private` only for paths that currently
   exist.** Probed on macOS 26: `/private/tmp/x` → `/tmp/x` when `x` is there, and stays
   `/private/tmp/x` when it is not. So neither is a normalizer — both are filesystem *queries* wearing
@@ -2134,6 +2152,19 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   passed: the two strings genuinely differ, just not in any pixel the user sees. Front-load the
   varying part (`someone@gmail.com — Google Drive`) and assert on a *prefix* rather than on
   inequality, so the test fails for the same reason the screenshot did. Only a screenshot caught it.
+- **A window-level completion handler has to name *which* pane it means, and the neighbour it was
+  copied from is usually answering a different question.** An encrypted pack runs on the operation
+  queue, so its outcome lands on the window rather than the pane that started it — and
+  `presentPackOutcome` reached for `focusedPanel`, copied from the checksum outcome three files away.
+  That is right *there*: a manifest is written beside the files it covers, so the focused pane is
+  where it appears. A pack writes into the **other** pane, like F5 — so the finished archive asked
+  the source pane to put its cursor on a file it does not contain, which fails silently, while the
+  archive sat unselected in the pane that does. Nothing logs, the file is correct, and the only tell
+  is a cursor that did not move — in the pane you are not looking at. The fix is to ask the question
+  by *content* (which pane is showing this file's directory?) rather than by role, and to answer
+  `nil` when neither is, since the user may have navigated both away during a job that runs for
+  minutes. Same family as the two below: one question, two spellings, and the compiler checks
+  neither.
 - **A "can this apply here" predicate lives in *two* places — the behaviour and the menu that gates
   it — and they drift silently.** Bringing size bars into the tree meant widening `areSizeBarsVisible`
   (drop `!panel.isTree`), and every core test, the app suite, both linters and the build passed with

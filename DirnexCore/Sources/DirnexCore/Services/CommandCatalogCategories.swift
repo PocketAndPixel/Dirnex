@@ -207,6 +207,37 @@ extension CommandCatalog {
                 "server", "connect", "host"
             ]
         ),
+        // The vault commands sit beside Connect to Server because they are the same kind of thing:
+        // a place that has to be opened before it can be browsed (PLAN.md §M19). No shortcuts —
+        // creating one is rare and deliberate, and a stray chord that unmounts a volume somebody is
+        // working in is exactly the gesture not to hand out by default. All three are rebindable.
+        Command(
+            id: "go.newVault",
+            title: "New Vault…",
+            category: .navigation,
+            keywords: [
+                "vault", "encrypt", "encrypted", "password", "passphrase", "secure", "private",
+                "safe", "disk image", "sparsebundle", "dmg", "hide", "protect"
+            ]
+        ),
+        Command(
+            id: "go.unlockVault",
+            title: "Unlock Vault",
+            category: .navigation,
+            keywords: [
+                "vault", "unlock", "open", "mount", "attach", "decrypt", "passphrase", "password",
+                "sparsebundle", "dmg", "disk image"
+            ]
+        ),
+        Command(
+            id: "go.lockVault",
+            title: "Lock Vault",
+            category: .navigation,
+            keywords: [
+                "vault", "lock", "close", "unmount", "eject", "detach", "secure", "sparsebundle",
+                "dmg", "disk image"
+            ]
+        ),
         Command(
             id: "go.openInTerminal",
             title: "Open in Terminal",

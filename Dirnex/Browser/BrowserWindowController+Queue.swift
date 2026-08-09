@@ -87,6 +87,13 @@ extension BrowserWindowController {
                 presentAttributeApplyOutcome(of: report, kind: job.kind)
                 continue
             }
+            // A pack owns its finish the same way: it moves nothing, so `report.failures` is empty
+            // even when it wrote no archive, and everything that can go wrong is an
+            // `EncryptedArchiveError` about the job rather than a `VFSError` about a path.
+            if case .pack = job.kind {
+                presentPackOutcome(of: report)
+                continue
+            }
             if !report.failures.isEmpty {
                 reportFailures(report, kind: job.kind)
             }

@@ -25,6 +25,11 @@ public enum SidebarSection: String, CaseIterable, Sendable, Hashable {
     /// user-visible title widened.
     case icloud
     case volumes
+    /// Encrypted disk images the user has opened (PLAN.md §M19). Between the local volumes and the
+    /// remote servers because that is what a vault *is* — a local volume that has to be unlocked
+    /// before it exists — and a row here is the one place both its locked and unlocked states are
+    /// visible, since a locked vault has no mount point to appear under Volumes.
+    case vaults
     case servers
     case tags
 
@@ -35,6 +40,7 @@ public enum SidebarSection: String, CaseIterable, Sendable, Hashable {
         case .favorites: "Favorites"
         case .icloud: "Cloud"
         case .volumes: "Volumes"
+        case .vaults: "Vaults"
         case .servers: "Servers"
         case .tags: "Tags"
         }

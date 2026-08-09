@@ -240,7 +240,7 @@ final class ConnectServerForm: NSObject {
                 keyFile.stringValue = identityFile
             case .password:
                 authSwitch.state = .off
-                sftpSecret.stringValue = ServerKeychain.password(for: location) ?? ""
+                sftpSecret.stringValue = SecretKeychain.password(for: location) ?? ""
             }
         case let .ftp(location, authentication, _):
             protocolControl.selectItem(at: Protocols.ftp.rawValue)

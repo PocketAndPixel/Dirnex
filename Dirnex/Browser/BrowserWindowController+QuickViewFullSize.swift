@@ -291,6 +291,15 @@ extension BrowserWindowController: NSMenuItemValidation {
         case #selector(showQuickViewRenderedPage(_:)):
             menuItem.state = AppPreferences.shared.quickViewRenderStyle == .rendered ? .on : .off
             return previewedFileOffersBothStyles
+        // The vault commands each name a target that may not be there. Each validator *calls* the
+        // predicate the command itself uses rather than restating it — a hand-copied twin is how a
+        // shipped feature ends up permanently greyed with every test green (docs/NOTES.md).
+        case #selector(newVault(_:)):
+            return canCreateVaultHere
+        case #selector(unlockVault(_:)):
+            return vaultImageUnderCursor != nil
+        case #selector(lockVault(_:)):
+            return vaultContainingFocusedPane != nil
         default:
             break
         }

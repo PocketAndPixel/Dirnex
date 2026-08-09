@@ -30,6 +30,17 @@ public struct FileOperation: Sendable {
         /// its answer, *including the undo material*, rides home on
         /// ``OperationReport/attributeApply``.
         case attributes(AttributeApplyJob)
+        /// Write an encrypted archive from the sources (PLAN.md §M19 Slice 2).
+        ///
+        /// Only the *encrypted* path comes here — every other format is still one `bsdtar` spawn on
+        /// the caller's own thread. The split is not tidiness: the reason M19 links libarchive at
+        /// all is that `bsdtar` cannot be handed a passphrase without putting it in `argv`, and the
+        /// reason this work needs a queue is that AES-256 over a folder of photographs is minutes
+        /// during which the user must be able to change their mind. A `.tar.gz` has neither problem.
+        ///
+        /// Like `.checksum` and `.attributes` it produces no `outcomes` — there is nothing to move,
+        /// so nothing to undo — and its answer rides home on ``OperationReport/pack``.
+        case pack(PackJob)
     }
 
     public let kind: Kind
@@ -234,6 +245,11 @@ public struct OperationReport: Sendable, Equatable {
     /// only way back.
     public let attributeApply: AttributeApplyOutcome?
 
+    /// What a `.pack` job wrote, or why it wrote nothing. `nil` for every other kind. Rides home on
+    /// the report for the same reason the two above it do — the queue's snapshot stream is the one
+    /// path the window already watches for a job reaching a terminal state.
+    public let pack: PackOutcome?
+
     public init(
         completedItems: Int,
         completedBytes: Int64,
@@ -242,7 +258,8 @@ public struct OperationReport: Sendable, Equatable {
         wasCancelled: Bool,
         outcomes: [OperationItemOutcome] = [],
         checksum: ChecksumOutcome? = nil,
-        attributeApply: AttributeApplyOutcome? = nil
+        attributeApply: AttributeApplyOutcome? = nil,
+        pack: PackOutcome? = nil
     ) {
         self.completedItems = completedItems
         self.completedBytes = completedBytes
@@ -252,6 +269,7 @@ public struct OperationReport: Sendable, Equatable {
         self.outcomes = outcomes
         self.checksum = checksum
         self.attributeApply = attributeApply
+        self.pack = pack
     }
 
     public var succeeded: Bool { failures.isEmpty && !wasCancelled }

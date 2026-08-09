@@ -19,7 +19,7 @@ extension SidebarViewController {
             image: Self.serverIcon(for: connection.kind),
             canEject: false,
             tooltip: connection.address,
-            isBusy: ServerConnectionActivity.shared.isConnecting(connection.name)
+            isBusy: SidebarRowActivity.shared.isWorking(connection.name)
         )
         cell.onEject = nil
         return cell
@@ -138,11 +138,11 @@ extension SidebarViewController {
     private static func forgetSecret(for server: ServerConnection) {
         switch server.endpoint {
         case let .sftp(location, authentication):
-            if case .password = authentication { ServerKeychain.removePassword(for: location) }
+            if case .password = authentication { SecretKeychain.removePassword(for: location) }
         case let .ftp(location, authentication, _):
-            if case .password = authentication { ServerKeychain.removePassword(for: location) }
+            if case .password = authentication { SecretKeychain.removePassword(for: location) }
         case let .smb(location):
-            if location.username != nil { ServerKeychain.removePassword(for: location) }
+            if location.username != nil { SecretKeychain.removePassword(for: location) }
         }
     }
 }

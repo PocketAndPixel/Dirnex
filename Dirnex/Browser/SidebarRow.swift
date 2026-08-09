@@ -45,6 +45,11 @@ extension SidebarViewController {
         /// root — for Google Drive that is `My Drive`, the folder the user actually wants.
         case cloudMount(CloudStorageMount)
         case volume(MountedVolume)
+        /// One of the user's encrypted vaults (PLAN.md §M19). Carries the *saved* location, not a
+        /// path: a locked vault has no directory to point at, and which of the two states it is in
+        /// is asked of `hdiutil` at render time rather than stored, so an eject in Finder or a
+        /// `hdiutil detach` in Terminal cannot leave the row lying.
+        case vault(VaultLocation)
         case savedSearch(SavedSearch)
         case server(ServerConnection)
         case tag(FinderTag)
@@ -70,6 +75,9 @@ extension SidebarViewController {
             switch self {
             case .header, .recents, .trash, .spacer, .savedSearch, .server, .tag, .allTags:
                 return nil
+            // A vault is dispatched, never navigated — locked it has nowhere to go, and unlocked
+            // its mount point is `hdiutil`'s answer rather than anything this row holds.
+            case .vault: return nil
             case let .favorite(entry): return entry.path
             case let .iCloud(path): return path
             case let .cloudMount(mount): return mount.entryDirectory
@@ -89,6 +97,11 @@ extension SidebarViewController {
 
         var server: ServerConnection? {
             if case let .server(connection) = self { return connection }
+            return nil
+        }
+
+        var vault: VaultLocation? {
+            if case let .vault(location) = self { return location }
             return nil
         }
 

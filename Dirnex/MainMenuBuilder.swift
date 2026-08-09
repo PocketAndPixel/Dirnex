@@ -101,7 +101,10 @@ enum MainMenuBuilder {
             .command("go.editLocation"), .command("go.parent"), .command("go.search"),
             .command("go.saveSearch"), .separator,
             .command("go.favorites"), .command("go.addToFavorites"), .separator,
-            .command("go.connectServer"), .command("go.openInTerminal")
+            .command("go.connectServer"), .separator,
+            .command("go.newVault"), .command("go.unlockVault"), .command("go.lockVault"),
+            .separator,
+            .command("go.openInTerminal")
         ]),
         MenuSpec(category: .workspace, items: [
             .command("workspace.list"), .command("workspace.save")

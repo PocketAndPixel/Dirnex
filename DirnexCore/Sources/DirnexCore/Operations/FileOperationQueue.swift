@@ -191,6 +191,12 @@ public actor FileOperationQueue {
                     onProgress: { progressContinuation.yield($0) },
                     isCancelled: { control.checkpoint() }
                 )
+            case .pack:
+                report = PackRunner.run(
+                    operation,
+                    onProgress: { progressContinuation.yield($0) },
+                    isCancelled: { control.checkpoint() }
+                )
             }
             progressContinuation.finish()
             return report

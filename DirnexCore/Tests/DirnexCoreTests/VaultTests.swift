@@ -42,6 +42,73 @@ struct VaultTests {
         #expect(DiskImageArguments.attach(atPath: "/tmp/v.sparsebundle").contains("-stdinpass"))
     }
 
+    @Test("one vault is one resolved path, whichever spelling it arrives in")
+    func savedVaultsAreKeyedByResolvedPath() {
+        // A `mutating` call cannot sit inside `#expect` (docs/NOTES.md), so every result is hoisted.
+        var saved = SavedVaults()
+        let addedFirst = saved.add(VaultLocation(imagePath: "/tmp/v.sparsebundle", volumeName: "V"))
+        #expect(addedFirst)
+        // The same vault under macOS's other spelling for the same directory: an update, not a
+        // second row — otherwise it would also file a second Keychain item for one passphrase.
+        let updated = saved.add(
+            VaultLocation(imagePath: "/private/tmp/v.sparsebundle", volumeName: "V2")
+        )
+        #expect(updated)
+        #expect(saved.vaults.count == 1)
+        #expect(saved.vaults[0].volumeName == "V2")
+        // Re-adding the identical record reports no change, so nothing writes or rebuilds.
+        let unchanged = saved.add(
+            VaultLocation(imagePath: "/private/tmp/v.sparsebundle", volumeName: "V2")
+        )
+        #expect(!unchanged)
+        // A *re-spelled* path is a change even though it is the same vault: identity is the resolved
+        // path, but the record keeps the spelling the user last reached it by, which is what the
+        // sidebar shows and what a click navigates to.
+        let respelled = saved.add(VaultLocation(imagePath: "/tmp/v.sparsebundle", volumeName: "V2"))
+        #expect(respelled)
+        #expect(saved.vaults.count == 1)
+        #expect(saved.vaults[0].imagePath == "/tmp/v.sparsebundle")
+
+        saved.add(VaultLocation(imagePath: "/vaults/work.sparsebundle", volumeName: "Work"))
+        #expect(saved.vaults.count == 2)
+        #expect(saved.vault(atPath: "/private/tmp/v.sparsebundle")?.volumeName == "V2")
+        let removed = saved.remove(imagePath: "/private/tmp/v.sparsebundle")
+        #expect(removed)
+        let removedAgain = saved.remove(imagePath: "/tmp/v.sparsebundle")
+        #expect(!removedAgain)
+        #expect(saved.vaults.map(\.volumeName) == ["Work"])
+
+        // Order is the sidebar's order and survives a round trip through the store's JSON.
+        var many = SavedVaults()
+        for name in ["a", "b", "c"] {
+            many.add(VaultLocation(imagePath: "/v/\(name).sparsebundle", volumeName: name))
+        }
+        let data = try? JSONEncoder().encode(many)
+        let decoded = data.flatMap { try? JSONDecoder().decode(SavedVaults.self, from: $0) }
+        #expect(decoded?.vaults.map(\.volumeName) == ["a", "b", "c"])
+    }
+
+    @Test("the bytes written to hdiutil's stdin are the passphrase and nothing else")
+    func passphraseBytesCarryNoTerminator() {
+        // `hdiutil -stdinpass` takes that pipe verbatim to EOF — probed: an image created with a
+        // trailing newline refuses to attach without one. So a NUL or a newline riding along is not
+        // a tidiness question, it is a vault that stops opening to the phrase its owner typed.
+        let passphrase = ArchivePassphrase("hunter2")
+        let bytes = passphrase.withUnsafeBytes { Array($0) }
+        #expect(bytes == Array("hunter2".utf8))
+        #expect(!bytes.contains(0))
+        #expect(!bytes.contains(UInt8(ascii: "\n")))
+
+        // A passphrase that genuinely ends in a newline keeps it: the rule is "exactly the bytes",
+        // not "strip trailing whitespace", which would be a second way to lock someone out.
+        let awkward = ArchivePassphrase("two lines\n")
+        #expect(awkward.withUnsafeBytes { Array($0) } == Array("two lines\n".utf8))
+
+        #expect(ArchivePassphrase("").withUnsafeBytes(\.count) == 0)
+        // Multi-byte UTF-8 counts bytes, not characters — what the pipe carries.
+        #expect(ArchivePassphrase("пароль").withUnsafeBytes(\.count) == 12)
+    }
+
     @Test("create asks for AES-256, an APFS sparsebundle, and machine-readable progress")
     func createArguments() {
         let argv = DiskImageArguments.create(

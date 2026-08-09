@@ -29,6 +29,12 @@ extension PanelViewController {
 /// dialog (`ErrorDialog`). Free of any view state so it can run on any actor.
 enum VFSErrorText {
     static func sentence(for error: Error) -> String {
+        // The encrypted-archive vocabulary reaches the screen through the same `describe(_:)` calls
+        // a `VFSError` does, and its `localizedDescription` is the useless synthesized one
+        // ("…error 1."). Joined here, once, so no call site has to know which family it caught.
+        if let archiveError = error as? EncryptedArchiveError {
+            return LocalizedCatalog.sentence(for: archiveError)
+        }
         guard let vfsError = error as? VFSError else { return error.localizedDescription }
         switch vfsError {
         case .permissionDenied:

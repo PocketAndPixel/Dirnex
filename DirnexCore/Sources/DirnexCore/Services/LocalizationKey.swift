@@ -163,6 +163,38 @@ public enum LocalizationKey {
         "checksum.error.\(error.key)"
     }
 
+    /// The sentence explaining why an encrypted archive could not be written or opened, e.g.
+    /// `archive.encrypted.error.incorrectPassphrase`. Same shape and same reason as
+    /// ``checksumError(_:)``: `EncryptedArchiveError.sentence` is `DirnexCore` data reached through a
+    /// *return value*, where a literal extracts nothing and renders English under a translated alert
+    /// title — here at the moment a passphrase was refused, which is the worst possible moment to
+    /// change languages on someone. The catalog value carries the same `%@` placeholders the English
+    /// format does, and may reorder them positionally (`%1$@`).
+    public static func encryptedArchiveError(_ error: EncryptedArchiveError) -> String {
+        "archive.encrypted.error.\(error.key)"
+    }
+
+    /// The sentence explaining why a vault could not be created, unlocked or locked, e.g.
+    /// `vault.error.incorrectPassphrase`. Same shape and same reason as ``encryptedArchiveError(_:)``
+    /// beside it: `VaultError.sentence` is `DirnexCore` data reached through a *return value*.
+    public static func vaultError(_ error: VaultError) -> String {
+        "vault.error.\(error.key)"
+    }
+
+    /// A pack-dialog encryption label, e.g. `archive.encryption.aes256.title`. Same shape and same
+    /// reason as ``archiveFormat(_:)`` — `ArchiveEncryption.displayName` is core data reached through
+    /// `allCases` at the popup, so it is joined by raw value here rather than wrapped at the display
+    /// site, where it would extract nothing.
+    public static func archiveEncryption(_ encryption: ArchiveEncryption) -> String {
+        "archive.encryption.\(encryption.rawValue).title"
+    }
+
+    /// A pack-dialog name-privacy label, e.g. `archive.namePrivacy.hidden.title` — the "Hide file
+    /// names" choice. Joined by raw value for the same reason the encryption labels beside it are.
+    public static func archiveNamePrivacy(_ privacy: ArchiveNamePrivacy) -> String {
+        "archive.namePrivacy.\(privacy.rawValue).title"
+    }
+
     /// Split a translated comma-separated keyword value into terms, dropping empties and
     /// surrounding whitespace. Tolerant on purpose — the value is typed by a translator, and a
     /// stray trailing comma should cost nothing.

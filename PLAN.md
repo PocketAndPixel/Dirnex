@@ -4,7 +4,8 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M18 shipped (14 languages) · **M19 Encryption in flight** (core landed, app pending) ·
+Status: M0–M18 shipped (14 languages) · **M19 Encryption in flight** (core and app landed, both
+halves live-verified) ·
 Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md)
 
@@ -173,10 +174,41 @@ Windows).
   across the whole process tree) with `-puppetstrings` progress and plist parsing tested against
   captured real output.
 
-**Slice 2 — the app, not started.** Pack sheet gains Encrypt + passphrase + confirm + "Hide file
-names"; a passphrase prompt on extract; New Vault / Lock / Unlock in the command registry; a sidebar
-Vaults section; Keychain storage through the existing `KeychainAddressable`; and the ~40 new strings
-across 14 languages.
+**Slice 2 — the app, landed 2026-08-09.** Both halves are wired and were verified by driving the
+built app, which is the only judge a layout has. 1983 core tests and 276 app tests green, both
+linters clean, 36 new strings across 14 languages.
+
+- **Encrypted archives.** The pack sheet gained Encryption / Passphrase / Repeat / "Hide file names"
+  and the footer that says plainly what a lost passphrase costs. An encrypted pack goes on the
+  **operation queue** as `FileOperation.Kind.pack` (`PackJob` / `PackRunner`, `ChecksumRunner`'s
+  shape) rather than on a detached task, because it is the one pack that can run for minutes and the
+  queue already owns the determinate bar, the cancel and the one-job-per-volume rule. Extraction asks
+  for the passphrase only when the archive needs one — a headers-only read, measured at 3–4 ms on a
+  600 MB archive — and a refused passphrase re-asks instead of dead-ending. That gate also closed a
+  live hang that predated the milestone: `bsdtar` prompts forever on a non-tty stdin (170 KB of
+  prompts in 8 s), reachable from every extract path.
+- **Vaults.** New Vault… / Unlock Vault / Lock Vault in the registry (beside Connect to Server, since
+  all four open a *place*), a sidebar Vaults section between Volumes and Servers whose padlock is
+  asked of `hdiutil` rather than remembered, `SavedVaults` + `VaultStore` for the list, and the
+  passphrase in the Keychain through the same `KeychainAddressable` the servers use — the type
+  formerly called `ServerKeychain`, renamed `SecretKeychain` once a vault, which is not a server,
+  needed the identical call. Creating one writes the image where you stand and opens the volume in
+  the *other* pane; locking moves any pane standing inside it out first.
+
+Three decisions taken during the slice, each from a measurement rather than a preference:
+
+- **No progress UI for a vault create, and no image-kind choice.** A sparse bundle's creation is
+  constant-time in its declared ceiling — 100 GB, 500 GB and 2 TB each took 1.02 s and each cost
+  34 MB — and emits no `PERCENT:` lines at all. So the planned deferred progress sheet was deleted
+  rather than built, and the sheet asks for a name, a size ceiling and the passphrase and nothing
+  else. `DiskImageArguments.Kind.fixed` stays in the core, tested, for whatever wants it later.
+- **The passphrase reaches `hdiutil` as bytes and a close, never a line.** `-stdinpass` takes that
+  pipe verbatim to EOF, so an appended `\n` becomes a permanent, invisible part of the passphrase and
+  the vault stops opening to the phrase its owner typed. `ArchivePassphrase.withUnsafeBytes` is the
+  one spelling that cannot get it wrong.
+- **Unlocking an image adds it to the sidebar.** A vault you have opened is one you will open again,
+  and Remove from Sidebar — which says in as many words that the file and its contents are untouched
+  — is one right-click away. The alternative is a Vaults section you have to populate by hand.
 
 Two decisions taken at open, both by Oleg: **AES-256 only** (never `zipcrypt`, which is broken, and
 not AES-128, which buys nothing on hardware AES), and **sparsebundle** for vaults. One risk is

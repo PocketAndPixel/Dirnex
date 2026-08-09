@@ -164,7 +164,7 @@ final class ConnectServerFTPFields {
         if case .anonymous = authentication {
             anonymousCheckbox.state = .on
         } else {
-            password.stringValue = ServerKeychain.password(for: location) ?? ""
+            password.stringValue = SecretKeychain.password(for: location) ?? ""
         }
         syncAnonymousField()
     }

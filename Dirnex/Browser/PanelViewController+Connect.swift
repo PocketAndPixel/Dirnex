@@ -36,11 +36,11 @@ extension PanelViewController {
     func connect(to server: ServerConnection) {
         switch server.endpoint {
         case let .sftp(location, authentication):
-            if case .password = authentication, ServerKeychain.password(for: location) == nil {
+            if case .password = authentication, SecretKeychain.password(for: location) == nil {
                 editServer(server)
                 return
             }
-            let stored = ServerKeychain.password(for: location)
+            let stored = SecretKeychain.password(for: location)
             runSidebarConnect(host: location.host) { [self] in
                 await connectSFTP(SFTPConnectRequest(
                     location: location,
@@ -53,11 +53,11 @@ extension PanelViewController {
         case let .ftp(location, authentication, trustedPublicKey):
             // A named account whose password was never saved (or has been cleared) falls back to the
             // prefilled sheet rather than failing silently. Anonymous needs no secret at all.
-            if case .password = authentication, ServerKeychain.password(for: location) == nil {
+            if case .password = authentication, SecretKeychain.password(for: location) == nil {
                 editServer(server)
                 return
             }
-            let storedFTP = ServerKeychain.password(for: location) ?? ""
+            let storedFTP = SecretKeychain.password(for: location) ?? ""
             runSidebarConnect(host: location.host) { [self] in
                 await connectFTP(FTPConnectRequest(
                     location: location,
@@ -69,11 +69,11 @@ extension PanelViewController {
                 ))
             }
         case let .smb(location):
-            if location.username != nil, ServerKeychain.password(for: location) == nil {
+            if location.username != nil, SecretKeychain.password(for: location) == nil {
                 editServer(server)
                 return
             }
-            let stored = location.username == nil ? nil : ServerKeychain.password(for: location)
+            let stored = location.username == nil ? nil : SecretKeychain.password(for: location)
             runSidebarConnect(host: location.host) { [self] in
                 await mountSMB(
                     location: location, password: stored, saveName: nil, activityName: server.name
@@ -176,10 +176,10 @@ extension PanelViewController {
         let token = loadToken
         // A saved server clicked in the sidebar spins a busy indicator on its row until the probe
         // resolves; `defer` clears it at every exit below.
-        if let activityName = request.activityName { ServerConnectionActivity.shared.begin(
+        if let activityName = request.activityName { SidebarRowActivity.shared.begin(
             activityName
         ) }
-        defer { if let activityName = request.activityName { ServerConnectionActivity.shared.end(
+        defer { if let activityName = request.activityName { SidebarRowActivity.shared.end(
             activityName
         ) } }
 
@@ -194,7 +194,7 @@ extension PanelViewController {
         case let .success(home):
             // Only persist a password once it actually authenticated, so a typo isn't cached.
             if case .password = authentication, let password {
-                ServerKeychain.store(password: password, for: location)
+                SecretKeychain.store(password: password, for: location)
             }
             composite.connectSFTP(
                 location: location,
@@ -353,8 +353,8 @@ extension PanelViewController {
         let token = loadToken
         // Mounting an SMB share is async and slow enough to look unresponsive; spin the sidebar row's
         // busy indicator until the mount resolves. `defer` clears it on every exit.
-        if let activityName { ServerConnectionActivity.shared.begin(activityName) }
-        defer { if let activityName { ServerConnectionActivity.shared.end(activityName) } }
+        if let activityName { SidebarRowActivity.shared.begin(activityName) }
+        defer { if let activityName { SidebarRowActivity.shared.end(activityName) } }
         do {
             let mountPoint = try await SMBMounter.shared.mount(
                 location,
@@ -365,7 +365,7 @@ extension PanelViewController {
             // Persist the password only once the mount succeeded, and only for an authenticated
             // share — a guest mount has no secret to keep.
             if location.username != nil, let password {
-                ServerKeychain.store(password: password, for: location)
+                SecretKeychain.store(password: password, for: location)
             }
             if let saveName { saveServer(name: saveName, endpoint: .smb(location)) }
             navigate(to: .local(mountPoint.path))

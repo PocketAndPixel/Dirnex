@@ -169,7 +169,7 @@ public extension UndoRecord {
         switch kind {
         case .copy: label = .copy
         case .move: label = .move
-        case .checksum, .attributes: return nil
+        case .checksum, .attributes, .pack: return nil
         }
         var steps: [UndoStep] = []
         var nonReversible = 0

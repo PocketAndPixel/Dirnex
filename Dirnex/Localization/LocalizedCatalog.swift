@@ -107,6 +107,52 @@ enum LocalizedCatalog {
         L10n.string(LocalizationKey.archiveCompressionLevel(level), fallback: level.displayName)
     }
 
+    /// A pack-dialog encryption label, translated — joined by raw value for the same reason the
+    /// formats and levels beside it are: `ArchiveEncryption.displayName` is `DirnexCore` data
+    /// reached through `allCases` at the popup, where a literal would extract nothing.
+    ///
+    /// Note that only one of the two values is really translatable: "None" is a word, and "AES-256"
+    /// is the cipher's name and stays "AES-256" in every language, because it is what the
+    /// recipient's archiver calls it too.
+    static func title(for encryption: ArchiveEncryption) -> String {
+        L10n.string(
+            LocalizationKey.archiveEncryption(encryption),
+            fallback: encryption.displayName
+        )
+    }
+
+    /// The pack dialog's "Hide file names" label, translated — the same join, for the same reason.
+    static func title(for privacy: ArchiveNamePrivacy) -> String {
+        L10n.string(LocalizationKey.archiveNamePrivacy(privacy), fallback: privacy.displayName)
+    }
+
+    /// Why an encrypted archive couldn't be written or opened, translated — the same join as
+    /// ``sentence(for:)`` above and for the same reason: `EncryptedArchiveError.sentence` is
+    /// `DirnexCore` data reached through a *return value*, where a literal renders English under a
+    /// translated alert title at the moment a passphrase was refused.
+    ///
+    /// The arguments are spliced *after* the lookup, so a translation may reorder them positionally
+    /// (`%1$@`).
+    static func sentence(for error: EncryptedArchiveError) -> String {
+        guard let format = L10n.translation(LocalizationKey.encryptedArchiveError(error)) else {
+            return error.sentence
+        }
+        guard !error.arguments.isEmpty else { return format }
+        return String(format: format, arguments: error.arguments)
+    }
+
+    /// Why a vault couldn't be created, unlocked or locked, translated — the same join as
+    /// ``sentence(for:)`` above, for the same reason: `VaultError.sentence` is `DirnexCore` data
+    /// reached through a *return value*, where a literal renders English under a translated alert
+    /// title at the moment something the user cares a great deal about has failed.
+    static func sentence(for error: VaultError) -> String {
+        guard let format = L10n.translation(LocalizationKey.vaultError(error)) else {
+            return error.sentence
+        }
+        guard !error.arguments.isEmpty else { return format }
+        return String(format: format, arguments: error.arguments)
+    }
+
     /// An undo/redo action's name, translated — spliced into the "Undo %@" / "Redo %@" menu title
     /// and the "finished with issues" alert. `UndoActionLabel.title` is `DirnexCore` data reached
     /// through a variable (`record.label`), so — like the sidebar sections — the app joins it here

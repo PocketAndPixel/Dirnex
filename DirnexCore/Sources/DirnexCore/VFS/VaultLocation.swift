@@ -66,6 +66,56 @@ public struct VaultLocation: Sendable, Hashable, Codable {
     }
 }
 
+/// The vaults the user has, in the order the sidebar lists them.
+///
+/// A value type with the identity rule in it, rather than an array the app manages: **one vault is
+/// one resolved path**, so a vault reached as `/tmp/v.sparsebundle` and again as
+/// `/private/tmp/v.sparsebundle` must not become two rows filing two Keychain items — the same
+/// comparison ``VaultLocation/keychainAccount`` is keyed on, and for the same reason.
+public struct SavedVaults: Sendable, Equatable, Codable {
+    public private(set) var vaults: [VaultLocation]
+
+    public init(vaults: [VaultLocation] = []) {
+        self.vaults = []
+        for vault in vaults { add(vault) }
+    }
+
+    /// Add a vault, or update the one already filed under that path. Returns whether anything
+    /// changed, so a caller can skip a needless write and sidebar rebuild.
+    ///
+    /// An existing entry is *replaced* rather than skipped: the volume name is the part that can
+    /// legitimately differ (a vault re-created at the same path with a new name), and keeping the
+    /// stale one would caption the row with a volume that no longer exists.
+    @discardableResult
+    public mutating func add(_ vault: VaultLocation) -> Bool {
+        if let index = index(ofPath: vault.imagePath) {
+            guard vaults[index] != vault else { return false }
+            vaults[index] = vault
+            return true
+        }
+        vaults.append(vault)
+        return true
+    }
+
+    /// Remove the vault at `imagePath`, whichever spelling it is given in. Returns whether it was
+    /// there.
+    @discardableResult
+    public mutating func remove(imagePath: String) -> Bool {
+        guard let index = index(ofPath: imagePath) else { return false }
+        vaults.remove(at: index)
+        return true
+    }
+
+    public func vault(atPath imagePath: String) -> VaultLocation? {
+        index(ofPath: imagePath).map { vaults[$0] }
+    }
+
+    private func index(ofPath imagePath: String) -> Int? {
+        let wanted = VaultLocation.normalizedPath(imagePath)
+        return vaults.firstIndex { $0.resolvedImagePath == wanted }
+    }
+}
+
 extension VaultLocation: KeychainAddressable {
     /// One service for every vault, matching the one-per-protocol scheme the remote locations use.
     public static var keychainService: String { "com.dirnex.Dirnex.vault" }

@@ -48,6 +48,25 @@ public final class ArchivePassphrase: @unchecked Sendable {
         }
     }
 
+    /// Copies raw bytes into a private buffer — what comes back out of the Keychain.
+    ///
+    /// Separate from `init(_: String)` so a stored passphrase never becomes a `String` on the way
+    /// home: the Keychain hands over `Data`, this takes it, and ``withUnsafeBytes(_:)`` hands the
+    /// same bytes to `hdiutil`'s stdin, with no point in between where anything could interpolate or
+    /// log it. `bytes` is **not** trimmed or re-encoded — a passphrase is a byte string, and the one
+    /// filed is the one that was used.
+    public init(bytes: Data) {
+        capacity = bytes.count + 1
+        storage = UnsafeMutablePointer<CChar>.allocate(capacity: capacity)
+        bytes.withUnsafeBytes { raw in
+            guard let base = raw.baseAddress else { return }
+            storage.withMemoryRebound(to: UInt8.self, capacity: bytes.count) { target in
+                target.update(from: base.assumingMemoryBound(to: UInt8.self), count: bytes.count)
+            }
+        }
+        storage[bytes.count] = 0
+    }
+
     deinit {
         _ = memset_s(storage, capacity, 0, capacity)
         storage.deallocate()
@@ -68,6 +87,25 @@ public final class ArchivePassphrase: @unchecked Sendable {
     /// borrow does not have to outlive the call that hands it over.
     func withUnsafeCString<R>(_ body: (UnsafePointer<CChar>) throws -> R) rethrows -> R {
         try body(UnsafePointer(storage))
+    }
+
+    /// Runs `body` with the passphrase's bytes **without** the terminating NUL — what a caller
+    /// writing to another process's standard input needs (`hdiutil -stdinpass`, PLAN.md §M19).
+    ///
+    /// Separate from ``withUnsafeCString(_:)`` rather than derived from it at the call site, because
+    /// the two differ by exactly the byte that would break this use, and both spellings look right.
+    /// `hdiutil` takes **everything** on that pipe as the passphrase, verbatim to EOF: probed on
+    /// macOS 26, an image created with a trailing newline on the pipe cannot be attached without one
+    /// (`hdiutil: attach failed - Authentication error`), and vice versa. So a stray NUL — or the
+    /// newline it is even more tempting to append when writing to a pipe — becomes a permanent,
+    /// invisible part of the passphrase, and the vault stops opening to the phrase its owner typed
+    /// the moment anything else (Disk Utility, Finder, another Mac) asks for it. There is no
+    /// recovery from that, which is why the byte range is a method here rather than arithmetic
+    /// wherever the pipe is.
+    ///
+    /// The pointer is valid only for the duration of the call.
+    public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
+        try body(UnsafeRawBufferPointer(start: storage, count: byteLength))
     }
 
     /// Whether two passphrases are the same — the "type it twice to confirm" check.

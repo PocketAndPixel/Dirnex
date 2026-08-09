@@ -219,6 +219,32 @@ struct LocalizationCoverageTests {
         }
     }
 
+    @Test("every pack-dialog encryption choice is translated in every shipped language")
+    func everyEncryptionChoiceIsTranslated() throws {
+        for language in translatedLanguages {
+            let bundle = try bundle(for: language)
+            for encryption in ArchiveEncryption.allCases {
+                let key = LocalizationKey.archiveEncryption(encryption)
+                let value = translation(key, in: bundle)
+                #expect(value != nil, "\(language.code): no \(key)")
+                // No still-English check: "AES-256" is the cipher's name and is deliberately
+                // itself in every language — it is what the recipient's archiver calls it too —
+                // and "None" is the one-word case the formats above already carve out.
+            }
+            for privacy in ArchiveNamePrivacy.allCases {
+                let key = LocalizationKey.archiveNamePrivacy(privacy)
+                let value = translation(key, in: bundle)
+                #expect(value != nil, "\(language.code): no \(key)")
+                if let value {
+                    #expect(
+                        value != privacy.displayName,
+                        "\(language.code): \(key) is still English"
+                    )
+                }
+            }
+        }
+    }
+
     @Test("every undo/redo action label is translated in every shipped language")
     func everyUndoActionLabelIsTranslated() throws {
         for language in translatedLanguages {

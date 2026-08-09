@@ -90,6 +90,61 @@ struct LocalizationErrorCoverageTests {
         }
     }
 
+    @Test("every encrypted-archive failure reason is translated in every shipped language")
+    func everyEncryptedArchiveErrorIsTranslated() throws {
+        for language in translatedLanguages {
+            let bundle = try bundle(for: language)
+            for error in EncryptedArchiveError.allCases {
+                let key = LocalizationKey.encryptedArchiveError(error)
+                let value = translation(key, in: bundle)
+                #expect(value != nil, "\(language.code): no \(key)")
+                guard let value else { continue }
+                #expect(
+                    value != error.englishFormat,
+                    "\(language.code): \(key) is still English"
+                )
+                // A translation may reorder the arguments positionally, but it cannot *drop* one:
+                // a lost `%@` swallows the archive's — or the file's — name, and
+                // `String(format:)` would then read past the arguments it was given.
+                let found = placeholderCount(value)
+                let wanted = error.arguments.count
+                #expect(
+                    found == wanted,
+                    """
+                    \(language.code): \(key) takes \(wanted) arguments, its translation has \(found)
+                    """
+                )
+            }
+        }
+    }
+
+    @Test("every vault failure reason is translated in every shipped language")
+    func everyVaultErrorIsTranslated() throws {
+        for language in translatedLanguages {
+            let bundle = try bundle(for: language)
+            for error in VaultError.allCases {
+                let key = LocalizationKey.vaultError(error)
+                let value = translation(key, in: bundle)
+                #expect(value != nil, "\(language.code): no \(key)")
+                guard let value else { continue }
+                #expect(
+                    value != error.englishFormat,
+                    "\(language.code): \(key) is still English"
+                )
+                // As above: a translation may reorder its arguments, but dropping one swallows the
+                // vault's name and leaves `String(format:)` reading past what it was given.
+                let found = placeholderCount(value)
+                let wanted = error.arguments.count
+                #expect(
+                    found == wanted,
+                    """
+                    \(language.code): \(key) takes \(wanted) arguments, its translation has \(found)
+                    """
+                )
+            }
+        }
+    }
+
     /// How many arguments a format string consumes — `%@`/`%d` counted once each, `%1$@` counted by
     /// the highest position named, and `%%` (a literal percent) not counted at all.
     private func placeholderCount(_ format: String) -> Int {

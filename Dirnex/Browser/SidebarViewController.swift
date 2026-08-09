@@ -28,6 +28,12 @@ protocol SidebarViewControllerDelegate: AnyObject {
     func sidebar(_ sidebar: SidebarViewController, didActivateServer server: ServerConnection)
     /// A saved-server's "Edit…" was chosen — re-open the connect prompt prefilled from it.
     func sidebar(_ sidebar: SidebarViewController, didEditServer server: ServerConnection)
+    /// A vault row was picked — unlock it (asking for the passphrase) and browse it in the active
+    /// pane, or, if it is already unlocked, just go there (PLAN.md §M19). One gesture for both
+    /// states because the user's intent is the same either way: *open my vault*.
+    func sidebar(_ sidebar: SidebarViewController, didActivateVault vault: VaultLocation)
+    /// A vault's "Lock" was chosen — unmount it, moving any pane standing inside it out first.
+    func sidebar(_ sidebar: SidebarViewController, didRequestLockOf vault: VaultLocation)
     /// A tag row was picked — search for the files carrying it and show the hits in a virtual
     /// results panel (PLAN.md §M6 "Finder tags: … filter chips in search"), like Finder's own
     /// sidebar tags.
@@ -70,6 +76,11 @@ final class SidebarViewController: NSViewController {
     /// section live (`SidebarViewController+Cloud`). A stored property because an extension cannot
     /// hold one, like `renderedTagNames` above.
     var cloudStorageWatcher: DirectoryWatcher?
+
+    /// Where each saved vault is mounted, by resolved image path — empty for every locked one.
+    /// Computed once per `rebuild` (`SidebarViewController+Vaults`) rather than per row, because the
+    /// answer costs a `hdiutil` spawn and every row in one pass must agree about it.
+    var vaultMountPoints: [String: String] = [:]
 
     // A focus-preserving subclass: empty-space / header clicks don't steal keyboard focus from
     // the active file pane (which would disable the responder-chain file commands). `tableView` and
@@ -141,7 +152,8 @@ final class SidebarViewController: NSViewController {
         observeFavoritesChanges()
         observeSavedSearchChanges()
         observeServerConnectionChanges()
-        observeServerConnectionActivity()
+        observeVaultChanges()
+        observeSidebarRowActivity()
         observeTagChanges()
         observeCloudStorageChanges()
         observeCloudSectionOrderChanges()
@@ -189,6 +201,14 @@ final class SidebarViewController: NSViewController {
         // Assembled in `SidebarViewController+Cloud`.
         append(.icloud, items: cloudRows(), to: &rows)
         append(.volumes, items: SidebarLocations.volumes().map(Row.volume), to: &rows)
+        // Vaults sit between the local volumes and the remote servers, because that is what one is:
+        // a local volume that has to be unlocked before it exists (PLAN.md §M19). An unlocked vault
+        // is also a real mount, but it is attached `-nobrowse` and so never appears above under
+        // Volumes — which is the point, since a row that moved between sections as it was unlocked
+        // would be the one place the user goes to unlock it.
+        let vaults = VaultStore.load().vaults
+        vaultMountPoints = Self.mountPoints(of: vaults)
+        append(.vaults, items: vaults.map(Row.vault), to: &rows)
         // Saved servers, grouped with the local volumes as the "places you browse"
         // (PLAN.md §M5 "a Servers sidebar section mirroring Searches").
         append(.servers, items: ServerConnectionStore.load().connections.map(Row.server), to: &rows)
@@ -281,20 +301,20 @@ final class SidebarViewController: NSViewController {
         rebuild()
     }
 
-    /// Refresh a server row's spinner when a connect starts or finishes — in this window or another.
+    /// Refresh a row's spinner when slow work starts or finishes — in this window or another.
     /// Unlike a store change this needs no full rebuild (the rows themselves are unchanged), so it
-    /// reloads only the server rows in place, leaving the current selection untouched.
-    private func observeServerConnectionActivity() {
+    /// reloads only the rows that can carry one in place, leaving the current selection untouched.
+    private func observeSidebarRowActivity() {
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(serverActivityChanged),
-            name: ServerConnectionActivity.didChangeNotification,
+            name: SidebarRowActivity.didChangeNotification,
             object: nil
         )
     }
 
     @objc private func serverActivityChanged() {
-        let serverRows = rows.indices.filter { rows[$0].server != nil }
+        let serverRows = rows.indices.filter { rows[$0].server != nil || rows[$0].vault != nil }
         guard !serverRows.isEmpty else { return }
         tableView.reloadData(
             forRowIndexes: IndexSet(serverRows),
@@ -323,6 +343,8 @@ final class SidebarViewController: NSViewController {
             delegate?.sidebar(self, didActivateSavedSearch: savedSearch)
         } else if let server = rows[index].server {
             delegate?.sidebar(self, didActivateServer: server)
+        } else if let vault = rows[index].vault {
+            delegate?.sidebar(self, didActivateVault: vault)
         } else if let tag = rows[index].tag {
             delegate?.sidebar(self, didActivateTag: tag)
         } else if case .allTags = rows[index] {
@@ -413,6 +435,8 @@ extension SidebarViewController: NSTableViewDelegate {
             return savedSearchCell(for: search)
         case let .server(connection):
             return serverCell(for: connection)
+        case let .vault(location):
+            return vaultCell(for: location)
         case let .tag(tag):
             return tagCell(for: tag)
         case .allTags:
@@ -459,6 +483,8 @@ extension SidebarViewController: NSMenuDelegate {
             buildSavedSearchMenu(menu, for: search)
         } else if let server = rows[row].server {
             buildServerMenu(menu, for: server)
+        } else if let vault = rows[row].vault {
+            buildVaultMenu(menu, for: vault)
         } else if let tag = rows[row].tag {
             buildTagMenu(menu, for: tag)
         }

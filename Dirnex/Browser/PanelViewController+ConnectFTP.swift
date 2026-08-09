@@ -39,11 +39,11 @@ extension PanelViewController {
         )
         let token = loadToken
         if let activityName = request.activityName {
-            ServerConnectionActivity.shared.begin(activityName)
+            SidebarRowActivity.shared.begin(activityName)
         }
         defer {
             if let activityName = request.activityName {
-                ServerConnectionActivity.shared.end(activityName)
+                SidebarRowActivity.shared.end(activityName)
             }
         }
 
@@ -56,7 +56,7 @@ extension PanelViewController {
         case .success:
             // Only persist a password once it actually authenticated, so a typo isn't cached.
             if case .password = request.authentication, !request.password.isEmpty {
-                ServerKeychain.store(password: request.password, for: location)
+                SecretKeychain.store(password: request.password, for: location)
             }
             composite.connectFTP(
                 location: location,

@@ -89,6 +89,12 @@ enum CommandBinding {
         "view.terminal": #selector(BrowserWindowController.toggleTerminalDrawer(_:)),
         "go.openInTerminal": #selector(PanelViewController.openInTerminal(_:)),
         "go.connectServer": #selector(PanelViewController.connectToServer(_:)),
+        // The window controller, not a pane: a vault spans both panes and the sidebar — the image
+        // is written where you stand, the volume opens in the other pane, and the row appears in
+        // the source list. Like `view.focusSidebar`.
+        "go.newVault": #selector(BrowserWindowController.newVault(_:)),
+        "go.unlockVault": #selector(BrowserWindowController.unlockVault(_:)),
+        "go.lockVault": #selector(BrowserWindowController.lockVault(_:)),
         "go.editLocation": #selector(PanelViewController.editLocation(_:)),
         "go.search": #selector(PanelViewController.findFiles(_:)),
         "go.saveSearch": #selector(PanelViewController.saveCurrentSearch(_:)),

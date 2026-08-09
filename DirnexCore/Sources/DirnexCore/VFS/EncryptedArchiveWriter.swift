@@ -142,7 +142,6 @@ public enum EncryptedArchiveWriter {
         onProgress: @escaping (Progress) -> Void,
         isCancelled: @escaping () -> Bool
     ) throws {
-        let encryption = settings.encryption
         let passphrase = settings.passphrase
         guard let handle = ArchiveWriteHandle() else {
             throw EncryptedArchiveError.archiveNotWritable

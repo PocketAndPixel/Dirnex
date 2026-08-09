@@ -17,9 +17,12 @@ struct SidebarSectionsTests {
         // alphabetically would move a whole section on screen without anything else looking wrong.
         // Recents and Trash are not here — they render as headerless rows the app pins above the
         // first section and below the last, outside this list (see `SidebarSection`).
+        // Vaults sits between Volumes and Servers because an unlocked vault *is* a local volume —
+        // one that has to be opened before it exists — so it reads as the last of the local places
+        // rather than the first of the remote ones (PLAN.md §M19).
         #expect(
             SidebarSection.allCases
-                == [.searches, .favorites, .icloud, .volumes, .servers, .tags]
+                == [.searches, .favorites, .icloud, .volumes, .vaults, .servers, .tags]
         )
     }
 

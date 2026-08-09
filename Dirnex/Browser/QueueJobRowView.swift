@@ -199,6 +199,11 @@ final class QueueJobRowView: NSView {
                 localized: "Change permissions of \(name)",
                 comment: "Queue row label; %@ is the item whose attributes are being changed."
             )
+        case .pack:
+            return String(
+                localized: "Encrypt \(name)",
+                comment: "Queue row label; %@ is the file being added to an encrypted archive."
+            )
         }
     }
 
@@ -223,6 +228,11 @@ final class QueueJobRowView: NSView {
             return String(
                 localized: "Change permissions…",
                 comment: "Queue row label for an attributes job with no current item yet."
+            )
+        case .pack:
+            return String(
+                localized: "Encrypt…",
+                comment: "Queue row label for an encrypted-archive job with no current item yet."
             )
         }
     }
