@@ -76,7 +76,7 @@ struct FileOperationQueueTests {
         let queue = FileOperationQueue(backend: backend)
 
         let running = await queue.enqueue(copy(tree, "a.txt", to: "dest"))
-        #expect(gate.waitForStarted(1) == 1)
+        #expect(await gate.waitForStarted(1) == 1)
 
         await queue.clearFinished() // nothing terminal yet → the running job survives
         var snapshot = await queue.snapshot()
@@ -108,13 +108,13 @@ struct FileOperationQueueTests {
         await queue.enqueue(copy(tree, "b.txt", to: "dest"))
 
         // Only the first job reaches the (blocking) clone; the second waits its turn.
-        #expect(gate.waitForStarted(1) == 1)
-        #expect(gate.waitForStarted(2, timeout: 0.3) == 1) // second held back
+        #expect(await gate.waitForStarted(1) == 1)
+        #expect(await gate.waitForStarted(2, timeout: 0.3) == 1) // second held back
         var running = await queue.snapshot().aggregate.activeJobs
         #expect(running == 1)
 
         gate.release("a.txt") // let the first finish; the second should now start
-        #expect(gate.waitForStarted(2) == 2)
+        #expect(await gate.waitForStarted(2) == 2)
         running = await queue.snapshot().aggregate.activeJobs
         #expect(running == 1) // still only one at a time
 
@@ -150,7 +150,7 @@ struct FileOperationQueueTests {
         await queue.enqueue(copy(tree, "qq/b.txt", to: "qq/dest"))
 
         // Both jobs reach the blocking clone at once — concurrency across volumes.
-        #expect(gate.waitForStarted(2) == 2)
+        #expect(await gate.waitForStarted(2) == 2)
         let running = await queue.snapshot().aggregate.activeJobs
         #expect(running == 2)
 
@@ -180,7 +180,7 @@ struct FileOperationQueueTests {
         let queue = FileOperationQueue(backend: backend)
 
         let first = await queue.enqueue(copy(tree, "pp/a.txt", to: "pp/dest"))
-        #expect(gate.waitForStarted(1) == 1)
+        #expect(await gate.waitForStarted(1) == 1)
 
         await queue.pause()
         // The running job is now marked paused…
@@ -190,10 +190,10 @@ struct FileOperationQueueTests {
 
         // …and a newly-enqueued job on an *independent* volume still won't start.
         await queue.enqueue(copy(tree, "qq/b.txt", to: "qq/dest"))
-        #expect(gate.waitForStarted(2, timeout: 0.3) == 1)
+        #expect(await gate.waitForStarted(2, timeout: 0.3) == 1)
 
         await queue.resume()
-        #expect(gate.waitForStarted(2) == 2) // now the second one launches
+        #expect(await gate.waitForStarted(2) == 2) // now the second one launches
 
         gate.releaseAll()
         await queue.waitUntilIdle()
@@ -218,7 +218,7 @@ struct FileOperationQueueTests {
 
         await queue.enqueue(copy(tree, "a.txt", to: "dest"))
         let second = await queue.enqueue(copy(tree, "b.txt", to: "dest"))
-        #expect(gate.waitForStarted(1) == 1) // first running, second waiting behind it
+        #expect(await gate.waitForStarted(1) == 1) // first running, second waiting behind it
 
         await queue.cancel(second)
         let afterCancel = await queue.snapshot()
@@ -246,7 +246,7 @@ struct FileOperationQueueTests {
         let queue = FileOperationQueue(backend: backend)
 
         let id = await queue.enqueue(copy(tree, "big.bin", to: "dest"))
-        #expect(latch.wait(forCount: 1)) // the copy is in flight, spinning on the cancel hook
+        #expect(await latch.wait(forCount: 1)) // the copy is in flight, spinning on the cancel hook
 
         await queue.cancel(id)
         await queue.waitUntilIdle()
@@ -339,19 +339,21 @@ private final class Gate: @unchecked Sendable {
         return started.count
     }
 
-    /// Block until at least `count` distinct entries have arrived (or the timeout), then
-    /// report how many did — so a test can assert both "reached N" and "stayed below N".
+    /// Wait until at least `count` distinct entries have arrived (or the timeout), then report how
+    /// many did — so a test can assert both "reached N" and "stayed below N".
+    ///
+    /// Polls with `Task.sleep` rather than blocking on the condition, for the same reason the queue
+    /// runs its engines through `BlockingWork`: an `async` test body runs on the cooperative pool,
+    /// and a wait that *blocks* there holds a worker the queue needs to start the very job being
+    /// waited for. Blocking here made the whole suite need three cooperative threads to pass, which
+    /// this Mac's 16 cores always had and a CI runner did not.
     @discardableResult
-    func waitForStarted(_ count: Int, timeout: TimeInterval = 2) -> Int {
+    func waitForStarted(_ count: Int, timeout: TimeInterval = 2) async -> Int {
         let deadline = Date().addingTimeInterval(timeout)
-        condition.lock()
-        defer { condition.unlock() }
-        while started.count < count {
-            let remaining = deadline.timeIntervalSinceNow
-            if remaining <= 0 { break }
-            condition.wait(until: Date().addingTimeInterval(min(remaining, 0.02)))
+        while startedCount < count, deadline.timeIntervalSinceNow > 0 {
+            try? await Task.sleep(for: .milliseconds(5))
         }
-        return started.count
+        return startedCount
     }
 }
 
@@ -367,17 +369,20 @@ private final class Latch: @unchecked Sendable {
         condition.unlock()
     }
 
+    /// Polls rather than blocking, for the reason spelled out on `Gate.waitForStarted`.
     @discardableResult
-    func wait(forCount target: Int, timeout: TimeInterval = 2) -> Bool {
+    func wait(forCount target: Int, timeout: TimeInterval = 2) async -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
+        while reached < target, deadline.timeIntervalSinceNow > 0 {
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        return reached >= target
+    }
+
+    private var reached: Int {
         condition.lock()
         defer { condition.unlock() }
-        while count < target {
-            let remaining = deadline.timeIntervalSinceNow
-            if remaining <= 0 { return count >= target }
-            condition.wait(until: Date().addingTimeInterval(min(remaining, 0.02)))
-        }
-        return true
+        return count
     }
 }
 

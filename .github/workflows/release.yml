@@ -63,6 +63,11 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
+        with:
+          # Full history so the existing `v*` tags are visible: the auto-bump below floors itself on
+          # them rather than on this branch's VERSION file, which only the release branch keeps
+          # current. A shallow checkout fetches no tags, so the floor would silently be no floor.
+          fetch-depth: 0
 
       - name: Resolve release values
         run: |
@@ -81,16 +86,24 @@ jobs:
             BUILD_NUMBER="${{ inputs.build_number }}"
             DRAFT="${{ inputs.draft }}"
             if [ -z "$VERSION" ]; then
-              VERSION="$(awk -F. '
-                NF == 3 && $1 ~ /^[0-9]+$/ && $2 ~ /^[0-9]+$/ && $3 ~ /^[0-9]+$/ {
-                  printf "%d.%d.%d\n", $1, $2, $3 + 1
-                  ok = 1
-                }
-                END { if (!ok) exit 1 }
-              ' VERSION)" || {
-                echo "VERSION must use numeric MAJOR.MINOR.PATCH format for automatic bump." >&2
+              # Floored on the published tags, not on this branch's VERSION file — see the same
+              # block in beta.yml for why a branch's copy is stale by construction. Without it a
+              # stable release cut from a development branch would re-issue a version the project
+              # left behind long ago.
+              VERSION="$(
+                {
+                  git tag --list 'v*' | sed 's|^v||'
+                  sed -n '1p' VERSION | tr -d '[:space:]'
+                } \
+                  | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' \
+                  | sort -t. -k1,1n -k2,2n -k3,3n \
+                  | tail -1 \
+                  | awk -F. '{ printf "%d.%d.%d\n", $1, $2, $3 + 1 }'
+              )"
+              if [ -z "$VERSION" ]; then
+                echo "Found no numeric MAJOR.MINOR.PATCH in VERSION or in the release tags." >&2
                 exit 1
-              }
+              fi
             fi
             TAG_NAME="v$VERSION"
           fi

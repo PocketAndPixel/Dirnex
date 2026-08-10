@@ -100,6 +100,37 @@ at build time.
   whatever the caller's threading — or funnel through
   `Thread.isMainThread ? MainActor.assumeIsolated : Task { @MainActor }` when the framework
   documents main-thread-only delivery.
+- **`Task.detached` is not a thread of its own — it is the *cooperative pool*, whose width is the
+  machine's core count — so blocking inside one is spending a resource the whole process shares.**
+  `FileOperationQueue` ran each synchronous engine in a detached task under a comment reading "run
+  it detached so the actor stays responsive": true, and not the same claim. Each running job then
+  held a cooperative worker for the length of the copy, and `OperationControl.checkpoint()` holds
+  it **indefinitely** while the queue is paused — so a few concurrent jobs can occupy every
+  cooperative thread the process has and stall `async` work with nothing to do with moving bytes.
+  Send blocking work to a global `DispatchQueue` (`BlockingWork`) for exactly the property usually
+  held against it: it overcommits, growing its thread count when its threads block, which is what
+  the cooperative pool deliberately will not do.
+  - **It fails as a *test* first, on someone else's machine, and reads as a broken feature.** The
+    symptom was a CI release build failing on `"jobs sharing a volume run one at a time, in order"`
+    — a queued job that simply never started within its 2 s wait. Nothing about the message points
+    at threading, and it is invisible on a development Mac: the suite needed **three** cooperative
+    threads to pass (the test's own blocking wait, the running job, the one starting), which 16
+    cores always had spare and a CI runner did not. The same run's performance budgets showed the
+    runner at roughly half the per-core speed, so "it is just slower" is the tempting and wrong
+    reading.
+  - **`LIBDISPATCH_COOPERATIVE_POOL_STRICT=1` is the instrument**, and it converts this from a
+    flake into a measurement: forcing the pool to one thread failed all three scheduling tests on
+    demand, and the fix made them green 3/3 — and 20× faster (6.6 s → 0.32 s), since what the old
+    version spent was timeout. Reach for it whenever a concurrency test passes locally and fails on
+    a narrower machine. The negative control is worth running in the same session: neutering
+    `BlockingWork` back to an inline call failed six assertions immediately.
+  - **The compiler catches the caller's half and not the callee's, which is why only one half of
+    this shipped.** Swift 6 refuses `Thread.sleep`, `NSCondition.lock`/`unlock` and friends
+    *directly* inside an `async` function ("unavailable from asynchronous contexts") — but a
+    **synchronous helper** that blocks, called from async, compiles silently. That is exactly the
+    shape the gate's `waitForStarted` had. When a wait must live in a test double, poll with
+    `await Task.sleep`; the existing house rule under Testing said so already, for a different
+    reason.
 
 ## Testing
 
@@ -2304,6 +2335,19 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   floored at `max(run_number, highest <sparkle:version> in the published feed + 1)` — the feed is
   the one number line all releases share, whatever started them. For the same reason,
   `github.event_name` reads as the caller's under `workflow_call`; use **`github.ref_type`**.
+- **The `VERSION` file is *branch-local state*, so it is only current on the branch releases are cut
+  from — and the same "one number line" argument that fixed build numbers fixes this too.**
+  `release.yml` pushes its `Release vX.Y.Z` commit with `git push origin "HEAD:${GITHUB_REF_NAME}"`,
+  i.e. to whichever branch ran; nothing carries it back. Dev therefore still read **0.0.1** while
+  stable was **1.0.10**, and the first beta ever cut from Dev previewed `0.0.2`. It would not have
+  been rejected, which is the dangerous part: the build number is already floored from the feed, so
+  Sparkle ranks the item correctly and *offers* it — presenting the user a version going backwards.
+  Both workflows now floor the base on `max(highest published vX.Y.Z tag, VERSION) + 1 patch`.
+  - `release.yml`'s checkout needed **`fetch-depth: 0`** for it; a shallow checkout fetches no tags,
+    so the floor would silently have been no floor at all. `beta.yml`'s resolve job already had it.
+  - It hid for eleven releases because every earlier beta was cut from `main`, where the file is
+    current by construction. A value that is only correct on one branch is a bug waiting for the
+    first person to use another one.
 - **Sparkle ranks by `CFBundleVersion`**, which must stay globally monotonic *across* channels or
   an old beta outranks a new stable.
 - **One "no" to Sparkle's first-run prompt disables update checking forever, silently.** The prompt

@@ -22,8 +22,9 @@ import Foundation
 ///   aggregate byte total, throughput, and ETA — for the queue bar the app draws.
 ///
 /// It lives in `DirnexCore` because it drives the byte-moving engine ("if it touches
-/// bytes, it lives in DirnexCore and has tests" — §2). The heavy work runs on detached
-/// tasks; the actor only bookkeeps, so its methods never block on I/O.
+/// bytes, it lives in DirnexCore and has tests" — §2). The heavy work runs on threads of
+/// its own (`BlockingWork`, never the cooperative pool); the actor only bookkeeps, so its
+/// methods never block on I/O.
 public actor FileOperationQueue {
     private let backend: any VFSBackend
     private let maxConcurrent: Int
@@ -156,50 +157,54 @@ public actor FileOperationQueue {
         let backend = backend
         let (progressStream, progressContinuation) = AsyncStream<OperationProgress>.makeStream()
 
-        // The engine is synchronous and blocks its thread; run it detached so the actor
-        // stays responsive. `isCancelled` is the job's control hook — it reports
-        // cancellation *and* blocks the copy while the queue is paused.
+        // The engine is synchronous and blocks its thread, so it runs through `BlockingWork` — a
+        // thread it is allowed to block, which a detached task is *not*: see that type for why the
+        // cooperative pool is the wrong place and what it cost. `isCancelled` is the job's control
+        // hook — it reports cancellation *and* blocks the copy while the queue is paused, which is
+        // exactly the indefinite hold the pool must never be asked to absorb.
         //
         // Which engine is the *only* thing the kind decides here. Everything else the queue does —
         // the volume rule, pause, cancel, the aggregate bar — is engine-agnostic by construction,
         // which is why a checksum could join without a scheduler of its own.
         let runTask = Task.detached(priority: .userInitiated) { () -> OperationReport in
-            let report: OperationReport
-            switch operation.kind {
-            case .copy, .move:
-                report = CopyEngine.run(
-                    operation,
-                    using: backend,
-                    conflictPolicy: policy,
-                    resolveConflict: resolveConflict,
-                    onError: onError,
-                    onProgress: { progressContinuation.yield($0) },
-                    isCancelled: { control.checkpoint() }
-                )
-            case let .attributes(job):
-                report = AttributeApplyRunner.run(
-                    job,
-                    sources: operation.sources,
-                    using: backend,
-                    onProgress: { progressContinuation.yield($0) },
-                    isCancelled: { control.checkpoint() }
-                )
-            case .checksum:
-                report = ChecksumRunner.run(
-                    operation,
-                    using: backend,
-                    onProgress: { progressContinuation.yield($0) },
-                    isCancelled: { control.checkpoint() }
-                )
-            case .pack:
-                report = PackRunner.run(
-                    operation,
-                    onProgress: { progressContinuation.yield($0) },
-                    isCancelled: { control.checkpoint() }
-                )
+            await BlockingWork.run {
+                let report: OperationReport
+                switch operation.kind {
+                case .copy, .move:
+                    report = CopyEngine.run(
+                        operation,
+                        using: backend,
+                        conflictPolicy: policy,
+                        resolveConflict: resolveConflict,
+                        onError: onError,
+                        onProgress: { progressContinuation.yield($0) },
+                        isCancelled: { control.checkpoint() }
+                    )
+                case let .attributes(job):
+                    report = AttributeApplyRunner.run(
+                        job,
+                        sources: operation.sources,
+                        using: backend,
+                        onProgress: { progressContinuation.yield($0) },
+                        isCancelled: { control.checkpoint() }
+                    )
+                case .checksum:
+                    report = ChecksumRunner.run(
+                        operation,
+                        using: backend,
+                        onProgress: { progressContinuation.yield($0) },
+                        isCancelled: { control.checkpoint() }
+                    )
+                case .pack:
+                    report = PackRunner.run(
+                        operation,
+                        onProgress: { progressContinuation.yield($0) },
+                        isCancelled: { control.checkpoint() }
+                    )
+                }
+                progressContinuation.finish()
+                return report
             }
-            progressContinuation.finish()
-            return report
         }
 
         // Marshal progress and the final report back onto the actor. Detached (not an
