@@ -109,10 +109,19 @@ extension BrowserWindowController {
     /// `body` runs only on success: a cancelled passphrase prompt, or a failure that has already
     /// raised its own alert, simply ends here.
     func withUnlockedVault(
-        _ vault: VaultLocation,
+        _ requested: VaultLocation,
         using passphrase: ArchivePassphrase? = nil,
         then body: @escaping @MainActor (String) -> Void
     ) {
+        // Resolve against the store before anything else. Two entry points *construct* a
+        // `VaultLocation` from a file under the cursor — the Unlock command and the pane's Enter —
+        // and such a value carries the defaults for everything that is not addressing: today
+        // `showsInFinder`, tomorrow whatever else a vault remembers. Since a successful attach ends
+        // in `VaultStore.remember`, which replaces the saved entry wholesale, unlocking a vault from
+        // the pane rather than from the sidebar would silently reset its settings. One line here
+        // covers every caller; correcting it inside `remember` would instead make the setting
+        // impossible to turn back off.
+        let vault = VaultStore.load().vault(atPath: requested.imagePath) ?? requested
         if let point = DiskImageMount.isMounted(
             imageAtPath: vault.imagePath,
             in: DiskImageRunner.attachedImages()
@@ -162,11 +171,16 @@ extension BrowserWindowController {
     ) {
         SidebarRowActivity.shared.begin(vault.resolvedImagePath)
         let imagePath = vault.imagePath
+        let showsInFinder = vault.showsInFinder
         Task { [weak self] in
             defer { SidebarRowActivity.shared.end(vault.resolvedImagePath) }
             do {
                 let mounted = try await Task.detached(priority: .userInitiated) {
-                    try DiskImageRunner.attach(atPath: imagePath, passphrase: passphrase)
+                    try DiskImageRunner.attach(
+                        atPath: imagePath,
+                        passphrase: passphrase,
+                        showingInFinder: showsInFinder
+                    )
                 }.value
                 guard let self else { return }
                 // The volume's real name is only knowable once it is mounted, so this is where a

@@ -23,9 +23,42 @@ public struct VaultLocation: Sendable, Hashable, Codable {
     /// by its file name, which is the one thing a user may deliberately have made unrevealing.
     public var volumeName: String
 
-    public init(imagePath: String, volumeName: String) {
+    /// Whether this vault's volume should be visible to the rest of the Mac while it is unlocked —
+    /// Finder's sidebar, the desktop, every app's open panel.
+    ///
+    /// Off by default, and per-vault rather than a global preference, because the two questions have
+    /// different answers for the same person: a vault holding scans of documents is one you unlock in
+    /// Dirnex and want to attach to an email from Mail, while the one holding the thing you made it
+    /// for should not be listed anywhere just because you happened to open it. A single switch in
+    /// Settings would force one answer onto both.
+    ///
+    /// It is the *default* that carries the argument, and it stays `false`: ``DiskImageArguments``
+    /// attaches `-nobrowse`, so a vault is private unless this vault was told otherwise. Turning it on
+    /// is a decision someone made about one vault; leaving it alone can never quietly publish one.
+    public var showsInFinder: Bool
+
+    public init(imagePath: String, volumeName: String, showsInFinder: Bool = false) {
         self.imagePath = imagePath
         self.volumeName = volumeName
+        self.showsInFinder = showsInFinder
+    }
+
+    /// Decoded by hand for one reason: **a synthesized decoder throws on a key that is not there.**
+    ///
+    /// Every vault saved before this property existed is JSON with no `showsInFinder` in it, and
+    /// `SavedVaults` is decoded through a `try?` — so the synthesized `decode` would throw, the `try?`
+    /// would hand back an empty list, and the user's entire Vaults section would silently disappear
+    /// on first launch after the update, orphaning a Keychain item per vault. Nothing would log, and
+    /// the sidebar would look like a feature that was removed rather than like a bug.
+    ///
+    /// `decodeIfPresent` with the default is the whole fix. It is worth spelling out rather than
+    /// trusting the property's `= false` initializer: a default in the declaration does **not** make
+    /// the synthesized decoder tolerate a missing key, which is the trap this exists to avoid.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        imagePath = try container.decode(String.self, forKey: .imagePath)
+        volumeName = try container.decode(String.self, forKey: .volumeName)
+        showsInFinder = try container.decodeIfPresent(Bool.self, forKey: .showsInFinder) ?? false
     }
 
     /// The vault's file name, for a display that wants to say where it is rather than what it is
@@ -115,6 +148,22 @@ public struct SavedVaults: Sendable, Equatable, Codable {
     public mutating func remove(imagePath: String) -> Bool {
         guard let index = index(ofPath: imagePath) else { return false }
         vaults.remove(at: index)
+        return true
+    }
+
+    /// Set whether the vault at `imagePath` shows in Finder while unlocked. Returns whether there was
+    /// a vault to change and the value actually differed, so a caller can skip a needless write.
+    ///
+    /// A targeted mutator rather than a read-modify-``add(_:)``, because `add` replaces the whole
+    /// entry: a caller that rebuilt a `VaultLocation` to flip one flag would carry whatever
+    /// `volumeName` it happened to have, which is the field the unlock path corrects from the real
+    /// mount and the rename path writes.
+    @discardableResult
+    public mutating func setShowsInFinder(_ shows: Bool, forPath imagePath: String) -> Bool {
+        guard let index = index(ofPath: imagePath), vaults[index].showsInFinder != shows else {
+            return false
+        }
+        vaults[index].showsInFinder = shows
         return true
     }
 

@@ -148,7 +148,25 @@ non-empty folder, which hid three folders Finder shows.
 ### After M19
 
 Nothing is in flight: M19 closed on 2026-08-09 and no milestone has opened behind it. Three things
-landed between it and M18, which closed on 2026-08-07, and one after it.
+landed between it and M18, which closed on 2026-08-07, and two after it.
+
+**2026-08-11 — a vault can be shown in Finder, per vault.** Dirnex attaches `-nobrowse`, so an
+unlocked vault is invisible to the rest of the Mac — right as a default, and wrong as a rule for
+everyone's every vault: a vault of scanned documents is one you unlock here and then want to attach
+to an email. So it is a checked item on the vault's own row (`VaultLocation.showsInFinder`), off
+unless someone turned it on, rather than one switch in Settings forcing one answer onto every vault.
+Toggling it on an *open* vault applies immediately — `mount -u -o browse` was measured to work
+unprivileged on a mounted encrypted sparsebundle — so it needs no lock-and-unlock round trip; a
+read-only volume refuses that remount cleanly (exit 66, flags untouched) and is told it will apply
+next unlock, which is true either way since the stored setting is what the next attach reads. Three
+findings changed the code, all in docs/NOTES.md ▸ Encryption: a bare `-o browse` **drops
+`MNT_IGNORE_OWNERSHIP`**, so the whole flags word is re-stated from `statfs` and only the browse bit
+changes; a browsable vault is enumerated by `mountedVolumeURLs` like any other mount, so it appeared
+under **Volumes as well as Vaults** — an invariant `-nobrowse` used to hold for free, now a rule with
+a test; and a new field on a persisted `Codable` value needed a hand-written `init(from:)`, because
+the synthesized decoder throws on a missing key and would have emptied every existing user's Vaults
+section behind a `try?`. Verified live end to end, both directions, with the mount flags as the
+judge rather than a screenshot.
 
 **2026-08-10 — a vault can be renamed.** The sidebar's vault row grew a Rename… item, and F2 on a
 selected vault row does the same thing. It renames the **volume**, not the row: `volumeName` is

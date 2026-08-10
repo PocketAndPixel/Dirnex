@@ -235,6 +235,29 @@ public enum SidebarLocations {
         }
     }
 
+    /// `volumes` with any vault's own volume removed — the sidebar's Volumes section, given where
+    /// the unlocked vaults are mounted.
+    ///
+    /// A vault has its own section, and it must appear in exactly one: a row that moved between
+    /// sections as it was unlocked would be the one place the user goes to unlock it, and a Volumes
+    /// duplicate carries a plain eject button that detaches the image with none of the bookkeeping
+    /// Lock does.
+    ///
+    /// This used to be true for free. A vault is attached `-nobrowse`, and `mountedVolumeURLs(
+    /// options: [.skipHiddenVolumes])` skips a hidden volume — so the sections could not overlap
+    /// however they were assembled. ``VaultLocation/showsInFinder`` is exactly the withdrawal of
+    /// that flag, which makes the vault's volume browsable and therefore *enumerable* (verified
+    /// against a live one: it came back from `mountedVolumeURLs` the moment it was shown). So the
+    /// rule now needs stating, and stating somewhere it can be tested — the shape docs/NOTES.md
+    /// keeps recording, where one question has two spellings and the compiler checks neither.
+    public static func hidingVaults(
+        in volumes: [MountedVolume],
+        mountedAt vaultMountPoints: Set<String>
+    ) -> [MountedVolume] {
+        guard !vaultMountPoints.isEmpty else { return volumes }
+        return volumes.filter { !vaultMountPoints.contains($0.path.path) }
+    }
+
     /// The standard home subfolders, in the order Finder lists them. One table, read by both
     /// `favorites()` and `standardKind(for:)`, so an entry can never be enumerated under a kind
     /// the classifier then fails to recognize.

@@ -43,6 +43,18 @@ enum VaultStore {
         save(saved)
     }
 
+    /// Record whether `vault` should be visible outside Dirnex while it is unlocked, writing only if
+    /// the answer actually changed.
+    ///
+    /// Stored per vault rather than as one preference, and stored *here* rather than being derived
+    /// from the live mount: a locked vault has no volume to ask, and the setting has to survive being
+    /// locked or it could only ever be set while the vault was open.
+    static func setShowsInFinder(_ shows: Bool, for vault: VaultLocation) {
+        var saved = load()
+        guard saved.setShowsInFinder(shows, forPath: vault.imagePath) else { return }
+        save(saved)
+    }
+
     /// Forget `vault` **and** its stored passphrase.
     ///
     /// The Keychain item goes with the row because nothing references it once the vault is gone, and

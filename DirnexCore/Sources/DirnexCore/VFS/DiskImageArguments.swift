@@ -93,8 +93,16 @@ public enum DiskImageArguments {
     /// and a vault that silently appears in every other app's open panel is not what "unlock in my
     /// file manager" means. `-plist` makes the result parseable by ``DiskImageMount`` rather than
     /// scraped from prose.
-    public static func attach(atPath path: String) -> [String] {
-        ["attach", "-stdinpass", "-nobrowse", "-plist", path]
+    ///
+    /// `showingInFinder` withdraws that flag for one vault (``VaultLocation/showsInFinder``). It is a
+    /// parameter with a private default rather than two functions, so a call site that says nothing
+    /// gets the private behavior: the failure that matters here is a vault published by omission, and
+    /// this is the shape where forgetting cannot cause it.
+    public static func attach(atPath path: String, showingInFinder: Bool = false) -> [String] {
+        var argv = ["attach", "-stdinpass"]
+        if !showingInFinder { argv.append("-nobrowse") }
+        argv += ["-plist", path]
+        return argv
     }
 
     /// Locking a vault: unmount and detach it.

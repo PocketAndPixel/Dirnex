@@ -33,6 +33,10 @@ enum DiskImageRunner {
     /// The volume inside the image belongs to `diskutil`, not to `hdiutil` — the one place a vault
     /// reaches for a second tool.
     private static let volumeExecutable = URL(fileURLWithPath: "/usr/sbin/diskutil")
+    /// Changing a mounted volume's options in place is `mount(8)`'s alone: `hdiutil` decides
+    /// `-nobrowse` at attach time and has no verb for a volume already open, and `diskutil` has none
+    /// either. Measured to work unprivileged — see ``DiskVolumeArguments/remount(mountPoint:flags:showingInFinder:)``.
+    private static let mountExecutable = URL(fileURLWithPath: "/sbin/mount")
 
     // MARK: - Create
 
@@ -88,11 +92,19 @@ enum DiskImageRunner {
     // MARK: - Unlock / lock
 
     /// Attach `path` and mount its volume, returning where it landed.
-    static func attach(atPath path: String, passphrase: ArchivePassphrase) throws
-        -> DiskImageMount.Mounted {
+    ///
+    /// `showingInFinder` is the vault's own ``VaultLocation/showsInFinder``, which decides whether
+    /// `-nobrowse` goes on the command line. It defaults to the private answer for the reason
+    /// `DiskImageArguments.attach` documents: the mistake worth designing against is a vault
+    /// published because a call site forgot to say anything.
+    static func attach(
+        atPath path: String,
+        passphrase: ArchivePassphrase,
+        showingInFinder: Bool = false
+    ) throws -> DiskImageMount.Mounted {
         let name = (path as NSString).lastPathComponent
         let run = try Run(
-            arguments: DiskImageArguments.attach(atPath: path),
+            arguments: DiskImageArguments.attach(atPath: path, showingInFinder: showingInFinder),
             passphrase: passphrase
         )
         let result = run.drainToEnd()
@@ -127,6 +139,65 @@ enum DiskImageRunner {
         ) {
             throw error
         }
+    }
+
+    // MARK: - Visibility
+
+    /// What happened when a vault that is **already unlocked** was shown or hidden.
+    enum VisibilityChange: Equatable {
+        /// The live volume was remounted; Finder's sidebar reflects it now.
+        case applied
+        /// It was already like that.
+        case unnecessary
+        /// The volume could not be remounted in place, so the saved setting will be honored by the
+        /// next attach instead. Not an error: the setting is stored either way, and the only thing
+        /// the user loses is immediacy.
+        case takesEffectOnNextUnlock
+    }
+
+    /// Show or hide the volume mounted at `mountPoint` **without unmounting it**, so toggling the
+    /// setting on an open vault does not force a lock-and-unlock round trip.
+    ///
+    /// `DiskVolumeArguments.remount` is the decision and carries the measurements; this is the
+    /// syscall and the spawn. Two things worth stating at this level:
+    ///
+    /// - **The current flags have to be read first**, because a remount keeps only the options it is
+    ///   handed — measured, a bare `-o browse` also cleared `MNT_IGNORE_OWNERSHIP`. `statfs` is the
+    ///   read; there is no `mount` output to parse for it.
+    /// - **A failure is reported as "next time", not as an error.** A read-only volume refuses the
+    ///   remount outright (exit 66) and leaves its flags untouched, and any other refusal leaves them
+    ///   untouched too — while the saved setting is what the next attach reads. So there is nothing
+    ///   half-applied to explain and no second failure vocabulary to translate; the honest sentence
+    ///   is the same one in both cases.
+    static func setVisibility(
+        mountPoint: String,
+        showingInFinder: Bool
+    ) -> VisibilityChange {
+        guard let flags = mountFlags(at: mountPoint) else { return .takesEffectOnNextUnlock }
+        switch DiskVolumeArguments.remount(
+            mountPoint: mountPoint,
+            flags: flags,
+            showingInFinder: showingInFinder
+        ) {
+        case .unnecessary:
+            return .unnecessary
+        case .takesEffectOnNextUnlock:
+            return .takesEffectOnNextUnlock
+        case let .arguments(argv):
+            guard let run = try? Run(
+                executable: mountExecutable,
+                arguments: argv,
+                launchFailure: .couldNotUnlock
+            ) else { return .takesEffectOnNextUnlock }
+            return run.drainToEnd().exitCode == 0 ? .applied : .takesEffectOnNextUnlock
+        }
+    }
+
+    /// The volume's live mount flags, or `nil` if it cannot be stat'd.
+    private static func mountFlags(at mountPoint: String) -> MountFlags? {
+        var buffer = statfs()
+        guard statfs(mountPoint, &buffer) == 0 else { return nil }
+        return MountFlags(rawValue: buffer.f_flags)
     }
 
     // MARK: - Rename

@@ -36,6 +36,93 @@ public enum DiskVolumeArguments {
     public static func rename(mountPoint: String, to name: String) -> [String] {
         ["rename", mountPoint, name]
     }
+
+    /// What to do about ``VaultLocation/showsInFinder`` for a vault that is **already unlocked**.
+    public enum Remount: Equatable, Sendable {
+        /// The volume is already as the user asked. Nothing to spawn.
+        case unnecessary
+        /// Run `/sbin/mount` with these arguments.
+        case arguments([String])
+        /// It cannot be changed in place; it will take effect the next time the vault is unlocked.
+        case takesEffectOnNextUnlock
+    }
+
+    /// Flip a mounted volume between visible and hidden **without unmounting it**, so toggling the
+    /// setting on an open vault does not make the user lock and unlock it.
+    ///
+    /// ## Measured on macOS 26, against a real encrypted APFS sparsebundle
+    ///
+    /// `mount -u -o browse <point>` works **unprivileged** on a volume `hdiutil` attached with
+    /// `-nobrowse`, and the volume appears in Finder's Locations immediately. `nobrowse` puts it back.
+    /// Two results decide the shape of everything below:
+    ///
+    /// - **A remount keeps only the options it is given.** A bare `-o browse` cleared
+    ///   `MNT_IGNORE_OWNERSHIP` along with `MNT_DONTBROWSE` (`0x04B09218` → `0x04809218`), so a vault
+    ///   that ignored ownership silently started enforcing it — every file in it owned by a uid from
+    ///   whichever Mac wrote it. `MNT_NOSUID` and `MNT_NODEV` survived on their own, but relying on
+    ///   that is relying on which flags this version happens to keep. So the whole current flags word
+    ///   is re-stated, and the *only* bit this changes is the browse one.
+    /// - **A read-only volume cannot be remounted unprivileged at all** — `mount_apfs: volume could
+    ///   not be mounted: Permission denied`, exit 66 — and it fails clean: the flags word was
+    ///   byte-identical afterwards (`0x04B09219`), with no half-applied state. Hence
+    ///   ``Remount/takesEffectOnNextUnlock`` rather than an error: the setting is still saved, and
+    ///   `-nobrowse` is decided again at the next attach, where it will be honored.
+    public static func remount(
+        mountPoint: String,
+        flags: MountFlags,
+        showingInFinder: Bool
+    ) -> Remount {
+        guard flags.contains(.doNotBrowse) == showingInFinder else { return .unnecessary }
+        guard !flags.contains(.readOnly) else { return .takesEffectOnNextUnlock }
+        var wanted = flags
+        wanted.remove(.doNotBrowse)
+        let options = [showingInFinder ? "browse" : "nobrowse"] + wanted.remountOptions
+        return .arguments(["-u", "-o", options.joined(separator: ","), mountPoint])
+    }
+}
+
+/// The `statfs` `f_flags` bits a remount has to preserve, named.
+///
+/// Only the ones with a `mount -o` spelling are here — the rest of the word (`MNT_LOCAL`,
+/// `MNT_JOURNALED` and friends) describes what the file system *is* rather than how it was asked to
+/// be mounted, and re-stating those is neither possible nor wanted.
+public struct MountFlags: OptionSet, Sendable, Hashable {
+    public let rawValue: UInt32
+
+    public init(rawValue: UInt32) {
+        self.rawValue = rawValue
+    }
+
+    /// `MNT_RDONLY`.
+    public static let readOnly = MountFlags(rawValue: 0x0000_0001)
+    /// `MNT_NOEXEC`.
+    public static let noExecute = MountFlags(rawValue: 0x0000_0004)
+    /// `MNT_NOSUID`.
+    public static let noSetUID = MountFlags(rawValue: 0x0000_0008)
+    /// `MNT_NODEV`.
+    public static let noDevices = MountFlags(rawValue: 0x0000_0010)
+    /// `MNT_DONTBROWSE` — the one bit this whole file exists to change.
+    public static let doNotBrowse = MountFlags(rawValue: 0x0010_0000)
+    /// `MNT_IGNORE_OWNERSHIP`, spelled `noowners`. The flag a bare remount was measured to drop.
+    public static let ignoreOwnership = MountFlags(rawValue: 0x0020_0000)
+    /// `MNT_NOATIME`.
+    public static let noAccessTime = MountFlags(rawValue: 0x1000_0000)
+
+    /// The `-o` options that re-state this set, in a fixed order so the argv is testable.
+    ///
+    /// ``MountFlags/readOnly`` is deliberately absent: a read-only volume never reaches here (its
+    /// remount is refused above), and emitting `rdonly` for one that did would be asking for the
+    /// privileged operation that fails.
+    var remountOptions: [String] {
+        let spellings: [(MountFlags, String)] = [
+            (.noExecute, "noexec"),
+            (.noSetUID, "nosuid"),
+            (.noDevices, "nodev"),
+            (.ignoreOwnership, "noowners"),
+            (.noAccessTime, "noatime")
+        ]
+        return spellings.filter { contains($0.0) }.map(\.1)
+    }
 }
 
 /// What a volume may be called.

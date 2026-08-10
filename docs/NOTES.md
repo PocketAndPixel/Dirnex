@@ -1932,6 +1932,51 @@ overturned the decision the milestone opened on.
   `hdiutil` answers with the `/private` spelling while the user says `/tmp`, so the comparison is
   unavoidable; fold the three firmlink prefixes in string space instead. Generalizes past vaults: any
   path used as a persistent key needs an existence-independent normalizer.
+- **`-nobrowse` can be withdrawn from a *mounted* volume, unprivileged — but a remount keeps only the
+  options it is handed.** `mount -u -o browse <point>` puts an unlocked vault into Finder's Locations
+  immediately, and `nobrowse` puts it back, with no unmount and no passphrase; that is what makes
+  "show this one vault in Finder" a per-vault setting rather than something that only applies at the
+  next unlock. The trap is the second half, and it is silent: a bare `-o browse` took the volume's
+  flags from `0x04B09218` to `0x04809218` — clearing **`MNT_IGNORE_OWNERSHIP`** along with
+  `MNT_DONTBROWSE`, so a vault that ignored ownership quietly started enforcing it, with every file in
+  it owned by a uid from whichever Mac wrote it. `MNT_NOSUID` and `MNT_NODEV` happened to survive,
+  which is exactly the kind of "it seems fine" that makes this ship. Re-state the whole current flags
+  word (read it with `statfs`, not by parsing `mount`) and change only the browse bit.
+  - **A read-only volume refuses the remount entirely and fails clean**: `mount_apfs: volume could not
+    be mounted: Permission denied`, exit 66, flags byte-identical afterwards. So it needs no error
+    vocabulary of its own — the setting is stored either way and the next attach honors it, which is
+    the honest sentence for any refusal here.
+  - **The measurement that mattered was of the *wrong* reading first.** `mount`'s own output line was
+    read by eye and reported as dropping `nodev,nosuid`; the `statfs` probe showed those surviving and
+    `noowners` going instead. Same family as this file's "don't derive geometry from a screenshot" —
+    a flags word is a number, so read the number.
+- **Making a vault browsable puts it in `mountedVolumeURLs` too, so the sidebar lists it twice.**
+  `Places.volumes()` enumerates with `.skipHiddenVolumes`, and `-nobrowse` is what made a vault
+  invisible to it — so "a vault never appears under Volumes" was true *by construction* for the whole
+  life of the feature, and `SidebarViewController`'s own comment said so. The moment one vault can be
+  shown, that becomes a rule somebody has to keep: verified live, `/Volumes/SecDocs` came back from
+  `mountedVolumeURLs` the instant the setting went on. The duplicate is worse than untidy — the
+  Volumes row carries a plain eject button that detaches the image with none of Lock's bookkeeping
+  (evicting the panes standing inside it, and dropping what `VaultPrivacy` must forget). Two general
+  shapes worth carrying: **an invariant held by a flag becomes a bug the day the flag becomes a
+  setting**, and the tell is a comment explaining why two things *cannot* collide; and the fix has to
+  resolve the vault mount points **before** the section that filters on them, which is an ordering no
+  test of the filter can see.
+- **A new field on a persisted `Codable` value is a migration, and Swift's synthesized decoder throws
+  on a missing key whatever default the property declares.** `SavedVaults` is loaded through a
+  `try?`, so adding `showsInFinder` without a hand-written `init(from:)` would have decoded every
+  existing user's vault list to **nothing** — the sidebar's Vaults section empty on first launch after
+  the update, every vault's Keychain item orphaned, nothing logged, and it reads as a feature that was
+  removed. `decodeIfPresent` is the whole fix; the property's `= false` initializer does *not* do it,
+  which is the part that looks like it should. Worth a test with real legacy JSON in it, and worth
+  running the negative control — neutering the decoder failed it with `keyNotFound`, which is the
+  proof the test is about this and not about nothing.
+  - The same edit has a quieter twin one layer up: a store's `add` that **replaces** an entry will
+    reset any field a caller didn't know to carry. Two of the unlock entry points *construct* a
+    `VaultLocation` from the file under the cursor, so unlocking from the pane rather than the sidebar
+    would have silently cleared the setting. Resolve against the store once, in the funnel every
+    caller already goes through, rather than teaching `add` to merge — a merge would make the setting
+    impossible to turn back *off*.
 - **What remembers an unlocked vault's file names is *this app*, not the OS caches everyone worries
   about.** PLAN.md §6 named three leaks to warn users about — Spotlight's index, Quick View's caches,
   the thumbnail store — and measuring all three found nothing, while the thing nobody had named was
