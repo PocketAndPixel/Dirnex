@@ -109,11 +109,11 @@ struct QuickViewHTMLPreviewTests {
     /// went the rule that a link cannot navigate the preview somewhere else. The `async` variant is
     /// the witness Swift 6 recognizes, and it emits the requirement's own selector.
     @Test("the web view really answers the per-navigation policy callback")
-    func answersThePolicyCallback() throws {
+    func answersThePolicyCallback() async throws {
         let tree = try TempDirectory()
         defer { tree.cleanup() }
         let url = try tree.write("page.html", contents: "<p>hi</p>")
-        let preview = try Self.loadedRendered(url)
+        let preview = try await Self.loadedRendered(url)
         let surface = try #require(preview.webSurface)
         // Spelled out, not `#selector(WKNavigationDelegate.webView(_:decidePolicyFor:preferences:
         // decisionHandler:))`: that expression resolves against the *protocol*, so it keeps naming
@@ -127,11 +127,11 @@ struct QuickViewHTMLPreviewTests {
     // MARK: - Where each style lands
 
     @Test("an HTML file in source style shows the text view")
-    func sourceStyleUsesTheTextBackend() throws {
+    func sourceStyleUsesTheTextBackend() async throws {
         let tree = try TempDirectory()
         defer { tree.cleanup() }
         let url = try tree.write("page.html", contents: "<p>hi</p>")
-        let preview = try QuickViewTextPreviewTests.loaded(url, style: .source)
+        let preview = try await QuickViewTextPreviewTests.loaded(url, style: .source)
 
         #expect(preview.webSurface == nil, "the web backend should not have been built")
         let hit = try #require(preview.hitTest(NSPoint(x: 200, y: 200)))
@@ -142,11 +142,11 @@ struct QuickViewHTMLPreviewTests {
     /// a surface that swallows the click is a page that cannot be scrolled — which is what Quick
     /// Look's HTML preview was.
     @Test("an HTML file in rendered style shows a web view that keeps the mouse")
-    func renderedStyleUsesTheWebBackend() throws {
+    func renderedStyleUsesTheWebBackend() async throws {
         let tree = try TempDirectory()
         defer { tree.cleanup() }
         let url = try tree.write("page.html", contents: "<p>hi</p>")
-        let preview = try Self.loadedRendered(url)
+        let preview = try await Self.loadedRendered(url)
 
         #expect(preview.textSurface?.isHidden != false, "the text backend should have stood down")
         let hit = try #require(preview.hitTest(NSPoint(x: 200, y: 200)))
@@ -167,7 +167,7 @@ struct QuickViewHTMLPreviewTests {
     /// A surface showing `url` as a rendered page. Slower than the text helper on purpose: the web
     /// backend is built asynchronously, because the block-remote content rules have to compile
     /// before there is anything safe to build.
-    private static func loadedRendered(_ url: URL) throws -> QuickViewPreviewView {
+    private static func loadedRendered(_ url: URL) async throws -> QuickViewPreviewView {
         let preview = QuickViewPreviewView(backingColor: .textBackgroundColor, header: .none)
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 400, height: 400),
@@ -184,12 +184,18 @@ struct QuickViewHTMLPreviewTests {
             preview.bottomAnchor.constraint(equalTo: content.bottomAnchor)
         ])
         preview.show(url, style: .rendered)
-        for _ in 0..<300 where preview.webSurface == nil {
-            RunLoop.current.run(until: Date().addingTimeInterval(0.01))
+        // Awaited, not spun: `RunLoop.current.run(until:)` pumps the *main* run loop, which services
+        // AppKit's deferred "terminate after last window closed" timer — with the host mid-launch and
+        // no window visible yet, that quit the test host mid-suite (`AppDelegate` carries the full
+        // account). It is also the weaker wait, since a spin never lets the rule compilation's
+        // continuation land (docs/NOTES.md ▸ Testing).
+        for _ in 0..<600 {
+            if preview.webSurface?.isHidden == false { break }
+            try? await Task.sleep(for: .milliseconds(5))
         }
-        // And a little longer for the page itself, so the hit test lands on a laid-out view.
-        for _ in 0..<50 {
-            RunLoop.current.run(until: Date().addingTimeInterval(0.01))
+        // And a moment longer for the page itself, so the hit test lands on a laid-out view.
+        for _ in 0..<20 {
+            try? await Task.sleep(for: .milliseconds(5))
             content.layoutSubtreeIfNeeded()
         }
         return preview

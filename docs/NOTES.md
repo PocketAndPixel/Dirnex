@@ -148,6 +148,37 @@ at build time.
 
 ## AppKit
 
+- **`applicationShouldTerminateAfterLastWindowClosed` is asked from a run-loop *timer*, not at the
+  moment a window closes — so a bare `true` lets the app quit itself during its own launch.** AppKit
+  defers the check (`_scheduleCheckForTerminateAfterLastWindowClosed`) and asks whenever the main run
+  loop is next pumped, which can be while `applicationDidFinishLaunching` is still on the stack:
+  before `showWindow`, the browser window exists and is not visible, and neither is anything else
+  AppKit knows about. `true` then answers "no windows left, quit" to a question that really means "no
+  windows *yet*" → `NSApplication.terminate:` → `exit(0)`. `browserWindowController != nil` is the
+  whole fix; it is nil for exactly the stretch that is unsafe.
+  - **This was Dirnex's flaky `xcodebuild test`, and it cost a long hunt because every signal pointed
+    away from it.** The test bundle is injected *during* launch and XCTest pumps its own run loop, so
+    the timer landed inside the launch window and quit the host mid-suite — roughly half of runs. It
+    left **no crash report**, because it was not a crash: the tell is xcodebuild's own wording, "The
+    test runner exited with code **0** before finishing running tests", and an `atexit` handler's
+    backtrace naming `-[NSApplication terminate:]` under `__CFRunLoopDoTimers`. Worse, the summary
+    then listed whatever suites were in flight under "Failing tests:", so it read as several broken
+    features rather than one lifecycle bug — always check whether the named tests *ran*.
+  - **A run-loop spin in a test is what makes it fire, and the amplification is the proof.** Two
+    Quick View helpers waited with `RunLoop.current.run(until:)`; forcing one to its full 3.5 s
+    reproduced the failure in 5 of 7 runs, and the fix above made 6 of 6 green under that same forced
+    spin. Reach for amplification whenever a flake will not reproduce on demand — it converts "I
+    think this is it" into a measurement. (Both helpers now `await`, which is the house rule already
+    stated under Testing and was the other half of the fix.)
+  - **The obvious regression test is unsound, and measuring is what showed it.** Reading
+    `NSApp.delegate`'s window and asserting fails about half the time on its own:
+    `applicationDidFinishLaunching` **does not complete at all** in ~50 % of test-host launches
+    (measured over six runs — the suite outruns it and XCTest exits the host when done), so the
+    window is simply absent. Pin the invariant on a **freshly constructed** `AppDelegate` instead —
+    that is the pre-`showWindow` state, deterministically. What that cannot catch is over-correction
+    (a blanket `false`, or a guard keyed on `XCTestConfigurationFilePath`): with no window built all
+    three answer `false`. Both were run by hand against the suite, and the live app was checked to
+    still quit when its window is closed.
 - **`NSTitlebarAccessoryViewController` clips to its container's fixed frame.** A hardcoded
   width sized for three glyphs laid a fourth one out fine, with `isHidden == false`, and it was
   simply invisible. Derive each accessory container's width from what it holds, and pin each row

@@ -55,11 +55,11 @@ struct QuickViewTextPreviewTests {
     /// clicks cannot fall through to the file table underneath — and a text view that never sees a
     /// mouseDown can never be dragged across, which is the state this replaced.
     @Test("a click over the text reaches the text view, not the surface")
-    func textKeepsTheMouse() throws {
+    func textKeepsTheMouse() async throws {
         let tree = try TempDirectory()
         defer { tree.cleanup() }
         let url = try tree.write("notes.txt", contents: "test 01\n")
-        let preview = try Self.loaded(url)
+        let preview = try await Self.loaded(url)
 
         let hit = try #require(preview.hitTest(NSPoint(x: 200, y: 200)))
         #expect(hit !== preview)
@@ -72,11 +72,11 @@ struct QuickViewTextPreviewTests {
     /// RTF rather than the HTML this used to use — §M16 moved HTML to an in-process backend that
     /// *keeps* the mouse, so the file this test is written on has to be one Quick Look still draws.
     @Test("a click over a Quick Look preview is still swallowed by the surface")
-    func quickLookKeepsBeingSwallowed() throws {
+    func quickLookKeepsBeingSwallowed() async throws {
         let tree = try TempDirectory()
         defer { tree.cleanup() }
         let url = try tree.write("letter.rtf", contents: "{\\rtf1 hi}")
-        let preview = try Self.loaded(url)
+        let preview = try await Self.loaded(url)
 
         #expect(preview.hitTest(NSPoint(x: 200, y: 200)) === preview)
     }
@@ -123,11 +123,11 @@ struct QuickViewTextPreviewTests {
     /// it is a window monitor. The window's key monitor hands the arrows back to the file table, and
     /// this is the gate it asks first: is focus *inside* one of the preview surfaces.
     @Test("focus inside a preview is told apart from focus anywhere else")
-    func focusInsideAPreviewIsRecognized() throws {
+    func focusInsideAPreviewIsRecognized() async throws {
         let tree = try TempDirectory()
         defer { tree.cleanup() }
         let url = try tree.write("notes.txt", contents: "test 01\n")
-        let preview = try Self.loaded(url)
+        let preview = try await Self.loaded(url)
         let other = QuickViewPreviewView(backingColor: .textBackgroundColor, header: .none)
         // Nested `#require` expands recursively and will not compile — hoist the hit out first.
         let hit = try #require(preview.hitTest(NSPoint(x: 200, y: 200)))
@@ -145,10 +145,19 @@ struct QuickViewTextPreviewTests {
 
     /// A preview surface with a window and a real frame, showing `url` — awaiting the backend's
     /// asynchronous read, which is what puts the text view on screen.
+    ///
+    /// It **awaits** rather than spinning the run loop, and that is not a style preference:
+    /// `RunLoop.current.run(until:)` here pumps the *main* run loop, which services whatever AppKit
+    /// has pending on it — including the deferred timer behind
+    /// `applicationShouldTerminateAfterLastWindowClosed`. With the test host mid-launch and no window
+    /// visible yet, that timer quit the host mid-suite (`AppDelegate` carries the full account), and
+    /// the tests still in flight were reported as failures they never were. Spinning is also the
+    /// weaker wait: it drives layout but never lets a detached read's continuation land, since that
+    /// needs the main actor to genuinely suspend (docs/NOTES.md ▸ Testing).
     static func loaded(
         _ url: URL,
         style: QuickViewRenderStyle = .source
-    ) throws -> QuickViewPreviewView {
+    ) async throws -> QuickViewPreviewView {
         let preview = QuickViewPreviewView(backingColor: .textBackgroundColor, header: .none)
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 400, height: 400),
@@ -164,11 +173,14 @@ struct QuickViewTextPreviewTests {
             preview.bottomAnchor.constraint(equalTo: window.contentView!.bottomAnchor)
         ])
         preview.show(url, style: style)
-        // The read runs off the main actor; spin the run loop until the layout it triggers settles.
-        for _ in 0..<20 {
-            RunLoop.current.run(until: Date().addingTimeInterval(0.01))
-            window.contentView?.layoutSubtreeIfNeeded()
+        // The read runs off the main actor: yield until the text surface it installs is up. The cap
+        // is what a Quick Look file — which never installs one — settles for, and it matches the
+        // fixed spin this replaced; a text file breaks out of it in a few milliseconds.
+        for _ in 0..<60 {
+            if preview.textSurface?.isHidden == false { break }
+            try? await Task.sleep(for: .milliseconds(5))
         }
+        window.contentView?.layoutSubtreeIfNeeded()
         return preview
     }
 

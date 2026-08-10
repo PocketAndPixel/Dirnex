@@ -77,11 +77,11 @@ struct QuickViewMarkdownPreviewTests {
     // MARK: - Where each style lands
 
     @Test("a Markdown file in source style shows the text view")
-    func sourceStyleUsesTheTextBackend() throws {
+    func sourceStyleUsesTheTextBackend() async throws {
         let tree = try TempDirectory()
         defer { tree.cleanup() }
         let url = try tree.write("README.md", contents: "# Title\n\ntext\n")
-        let preview = try QuickViewTextPreviewTests.loaded(url, style: .source)
+        let preview = try await QuickViewTextPreviewTests.loaded(url, style: .source)
 
         #expect(preview.webSurface == nil, "the web backend should not have been built")
         let hit = try #require(preview.hitTest(NSPoint(x: 200, y: 200)))

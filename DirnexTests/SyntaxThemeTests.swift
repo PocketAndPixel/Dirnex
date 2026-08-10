@@ -158,13 +158,13 @@ struct SyntaxThemeTests {
 
     /// The text view of a loaded preview, **awaited** rather than spun for.
     ///
-    /// `QuickViewTextPreviewTests.loaded` pumps the run loop, which is enough to lay the surface out
-    /// — every test that only hit-tests it passes on that alone. It is not enough to land the
-    /// document: the read is a detached task whose continuation needs the main actor to *suspend*,
-    /// which a `RunLoop.run(until:)` does not do. So the content assertions here await instead, and
-    /// the empty string that a spin-only wait produces is why they are the tests that found it.
+    /// `QuickViewTextPreviewTests.loaded` waits for the *surface* — enough for every test that only
+    /// hit-tests it, and not enough to land the *document*: the read is a detached task whose
+    /// continuation arrives on its own schedule. So the content assertions here poll for the text
+    /// itself. (That helper used to spin the run loop, which cannot land a continuation at all —
+    /// the empty string it produced is why these were the tests that found it.)
     private static func previewedTextView(_ url: URL) async throws -> NSTextView {
-        let preview = try QuickViewTextPreviewTests.loaded(url)
+        let preview = try await QuickViewTextPreviewTests.loaded(url)
         let hit = try #require(preview.hitTest(NSPoint(x: 200, y: 200)))
         let textView = try #require(QuickViewTextPreviewTests.enclosingTextView(of: hit))
         for _ in 0..<200 {

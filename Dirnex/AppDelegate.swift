@@ -78,8 +78,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         DisplacedScriptKeysNotice.presentIfNeeded(over: controller.window)
     }
 
+    /// Closing the browser window quits Dirnex — but only once there *is* one.
+    ///
+    /// AppKit does not answer this question at the moment a window closes: it schedules a deferred
+    /// check on a main-run-loop **timer**, and asks whenever that run loop is next pumped. So the
+    /// question can arrive while `applicationDidFinishLaunching` is still on the stack — before
+    /// `showWindow`, when the browser window exists but is not yet visible and every other window
+    /// AppKit knows about (a test bundle's, a SwiftUI `TUINSWindow`) is invisible too. A bare `true`
+    /// answers "no windows left, quit" to what is really "no windows *yet*", and the app terminates
+    /// itself mid-launch, cleanly, with exit code 0.
+    ///
+    /// That is what made `xcodebuild test` fail roughly half the time: the test bundle is injected
+    /// during launch and XCTest runs its own run loop, so the timer landed inside the launch window
+    /// and quit the host mid-suite — `_scheduleCheckForTerminateAfterLastWindowClosed` →
+    /// `NSApplication.terminate:` → `exit(0)`, which is why it left no crash report and why the
+    /// tests that were still in flight were reported as failures they never actually were.
+    /// Deferring to `browserWindowController` closes the window of exposure at its source: it is nil
+    /// for exactly the stretch between launch starting and the window being on screen.
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        true
+        browserWindowController != nil
     }
 
     /// Unmount only the SMB shares *we* mounted, leaving any Finder-mounted share as the user had it
