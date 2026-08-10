@@ -65,7 +65,8 @@ extension PanelViewController {
                     password: storedFTP,
                     trustedPublicKey: trustedPublicKey,
                     saveName: nil,
-                    activityName: server.name
+                    activityName: server.name,
+                    savedServerName: server.name
                 ))
             }
         case let .smb(location):
@@ -122,7 +123,10 @@ extension PanelViewController {
                 password: form.password ?? "",
                 trustedPublicKey: trustedPublicKey,
                 saveName: form.saveName,
-                activityName: nil
+                activityName: nil,
+                // The sheet's own `saveName` is the record to write, when there is one — a re-trust
+                // reaches the store through the success branch's `saveFTPServer`.
+                savedServerName: nil
             ))
         case let .smb(location):
             return await mountSMB(
@@ -272,7 +276,11 @@ extension PanelViewController {
         alert.alertStyle = .critical
         alert.messageText = String(
             localized: "The identity of “\(location.host)” has changed",
-            comment: "Host-key-change alert title; %@ is the host name."
+            // Shared verbatim with the FTPS changed-certificate alert, which asks the same question
+            // about a TLS key. `String(localized:comment:)` takes a `StaticString`, so a shared
+            // comment cannot be hoisted and two spellings would hand the translator whichever one
+            // `xcstringstool` kept (docs/NOTES.md).
+            comment: "Alert title when a server’s identity (host key or TLS certificate) changed; %@ is the host."
         )
         alert.informativeText = Self.hostKeyChangeDetail(change)
         // "Cancel" is added first so it's the rightmost and answers Escape. AppKit gives it Escape

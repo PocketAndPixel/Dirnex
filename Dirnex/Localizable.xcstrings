@@ -68997,91 +68997,180 @@
         }
       }
     },
-    "The server is presenting a different certificate than the one you trusted. Remove the saved server and connect again only if you know why it changed.": {
-      "comment": "FTP connect failure detail: the pinned public key no longer matches.",
+    "The server is presenting a different certificate than the one you trusted, and the new one couldn’t be read to show you.": {
+      "comment": "FTP connect failure detail: the pin no longer matches and the new certificate could not be fetched to weigh.",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Der Server zeigt ein anderes Zertifikat als das, dem Sie vertraut haben. Entfernen Sie den gespeicherten Server und verbinden Sie sich nur dann erneut, wenn Sie wissen, warum es sich geändert hat."
+            "value": "Der Server zeigt ein anderes Zertifikat als das, dem Sie vertraut haben, und das neue konnte nicht zur Anzeige gelesen werden."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The server is presenting a different certificate than the one you trusted. Remove the saved server and connect again only if you know why it changed."
+            "value": "The server is presenting a different certificate than the one you trusted, and the new one couldn’t be read to show you."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El servidor presenta un certificado distinto del que habías aprobado. Elimina el servidor guardado y vuelve a conectar solo si sabes por qué cambió."
+            "value": "El servidor presenta un certificado distinto del que aprobaste, y el nuevo no se pudo leer para mostrártelo."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le serveur présente un certificat différent de celui auquel vous faisiez confiance. Supprimez le serveur enregistré et reconnectez-vous uniquement si vous savez pourquoi il a changé."
+            "value": "Le serveur présente un certificat différent de celui que vous avez approuvé, et le nouveau n’a pas pu être lu pour vous être présenté."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Il server presenta un certificato diverso da quello che avevi considerato attendibile. Rimuovi il server salvato e connettiti di nuovo solo se sai perché è cambiato."
+            "value": "Il server presenta un certificato diverso da quello considerato attendibile e non è stato possibile leggere il nuovo per mostrartelo."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "サーバは、信頼済みの証明書とは異なる証明書を提示しています。変更された理由がわかる場合にのみ、保存済みサーバを削除して接続し直してください。"
+            "value": "サーバは、信頼した証明書とは異なる証明書を提示していますが、新しい証明書を読み取って表示できませんでした。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "서버가 이전에 신뢰한 인증서와 다른 인증서를 제시하고 있습니다. 저장된 서버를 제거하고 변경된 이유를 알 수 있는 경우에만 다시 연결하십시오."
+            "value": "서버가 신뢰한 것과 다른 인증서를 제시하고 있지만, 새 인증서를 읽어서 보여 줄 수 없습니다."
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "De server toont een ander certificaat dan het certificaat dat je hebt vertrouwd. Verwijder de bewaarde server en maak alleen opnieuw verbinding als je weet waarom dit is gewijzigd."
+            "value": "De server toont een ander certificaat dan het certificaat dat je hebt vertrouwd, en het nieuwe kon niet worden gelezen om te tonen."
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Serwer przedstawia inny certyfikat niż ten, któremu zaufano. Usuń zachowany serwer i połącz się ponownie tylko wtedy, gdy wiesz, dlaczego się zmienił."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Сервер предъявляет не тот сертификат, которому вы доверились. Удалите сохранённый сервер и подключитесь снова, только если знаете, почему он изменился."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Сервер показує інший сертифікат, ніж той, якому ви довірили. Вилучіть збережений сервер і підключайтеся знову лише якщо знаєте, чому це змінилося."
+            "value": "Serwer przedstawia inny certyfikat niż ten, któremu zaufano, a nowego nie udało się odczytać, aby go pokazać."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O servidor está apresentando um certificado diferente daquele em que você confiou. Remova o servidor salvo e conecte novamente somente se souber por que ele mudou."
+            "value": "O servidor está apresentando um certificado diferente daquele em que você confiou, e não foi possível ler o novo para mostrá-lo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер предъявляет не тот сертификат, которому вы доверяли, а новый не удалось прочитать, чтобы показать его вам."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер показує інший сертифікат, ніж той, якому ви довіряли, а новий не вдалося прочитати, щоб показати його."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "服务器正在显示与你信任的证书不同的证书。只有在你知道原因时，才删除已保存的服务器并重新连接。"
+            "value": "服务器提供的证书与你信任的不同，且无法读取新证书以向你展示。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "伺服器正在顯示與你信任的憑證不同的憑證。只有在你知道原因時，才刪除已儲存的伺服器並重新連線。"
+            "value": "伺服器提供的憑證與你信任的不同，且無法讀取新憑證以向你顯示。"
+          }
+        }
+      }
+    },
+    "The server is still presenting a certificate that doesn’t match the one you just trusted. It may be answering from more than one machine.": {
+      "comment": "FTP connect failure detail: the pin accepted moments ago already doesn’t match.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server zeigt weiterhin ein Zertifikat, das nicht zu dem passt, dem Sie gerade vertraut haben. Möglicherweise antwortet er von mehreren Rechnern."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server is still presenting a certificate that doesn’t match the one you just trusted. It may be answering from more than one machine."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El servidor sigue presentando un certificado que no coincide con el que acabas de aprobar. Puede que esté respondiendo desde más de una máquina."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le serveur présente toujours un certificat qui ne correspond pas à celui que vous venez d’approuver. Il répond peut-être depuis plusieurs machines."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il server presenta ancora un certificato che non corrisponde a quello appena considerato attendibile. Potrebbe rispondere da più macchine."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバは、今信頼した証明書と一致しない証明書を提示し続けています。複数のマシンから応答している可能性があります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버가 방금 신뢰한 것과 일치하지 않는 인증서를 계속 제시하고 있습니다. 여러 대의 컴퓨터에서 응답하고 있을 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De server toont nog steeds een certificaat dat niet overeenkomt met het certificaat dat je zojuist hebt vertrouwd. Mogelijk antwoordt de server vanaf meerdere machines."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serwer nadal przedstawia certyfikat, który nie pasuje do tego, któremu przed chwilą zaufano. Może odpowiadać z więcej niż jednej maszyny."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O servidor continua apresentando um certificado que não corresponde ao que você acabou de confiar. Ele pode estar respondendo de mais de uma máquina."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер по-прежнему предъявляет сертификат, который не совпадает с тем, которому вы только что доверились. Возможно, он отвечает с нескольких машин."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер і далі показує сертифікат, який не збігається з тим, якому ви щойно довірилися. Можливо, він відповідає з кількох машин."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器提供的证书仍与你刚刚信任的不一致。它可能由多台机器应答。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伺服器提供的憑證仍與你剛剛信任的不一致。它可能由多台機器回應。"
           }
         }
       }
@@ -69527,6 +69616,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "無法驗證伺服器憑證。"
+          }
+        }
+      }
+    },
+    "The server’s certificate has changed and wasn’t trusted, so the connection was canceled. The certificate you trusted before is still the one Dirnex expects.": {
+      "comment": "FTP connect failure detail: the user declined to re-trust a changed certificate.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Zertifikat des Servers hat sich geändert und wurde nicht als vertrauenswürdig eingestuft, daher wurde die Verbindung abgebrochen. Dirnex erwartet weiterhin das Zertifikat, dem Sie zuvor vertraut haben."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server’s certificate has changed and wasn’t trusted, so the connection was canceled. The certificate you trusted before is still the one Dirnex expects."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El certificado del servidor cambió y no se confió en él, así que la conexión se canceló. Dirnex sigue esperando el certificado que aprobaste antes."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le certificat du serveur a changé et n’a pas été approuvé ; la connexion a été annulée. Dirnex attend toujours le certificat auquel vous faisiez confiance."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il certificato del server è cambiato e non è stato considerato attendibile, quindi la connessione è stata annullata. Dirnex si aspetta ancora il certificato considerato attendibile in precedenza."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバの証明書が変更され、信頼されなかったため、接続はキャンセルされました。Dirnexは以前信頼した証明書を引き続き想定します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버의 인증서가 변경되었고 신뢰되지 않았기 때문에 연결이 취소되었습니다. Dirnex는 이전에 신뢰한 인증서를 계속 기대합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Het certificaat van de server is gewijzigd en werd niet vertrouwd. Daarom is de verbinding geannuleerd. Dirnex verwacht nog steeds het certificaat dat je eerder hebt vertrouwd."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Certyfikat serwera zmienił się i nie zaufano mu, więc połączenie anulowano. Dirnex nadal oczekuje certyfikatu, któremu zaufano wcześniej."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O certificado do servidor mudou e não foi confiado, então a conexão foi cancelada. O Dirnex ainda espera o certificado em que você confiou antes."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сертификат сервера изменился и не был принят, поэтому подключение отменено. Dirnex по-прежнему ожидает сертификат, которому вы доверяли ранее."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сертифікат сервера змінився, і йому не довірено, тому з’єднання скасовано. Dirnex і далі очікує сертифікат, якому ви довіряли раніше."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器证书已更改且不可信，因此连接被取消了。Dirnex 仍会使用你之前信任的证书。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伺服器憑證已變更且不受信任，因此連線已取消。Dirnex 仍會使用你之前信任的憑證。"
           }
         }
       }
@@ -72201,6 +72379,95 @@
         }
       }
     },
+    "This server is presenting a different certificate than the one you trusted before. If it was reissued — a renewal usually generates a new key — this is expected, but it can also mean someone is intercepting the connection (a man-in-the-middle attack).\n\nOnly continue if you recognize this fingerprint. Trusting it replaces the old one so future connections to this server succeed.": {
+      "comment": "FTPS changed-certificate alert body, above the certificate's details.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Server zeigt ein anderes Zertifikat als das, dem Sie zuvor vertraut haben. Wenn es neu ausgestellt wurde — bei einer Erneuerung wird meist ein neuer Schlüssel erzeugt —, ist das erwartbar. Es kann aber auch bedeuten, dass jemand die Verbindung abfängt (Man-in-the-Middle-Angriff).\n\nFahren Sie nur fort, wenn Sie diesen Fingerabdruck wiedererkennen. Wenn Sie ihm vertrauen, wird das alte Zertifikat ersetzt, sodass zukünftige Verbindungen zu diesem Server funktionieren."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This server is presenting a different certificate than the one you trusted before. If it was reissued — a renewal usually generates a new key — this is expected, but it can also mean someone is intercepting the connection (a man-in-the-middle attack).\n\nOnly continue if you recognize this fingerprint. Trusting it replaces the old one so future connections to this server succeed."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este servidor presenta un certificado distinto del que aprobaste antes. Si se volvió a emitir —una renovación suele generar una clave nueva—, es normal; pero también puede significar que alguien está interceptando la conexión (un ataque man-in-the-middle).\n\nContinúa solo si reconoces esta huella. Al confiar en ella se reemplaza el certificado anterior para que las futuras conexiones a este servidor funcionen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce serveur présente un certificat différent de celui auquel vous faisiez confiance. Si le certificat a été réémis — un renouvellement génère généralement une nouvelle clé —, cela est normal, mais peut aussi indiquer une interception de la connexion (attaque de l’homme du milieu).\n\nNe continuez que si vous reconnaissez cette empreinte. Lui faire confiance remplacera l’ancien certificat et permettra les prochaines connexions à ce serveur."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo server presenta un certificato diverso da quello considerato attendibile in precedenza. Se è stato riemesso — un rinnovo genera di solito una nuova chiave — è previsto; ma potrebbe anche indicare che qualcuno sta intercettando la connessione (attacco man-in-the-middle).\n\nContinua solo se riconosci questa impronta. Considerarla attendibile sostituisce il vecchio certificato, così le connessioni future a questo server riusciranno."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このサーバは、以前信頼したものとは異なる証明書を提示しています。証明書が再発行された場合（更新時は通常、新しいキーが生成されます）は想定内です。ただし、接続が傍受されている（中間者攻撃）可能性もあります。\n\nこのフィンガープリントを認識できる場合にのみ続けてください。信頼すると古い証明書が置き換えられ、今後このサーバに接続できるようになります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 서버가 이전에 신뢰한 것과 다른 인증서를 제시하고 있습니다. 인증서가 재발급되었다면(갱신 시 보통 새 키가 생성됩니다) 정상일 수 있지만, 누군가 연결을 가로채고 있다는 의미일 수도 있습니다(중간자 공격).\n\n이 지문을 알아볼 수 있는 경우에만 계속하십시오. 신뢰하면 이전 인증서가 교체되어 앞으로 이 서버에 연결할 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze server toont een ander certificaat dan het certificaat dat je eerder hebt vertrouwd. Als het opnieuw is uitgegeven — bij een verlenging wordt meestal een nieuwe sleutel gemaakt — is dat te verwachten, maar het kan ook betekenen dat iemand de verbinding onderschept (een man-in-the-middle-aanval).\n\nGa alleen verder als je deze vingerafdruk herkent. Als je dit certificaat vertrouwt, wordt het oude vervangen zodat toekomstige verbindingen met deze server werken."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten serwer przedstawia inny certyfikat niż ten, któremu wcześniej zaufano. Jeśli certyfikat wydano ponownie — przy odnowieniu zwykle powstaje nowy klucz — jest to oczekiwane, ale może też oznaczać, że ktoś przechwytuje połączenie (atak man-in-the-middle).\n\nKontynuuj tylko wtedy, gdy rozpoznajesz ten odcisk. Zaufanie mu zastąpi stary certyfikat, aby przyszłe połączenia z tym serwerem działały."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este servidor está apresentando um certificado diferente daquele em que você confiou antes. Se ele foi reemitido — uma renovação geralmente gera uma nova chave —, isso é esperado, mas também pode significar que alguém está interceptando a conexão (ataque man-in-the-middle).\n\nContinue somente se reconhecer esta impressão digital. Confiar nela substitui o certificado antigo para que futuras conexões com este servidor funcionem."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот сервер предъявляет не тот сертификат, которому вы доверяли ранее. Если сертификат перевыпущен — при обновлении обычно создаётся новый ключ, — это ожидаемо, но также может означать, что кто-то перехватывает соединение (атака «человек посередине»).\n\nПродолжайте, только если узнаёте этот отпечаток. Доверие заменит старый сертификат, чтобы будущие подключения к этому серверу проходили успешно."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цей сервер показує інший сертифікат, ніж той, якому ви довіряли раніше. Якщо його перевипущено — під час поновлення зазвичай створюється новий ключ, — це очікувано, але також може означати, що хтось перехоплює з’єднання (атака man-in-the-middle).\n\nПродовжуйте лише якщо впізнаєте цей відбиток. Довіра до нього замінить старий сертифікат, тож майбутні з’єднання з цим сервером працюватимуть."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此服务器提供的证书与你之前信任的不同。如果证书已重新签发（续期通常会生成新密钥），这是正常情况；但也可能表示有人正在拦截连接（中间人攻击）。\n\n只有在你认得此指纹时才继续。信任它会替换旧证书，以后即可连接到此服务器。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此伺服器提供的憑證與你之前信任的不同。如果憑證已重新簽發（更新通常會產生新金鑰），這是正常情況；但也可能表示有人正在攔截連線（中間人攻擊）。\n\n只有在你認得此指紋時才繼續。信任它會取代舊憑證，以後即可連線到此伺服器。"
+          }
+        }
+      }
+    },
     "This server is presenting a different host %@ than the one you trusted before. If you reinstalled the server or pointed a new SFTP app at this address, this is expected — but it can also mean someone is intercepting the connection (a man-in-the-middle attack).\n\nNew fingerprint:\n%@\n\nOnly continue if you recognize this fingerprint. Trusting it replaces the old key so future connections to this server succeed.": {
       "comment": "Host-key-change alert body; first %@ is the key label, second %@ the fingerprint.",
       "localizations": {
@@ -72998,6 +73265,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "信任並連線"
+          }
+        }
+      }
+    },
+    "Trust New Certificate & Connect": {
+      "comment": "FTPS changed-certificate alert: replace the stored pin and connect.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neuem Zertifikat vertrauen und verbinden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trust New Certificate & Connect"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confiar en certificado nuevo y conectar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faire confiance au nouveau certificat et se connecter"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Considera attendibile il nuovo certificato e connetti"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しい証明書を信頼して接続"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 인증서를 신뢰하고 연결"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vertrouw nieuw certificaat en maak verbinding"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zaufaj nowemu certyfikatowi i połącz"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confiar no Novo Certificado e Conectar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Доверять новому сертификату и подключиться"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Довіряти новому сертифікату й підключитися"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "信任新证书并连接"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "信任新憑證並連線"
           }
         }
       }

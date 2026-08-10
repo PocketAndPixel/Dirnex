@@ -1507,10 +1507,46 @@ off a man page.
   walked out of the DER (skip the optional `[0]` version, then five fields of `TBSCertificate`) and
   digested as a complete TLV. Display the *certificate's* SHA-256 alongside it — that is the value
   every other tool shows and the one a user compares against a NAS admin page — but pin the key,
-  which survives a routine certificate renewal the way SSH's key pinning does. Verify the walk
+  which survives a certificate renewal *that reuses the key*. Verify the walk
   against a **real** captured certificate whose two digests were computed by `openssl`, not by the
   code under test: a drifted walk would pin a key the server never presented, and comparing against
   your own output could never catch it.
+  - **That qualifier is load-bearing, and this file used to omit it** ("survives a routine renewal
+    the way SSH's key pinning does"). Corporate PKI and ACME renewals typically mint a **new
+    keypair**, so a mismatch is the ordinary outcome of a renewal rather than a rare one — which is
+    what makes the changed-key alert a *dialog with a Trust button*, not a report. Shipped, the
+    optimistic reading became an informational alert telling the user to delete their saved server:
+    advice that loses the record and its Keychain association, gives them no fingerprint to compare,
+    and is exactly what someone being intercepted would also do.
+- **A recoverable-error flow gated on one error case leaves its twin a dead end, and a doc comment
+  claiming the two are mirrors is not the mirror.** `PanelViewController+ConnectFTP` opened with
+  "this is the same shape as the SFTP host-key flow" — true for **first contact** (exit 60 → show
+  the fingerprint → pin → retry) and false for the changed-key case, which fell through the `guard
+  case .certificateUntrusted` to the generic reporter for the whole life of the feature. The
+  structural reason is worth carrying past FTPS: SFTP's pin lives in `known_hosts`, a file the app
+  repairs out of band with `ssh-keygen -R`, while FTPS's lives **inside the saved record** — and the
+  request reaching the failure handler carried no route back to it (`saveName` is `nil` on a sidebar
+  connect precisely because the server is already saved). A missing *handle*, not a missing
+  decision, which is why it reads as deliberate.
+  - **Adding the second case turns a retry into a possible loop, and the first case terminated by
+    accident.** Trust-then-retry is bounded for `certificateUntrusted` only because a pin that
+    doesn't match comes back as a *different* error; once both cases retry, a server answering the
+    probe and the connect from two different machines re-raises the same question forever. One
+    `hasWeighedCertificate` flag on the request is the guard, and the state it protects deserves its
+    own sentence rather than the generic one — "still presenting a certificate that doesn't match
+    the one you just trusted" is a fact, where re-prompting is a loop.
+  - **The same gap silently swallowed first-contact pins from the sidebar**: with `saveName == nil`
+    there was nowhere to write, so trusting a certificate for a saved server that had none connected
+    and asked again on the next click. One bug, two surfaces, and only the changed-key one gets
+    reported — because the other looks like the app being cautious.
+  - **The instrument is `pyftpdlib` + two self-signed certificates**, and it is worth the ten
+    minutes: a real explicit-FTPS server on `127.0.0.1:2121` restarted with a second certificate is
+    a *renewal*, so all four branches (first contact, trust-and-connect, silent reconnect, decline)
+    are reachable by hand. Seed the stale state directly — write the saved record with certificate
+    **B**'s pin while the server presents **A** — rather than performing the first flow to get
+    there; and read the fingerprint off the live alert against `openssl x509 -fingerprint -sha256`,
+    which is what proves the dialog is showing the certificate actually presented rather than
+    whatever it last stored.
 
 ### The Trash
 

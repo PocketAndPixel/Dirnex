@@ -112,6 +112,18 @@ struct FTPTransportErrorTests {
         #expect(error == .certificateChanged)
     }
 
+    /// `certificateChanged` drives a warning that tells the user their server is presenting a
+    /// different certificate than the one they trusted — a claim only exit 90 supports, since it is
+    /// the one code that means the stored pin was weighed and rejected. Exit 91 is a stapled OCSP
+    /// status (`CURLE_SSL_INVALIDCERTSTATUS`), which no invocation can provoke because none passes
+    /// `--cert-status`; it was classified alongside 90 and is now `curl`'s own words instead.
+    @Test("an OCSP status failure is not read as a changed certificate (exit 91)")
+    func invalidCertificateStatusIsNotACertificateChange() {
+        let message = "curl: (91) SSL: Invalid certificate status"
+        let error = FTPTransportError.classify(exitCode: 91, stderr: message)
+        #expect(error == .failure(message))
+    }
+
     @Test("an unreachable host and a timeout are distinguished (exits 6/7 and 28, observed)")
     func unreachableAndTimeout() {
         #expect(

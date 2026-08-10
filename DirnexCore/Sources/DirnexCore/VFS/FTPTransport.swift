@@ -108,7 +108,14 @@ public enum FTPTransportError: Error, Sendable, Equatable {
         case 6, 7: return .unreachable
         case 28: return .timedOut
         case 60, 35, 58, 59, 77, 83: return .certificateUntrusted
-        case 90, 91: return .certificateChanged
+        // 90 is `CURLE_SSL_PINNEDPUBKEYNOTMATCH`, and it is the *only* code that means the stored
+        // pin was weighed and rejected — it cannot arise without `--pinnedpubkey`. 91 is
+        // `CURLE_SSL_INVALIDCERTSTATUS` (a stapled OCSP status), which was classified here too and
+        // would have told a user their server "is presenting a different certificate than the one
+        // you trusted" about a revocation check. It needs `--cert-status`, which no invocation
+        // passes, so it is unreachable rather than merely rare — it falls to the default and
+        // carries `curl`'s own words instead of a claim nobody has observed.
+        case 90: return .certificateChanged
         // 64 is `CURLE_USE_SSL_FAILED` — a required TLS upgrade the server would not do, raised
         // when explicit FTPS meets a plain-only port (observed against port 2121, 2026-07-25).
         case 64: return .tlsNotAvailable

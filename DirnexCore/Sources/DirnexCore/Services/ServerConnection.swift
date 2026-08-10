@@ -113,6 +113,27 @@ public struct ServerConnections: Sendable, Equatable, Codable {
         return false
     }
 
+    /// Replace the trusted certificate pin of the FTP connection named `name`, keeping everything
+    /// else about it. Returns whether anything changed — the caller persists only then.
+    ///
+    /// This exists because a re-trusted certificate has to reach the *saved* server, or the next
+    /// connect from the sidebar presents the old pin and the user is asked the same question again,
+    /// forever. It is deliberately narrow: it will not create a record, will not touch a connection
+    /// of another kind, and answers `false` when the pin already matches, so a caller that re-pins
+    /// on every successful connect writes nothing on the ordinary path.
+    @discardableResult
+    public mutating func repinFTP(name: String, trustedPublicKey: String?) -> Bool {
+        guard let index = connections.firstIndex(where: { $0.name == name }),
+              case let .ftp(location, authentication, storedKey) = connections[index].endpoint,
+              storedKey != trustedPublicKey else { return false }
+        connections[index].endpoint = .ftp(
+            location: location,
+            authentication: authentication,
+            trustedPublicKey: trustedPublicKey
+        )
+        return true
+    }
+
     /// Delete the connection named `name`, if present. Returns whether one was removed.
     @discardableResult
     public mutating func remove(name: String) -> Bool {

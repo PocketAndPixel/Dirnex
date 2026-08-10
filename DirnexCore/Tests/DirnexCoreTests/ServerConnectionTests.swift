@@ -185,6 +185,70 @@ struct ServerConnectionTests {
         #expect(list.connections.map(\.name) == ["B", "C", "A"])
     }
 
+    // MARK: - Re-pinning a changed certificate
+
+    private func ftp(_ name: String, pin: String?) -> ServerConnection {
+        ServerConnection(
+            name: name,
+            endpoint: .ftp(
+                location: FTPLocation(host: "nas.local", username: "oleg"),
+                authentication: .password,
+                trustedPublicKey: pin
+            )
+        )
+    }
+
+    private func pin(of connection: ServerConnection?) -> String?? {
+        guard case let .ftp(_, _, key)? = connection?.endpoint else { return nil }
+        return key
+    }
+
+    @Test("re-pinning replaces the stored key and leaves the rest of the connection alone")
+    func repinReplacesTheKey() {
+        var list = ServerConnections(connections: [sftp("A"), ftp("NAS", pin: "old"), smb("B")])
+        let changed = list.repinFTP(name: "NAS", trustedPublicKey: "new")
+        #expect(changed)
+        #expect(pin(of: list.connection(named: "NAS")) == "new")
+        // Order, name and the connection's coordinates are untouched — only the pin moved.
+        #expect(list.connections.map(\.name) == ["A", "NAS", "B"])
+        #expect(list.connection(named: "NAS")?.address == ftp("NAS", pin: "new").address)
+    }
+
+    /// The caller re-pins after *every* successful connect from a saved server, so the common path
+    /// is a pin that already matches — it must write nothing, or each connect rewrites the store
+    /// and posts a change notification for a value nobody changed.
+    @Test("re-pinning an unchanged key reports no change")
+    func repinUnchangedKeyIsNoChange() {
+        // A `mutating` call cannot sit inside `#expect` (docs/NOTES.md), so every result is hoisted.
+        var list = ServerConnections(connections: [ftp("NAS", pin: "same")])
+        let samePin = list.repinFTP(name: "NAS", trustedPublicKey: "same")
+        #expect(!samePin)
+        var unpinned = ServerConnections(connections: [ftp("Plain", pin: nil)])
+        let stillUnpinned = unpinned.repinFTP(name: "Plain", trustedPublicKey: nil)
+        #expect(!stillUnpinned)
+    }
+
+    /// Deliberately narrow: a record deleted while the connection was being weighed is not
+    /// recreated, and a name that belongs to another protocol is not rewritten into an FTP one.
+    @Test("re-pinning creates nothing and never rewrites another protocol's connection")
+    func repinIsNarrow() {
+        var list = ServerConnections(connections: [sftp("A"), smb("B")])
+        let wrongKind = list.repinFTP(name: "A", trustedPublicKey: "new")
+        #expect(!wrongKind)
+        let missing = list.repinFTP(name: "Gone", trustedPublicKey: "new")
+        #expect(!missing)
+        #expect(list.connections.map(\.kind) == [.sftp, .smb])
+        #expect(list.connections.count == 2)
+    }
+
+    @Test("a first pin on a connection that had none is a change")
+    func repinFromNoPin() {
+        var list = ServerConnections(connections: [ftp("NAS", pin: nil)])
+        let changed = list.repinFTP(name: "NAS", trustedPublicKey: "first")
+        #expect(changed)
+        #expect(pin(of: list.connection(named: "NAS")) == "first")
+    }
+
     @Test("the whole collection round-trips through Codable, sanitizing on decode")
     func collectionCodableRoundTrip() throws {
         let list = ServerConnections(connections: [sftp("A"), smb("B")])
