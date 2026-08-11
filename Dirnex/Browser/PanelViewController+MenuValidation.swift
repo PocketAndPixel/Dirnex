@@ -41,8 +41,10 @@ extension PanelViewController: NSMenuItemValidation {
             return canSaveCurrentSearch
         case #selector(showTagsMenu(_:)):
             // Only local files carry tags. Gated on the *targets*, not the pane, so tagging works
-            // from a results tab (virtual pane, real local hits) — and, like ⌃D, ⌃T must reach a
-            // field editor rather than being stolen to open a popup while a name is being typed.
+            // from a results tab (virtual pane, real local hits) — and ⌃T must reach a field
+            // editor (where it transposes) rather than being stolen to open a popup while a name
+            // is being typed. The Favorites/Places popups need no such carve-out: they moved off
+            // the ⌃-letter layer to ⌘F/⌘G, which the text system binds nothing on.
             return canEditTags && !(view.window?.firstResponder is NSText)
         case #selector(undo(_:)):
             return validateUndoItem(menuItem)
@@ -67,12 +69,8 @@ extension PanelViewController: NSMenuItemValidation {
         case #selector(goForward(_:)):
             return tabs[activeTabIndex].history.canGoForward
         case #selector(showHistory(_:)):
-            // Like ⌃D, let ⌥↓ reach a field editor while a name/path field is being edited
-            // instead of stealing it to open the history popup.
-            return !(view.window?.firstResponder is NSText)
-        case #selector(showFavorites(_:)):
-            // While a name/path field is being edited, let ⌃D fall through to the field
-            // editor's delete-forward instead of stealing it to open the favorites.
+            // Let ⌥↓ reach a field editor while a name/path field is being edited instead of
+            // stealing it to open the history popup.
             return !(view.window?.firstResponder is NSText)
         case #selector(openInTerminal(_:)):
             // Needs a real directory on disk (never an archive, an SFTP server, or a results tab)

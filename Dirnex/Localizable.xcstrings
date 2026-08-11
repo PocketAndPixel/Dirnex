@@ -87558,55 +87558,55 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "favoriten, lesezeichen, angeheftet, springen, ctrl d"
+            "value": "favoriten, lesezeichen, angeheftet, springen, cmd f"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "favorites, bookmarks, pinned, jump, ctrl d"
+            "value": "favorites, bookmarks, pinned, jump, cmd f"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "favoritos, marcadores, fijados, saltar, ctrl d"
+            "value": "favoritos, marcadores, fijados, saltar, cmd f"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "favoris, signets, épinglé, accès rapide, ctrl d"
+            "value": "favoris, signets, épinglé, accès rapide, cmd f"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "preferiti, segnalibri, fissati, vai, ctrl d"
+            "value": "preferiti, segnalibri, fissati, vai, cmd f"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "お気に入り, ブックマーク, ピン留め, 移動, ctrl d"
+            "value": "お気に入り, ブックマーク, ピン留め, 移動, cmd f"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "즐겨찾기, 북마크, 고정, 점프, ctrl d"
+            "value": "즐겨찾기, 북마크, 고정, 점프, cmd f"
           }
         },
         "nl": {
           "stringUnit": {
-            "value": "favorieten, bladwijzers, vastgezet, springen, ctrl d",
+            "value": "favorieten, bladwijzers, vastgezet, springen, cmd f",
             "state": "translated"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "ulubione, zakładki, przypięte, skocz, ctrl d"
+            "value": "ulubione, zakładki, przypięte, skocz, cmd f"
           }
         },
         "ru": {
@@ -87624,7 +87624,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "favoritos, marcadores, fixados, ir, ctrl d"
+            "value": "favoritos, marcadores, fixados, ir, cmd f"
           }
         },
         "zh-Hans": {
@@ -88818,85 +88818,85 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "orte, seitenleiste, speicherorte, volumes, server, tresore, tags, zuletzt, icloud, papierkorb, ctrl g"
+            "value": "orte, seitenleiste, speicherorte, volumes, server, tresore, tags, zuletzt, icloud, papierkorb, cmd g"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "places, sidebar, locations, volumes, servers, vaults, tags, recents, icloud, trash, ctrl g"
+            "value": "places, sidebar, locations, volumes, servers, vaults, tags, recents, icloud, trash, cmd g"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "lugares, barra lateral, ubicaciones, volúmenes, servidores, cajas fuertes, etiquetas, recientes, icloud, papelera, ctrl g"
+            "value": "lugares, barra lateral, ubicaciones, volúmenes, servidores, cajas fuertes, etiquetas, recientes, icloud, papelera, cmd g"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "emplacements, barre latérale, volumes, serveurs, coffres, tags, récents, icloud, corbeille, ctrl g"
+            "value": "emplacements, barre latérale, volumes, serveurs, coffres, tags, récents, icloud, corbeille, cmd g"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "posizioni, barra laterale, volumi, server, casseforti, tag, recenti, icloud, cestino, ctrl g"
+            "value": "posizioni, barra laterale, volumi, server, casseforti, tag, recenti, icloud, cestino, cmd g"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "場所, サイドバー, ボリューム, サーバ, 保管庫, タグ, 最近の項目, icloud, ゴミ箱, ctrl g"
+            "value": "場所, サイドバー, ボリューム, サーバ, 保管庫, タグ, 最近の項目, icloud, ゴミ箱, cmd g"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "위치, 사이드바, 볼륨, 서버, 보관함, 태그, 최근 항목, icloud, 휴지통, ctrl g"
+            "value": "위치, 사이드바, 볼륨, 서버, 보관함, 태그, 최근 항목, icloud, 휴지통, cmd g"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "locaties, navigatiekolom, volumes, servers, kluizen, tags, recent, icloud, prullenmand, ctrl g"
+            "value": "locaties, navigatiekolom, volumes, servers, kluizen, tags, recent, icloud, prullenmand, cmd g"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "lokalizacje, panel boczny, woluminy, serwery, sejfy, tagi, ostatnie, icloud, kosz, ctrl g"
+            "value": "lokalizacje, panel boczny, woluminy, serwery, sejfy, tagi, ostatnie, icloud, kosz, cmd g"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "locais, barra lateral, volumes, servidores, cofres, etiquetas, recentes, icloud, lixeira, ctrl g"
+            "value": "locais, barra lateral, volumes, servidores, cofres, etiquetas, recentes, icloud, lixeira, cmd g"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "места, боковая панель, тома, серверы, хранилища, метки, недавние, icloud, корзина, ctrl g"
+            "value": "места, боковая панель, тома, серверы, хранилища, метки, недавние, icloud, корзина, cmd g"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "місця, бічна панель, томи, сервери, сховища, мітки, нещодавні, icloud, кошик, ctrl g"
+            "value": "місця, бічна панель, томи, сервери, сховища, мітки, нещодавні, icloud, кошик, cmd g"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "位置, 边栏, 宗卷, 服务器, 保险库, 标记, 最近项目, icloud, 废纸篓, ctrl g"
+            "value": "位置, 边栏, 宗卷, 服务器, 保险库, 标记, 最近项目, icloud, 废纸篓, cmd g"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "位置, 側邊欄, 卷宗, 伺服器, 保險庫, 標記, 最近項目, icloud, 垃圾桶, ctrl g"
+            "value": "位置, 側邊欄, 卷宗, 伺服器, 保險庫, 標記, 最近項目, icloud, 垃圾桶, cmd g"
           }
         }
       }

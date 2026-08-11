@@ -11,7 +11,7 @@ import DirnexCore
 ///
 /// This used to claim it also made "Trash" findable through macOS's Help ▸ Search. It does not:
 /// **Dirnex declares no Help menu**, so the search field that would index menu items does not exist
-/// in this app (checked live 2026-08-12). Nothing rests on it — the ⌃G popup and the path bar's
+/// in this app (checked live 2026-08-12). Nothing rests on it — the ⌘G popup and the path bar's
 /// glyph are the other two faces — but it is worth not repeating.
 ///
 /// **It is a rendering of `SidebarPlaces`, not a second list.** The items come from the front
@@ -27,7 +27,7 @@ final class PlacesMenu: NSObject {
     /// It has to be shared rather than made per caller because `NSMenu.delegate` is **weak**: every
     /// menu below is a fresh, disposable object that fills itself from this delegate, so whatever
     /// owns the delegate has to outlive them all. One instance is also what makes "one funnel, three
-    /// faces" true of the object graph and not only of the prose — the menu bar, ⌃G and the path
+    /// faces" true of the object graph and not only of the prose — the menu bar, ⌘G and the path
     /// bar's glyph cannot be handed different builders.
     static let shared = PlacesMenu()
 
@@ -81,7 +81,7 @@ final class PlacesMenu: NSObject {
 
     /// One section as a submenu. An empty one — which today is only Favorites, whose header survives
     /// because it is the sidebar's drop target — says so in a disabled item rather than opening onto
-    /// nothing, matching what the ⌃D favorites popup has always done.
+    /// nothing, matching what the ⌘F favorites popup has always done.
     private func sectionItem(
         _ section: SidebarSection,
         _ places: [SidebarPlace],

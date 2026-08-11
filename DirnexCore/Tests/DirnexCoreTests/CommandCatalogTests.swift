@@ -234,7 +234,7 @@ struct CommandCatalogTests {
     }
 
     /// The drawer's shortcut must stay off the ⌃-letter layer the app's own popups live on: those
-    /// letters are the shell's (⌃D is EOF, ⌃Q is XON, ⌃T transposes), and the drawer is the one
+    /// letters are the shell's (⌃B moves back, ⌃Q is XON, ⌃T transposes), and the drawer is the one
     /// surface whose keystrokes belong to somebody else.
     @Test("the terminal drawer's shortcut is not a control key a shell would want")
     func terminalDrawerAvoidsShellControlKeys() {

@@ -142,7 +142,7 @@ struct PathBarPlacesTests {
         menu.items.flatMap { item in [item] + (item.submenu.map(allItems) ?? []) }
     }
 
-    @Test("⌃G is bound to the pane's popup, and the menu bar is what delivers it")
+    @Test("⌘G is bound to the pane's popup, and the menu bar is what delivers it")
     func theShortcutIsDeliverable() throws {
         #expect(CommandBinding.selector(for: "go.places") == NSSelectorFromString("showPlaces:"))
         #expect(PanelViewController.instancesRespond(to: NSSelectorFromString("showPlaces:")))
@@ -150,7 +150,7 @@ struct PathBarPlacesTests {
         // The regression guard for the finding that shaped this slice: **an item carrying a submenu
         // never fires its own key equivalent** — measured, `performKeyEquivalent` returns false and
         // the action never runs, while the item still reports `isEnabled == true`. The menu bar is
-        // the app's only dispatch path for a command shortcut, so ⌃G has to ride a plain item;
+        // the app's only dispatch path for a command shortcut, so ⌘G has to ride a plain item;
         // tidying the two Go entries into one submenu item would draw a shortcut that is dead.
         //
         // Asserted against the **built menu**, not against `commandItem(for:)` in isolation: the
@@ -163,7 +163,7 @@ struct PathBarPlacesTests {
         )
         #expect(places.submenu == nil)
         #expect(places.keyEquivalent == "g")
-        #expect(places.keyEquivalentModifierMask == .control)
+        #expect(places.keyEquivalentModifierMask == .command)
 
         // And the browsable submenu is still there beside it — the face you read rather than
         // recall, and the one that must never be the shortcut's carrier.
@@ -172,6 +172,25 @@ struct PathBarPlacesTests {
             "the menu bar carries no Places submenu"
         )
         #expect(submenu.keyEquivalent.isEmpty)
+
+        // Favorites rides the same dispatch path one section down, and the pair has to stay a pair:
+        // the two chords are ⌘F and ⌘G precisely because neither is claimed by anything else in the
+        // built menu. Asserted here rather than in the core, because the registry can hold a chord
+        // the menu bar never delivers — which is the whole finding above.
+        let favorites = try #require(
+            items.first { $0.action == NSSelectorFromString("showFavorites:") },
+            "the menu bar carries no item that opens Favorites"
+        )
+        #expect(favorites.submenu == nil)
+        #expect(favorites.keyEquivalent == "f")
+        #expect(favorites.keyEquivalentModifierMask == .command)
+
+        // Nothing else in the menu bar answers either chord — a second claimant is what would make
+        // one of them dead, and it is invisible from the registry side.
+        let claimants = items.filter {
+            $0.keyEquivalentModifierMask == .command && ["f", "g"].contains($0.keyEquivalent)
+        }
+        #expect(claimants.count == 2)
     }
 
     @Test("all three faces fill from one builder")

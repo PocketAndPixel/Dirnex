@@ -29,7 +29,7 @@ enum MainMenuBuilder {
 
     /// The Go ▸ Places submenu, built once and kept: it is its own menu's delegate, so a fresh one
     /// per rebuild — and the menu bar is rebuilt whenever a key binding changes — would leak one
-    /// delegate per rebuild and leave the stale menus observing nothing. The same instance the ⌃G
+    /// delegate per rebuild and leave the stale menus observing nothing. The same instance the ⌘G
     /// popup and the path bar's glyph fill from, so the three faces cannot be handed different lists.
     private static let places = PlacesMenu.shared
 
@@ -111,12 +111,12 @@ enum MainMenuBuilder {
             .command("go.saveSearch"), .separator,
             // Places leads the destination half of this menu: it is the way to every location the
             // sidebar holds, and the only way to most of them when the sidebar is hidden
-            // (PLAN.md §M20). Favorites keeps its own item beside it — ⌃D is the fast path to the
+            // (PLAN.md §M20). Favorites keeps its own item beside it — ⌘F is the fast path to the
             // sub-list people use most, and it is muscle memory from Total Commander.
             //
             // Two Places entries, deliberately, because **an item carrying a submenu never fires its
             // own key equivalent** — measured: `performKeyEquivalent` returns false and the action
-            // never runs, while the item still reports `isEnabled == true`, so a ⌃G hung on the
+            // never runs, while the item still reports `isEnabled == true`, so a ⌘G hung on the
             // submenu would be a shortcut that is drawn and dead. They are also two different
             // gestures: the submenu is the one you *browse*, right here, while `go.places` drops the
             // same list under the focused pane's path bar, where a keyboard user is already looking

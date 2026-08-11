@@ -153,7 +153,7 @@ still reachable reads:
 
 | Place | With the sidebar hidden |
 |---|---|
-| Favorites | ⌃D and Go ▸ Favorites… |
+| Favorites | ⌘F and Go ▸ Favorites… |
 | Volumes, cloud mounts | only by typing the path into ⌘L |
 | iCloud Drive | unreachable — the row dispatches a *merge*, so there is no path to type |
 | Vaults | only while the image is under the cursor (`vaultImageUnderCursor`) |
@@ -238,7 +238,8 @@ the stock seven behind "All Tags…" — and toggled back off.
 
 **Slice 3 — the keyboard and the mouse, landed 2026-08-12.** 5 new app tests (344 total), 1 new core
 test (2058), both linters and all three CI scripts clean, verified live with the sidebar hidden.
-`go.places` (⌃G) pops the same menu under the focused pane's path bar, structurally the
+`go.places` (⌘G — ⌃G as shipped that day; see below) pops the same menu under the focused pane's
+path bar, structurally the
 `showFavorites` popup; and the path bar's **leading glyph slot** — which both render paths already
 had, `installCrumbs(leadingSymbol:)` and `installVirtualLabel(symbolNamed:)` — is now an
 always-present button onto that menu, so the mouse affordance exists in every mode including the
@@ -247,8 +248,17 @@ from, which `NSMenu.delegate` being weak already required of *something*.
 
 The chord was free in the way that matters and was measured rather than assumed: Cocoa's
 `StandardKeyBinding.dict` binds `^b`, `^d`, `^e`, `^f`, `^k`, `^n`, `^p`, `^t`, `^v` and `^y` in every
-text field and **no `^g`** — so unlike the ⌃D popup beside it, this one needs no field-editor
-carve-out and can mean one thing everywhere.
+text field and **no `^g`** — so unlike the ⌃D popup beside it, this one needed no field-editor
+carve-out and could mean one thing everywhere.
+
+**The pair moved to ⌘F / ⌘G (2026-08-12).** Favorites is ⌘F and Places ⌘G; ⌃D and ⌃G are free. The
+measurement above is what the ⌃-layer choice rested on and it still stands — it is simply no longer
+load-bearing, because the text system claims no ⌘ letter of its own, so *neither* popup needs a
+carve-out now. `validateNavigationItem`'s `showFavorites` case, which existed only to let ⌃D fall
+through to `deleteForward:`, went with it; ⌃T's carve-out stays, since ⌃T still transposes. The
+price of the new pair is stated rather than hidden: ⌘F/⌘G are macOS's Find / Find Next, so a user
+reaching for Find gets Favorites. Nothing in Dirnex claimed them — the file search is ⌥F7 and the
+app declares no Find menu — but a later search or filter feature cannot have them back.
 
 Two things the slice turned out to need beyond the plan:
 
@@ -256,8 +266,8 @@ Two things the slice turned out to need beyond the plan:
   **never fires its own key equivalent** — measured in a throwaway: `performKeyEquivalent` returns
   `false` and the action never runs, while the item still reports `isEnabled == true`, and the same
   item without a submenu fires. The menu bar is this app's only dispatch path for a command shortcut,
-  so hanging ⌃G on `Places ▸` would have drawn a shortcut that is dead. `Places ▸` (browse it there)
-  and `Places…  ⌃G` (drop it at the pane) are therefore two items for two gestures, which is also
+  so hanging ⌘G on `Places ▸` would have drawn a shortcut that is dead. `Places ▸` (browse it there)
+  and `Places…  ⌘G` (drop it at the pane) are therefore two items for two gestures, which is also
   what `go.favorites` has always been. Pinned against the **built menu**, not against
   `commandItem(for:)` — a negative control showed the isolated item stays well-formed after the
   layout stops containing it.
@@ -273,7 +283,7 @@ Swapping the slot's `NSImageView` for a borderless `NSButton` was measured befor
 same frame, same ink, to the pixel, in the row's real shape — so nothing moved. Verified live with the
 sidebar collapsed: the glyph opens Places on a plain local path, **and from inside the Trash**, which
 is the mode with no crumb row at all and the one the rejected root-crumb anchor could never have
-served; ⌃G drops the same menu in the focused pane; a volume picked from it opens the pane at `/`;
+served; ⌘G drops the same menu in the focused pane; a volume picked from it opens the pane at `/`;
 and clicking the *inactive* pane's glyph opens the place in **that** pane, which is what
 `showPlaces` making its pane active first is for.
 

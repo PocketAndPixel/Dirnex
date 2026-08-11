@@ -320,13 +320,13 @@ at build time.
   **`true`** for the byte-identical item without one. Since the menu bar is this app's only dispatch
   path for a registry shortcut (nothing else reads `KeyBindingStore` at event time), that decides a
   design rather than merely warning about one: M20's Go menu carries **two** Places entries, the
-  submenu you browse and the plain `go.places` item ⌃G rides. Three neighbours from the same probe —
-  an **empty** submenu blocks it just the same, so it is the submenu's presence and not its contents;
+  submenu you browse and the plain `go.places` item its chord rides (⌃G when measured, ⌘G since).
+  Three neighbours from the same probe — an **empty** submenu blocks it just the same, so it is the submenu's presence and not its contents;
   a **hidden** item's key equivalent *does* still fire (a tempting way to hide the second entry, and
   a mechanism nobody reading the menu later would find); and `menuNeedsUpdate` is **not** called
   during a key-equivalent search, so a delegate-populated menu is empty to that search.
   - **Pin such a claim against the *built* menu, not against the item builder.** A negative control
-    is what showed it: removing `.command("go.places")` from the layout and hanging ⌃G on the submenu
+    is what showed it: removing `.command("go.places")` from the layout and hanging the chord on the submenu
     left an assertion over `MainMenuBuilder.commandItem(for:)` passing, because the item in isolation
     is still well-formed — it is simply in no menu. Flattening `MainMenuBuilder.build()` and looking
     for the *selector* catches it.

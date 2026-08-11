@@ -13,7 +13,7 @@ import DirnexCore
 extension PanelViewController {
     // MARK: - Commands (dispatched to the focused pane via the responder chain)
 
-    /// ⌃D — drop the favorites just under the path bar: one item per pinned folder (jump on
+    /// ⌘F — drop the favorites just under the path bar: one item per pinned folder (jump on
     /// pick), then Add/Remove the current folder and Organize…
     @objc func showFavorites(_ sender: Any?) {
         let menu = buildFavoritesMenu()

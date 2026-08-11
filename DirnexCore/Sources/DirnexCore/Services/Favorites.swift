@@ -22,7 +22,7 @@ public struct FavoriteEntry: Sendable, Hashable, Identifiable, Codable {
     public var id: VFSPath { path }
 }
 
-/// An ordered, de-duplicated list of pinned directories — the model behind the Ctrl+D
+/// An ordered, de-duplicated list of pinned directories — the model behind the ⌘F
 /// favorites (PLAN.md §M3). A pure value type with no persistence or AppKit: the app owns the
 /// `UserDefaults` store and the menu/organizer UI, this owns the ordering rules so they stay
 /// unit-testable headless (matching `Panel`, `SidebarLocations`, and the command registry).

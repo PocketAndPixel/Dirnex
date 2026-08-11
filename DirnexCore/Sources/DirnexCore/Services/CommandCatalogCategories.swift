@@ -79,7 +79,7 @@ extension CommandCatalog {
                 "largest", "what is taking up"
             ],
             // ⌃B for "bars", on the ⌃-letter layer the app's own panel modes already use (⌃Q quick
-            // view, ⌃T tags, ⌃D favorites). No conflict with the terminal drawer's reasoning: that one
+            // view, ⌃T tags). No conflict with the terminal drawer's reasoning: that one
             // fled to ⌃` precisely because its keystrokes belong to a shell, and this mode's do not.
             shortcut: CommandShortcut(key: "b", modifiers: .control)
         ),
@@ -161,9 +161,9 @@ extension CommandCatalog {
             title: "Terminal Drawer",
             category: .view,
             keywords: ["shell", "console", "command", "line", "zsh", "bash", "prompt", "drawer"],
-            // ⌃` rather than the ⌃-letter layer the app's own popups use (⌃T tags, ⌃D favorites,
-            // ⌃Q quick view): every one of those letters means something to a shell — ⌃D is EOF,
-            // ⌃Q is XON — and the drawer is the one surface where the user's keystrokes are meant
+            // ⌃` rather than the ⌃-letter layer the app's own popups use (⌃T tags, ⌃B size bars,
+            // ⌃Q quick view): every one of those letters means something to a shell — ⌃Q is XON,
+            // ⌃B moves back — and the drawer is the one surface where the user's keystrokes are meant
             // to belong to somebody else. ⌃` is VS Code's gesture for exactly this drawer, and no
             // shell wants it.
             shortcut: CommandShortcut(key: "`", modifiers: .control)
@@ -285,20 +285,24 @@ extension CommandCatalog {
             category: .navigation,
             keywords: [
                 "places", "sidebar", "locations", "volumes", "servers", "vaults", "tags",
-                "recents", "icloud", "ctrl g"
+                "recents", "icloud", "cmd g"
             ],
-            // ⌃G, beside ⌃D for the favorites sub-list — and free in a way ⌃D and ⌃B were not:
-            // Cocoa's `StandardKeyBinding.dict` binds ^b, ^d, ^e, ^f, ^k, ^n, ^p, ^t, ^v and ^y in
-            // every text field and *not* ^g, so this one needs no field-editor carve-out to avoid
-            // stealing a key the text system means something by.
-            shortcut: CommandShortcut(key: "g", modifiers: .control)
+            // ⌘G, beside ⌘F for the favorites sub-list it generalizes. The pair is macOS's
+            // Find / Find Next, which this app spends elsewhere on purpose: Dirnex's search is
+            // ⌥F7 and it declares no Find menu, so neither chord is claimed. Both are free of the
+            // field-editor problem the old ⌃D/⌃G pair had to reason about — the text system binds
+            // no ⌘-letter of its own (a ⌘ chord only reaches a field editor through a menu item's
+            // key equivalent), so this needs no carve-out and means one thing everywhere.
+            shortcut: CommandShortcut(key: "g", modifiers: .command)
         ),
         Command(
             id: "go.favorites",
             title: "Favorites…",
             category: .navigation,
-            keywords: ["favorites", "bookmarks", "pinned", "jump", "ctrl d"],
-            shortcut: CommandShortcut(key: "d", modifiers: .control)
+            keywords: ["favorites", "bookmarks", "pinned", "jump", "cmd f"],
+            // ⌘F, with ⌘G on the Places menu that contains it — see `go.places` for why the Find
+            // pair is available here.
+            shortcut: CommandShortcut(key: "f", modifiers: .command)
         ),
         Command(
             id: "go.addToFavorites",

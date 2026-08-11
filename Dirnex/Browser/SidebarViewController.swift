@@ -171,7 +171,7 @@ final class SidebarViewController: NSViewController {
         rebuild()
     }
 
-    /// Rebuild when the shared pin list changes — a pin from ⌃D, a rename or removal here, or the
+    /// Rebuild when the shared pin list changes — a pin from ⌘F, a rename or removal here, or the
     /// same in another window, shows up live in the Favorites section (PLAN.md §M8).
     private func observeFavoritesChanges() {
         NotificationCenter.default.addObserver(

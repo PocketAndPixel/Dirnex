@@ -67,7 +67,7 @@ extension PanelViewController: PathBarViewDelegate {
     }
 
     /// The path bar's leading glyph is the mouse face of the place list (PLAN.md §M20 Slice 3) —
-    /// it drops the very menu ⌃G and Go ▸ Places show. `showPlaces` makes this pane active first,
+    /// it drops the very menu ⌘G and Go ▸ Places show. `showPlaces` makes this pane active first,
     /// which is what a click on the *inactive* pane's glyph needs and a keystroke does not.
     func pathBarDidRequestPlaces(_ bar: PathBarView) {
         showPlaces(bar)

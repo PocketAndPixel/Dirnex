@@ -30,15 +30,16 @@ struct CommandCatalogNavigationTests {
         #expect(KeyBindings().conflicts(for: "go.connectServer").isEmpty)
     }
 
-    @Test("the M20 places command is a conflict-free navigation command on ⌃G")
+    @Test("the M20 places command is a conflict-free navigation command on ⌘G")
     func coversPlaces() {
         let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })
         let places = byID["go.places"]
         #expect(places?.category == .navigation)
-        #expect(places?.shortcut == CommandShortcut(key: "g", modifiers: .control))
+        #expect(places?.shortcut == CommandShortcut(key: "g", modifiers: .command))
         // It sits beside the favorites popup it generalizes, and must not take its chord.
-        #expect(byID["go.favorites"]?.shortcut == CommandShortcut(key: "d", modifiers: .control))
+        #expect(byID["go.favorites"]?.shortcut == CommandShortcut(key: "f", modifiers: .command))
         #expect(KeyBindings().conflicts(for: "go.places").isEmpty)
+        #expect(KeyBindings().conflicts(for: "go.favorites").isEmpty)
     }
 
     @Test("the M6 open-in-terminal command is a shortcut-free navigation command")
