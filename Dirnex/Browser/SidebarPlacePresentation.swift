@@ -102,7 +102,11 @@ enum SidebarPlacePresentation {
     /// A per-protocol SF Symbol so a saved server reads as remote at a glance: a globe-ish network
     /// glyph for SFTP, a connected-drive glyph for an SMB share, and an up/down transfer glyph for
     /// FTP — the protocol's own name, and unmistakable against the other two at 14 pt.
-    private static func serverSymbolName(for kind: ServerKind) -> String {
+    ///
+    /// Internal rather than private because the path bar's leading glyph asks it directly: browsing
+    /// a connected server, that glyph must be the one the saved row that opened it wears, and the
+    /// path bar has a `VFSPath` rather than a `ServerConnection` to build a `SidebarPlace` from.
+    static func serverSymbolName(for kind: ServerKind) -> String {
         switch kind {
         case .smb: "externaldrive.connected.to.line.below"
         case .ftp: "arrow.up.arrow.down.circle"

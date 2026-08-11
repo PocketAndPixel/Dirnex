@@ -84,8 +84,17 @@ public struct MountedVolume: Sendable, Hashable, Identifiable {
     /// the mount-table flags can't tell an optical disc from a read-only disk image (both are
     /// ejectable + read-only + non-removable), so guessing a third glyph would misfire.
     public var symbolName: String {
-        isRoot || isInternal ? "internaldrive" : "externaldrive"
+        isRoot || isInternal ? Self.internalSymbolName : Self.externalSymbolName
     }
+
+    /// Built-in storage's glyph, named because a second surface draws it for a volume it has no
+    /// `MountedVolume` for: the path bar's leading glyph marks a local trail with it, that trail
+    /// being rooted at the boot volume's crumb whatever disk the directory itself sits on
+    /// (PLAN.md §M20). A second spelling of the string is a drift nothing would catch — the two
+    /// would simply stop matching, in the one place they are meant to say "the same disk".
+    public static let internalSymbolName = "internaldrive"
+    /// Everything that is not built-in storage; see `symbolName`.
+    public static let externalSymbolName = "externaldrive"
 }
 
 /// Enumerates the two kinds of sidebar destinations — standard user folders and

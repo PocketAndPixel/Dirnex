@@ -314,6 +314,30 @@ at build time.
     and driving the window's directly undid nothing.
   - The tell that this class of bug is present is a *comment* claiming a fall-through, and it fails
     in the quiet direction: nothing logs, every menu builds, and the key just does nothing.
+- **An `NSMenuItem` that carries a submenu never fires its own key equivalent** — and it goes on
+  reporting `isEnabled == true`, so the item looks armed and the chord does nothing. Measured
+  directly: `NSMenu.performKeyEquivalent(with:)` returns **`false`** for a ⌃G item with a submenu and
+  **`true`** for the byte-identical item without one. Since the menu bar is this app's only dispatch
+  path for a registry shortcut (nothing else reads `KeyBindingStore` at event time), that decides a
+  design rather than merely warning about one: M20's Go menu carries **two** Places entries, the
+  submenu you browse and the plain `go.places` item ⌃G rides. Three neighbours from the same probe —
+  an **empty** submenu blocks it just the same, so it is the submenu's presence and not its contents;
+  a **hidden** item's key equivalent *does* still fire (a tempting way to hide the second entry, and
+  a mechanism nobody reading the menu later would find); and `menuNeedsUpdate` is **not** called
+  during a key-equivalent search, so a delegate-populated menu is empty to that search.
+  - **Pin such a claim against the *built* menu, not against the item builder.** A negative control
+    is what showed it: removing `.command("go.places")` from the layout and hanging ⌃G on the submenu
+    left an assertion over `MainMenuBuilder.commandItem(for:)` passing, because the item in isolation
+    is still well-formed — it is simply in no menu. Flattening `MainMenuBuilder.build()` and looking
+    for the *selector* catches it.
+- **macOS's Help ▸ Search only exists if the app declares a Help menu, and Dirnex declares none.**
+  M20 Slice 2 shipped with "since macOS's Help ▸ Search searches menu items, 'Trash' is now findable
+  by typing the word" written into PLAN.md *and* into `PlacesMenu`'s doc comment — a benefit claimed
+  twice for a search field this app has never had. One look at the running menu bar settles it
+  (`Dirnex File Edit Select View Go Workspace Window`), which is the whole lesson: the claim was
+  about a *surface*, and no test, no build and no code review looks at the menu bar. Whether a
+  delegate-populated submenu would be indexed by that search, in an app that does have a Help menu,
+  is unmeasured and should not be assumed either.
 - **A branch added beside an existing one in a key monitor inherits none of its carve-outs, and the
   carve-outs are invisible at the call site precisely because they were factored out well.** The
   Quick View monitor's Esc branch reads `guard escapeBelongsToQuickView` — one line, no mention of

@@ -14,6 +14,10 @@ protocol PathBarViewDelegate: AnyObject {
     func pathBar(_ bar: PathBarView, didCommit rawText: String, resolved: VFSPath)
     /// Editing was abandoned (Esc) — the pane should take keyboard focus back.
     func pathBarDidCancel(_ bar: PathBarView)
+    /// The leading glyph was clicked — the pane should drop its Places menu (PLAN.md §M20). Reported
+    /// rather than done here for the reason at the top of this file: the bar states intent, and
+    /// which pane a place opens in is the pane's business, not the bar's.
+    func pathBarDidRequestPlaces(_ bar: PathBarView)
     /// Text editing began — the pane should become the active one.
     func pathBarDidBeginEditing(_ bar: PathBarView)
     /// Directory names contained directly in `directory`, for path completion. Called
@@ -153,9 +157,12 @@ final class PathBarView: NSView, NSTextFieldDelegate {
     /// Internal, not private: `rebuildContents` drives it from `PathBarView+Location`, and Swift's
     /// `private` does not reach across files.
     func rebuildCrumbs(for path: VFSPath, rootTitle: String = "Macintosh HD") {
-        installCrumbs(path.ancestorsFromRoot.map { ancestor in
-            Crumb(title: ancestor.isRoot ? rootTitle : ancestor.lastComponent, target: ancestor)
-        })
+        installCrumbs(
+            path.ancestorsFromRoot.map { ancestor in
+                Crumb(title: ancestor.isRoot ? rootTitle : ancestor.lastComponent, target: ancestor)
+            },
+            leadingSymbol: Self.rootSymbolName(for: path)
+        )
     }
 
     private func makeCrumb(title: String, tag: Int, isCurrent: Bool) -> NSButton {
@@ -218,6 +225,12 @@ final class PathBarView: NSView, NSTextFieldDelegate {
         guard crumbTargets.indices.contains(sender.tag) else { return }
         delegate?.pathBar(self, didActivate: crumbTargets[sender.tag])
     }
+
+    /// The leading glyph was clicked. Internal, not private, because `makePlacesButton` names it in
+    /// a `#selector` from `PathBarView+Location` and Swift's `private` does not cross files.
+    @objc func showPlaces(_ sender: Any?) {
+        delegate?.pathBarDidRequestPlaces(self)
+    }
 }
 
 // MARK: - Crumb row installation
@@ -241,20 +254,23 @@ extension PathBarView {
     /// `installVirtualLabel` does for the Trash and iCloud Drive. It is tinted like the leading
     /// crumbs it sits beside rather than like the current one, so it reads as part of the root
     /// rather than competing with the directory the pane is actually in.
-    func installCrumbs(_ crumbs: [Crumb], leadingSymbol: String? = nil) {
+    ///
+    /// It is required, not optional, as of §M20 Slice 3: the slot is now the button onto Places, so
+    /// a render path that passed nothing would be a mode with no mouse route to the place list —
+    /// and, since every location *has* a kind, there was never anything to say by leaving it out.
+    /// `PathBarView+Location.rootSymbolName` names the kind for the paths that had none.
+    func installCrumbs(_ crumbs: [Crumb], leadingSymbol: String) {
         clearCrumbStack()
         crumbTargets = crumbs.map(\.target)
-        if let leadingSymbol {
-            let glyph = makeLocationGlyph(
-                named: leadingSymbol,
-                describedAs: crumbs.first?.title ?? "",
-                tint: .secondaryLabelColor
-            )
-            crumbStack.addArrangedSubview(glyph)
-            // `crumbStack` is spaced at 1 pt for the `›` separators, which would leave the glyph
-            // touching the first crumb — the same reason the virtual label nests its own row.
-            crumbStack.setCustomSpacing(5, after: glyph)
-        }
+        let glyph = makePlacesButton(
+            named: leadingSymbol,
+            describedAs: crumbs.first?.title ?? "",
+            tint: .secondaryLabelColor
+        )
+        crumbStack.addArrangedSubview(glyph)
+        // `crumbStack` is spaced at 1 pt for the `›` separators, which would leave the glyph
+        // touching the first crumb — the same reason the virtual label nests its own row.
+        crumbStack.setCustomSpacing(5, after: glyph)
         for (index, crumb) in crumbs.enumerated() {
             if index > 0 {
                 crumbStack.addArrangedSubview(makeSeparator())
@@ -293,7 +309,7 @@ extension PathBarView {
         clearCrumbStack()
         let color: NSColor = isActive ? .labelColor : .secondaryLabelColor
 
-        let glyph = makeLocationGlyph(named: symbolName, describedAs: text, tint: color)
+        let glyph = makePlacesButton(named: symbolName, describedAs: text, tint: color)
 
         let label = NSTextField(labelWithString: text)
         label.font = .boldSystemFont(ofSize: NSFont.smallSystemFontSize)

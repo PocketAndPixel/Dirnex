@@ -29,8 +29,9 @@ enum MainMenuBuilder {
 
     /// The Go ▸ Places submenu, built once and kept: it is its own menu's delegate, so a fresh one
     /// per rebuild — and the menu bar is rebuilt whenever a key binding changes — would leak one
-    /// delegate per rebuild and leave the stale menus observing nothing.
-    private static let places = PlacesMenu()
+    /// delegate per rebuild and leave the stale menus observing nothing. The same instance the ⌃G
+    /// popup and the path bar's glyph fill from, so the three faces cannot be handed different lists.
+    private static let places = PlacesMenu.shared
 
     private enum Item {
         case command(String)
@@ -112,7 +113,15 @@ enum MainMenuBuilder {
             // sidebar holds, and the only way to most of them when the sidebar is hidden
             // (PLAN.md §M20). Favorites keeps its own item beside it — ⌃D is the fast path to the
             // sub-list people use most, and it is muscle memory from Total Commander.
-            .placesSubmenu,
+            //
+            // Two Places entries, deliberately, because **an item carrying a submenu never fires its
+            // own key equivalent** — measured: `performKeyEquivalent` returns false and the action
+            // never runs, while the item still reports `isEnabled == true`, so a ⌃G hung on the
+            // submenu would be a shortcut that is drawn and dead. They are also two different
+            // gestures: the submenu is the one you *browse*, right here, while `go.places` drops the
+            // same list under the focused pane's path bar, where a keyboard user is already looking
+            // — exactly as `go.favorites` does.
+            .placesSubmenu, .command("go.places"),
             .command("go.favorites"), .command("go.addToFavorites"), .separator,
             .command("go.connectServer"), .separator,
             .command("go.newVault"), .command("go.unlockVault"), .command("go.lockVault"),
@@ -150,7 +159,7 @@ enum MainMenuBuilder {
             case .placesSubmenu:
                 submenu.addItem(places.menuItem(title: String(
                     localized: "Places",
-                    comment: "Go-menu submenu with every sidebar destination (favorites, volumes, servers, Trash)."
+                    comment: "Every sidebar destination: the Go-menu submenu, and the path bar's glyph."
                 )))
             }
         }

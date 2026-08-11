@@ -6,8 +6,13 @@ import DirnexCore
 /// The sidebar was the only surface that could reach most of them: with it collapsed, Volumes and
 /// the cloud mounts were reachable only by typing a path into ⌘L, and saved searches, tags, Recents,
 /// the Trash and the merged iCloud listing were not reachable at all. This is the face that is
-/// always present whatever the sidebar is doing — and, because macOS's Help ▸ Search searches menu
-/// items, it is what makes "Trash" findable by typing the word.
+/// always present whatever the sidebar is doing — the one you can *browse*, rather than having to
+/// know what you are looking for.
+///
+/// This used to claim it also made "Trash" findable through macOS's Help ▸ Search. It does not:
+/// **Dirnex declares no Help menu**, so the search field that would index menu items does not exist
+/// in this app (checked live 2026-08-12). Nothing rests on it — the ⌃G popup and the path bar's
+/// glyph are the other two faces — but it is worth not repeating.
 ///
 /// **It is a rendering of `SidebarPlaces`, not a second list.** The items come from the front
 /// window's own `placeSources()` and are dispatched through the same `activate(_:)` the rows go
@@ -17,6 +22,15 @@ import DirnexCore
 /// here, and Tags lists every tag rather than the stock seven behind an "All Tags…" row.
 @MainActor
 final class PlacesMenu: NSObject {
+    /// The one instance, shared by all three faces (PLAN.md §M20 Slice 3).
+    ///
+    /// It has to be shared rather than made per caller because `NSMenu.delegate` is **weak**: every
+    /// menu below is a fresh, disposable object that fills itself from this delegate, so whatever
+    /// owns the delegate has to outlive them all. One instance is also what makes "one funnel, three
+    /// faces" true of the object graph and not only of the prose — the menu bar, ⌃G and the path
+    /// bar's glyph cannot be handed different builders.
+    static let shared = PlacesMenu()
+
     /// The Go-menu item carrying the submenu.
     func menuItem(title: String) -> NSMenuItem {
         let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")

@@ -127,11 +127,18 @@ extension PathBarView {
     /// it takes its tint rather than reading `isActive`: the label owns the whole row and follows the
     /// pane's active state, while the trail's glyph sits beside secondary-colored crumbs and matches
     /// those instead.
-    func makeLocationGlyph(
+    ///
+    /// It is a **button onto Places** (PLAN.md §M20 Slice 3), and it is in every location the bar can
+    /// render — which is what makes it the mouse face of the place list. The root crumb could not be:
+    /// `installVirtualLabel` replaces the whole crumb row for the Trash, Recents and search results,
+    /// so a control hung there would be missing from exactly the locations you most want to leave.
+    /// Swapping the `NSImageView` this used to be for a borderless button was measured to move
+    /// nothing — same frame, same ink, to the pixel, in the row's real shape.
+    func makePlacesButton(
         named symbolName: String,
         describedAs description: String,
         tint: NSColor
-    ) -> NSImageView {
+    ) -> NSButton {
         let configuration = NSImage.SymbolConfiguration(
             pointSize: NSFont.smallSystemFontSize,
             weight: .regular
@@ -139,13 +146,48 @@ extension PathBarView {
         let symbol = NSImage(systemSymbolName: symbolName, accessibilityDescription: description)?
             .withSymbolConfiguration(configuration)
         symbol?.isTemplate = true
-        let glyph = NSImageView(image: symbol ?? NSImage())
+        let glyph = NSButton(image: symbol ?? NSImage(), target: self, action: #selector(showPlaces))
+        glyph.isBordered = false
+        glyph.bezelStyle = .inline
+        glyph.setButtonType(.momentaryChange)
+        glyph.imagePosition = .imageOnly
         glyph.contentTintColor = tint
+        glyph.toolTip = Self.placesTitle
+        // A glyph-only control is silent to VoiceOver, and what it *does* is open the place list —
+        // the location it also marks is spoken by the crumbs and the label beside it.
+        glyph.setAccessibilityLabel(Self.placesTitle)
         // The glyph is the one thing in the row that must never be squeezed — it is what names the
         // kind of location, and a symbol compressed to nothing is worse than no symbol at all.
         glyph.setContentCompressionResistancePriority(.required, for: .horizontal)
         glyph.setContentHuggingPriority(.required, for: .horizontal)
         return glyph
+    }
+
+    /// The tooltip and accessibility label, drawn from the same catalog entry the Go ▸ Places
+    /// submenu titles itself with — a display string that exists twice gets localized once
+    /// (docs/NOTES.md). The `comment:` is repeated verbatim rather than hoisted because
+    /// `String(localized:comment:)` takes a `StaticString`, and two sites keying one string with
+    /// different comments hand the translator whichever `xcstringstool` kept.
+    static var placesTitle: String {
+        String(
+            localized: "Places",
+            comment: "Every sidebar destination: the Go-menu submenu, and the path bar's glyph."
+        )
+    }
+
+    /// The glyph for a location whose trail is rooted in a filesystem rather than in a *place* —
+    /// a plain local path, a browsed archive (whose crumbs start at the archive's local ancestors),
+    /// and a connected server.
+    ///
+    /// The two remote answers are the saved-server row's own symbols, asked for by protocol, so a
+    /// server browsed and a server listed wear one mark. Local takes the **boot volume's** glyph,
+    /// which is not a guess about the disk the directory sits on: `rebuildCrumbs` titles the root
+    /// crumb "Macintosh HD" for every local path, `/Volumes/…` included, so the glyph marks the
+    /// trail's own root and matches the crumb beside it.
+    static func rootSymbolName(for path: VFSPath) -> String {
+        if path.backend.isSFTP { return SidebarPlacePresentation.serverSymbolName(for: .sftp) }
+        if path.backend.isFTP { return SidebarPlacePresentation.serverSymbolName(for: .ftp) }
+        return MountedVolume.internalSymbolName
     }
 
     /// Render a virtual location (Spotlight results, Recents, the merged Trash) as a single,
@@ -192,7 +234,14 @@ extension PathBarView {
     /// archive to that folder, the archive-name crumb re-enters its root, an inner crumb jumps
     /// within it — the same affordance the local path bar gives.
     func rebuildArchiveLabel(for path: VFSPath, ancestry: [VFSPath] = []) {
-        installCrumbs(Self.archiveCrumbs(for: path, ancestry: ancestry))
+        installCrumbs(
+            Self.archiveCrumbs(for: path, ancestry: ancestry),
+            // The archive's own local ancestors are what the trail is rooted at — the crumb row
+            // opens on "Macintosh HD" here exactly as a plain local path does — so the leading
+            // glyph is the local one rather than an archive glyph, which would name the *last*
+            // crumbs instead of the first.
+            leadingSymbol: Self.rootSymbolName(for: .local("/"))
+        )
     }
 
     /// The crumb chain for a browsed archive, outermost local folder → current inner directory.

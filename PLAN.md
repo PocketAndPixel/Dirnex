@@ -145,7 +145,7 @@ declared public scope and a folder that exists. Both are argued in HISTORY.md. T
 that approximation was reversed on 2026-07-21 (see M10): it used to also require a
 non-empty folder, which hid three folders Finder shows.
 
-### M20 — Every place reachable without the sidebar (S, in flight, opened 2026-08-12)
+### M20 — Every place reachable without the sidebar (S, opened 2026-08-12, all three slices landed 2026-08-12)
 
 M8 made the sidebar "a first-class surface", and for most of what it holds it is the *only* surface.
 With it collapsed — ⌃⌘S, or simply a user who wants the width for two panes — an audit of what is
@@ -199,8 +199,13 @@ a scrolling list rather than a destination, so the menu will list every known ta
 both linters and all three CI scripts clean, verified live. `rebuild()` is re-expressed over
 `SidebarPlaces.groups(from:)`, rendering folding, headers, the spacer and the All Tags row on top of
 it; `PlacesMenu` renders the same groups as a submenu per section; and one `activate(_ place:)` funnel
-is what both a row and a menu item dispatch through. Always present whatever the sidebar is doing —
-and since macOS's Help ▸ Search searches menu items, "Trash" is now findable by typing the word.
+is what both a row and a menu item dispatch through. Always present whatever the sidebar is doing.
+
+*Corrected 2026-08-12 (Slice 3):* this slice also claimed the menu made "Trash" findable through
+macOS's Help ▸ Search. It does not — **Dirnex declares no Help menu**, so the search field that
+indexes menu items does not exist in this app. Checked by looking at the running menu bar; the claim
+had been written into the plan and `PlacesMenu`'s doc comment without it. Nothing rested on it. Adding
+a Help menu is its own decision and is not taken here.
 
 Three things the slice turned out to need beyond the plan:
 
@@ -231,13 +236,46 @@ the sidebar draws for the same two vaults. Tags was toggled on to check the one 
 contents deliberately differ — the menu lists every tag with its colored dot, where the sidebar shows
 the stock seven behind "All Tags…" — and toggled back off.
 
-**Slice 3 — the keyboard and the mouse, not started.** `go.places` (⌃G — free, and Cocoa binds it in
-no text field, unlike the ⌃D and ⌃B this app already took) popping the same menu under the path bar in
-the focused pane, structurally the `showFavorites` popup; `PlacesMenu.makeMenu()` already exists for
-it. Then the path bar's **leading glyph slot** — which both render paths already have,
-`installCrumbs(leadingSymbol:)` and `installVirtualLabel(symbolNamed:)` — becomes an always-present
-button onto the same menu, so the mouse affordance exists in every mode including the virtual ones the
-root crumb cannot reach.
+**Slice 3 — the keyboard and the mouse, landed 2026-08-12.** 5 new app tests (344 total), 1 new core
+test (2058), both linters and all three CI scripts clean, verified live with the sidebar hidden.
+`go.places` (⌃G) pops the same menu under the focused pane's path bar, structurally the
+`showFavorites` popup; and the path bar's **leading glyph slot** — which both render paths already
+had, `installCrumbs(leadingSymbol:)` and `installVirtualLabel(symbolNamed:)` — is now an
+always-present button onto that menu, so the mouse affordance exists in every mode including the
+virtual ones the root crumb cannot reach. `PlacesMenu.shared` is the one builder all three faces fill
+from, which `NSMenu.delegate` being weak already required of *something*.
+
+The chord was free in the way that matters and was measured rather than assumed: Cocoa's
+`StandardKeyBinding.dict` binds `^b`, `^d`, `^e`, `^f`, `^k`, `^n`, `^p`, `^t`, `^v` and `^y` in every
+text field and **no `^g`** — so unlike the ⌃D popup beside it, this one needs no field-editor
+carve-out and can mean one thing everywhere.
+
+Two things the slice turned out to need beyond the plan:
+
+- **The Go menu carries *two* Places entries, and has to.** An `NSMenuItem` that carries a submenu
+  **never fires its own key equivalent** — measured in a throwaway: `performKeyEquivalent` returns
+  `false` and the action never runs, while the item still reports `isEnabled == true`, and the same
+  item without a submenu fires. The menu bar is this app's only dispatch path for a command shortcut,
+  so hanging ⌃G on `Places ▸` would have drawn a shortcut that is dead. `Places ▸` (browse it there)
+  and `Places…  ⌃G` (drop it at the pane) are therefore two items for two gestures, which is also
+  what `go.favorites` has always been. Pinned against the **built menu**, not against
+  `commandItem(for:)` — a negative control showed the isolated item stays well-formed after the
+  layout stops containing it.
+- **A glyph for the locations that had no kind.** The slot only appeared for a location with a mark
+  of its own (cloud, iCloud, Trash, Recents, search); a plain local path, an archive trail and a
+  connected server had none. `rootSymbolName(for:)` names those: the saved-server row's own symbol by
+  protocol, and the **boot volume's** for anything local — not a guess about the disk, since
+  `rebuildCrumbs` titles the root crumb "Macintosh HD" for every local path, `/Volumes/…` included.
+  `MountedVolume.internalSymbolName` exists so that is one string rather than two, and
+  `serverSymbolName` widened from `private` for the same reason.
+
+Swapping the slot's `NSImageView` for a borderless `NSButton` was measured before it was written —
+same frame, same ink, to the pixel, in the row's real shape — so nothing moved. Verified live with the
+sidebar collapsed: the glyph opens Places on a plain local path, **and from inside the Trash**, which
+is the mode with no crumb row at all and the one the rejected root-crumb anchor could never have
+served; ⌃G drops the same menu in the focused pane; a volume picked from it opens the pane at `/`;
+and clicking the *inactive* pane's glyph opens the place in **that** pane, which is what
+`showPlaces` making its pane active first is for.
 
 Deliberately out of scope: **individual places as ⌘K palette results** (the palette is a registry of
 commands, and places are live data — a different mechanism, worth its own decision); reordering or

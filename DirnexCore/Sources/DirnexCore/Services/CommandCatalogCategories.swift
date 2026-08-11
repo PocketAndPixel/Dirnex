@@ -280,6 +280,20 @@ extension CommandCatalog {
             shortcut: CommandShortcut(key: "↓", modifiers: [.option, .function])
         ),
         Command(
+            id: "go.places",
+            title: "Places…",
+            category: .navigation,
+            keywords: [
+                "places", "sidebar", "locations", "volumes", "servers", "vaults", "tags",
+                "recents", "icloud", "ctrl g"
+            ],
+            // ⌃G, beside ⌃D for the favorites sub-list — and free in a way ⌃D and ⌃B were not:
+            // Cocoa's `StandardKeyBinding.dict` binds ^b, ^d, ^e, ^f, ^k, ^n, ^p, ^t, ^v and ^y in
+            // every text field and *not* ^g, so this one needs no field-editor carve-out to avoid
+            // stealing a key the text system means something by.
+            shortcut: CommandShortcut(key: "g", modifiers: .control)
+        ),
+        Command(
             id: "go.favorites",
             title: "Favorites…",
             category: .navigation,

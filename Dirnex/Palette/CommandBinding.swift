@@ -102,6 +102,7 @@ enum CommandBinding {
         "go.back": #selector(PanelViewController.goBack(_:)),
         "go.forward": #selector(PanelViewController.goForward(_:)),
         "go.history": #selector(PanelViewController.showHistory(_:)),
+        "go.places": #selector(PanelViewController.showPlaces(_:)),
         "go.favorites": #selector(PanelViewController.showFavorites(_:)),
         "go.addToFavorites": #selector(PanelViewController.addToFavorites(_:)),
         "workspace.list": #selector(PanelViewController.showWorkspaces(_:)),

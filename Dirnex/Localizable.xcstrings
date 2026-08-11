@@ -91,7 +91,7 @@
       }
     },
     "Places": {
-      "comment": "Go-menu submenu with every sidebar destination (favorites, volumes, servers, Trash).",
+      "comment": "Every sidebar destination: the Go-menu submenu, and the path bar's glyph.",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -88807,6 +88807,186 @@
           "stringUnit": {
             "state": "translated",
             "value": "向上"
+          }
+        }
+      }
+    },
+    "command.go.places.keywords": {
+      "comment": "Extra command-palette search terms, comma-separated. Added to the English terms, not replacing them, so the English words keep working. Synonyms a user might type — not a translation of the title.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "orte, seitenleiste, speicherorte, volumes, server, tresore, tags, zuletzt, icloud, papierkorb, ctrl g"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "places, sidebar, locations, volumes, servers, vaults, tags, recents, icloud, trash, ctrl g"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "lugares, barra lateral, ubicaciones, volúmenes, servidores, cajas fuertes, etiquetas, recientes, icloud, papelera, ctrl g"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "emplacements, barre latérale, volumes, serveurs, coffres, tags, récents, icloud, corbeille, ctrl g"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "posizioni, barra laterale, volumi, server, casseforti, tag, recenti, icloud, cestino, ctrl g"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "場所, サイドバー, ボリューム, サーバ, 保管庫, タグ, 最近の項目, icloud, ゴミ箱, ctrl g"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "위치, 사이드바, 볼륨, 서버, 보관함, 태그, 최근 항목, icloud, 휴지통, ctrl g"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "locaties, navigatiekolom, volumes, servers, kluizen, tags, recent, icloud, prullenmand, ctrl g"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "lokalizacje, panel boczny, woluminy, serwery, sejfy, tagi, ostatnie, icloud, kosz, ctrl g"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "locais, barra lateral, volumes, servidores, cofres, etiquetas, recentes, icloud, lixeira, ctrl g"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "места, боковая панель, тома, серверы, хранилища, метки, недавние, icloud, корзина, ctrl g"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "місця, бічна панель, томи, сервери, сховища, мітки, нещодавні, icloud, кошик, ctrl g"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "位置, 边栏, 宗卷, 服务器, 保险库, 标记, 最近项目, icloud, 废纸篓, ctrl g"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "位置, 側邊欄, 卷宗, 伺服器, 保險庫, 標記, 最近項目, icloud, 垃圾桶, ctrl g"
+          }
+        }
+      }
+    },
+    "command.go.places.title": {
+      "comment": "Menu and command-palette title for the “go.places” command.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orte …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Places…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lugares…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Emplacements…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posizioni…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "場所…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "위치…"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Locaties…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lokalizacje…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Locais…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Места…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Місця…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "位置…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "位置…"
           }
         }
       }
