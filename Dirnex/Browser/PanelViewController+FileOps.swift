@@ -73,6 +73,7 @@ extension PanelViewController {
         alert.enableEscapeToCancel()
 
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
+        field.keepToOneLine()
         field.stringValue = String(
             localized: "untitled folder",
             comment: "Default name prefilled in the New Folder dialog."

@@ -272,6 +272,7 @@ final class SearchController: NSViewController {
     }
 
     private func configure(_ field: NSTextField, placeholder: String) {
+        field.keepToOneLine()
         field.placeholderString = placeholder
         field.delegate = self
         field.translatesAutoresizingMaskIntoConstraints = false

@@ -101,6 +101,7 @@ extension PackAccessory {
         }
 
         let nameField = NSTextField(frame: field(x: rows.fieldX, y: rows.name))
+        nameField.keepToOneLine()
         nameField.stringValue = defaults.baseName
         nameField.placeholderString = String(
             localized: "Archive name",
@@ -258,6 +259,7 @@ extension PackAccessory {
 
     private static func secureField(x: CGFloat, y: CGFloat) -> NSSecureTextField {
         let secure = NSSecureTextField(frame: field(x: x, y: y))
+        secure.keepToOneLine()
         secure.placeholderString = String(
             localized: "Required",
             comment: "Placeholder in a passphrase field. Pack sheet and New Vault sheet."

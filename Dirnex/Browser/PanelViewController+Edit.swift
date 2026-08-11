@@ -215,6 +215,7 @@ extension PanelViewController {
         alert.enableEscapeToCancel()
 
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
+        field.keepToOneLine()
         field.stringValue = prefilledName()
         field.placeholderString = String(
             localized: "File name",

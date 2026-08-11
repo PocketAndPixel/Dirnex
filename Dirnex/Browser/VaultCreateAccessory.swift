@@ -153,6 +153,7 @@ extension VaultCreateAccessory {
                 width: Metrics.fieldWidth, height: Metrics.fieldHeight
             )
         )
+        nameField.keepToOneLine()
         nameField.stringValue = defaultName
 
         let sizeField = NSTextField(
@@ -161,6 +162,7 @@ extension VaultCreateAccessory {
                 width: Metrics.sizeFieldWidth, height: Metrics.fieldHeight
             )
         )
+        sizeField.keepToOneLine()
         sizeField.stringValue = "\(defaultSizeGigabytes)"
         sizeField.alignment = .right
         let unit = sizeUnitLabel(rows: rows)
@@ -254,6 +256,7 @@ extension VaultCreateAccessory {
         let secure = NSSecureTextField(
             frame: NSRect(x: x, y: y, width: Metrics.fieldWidth, height: Metrics.fieldHeight)
         )
+        secure.keepToOneLine()
         secure.placeholderString = String(
             localized: "Required",
             comment: "Placeholder in a passphrase field. Pack sheet and New Vault sheet."

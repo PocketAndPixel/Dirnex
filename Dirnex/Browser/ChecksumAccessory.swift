@@ -48,6 +48,7 @@ final class ChecksumAccessory: NSObject {
         algorithmLabel.frame = NSRect(x: 0, y: 4, width: labelWidth, height: 18)
 
         nameField = NSTextField(frame: NSRect(x: fieldX, y: 30, width: width - fieldX, height: 24))
+        nameField.keepToOneLine()
         nameField.stringValue = ChecksumManifest.suggestedFileName(
             for: baseName,
             algorithm: .recommended

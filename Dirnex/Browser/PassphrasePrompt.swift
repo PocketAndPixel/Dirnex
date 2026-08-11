@@ -53,6 +53,7 @@ enum PassphrasePrompt {
         alert.enableEscapeToCancel(safe: .alertSecondButtonReturn)
 
         let field = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
+        field.keepToOneLine()
         field.placeholderString = String(
             localized: "Passphrase",
             comment: "Placeholder in the passphrase prompt's field."

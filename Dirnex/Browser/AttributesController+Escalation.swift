@@ -128,9 +128,7 @@ extension AttributesController {
         field.isEditable = false
         field.isSelectable = true
         field.font = .monospacedSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .regular)
-        field.lineBreakMode = .byTruncatingMiddle
-        field.cell?.isScrollable = true
-        field.cell?.wraps = false
+        field.keepToOneLine(truncating: .byTruncatingMiddle)
         // A fixed width so the command truncates rather than stretching the alert, and so the stack
         // below has a definite size to report.
         field.widthAnchor.constraint(equalToConstant: 320).isActive = true

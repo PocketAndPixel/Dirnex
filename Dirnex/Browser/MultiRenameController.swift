@@ -295,6 +295,7 @@ final class MultiRenameController: NSViewController {
     }
 
     private func configure(_ field: NSTextField, placeholder: String, string: String, width: CGFloat) {
+        field.keepToOneLine()
         field.placeholderString = placeholder
         field.stringValue = string
         field.delegate = self

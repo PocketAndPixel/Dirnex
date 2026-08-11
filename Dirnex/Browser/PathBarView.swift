@@ -113,8 +113,9 @@ final class PathBarView: NSView, NSTextFieldDelegate {
         editField.delegate = self
         editField.isHidden = true
         editField.translatesAutoresizingMaskIntoConstraints = false
-        editField.usesSingleLineMode = true
-        editField.lineBreakMode = .byTruncatingHead
+        // All four properties, not just single-line mode: with that alone a path longer than the bar
+        // still wraps to a hidden second line and ⌘L cannot reach its end (docs/NOTES.md).
+        editField.keepToOneLine(truncating: .byTruncatingHead)
 
         addSubview(crumbStack)
         addSubview(editField)

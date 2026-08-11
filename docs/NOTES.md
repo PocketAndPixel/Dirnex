@@ -262,6 +262,36 @@ at build time.
   vanishes and focus jumps. Guard both refresh sites and replay the owed refresh when editing
   ends. Only reproducible with a *real* FSEvents change landing during the edit window, not via
   synthetic F2 → type → Enter.
+- **Every bare `NSTextField` initializer hands back a *wrapping* cell, so a value longer than the
+  field hides its tail on a second line the field is too short to show.** Measured on macOS 26:
+  `NSTextField()`, `NSTextField(frame:)` and both `NSSecureTextField` spellings all come back
+  `wraps = true, isScrollable = false, lineBreakMode = .byWordWrapping`, while only
+  `NSTextField(string:)` (and the `labelWithString:` family) is single-line by construction — which
+  is why the pane's own F2 inline rename never had this and twelve dialogs did. Probed against the
+  real ⇧F4 sheet with a 108-character name: field editor **48 pt tall inside a 20 pt clip**. What
+  the user sees is the visible line breaking at the last word boundary — for a file name, a `-` or
+  a `.` — leaving a gap of empty field beside it, so it reads as a *drawing* bug rather than as
+  half the name being off screen. Reported by a user 2026-08-11 on the Edit File sheet;
+  `keepToOneLine(truncating:)` is the one funnel, and `scripts/check_single_line_fields.py` keeps
+  it applied, because a fix living in prose is not a fix (the `enableEscapeToCancel` lesson, twice
+  over now).
+  - **`cell.wraps` is what decides it, and `usesSingleLineMode` alone is the natural half-fix that
+    changes nothing measurable.** With it alone the editor stays 252 pt wide, is not horizontally
+    resizable, and the clip view scrolls **vertically** to the hidden line, so the tail is still
+    unreachable; with `wraps = false` the editor is 621 pt wide and the clip scrolls horizontally
+    to show it. `PathBarView`'s ⌘L field had exactly the half-fix, which is the shape to distrust:
+    the property whose *name* matches the intent is not the one that acts.
+  - **`isScrollable` and `lineBreakMode` clear each other — whichever is assigned last wins.**
+    Probed: assigning a truncating break mode drops `isScrollable` to `false`, and assigning
+    `isScrollable` resets the break mode to `.byClipping`. So the four-line configuration that
+    reads as complete is really a choice between two of them, and `ConnectServerForm` — where this
+    fix was first worked out — had been running with `isScrollable == false` since it shipped
+    without anyone noticing, because scrolling never came from that property. Keep the truncation:
+    it is what shows the host and share of an unfocused address instead of its scheme.
+  - The whole class is invisible to every automated signal (2047 core tests, 333 app tests and both
+    linters green throughout) and to any screenshot taken with a short name — the field really does
+    hold the whole value, and nothing logs. A `cacheDisplay` of a live sheet is what shows it: the
+    gap beside a name that stops at a hyphen is the tell.
 - **macOS delivers ⌘A → `selectAll:` into a field editor only via a "Select All" menu key
   equivalent.** The text system does not self-bind ⌘A, so with no such menu item ⌘A is a dead
   no-op in every text field.

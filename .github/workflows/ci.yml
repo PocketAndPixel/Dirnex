@@ -71,3 +71,8 @@ jobs:
       # language but English — invisible at build time and in any English screenshot.
       - name: Every alert can be dismissed with Escape
         run: python3 scripts/check_alert_escape.py
+      # Also a pure source scan. AppKit's bare text-field initializers wrap, so a name longer than
+      # the field hides its tail on a second line the field is too short to show — perfect in any
+      # screenshot taken with a short name, and green in both suites.
+      - name: Every entry field scrolls instead of wrapping
+        run: python3 scripts/check_single_line_fields.py

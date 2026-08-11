@@ -69,6 +69,7 @@ extension BrowserWindowController {
         alert.enableEscapeToCancel(safe: .alertSecondButtonReturn)
 
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
+        field.keepToOneLine()
         field.stringValue = current
         alert.accessoryView = field
         alert.window.initialFirstResponder = field

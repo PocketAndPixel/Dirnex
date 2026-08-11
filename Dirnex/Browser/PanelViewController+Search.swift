@@ -189,6 +189,7 @@ extension PanelViewController {
         alert.enableEscapeToCancel()
 
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
+        field.keepToOneLine()
         field.placeholderString = String(
             localized: "Search name",
             comment: "Placeholder in the save-search name field."
