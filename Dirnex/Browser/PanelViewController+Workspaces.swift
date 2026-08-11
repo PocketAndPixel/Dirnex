@@ -51,12 +51,15 @@ extension PanelViewController {
     /// "Save Workspace…" — prompt for a name, then snapshot both panes under it. Re-using an
     /// existing name updates that workspace in place after a replace confirmation.
     @objc func saveWorkspace(_ sender: Any?) {
-        guard let name = promptForWorkspaceName() else { return }
-        var store = WorkspaceStore.load()
-        if store.contains(name: name), !confirmReplaceWorkspace(named: name) { return }
-        guard let host else { return }
-        store.save(host.captureWorkspace(named: name))
-        WorkspaceStore.save(store)
+        // The prompts are sheets, so they are awaited rather than run inline.
+        Task { @MainActor in
+            guard let name = await promptForWorkspaceName() else { return }
+            var store = WorkspaceStore.load()
+            if store.contains(name: name), await !confirmReplaceWorkspace(named: name) { return }
+            guard let host else { return }
+            store.save(host.captureWorkspace(named: name))
+            WorkspaceStore.save(store)
+        }
     }
 
     // MARK: - Popup menu
@@ -159,7 +162,7 @@ extension PanelViewController {
 
     /// Ask for a workspace name, returning the trimmed non-empty result, or `nil` on cancel /
     /// an empty name.
-    private func promptForWorkspaceName() -> String? {
+    private func promptForWorkspaceName() async -> String? {
         let alert = NSAlert()
         alert.messageText = String(
             localized: "Save Workspace",
@@ -184,14 +187,15 @@ extension PanelViewController {
         alert.accessoryView = field
         alert.window.initialFirstResponder = field
 
-        guard alert.runModal() == .alertFirstButtonReturn else { return nil }
+        let response = await alert.runSheet(over: view.window) { field.selectText(nil) }
+        guard response == .alertFirstButtonReturn else { return nil }
         let name = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         return name.isEmpty ? nil : name
     }
 
     /// Confirm overwriting a workspace that already uses this name, so a Save never silently
     /// clobbers a saved layout.
-    private func confirmReplaceWorkspace(named name: String) -> Bool {
+    private func confirmReplaceWorkspace(named name: String) async -> Bool {
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = String(
@@ -208,6 +212,6 @@ extension PanelViewController {
         ))
         alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
         alert.enableEscapeToCancel()
-        return alert.runModal() == .alertFirstButtonReturn
+        return await alert.runSheet(over: view.window) == .alertFirstButtonReturn
     }
 }

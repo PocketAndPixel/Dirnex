@@ -140,8 +140,8 @@ extension PanelViewController {
             return .failed(Self.unreadableCertificate)
         }
         let accepted = changed
-            ? confirmCertificateChange(location: request.location, certificate: certificate)
-            : confirmCertificateTrust(location: request.location, certificate: certificate)
+            ? await confirmCertificateChange(location: request.location, certificate: certificate)
+            : await confirmCertificateTrust(location: request.location, certificate: certificate)
         guard accepted else {
             return .failed(changed ? Self.certificateChangeNotTrusted : Self.certificateNotTrusted)
         }
@@ -169,10 +169,14 @@ extension PanelViewController {
     /// Show the certificate's fingerprint and ask whether to trust this server's key from now on.
     /// Presented as a critical alert whose default and rightmost button is the safe "Cancel", so
     /// pinning is always a deliberate click — the same treatment the SFTP host-key change gets.
+    ///
+    /// A sheet on `NSAlert.sheetHost`, which is the Connect sheet itself when the connect came from
+    /// there and the browser window when it came from the sidebar. It used to be `runModal()`,
+    /// which puts it in the middle of the *display* rather than the app.
     private func confirmCertificateTrust(
         location: FTPLocation,
         certificate: FTPCertificate
-    ) -> Bool {
+    ) async -> Bool {
         let alert = NSAlert()
         alert.alertStyle = .critical
         alert.messageText = String(
@@ -201,7 +205,7 @@ extension PanelViewController {
             comment: "FTPS certificate-trust alert: pin this certificate and connect."
         ))
         alert.enableEscapeToCancel(safe: .alertFirstButtonReturn)
-        return alert.runModal() == .alertSecondButtonReturn
+        return await alert.runSheet(over: view.window) == .alertSecondButtonReturn
     }
 
     /// Warn that a server's key no longer matches the pin stored for it, and ask whether to re-trust
@@ -211,7 +215,7 @@ extension PanelViewController {
     private func confirmCertificateChange(
         location: FTPLocation,
         certificate: FTPCertificate
-    ) -> Bool {
+    ) async -> Bool {
         let alert = NSAlert()
         alert.alertStyle = .critical
         alert.messageText = String(
@@ -243,7 +247,7 @@ extension PanelViewController {
             comment: "FTPS changed-certificate alert: replace the stored pin and connect."
         ))
         alert.enableEscapeToCancel(safe: .alertFirstButtonReturn)
-        return alert.runModal() == .alertSecondButtonReturn
+        return await alert.runSheet(over: view.window) == .alertSecondButtonReturn
     }
 
     /// The body of a trust alert: `explanation`, then what the certificate claims, how long it is

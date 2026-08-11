@@ -217,7 +217,7 @@ extension PanelViewController {
             // A changed host key isn't a dead end — offer to re-trust the new key and reconnect,
             // preserving the auth and save name so the retry behaves exactly like the first try.
             if case let .hostKeyChanged(change)? = error as? SFTPTransportError {
-                guard confirmHostKeyChange(location: location, change: change) else {
+                guard await confirmHostKeyChange(location: location, change: change) else {
                     return .failed(Self.connectFailureDetail(error))
                 }
                 guard await repairKnownHosts(location: location, change: change) else {
@@ -267,11 +267,18 @@ extension PanelViewController {
     // MARK: - Host key changed
 
     /// Warn that a host's key no longer matches the one pinned in `known_hosts`, and ask whether to
-    /// re-trust it. Presented app-modally (over the connect sheet, when one is open) as a critical
-    /// alert whose default and rightmost button is the safe "Cancel", so re-trusting a changed key —
-    /// usually a reinstalled server, but possibly a man-in-the-middle — is always a deliberate click.
-    /// Returns `true` when the user chose to trust the new key.
-    private func confirmHostKeyChange(location: SFTPLocation, change: SFTPHostKeyChange) -> Bool {
+    /// re-trust it. A critical alert whose default and rightmost button is the safe "Cancel", so
+    /// re-trusting a changed key — usually a reinstalled server, but possibly a man-in-the-middle —
+    /// is always a deliberate click. Returns `true` when the user chose to trust the new key.
+    ///
+    /// Presented on `NSAlert.sheetHost`: the Connect sheet when the connect came from there, the
+    /// browser window when it came from the sidebar. It used to be `runModal()`, which lands in the
+    /// center of the *display* rather than the app — the sheet host is what makes attaching it
+    /// possible without queueing it invisibly behind the Connect sheet (see `AlertSheet`).
+    private func confirmHostKeyChange(
+        location: SFTPLocation,
+        change: SFTPHostKeyChange
+    ) async -> Bool {
         let alert = NSAlert()
         alert.alertStyle = .critical
         alert.messageText = String(
@@ -292,7 +299,7 @@ extension PanelViewController {
             comment: "Host-key-change alert: accept the new key and reconnect."
         ))
         alert.enableEscapeToCancel(safe: .alertFirstButtonReturn)
-        return alert.runModal() == .alertSecondButtonReturn
+        return await alert.runSheet(over: view.window) == .alertSecondButtonReturn
     }
 
     private static func hostKeyChangeDetail(_ change: SFTPHostKeyChange) -> String {

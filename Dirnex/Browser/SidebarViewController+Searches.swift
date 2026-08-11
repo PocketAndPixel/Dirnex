@@ -90,13 +90,17 @@ extension SidebarViewController {
     }
 
     @objc private func renameSavedSearchItem(_ sender: NSMenuItem) {
-        guard let name = sender.representedObject as? String,
-              let newName = promptForSavedSearchRename(current: name), newName != name else { return }
-        var store = SavedSearchStore.load()
-        if store.rename(name: name, to: newName) {
-            SavedSearchStore.save(store)
-        } else {
-            presentSavedSearchRenameCollision(newName)
+        guard let name = sender.representedObject as? String else { return }
+        // The prompt is a sheet, so it is awaited rather than run inline.
+        Task { @MainActor in
+            guard let newName = await promptForSavedSearchRename(current: name),
+                  newName != name else { return }
+            var store = SavedSearchStore.load()
+            if store.rename(name: name, to: newName) {
+                SavedSearchStore.save(store)
+            } else {
+                presentSavedSearchRenameCollision(newName)
+            }
         }
     }
 
@@ -139,7 +143,7 @@ extension SidebarViewController {
     }
 
     /// Ask for a new name, prefilled with the current one; `nil` on cancel or an empty name.
-    private func promptForSavedSearchRename(current: String) -> String? {
+    private func promptForSavedSearchRename(current: String) async -> String? {
         let alert = NSAlert()
         alert.messageText = String(
             localized: "Rename Saved Search",
@@ -156,7 +160,8 @@ extension SidebarViewController {
         alert.accessoryView = field
         alert.window.initialFirstResponder = field
 
-        guard alert.runModal() == .alertFirstButtonReturn else { return nil }
+        let response = await alert.runSheet(over: view.window) { field.selectText(nil) }
+        guard response == .alertFirstButtonReturn else { return nil }
         let name = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         return name.isEmpty ? nil : name
     }

@@ -210,6 +210,27 @@ at build time.
     (a blanket `false`, or a guard keyed on `XCTestConfigurationFilePath`): with no window built all
     three answer `false`. Both were run by hand against the suite, and the live app was checked to
     still quit when its window is closed.
+- **`NSAlert.runModal()` centers on the *display*, not on the window that raised it** — measured, a
+  260 pt alert lands at x=734 on a 1728 pt screen whatever the app window's frame is. So every
+  `runModal` alert reads as detached from the app, and on a large display it can be nowhere near the
+  window it belongs to. The house rule is a sheet, with `runModal` kept only for the
+  window-is-`nil` fallback; a scan for a `runModal` whose enclosing function never mentions
+  `beginSheetModal` finds the ones that drifted (nine had, 2026-08-11).
+  - **The reason they drift is real and is worth knowing before "fixing" them:** stacking a second
+    sheet on a window that **already has one** queues it invisibly. Probed — the second alert's
+    window reports `isVisible == false` and the window's `attachedSheet` is still the first — so a
+    trust prompt raised from inside the Connect sheet's own attempt would never appear, deadlocking
+    a flow that is waiting on its answer. `runModal` was the correct workaround for that constraint.
+  - **Hosting it on the *sheet's* window is what makes the sheet version possible**: visible,
+    attached, centered on its host (probed). Hence `NSAlert.sheetHost(over:)` —
+    `NSApp.modalWindow ?? window?.attachedSheet ?? window`, the same ordering
+    `PanelViewController+Compare` had already derived for its own case, `modalWindow` first because
+    some dialogs are app-modal *windows* rather than sheets. Verify the nested case specifically: the
+    plain one passes whether or not the host lookup is right, so it proves nothing about the bug.
+  - Converting a synchronous prompt costs an `async` cascade, and it stops at the `@objc` action —
+    each of the six here had exactly one caller, whose body moves into a `Task { @MainActor in … }`.
+    Keep `selectText(nil)` on an accessory field: `initialFirstResponder` gives it *focus*, and only
+    that selects the prefilled text, which is the whole ergonomics of a rename prompt.
 - **`NSTitlebarAccessoryViewController` clips to its container's fixed frame.** A hardcoded
   width sized for three glyphs laid a fourth one out fine, with `isHidden == false`, and it was
   simply invisible. Derive each accessory container's width from what it holds, and pin each row

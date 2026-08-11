@@ -151,22 +151,26 @@ extension PanelViewController {
         let tab = tabs[activeTabIndex]
         guard let query = tab.searchQuery else { return }
         let prefill = LocalizedCatalog.plainName(of: query)
-        guard let name = promptForSavedSearchName(default: prefill) else { return }
+        // The prompts are sheets, so they are awaited rather than run inline; the work either side
+        // of them is unchanged and still main-actor.
+        Task { @MainActor in
+            guard let name = await promptForSavedSearchName(default: prefill) else { return }
 
-        var store = SavedSearchStore.load()
-        if store.contains(name: name), !confirmReplaceSavedSearch(named: name) { return }
-        store.save(SavedSearch(name: name, query: query, scope: tab.searchScope))
-        SavedSearchStore.save(store)
+            var store = SavedSearchStore.load()
+            if store.contains(name: name), await !confirmReplaceSavedSearch(named: name) { return }
+            store.save(SavedSearch(name: name, query: query, scope: tab.searchScope))
+            SavedSearchStore.save(store)
 
-        // Relabel the current results tab with the name the user just gave it.
-        tab.customTitle = name
-        refreshTabBar()
-        persistState()
+            // Relabel the current results tab with the name the user just gave it.
+            tab.customTitle = name
+            refreshTabBar()
+            persistState()
+        }
     }
 
     /// Ask for a saved-search name, prefilled with a sensible default, returning the trimmed
     /// non-empty result or `nil` on cancel / an empty name.
-    private func promptForSavedSearchName(default defaultName: String) -> String? {
+    private func promptForSavedSearchName(default defaultName: String) async -> String? {
         let alert = NSAlert()
         alert.messageText = String(
             localized: "Save Search",
@@ -193,14 +197,15 @@ extension PanelViewController {
         alert.accessoryView = field
         alert.window.initialFirstResponder = field
 
-        guard alert.runModal() == .alertFirstButtonReturn else { return nil }
+        let response = await alert.runSheet(over: view.window) { field.selectText(nil) }
+        guard response == .alertFirstButtonReturn else { return nil }
         let name = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         return name.isEmpty ? nil : name
     }
 
     /// Confirm overwriting a saved search that already uses this name, so Save never silently
     /// clobbers one.
-    private func confirmReplaceSavedSearch(named name: String) -> Bool {
+    private func confirmReplaceSavedSearch(named name: String) async -> Bool {
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = String(
@@ -221,6 +226,6 @@ extension PanelViewController {
             withTitle: String(localized: "Cancel", comment: "Button that dismisses a dialog.")
         )
         alert.enableEscapeToCancel()
-        return alert.runModal() == .alertFirstButtonReturn
+        return await alert.runSheet(over: view.window) == .alertFirstButtonReturn
     }
 }

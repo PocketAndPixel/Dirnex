@@ -106,13 +106,16 @@ extension SidebarViewController {
 
     @objc private func renameFavoriteItem(_ sender: NSMenuItem) {
         guard let path = sender.representedObject as? VFSPath,
-              let current = FavoritesStore.load().entries.first(where: { $0.path == path })?.name,
-              let newName = promptForFavoriteRename(current: current), newName != current else {
-            return
+              let current = FavoritesStore.load().entries.first(where: { $0.path == path })?.name
+        else { return }
+        // The prompt is a sheet, so it is awaited rather than run inline.
+        Task { @MainActor in
+            guard let newName = await promptForFavoriteRename(current: current),
+                  newName != current else { return }
+            var favorites = FavoritesStore.load()
+            favorites.rename(path: path, to: newName)
+            FavoritesStore.save(favorites)
         }
-        var favorites = FavoritesStore.load()
-        favorites.rename(path: path, to: newName)
-        FavoritesStore.save(favorites)
     }
 
     /// Remove a pin. No confirmation: unlike deleting a saved search — which discards a query the
@@ -125,7 +128,7 @@ extension SidebarViewController {
     }
 
     /// Ask for a new label, prefilled with the current one; `nil` on cancel or an empty name.
-    private func promptForFavoriteRename(current: String) -> String? {
+    private func promptForFavoriteRename(current: String) async -> String? {
         let alert = NSAlert()
         alert.messageText = String(
             localized: "Rename Favorite",
@@ -147,7 +150,8 @@ extension SidebarViewController {
         alert.accessoryView = field
         alert.window.initialFirstResponder = field
 
-        guard alert.runModal() == .alertFirstButtonReturn else { return nil }
+        let response = await alert.runSheet(over: view.window) { field.selectText(nil) }
+        guard response == .alertFirstButtonReturn else { return nil }
         let name = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         return name.isEmpty ? nil : name
     }
