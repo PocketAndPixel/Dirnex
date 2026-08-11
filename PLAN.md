@@ -145,10 +145,109 @@ declared public scope and a folder that exists. Both are argued in HISTORY.md. T
 that approximation was reversed on 2026-07-21 (see M10): it used to also require a
 non-empty folder, which hid three folders Finder shows.
 
+### M20 — Every place reachable without the sidebar (S, in flight, opened 2026-08-12)
+
+M8 made the sidebar "a first-class surface", and for most of what it holds it is the *only* surface.
+With it collapsed — ⌃⌘S, or simply a user who wants the width for two panes — an audit of what is
+still reachable reads:
+
+| Place | With the sidebar hidden |
+|---|---|
+| Favorites | ⌃D and Go ▸ Favorites… |
+| Volumes, cloud mounts | only by typing the path into ⌘L |
+| iCloud Drive | unreachable — the row dispatches a *merge*, so there is no path to type |
+| Vaults | only while the image is under the cursor (`vaultImageUnderCursor`) |
+| Servers | Connect to Server… opens a **new** connection; the saved list is sidebar-only |
+| Saved searches, tags, Recents, the Trash | unreachable — none is a directory, and none has a command |
+
+Six of the nine have exactly one way in. That is the shape docs/NOTES.md records for the vault a pane
+could not open — *a feature whose entire surface is one control* — and the fix is the same: give the
+knowledge more than one face without giving it more than one definition.
+
+**Not the root crumb.** The gesture this opened on was a menu hung off the path bar's "Macintosh HD",
+and it is the wrong anchor for three reasons that are all in the code. `installVirtualLabel` replaces
+the **whole** crumb row for the Trash, Recents, search results and the iCloud merge — the very places
+you most want to leave — so the control would be absent exactly where it is needed; `rebuildCrumbs`
+takes its `rootTitle` as a parameter and an archive trail spans backends, so "Macintosh HD" is not
+even a reliable leading crumb on a real path; and a left-click there already navigates to `/`, with
+the right-click reserved for Copy Path. It is also mouse-only, in an app whose sidebar is most often
+hidden by someone working from the keyboard.
+
+**One funnel, three faces.** The funnel is the point: `SidebarViewController.rebuild()` already
+assembles every section in one place and `activate(rowAt:)` already knows the rules a menu would
+otherwise re-derive — a vault *dispatches*, a tag *searches*, iCloud *merges*, a server *connects*,
+and only four of the ten cases are path navigation at all. A second list would drift from it, which
+is this codebase's most repeated finding.
+
+**Slice 1 — core, landed 2026-08-12.** Purely additive; the app is untouched and did not rebuild.
+8 new tests, 2056 total green, both linters clean. `SidebarPlace`, `SidebarPlaceGroup`,
+`SidebarPlaceSources` and `SidebarPlaces.groups(from:)` — the ordered assembly as a pure value over
+the stores' contents. Every model it names already lives in the core (`FavoriteEntry`,
+`MountedVolume`, `VaultLocation`, `CloudStorageMount`, `SavedSearch`, `ServerConnection`,
+`FinderTag`, `SidebarSection`), so this is §2-shaped rather than a concession, and the sections come
+in `SidebarSection.allCases` order off a switch that stops compiling if a section is added and not
+placed. The rule the whole slice exists to hold: **folding is not an input**, because whether a
+section is collapsed is a state of the sidebar's table and not of the list — building the menu from
+`SidebarViewController.rows` would have silently omitted whole sections, since `append` drops a
+collapsed section's items. A test pins that every populated section survives; the negative controls
+(a reversed section order, a neutered empty-header rule) fail exactly the tests that name them. Tags
+arrive already withdrawn when View ▸ Show Tags is off — a preference about the feature, not something
+to second-guess downstream — and "All Tags…" is deliberately absent, being a disclosure affordance of
+a scrolling list rather than a destination, so the menu will list every known tag instead.
+
+**Slice 2 — the app: Go ▸ Places, landed 2026-08-12.** 6 new app tests, 339 total green, 2056 core,
+both linters and all three CI scripts clean, verified live. `rebuild()` is re-expressed over
+`SidebarPlaces.groups(from:)`, rendering folding, headers, the spacer and the All Tags row on top of
+it; `PlacesMenu` renders the same groups as a submenu per section; and one `activate(_ place:)` funnel
+is what both a row and a menu item dispatch through. Always present whatever the sidebar is doing —
+and since macOS's Help ▸ Search searches menu items, "Trash" is now findable by typing the word.
+
+Three things the slice turned out to need beyond the plan:
+
+- **`SidebarViewController.Row` was a second copy of the vocabulary** — it spelled out all ten
+  destinations — so leaving it would have made the milestone add a *third* spelling of the list
+  rather than consolidate. It is now `case place(SidebarPlace)` plus the three pieces of chrome a
+  *table* adds (header, spacer, All Tags). Its accessors (`favorite`, `savedSearch`, `server`,
+  `vault`, `tag`, `path`) are unchanged, so most call sites never noticed; the drag code, the cell
+  builders and the context menu are the ones that moved.
+- **`SidebarPlacePresentation`**, because the name and glyph were a drift surface the plan had not
+  counted: "Recents", "Trash" and "iCloud Drive" are *translated literals*, and a display string that
+  exists twice gets localized once. Naming lives there for both renderers; how a glyph is finally
+  drawn stays with each, since a 32 pt source-list row and a menu item want different renderings.
+  Transcribing the standard-place symbols turned up the value of doing it — `square.grid.3x3` for
+  `square.grid.3x3.fill` was one character and would have shown up as a slightly wrong Applications
+  icon in one of the two surfaces.
+- **A fresh `NSMenu` per menu-bar rebuild, with one long-lived delegate.** An `NSMenu` can be the
+  submenu of only one item, and `MainMenuBuilder` rebuilds the whole bar whenever a key binding or the
+  language changes — so handing the same menu object to each new Go menu would attach one that still
+  has a supermenu. `NSMenu.delegate` being weak is what makes the reverse arrangement the right one.
+
+Two new strings across the 14 languages (`Places`, `Nothing Here Yet`); the section titles were
+already localized, which is the payoff of `SidebarSection` carrying identity rather than text.
+Verified live with the sidebar hidden: Places lists Recents, the six populated sections and the Trash
+in the sidebar's own order, a volume opens the pane at `/`, the Trash opens as its own tab (the
+destination that had no route at all before), and the Vaults submenu draws the shut and open padlocks
+the sidebar draws for the same two vaults. Tags was toggled on to check the one section whose
+contents deliberately differ — the menu lists every tag with its colored dot, where the sidebar shows
+the stock seven behind "All Tags…" — and toggled back off.
+
+**Slice 3 — the keyboard and the mouse, not started.** `go.places` (⌃G — free, and Cocoa binds it in
+no text field, unlike the ⌃D and ⌃B this app already took) popping the same menu under the path bar in
+the focused pane, structurally the `showFavorites` popup; `PlacesMenu.makeMenu()` already exists for
+it. Then the path bar's **leading glyph slot** — which both render paths already have,
+`installCrumbs(leadingSymbol:)` and `installVirtualLabel(symbolNamed:)` — becomes an always-present
+button onto the same menu, so the mouse affordance exists in every mode including the virtual ones the
+root crumb cannot reach.
+
+Deliberately out of scope: **individual places as ⌘K palette results** (the palette is a registry of
+commands, and places are live data — a different mechanism, worth its own decision); reordering or
+editing places from the menu, which stays the sidebar's job; and a Finder-style "Computer" or
+"Network" destination, which is not a place Dirnex has.
+
 ### After M19
 
-Nothing is in flight: M19 closed on 2026-08-09 and no milestone has opened behind it. Three things
-landed between it and M18, which closed on 2026-08-07, and two after it.
+M19 closed on 2026-08-09; M20 opened 2026-08-12 (above). Three things landed between M19 and M18,
+which closed on 2026-08-07, and four after it.
 
 **2026-08-11 — a vault can be shown in Finder, per vault.** Dirnex attaches `-nobrowse`, so an
 unlocked vault is invisible to the rest of the Mac — right as a default, and wrong as a rule for

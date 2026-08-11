@@ -17,6 +17,19 @@ extension BrowserWindowController {
         }
         sidebar.focusFromKeyboard(preferring: focusedPanel.panel.path)
     }
+
+    /// Open a place picked from **Go ▸ Places** (PLAN.md §M20). Dispatched here through the responder
+    /// chain rather than to a target, because the menu bar is one object shared by every window and
+    /// the place has to open in whichever one is in front.
+    ///
+    /// It hands straight over to the sidebar's own `activate(_:)` — the one definition of what a
+    /// place *does* — rather than repeating the ten-way switch. The sidebar being collapsed changes
+    /// nothing: the view controller is alive either way, and it is the delegate callbacks (which are
+    /// this file) that do the work.
+    @objc func openPlace(_ sender: Any?) {
+        guard let box = (sender as? NSMenuItem)?.representedObject as? PlaceBox else { return }
+        sidebar.activate(box.place)
+    }
 }
 
 // MARK: - SidebarViewControllerDelegate

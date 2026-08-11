@@ -19,28 +19,25 @@ import DirnexCore
 extension SidebarViewController {
     // MARK: - Rows
 
-    /// The Tags section's rows — its header is `rebuild`'s to add, like every other section's — or
-    /// nothing at all when the user has turned tags off, which drops the header with them.
+    /// Every tag to offer — the stock seven plus whatever browsing has turned up — or nothing at all
+    /// when the user has turned tags off, which drops the section's header with them.
     ///
-    /// The stock seven always show: they exist on every Mac, before anything has been scanned, so
-    /// the section is never empty-and-useless the way one built purely from sightings would be.
-    /// Custom tags join them once `showsAllTags` is set.
-    func tagRows() -> [Row] {
+    /// The stock seven are always in here: `FinderTagIndex` seeds itself with them, so they exist
+    /// before anything has been scanned and the section is never empty-and-useless the way one built
+    /// purely from sightings would be.
+    ///
+    /// **The whole list, not what the table draws.** The sidebar shows the stock seven until "All
+    /// Tags…" is clicked, and that truncation belongs to a scrolling list rather than to the tags
+    /// themselves — so it is applied while rendering (`SidebarViewController+Sections`), leaving the
+    /// Go ▸ Places menu, which has no such pressure, listing every tag (PLAN.md §M20).
+    func offeredTags() -> [FinderTag] {
         guard AppPreferences.shared.showTags else {
             renderedTagNames = []
             return []
         }
         let all = FinderTagProvider.shared.knownTags
         renderedTagNames = Set(all.map(\.name))
-
-        var rows: [Row] = (showsAllTags ? all : FinderTag.systemTags).map(Row.tag)
-        // "All Tags…" only when there is something behind it. Finder can always offer it because it
-        // knows every tag you own; we know the ones we have seen, so offering to reveal nothing
-        // would be a row that does nothing when clicked — worse than no row.
-        if !showsAllTags, all.count > FinderTag.systemTags.count {
-            rows.append(.allTags)
-        }
-        return rows
+        return all
     }
 
     // MARK: - Cells

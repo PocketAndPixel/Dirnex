@@ -22,10 +22,13 @@ extension SidebarViewController {
     /// label. No eject or delete affordance — a system row carries neither.
     func trashCell() -> NSView {
         let cell = reuse(SidebarCellView.identifier) as? SidebarCellView ?? SidebarCellView()
-        let trash = String(localized: "Trash", comment: "Sidebar row and section for deleted items.")
+        // Name and glyph both come from `SidebarPlacePresentation`, so this row and its Go ▸ Places
+        // twin cannot come to say different things (PLAN.md §M20).
+        let trash = SidebarPlacePresentation.title(for: .trash)
+        let symbol = SidebarPlacePresentation.symbolName(for: .trash) ?? "trash"
         cell.configure(
             name: trash,
-            image: Self.templateSymbol("trash", pointSize: 15, describedAs: trash),
+            image: Self.templateSymbol(symbol, pointSize: 15, describedAs: trash),
             canEject: false,
             tooltip: String(
                 localized: "Deleted items, from every volume",

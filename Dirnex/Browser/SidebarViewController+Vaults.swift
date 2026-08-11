@@ -57,7 +57,7 @@ extension SidebarViewController {
         let cell = reuse(SidebarCellView.identifier) as? SidebarCellView ?? SidebarCellView()
         let isUnlocked = vaultMountPoints[vault.resolvedImagePath] != nil
         cell.configure(
-            name: vault.volumeName,
+            name: SidebarPlacePresentation.title(for: .vault(vault)),
             image: Self.vaultIcon(isUnlocked: isUnlocked),
             canEject: isUnlocked,
             tooltip: vault.imagePath,
@@ -74,9 +74,12 @@ extension SidebarViewController {
 
     /// An open or shut padlock — the one distinction the row exists to draw, and the one a user
     /// reads without looking. Template, so the source list tints it like every glyph beside it.
+    /// Which padlock is `SidebarPlacePresentation`'s, so the Go ▸ Places menu reports the same state
+    /// (PLAN.md §M20) — it is handed the answer here because a `VaultLocation` is the *saved* entry
+    /// and whether it is attached is `hdiutil`'s to say.
     private static func vaultIcon(isUnlocked: Bool) -> NSImage {
         templateSymbol(
-            isUnlocked ? "lock.open.fill" : "lock.fill",
+            SidebarPlacePresentation.vaultSymbolName(isUnlocked: isUnlocked),
             pointSize: 14,
             describedAs: isUnlocked
                 ? String(

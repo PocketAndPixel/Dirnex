@@ -23,27 +23,31 @@ extension SidebarViewController {
     /// into a stored order and would lose the row's position on a Mac where that differs.
     private static let iCloudOrderIdentity = "icloud"
 
-    /// The section's rows in the user's order — or, until they have dragged anything, the natural
+    /// The section's places in the user's order — or, until they have dragged anything, the natural
     /// one: iCloud Drive first (Apple's own, and the row a Mac is likeliest to have) then the
     /// provider mounts by name.
-    func cloudRows() -> [Row] {
-        let iCloud = SidebarLocations.iCloudDrive().map { [Row.iCloud($0)] } ?? []
-        let discovered = iCloud + CloudStorageMounts.mounts().map(Row.cloudMount)
-        // Every row here is a Cloud row by construction, so the fallback is unreachable rather than
-        // a stand-in identity anything could be stored under.
+    ///
+    /// The order is applied *here* rather than in `SidebarPlaces`, which takes this list already
+    /// sorted: it is the user's arrangement, held in a `UserDefaults` store, and the core assembly
+    /// reads no stores at all (PLAN.md §M20).
+    func cloudPlaces() -> [SidebarPlace] {
+        let iCloud = SidebarLocations.iCloudDrive().map { [SidebarPlace.iCloudDrive($0)] } ?? []
+        let discovered = iCloud + CloudStorageMounts.mounts().map(SidebarPlace.cloudMount)
+        // Everything here is a Cloud place by construction, so the fallback is unreachable rather
+        // than a stand-in identity anything could be stored under.
         return CloudSectionOrderStore.load().apply(to: discovered) { Self.orderIdentity(of: $0) ?? "" }
     }
 
-    /// How a Cloud row is named in the stored order, or `nil` for a row that is not one.
+    /// How a Cloud place is named in the stored order, or `nil` for one that is not in that section.
     ///
     /// A mount is keyed off its **directory name** under `~/Library/CloudStorage`, the one stable
     /// thing about it: `name` is a display string that changes the moment a second account of the
     /// same provider appears and both rows gain their account label, and keying off that would drop
     /// both rows back to the bottom of the section on the day one is added. The `mount:` prefix
     /// keeps that namespace clear of the iCloud literal.
-    static func orderIdentity(of row: Row) -> String? {
-        switch row {
-        case .iCloud: return iCloudOrderIdentity
+    static func orderIdentity(of place: SidebarPlace) -> String? {
+        switch place {
+        case .iCloudDrive: return iCloudOrderIdentity
         case let .cloudMount(mount): return "mount:\(mount.directoryName)"
         default: return nil
         }
@@ -88,11 +92,8 @@ extension SidebarViewController {
     /// carries neither.
     func iCloudCell(for path: VFSPath) -> NSView {
         cloudCell(
-            name: String(
-                localized: "iCloud Drive",
-                comment: "Apple's iCloud Drive: the sidebar row, the tab title, and the path bar's root crumb."
-            ),
-            symbolName: "icloud",
+            name: SidebarPlacePresentation.title(for: .iCloudDrive(path)),
+            symbolName: SidebarPlacePresentation.symbolName(for: .iCloudDrive(path)) ?? "icloud",
             tooltip: path.path
         )
     }

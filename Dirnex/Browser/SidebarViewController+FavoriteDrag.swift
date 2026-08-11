@@ -46,15 +46,15 @@ extension SidebarViewController {
     func reorderableSection(ofRow row: Int) -> SidebarSection? {
         guard rows.indices.contains(row) else { return nil }
         switch rows[row] {
-        case .favorite: return .favorites
-        case .savedSearch: return .searches
-        case .server: return .servers
+        case .place(.favorite): return .favorites
+        case .place(.savedSearch): return .searches
+        case .place(.server): return .servers
         // A vault's row is the user's own list entry, not a discovered mount — the same shape as a
         // saved server — so it reorders against the stored list whether it is locked or unlocked.
-        case .vault: return .vaults
+        case .place(.vault): return .vaults
         // Both kinds of Cloud row are peers within one section: iCloud Drive is a row the user can
         // put below a Google Drive mount, not a fixed first entry.
-        case .iCloud, .cloudMount: return .icloud
+        case .place(.iCloudDrive), .place(.cloudMount): return .icloud
         default: return nil
         }
     }
@@ -171,7 +171,7 @@ extension SidebarViewController {
     /// is the section's items, from just below its header through one past its last row.
     private func cloudIdentities(in range: ClosedRange<Int>) -> [String] {
         (range.lowerBound..<range.upperBound).compactMap { row in
-            rows.indices.contains(row) ? Self.orderIdentity(of: rows[row]) : nil
+            rows.indices.contains(row) ? rows[row].place.flatMap(Self.orderIdentity(of:)) : nil
         }
     }
 

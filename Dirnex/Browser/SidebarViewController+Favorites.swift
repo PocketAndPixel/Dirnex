@@ -18,8 +18,8 @@ extension SidebarViewController {
     func favoriteCell(for entry: FavoriteEntry) -> NSView {
         let cell = reuse(SidebarCellView.identifier) as? SidebarCellView ?? SidebarCellView()
         cell.configure(
-            name: entry.name,
-            image: Self.favoriteIcon(for: entry.path),
+            name: SidebarPlacePresentation.title(for: .favorite(entry)),
+            image: Self.favoriteIcon(for: entry),
             canEject: false,
             tooltip: entry.path.path
         )
@@ -27,33 +27,13 @@ extension SidebarViewController {
         return cell
     }
 
-    /// The glyph for a pinned folder: its standard-place symbol when the path is one of the
-    /// well-known folders, otherwise a plain folder — or a protocol glyph for a pin that lives
-    /// outside the local filesystem, so a remote or in-archive favorite doesn't pretend to be a
-    /// local directory.
-    private static func favoriteIcon(for path: VFSPath) -> NSImage {
-        if let kind = SidebarLocations.standardKind(for: path) {
-            return templateSymbol(symbolName(for: kind), pointSize: 15)
-        }
-        guard path.backend == .local else {
-            return templateSymbol(path.backend.isArchive ? "doc.zipper" : "network", pointSize: 15)
-        }
-        return templateSymbol("folder", pointSize: 15)
-    }
-
-    /// A monochrome SF Symbol standing in for each standard folder, so Documents, Downloads,
-    /// Music and the rest read at a glance instead of all sharing the generic folder icon.
-    private static func symbolName(for kind: FavoritePlace.Kind) -> String {
-        switch kind {
-        case .home: "house"
-        case .desktop: "menubar.dock.rectangle"
-        case .documents: "doc"
-        case .downloads: "arrow.down.circle"
-        case .pictures: "photo"
-        case .music: "music.note"
-        case .movies: "film"
-        case .applications: "square.grid.3x3.fill"
-        }
+    /// The glyph for a pinned folder, rendered at the source list's size. *Which* symbol it is —
+    /// a standard place's own, a plain folder, or a protocol glyph for a pin outside the local
+    /// filesystem — is `SidebarPlacePresentation`'s, so the Go ▸ Places menu marks the same pin
+    /// the same way (PLAN.md §M20).
+    private static func favoriteIcon(for entry: FavoriteEntry) -> NSImage {
+        let symbol = SidebarPlacePresentation.symbolName(for: .favorite(entry)) ?? "folder"
+        return templateSymbol(symbol, pointSize: 15)
     }
 
     // MARK: - Right-click menu

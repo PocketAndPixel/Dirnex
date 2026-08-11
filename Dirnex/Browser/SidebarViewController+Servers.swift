@@ -15,8 +15,8 @@ extension SidebarViewController {
     func serverCell(for connection: ServerConnection) -> NSView {
         let cell = reuse(SidebarCellView.identifier) as? SidebarCellView ?? SidebarCellView()
         cell.configure(
-            name: connection.name,
-            image: Self.serverIcon(for: connection.kind),
+            name: SidebarPlacePresentation.title(for: .server(connection)),
+            image: Self.serverIcon(for: connection),
             canEject: false,
             tooltip: connection.address,
             isBusy: SidebarRowActivity.shared.isWorking(connection.name)
@@ -29,13 +29,8 @@ extension SidebarViewController {
     /// glyph for SFTP, a connected-drive glyph for an SMB share, and an up/down transfer glyph for
     /// FTP — the protocol's own name, and unmistakable against the other two at 14 pt.
     /// Template so the source list tints it with the row's text color like the other sidebar glyphs.
-    private static func serverIcon(for kind: ServerKind) -> NSImage {
-        let symbol: String
-        switch kind {
-        case .smb: symbol = "externaldrive.connected.to.line.below"
-        case .ftp: symbol = "arrow.up.arrow.down.circle"
-        case .sftp: symbol = "network"
-        }
+    private static func serverIcon(for connection: ServerConnection) -> NSImage {
+        let symbol = SidebarPlacePresentation.symbolName(for: .server(connection)) ?? "network"
         return templateSymbol(symbol, pointSize: 14, describedAs: String(
             localized: "Server",
             comment: "Accessibility label for a saved-server sidebar row's glyph."

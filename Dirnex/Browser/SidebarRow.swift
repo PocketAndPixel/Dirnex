@@ -4,13 +4,25 @@ import DirnexCore
 /// length limit — the same reason Favorites, Volumes, Recents and the Cloud section live beside
 /// it.
 extension SidebarViewController {
-    /// A section header or a navigable destination. `internal` (not `private`) so the saved-search
-    /// and server management extensions in companion files can read the clicked row.
+    /// A destination, or one of the three pieces of chrome around them. `internal` (not `private`)
+    /// so the saved-search and server management extensions in companion files can read the clicked
+    /// row.
+    ///
+    /// **The destinations are `SidebarPlace`, not cases of their own** (PLAN.md §M20). This enum used
+    /// to spell out all ten — favorite, volume, vault, server, tag, iCloud, cloud mount, saved
+    /// search, Recents, Trash — which made the sidebar the only surface that could name a place, and
+    /// made a second renderer beside it a second copy of that vocabulary. Everything here is now what
+    /// a *table* adds on top of the shared list: a header to fold under, blank padding, and the
+    /// disclosure row that reveals the tags past the stock seven.
     enum Row {
-        /// The Trash row: a fixed system row that opens every volume's trash as one merged listing
-        /// (PLAN.md §M8). Like `.recents` it carries nothing — the Trash is not one directory, so
-        /// there is no path to hold.
-        case trash
+        /// A destination. What it does when picked is `SidebarViewController.activate(_:)`'s, which
+        /// the Go ▸ Places menu dispatches through as well, so a row and a menu item can never
+        /// disagree about what a place means.
+        case place(SidebarPlace)
+        /// A section header. Carries the section's *identity*, not its title — the drag code used
+        /// to find Favorites by comparing header text, which made a user-visible string
+        /// load-bearing, and the fold state keys off the same case (PLAN.md §M8).
+        case header(SidebarSection)
         /// Blank vertical space, carrying no content and no behavior — the one row that exists for
         /// layout alone. It sits above the headerless Trash row so that row reads as its own thing
         /// rather than as the last entry of whatever section happens to precede it (with Tags shown,
@@ -22,38 +34,11 @@ extension SidebarViewController {
         /// unselectable, undraggable, has no menu and no path, and `SidebarTableView` treats a click
         /// on it as a click on empty space.
         case spacer
-        /// A section header. Carries the section's *identity*, not its title — the drag code used
-        /// to find Favorites by comparing header text, which made a user-visible string
-        /// load-bearing, and the fold state keys off the same case (PLAN.md §M8).
-        case header(SidebarSection)
-        /// The Recents row: a fixed system row that runs the recently-used-files query into a virtual
-        /// results panel (PLAN.md §M8). Carries nothing — like a saved search it dispatches a query,
-        /// not a place, so it has no path and no stored model.
-        case recents
-        /// A pinned folder in the user-owned Favorites section — the favorites, which since M8 *is*
-        /// this section rather than a separate popup (PLAN.md §M8).
-        case favorite(FavoriteEntry)
-        /// The user's iCloud Drive: a fixed system row in the Cloud section (PLAN.md §M8). Carries
-        /// its path directly — it is one known location, not a stored model like a pin or a volume.
-        case iCloud(VFSPath)
-        /// One cloud provider's File Provider mount under `~/Library/CloudStorage` — Google Drive
-        /// and anything installed beside it (PLAN.md §M10 Phase 1).
-        ///
-        /// Unlike `.iCloud`, which dispatches a merge, this navigates its path like a favorite or a
-        /// volume does: the mount is an ordinary directory, which is the entire reason Phase 1
-        /// needs no backend. The path it navigates to is the mount's `entryDirectory`, not its
-        /// root — for Google Drive that is `My Drive`, the folder the user actually wants.
-        case cloudMount(CloudStorageMount)
-        case volume(MountedVolume)
-        /// One of the user's encrypted vaults (PLAN.md §M19). Carries the *saved* location, not a
-        /// path: a locked vault has no directory to point at, and which of the two states it is in
-        /// is asked of `hdiutil` at render time rather than stored, so an eject in Finder or a
-        /// `hdiutil detach` in Terminal cannot leave the row lying.
-        case vault(VaultLocation)
-        case savedSearch(SavedSearch)
-        case server(ServerConnection)
-        case tag(FinderTag)
         /// The "All Tags…" row: reveals the tags found by browsing, past the stock seven.
+        ///
+        /// Chrome rather than a place, and deliberately so: it is a disclosure affordance belonging
+        /// to a *scrolling list*, which is why the Places menu — where there is no such pressure —
+        /// has no equivalent and simply lists every tag.
         case allTags
 
         var isHeader: Bool {
@@ -67,46 +52,41 @@ extension SidebarViewController {
             return nil
         }
 
-        /// The path a click navigates to, when the row is a real location. `nil` for headers, saved
-        /// searches, servers, and tags — a saved search runs a query, a server connects/mounts, and
-        /// a tag searches, so each is dispatched through its own delegate call instead of pointing
-        /// at a directory.
+        /// The destination this row carries, when it is one.
+        var place: SidebarPlace? {
+            if case let .place(place) = self { return place }
+            return nil
+        }
+
+        /// The directory behind the row, for the four places that are one. `nil` for the chrome and
+        /// for every place that runs a query, connects or unlocks instead — see `SidebarPlace.path`,
+        /// which is where that distinction is defined and tested.
         var path: VFSPath? {
-            switch self {
-            case .header, .recents, .trash, .spacer, .savedSearch, .server, .tag, .allTags:
-                return nil
-            // A vault is dispatched, never navigated — locked it has nowhere to go, and unlocked
-            // its mount point is `hdiutil`'s answer rather than anything this row holds.
-            case .vault: return nil
-            case let .favorite(entry): return entry.path
-            case let .iCloud(path): return path
-            case let .cloudMount(mount): return mount.entryDirectory
-            case let .volume(volume): return volume.path
-            }
+            place?.path
         }
 
         var favorite: FavoriteEntry? {
-            if case let .favorite(entry) = self { return entry }
+            if case let .place(.favorite(entry)) = self { return entry }
             return nil
         }
 
         var savedSearch: SavedSearch? {
-            if case let .savedSearch(search) = self { return search }
+            if case let .place(.savedSearch(search)) = self { return search }
             return nil
         }
 
         var server: ServerConnection? {
-            if case let .server(connection) = self { return connection }
+            if case let .place(.server(connection)) = self { return connection }
             return nil
         }
 
         var vault: VaultLocation? {
-            if case let .vault(location) = self { return location }
+            if case let .place(.vault(location)) = self { return location }
             return nil
         }
 
         var tag: FinderTag? {
-            if case let .tag(tag) = self { return tag }
+            if case let .place(.tag(tag)) = self { return tag }
             return nil
         }
     }

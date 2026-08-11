@@ -27,6 +27,11 @@ enum MainMenuBuilder {
 
     // MARK: - Layout
 
+    /// The Go ▸ Places submenu, built once and kept: it is its own menu's delegate, so a fresh one
+    /// per rebuild — and the menu bar is rebuilt whenever a key binding changes — would leak one
+    /// delegate per rebuild and leave the stale menus observing nothing.
+    private static let places = PlacesMenu()
+
     private enum Item {
         case command(String)
         /// A command shown indented under the one above it, for a setting that only qualifies
@@ -35,6 +40,9 @@ enum MainMenuBuilder {
         case subcommand(String)
         /// The standard AppKit Cut item — not a registry command; see `cutItem()`.
         case cut
+        /// The Places submenu — live data rather than a registry command, so it fills itself when
+        /// opened; see `PlacesMenu`.
+        case placesSubmenu
         case separator
     }
 
@@ -100,6 +108,11 @@ enum MainMenuBuilder {
             .command("go.back"), .command("go.forward"), .command("go.history"), .separator,
             .command("go.editLocation"), .command("go.parent"), .command("go.search"),
             .command("go.saveSearch"), .separator,
+            // Places leads the destination half of this menu: it is the way to every location the
+            // sidebar holds, and the only way to most of them when the sidebar is hidden
+            // (PLAN.md §M20). Favorites keeps its own item beside it — ⌃D is the fast path to the
+            // sub-list people use most, and it is muscle memory from Total Commander.
+            .placesSubmenu,
             .command("go.favorites"), .command("go.addToFavorites"), .separator,
             .command("go.connectServer"), .separator,
             .command("go.newVault"), .command("go.unlockVault"), .command("go.lockVault"),
@@ -134,6 +147,11 @@ enum MainMenuBuilder {
                 }
             case .cut:
                 submenu.addItem(cutItem())
+            case .placesSubmenu:
+                submenu.addItem(places.menuItem(title: String(
+                    localized: "Places",
+                    comment: "Go-menu submenu with every sidebar destination (favorites, volumes, servers, Trash)."
+                )))
             }
         }
         if spec.isWindow {

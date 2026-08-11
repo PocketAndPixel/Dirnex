@@ -131,70 +131,15 @@ final class SidebarViewController: NSViewController {
         let selectedPath = selectedRow()?.path
         sectionCollapse = SidebarSectionCollapseStore.load()
 
-        // Section order is `SidebarSection.allCases`, and each section's header-and-items assembly
-        // — including whether a folded one contributes its rows — is `append`'s, in
-        // `SidebarViewController+Sections`.
+        // Which places exist and what order they come in is `SidebarPlaces.groups(from:)`, shared
+        // with the Go ▸ Places menu (PLAN.md §M20); everything below is what a *table* adds to that
+        // list — headers, folding, the spacer, and the All Tags disclosure row. Rendering is the
+        // only thing this file decides, which is why the fold state is applied here and is not an
+        // input over there: a section the user folded shut must still be in the menu bar.
         var rows: [Row] = []
-        // Recents leads the sidebar, where Finder puts it — one fixed row that runs the
-        // recently-used-files query into a virtual results panel (PLAN.md §M8). Always present: it
-        // needs only Spotlight, which is effectively always on, so unlike iCloud it has no absent
-        // state. Headerless: a section header to caption a single fixed row is pure weight, so it
-        // sits bare above every collapsible section (see `SidebarSection`).
-        rows.append(.recents)
-        // Saved searches follow, above the standard Favorites/Volumes sections.
-        append(.searches, items: SavedSearchStore.load().searches.map(Row.savedSearch), to: &rows)
-        // Favorites is the user's own pin list (PLAN.md §M8) — seeded once from the standard places
-        // at launch, reordered and extended by the user from here on. Alone among the sections it
-        // keeps its header when empty; `append` documents why.
-        append(
-            .favorites,
-            items: FavoritesStore.load().entries.map(Row.favorite),
-            showsEmptyHeader: true,
-            to: &rows
-        )
-        // The Cloud section, between the user's pins and the local volumes where Finder puts these:
-        // iCloud Drive plus every provider mount under `~/Library/CloudStorage` (PLAN.md §M8, §M10).
-        // Assembled in `SidebarViewController+Cloud`.
-        append(.icloud, items: cloudRows(), to: &rows)
-        // Vaults sit between the local volumes and the remote servers, because that is what one is:
-        // a local volume that has to be unlocked before it exists (PLAN.md §M19). A vault's own
-        // volume must never *also* appear above under Volumes: a row that moved between sections as
-        // it was unlocked would be the one place the user goes to unlock it, and the duplicate
-        // carries a plain eject button that detaches the image without any of the bookkeeping Lock
-        // does (evicting the panes standing inside it, and dropping what `VaultPrivacy` must forget).
-        //
-        // `-nobrowse` used to make that impossible by itself — a hidden volume is skipped by
-        // `mountedVolumeURLs(options: [.skipHiddenVolumes])` — so this was once true by construction
-        // and is now a rule that has to be kept: a vault with `showsInFinder` on is browsable, and
-        // is enumerated here exactly like any other mount (verified). Hence the mount points are
-        // resolved *before* the Volumes section rather than after it.
-        let vaults = VaultStore.load().vaults
-        vaultMountPoints = Self.mountPoints(of: vaults)
-        append(
-            .volumes,
-            items: SidebarLocations.hidingVaults(
-                in: SidebarLocations.volumes(),
-                mountedAt: Set(vaultMountPoints.values)
-            ).map(Row.volume),
-            to: &rows
-        )
-        append(.vaults, items: vaults.map(Row.vault), to: &rows)
-        // Saved servers, grouped with the local volumes as the "places you browse"
-        // (PLAN.md §M5 "a Servers sidebar section mirroring Searches").
-        append(.servers, items: ServerConnectionStore.load().connections.map(Row.server), to: &rows)
-        // Tags close the collapsible sections, where Finder puts them, and only when View ▸ Show
-        // Tags is on.
-        append(.tags, items: tagRows(), to: &rows)
-        // The Trash is the very last row, where the Dock puts it — one fixed headerless row that
-        // opens every volume's trash as one merged listing. Always present: every Mac has one, and
-        // whether it can be read is the pane's answer to give, not a reason to hide the row.
-        //
-        // Having no header of its own, it would otherwise sit flush against the section above and
-        // read as a member of it — with Tags shown, as an eighth tag color. The spacer restores the
-        // separation a header used to provide, at exactly the gap AppKit itself puts above a section
-        // (see `heightOfRow`).
-        rows.append(.spacer)
-        rows.append(.trash)
+        for group in SidebarPlaces.groups(from: placeSources()) {
+            render(group, into: &rows)
+        }
         self.rows = rows
         tableView.reloadData()
 
@@ -298,33 +243,50 @@ final class SidebarViewController: NSViewController {
         activate(rowAt: tableView.clickedRow)
     }
 
-    /// Run the row's action — navigate to a place/volume, run a saved search or tag query, connect a
-    /// server, or expand the Tags section. Shared by a mouse click (`rowClicked`) and a keyboard
-    /// Return/Space (`SidebarViewController+Keyboard`), so both surfaces dispatch a row exactly one
-    /// way. `internal`, not `private`: the keyboard companion file calls it, and Swift `private`
+    /// Run the row's action. Shared by a mouse click (`rowClicked`) and a keyboard Return/Space
+    /// (`SidebarViewController+Keyboard`), so both surfaces dispatch a row exactly one way.
+    /// `internal`, not `private`: the keyboard companion file calls it, and Swift `private`
     /// doesn't cross files.
+    ///
+    /// Only the disclosure row is handled here — everything else is a place, and goes through the
+    /// funnel below.
     func activate(rowAt index: Int) {
         guard rows.indices.contains(index) else { return }
-        if case .recents = rows[index] {
-            delegate?.sidebarDidActivateRecents(self)
-        } else if case .trash = rows[index] {
-            delegate?.sidebarDidActivateTrash(self)
-        } else if let savedSearch = rows[index].savedSearch {
-            delegate?.sidebar(self, didActivateSavedSearch: savedSearch)
-        } else if let server = rows[index].server {
-            delegate?.sidebar(self, didActivateServer: server)
-        } else if let vault = rows[index].vault {
-            delegate?.sidebar(self, didActivateVault: vault)
-        } else if let tag = rows[index].tag {
-            delegate?.sidebar(self, didActivateTag: tag)
-        } else if case .allTags = rows[index] {
+        if case .allTags = rows[index] {
             expandAllTags()
-        } else if case .iCloud = rows[index] {
-            // Dispatched rather than navigated even though the row *has* a path: what it opens is
+        } else if let place = rows[index].place {
+            activate(place)
+        }
+    }
+
+    /// What a place *does* when it is picked — the one definition of that, for every surface
+    /// (PLAN.md §M20). A sidebar row and a Go ▸ Places menu item both arrive here, so the two can
+    /// never come to disagree about what opening a vault or a tag means.
+    ///
+    /// Note how little of this is navigation: four of the ten hand over a `VFSPath`, and the rest
+    /// run a query, connect, unlock, or assemble a merged listing. That is exactly why a menu built
+    /// out of paths would have been wrong rather than merely duplicated.
+    func activate(_ place: SidebarPlace) {
+        switch place {
+        case .recents:
+            delegate?.sidebarDidActivateRecents(self)
+        case .trash:
+            delegate?.sidebarDidActivateTrash(self)
+        case let .savedSearch(savedSearch):
+            delegate?.sidebar(self, didActivateSavedSearch: savedSearch)
+        case let .server(server):
+            delegate?.sidebar(self, didActivateServer: server)
+        case let .vault(vault):
+            delegate?.sidebar(self, didActivateVault: vault)
+        case let .tag(tag):
+            delegate?.sidebar(self, didActivateTag: tag)
+        case .iCloudDrive:
+            // Dispatched rather than navigated even though the place *has* a path: what it opens is
             // the merge of that container with the app libraries beside it, which is a listing to
             // assemble rather than a directory to list (PLAN.md §M9).
             delegate?.sidebarDidActivateICloud(self)
-        } else if let path = rows[index].path {
+        case .favorite, .cloudMount, .volume:
+            guard let path = place.path else { return }
             delegate?.sidebar(self, didActivate: path)
         }
     }
@@ -386,31 +348,31 @@ extension SidebarViewController: NSTableViewDelegate {
                 isCollapsed: sectionCollapse.isCollapsed(section)
             )
             return header
-        case .recents:
-            return recentsCell()
-        case .trash:
-            return trashCell()
         case .spacer:
             // Nothing to draw: the row is its own height and no more.
             return nil
-        case let .favorite(entry):
-            return favoriteCell(for: entry)
-        case let .iCloud(path):
-            return iCloudCell(for: path)
-        case let .cloudMount(mount):
-            return cloudMountCell(for: mount)
-        case let .volume(volume):
-            return volumeCell(for: volume)
-        case let .savedSearch(search):
-            return savedSearchCell(for: search)
-        case let .server(connection):
-            return serverCell(for: connection)
-        case let .vault(location):
-            return vaultCell(for: location)
-        case let .tag(tag):
-            return tagCell(for: tag)
         case .allTags:
             return allTagsCell()
+        case let .place(place):
+            return cell(for: place)
+        }
+    }
+
+    /// One destination's cell. Split from `viewFor` so the row's chrome and the place it carries are
+    /// answered separately, and so `SidebarPlace`'s ten cases are switched over in exactly one place
+    /// on the drawing side — the mirror of `activate(_:)` on the dispatch side.
+    private func cell(for place: SidebarPlace) -> NSView? {
+        switch place {
+        case .recents: recentsCell()
+        case .trash: trashCell()
+        case let .favorite(entry): favoriteCell(for: entry)
+        case let .iCloudDrive(path): iCloudCell(for: path)
+        case let .cloudMount(mount): cloudMountCell(for: mount)
+        case let .volume(volume): volumeCell(for: volume)
+        case let .savedSearch(search): savedSearchCell(for: search)
+        case let .server(connection): serverCell(for: connection)
+        case let .vault(location): vaultCell(for: location)
+        case let .tag(tag): tagCell(for: tag)
         }
     }
 
@@ -445,7 +407,7 @@ extension SidebarViewController: NSMenuDelegate {
         menu.removeAllItems()
         let row = tableView.clickedRow
         guard rows.indices.contains(row) else { return }
-        if case .trash = rows[row] {
+        if case .place(.trash) = rows[row] {
             buildTrashMenu(menu)
         } else if let entry = rows[row].favorite {
             buildFavoriteMenu(menu, for: entry)
