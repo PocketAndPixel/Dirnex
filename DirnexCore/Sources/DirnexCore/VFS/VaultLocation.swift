@@ -142,6 +142,18 @@ public struct SavedVaults: Sendable, Equatable, Codable {
         return true
     }
 
+    /// Reorder: pull the vault out of `source` and reinsert it so it lands at `destination` in the
+    /// *resulting* list (Array semantics, matching the favorites/searches/servers reorder the
+    /// sidebar's drag code drives all four sections through).
+    ///
+    /// Note the label, against ``move(imagePath:to:)`` right above: that one re-points a vault at a
+    /// new file on disk and deliberately *keeps* its place, while this one is only about the place.
+    public mutating func move(from source: Int, to destination: Int) {
+        guard vaults.indices.contains(source) else { return }
+        let vault = vaults.remove(at: source)
+        vaults.insert(vault, at: min(max(destination, 0), vaults.count))
+    }
+
     /// Remove the vault at `imagePath`, whichever spelling it is given in. Returns whether it was
     /// there.
     @discardableResult

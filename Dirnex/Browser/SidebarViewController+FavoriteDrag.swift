@@ -7,10 +7,10 @@ import DirnexCore
 /// each with a tested `move(from:to:)`; what lives here is the mapping between `NSTableView`'s row
 /// indices and each list's own.
 ///
-/// Four sections reorder. Favorites, Searches and Servers are user-authored ordered lists, so the
-/// order simply *is* the list's and each store rewrites it. Cloud is not — its rows are discovered
-/// (iCloud Drive, plus whatever is mounted under `~/Library/CloudStorage`) and come back from a
-/// scan on every rebuild — so its order is stored beside them as identities, through
+/// Five sections reorder. Favorites, Searches, Servers and Vaults are user-authored ordered lists,
+/// so the order simply *is* the list's and each store rewrites it. Cloud is not — its rows are
+/// discovered (iCloud Drive, plus whatever is mounted under `~/Library/CloudStorage`) and come back
+/// from a scan on every rebuild — so its order is stored beside them as identities, through
 /// `SidebarItemOrder` and `CloudSectionOrderStore`. The mapping below is the same either way; only
 /// the store differs.
 ///
@@ -49,6 +49,9 @@ extension SidebarViewController {
         case .favorite: return .favorites
         case .savedSearch: return .searches
         case .server: return .servers
+        // A vault's row is the user's own list entry, not a discovered mount — the same shape as a
+        // saved server — so it reorders against the stored list whether it is locked or unlocked.
+        case .vault: return .vaults
         // Both kinds of Cloud row are peers within one section: iCloud Drive is a row the user can
         // put below a Google Drive mount, not a fixed first entry.
         case .iCloud, .cloudMount: return .icloud
@@ -148,6 +151,10 @@ extension SidebarViewController {
             var store = ServerConnectionStore.load()
             store.move(from: source, to: adjusted)
             ServerConnectionStore.save(store)
+        case .vaults:
+            var store = VaultStore.load()
+            store.move(from: source, to: adjusted)
+            VaultStore.save(store)
         case .icloud:
             // The one section whose rows aren't a stored list, so the move is recorded against the
             // identities of what is *on screen* rather than against a list this could index into.
