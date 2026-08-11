@@ -31,6 +31,9 @@ final class PlacesMenu: NSObject {
     /// bar's glyph cannot be handed different builders.
     static let shared = PlacesMenu()
 
+    /// Held strongly because `NSMenu.delegate` is weak and the section submenus point at it.
+    let sectionDelegate = PlacesSectionMenuDelegate()
+
     /// The Go-menu item carrying the submenu.
     func menuItem(title: String) -> NSMenuItem {
         let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
@@ -105,6 +108,8 @@ final class PlacesMenu: NSObject {
         for place in places {
             submenu.addItem(item(for: place, unlockedVaults: unlockedVaults))
         }
+        // Its digits are handed out when it opens and taken back when it closes; see `PlacesDigits`.
+        submenu.delegate = sectionDelegate
         header.submenu = submenu
         return header
     }
@@ -170,6 +175,109 @@ extension PlacesMenu: NSMenuDelegate {
             groups: SidebarPlaces.groups(from: sidebar.placeSources()),
             unlockedVaults: Set(sidebar.vaultMountPoints.keys)
         )
+        // The top level's own destinations — Recents and the Trash — hold the digits until the user
+        // steps into a section, which takes them (`PlacesDigits`).
+        PlacesDigits.hand(to: menu, root: menu)
+    }
+
+    /// Empty the menu again once it closes — which is what keeps the bare digits from becoming
+    /// **app-wide chords**.
+    ///
+    /// `Go ▸ Places` lives in the menu bar, and `performKeyEquivalent` searches the whole menu bar
+    /// ahead of `keyDown:`, so a bare `1` on an item there is a shortcut that fires from anywhere —
+    /// including out from under a rename field. What normally prevents that is that `menuNeedsUpdate`
+    /// is *not* called during a key-equivalent search, so a delegate-filled menu is empty to it; but
+    /// the items an open leaves behind persist, and they are found. Measured: before the menu has
+    /// ever been opened `performKeyEquivalent("1")` is `false`, after one open it is `true` and
+    /// jumps to Recents, and after this clear it is `false` again. So the digits exist only while
+    /// the menu the user is looking at is open, which is the only time they mean anything.
+    ///
+    /// Deferred a turn because AppKit sends the chosen item's action *after* the menu closes. The
+    /// action survives the clear either way — target and `representedObject` live on the item, which
+    /// the dispatch retains — but a detached item is not worth relying on when one hop costs nothing.
+    func menuDidClose(_ menu: NSMenu) {
+        DispatchQueue.main.async { menu.removeAllItems() }
+    }
+}
+
+/// The bare 1–9 jump keys — the favorites popup's number-key accelerators (Total Commander's), one
+/// level up, where the list is a tree rather than a list.
+///
+/// **Only one menu carries digits at a time: the one the user is looking at.** That is forced rather
+/// than chosen, by three things measured on a live menu (2026-08-12):
+///
+/// 1. An item that carries a **submenu** cannot have a key equivalent at all — AppKit does not draw
+///    one (the disclosure chevron owns that space) and `performKeyEquivalent` returns `false` for it,
+///    the same finding NOTES.md records for the Go menu's own Places item. So a *section* can never
+///    be numbered, only the destinations inside it.
+/// 2. The search **recurses into submenus** and fires the first match in menu order, whether or not
+///    that submenu is open: with every section numbered from 1, typing `2` at the top level opened
+///    the second saved search, two levels down inside a closed submenu.
+/// 3. An open submenu is given **no precedence** — with Volumes open and highlighted, `1` still ran
+///    the root's Recents, because the root comes first.
+///
+/// Together those say a digit must be unique across the whole tree at the moment it is typed. Making
+/// them unique *statically* would mean one flat 1–9 over the whole menu, which one long section
+/// would swallow — leaving the Trash, the last row, permanently unreachable. Handing them to the
+/// front menu instead keeps every list numbered from 1, which is what makes it read like the
+/// favorites popup rather than like an arbitrary run of numbers.
+enum PlacesDigits {
+    /// Give `menu` the digits and take them away from everything else under `root`.
+    static func hand(to menu: NSMenu, root: NSMenu) {
+        strip(from: root)
+        var next = 1
+        for item in menu.items where isDestination(item) {
+            guard next <= 9 else { return }
+            item.keyEquivalent = String(next)
+            // Bare, with no ⌘: the digit is typed while the menu is open, not as a chord.
+            item.keyEquivalentModifierMask = []
+            next += 1
+        }
+    }
+
+    /// Take the digits off `menu` and every menu below it.
+    static func strip(from menu: NSMenu) {
+        for item in menu.items {
+            item.keyEquivalent = ""
+            if let submenu = item.submenu { strip(from: submenu) }
+        }
+    }
+
+    /// A row a digit can actually reach: not a separator, not the disabled "Nothing Here Yet"
+    /// placeholder, and not a section header — which is unreachable by key equivalent (1, above),
+    /// so numbering one would print a promise AppKit does not keep.
+    private static func isDestination(_ item: NSMenuItem) -> Bool {
+        !item.isSeparatorItem && item.submenu == nil && item.action != nil
+    }
+}
+
+/// Watches the section submenus so the digits follow the user into one and back out again.
+///
+/// Its own object rather than a second role for `PlacesMenu`, because that class's
+/// `menuNeedsUpdate` fills a menu with *the whole places list* — pointed at a section submenu it
+/// would refill Volumes with every place there is. `PlacesMenu` holds it strongly:
+/// `NSMenu.delegate` is weak, and these submenus are rebuilt on every open.
+@MainActor
+final class PlacesSectionMenuDelegate: NSObject, NSMenuDelegate {
+    /// Bumped by every open, so a close can tell "the user left this section" from "the user moved
+    /// to the next one" — AppKit does not promise which of the two callbacks lands first, and
+    /// restoring the root's digits while another section is open would let the root win (3, above).
+    private var generation = 0
+
+    func menuWillOpen(_ menu: NSMenu) {
+        generation += 1
+        guard let root = menu.supermenu else { return }
+        PlacesDigits.hand(to: menu, root: root)
+    }
+
+    func menuDidClose(_ menu: NSMenu) {
+        guard let root = menu.supermenu else { return }
+        let closing = generation
+        // A turn later, so an open landing in the same runloop pass has already claimed the digits.
+        DispatchQueue.main.async { [weak self] in
+            guard let self, generation == closing else { return }
+            PlacesDigits.hand(to: root, root: root)
+        }
     }
 }
 

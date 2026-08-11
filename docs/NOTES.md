@@ -330,6 +330,31 @@ at build time.
     left an assertion over `MainMenuBuilder.commandItem(for:)` passing, because the item in isolation
     is still well-formed — it is simply in no menu. Flattening `MainMenuBuilder.build()` and looking
     for the *selector* catches it.
+  - **The same rule governs the number keys typed *inside* an open menu, and two more measurements
+    decide how they can be numbered at all.** Places' 1–9 jump keys (the ⌘F favorites popup's, one
+    level up) were built assuming each menu could number its own rows from 1; a live run showed the
+    opposite, in the direction that silently sends the user somewhere else. First, a section header
+    cannot be numbered — AppKit does not even **draw** a key equivalent on an item with a submenu,
+    the chevron owns that space, so the digit is invisible *and* dead while still consuming a number:
+    the shipped attempt drew `Recents 1 … Trash 8`, the six carriers having eaten 2–7 with nothing on
+    screen to say so. Second, the search **recurses into submenus and takes the first match in menu
+    order, open or not**: with every section numbered from 1, typing `2` at the top level ran the
+    second *saved search*, two levels down inside a closed submenu. Third, an open submenu gets **no
+    precedence** — with Volumes open and highlighted, `1` still ran the root's Recents. So a digit
+    must be unique across the whole tree at the moment it is typed, and since one flat 1–9 would let
+    a long section swallow the range (leaving the Trash, the last row, permanently unreachable), the
+    digits are *handed* to whichever menu is open and taken back on the way out (`PlacesDigits`).
+    Restore on close has to be deferred a runloop turn and guarded by a generation counter: AppKit
+    does not promise the section being left closes before the one being entered opens, and a restore
+    that wins that race puts the root's digits back on top of the submenu the user is looking at.
+  - **A bare digit on an item in a menu-bar menu is an app-wide chord, and the protection above is
+    only good until the menu is opened once.** `performKeyEquivalent` searches the whole menu bar
+    ahead of `keyDown:`, and the items a delegate-filled menu is left holding after an open *are*
+    found: measured, `1` fires Recents from anywhere — out from under a rename field — where before
+    the first open it does nothing. Emptying the menu in `menuDidClose` restores the safe state
+    (measured `false` → `true` → `false`), and the chosen item's action still fires afterwards, since
+    target and `representedObject` live on the item the dispatch retains. Any menu that carries
+    unmodified accelerators needs that clear; without it the digits leak into every text field.
 - **macOS's Help ▸ Search only exists if the app declares a Help menu, and Dirnex declares none.**
   M20 Slice 2 shipped with "since macOS's Help ▸ Search searches menu items, 'Trash' is now findable
   by typing the word" written into PLAN.md *and* into `PlacesMenu`'s doc comment — a benefit claimed
