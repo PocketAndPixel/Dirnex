@@ -139,6 +139,10 @@ extension SidebarViewController {
             if case .password = authentication { SecretKeychain.removePassword(for: location) }
         case let .smb(location):
             if location.username != nil { SecretKeychain.removePassword(for: location) }
+        case let .s3(location):
+            // Unconditional: a saved bucket always has a secret filed, since SigV4 is the only way
+            // in and there is no anonymous variant to skip.
+            SecretKeychain.removePassword(for: location)
         }
     }
 }

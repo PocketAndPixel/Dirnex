@@ -76,7 +76,7 @@ enum ArchiveTOCParser {
                     name: ancestors[ancestors.count - 1],
                     kind: .directory,
                     byteSize: 0,
-                    modificationDate: .distantPast
+                    modificationDate: FileEntry.unknownDate
                 )
             }
             ancestors.removeLast()

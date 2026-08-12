@@ -34,8 +34,17 @@ enum FileFormatting {
         byteFormatter.string(fromByteCount: bytes)
     }
 
+    /// Date column text — or the same dash the size column uses, for a row whose backend has no
+    /// date to give.
+    ///
+    /// Caught by browsing a real bucket: an S3 folder is a *common prefix* rather than an object,
+    /// so it carries no `LastModified`, and formatting `FileEntry.unknownDate` drew
+    /// **01.01.1, 02:02** — which reads as a corrupt timestamp rather than as an absent one, and
+    /// which no test could see, since every assertion in this area is about the shapes a *real*
+    /// date takes.
     static func dateString(for entry: FileEntry) -> String {
-        dateFormatter.string(from: entry.modificationDate)
+        guard entry.hasModificationDate else { return "—" }
+        return dateFormatter.string(from: entry.modificationDate)
     }
 
     /// Every shape `dateString(for:)` can take in the current region — what a caller sizing the Date

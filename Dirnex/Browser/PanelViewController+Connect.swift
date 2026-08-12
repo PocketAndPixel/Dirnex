@@ -5,6 +5,8 @@ import DirnexCore
 /// extended by §M13 with FTP). Prompts for a remote server, connects it, and — when named — saves it
 /// to the sidebar's Servers section. Three protocols share one entry point:
 ///
+/// - **S3** browses through a `VFSBackend` over the system `curl`, which signs SigV4 itself; its
+///   connect and its wrong-region correction live in `PanelViewController+ConnectS3` (§M21).
 /// - **SFTP** browses through a `VFSBackend`: a throwaway transport probes the connection (resolving
 ///   the remote home doubles as an auth/host test), then the same config is registered on the pane's
 ///   `CompositeBackend` so listings route to it. Password auth feeds `sftp` via `SSH_ASKPASS`.
@@ -69,6 +71,22 @@ extension PanelViewController {
                     savedServerName: server.name
                 ))
             }
+        case let .s3(location):
+            // The secret access key is the only way in — there is no anonymous or key-file variant
+            // to fall back to — so a saved bucket whose secret was never stored (or has been
+            // cleared) opens the prefilled sheet rather than failing.
+            guard let secret = SecretKeychain.password(for: location) else {
+                editServer(server)
+                return
+            }
+            runSidebarConnect(host: location.host) { [self] in
+                await connectS3(S3ConnectRequest(
+                    location: location,
+                    secretAccessKey: secret,
+                    saveName: nil,
+                    activityName: server.name
+                ))
+            }
         case let .smb(location):
             if location.username != nil, SecretKeychain.password(for: location) == nil {
                 editServer(server)
@@ -127,6 +145,13 @@ extension PanelViewController {
                 // The sheet's own `saveName` is the record to write, when there is one — a re-trust
                 // reaches the store through the success branch's `saveFTPServer`.
                 savedServerName: nil
+            ))
+        case let .s3(location):
+            return await connectS3(S3ConnectRequest(
+                location: location,
+                secretAccessKey: form.password ?? "",
+                saveName: form.saveName,
+                activityName: nil
             ))
         case let .smb(location):
             return await mountSMB(

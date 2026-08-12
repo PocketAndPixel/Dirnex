@@ -4,7 +4,8 @@ import Foundation
 /// The pane's backend: routes each `VFSPath` to the concrete backend that owns it — the
 /// real `LocalBackend` for on-disk paths, a lazily-mounted read-only `ArchiveBackend` for
 /// `archive:…` paths (PLAN.md §M4 "cash in the VFS abstraction — browse zip/tar as folders"), and a
-/// connected `SFTPBackend` / `FTPBackend` for each live remote account (§M5, §M13).
+/// connected `SFTPBackend` / `FTPBackend` / `S3Backend` for each live remote account
+/// (§M5, §M13, §M21).
 ///
 /// Composing, rather than swapping, the pane's backend keeps every existing `self.backend`
 /// call site — listing, stat, sizing, copy/move, the shared queue — working unchanged; only
@@ -31,6 +32,11 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
     /// same shape as `sftpConnections` and for the same reasons — established by the connect flow
     /// before a pane navigates onto it, guarded by `lock` because listing runs on detached tasks.
     private var ftpConnections: [String: FTPBackend] = [:]
+    /// Live S3 connections keyed by the bucket descriptor (`s3://<key id>@<host>:<port>/…`). The
+    /// same shape as the other two, with one difference worth naming: there is no session to keep
+    /// alive — every request re-signs — so a "connection" here is the credential plus the endpoint,
+    /// held so a pane can keep listing without asking the Keychain on every page.
+    private var s3Connections: [String: S3Backend] = [:]
 
     init(local: LocalBackend) {
         self.local = local
@@ -85,6 +91,21 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         return backend
     }
 
+    /// Establish (or replace) an S3 connection for `location`, returning its backend so the caller
+    /// can test it (list the bucket root) before navigating a pane onto it. `secretAccessKey` is
+    /// the plaintext the transport feeds to `curl` on stdin (held only in memory for the
+    /// connection's lifetime, mirrored into the Keychain separately); the *access key id* is not a
+    /// secret and rides in the location itself.
+    @discardableResult
+    func connectS3(location: S3Location, secretAccessKey: String) -> S3Backend {
+        let transport = S3CurlTransport(location: location, secretAccessKey: secretAccessKey)
+        let backend = S3Backend(location: location, transport: transport)
+        lock.lock()
+        defer { lock.unlock() }
+        s3Connections[location.descriptor] = backend
+        return backend
+    }
+
     /// Drop the cached mount for the archive at `archivePath`, so its next list/stat re-reads it
     /// from disk with a fresh `bsdtar -tvf`. Called after a rewrite (F8 delete inside an archive)
     /// changes the archive's contents, so the pane's re-list reflects the new table of contents
@@ -122,6 +143,10 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         }
         if path.backend.isSFTP { return sftpBackend(for: path.backend)?.capabilities ?? .read }
         if path.backend.isFTP { return ftpBackend(for: path.backend)?.capabilities ?? .read }
+        // S3 answers `.read` connected or not, which is not a fallback here — it is the backend's
+        // whole capability set until M21's write half lands, so the M5 degradation grays out the
+        // rest whether or not the credential is still live.
+        if path.backend.isS3 { return s3Backend(for: path.backend)?.capabilities ?? .read }
         // The merged Trash listing is writable-but-Trash-less for the same reason, one level up:
         // its entries are real files that can only be deleted for good. Everything else virtual (an
         // archive browse, a search-results listing) is read-only.
@@ -181,10 +206,11 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
     ) throws {
         // A byte copy is performed by whichever backend can move the bytes. An upload (local
         // source → SFTP destination) is the SFTP backend's `put`, so route on the *destination*
-        // when it is remote; otherwise route on the source, which covers a download (SFTP source
-        // → local destination = the SFTP backend's `get`) and a plain local-to-local copy.
-        let isRemoteDestination = destination.backend.isSFTP || destination.backend.isFTP
-        let mover = isRemoteDestination ? try backend(for: destination) : try backend(for: source)
+        // when it can receive one; otherwise route on the source, which covers a download (SFTP or
+        // S3 source → local destination) and a plain local-to-local copy.
+        let mover = destination.backend.acceptsUploads
+            ? try backend(for: destination)
+            : try backend(for: source)
         try mover.copyFile(
             at: source,
             to: destination,
@@ -214,7 +240,23 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         if let archivePath = path.backend.archivePath { return try mountedArchive(at: archivePath) }
         if path.backend.isSFTP { return try connectedSFTP(for: path.backend) }
         if path.backend.isFTP { return try connectedFTP(for: path.backend) }
+        if path.backend.isS3 { return try connectedS3(for: path.backend) }
         throw VFSError.unsupported(.noBackendForPath(path: "\(path)"))
+    }
+
+    private func connectedS3(for backendID: VFSBackendID) throws -> S3Backend {
+        guard let backend = s3Backend(for: backendID) else {
+            throw VFSError.unsupported(.serverNotConnected(server: "\(backendID)"))
+        }
+        return backend
+    }
+
+    /// The connected S3 backend for `backendID`, or `nil` when there's no live connection — the
+    /// non-throwing lookup `capabilities(for:)` needs (it must never throw and must stay cheap).
+    private func s3Backend(for backendID: VFSBackendID) -> S3Backend? {
+        lock.lock()
+        defer { lock.unlock() }
+        return s3Connections[backendID.rawValue]
     }
 
     private func connectedFTP(for backendID: VFSBackendID) throws -> FTPBackend {

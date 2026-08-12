@@ -736,6 +736,21 @@ at build time.
   guard, and the clipboard guard. All five compiled and all five were wrong; only connecting showed
   it. When adding a backend, grep for the previous one's predicate and read every hit — an `else`
   branch is where the omission hides, and its fallback is usually the *most* misleading option.
+  - **The fix that survives the *next* backend is a name, not a third disjunct**, and S3 is where
+    that was paid: `isRemoteConnection` now answers the question all five sites were really asking
+    ("re-listable, and not on this disk"), so adding a backend is one line rather than five hits to
+    find. The half worth stating is that it needed a **second** predicate, not a bigger one —
+    `acceptsUploads`, which S3 is deliberately absent from while it is read-only, because the
+    copy-destination guard is the one site asking a different question. Collapsing the two is the
+    tempting simplification and it fails in the expensive direction: F5 would start a job that dies
+    inside the queue instead of saying up front that the other panel cannot receive files.
+  - **A backend with no dates is a second thing the compiler cannot see.** An S3 folder is a common
+    prefix rather than an object, so it has no `LastModified` at all, and the Date column rendered
+    the `.distantPast` every such producer already used as **01.01.1, 02:02** — a date, in a column
+    of dates, for a row that has none. `FileEntry.unknownDate` names it (four producers were already
+    spelling it) and one check at the display layer draws the same dash the Size column uses for an
+    unmeasured folder. No fixture can catch it, since every listing fixture carries a real date; it
+    was obvious in the first second of looking at the app.
 - **Right-click menu items must capture their paths at build time** into `representedObject`,
   and entry-vs-`..` must be decided from the clicked row, not a cursor flag — a right-click on a
   marked row leaves that flag stale.
@@ -1795,6 +1810,29 @@ what made the milestone affordable and the rest inverted rules borrowed from the
   hash and uses `UNSIGNED-PAYLOAD` for `-T` uploads. Same family as the `swiftc`-defaults harness
   that "verified" a broken delegate conformance — when the subject is behavior rather than request
   shape, trace what was actually sent before believing what came back.
+- **A download that is refused writes the refusal into the destination file, under the object's own
+  name.** `--output` saves whatever the server sends and an S3 refusal is still a *response*, so
+  measured 2026-08-13 against real AWS with a bad key, `README.analysis_history` came away as a
+  354-byte `<Error>` document: a file that looks downloaded, in the place the real one was going,
+  with `curl` exiting **0**. `--fail` is the fix and it is the one flag a *transfer* wants that a
+  listing must not have — the error document is the whole classification for a listing, and for a
+  byte copy the status alone says everything. With it, nothing is created (probed: the destination
+  is `ABSENT`), the exit is 22, and `s3-status=403` still comes back through the write-out, so no
+  diagnosis is lost.
+  - **`--remove-on-error` is the reflex pairing and it is wrong here**: it deletes the partial that
+    `-C -` exists to resume from. What made it look necessary is also false — probed both with and
+    without `-C -`, `--fail` leaves an existing partial **byte-identical**, so a transient refusal
+    costs the user nothing they had already downloaded.
+  - **416 does not trip `--fail`, and resuming onto a complete file is harmless.** Measured: `curl`
+    reports exit 0 and `s3-status=416`, downloads the 373-byte error body and does **not** append it
+    — the local file is untouched. So the remote-size check before a resume is about the
+    *classification* (416 is not 2xx, so a correct no-op would read as a failed copy) rather than
+    about protecting the file, which is the opposite of how it reads.
+  - The general shape, and the reason it is worth a note rather than a comment: **when a tool writes
+    a response to a file, "did it fail" and "what is in the file" are two questions**, and a
+    classifier that only answers the first leaves plausible garbage on disk. It cannot be caught by
+    any test over the argument builder, and the file is the *right size for a document*, so nothing
+    downstream complains either.
 
 ### The Trash
 

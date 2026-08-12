@@ -220,6 +220,68 @@ public extension S3Location {
     var connectionDescriptor: String { "\(bucket) on \(host)" }
 }
 
+/// What an endpoint the user typed resolves to: the three fields an `S3Location` needs and one
+/// field of text can carry.
+public struct S3Endpoint: Sendable, Hashable {
+    public let host: String
+    /// The explicit port, or `nil` to take the scheme's default.
+    public let port: Int?
+    public let usesTLS: Bool
+
+    public init(host: String, port: Int? = nil, usesTLS: Bool = true) {
+        self.host = host
+        self.port = port
+        self.usesTLS = usesTLS
+    }
+}
+
+public extension S3Endpoint {
+    /// Read an endpoint out of one text field.
+    ///
+    /// One field rather than three because of what people actually have in hand: R2 hands over
+    /// `https://<account>.r2.cloudflarestorage.com`, a MinIO container is `http://127.0.0.1:9000`,
+    /// and a NAS is a bare `nas.local:9000` — asking a user to take a URL apart into host, port and
+    /// a TLS checkbox is asking them to do work the string already did.
+    ///
+    /// Three rules that are decisions rather than parsing:
+    ///
+    /// - **No scheme means TLS**, the same direction the FTP form's security picker defaults in:
+    ///   plaintext is a thing you say, not a thing you fall into.
+    /// - **A path is dropped**, so a console URL pasted whole still resolves. The bucket is its own
+    ///   field, and reading `https://host/my-bucket` as naming one would silently disagree with
+    ///   whatever the bucket field says.
+    /// - **A port must be a number in range**, and a trailing `:` with junk after it is refused
+    ///   rather than quietly ignored — a mistyped port that resolves to the default connects to a
+    ///   server the user did not mean.
+    static func parse(_ text: String) -> S3Endpoint? {
+        var rest = Substring(text.trimmingCharacters(in: .whitespacesAndNewlines))
+        var usesTLS = true
+        if let scheme = ["https://", "http://"].first(where: { rest.lowercased().hasPrefix($0) }) {
+            usesTLS = scheme == "https://"
+            rest = rest.dropFirst(scheme.count)
+        }
+        if let slash = rest.firstIndex(of: "/") { rest = rest[..<slash] }
+
+        var host = String(rest)
+        var port: Int?
+        // IPv6 arrives bracketed (`[::1]:9000`), so the port separator is the colon *after* the
+        // closing bracket — the address's own colons are inside it.
+        let portSearchStart = host.hasPrefix("[")
+            ? host.firstIndex(of: "]").map { host.index(after: $0) } ?? host.startIndex
+            : host.startIndex
+        if let colon = host[portSearchStart...].firstIndex(of: ":") {
+            guard let value = Int(host[host.index(after: colon)...]),
+                  (1...65535).contains(value) else { return nil }
+            port = value
+            host = String(host[..<colon])
+        }
+        guard !host.isEmpty,
+              !host.hasPrefix("-"),
+              !host.contains(where: \.isWhitespace) else { return nil }
+        return S3Endpoint(host: host, port: port, usesTLS: usesTLS)
+    }
+}
+
 public extension VFSBackendID {
     /// The backend id addressing one S3 bucket.
     static func s3(_ location: S3Location) -> VFSBackendID { location.backendID }

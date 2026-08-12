@@ -117,6 +117,31 @@ struct S3ListingParserTests {
         #expect(entries.allSatisfy { $0.kind == .directory })
     }
 
+    /// A common prefix is not an object, so it has no `LastModified` and must say so rather than
+    /// carry a date-shaped value. Rendered, the difference is a dash against **01.01.1, 02:02** —
+    /// found by browsing a real bucket, since nothing in a listing fixture looks wrong.
+    @Test("a folder row reports that it has no date")
+    func foldersHaveNoDate() throws {
+        let page = try Self.page(Self.foldersPage)
+        let directory = VFSPath(backend: VFSBackendID("s3://K@h:443/r/b"), path: "/tiles/1")
+        let entries = S3ListingParser.entries(from: page, in: directory)
+        // Hoisted: `allSatisfy` inside `#expect(...)` does not compile (docs/NOTES.md ▸ Testing).
+        let noneHasADate = entries.allSatisfy { !$0.hasModificationDate }
+        let allAreUnknown = entries.allSatisfy { $0.modificationDate == FileEntry.unknownDate }
+        #expect(noneHasADate)
+        #expect(allAreUnknown)
+    }
+
+    @Test("an object row keeps the date the server sent")
+    func objectsKeepTheirDate() throws {
+        let page = try Self.page(Self.filesPage)
+        let directory = VFSPath(backend: VFSBackendID("s3://K@h:443/r/b"), path: "/")
+        let files = S3ListingParser.entries(from: page, in: directory).filter { !$0.isDirectory }
+        let allDated = files.allSatisfy(\.hasModificationDate)
+        #expect(!files.isEmpty)
+        #expect(allDated)
+    }
+
     @Test("a row's path is built under the directory being listed")
     func rowPathsAreNested() throws {
         let page = try Self.page(Self.foldersPage)

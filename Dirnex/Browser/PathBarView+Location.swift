@@ -43,6 +43,13 @@ extension PathBarView {
             // this branch it fell through to `rebuildVirtualLabel` and drew "Results for /" — the
             // search phrasing, on a remote server nobody searched (caught only by connecting).
             rebuildCrumbs(for: path, rootTitle: "\(location.username)@\(location.host)")
+        } else if let location = path.backend.s3Location {
+            // The third one, and the branch this `else` chain exists to make impossible to forget.
+            // A bucket is rooted at its own name rather than at an account: the key id is what
+            // *reaches* it, not what it is called, and every row underneath is addressed relative
+            // to the bucket. The endpoint rides along because two buckets of the same name on two
+            // providers are a real thing.
+            rebuildCrumbs(for: path, rootTitle: "\(location.bucket) — \(location.host)")
         } else {
             rebuildVirtualLabel(for: path)
         }
@@ -187,6 +194,7 @@ extension PathBarView {
     static func rootSymbolName(for path: VFSPath) -> String {
         if path.backend.isSFTP { return SidebarPlacePresentation.serverSymbolName(for: .sftp) }
         if path.backend.isFTP { return SidebarPlacePresentation.serverSymbolName(for: .ftp) }
+        if path.backend.isS3 { return SidebarPlacePresentation.serverSymbolName(for: .s3) }
         return MountedVolume.internalSymbolName
     }
 

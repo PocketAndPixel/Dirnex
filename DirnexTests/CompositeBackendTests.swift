@@ -71,4 +71,55 @@ struct CompositeBackendTests {
             try backend.listDirectory(at: remote)
         }
     }
+
+    // MARK: - S3
+
+    private static let bucket = S3Location(
+        host: "s3.eu-central-1.amazonaws.com",
+        bucket: "photos",
+        region: "eu-central-1",
+        accessKeyID: "AKIAEXAMPLE"
+    )
+
+    /// Connected or not, S3 reads `.read` — which is the backend's whole capability set until the
+    /// write half lands, not a fallback. Both are asserted because they arrive by different routes
+    /// and it would be easy to wire one and not the other.
+    @Test("an s3 path is read-only whether or not it is connected")
+    func s3PathIsReadOnly() {
+        let path = VFSPath(backend: .s3(Self.bucket), path: "/docs")
+        #expect(backend.capabilities(for: path) == .read)
+        // Registering a connection touches no network — it installs the backend so the pane can
+        // route to it, and the credential is never asked for again per page.
+        backend.connectS3(location: Self.bucket, secretAccessKey: "secret")
+        let caps = backend.capabilities(for: path)
+        #expect(caps == .read)
+        #expect(!caps.contains(.write))
+        #expect(caps.deleteStrategy == .unsupported)
+    }
+
+    @Test("listing an s3 path with no connection reports a clear not-connected error")
+    func unconnectedS3PathThrows() {
+        let path = VFSPath(backend: .s3(Self.bucket), path: "/docs")
+        #expect(throws: (any Error).self) {
+            try backend.listDirectory(at: path)
+        }
+    }
+
+    /// A connection is keyed by the bucket descriptor rather than by the endpoint, so connecting
+    /// one bucket does not silently make its neighbours routable — the ordinary case, since one key
+    /// commonly reaches several buckets on the same host. Keyed by host, the second listing would
+    /// reach for the network instead of saying it is not connected.
+    @Test("connecting one bucket does not connect its neighbours on the same endpoint")
+    func bucketsAreIndependentConnections() {
+        let other = S3Location(
+            host: Self.bucket.host,
+            bucket: "archive",
+            region: Self.bucket.region,
+            accessKeyID: Self.bucket.accessKeyID
+        )
+        backend.connectS3(location: Self.bucket, secretAccessKey: "a")
+        #expect(throws: (any Error).self) {
+            try backend.listDirectory(at: VFSPath(backend: .s3(other), path: "/"))
+        }
+    }
 }

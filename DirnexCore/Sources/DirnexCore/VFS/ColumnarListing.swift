@@ -85,7 +85,8 @@ enum ColumnarListing {
         formatters(for: ["MMM d HH:mm", "MMM d yyyy", "MMM d HH:mm:ss"])
     }
 
-    /// Parse `string` with the first formatter that accepts it, or `.distantPast` when none does.
+    /// Parse `string` with the first formatter that accepts it, or ``FileEntry/unknownDate`` when
+    /// none does — so a stamp in a shape nobody anticipated draws a dash rather than year 1.
     ///
     /// A no-year date assigned the current year can land in the future near a year boundary (a
     /// "Dec 30 12:00" entry read on Jan 2 means *last* December), so a clearly-future result is
@@ -97,7 +98,7 @@ enum ColumnarListing {
             guard date.timeIntervalSinceNow > 24 * 60 * 60 else { return date }
             return Calendar(identifier: .gregorian).date(byAdding: .year, value: -1, to: date) ?? date
         }
-        return .distantPast
+        return FileEntry.unknownDate
     }
 
     // MARK: - The Unix `ls -l` row

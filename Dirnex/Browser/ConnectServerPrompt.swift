@@ -219,9 +219,14 @@ private enum ConnectPromptChrome {
         String(localized: "Connect to Server", comment: "Title of the Connect to Server dialog.")
     }
 
+    /// Names every protocol the picker below it offers. It is a *list*, so it goes stale silently
+    /// the day one is added — the sheet went on saying three when it offered four, in fourteen
+    /// languages, with nothing but a launch to show it.
     static var subtitle: String {
         String(
-            localized: "Browse a remote SFTP or FTP account, or an SMB share on your network.",
+            localized: """
+            Browse a remote SFTP, FTP or S3 account, or an SMB share on your network.
+            """,
             comment: "Subtitle of the Connect to Server dialog."
         )
     }

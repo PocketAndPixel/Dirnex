@@ -93,4 +93,56 @@ struct VFSPathTests {
         #expect(!VFSPath(backend: VFSBackendID("zip"), path: "/Volumes/Temp/x")
             .isSelfOrDescendant(of: mount))
     }
+
+    // MARK: - Remote predicates
+
+    /// The predicate five app sites used to spell out by naming backends, which is how a freshly
+    /// connected FTP server's path bar came to read "Results for /" (docs/NOTES.md ▸ AppKit).
+    @Test("every connected remote account answers isRemoteConnection")
+    func remoteConnectionCoversEveryRemote() {
+        let sftp = SFTPLocation(host: "example.com", username: "oleg").backendID
+        let ftp = FTPLocation(host: "nas.local", username: "oleg", security: .explicit).backendID
+        let s3 = S3Location(
+            host: "s3.eu-central-1.amazonaws.com",
+            bucket: "photos",
+            region: "eu-central-1",
+            accessKeyID: "AKIAEXAMPLE"
+        ).backendID
+        for remote in [sftp, ftp, s3] {
+            #expect(remote.isRemoteConnection)
+        }
+    }
+
+    /// The other half, and the one that matters: a *virtual* listing must never be mistaken for a
+    /// remote one — it is not re-listable, so a back/forward trail and a post-operation refresh are
+    /// both wrong there.
+    @Test("nothing local or virtual answers isRemoteConnection")
+    func remoteConnectionExcludesLocalAndVirtual() {
+        let virtual: [VFSBackendID] = [
+            .local, .search, .trash, .icloud, .archive(forArchiveAt: "/Users/oleg/pkg.zip")
+        ]
+        for id in virtual {
+            #expect(!id.isRemoteConnection)
+            #expect(!id.acceptsUploads)
+        }
+    }
+
+    /// S3 is re-listable and, until M21's write half lands, not a destination — so the two
+    /// predicates deliberately disagree about exactly one backend. Asserted rather than left
+    /// implicit, because collapsing them into one is the tempting simplification and it would let
+    /// F5 start a job that fails inside the queue.
+    @Test("S3 is a remote you can browse and not yet one you can copy into")
+    func s3IsReadableNotWritable() {
+        let s3 = S3Location(
+            host: "s3.eu-central-1.amazonaws.com",
+            bucket: "photos",
+            region: "eu-central-1",
+            accessKeyID: "AKIAEXAMPLE"
+        ).backendID
+        #expect(s3.isRemoteConnection)
+        #expect(!s3.acceptsUploads)
+        #expect(SFTPLocation(host: "example.com", username: "oleg").backendID.acceptsUploads)
+        #expect(FTPLocation(host: "nas.local", username: "o", security: .explicit)
+            .backendID.acceptsUploads)
+    }
 }

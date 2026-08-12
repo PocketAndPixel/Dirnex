@@ -7,6 +7,7 @@ public enum ServerKind: String, Sendable, Codable, CaseIterable {
     case sftp
     case ftp
     case smb
+    case s3
 }
 
 /// A saved server's coordinates and auth *method* — everything needed to reconnect, and nothing
@@ -29,6 +30,11 @@ public enum ServerEndpoint: Sendable, Hashable, Codable {
         trustedPublicKey: String? = nil
     )
     case smb(SMBLocation)
+    /// One bucket on one endpoint. There is no authentication *method* to carry beside it the way
+    /// SFTP and FTP have: SigV4 is the only way in, and the access key id — which is an identifier,
+    /// not a secret — already lives in the `S3Location`. The secret access key stays in the
+    /// Keychain, filed under ``S3Location/keychainAccount``.
+    case s3(S3Location)
 }
 
 /// A named, re-connectable remote server — the model behind the sidebar's **Servers** section
@@ -59,17 +65,20 @@ public struct ServerConnection: Sendable, Hashable, Identifiable, Codable {
         case .sftp: return .sftp
         case .ftp: return .ftp
         case .smb: return .smb
+        case .s3: return .s3
         }
     }
 
     /// A compact human-readable address for the sidebar subtitle / tooltip: the SFTP descriptor
-    /// (`sftp://user@host:port`), the FTP descriptor (whose scheme names the security mode), or the
-    /// SMB URL (`smb://[user@]host[/share]`).
+    /// (`sftp://user@host:port`), the FTP descriptor (whose scheme names the security mode), the
+    /// SMB URL (`smb://[user@]host[/share]`), or the S3 descriptor (whose scheme names the
+    /// addressing mode).
     public var address: String {
         switch endpoint {
         case let .sftp(location, _): return location.descriptor
         case let .ftp(location, _, _): return location.descriptor
         case let .smb(location): return location.url
+        case let .s3(location): return location.descriptor
         }
     }
 }

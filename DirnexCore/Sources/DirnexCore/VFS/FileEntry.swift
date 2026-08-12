@@ -116,4 +116,18 @@ public struct FileEntry: Sendable, Hashable, Identifiable {
     public var baseName: String {
         (name as NSString).deletingPathExtension
     }
+
+    /// What a backend puts in a date field it has no answer for.
+    ///
+    /// Several already do — an S3 "folder" is a common prefix and not an object, so it has no
+    /// `LastModified` at all; an FTP or archive *root* is synthesized rather than listed; and a
+    /// timestamp in an unrecognized shape parses to nothing. Every one of them reached for
+    /// `.distantPast`, which is the right value and was the wrong *name*: nothing said it meant
+    /// "unknown", so the renderer formatted it and drew **01.01.1, 02:02** in the Date column —
+    /// a date, in a column of dates, for a row that has none. Naming it is what lets one check at
+    /// the display layer cover every producer, present and future.
+    public static let unknownDate = Date.distantPast
+
+    /// Whether ``modificationDate`` is a real timestamp rather than ``unknownDate``.
+    public var hasModificationDate: Bool { modificationDate != Self.unknownDate }
 }

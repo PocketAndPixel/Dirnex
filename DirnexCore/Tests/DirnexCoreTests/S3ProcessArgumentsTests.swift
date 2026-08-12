@@ -77,19 +77,39 @@ struct S3ProcessArgumentsTests {
     /// Both absences are decisions, and both would look like tidying-up to add: `--fail` throws
     /// away the error document that *is* the classification, and `--location` follows a wrong-region
     /// 301 to a host the signature was not computed for.
-    @Test("neither --fail nor --location is ever passed")
+    @Test("a metadata call never fails fast, and nothing ever follows a redirect")
     func deliberateOmissions() {
         let arguments = S3ProcessArguments.list(session: session, prefix: "")
-            + S3ProcessArguments.download(
-                session: session,
-                key: "k",
-                localPath: "/tmp/k",
-                resume: false
-            )
+            + S3ProcessArguments.head(session: session, key: "k")
         #expect(!arguments.contains("--fail"))
         #expect(!arguments.contains("-f"))
         #expect(!arguments.contains("--location"))
         #expect(!arguments.contains("-L"))
+        #expect(!S3ProcessArguments.download(
+            session: session,
+            key: "k",
+            localPath: "/tmp/k",
+            resume: false
+        ).contains("--location"))
+    }
+
+    /// The one place the trade inverts. Measured 2026-08-13 against real AWS: without `--fail`, a
+    /// refused download leaves a 354-byte `<Error>` document sitting at the destination under the
+    /// object's own name — a file that looks downloaded and is not.
+    @Test("a transfer fails fast so a refusal never lands in the destination file")
+    func downloadFailsFast() {
+        for resume in [false, true] {
+            let arguments = S3ProcessArguments.download(
+                session: session,
+                key: "k",
+                localPath: "/tmp/k",
+                resume: resume
+            )
+            #expect(arguments.contains("--fail"))
+            // The reflex pairing, and here it deletes exactly the partial `resume` exists to
+            // continue from.
+            #expect(!arguments.contains("--remove-on-error"))
+        }
     }
 
     // MARK: - The listing URL

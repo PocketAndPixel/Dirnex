@@ -263,4 +263,60 @@ struct S3ResponseErrorTests {
         #expect(S3Location.region(fromEndpoint: "storage.example.com") == nil)
         #expect(S3Location.region(fromEndpoint: "") == nil)
     }
+
+    // MARK: - The endpoint field
+
+    /// The shapes a user has in hand: what R2's console hands over, what a MinIO container prints,
+    /// and what someone types for a NAS.
+    @Test(
+        "an endpoint field takes a URL, a bare host, or either with a port",
+        arguments: [
+            (
+                "https://abc123.r2.cloudflarestorage.com",
+                "abc123.r2.cloudflarestorage.com",
+                nil as Int?,
+                true
+            ),
+            ("http://127.0.0.1:9000", "127.0.0.1", 9000, false),
+            ("nas.local:9000", "nas.local", 9000, true),
+            ("  s3.us-east-1.amazonaws.com  ", "s3.us-east-1.amazonaws.com", nil, true),
+            ("HTTP://Minio.Local", "Minio.Local", nil, false),
+            ("[::1]:9000", "[::1]", 9000, true)
+        ]
+    )
+    func parsesEndpoints(text: String, host: String, port: Int?, usesTLS: Bool) throws {
+        let endpoint = try #require(S3Endpoint.parse(text))
+        #expect(endpoint.host == host)
+        #expect(endpoint.port == port)
+        #expect(endpoint.usesTLS == usesTLS)
+    }
+
+    /// No scheme means TLS — the direction the FTP form's security picker already defaults in.
+    /// Stated as its own assertion because it is a decision, not a parse.
+    @Test("a scheme-less endpoint is TLS")
+    func schemelessEndpointIsSecure() throws {
+        #expect(try #require(S3Endpoint.parse("storage.example.com")).usesTLS)
+    }
+
+    /// A pasted console URL keeps working; what it must *not* do is quietly name a bucket, which
+    /// would then disagree with the bucket field beside it.
+    @Test("a path is dropped rather than read as a bucket")
+    func endpointDropsPath() throws {
+        let endpoint = try #require(S3Endpoint.parse("https://s3.example.com/my-bucket/deep"))
+        #expect(endpoint.host == "s3.example.com")
+        #expect(endpoint.port == nil)
+    }
+
+    @Test(
+        "a malformed endpoint is refused rather than repaired",
+        arguments: [
+            "", "   ", "https://", "host:", "host:abc", "host:0", "host:70000",
+            "-flag.example.com", "two hosts.example.com"
+        ]
+    )
+    func refusesMalformedEndpoints(text: String) {
+        // A mistyped port that fell back to the default would connect to a server the user did not
+        // name, so it is refused where a "be liberal" reading would guess.
+        #expect(S3Endpoint.parse(text) == nil)
+    }
 }

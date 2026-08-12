@@ -551,6 +551,33 @@ The write half is deliberately not in it. `capabilities` says `.read`, so M5's d
 rest out, and the upload payload-signing question below is still the thing that needs credentials to
 settle rather than a mock (the `moto` lesson).
 
+Slice 3 landed 2026-08-13 and is the **app half** — a bucket is now reachable: `S3CurlTransport`,
+the connect sheet's fourth protocol (`ConnectServerS3Fields`), `PanelViewController+ConnectS3`,
+routing and capabilities on `CompositeBackend`, the saved-server endpoint, the path bar's crumbs and
+the sidebar's glyph. Verified live against a local S3-shaped endpoint: connect, list, walk into a
+folder, F5 a file out (byte-exact), reconnect from the saved sidebar row, and F5 *into* the pane
+refused up front. Four things are worth carrying out of it:
+
+- **A refused download used to land in the destination file.** `--output` writes whatever the server
+  sends, and a refusal is still a response — measured against real AWS with a bad key, the
+  destination came away holding a 354-byte `<Error>` document under the object's own name. The
+  transfer arguments now carry `--fail`, which writes nothing and still reports the status through
+  the write-out; `--remove-on-error`, the flag that pairs with it by reflex, is deliberately absent,
+  because it deletes exactly the partial that resume exists to continue from.
+- **The exit code is demoted literally**, which is what the inverted classifier means in code: the
+  transport reads the status out of the labelled write-out and treats a nonzero exit as a failure
+  only when there is *no* status. `--fail`'s exit 22 on a refused transfer is then absorbed for
+  free — the response arrived, it just said no.
+- **Five app sites spelled `isSFTP || isFTP` where they meant "a connected remote"**, which is the
+  trap NOTES.md records from the day FTP arrived beside SFTP. They now read `isRemoteConnection`,
+  with `acceptsUploads` as the deliberately narrower twin S3 is absent from — one line to edit when
+  the write half lands, instead of five to find.
+- **A folder has no date, and formatting the sentinel drew `01.01.1, 02:02`.** An S3 folder is a
+  common prefix rather than an object, so there is nothing to render; `FileEntry.unknownDate` names
+  what four backends were already spelling `.distantPast`, and the Date column draws the same dash
+  the Size column already uses. Invisible to every fixture — each carries a real date — and obvious
+  in the first second of looking at the app.
+
 **What S3 will not be able to do, and it is better to state it than to discover it.** S3 is not a
 filesystem: rename is copy-then-delete (O(size), and N copies for a "folder"), `createDirectory` has
 no operation behind it beyond writing a marker, there is no settable mtime, no permissions and no

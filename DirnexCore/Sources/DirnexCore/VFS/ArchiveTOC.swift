@@ -76,7 +76,9 @@ public struct ArchiveTOC: Sendable, Equatable {
     public func entry(atInnerPath path: String) -> Entry? {
         let normalized = normalize(path)
         if normalized == "/" {
-            return Entry(name: "/", kind: .directory, byteSize: 0, modificationDate: .distantPast)
+            return Entry(
+                name: "/", kind: .directory, byteSize: 0, modificationDate: FileEntry.unknownDate
+            )
         }
         let parent = parentInnerPath(of: normalized)
         let name = String(normalized.split(separator: "/").last ?? "")

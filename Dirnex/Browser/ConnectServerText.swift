@@ -9,7 +9,81 @@ import Foundation
 @MainActor
 enum ConnectText {
     static var proto: String {
-        String(localized: "Protocol:", comment: "Connect field label: SFTP, FTP or SMB.")
+        String(localized: "Protocol:", comment: "Connect field label: SMB, SFTP, FTP or S3.")
+    }
+
+    // MARK: - S3
+
+    static var service: String {
+        String(
+            localized: "Service:",
+            comment: "Connect field label: Amazon S3 or another server that speaks its protocol."
+        )
+    }
+
+    /// The two services, in the order the picker shows them. Brand names on purpose — "Amazon S3"
+    /// is what the console calls it, and a user looking for it is looking for that word.
+    static var amazonS3: String {
+        String(localized: "Amazon S3", comment: "S3 service picker: Amazon's own S3.")
+    }
+
+    static var s3Compatible: String {
+        String(
+            localized: "S3-Compatible",
+            comment: "S3 service picker: another server speaking the S3 protocol (R2, B2, MinIO)."
+        )
+    }
+
+    static var endpoint: String {
+        String(
+            localized: "Endpoint:",
+            comment: "Connect field label: the address of an S3-compatible server."
+        )
+    }
+
+    static var region: String {
+        String(localized: "Region:", comment: "Connect field label: the S3 region to sign for.")
+    }
+
+    static var bucket: String {
+        String(localized: "Bucket:", comment: "Connect field label: the S3 bucket to browse.")
+    }
+
+    static var bucketHint: String {
+        String(
+            localized: "bucket name",
+            comment: "Placeholder in the Connect dialog's S3 bucket field."
+        )
+    }
+
+    static var accessKeyID: String {
+        String(
+            localized: "Access key:",
+            comment: "Connect field label: the S3 access key id, which is not a secret."
+        )
+    }
+
+    static var secretKey: String {
+        String(
+            localized: "Secret key:",
+            comment: "Connect field label: the S3 secret access key, kept in the Keychain."
+        )
+    }
+
+    static var secretKeyHint: String {
+        String(
+            localized: "secret access key",
+            comment: "Placeholder in the Connect dialog's S3 secret-key field."
+        )
+    }
+
+    /// The checkbox for servers that cannot be addressed `<bucket>.<host>` — a MinIO container, a
+    /// NAS, anything reached by IP. Named after what the user's own documentation calls it.
+    static var pathStyle: String {
+        String(
+            localized: "Path-style addressing",
+            comment: "S3 checkbox: put the bucket in the URL path (MinIO, a NAS, anything by IP)."
+        )
     }
 
     static var security: String {

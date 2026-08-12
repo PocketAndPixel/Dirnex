@@ -73,6 +73,30 @@ public struct VFSBackendID: RawRepresentable, Sendable, Hashable, CustomStringCo
 
     private static let archivePrefix = "archive:"
 
+    /// Whether this id addresses a **connected remote account** — a place on another machine whose
+    /// directories are listed over the network and can be listed again.
+    ///
+    /// It exists because the question kept being asked by spelling out the backends that happened
+    /// to answer it. Five sites in the app read `isSFTP || isFTP` where they meant *this*, and each
+    /// one of them was silently wrong the day FTP arrived beside SFTP (docs/NOTES.md ▸ AppKit: a
+    /// freshly connected FTP server's path bar read "Results for /"). The compiler checks none of
+    /// them, so the fix is a name rather than a third disjunct.
+    ///
+    /// What it means, precisely, is *re-listable and not on this disk*: back/forward keeps a normal
+    /// trail here, a refresh after an operation re-lists, the path bar draws crumbs rather than the
+    /// dead-end "results" label — and ⌘C is refused, because these entries have no local URL to
+    /// put on the pasteboard. It says nothing about whether the account can be **written** to; that
+    /// is ``acceptsUploads``, which is a different question with a different answer.
+    public var isRemoteConnection: Bool { isSFTP || isFTP || isS3 }
+
+    /// Whether a copy *into* this backend has an upload primitive behind it.
+    ///
+    /// Separate from ``isRemoteConnection`` because S3 is deliberately absent from it: its
+    /// `capabilities` say `.read` until M21's write half lands, so a pane that accepted F5 would
+    /// fail inside the queue — after the job started — instead of saying up front that the other
+    /// panel is not somewhere it can copy into. This is the one line to edit when that changes.
+    public var acceptsUploads: Bool { isSFTP || isFTP }
+
     public var description: String { rawValue }
 }
 

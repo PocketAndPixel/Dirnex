@@ -369,13 +369,11 @@ extension PanelViewController {
             refreshTree(selecting: target)
             return
         }
-        // Re-list a real directory — on disk or on a connected SFTP account (an SFTP path is
+        // Re-list a real directory — on disk or on a connected remote (a remote path is
         // re-listable, so it must refresh after an upload/delete/mkdir even without FSEvents). A
         // virtual pane (search results, a browsed archive) has no directory to re-list, so a
         // both-panes refresh after a file operation leaves its snapshot untouched.
-        guard panel.path.backend == .local
-            || panel.path.backend.isSFTP
-            || panel.path.backend.isFTP else { return }
+        guard panel.path.backend == .local || panel.path.backend.isRemoteConnection else { return }
         loadToken += 1
         let token = loadToken
         let path = panel.path

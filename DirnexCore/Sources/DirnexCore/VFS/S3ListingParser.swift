@@ -159,9 +159,11 @@ public enum S3ListingParser {
         date: Date?
     ) -> FileEntry {
         // S3 has no mtime you can set and no birth time at all, so both dates are the object's
-        // `LastModified` and a folder — which is not an object — has neither. `.distantPast`
-        // rather than "now" for the unknown case: a sort by date must not shuffle on every refresh.
-        let modified = date ?? .distantPast
+        // `LastModified` and a folder — which is not an object — has neither.
+        // `FileEntry.unknownDate` rather than "now" for that case: a sort by date must not shuffle
+        // on every refresh, and the name is what tells the renderer to draw a dash instead of a
+        // formatted year 1.
+        let modified = date ?? FileEntry.unknownDate
         return FileEntry(
             path: path,
             name: name,

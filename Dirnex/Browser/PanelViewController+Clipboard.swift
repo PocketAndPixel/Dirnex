@@ -28,10 +28,11 @@ extension PanelViewController {
     // MARK: - Menu / key actions (dispatched to the focused pane via the responder chain)
 
     @objc func copy(_ sender: Any?) {
-        // ⌘C places *local* file URLs on the pasteboard (Finder's shape). A remote SFTP entry has
-        // no local URL, so copying it would write a bogus `file://` path — F5 is the copy-*out*
-        // route for remote files. (Search-results entries carry real on-disk paths, so they copy.)
-        guard !panel.path.backend.isSFTP, !panel.path.backend.isFTP else { return }
+        // ⌘C places *local* file URLs on the pasteboard (Finder's shape). An entry on a connected
+        // remote has no local URL, so copying it would write a bogus `file://` path — F5 is the
+        // copy-*out* route for remote files. (Search-results entries carry real on-disk paths, so
+        // they copy.)
+        guard !panel.path.backend.isRemoteConnection else { return }
         let targets = selectionTargets()
         guard !targets.isEmpty else { return }
         let pasteboard = NSPasteboard.general

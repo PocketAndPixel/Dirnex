@@ -37,3 +37,8 @@ extension SMBLocation: KeychainAddressable {}
 extension FTPLocation: KeychainAddressable {
     public var hasNoStoredSecret: Bool { isAnonymous }
 }
+
+/// S3's secret access key is filed like any other password. The *access key id* is not secret and
+/// stays in the location itself — it is half of the account key here, which is what keeps one id
+/// reaching several buckets from collapsing onto one Keychain item (``S3Location/keychainAccount``).
+extension S3Location: KeychainAddressable {}

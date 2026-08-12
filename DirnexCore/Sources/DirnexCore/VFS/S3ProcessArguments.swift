@@ -44,7 +44,9 @@ public enum S3ProcessArguments {
     /// - **`--fail`**, because the error document *is* the classification here. S3 speaks HTTP, so
     ///   `curl` exits 0 for a missing key, a denied bucket, a bad signature and a wrong region
     ///   alike; the `<Code>` element in the body is the only thing that separates them
-    ///   (``S3ResponseError``). `--fail` throws that body away.
+    ///   (``S3ResponseError``). `--fail` throws that body away. ``download(session:key:localPath:resume:)``
+    ///   is the one invocation that adds it back, and its comment argues why the trade inverts
+    ///   when the body's destination is a file on the user's disk.
     /// - **`--location`**, because a wrong region answers **301** naming the endpoint that would
     ///   have worked, and that answer is worth more than the redirect. Following it would re-issue
     ///   the request against a host the signature was not computed for, turning a diagnosable
@@ -88,13 +90,31 @@ public enum S3ProcessArguments {
     /// 2026-08-12 against a real bucket: a 257 098-byte object resumed from a 100 000-byte partial
     /// answered **206** with `size_download` 157 098, and the result compared identical to a whole
     /// download. The caller must still check the remote size first; see ``S3Backend``.
+    ///
+    /// **`--fail` is the one flag a transfer carries that a listing must not**, and it is here
+    /// because of where the bytes go. `--output` writes whatever the server sends, and a refused
+    /// download is still a *response*: measured 2026-08-13 against real AWS with a bad key, the
+    /// destination came away holding a 354-byte `<Error>` document under the object's own name —
+    /// a file that looks downloaded and is not. With `--fail` no file is created at all (exit 22,
+    /// nothing written), while the write-out still reports `s3-status=403`, which is the whole
+    /// classification a transfer needs: the `<Code>` element ``S3ServiceError`` reads is worth
+    /// having for a listing, where the body is the answer, and buys nothing for a byte copy.
+    ///
+    /// Two neighbours from the same run, both the opposite of what they look like:
+    ///
+    /// - **`--remove-on-error` is deliberately absent.** It is the flag that pairs with `--fail` by
+    ///   reflex, and here it would delete exactly the partial that ``resume`` exists to continue
+    ///   from — defeating the feature the paragraph above measures.
+    /// - **`--fail` does not truncate a partial that is already there.** Probed both with and
+    ///   without `-C -`: a 403 left a 1000-byte partial byte-identical, so a transient refusal
+    ///   costs a user nothing they had already downloaded.
     public static func download(
         session: S3Session,
         key: String,
         localPath: String,
         resume: Bool
     ) -> [String] {
-        var arguments = common(session: session) + configFromStandardInput
+        var arguments = common(session: session) + configFromStandardInput + ["--fail"]
         arguments += ["--output", localPath]
         if resume { arguments += ["--continue-at", "-"] }
         return arguments + [session.location.url(forKey: key)]

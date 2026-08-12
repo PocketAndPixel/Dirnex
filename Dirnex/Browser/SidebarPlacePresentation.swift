@@ -111,6 +111,10 @@ enum SidebarPlacePresentation {
         case .smb: "externaldrive.connected.to.line.below"
         case .ftp: "arrow.up.arrow.down.circle"
         case .sftp: "network"
+        // A bucket, which is what the thing actually is — and the one glyph here that is not about
+        // a *machine*, which is the distinction worth drawing: the other three name a computer you
+        // reach, this names a store you address.
+        case .s3: "shippingbox"
         }
     }
 }
