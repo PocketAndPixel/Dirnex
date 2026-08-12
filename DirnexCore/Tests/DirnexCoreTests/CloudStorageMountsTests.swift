@@ -51,6 +51,59 @@ struct CloudStorageMountsTests {
         #expect(account == nil)
     }
 
+    @Test("a provider whose own name contains a hyphen is matched whole, not cut at it")
+    func sharedLibrariesIsNotCutInsideItsProviderName() {
+        // OneDrive mounts a SharePoint document library as `OneDrive-SharedLibraries-<tenant>`,
+        // so the first hyphen falls inside the provider's name. Cutting there would answer the
+        // account `SharedLibraries-Contoso` — an internal English token bound for the sidebar.
+        let (provider, account) = CloudStorageMounts.split(
+            directoryName: "OneDrive-SharedLibraries-Contoso"
+        )
+        #expect(provider == "OneDrive-SharedLibraries")
+        #expect(account == "Contoso")
+    }
+
+    @Test("the shorter OneDrive id does not shadow the longer one it prefixes")
+    func plainOneDriveStillSplitsAtTheHyphen() {
+        // The negative control for the rule above: ordering the table wrongly (or adding a bare
+        // `OneDrive` entry to it) would take this branch and answer an empty account.
+        let (provider, account) = CloudStorageMounts.split(directoryName: "OneDrive-Personal")
+        #expect(provider == "OneDrive")
+        #expect(account == "Personal")
+    }
+
+    @Test("a SharePoint library is named for the product, not for its folder")
+    func sharedLibrariesIsRenamed() {
+        let name = CloudStorageMounts.displayName(
+            providerID: "OneDrive-SharedLibraries",
+            accountLabel: "Contoso",
+            isAmbiguous: false
+        )
+        #expect(name == "SharePoint")
+    }
+
+    @Test("a SharePoint library and the user's own OneDrive are two different rows")
+    func sharePointDoesNotCollideWithOneDrive() {
+        // The pair that shipped identical: both mounts split to `OneDrive`, so neither was
+        // ambiguous by the count and both drew the bare provider name.
+        let personal = CloudStorageMounts.split(directoryName: "OneDrive-Personal")
+        let library = CloudStorageMounts.split(directoryName: "OneDrive-SharedLibraries-Contoso")
+        #expect(personal.providerID != library.providerID)
+
+        let personalName = CloudStorageMounts.displayName(
+            providerID: personal.providerID,
+            accountLabel: personal.accountLabel,
+            isAmbiguous: false
+        )
+        let libraryName = CloudStorageMounts.displayName(
+            providerID: library.providerID,
+            accountLabel: library.accountLabel,
+            isAmbiguous: false
+        )
+        #expect(personalName == "OneDrive")
+        #expect(libraryName == "SharePoint")
+    }
+
     // MARK: - Display names
 
     @Test("Google Drive is renamed from its directory spelling")

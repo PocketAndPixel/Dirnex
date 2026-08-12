@@ -1673,6 +1673,73 @@ off a man page.
     which is what proves the dialog is showing the certificate actually presented rather than
     whatever it last stored.
 
+### curl (Amazon S3 and everything that speaks it)
+
+M21's backend. All probed 2026-08-12 against **real** buckets before any Swift; the first result is
+what made the milestone affordable and the rest inverted rules borrowed from the FTP backend.
+
+- **The stock `curl` signs SigV4, so S3 needs no SDK and no dependency.** macOS 26 ships 8.7.1 with
+  `--aws-sigv4 aws:amz:<region>:s3`, and one spelling reaches AWS, Cloudflare R2, Backblaze B2,
+  Wasabi and MinIO alike. Verify with a **control**, since "it returned an error" proves nothing
+  here: a fake key against real AWS answers `InvalidAccessKeyId` — meaning a well-formed signature
+  was computed and the key looked up — where an *unsigned* request to the same URL returns an empty
+  body. Without the second run the first reads as a failure.
+- **The exit code is *not* the classification — this is the exact inverse of the FTP rule above.**
+  Every S3 failure that matters comes back as HTTP with `curl` exiting **0**: measured, a missing key
+  is 404 `NoSuchKey`, a denied bucket 403 `AccessDenied`, a bad key 403 `InvalidAccessKeyId`, a wrong
+  region 301 `PermanentRedirect` — four exit codes of 0. Read the HTTP status and the `<Code>`
+  element; demote the exit code to the narrower question of whether anything was reached at all
+  (6/7 unreachable, 28 timeout, 60 certificate). Borrowing FTP's rule here classifies every failure
+  as success.
+  - **403 covers two things that send the user to different places**, and only the `<Code>`
+    separates them: `InvalidAccessKeyId`/`SignatureDoesNotMatch` is a credential they retype, while
+    `AccessDenied` on a key that authenticated fine is a bucket policy they have to go and change.
+- **A wrong region answers 301 and hands back the endpoint that would have worked**, in
+  `<Endpoint>`. Worth parsing the body for that field alone: from outside, a wrong region is
+  indistinguishable from a missing bucket, so without it the connect form reports a failure the user
+  has no way to diagnose — and the server already knows the answer. Note the corollary that the
+  *regional* host is the only safe one to build (`s3.<region>.amazonaws.com`); the legacy global
+  `s3.amazonaws.com` is right only for `us-east-1`.
+- **A `NextContinuationToken` must be percent-encoded when it is sent back**, or AWS rejects the page
+  with `InvalidArgument` ("The continuation token provided is incorrect"). Measured A/B on the same
+  token in one run. It fails **intermittently**, which is what makes it expensive: a token is base64
+  and only *sometimes* carries `+`, `/` or `=`, so one that happens to be alphanumeric round-trips
+  raw perfectly — and a bucket small enough never to paginate hides it completely. Encode query
+  values to the unreserved set only (`/` included), and path segments to the same set plus `/`, which
+  is the stricter-than-`urlPathAllowed` rule the FTP backend already needed and for the same reason:
+  a `?` or `#` left literal in a key changes *which object* the request names.
+- **Keys and common prefixes arrive whole at every depth.** A listing of `prefix=tiles/1/` returns
+  `CommonPrefixes` of `tiles/1/C/`, not `C/` — so a parser that renders what it is given draws the
+  full path in every row, at every level. Take the last component, after dropping a folder's trailing
+  delimiter (or every folder row comes out nameless).
+- **The trailing delimiter on a listing prefix is load-bearing.** `prefix=doc` matches `docs/`,
+  `document.txt` and `doctor/` alike, because a prefix is a string comparison that knows nothing
+  about path components — so a folder named `doc` lists its *siblings'* contents as its own.
+- **An empty folder is a zero-byte object whose key is the prefix itself**, and it comes back as an
+  ordinary row in that folder's own listing. Rendered, it is a duplicate of the folder drawn inside
+  itself (the last component of `docs/` is `docs`). Drop the marker whose key equals the prefix being
+  listed — and only that one: `docs/sub/` inside a listing of `docs/` is the single row an empty
+  subfolder has, so a rule that drops every trailing-slash key deletes empty folders from the UI.
+- **`encoding-type=url` has to be read from the response, not assumed from the request.** A server
+  that ignores the parameter would otherwise have every key decoded anyway, turning a literal `100%`
+  in a legal key into a decode failure — and `%20` into a space that was never there. AWS echoes
+  `<EncodingType>url</EncodingType>`; key the decode on that.
+- **`ISO8601DateFormatter` cannot read both stamp shapes with one option set.** AWS sends
+  `…:15.000Z` and several S3-compatible servers send `…:15Z`, and `.withFractionalSeconds` makes the
+  fraction **required** rather than optional — so one formatter returns `nil` for half the servers the
+  backend exists to reach, i.e. a listing with no dates at all. Two formatters, tried in order. They
+  are also not `Sendable`, so they cannot be `static` under Swift 6; hold them per-parse rather than
+  per-object, which is where the parser is hot.
+- **A mock is not a server, and `moto` answered the upload question wrongly in the confident
+  direction.** Probing whether `curl` can PUT a body under SigV4, `moto` stored an **empty object and
+  returned HTTP 200** for `--data-binary` while accepting `-T` — which reads exactly like a curl bug
+  worth writing down. `--trace-ascii` settled it: curl had sent `Content-Length: 4`, the four bytes,
+  and a real `x-amz-content-sha256`, so the bytes went out fine and the mock dropped them. What *is*
+  true and still unmeasured against real S3: curl signs an in-memory body with a computed payload
+  hash and uses `UNSIGNED-PAYLOAD` for `-T` uploads. Same family as the `swiftc`-defaults harness
+  that "verified" a broken delegate conformance — when the subject is behavior rather than request
+  shape, trace what was actually sent before believing what came back.
+
 ### The Trash
 
 - **`FileManager.trashItem` on an item already in a trash reports success and does nothing** — it

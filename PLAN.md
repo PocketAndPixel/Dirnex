@@ -450,6 +450,91 @@ temp copy. (Its other loose end, §6's derived-data clause,
 closed on 08-09 too — measuring the three leaks it named found none of them real and found a fourth
 that was ours, so it was fixed rather than documented: HISTORY.md §M19 ▸ Follow-up.)
 
+### M21 — Amazon S3, and the mounts we already reach (M, opened 2026-08-12)
+
+Asked as one question — "can we add Dropbox, OneDrive and Amazon?" — and it is three, with three
+different answers. Worth writing down in that shape, because two of the three are settled before any
+code is written.
+
+**Dropbox, OneDrive and Box are already supported and always have been.** `CloudStorageMounts` was
+written provider-agnostic on purpose (§M10 Phase 1), so every File Provider client macOS hosts
+appears in the Cloud section through the ordinary `LocalBackend`, with its own `.Trash` picked up by
+`SidebarLocations.trashDirectories`. There is no backend to write. What was actually wrong is the
+*naming*, and only for one form: OneDrive mounts a SharePoint document library as
+`OneDrive-SharedLibraries-<tenant>`, where the first hyphen falls **inside the provider's name** — so
+the split answered the account `SharedLibraries-Contoso`, and the row drew either a bare "OneDrive"
+(wrong: it is not the user's own drive, and it collides with `OneDrive-Personal`, which produced two
+identically-labelled rows) or an internal English token in a sidebar that ships in fourteen
+languages. Landed 2026-08-12: a known provider id now wins over the hyphen, longest first, with
+`OneDrive-SharedLibraries` → "SharePoint" beside Google's existing entry. Brand names, so the table
+is the right home and not the string catalog.
+
+The half that is **not** done is verification, and it needs the clients installed: whether the sync
+badges light up (the ubiquity keys were measured for Drive's streaming mode only — Dropbox
+online-only and OneDrive Files On-Demand should be the same File Provider mechanism, but that is a
+prediction, not a measurement), and whether each client's `.Trash` has the shape `Places` assumes.
+
+**Amazon Drive is not a thing to support.** It shut down 2023-12-31, and WorkDocs was EOL'd in 2025;
+there is no File Provider mount to find. So "Amazon" means **S3**, which is a real backend and the
+rest of this milestone.
+
+#### S3 fits the house pattern, and fights the filesystem
+
+Probed 2026-08-12 before any Swift, and the first probe is what makes the milestone affordable:
+**stock `/usr/bin/curl` 8.7.1 signs SigV4 natively** (`--aws-sigv4 aws:amz:<region>:s3`). Verified
+with a control — a fake key against real AWS returns `InvalidAccessKeyId`, meaning the signature was
+computed and looked up, against an unsigned control returning nothing. So S3 needs **no SDK and no
+dependency**, exactly like `bsdtar` and the FTP backend, and §2's "no proprietary APIs" line holds:
+this is a wire protocol reached with a stock tool, not a vendor SDK. One spelling covers Cloudflare
+R2, Backblaze B2, Wasabi and MinIO, which is most of the value — so S3-compatible endpoints are in
+scope from day one (a custom endpoint plus a path-style flag is nearly free now and awkward to
+retrofit).
+
+What the probes settled, all against real buckets:
+
+- **The classifier is inverted from FTP's.** NOTES.md ▸ curl says "the exit code is the
+  classification" for FTP, where every failure has its own code. S3 speaks HTTP, so `curl` **exits 0**
+  for a missing key, a denied bucket, a bad signature and a wrong region alike (404/403/403/301, all
+  exit 0). The HTTP status plus the `<Code>` element is the answer; the exit code is demoted to "did
+  this reach a server".
+- **A wrong region answers 301 and names the endpoint that would have worked.** So the connect form
+  can *correct* a mistyped region instead of reporting a failure — from outside, a wrong region is
+  otherwise indistinguishable from a missing bucket.
+- **A continuation token must be percent-encoded going back**, or AWS rejects the page with
+  `InvalidArgument`. Measured A/B on the same token in one run. It fails *intermittently*: base64 that
+  happens to carry no `+`, `/` or `=` round-trips raw perfectly, so a bucket small enough never to
+  paginate hides it entirely.
+- **Keys and common prefixes come back whole at every depth** (`tiles/1/C/`, not `C/`), so a parser
+  that renders them verbatim draws the full path in every row.
+- **A zero-byte object whose key *is* the prefix is how a flat store holds an empty folder**, and it
+  arrives as an ordinary row in that folder's own listing — rendering as a duplicate of the folder,
+  inside itself.
+
+Slice 1 landed 2026-08-12, core-only and additive (`S3Location`, `S3Key`, `S3ListingParser`,
+`S3ResponseError`; 52 tests, app untouched). The listing fixtures are real AWS bytes from the public
+`sentinel-s2-l1c` bucket rather than written from the documentation, for the reason NOTES.md gives
+about corpora: a hand-written fixture proves the parser agrees with whoever wrote it, and both facts
+above are invisible that way.
+
+**What S3 will not be able to do, and it is better to state it than to discover it.** S3 is not a
+filesystem: rename is copy-then-delete (O(size), and N copies for a "folder"), `createDirectory` has
+no operation behind it beyond writing a marker, there is no settable mtime, no permissions and no
+symlinks — so `copyMetadata` is a no-op and `DirectorySync` by timestamp is as unreliable as it is
+over FTP. Every listing is a billable request, which makes the recursive sizer cost money over a
+bucket. `RemoteTransportBackend`'s four write verbs were shaped for FTP and SFTP, where they are
+genuine filesystem operations; S3 fits the *transport* shape and will need its own answers for two of
+them.
+
+Deliberately deferred, not forgotten: **account-level browsing** (`ListAllMyBuckets`) as a second
+root — a key scoped to one bucket is the ordinary way these are issued, so an account-rooted design
+fails at the root for exactly the users whose credentials are set up properly; **multipart upload**,
+which a 5 GB single-PUT ceiling eventually forces; and **the upload payload-signing question**, which
+is genuinely unmeasured — `curl` signs an in-memory body with a real SHA-256 and uses
+`UNSIGNED-PAYLOAD` for `-T`, and which real S3 wants needs credentials to settle. A local `moto`
+mock answered it *wrongly* in the confident direction (it silently stored an empty object for the
+signed form, and a trace showed the bytes had gone out fine), which is this file's own lesson about
+probe fidelity arriving on schedule.
+
 ## 5. Cross-cutting: testing strategy
 
 | Layer | Approach |
