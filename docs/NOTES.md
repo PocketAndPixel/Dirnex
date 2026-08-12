@@ -1096,6 +1096,31 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   function bar, applied to a manual frame layout instead of a stack view. An `NSTextField`'s
   `intrinsicContentSize` is a usable measure here (unlike `NSButtonCell.titleRect`, below); it needs no
   window. Only the live Russian run caught it.
+- **A file-list column is the same trap in *two* dimensions at once, because its header follows the
+  language and its content follows the *region*.** The Date column's default was a hardcoded 150 pt.
+  Measured in the row font across regions and the shipped languages: the widest date ranges from
+  `28.12.25, 22:58` (de_DE, 110 pt) to `2025. 12. 28. 오후 10:58` (ko_KR, 159) — Finnish inserts a
+  word, `en_CA` runs `2025-12-28, 10:58 AM` — while the header spans `Date Modified` (95 pt with its
+  sort arrow) to `Fecha de modificación` (139). No single number is right for both axes, and 150 was
+  wrong in both directions simultaneously: ~20 pt of empty column in every `dd.MM.yyyy, HH:mm`
+  region (what a user reported), and short of the Korean date. `DateColumnMetrics` measures instead.
+  Three things it took to get right, none visible at build time:
+  - **The wide form of the row font is *bold*, because a marked row is bold.** Size to the unmarked
+    text and marking a file truncates its date — a truncation that appears on a keystroke, on rows
+    that looked fine a moment earlier.
+  - **Measure through the class that draws the cell, not a bare string.** `(s as NSString).size(…)`
+    is the typographic advance; the live `FileCellView` came out ~13 pt wider once the text field's
+    own padding and the cell's 4 pt insets were in. A `NSTextField`'s `fittingSize` and its
+    `intrinsicContentSize` also disagree by ~4.5 pt, so pick the view, not a number.
+  - **`NSTableColumn.sizeToFit()` on a *detached* column is the header's own arithmetic** — it fits
+    the header cell and nothing else when there is no data source, needs no window, and with
+    `setIndicatorImage` in place it accounts for the sort arrow (a constant 17 pt over the bare
+    title, in every language). Reserve that slot whether or not the pane is sorted by that column,
+    or the title reflows the first time someone clicks it.
+  - The cell view gets the **full column width**: `intercellSpacing.width` (17 pt here) sits
+    *between* columns, so a 150 pt column really does hand its cell 150 pt. Worth stating because
+    the opposite is the natural worry once that 17 is known, and it would inflate every such
+    measurement.
 - **Measure a checkbox grid against every language *before* laying it out — and count the label
   column as part of the budget.** The ACL editor's rights matrix is 12 or 13 checkboxes whose labels
   are phrases ("Write Extended Attributes"), and the arithmetic decided the layout rather than

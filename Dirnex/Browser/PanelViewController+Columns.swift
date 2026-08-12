@@ -61,13 +61,22 @@ extension PanelViewController {
 
         /// The width a fresh column opens at, and the narrowest the user can drag it —
         /// also the fallback layout for a tab that has no persisted columns.
+        ///
+        /// Main-actor isolated because Date's is measured against real AppKit views
+        /// (`DateColumnMetrics`); a nested type does not inherit its enclosing class's isolation, so
+        /// it has to be said here.
+        @MainActor
         var defaultWidth: CGFloat {
             switch self {
             // Name flexes to fill the pane (`.firstColumnOnly` autoresizing), so this is
             // only its floor at first show; Size/Date are fixed and sized to their content.
             case .name: return 240
             case .size: return 90
-            case .date: return 150
+            // Was a hardcoded 150 pt, which is ~22 pt of empty column in the regions whose short
+            // date is `dd.MM.yyyy, HH:mm` and too narrow for the widest ones. `DateColumnMetrics`
+            // measures what this locale's dates and this language's header actually need — the
+            // whole argument is there.
+            case .date: return DateColumnMetrics.width
             // Was 120 pt — a track plus room for "100.0%" beside it. Now that the column defaults to
             // the bar alone (`SizeVizDisplayMode.bar`, which reserves no label), that width was mostly
             // empty, so it opens at 0.7 of it: 84 pt. The Percentage and Both modes still fit (the
