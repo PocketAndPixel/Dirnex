@@ -68,6 +68,76 @@ struct S3CurlTransport: S3Transport {
         try perform(S3ProcessArguments.head(session: session(maxTime: metadataTimeout), key: key))
     }
 
+    // MARK: - Writes
+
+    func upload(localPath: String, to key: String) throws -> S3Response {
+        try perform(
+            S3ProcessArguments.upload(
+                session: session(maxTime: transferTimeout),
+                key: key,
+                localPath: localPath
+            ),
+            measuring: .upload
+        )
+    }
+
+    func putEmptyObject(key: String) throws -> S3Response {
+        try perform(
+            S3ProcessArguments.putEmptyObject(
+                session: session(maxTime: metadataTimeout),
+                key: key
+            ),
+            measuring: .upload
+        )
+    }
+
+    func copyObject(from sourceKey: String, to destinationKey: String) throws -> S3Response {
+        // A server-side copy of a large object can take far longer than a metadata call, since S3
+        // is moving the bytes even though this machine is not.
+        try perform(
+            S3ProcessArguments.copyObject(
+                session: session(maxTime: transferTimeout),
+                sourceKey: sourceKey,
+                destinationKey: destinationKey
+            ),
+            measuring: .download
+        )
+    }
+
+    func deleteObject(key: String) throws -> S3Response {
+        try perform(
+            S3ProcessArguments.deleteObject(session: session(maxTime: metadataTimeout), key: key),
+            measuring: .download
+        )
+    }
+
+    /// A batch delete, whose request document travels as a temp file.
+    ///
+    /// The file is what keeps the batch size a real 1000: a thousand long keys run past `ARG_MAX`
+    /// inline, so an inline body would work until somebody's file names were long. It carries no
+    /// secret — object keys, which the URL already exposes — and it is removed on every exit path,
+    /// including the throwing ones.
+    func deleteObjects(keys: [String]) throws -> S3Response {
+        let body = S3DeleteBatch.document(keys: keys)
+        let bodyPath = FileManager.default.temporaryDirectory
+            .appendingPathComponent("dirnex-s3-delete-\(UUID().uuidString).xml")
+        do {
+            try body.write(to: bodyPath, options: .atomic)
+        } catch {
+            throw S3ResponseError.transport(.other)
+        }
+        defer { try? FileManager.default.removeItem(at: bodyPath) }
+
+        return try perform(
+            S3ProcessArguments.deleteObjects(
+                session: session(maxTime: transferTimeout),
+                bodyPath: bodyPath.path,
+                contentMD5: S3DeleteBatch.contentMD5(for: body)
+            ),
+            measuring: .download
+        )
+    }
+
     /// Reach the endpoint and come back with nothing to say — the connection test the connect flow
     /// runs before saving anything. Every failure that matters (bad key, denied bucket, wrong
     /// region, unreachable host) surfaces here as a response or a throw, classified.
@@ -84,13 +154,25 @@ struct S3CurlTransport: S3Transport {
         S3Session(location: location, connectTimeout: connectTimeout, maxTime: maxTime)
     }
 
+    /// Which counter an invocation's `bytesTransferred` should come from.
+    ///
+    /// Named by the caller rather than inferred from whichever number is non-zero, because a
+    /// *refused* upload has both: the whole file went out, and the `<Error>` document came back.
+    private enum Direction {
+        case download
+        case upload
+    }
+
     /// Run one invocation and turn it into the answer the backend classifies.
     ///
     /// The status is read from the labelled write-out on stderr rather than from the exit code, and
     /// a status of 0 — `curl`'s own `000`, printed when nothing answered — is the only thing that
     /// makes this a transport failure. Everything else is a response, including the ones the server
     /// refused.
-    private func perform(_ arguments: [String]) throws -> S3Response {
+    private func perform(
+        _ arguments: [String],
+        measuring direction: Direction = .download
+    ) throws -> S3Response {
         let result = try run(arguments)
         let fields = S3WriteOut.parse(stderr: result.standardError)
         guard fields.status != 0 else {
@@ -101,7 +183,7 @@ struct S3CurlTransport: S3Transport {
             body: result.standardOutput,
             bucketRegion: fields.bucketRegion,
             contentLength: fields.contentLength,
-            bytesTransferred: fields.bytesDownloaded
+            bytesTransferred: direction == .upload ? fields.bytesUploaded : fields.bytesDownloaded
         )
     }
 

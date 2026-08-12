@@ -81,20 +81,27 @@ struct CompositeBackendTests {
         accessKeyID: "AKIAEXAMPLE"
     )
 
-    /// Connected or not, S3 reads `.read` — which is the backend's whole capability set until the
-    /// write half lands, not a fallback. Both are asserted because they arrive by different routes
-    /// and it would be easy to wire one and not the other.
-    @Test("an s3 path is read-only whether or not it is connected")
-    func s3PathIsReadOnly() {
+    /// The two halves now genuinely differ, which is what makes this worth asserting: an
+    /// unconnected bucket grays its writes, and a connected one offers them. Until the write half
+    /// landed both sides of that fallback were the same value, so nothing could tell a wired
+    /// lookup from a fallback that happened to agree with it.
+    @Test("an s3 path is writable once connected, and read-only before")
+    func s3PathBecomesWritableWhenConnected() {
         let path = VFSPath(backend: .s3(Self.bucket), path: "/docs")
+        // No credential, so nothing can be written — gray it rather than offer it.
         #expect(backend.capabilities(for: path) == .read)
+
         // Registering a connection touches no network — it installs the backend so the pane can
         // route to it, and the credential is never asked for again per page.
         backend.connectS3(location: Self.bucket, secretAccessKey: "secret")
         let caps = backend.capabilities(for: path)
-        #expect(caps == .read)
-        #expect(!caps.contains(.write))
-        #expect(caps.deleteStrategy == .unsupported)
+        #expect(caps.contains(.read))
+        #expect(caps.contains(.write))
+        // Trash-less and clone-less: F8 degrades to the confirmed permanent delete, and a copy
+        // never takes the instant-clone path a real filesystem offers.
+        #expect(!caps.contains(.trash))
+        #expect(!caps.contains(.clone))
+        #expect(caps.deleteStrategy == .permanent)
     }
 
     @Test("listing an s3 path with no connection reports a clear not-connected error")

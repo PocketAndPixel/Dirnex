@@ -83,29 +83,36 @@ struct S3BackendTransferTests {
         #expect(transport.downloads.first?.resume == false)
     }
 
-    @Test("an upload is refused until the write half lands")
-    func refusesAnUpload() {
+    @Test("an upload is a write, not a download in reverse")
+    func uploadsRatherThanDownloading() throws {
         let transport = FakeS3Transport()
-        #expect(throws: VFSError.unsupported(.copyFile)) {
-            try backend(transport).copyFile(
-                at: .local("/tmp/a.txt"),
-                to: VFSPath(backend: .s3(location), path: "/a.txt"),
-                progress: { _ in },
-                isCancelled: { false }
-            )
-        }
+        try backend(transport).copyFile(
+            at: .local("/tmp/a.txt"),
+            to: VFSPath(backend: .s3(location), path: "/a.txt"),
+            progress: { _ in },
+            isCancelled: { false }
+        )
+        #expect(transport.writes == [.upload(.init(localPath: "/tmp/a.txt", key: "a.txt"))])
+        // Nothing was fetched, and in particular no resume probe ran: the resume machinery is the
+        // download path's and has no business on the way up.
         #expect(transport.downloads.isEmpty)
+        #expect(transport.headKeys.isEmpty)
     }
 
     // MARK: - Capabilities
 
-    @Test("read only, and no watching ever")
+    /// The write half changed the first half of this and left the second untouched.
+    @Test("writable, and never watchable")
     func capabilities() {
         let capabilities = backend(FakeS3Transport()).capabilities
         #expect(capabilities.contains(.read))
-        #expect(!capabilities.contains(.write))
+        #expect(capabilities.contains(.write))
+        // Permanent: S3 has no change notification, so an S3 pane re-lists rather than being told.
         #expect(!capabilities.contains(.watch))
-        #expect(capabilities.deleteStrategy == .unsupported)
+        // A bucket has no Trash, so F8 resolves to the confirmed permanent delete — the M5
+        // degradation path, not a missing feature.
+        #expect(capabilities.deleteStrategy == .permanent)
+        #expect(!capabilities.contains(.trash))
     }
 
     @Test("jobs on one bucket share a volume")

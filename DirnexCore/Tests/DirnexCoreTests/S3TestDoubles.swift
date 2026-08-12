@@ -20,17 +20,44 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
         let resume: Bool
     }
 
+    struct Upload: Equatable {
+        let localPath: String
+        let key: String
+    }
+
+    struct Copy: Equatable {
+        let sourceKey: String
+        let destinationKey: String
+    }
+
+    /// Every write the backend made, in order — one list rather than several, because the *order*
+    /// is what several of these tests are about: a rename that deleted before it copied, or a
+    /// folder delete that removed the marker before its contents, would pass a per-verb tally.
+    enum Write: Equatable {
+        case upload(Upload)
+        case putEmpty(String)
+        case copy(Copy)
+        case delete(String)
+        case deleteBatch([String])
+    }
+
     /// Handed out in order, one per `listObjects` call. The last one repeats once exhausted, so a
     /// test that means to exercise a bounded loop cannot accidentally run out of fixtures.
     var listPages: [S3Response] = []
     var headResponse = S3Response(status: 404)
     var downloadResponse = S3Response(status: 200)
+    /// The answer every write verb gives, unless a batch answer is queued below.
+    var writeResponse = S3Response(status: 200)
+    /// Handed out in order, one per `deleteObjects` call, so a partial-failure body can be aimed at
+    /// a particular batch. Falls back to ``writeResponse`` once exhausted.
+    var deleteBatchResponses: [S3Response] = []
     /// Thrown by every verb when set — the "the request never reached a server" half.
     var thrownError: S3ResponseError?
 
     private(set) var listRequests: [ListRequest] = []
     private(set) var downloads: [Download] = []
     private(set) var headKeys: [String] = []
+    private(set) var writes: [Write] = []
 
     func listObjects(
         prefix: String,
@@ -56,6 +83,43 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
         if let thrownError { throw thrownError }
         headKeys.append(key)
         return headResponse
+    }
+
+    // MARK: - Writes
+
+    func upload(localPath: String, to key: String) throws -> S3Response {
+        if let thrownError { throw thrownError }
+        writes.append(.upload(Upload(localPath: localPath, key: key)))
+        return writeResponse
+    }
+
+    func putEmptyObject(key: String) throws -> S3Response {
+        if let thrownError { throw thrownError }
+        writes.append(.putEmpty(key))
+        return writeResponse
+    }
+
+    func copyObject(from sourceKey: String, to destinationKey: String) throws -> S3Response {
+        if let thrownError { throw thrownError }
+        writes.append(.copy(Copy(sourceKey: sourceKey, destinationKey: destinationKey)))
+        return writeResponse
+    }
+
+    func deleteObject(key: String) throws -> S3Response {
+        if let thrownError { throw thrownError }
+        writes.append(.delete(key))
+        return writeResponse
+    }
+
+    func deleteObjects(keys: [String]) throws -> S3Response {
+        if let thrownError { throw thrownError }
+        let batchIndex = writes.filter {
+            if case .deleteBatch = $0 { return true }
+            return false
+        }.count
+        writes.append(.deleteBatch(keys))
+        guard batchIndex < deleteBatchResponses.count else { return writeResponse }
+        return deleteBatchResponses[batchIndex]
     }
 }
 
@@ -157,6 +221,50 @@ enum S3Fixtures {
     <RequestId>BJ28272AE9ZPVRMF</RequestId><HostId>SiTuTP6H9RVunH8D</HostId></Error>
     """
 
+    /// A recursive enumeration (`delimiter=nil`) of a folder holding two files **and its own
+    /// marker**, which is the shape a batch delete has to sweep: the marker is an ordinary
+    /// `Contents` row, so an empty folder and a full one take the same path.
+    static let recursivePage = """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Name>1000genomes</Name>\
+    <Prefix>docs/</Prefix><KeyCount>3</KeyCount><MaxKeys>1000</MaxKeys>\
+    <EncodingType>url</EncodingType><IsTruncated>false</IsTruncated>\
+    <Contents><Key>docs/</Key><LastModified>2015-09-08T15:01:44.000Z</LastModified>\
+    <ETag>&quot;d41d8cd98f00b204e9800998ecf8427e&quot;</ETag><Size>0</Size>\
+    <StorageClass>STANDARD</StorageClass></Contents>\
+    <Contents><Key>docs/a.txt</Key><LastModified>2015-09-08T15:01:44.000Z</LastModified>\
+    <ETag>&quot;6d1792d429159aabb630926c37254766&quot;</ETag><Size>12</Size>\
+    <StorageClass>STANDARD</StorageClass></Contents>\
+    <Contents><Key>docs/sub/b.txt</Key><LastModified>2015-09-08T15:01:44.000Z</LastModified>\
+    <ETag>&quot;6d1792d429159aabb630926c37254767&quot;</ETag><Size>34</Size>\
+    <StorageClass>STANDARD</StorageClass></Contents></ListBucketResult>
+    """
+
+    /// `prefix=docs` answered as a folder — the `CommonPrefixes` row a stat reads.
+    static let statDocsFolder = """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Name>1000genomes</Name>\
+    <Prefix>docs</Prefix><KeyCount>1</KeyCount><MaxKeys>1000</MaxKeys><Delimiter>/</Delimiter>\
+    <IsTruncated>false</IsTruncated><CommonPrefixes><Prefix>docs/</Prefix></CommonPrefixes>\
+    </ListBucketResult>
+    """
+
+    /// A `DeleteResult` that succeeded quietly — what `<Quiet>true</Quiet>` produces.
+    static let deleteQuiet = """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <DeleteResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"></DeleteResult>
+    """
+
+    /// A **200** carrying a per-key refusal — the case that makes the body the outcome rather than
+    /// the status, and the one a status-only reader would report as a successful delete.
+    static let deletePartialFailure = """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <DeleteResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">\
+    <Deleted><Key>docs/a.txt</Key></Deleted>\
+    <Error><Key>docs/sub/b.txt</Key><Code>AccessDenied</Code>\
+    <Message>Access Denied</Message></Error></DeleteResult>
+    """
+
     /// `curl`'s stderr for an unresolvable host, verbatim: its own prose, then the write-out.
     static let failureStderr = """
     curl: (6) Could not resolve host: no-such-host-dirnex-probe.invalid
@@ -173,6 +281,28 @@ enum S3Fixtures {
     s3-region=us-west-2
     s3-length=451
     s3-size=451
+    s3-up=0
+
+    """
+
+    /// `curl`'s stderr for a successful upload: nothing came down, the file went up.
+    static let uploadStderr = """
+    s3-status=200
+    s3-region=
+    s3-length=0
+    s3-size=0
+    s3-up=3145728
+
+    """
+
+    /// A **refused** upload, which is the reason the two counters cannot be one number: the whole
+    /// file went out and the `<Error>` document came back, so both are non-zero in one invocation.
+    static let refusedUploadStderr = """
+    s3-status=403
+    s3-region=
+    s3-length=153
+    s3-size=153
+    s3-up=3145728
 
     """
 }

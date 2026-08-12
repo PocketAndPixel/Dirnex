@@ -19,8 +19,10 @@ import Foundation
 public struct S3Backend: ConnectionScopedBackend {
     /// The bucket this backend is rooted at — its identity.
     public let location: S3Location
-    private let transport: any S3Transport
-    private let pageLimit: Int
+    // Internal rather than private: the write verbs live in `S3Backend+Write.swift`, and Swift's
+    // `private` does not cross files (NOTES.md ▸ file splitting).
+    let transport: any S3Transport
+    let pageLimit: Int
 
     /// - Parameter pageLimit: how many `ListObjectsV2` pages one listing may fetch before it gives
     ///   up. S3 pages at 1000 keys whatever `max-keys` asks for, so the default allows a folder of
@@ -35,10 +37,14 @@ public struct S3Backend: ConnectionScopedBackend {
     public var id: VFSBackendID { .s3(location) }
     public var connectionDescriptor: String { location.connectionDescriptor }
 
-    /// Read only, for now — see the type's note. No `.watch` either, and that one is permanent:
-    /// S3 has no change notification, so an S3 pane re-lists on focus and on demand as the FTP and
-    /// SFTP panes do.
-    public var capabilities: VFSCapabilities { [.read] }
+    /// Read and write. No `.clone`, since a copy-on-write clone is a single-filesystem primitive
+    /// and S3's server-side copy really does move the bytes (it is just S3 paying for it, not this
+    /// machine) — advertising `.clone` would send `CopyEngine` down a path whose whole premise is
+    /// that the copy is free and instant.
+    ///
+    /// No `.watch` either, and that one is permanent: S3 has no change notification, so an S3 pane
+    /// re-lists on focus and on demand as the FTP and SFTP panes do.
+    public var capabilities: VFSCapabilities { [.read, .write] }
 
     // MARK: - Listing
 
@@ -163,11 +169,20 @@ public struct S3Backend: ConnectionScopedBackend {
 
     // MARK: - Transfer
 
-    /// Copy one object's bytes down to the local disk.
+    /// Copy one object's bytes, in whichever of the three directions this bucket can serve.
     ///
-    /// Only that direction, for now: an upload is a write and lands with the write half. A copy
-    /// between two remotes has no S3 answer that goes through this method at all — server-side
-    /// `x-amz-copy-source` is a *rename*'s primitive and is confined to one bucket.
+    /// - **Down** (this bucket → local disk): a `curl` download, resuming from a partial.
+    /// - **Up** (local disk → this bucket): a streamed `--upload-file`. The stream is what makes it
+    ///   affordable — see ``S3ProcessArguments/upload(session:key:localPath:)``, where a 512 MiB
+    ///   file measured 5.3 MB resident streamed against 1.08 GB buffered.
+    /// - **Sideways** (this bucket → itself): `x-amz-copy-source`, server-side. The bytes never
+    ///   leave S3, so nothing is downloaded and re-uploaded to duplicate a file — and this is the
+    ///   direction `CopyEngine` walks a folder move through, which is what keeps a recursive rename
+    ///   from costing the user the whole tree's bandwidth twice.
+    ///
+    /// A copy to or from a *different* remote is refused rather than routed: it would have to land
+    /// on this machine in between, which is two operations wearing one name and neither backend's
+    /// to schedule.
     ///
     /// The whole object transfers as one `curl` invocation, so `progress` reports once with the
     /// byte count and `isCancelled` is honored at the file boundary, matching `FTPBackend`.
@@ -178,16 +193,66 @@ public struct S3Backend: ConnectionScopedBackend {
         isCancelled: () -> Bool
     ) throws {
         if isCancelled() { throw CancellationError() }
-        guard source.backend == id, destination.backend == .local else {
+        // Spelled as explicit comparisons rather than a `switch` over the pair: `case (id, .local)`
+        // reads as a tuple pattern and is one missing `let` away from binding instead of matching,
+        // which would route every direction to whichever arm came first.
+        let transferred: Int64
+        if source.backend == id, destination.backend == .local {
+            transferred = try downloadObject(
+                key: S3Key.key(for: source),
+                toLocal: destination.path,
+                at: source
+            )
+        } else if source.backend == .local, destination.backend == id {
+            transferred = try uploadObject(
+                localPath: source.path,
+                key: S3Key.key(for: destination),
+                at: destination
+            )
+        } else if source.backend == id, destination.backend == id {
+            transferred = try copyObjectServerSide(from: source, to: destination)
+        } else {
             throw VFSError.unsupported(.copyFile)
         }
-        let transferred = try downloadObject(
-            key: S3Key.key(for: source),
-            toLocal: destination.path,
-            at: source
-        )
         if isCancelled() { throw CancellationError() }
         progress(transferred)
+    }
+
+    /// Upload `localPath` to `key`, and report what `curl` says it sent.
+    ///
+    /// The byte count comes from the write-out's upload counter rather than from the local file's
+    /// size, so a short write is visible as a short write instead of being reported as the size the
+    /// file happened to have on disk.
+    private func uploadObject(localPath: String, key: String, at destination: VFSPath) throws -> Int64 {
+        guard !key.isEmpty else { throw VFSError.unsupported(.copyFile) }
+        let response = try write(at: destination) {
+            try transport.upload(localPath: localPath, to: key)
+        }
+        return response.bytesTransferred
+    }
+
+    /// Duplicate one object inside this bucket without the bytes leaving S3.
+    ///
+    /// **It reports 0 bytes moved, deliberately.** A `CopyObjectResult` carries an ETag and a
+    /// timestamp, not a length, so the only way to report a real number is to ask for the object's
+    /// size — one extra round trip per file. On a folder move that is one more request per object
+    /// on top of the copy and the delete: negligible in money and about **25 minutes** of pure
+    /// latency on a 50 000-file prefix at a typical round trip, spent entirely on advancing a
+    /// progress bar. Reporting the size without measuring it would be inventing the number.
+    ///
+    /// What that costs is small and worth naming: this method is reached only from an F5 within one
+    /// bucket and from `CopyEngine`'s recursive walk, and in both the engine already knows each
+    /// entry's size from the listing it made. So the *item* counter advances normally and the byte
+    /// counter does not move for these copies. A direct single-file move never comes here at all —
+    /// `CopyEngine.perform` tallies `entry.byteSize` itself when `moveItem` succeeds.
+    private func copyObjectServerSide(from source: VFSPath, to destination: VFSPath) throws -> Int64 {
+        _ = try write(at: destination) {
+            try transport.copyObject(
+                from: S3Key.key(for: source),
+                to: S3Key.key(for: destination)
+            )
+        }
+        return 0
     }
 
     /// Download `key` to `localPath`, resuming from a local partial when one is a **proper**
@@ -264,7 +329,7 @@ public struct S3Backend: ConnectionScopedBackend {
     /// response, not a throw (see ``S3Transport``) — but the service case is mapped too rather than
     /// left to a `default`, so a transport that ever throws one is handled instead of crashing the
     /// switch's exhaustiveness the next time a case is added.
-    private func mapping<T>(_ path: VFSPath, _ body: () throws -> T) throws -> T {
+    func mapping<T>(_ path: VFSPath, _ body: () throws -> T) throws -> T {
         do {
             return try body()
         } catch let error as S3ResponseError {

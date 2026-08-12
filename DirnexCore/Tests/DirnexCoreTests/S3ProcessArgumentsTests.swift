@@ -29,7 +29,26 @@ struct S3ProcessArgumentsTests {
                 localPath: "/tmp/a.txt",
                 resume: true
             ),
-            S3ProcessArguments.head(session: session, key: "docs/a.txt")
+            S3ProcessArguments.head(session: session, key: "docs/a.txt"),
+            // The writes belong in this list too. The invariant is enumerated by hand, so a verb
+            // added without a line here is one the security test silently stops covering.
+            S3ProcessArguments.upload(
+                session: session,
+                key: "docs/a.txt",
+                localPath: "/tmp/a.txt"
+            ),
+            S3ProcessArguments.putEmptyObject(session: session, key: "docs/"),
+            S3ProcessArguments.copyObject(
+                session: session,
+                sourceKey: "docs/a.txt",
+                destinationKey: "docs/b.txt"
+            ),
+            S3ProcessArguments.deleteObject(session: session, key: "docs/a.txt"),
+            S3ProcessArguments.deleteObjects(
+                session: session,
+                bodyPath: "/tmp/delete.xml",
+                contentMD5: "1B2M2Y8AsgTpgAmY7PhCfg=="
+            )
         ]
         for arguments in everyInvocation {
             #expect(!arguments.contains { $0.contains(secret) })

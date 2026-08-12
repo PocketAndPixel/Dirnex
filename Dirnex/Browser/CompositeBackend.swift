@@ -143,9 +143,11 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         }
         if path.backend.isSFTP { return sftpBackend(for: path.backend)?.capabilities ?? .read }
         if path.backend.isFTP { return ftpBackend(for: path.backend)?.capabilities ?? .read }
-        // S3 answers `.read` connected or not, which is not a fallback here — it is the backend's
-        // whole capability set until M21's write half lands, so the M5 degradation grays out the
-        // rest whether or not the credential is still live.
+        // A connected bucket is `[.read, .write]` — Trash-less and clone-less, the same M5
+        // degradation shape as SFTP. A path whose connection is gone falls back to `.read` for the
+        // reason SFTP does: gray the writes rather than offer ones there is no credential to
+        // perform. This stopped being a no-op when the write half landed — before it, both sides of
+        // the `??` were the same value, so the fallback was untestable and provably harmless.
         if path.backend.isS3 { return s3Backend(for: path.backend)?.capabilities ?? .read }
         // The merged Trash listing is writable-but-Trash-less for the same reason, one level up:
         // its entries are real files that can only be deleted for good. Everything else virtual (an

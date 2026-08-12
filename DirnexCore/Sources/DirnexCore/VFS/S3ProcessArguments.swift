@@ -128,6 +128,117 @@ public enum S3ProcessArguments {
             + ["--head", "--output", "/dev/null", session.location.url(forKey: key)]
     }
 
+    // MARK: - Writes
+
+    /// Upload a local file to `key`.
+    ///
+    /// **`-T` streams and `--data-binary @` buffers, and that decides this outright** — it is not a
+    /// stylistic choice between two spellings that both work. Measured 2026-08-13 on one 512 MiB
+    /// upload: `-T` peaked at **5.3 MB** resident, `--data-binary @` at **1.08 GB** — twice the
+    /// file, held in memory, for a file manager whose whole job is moving files of arbitrary size.
+    ///
+    /// The consequence is the payload-signing question PLAN.md left open, and the measurement
+    /// answers it on the merits rather than by preference: `-T` signs the request with
+    /// `x-amz-content-sha256: UNSIGNED-PAYLOAD`, because `curl` cannot hash a stream it has not read
+    /// yet, while `--data-binary` computes the real digest (both confirmed on the wire against an
+    /// endpoint that verifies SigV4 by hand). `UNSIGNED-PAYLOAD` is what S3 documents for exactly
+    /// this case over HTTPS — the request is still fully signed, so it cannot be replayed or
+    /// re-pointed, and the bytes are TLS's to protect rather than the signature's. Buying a payload
+    /// digest at the price of holding every uploaded file twice in RAM is not a trade worth making.
+    ///
+    /// Two shapes measured in the same run that this builder exists to prevent:
+    ///
+    /// - **A destination URL must never end in `/`.** `curl` appends the *local* file's basename to
+    ///   a `-T` URL that does — `-T /tmp/tiny.txt <bucket>/trailing/` arrived as the key
+    ///   `trailing/tiny.txt`. Silent, and it writes a real object under a name nobody chose.
+    /// - **`Expect: 100-continue` is left to `curl`'s own threshold** (it adds the header above
+    ///   ~1 KiB — the 39-byte upload carried none, the 3 MiB one did). Against a server that ignores
+    ///   it, the header costs a flat **1.02 s** per upload; against one that answers, nothing. It is
+    ///   kept because the alternative is worse in the direction that matters: without it, an upload
+    ///   to a bucket the key cannot write to sends the whole file before learning about the 403 —
+    ///   and `curl`'s threshold already restricts the cost to files big enough for that to matter.
+    public static func upload(session: S3Session, key: String, localPath: String) -> [String] {
+        common(session: session) + configFromStandardInput
+            + ["--upload-file", localPath, session.location.url(forKey: key)]
+    }
+
+    /// Write a zero-byte object — the folder marker `createDirectory` leaves behind, and the empty
+    /// file `createFile` makes.
+    ///
+    /// `--data-binary ""` rather than a bare `-X PUT`, and rather than `-T /dev/null`, both of which
+    /// were measured against a real endpoint:
+    ///
+    /// - **`-T /dev/null` is wrong twice.** `/dev/null` is not a regular file, so `curl` cannot
+    ///   state a length and falls back to `Transfer-Encoding: chunked` with `UNSIGNED-PAYLOAD` — a
+    ///   combination S3 rejects outright, since a chunked upload needs its own streaming signature.
+    ///   And the write-out reported 5 bytes uploaded for an empty file, which is the chunk framing.
+    /// - **A bare `-X PUT` sends no `Content-Length` header at all.** Legal HTTP, and one more thing
+    ///   for a strict S3-compatible server to disagree about.
+    ///
+    /// `--data-binary ""` sends an explicit `Content-Length: 0` and the real SHA-256 of the empty
+    /// string, so the request is fully signed and states its own emptiness. The URL here *may* end
+    /// in `/` — that is what makes it a folder marker — and does so safely because `-T` is not
+    /// involved (see ``upload(session:key:localPath:)``).
+    public static func putEmptyObject(session: S3Session, key: String) -> [String] {
+        common(session: session) + configFromStandardInput
+            + ["-X", "PUT", "--data-binary", "", session.location.url(forKey: key)]
+    }
+
+    /// Copy one object to another key **inside the same bucket**, server-side.
+    ///
+    /// This is the rename primitive, and the reason a rename costs no local bandwidth: the bytes
+    /// never leave S3. `curl` signs the `x-amz-copy-source` header itself — measured on the wire,
+    /// it arrives in `SignedHeaders` as `host;x-amz-content-sha256;x-amz-copy-source;x-amz-date` —
+    /// which matters because S3 requires every `x-amz-*` header to be signed and would otherwise
+    /// refuse the request.
+    ///
+    /// What `curl` does **not** do is encode the value: the header is passed through byte for byte
+    /// (probed with spaces and `+` in the source key, both of which arrived exactly as written). So
+    /// the encoding is this builder's, and it uses the same path rule the URL does — S3 reads
+    /// `x-amz-copy-source` as an encoded path, so a raw `+` or `#` in a key would name a different
+    /// object than the one being renamed.
+    public static func copyObject(
+        session: S3Session,
+        sourceKey: String,
+        destinationKey: String
+    ) -> [String] {
+        let source = "/\(session.location.bucket)/\(S3Key.encodedForPath(sourceKey))"
+        return common(session: session) + configFromStandardInput
+            + ["-X", "PUT", "-H", "x-amz-copy-source: \(source)"]
+            + [session.location.url(forKey: destinationKey)]
+    }
+
+    /// Delete one object.
+    ///
+    /// S3's `DeleteObject` is **idempotent** — deleting a key that is not there answers 204, not
+    /// 404 — so this cannot be used to ask whether something existed. Nothing here needs to: the
+    /// panel has already listed what it is deleting.
+    public static func deleteObject(session: S3Session, key: String) -> [String] {
+        common(session: session) + configFromStandardInput
+            + ["-X", "DELETE", session.location.url(forKey: key)]
+    }
+
+    /// Delete up to ``S3DeleteBatch/maximumKeys`` objects in one request.
+    ///
+    /// The body is passed as a **file** rather than inline in `argv`: 1000 keys of ordinary length
+    /// run to tens of kilobytes and long ones approach `ARG_MAX`, so an inline body is a batch size
+    /// that works until somebody's file names are long. It carries no secret — object keys, which
+    /// the URL already exposes — so a temp file is a size decision rather than a security one, and
+    /// `-K -` is holding stdin for the credential regardless.
+    ///
+    /// `Content-MD5` is required by S3 on this verb and is computed by ``S3DeleteBatch``; `curl`
+    /// signs the header but never produces one.
+    public static func deleteObjects(
+        session: S3Session,
+        bodyPath: String,
+        contentMD5: String
+    ) -> [String] {
+        common(session: session) + configFromStandardInput
+            + ["-X", "POST", "--data-binary", "@\(bodyPath)"]
+            + ["-H", "Content-MD5: \(contentMD5)", "-H", "Content-Type: application/xml"]
+            + ["\(session.location.bucketURL)?delete"]
+    }
+
     /// The `ListObjectsV2` URL.
     ///
     /// The parameters are emitted in a fixed order and **not sorted**, which is safe because
@@ -219,7 +330,8 @@ public enum S3WriteOut {
         "s3-status=%{http_code}\\n",
         "s3-region=%header{x-amz-bucket-region}\\n",
         "s3-length=%header{content-length}\\n",
-        "s3-size=%{size_download}\\n"
+        "s3-size=%{size_download}\\n",
+        "s3-up=%{size_upload}\\n"
     ].joined()
 
     /// What one invocation reported about its response.
@@ -237,6 +349,13 @@ public enum S3WriteOut {
         /// Bytes this invocation actually moved — the *delta* for a resumed download, so nothing
         /// has to subtract a prior length the way the `sftp` transport does.
         public let bytesDownloaded: Int64
+        /// Bytes this invocation sent.
+        ///
+        /// A separate field rather than one "transferred" number, because a single invocation can
+        /// legitimately have both: a *refused* upload sends the whole file and then receives the
+        /// `<Error>` document. Collapsing them would report a failed upload's size as the sum of
+        /// the file and the refusal that rejected it. The caller says which direction it asked for.
+        public let bytesUploaded: Int64
     }
 
     /// Read the labelled lines out of a stderr stream, ignoring anything else in it.
@@ -255,7 +374,8 @@ public enum S3WriteOut {
             status: values["s3-status"].flatMap(Int.init) ?? 0,
             bucketRegion: values["s3-region"],
             contentLength: values["s3-length"].flatMap(Int64.init),
-            bytesDownloaded: values["s3-size"].flatMap(Int64.init) ?? 0
+            bytesDownloaded: values["s3-size"].flatMap(Int64.init) ?? 0,
+            bytesUploaded: values["s3-up"].flatMap(Int64.init) ?? 0
         )
     }
 }

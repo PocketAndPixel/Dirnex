@@ -578,24 +578,67 @@ refused up front. Four things are worth carrying out of it:
   the Size column already uses. Invisible to every fixture — each carries a real date — and obvious
   in the first second of looking at the app.
 
+Slice 4 landed 2026-08-13 and is the **write half**: `createDirectory`, `createFile`, `moveItem`,
+`removeItem`, and `copyFile`'s two new directions (`S3DeleteBatch`, `S3Backend+Write`; +36 tests,
+`capabilities` now `[.read, .write]` and `acceptsUploads` gains S3). Everything was probed first
+against a local endpoint that **verifies SigV4 by hand** — a real signature check rather than a
+mock, which is the `moto` lesson applied: a wrong secret is refused there, so a pass is evidence.
+
+- **The payload-signing question is settled, and on the merits rather than by preference.** It was
+  never really "which does AWS accept" — measured on one 512 MiB upload, `-T` peaks at **5.3 MB**
+  resident and `--data-binary @` at **1.08 GB**, twice the file. A file manager cannot hold every
+  uploaded file twice in RAM to buy a payload digest, so `-T` is the only viable shape and
+  `UNSIGNED-PAYLOAD` — what S3 documents for a stream over HTTPS — comes with it. The request is
+  still fully signed; the bytes are TLS's to protect.
+- **Three spellings of "write nothing" and only one is safe.** `-T /dev/null` sends
+  `Transfer-Encoding: chunked` with `UNSIGNED-PAYLOAD` (which S3 rejects — a chunked upload needs
+  its own streaming signature) and reports 5 bytes uploaded for an empty file, which is the chunk
+  framing; a bare `-X PUT` sends no `Content-Length` at all. `--data-binary ""` states its own
+  emptiness. And **`-T` against a URL ending in `/` appends the local file's basename** — measured,
+  `trailing/tiny.txt` — so an upload URL must never end in a slash, while a folder marker's must.
+- **`curl` signs `x-amz-copy-source` and `Content-MD5` and produces neither.** Both appear in
+  `SignedHeaders`, which is what makes the rename primitive and the batch delete reachable at all;
+  the copy source's *encoding* and the digest's *value* are ours. A wrong digest signs perfectly and
+  only the server catches it, so the probe was made to enforce `BadDigest` before that was believed.
+- **A folder move needed no new job type, which is the whole reason it is affordable.**
+  `moveItem` answers `EXDEV` for a prefix and `CopyEngine.perform` already falls back to a recursive
+  copy-then-delete on exactly that signal — on the operation queue, with progress, cancellation,
+  conflict policy and a per-item failure report. The same signal `RemoteTransportBackend` sends for
+  a cross-*backend* move, used here for a cross-*shape* one.
+- **A batch delete's body is the outcome, not its status.** A 200 can carry per-key `<Error>` rows,
+  so a status-only reader reports a folder as deleted with the files a bucket policy protects still
+  in it. Batched at 1000, one request per thousand keys instead of one per key on a verb where every
+  request is billed.
+
+Verified live end-to-end by a harness compiled in Swift 6 mode against the **real** core and the
+app's own `S3CurlTransport` source: create a folder, upload, round-trip the bytes, rename (including
+a name carrying a space, `+` and `#` through both sides of the copy-source header), defer a prefix
+move with `EXDEV`, delete one object, sweep a nested prefix in one batch, and a wrong-secret control
+that had to be refused.
+
 **What S3 will not be able to do, and it is better to state it than to discover it.** S3 is not a
 filesystem: rename is copy-then-delete (O(size), and N copies for a "folder"), `createDirectory` has
 no operation behind it beyond writing a marker, there is no settable mtime, no permissions and no
 symlinks — so `copyMetadata` is a no-op and `DirectorySync` by timestamp is as unreliable as it is
 over FTP. Every listing is a billable request, which makes the recursive sizer cost money over a
 bucket. `RemoteTransportBackend`'s four write verbs were shaped for FTP and SFTP, where they are
-genuine filesystem operations; S3 fits the *transport* shape and will need its own answers for two of
-them.
+genuine filesystem operations; S3 fits the *transport* shape, so it conforms to
+`ConnectionScopedBackend` (the guard all three need) and answers the four verbs itself — which is
+what Slice 4 is. Two consequences survive that and are permanent: nothing about a folder rename or a
+folder delete is **atomic**, and a byte counter cannot advance during a server-side copy without
+paying a round trip per object for it (~25 min of pure latency on a 50 000-file prefix), so those
+copies report items rather than bytes.
 
 Deliberately deferred, not forgotten: **account-level browsing** (`ListAllMyBuckets`) as a second
 root — a key scoped to one bucket is the ordinary way these are issued, so an account-rooted design
-fails at the root for exactly the users whose credentials are set up properly; **multipart upload**,
-which a 5 GB single-PUT ceiling eventually forces; and **the upload payload-signing question**, which
-is genuinely unmeasured — `curl` signs an in-memory body with a real SHA-256 and uses
-`UNSIGNED-PAYLOAD` for `-T`, and which real S3 wants needs credentials to settle. A local `moto`
-mock answered it *wrongly* in the confident direction (it silently stored an empty object for the
-signed form, and a trace showed the bytes had gone out fine), which is this file's own lesson about
-probe fidelity arriving on schedule.
+fails at the root for exactly the users whose credentials are set up properly; and **multipart
+upload**, which a 5 GB single-PUT ceiling eventually forces. The **upload payload-signing question**
+closed with Slice 4 and did not need credentials in the end: it looked like "which does AWS accept"
+and was really a memory measurement, since `--data-binary @` holds twice the file and `-T` holds
+nothing, so `UNSIGNED-PAYLOAD` arrives as a consequence rather than as a choice. Worth keeping the
+shape of that mistake — a local `moto` mock had answered the *acceptance* form of it wrongly in the
+confident direction (silently storing an empty object for the signed form while a trace showed the
+bytes had gone out fine), and the question it was asked was the wrong one anyway.
 
 ## 5. Cross-cutting: testing strategy
 

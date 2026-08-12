@@ -127,12 +127,15 @@ struct VFSPathTests {
         }
     }
 
-    /// S3 is re-listable and, until M21's write half lands, not a destination — so the two
-    /// predicates deliberately disagree about exactly one backend. Asserted rather than left
-    /// implicit, because collapsing them into one is the tempting simplification and it would let
-    /// F5 start a job that fails inside the queue.
-    @Test("S3 is a remote you can browse and not yet one you can copy into")
-    func s3IsReadableNotWritable() {
+    /// With M21's write half landed, S3 answers both — it is browsable *and* a destination.
+    ///
+    /// The two predicates stay separate all the same, which is what this pins: they answer
+    /// different questions, and S3 spent a milestone being the backend that distinguished them.
+    /// Collapsing them now that every backend agrees is the tempting simplification, and it would
+    /// put the next read-only backend straight back into failing *inside the queue* rather than
+    /// saying up front that the other panel cannot receive files.
+    @Test("every remote connection is now also a destination, by two separate questions")
+    func s3IsReadableAndWritable() {
         let s3 = S3Location(
             host: "s3.eu-central-1.amazonaws.com",
             bucket: "photos",
@@ -140,7 +143,7 @@ struct VFSPathTests {
             accessKeyID: "AKIAEXAMPLE"
         ).backendID
         #expect(s3.isRemoteConnection)
-        #expect(!s3.acceptsUploads)
+        #expect(s3.acceptsUploads)
         #expect(SFTPLocation(host: "example.com", username: "oleg").backendID.acceptsUploads)
         #expect(FTPLocation(host: "nas.local", username: "o", security: .explicit)
             .backendID.acceptsUploads)

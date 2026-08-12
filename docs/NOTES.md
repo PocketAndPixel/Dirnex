@@ -1833,6 +1833,81 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     classifier that only answers the first leaves plausible garbage on disk. It cannot be caught by
     any test over the argument builder, and the file is the *right size for a document*, so nothing
     downstream complains either.
+- **The upload question is a *memory* question wearing a cryptography question's clothes.** "Does
+  real S3 want a signed payload or `UNSIGNED-PAYLOAD`?" is what the plan carried for a milestone as
+  the thing needing credentials to settle — and it never needed them. Measured 2026-08-13 on one
+  512 MiB upload: `-T` peaks at **5.3 MB** resident and `--data-binary @` at **1.08 GB**, twice the
+  file, because it buffers what it hashes. A file manager cannot spend 2× every uploaded file's size
+  in RAM, so `-T` is the only shape available and `UNSIGNED-PAYLOAD` — which `curl` uses because it
+  cannot hash a stream it has not read — arrives as a consequence rather than a choice. The request
+  is fully signed either way, so it cannot be replayed or re-pointed; only the bytes are TLS's
+  rather than the signature's. Worth carrying past S3: **when a question has been open a long time,
+  check whether it is the question that is stuck** — this one had an unreachable form (ask AWS) and
+  a reachable one (measure the client) that decided it outright.
+- **Three spellings of "PUT nothing", and only one is safe.** All measured against an endpoint that
+  verifies SigV4 by hand, which is what a folder marker and an empty file both need:
+  - **`-T /dev/null` is wrong twice over.** It is not a regular file, so `curl` cannot state a
+    length and falls back to **`Transfer-Encoding: chunked` with `UNSIGNED-PAYLOAD`** — a
+    combination S3 rejects outright, since a chunked upload needs its own streaming signature. And
+    the write-out reports **5 bytes uploaded for an empty file**, which is the chunk framing, so a
+    progress counter reading it is wrong about a file that has no bytes.
+  - **A bare `-X PUT` sends no `Content-Length` header at all** — legal HTTP, and one more thing for
+    a strict S3-compatible server to disagree about.
+  - **`--data-binary ""`** sends an explicit `Content-Length: 0` and the real SHA-256 of the empty
+    string. It is the one that both states its own emptiness and is fully signed.
+- **`-T` against a URL ending in `/` appends the *local* file's basename.** Measured:
+  `-T /tmp/tiny.txt <bucket>/trailing/` arrived as the key `trailing/tiny.txt`. So an upload URL
+  must never end in a slash — while a **folder marker's must**, since that trailing slash is the
+  whole content of the operation. Two rules pointing opposite ways over one character, which is why
+  they belong in two different argument builders rather than one with a flag. Nothing in the key
+  translation catches it: the key is right and the URL is what changed.
+- **`curl` signs `x-amz-copy-source` and `Content-MD5`, and produces neither.** Both appear in
+  `SignedHeaders` (measured — `host;x-amz-content-sha256;x-amz-copy-source;x-amz-date`), which is
+  what makes a server-side rename and a batch delete reachable at all, since S3 requires every
+  `x-amz-*` header to be signed. But the copy source is passed through **byte for byte** (probed with
+  spaces and `+` in the key, both arriving exactly as written), so its percent-encoding is the
+  caller's — the same stricter-than-`urlPathAllowed` rule the URL path uses, or a `+` or `#` in a
+  key renames a *different object*. And the digest's value is the caller's too.
+  - **A wrong `Content-MD5` signs perfectly and only the server catches it** (`BadDigest`), which is
+    what makes it worth enforcing in the probe rather than merely recording: a lenient endpoint
+    agrees with a broken client. Confirmed both directions in one run — the right digest 200, a
+    deliberately wrong one 400.
+- **A `DeleteObjects` batch reports its failures in the *body*, and a 200 can carry them.** Up to
+  1000 keys per request, which is what makes deleting a prefix affordable on a verb where every
+  request is billed — but a caller reading only the status reports a folder as deleted with the
+  files a bucket policy protects still in it. The quiet direction, and invisible to any test that
+  only checks the status. Parse the per-key `<Error>` rows and name the failure on **that key's**
+  path, not the folder's; pointing the user at the folder sends them to check permissions on
+  something that is fine.
+  - `<Key>` nests under **two** parents (`<Deleted>` and `<Error>`), so unlike S3's flat `<Error>`
+    document this cannot be read with a name-keyed dictionary — the parent decides which list a key
+    joins, and each container must reset the fields it fills or a second row inherits the first
+    row's code, turning one refused key into a batch of them.
+- **`size_upload` and `size_download` must stay two numbers.** A *refused* upload has both: the whole
+  file went out and the `<Error>` document came back. Collapsing them into one "transferred" figure
+  reports a failed 3 MiB upload as 3 MiB plus the 153 bytes that rejected it, and picking
+  "whichever is non-zero" picks wrong on exactly that request. The caller knows which direction it
+  asked for; make it say so.
+- **A server that ignores `Expect: 100-continue` costs a flat 1.02 s per upload** (measured against
+  one that answers: ~0.01 s). Do not reach for `-H 'Expect:'` to remove it — `curl` only adds the
+  header above ~1 KiB, which already restricts the cost to files big enough that the alternative is
+  worse: without it, an upload to a bucket the key cannot write to sends the **whole file** before
+  learning about the 403. The default already encodes the trade.
+- **A folder rename needs no new job type, and reaching for one is the expensive mistake.**
+  `CopyEngine.perform` already falls back to a recursive copy-then-delete when a `moveItem` throws
+  **`EXDEV`** — with progress, cancellation, conflict policy and a per-item failure report, on the
+  operation queue. So a backend whose rename is not atomic for a *prefix* answers `EXDEV` and gets
+  all of that for one line, exactly as `RemoteTransportBackend` does for a cross-*backend* move. The
+  same signal, used for a cross-*shape* one. Check what the engine already does with a failure
+  before designing a job around it.
+- **A probe endpoint that does not verify the signature will agree with a broken client.** The
+  `moto` lesson above says a mock is not a server; the constructive half is that a ~200-line Python
+  handler recomputing SigV4 from the documented algorithm *is* a usable instrument, and cheaper than
+  a container. What makes it evidence rather than theatre is the **negative control in the same
+  run** — a wrong secret must come back refused, or "every request verified" only means the checker
+  is permissive. Two of this session's findings came from that endpoint's log rather than from any
+  return value: what `-T` claims as its payload hash, and the basename appended to a trailing-slash
+  URL.
 
 ### The Trash
 

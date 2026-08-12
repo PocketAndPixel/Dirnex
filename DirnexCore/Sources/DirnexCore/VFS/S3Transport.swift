@@ -72,4 +72,24 @@ public protocol S3Transport: Sendable {
 
     /// One object's metadata. The size arrives in ``S3Response/contentLength``.
     func head(key: String) throws -> S3Response
+
+    /// Upload a local file to `key`, streaming it rather than reading it into memory.
+    func upload(localPath: String, to key: String) throws -> S3Response
+
+    /// Write a zero-byte object at `key` — the folder marker, and an empty file.
+    func putEmptyObject(key: String) throws -> S3Response
+
+    /// Copy one object to another key inside this bucket, server-side. The bytes never travel.
+    func copyObject(from sourceKey: String, to destinationKey: String) throws -> S3Response
+
+    /// Delete one object. S3's delete is idempotent, so a key that is not there still answers 204.
+    func deleteObject(key: String) throws -> S3Response
+
+    /// Delete a batch of at most ``S3DeleteBatch/maximumKeys`` objects in one request.
+    ///
+    /// The response body is a `DeleteResult` and **is** the outcome: a 200 can carry per-key
+    /// `<Error>` rows, so the status alone does not say the keys are gone (``S3DeleteResult``).
+    /// Serializing the request document and its `Content-MD5` is the transport's, since the body
+    /// travels as a file — a size decision argued in ``S3ProcessArguments/deleteObjects(session:bodyPath:contentMD5:)``.
+    func deleteObjects(keys: [String]) throws -> S3Response
 }

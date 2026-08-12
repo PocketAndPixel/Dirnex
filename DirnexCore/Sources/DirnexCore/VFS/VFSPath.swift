@@ -91,11 +91,13 @@ public struct VFSBackendID: RawRepresentable, Sendable, Hashable, CustomStringCo
 
     /// Whether a copy *into* this backend has an upload primitive behind it.
     ///
-    /// Separate from ``isRemoteConnection`` because S3 is deliberately absent from it: its
-    /// `capabilities` say `.read` until M21's write half lands, so a pane that accepted F5 would
-    /// fail inside the queue — after the job started — instead of saying up front that the other
-    /// panel is not somewhere it can copy into. This is the one line to edit when that changes.
-    public var acceptsUploads: Bool { isSFTP || isFTP }
+    /// Still separate from ``isRemoteConnection`` even now that the two agree, and deliberately so.
+    /// They answer different questions — "can I browse back and forth here" against "can bytes land
+    /// here" — and S3 spent a milestone distinguishing them: while the backend was read-only, a
+    /// pane that accepted F5 would have failed *inside the queue*, after the job started, instead of
+    /// saying up front that the other panel is not somewhere it can copy into. Collapsing them now
+    /// that both read the same would put the next read-only backend straight back into that failure.
+    public var acceptsUploads: Bool { isSFTP || isFTP || isS3 }
 
     public var description: String { rawValue }
 }
