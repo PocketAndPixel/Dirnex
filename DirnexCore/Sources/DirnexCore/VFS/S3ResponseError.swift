@@ -56,19 +56,34 @@ public struct S3ServiceError: Sendable, Equatable {
     /// instead of reporting a failure the user has no way to diagnose — "wrong region" is otherwise
     /// indistinguishable from "no such bucket" from outside.
     public let correctEndpoint: String?
+    /// The `x-amz-bucket-region` response header, when the server sent one.
+    ///
+    /// Measured 2026-08-12: AWS sends it on **every** response, the 301 included, and it names the
+    /// region on its own — where ``correctEndpoint`` has to be taken apart, since it arrives
+    /// bucket-prefixed and in the legacy dash spelling (`nasa-nex.s3-us-west-2.amazonaws.com`).
+    /// So the header is the primary source and the element the fallback for the S3-compatible
+    /// servers that send no such header; ``correctedRegion`` is where the two meet.
+    public let bucketRegion: String?
 
-    public init(status: Int, code: String, message: String, correctEndpoint: String? = nil) {
+    public init(
+        status: Int,
+        code: String,
+        message: String,
+        correctEndpoint: String? = nil,
+        bucketRegion: String? = nil
+    ) {
         self.status = status
         self.code = code
         self.message = message
         self.correctEndpoint = correctEndpoint
+        self.bucketRegion = bucketRegion
     }
 }
 
 public extension S3ServiceError {
     /// Parse S3's `<Error>` document. Falls back to a code-less value carrying just the status, so
     /// a non-S3 body (a proxy's HTML, an empty 500) still classifies rather than throwing.
-    static func parse(_ data: Data, status: Int) -> S3ServiceError {
+    static func parse(_ data: Data, status: Int, bucketRegion: String? = nil) -> S3ServiceError {
         let delegate = ErrorDelegate()
         let parser = XMLParser(data: data)
         parser.delegate = delegate
@@ -77,14 +92,22 @@ public extension S3ServiceError {
             status: status,
             code: delegate.values["Code"] ?? "",
             message: delegate.values["Message"] ?? "",
-            correctEndpoint: delegate.values["Endpoint"]
+            correctEndpoint: delegate.values["Endpoint"],
+            bucketRegion: bucketRegion
         )
     }
 
     /// Whether this is the wrong-region redirect, which the caller can retry against
-    /// ``correctEndpoint`` rather than report.
+    /// ``correctedRegion`` rather than report.
     var isRegionRedirect: Bool {
         status == 301 || code == "PermanentRedirect"
+    }
+
+    /// The region this bucket actually lives in, when the server said so — the header first, the
+    /// endpoint element second.
+    var correctedRegion: String? {
+        if let bucketRegion, !bucketRegion.isEmpty { return bucketRegion }
+        return correctEndpoint.flatMap(S3Location.region(fromEndpoint:))
     }
 
     /// Whether the credentials are the problem, as opposed to the permissions on them.

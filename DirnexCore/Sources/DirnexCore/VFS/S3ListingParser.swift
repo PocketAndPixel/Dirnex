@@ -79,9 +79,7 @@ public enum S3ListingParser {
         in directory: VFSPath
     ) -> [FileEntry] {
         let prefix = S3Key.listingPrefix(for: directory)
-        let decode: (String) -> String? = page.isURLEncoded
-            ? { S3Key.decodingURLEncoding($0) }
-            : { Optional($0) }
+        let decode = decoder(for: page)
 
         let folders = page.commonPrefixes.compactMap { raw -> FileEntry? in
             guard let key = decode(raw) else { return nil }
@@ -102,6 +100,45 @@ public enum S3ListingParser {
         return folders + files
     }
 
+    /// The entry for **exactly** `key`, out of a page listed with `prefix=key`, or `nil` when the
+    /// page holds no such thing. This is how ``S3Backend`` stats one path in a single request: a
+    /// listing whose prefix *is* the key answers both questions at once — a `Contents` row means a
+    /// file, and a `CommonPrefixes` entry of `key/` means a folder.
+    ///
+    /// **The exact match is the whole rule, and a first-row reading is wrong rather than sloppy.**
+    /// Probed against a real bucket 2026-08-12: `prefix=README` came back with four rows —
+    /// `README.alignment_data`, `README.analysis_history`, `README.complete_genomics_data`,
+    /// `README.crams` — and no `README` at all. A stat that took the first row would report a
+    /// *sibling's* size and date under the name the caller asked about, which is the quiet
+    /// direction: a plausible answer about the wrong file. Same family as the trailing-delimiter
+    /// rule in ``S3Key/listingPrefix(for:)`` — a prefix is a string comparison and knows nothing
+    /// about path components.
+    public static func entry(
+        forKey key: String,
+        in page: S3ListingPage,
+        at path: VFSPath
+    ) -> FileEntry? {
+        let decode = decoder(for: page)
+        if let object = page.objects.first(where: { decode($0.key) == key }) {
+            return entry(
+                at: path,
+                name: path.lastComponent,
+                kind: .file,
+                size: object.size,
+                date: object.lastModified
+            )
+        }
+        guard page.commonPrefixes.contains(where: { decode($0) == "\(key)/" }) else { return nil }
+        return entry(at: path, name: path.lastComponent, kind: .directory, size: 0, date: nil)
+    }
+
+    /// How a key or prefix from `page` is read back, given whether the server honored
+    /// `encoding-type=url`. `nil` for input that does not decode, which is a name nothing can be
+    /// made from.
+    private static func decoder(for page: S3ListingPage) -> (String) -> String? {
+        page.isURLEncoded ? { S3Key.decodingURLEncoding($0) } : { Optional($0) }
+    }
+
     private static func entry(
         key: String,
         kind: FileEntry.Kind,
@@ -111,12 +148,22 @@ public enum S3ListingParser {
     ) -> FileEntry? {
         let name = S3Key.displayName(ofKey: key)
         guard !name.isEmpty else { return nil }
+        return entry(at: directory.appending(name), name: name, kind: kind, size: size, date: date)
+    }
+
+    private static func entry(
+        at path: VFSPath,
+        name: String,
+        kind: FileEntry.Kind,
+        size: Int64,
+        date: Date?
+    ) -> FileEntry {
         // S3 has no mtime you can set and no birth time at all, so both dates are the object's
         // `LastModified` and a folder — which is not an object — has neither. `.distantPast`
         // rather than "now" for the unknown case: a sort by date must not shuffle on every refresh.
         let modified = date ?? .distantPast
         return FileEntry(
-            path: directory.appending(name),
+            path: path,
             name: name,
             kind: kind,
             byteSize: size,

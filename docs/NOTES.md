@@ -1684,6 +1684,21 @@ what made the milestone affordable and the rest inverted rules borrowed from the
   here: a fake key against real AWS answers `InvalidAccessKeyId` — meaning a well-formed signature
   was computed and the key looked up — where an *unsigned* request to the same URL returns an empty
   body. Without the second run the first reads as a failure.
+  - **The key pair goes on stdin, exactly as FTP's password does.** `--aws-sigv4` takes its
+    credential from `curl`'s ordinary `user` setting, so `-K -` carrying `user = "<id>:<secret>"`
+    keeps the secret out of `argv` with no loss of function — re-measured 2026-08-13 with the same
+    signed/unsigned control, so what is proved is that the secret *arrived*, not merely that it was
+    accepted.
+  - **`curl` sorts the query string itself when it signs, so callers must not.** Unmeasured, this is
+    the assumption that fails as `SignatureDoesNotMatch` for one user with one prefix, and no fake
+    key can expose it: AWS rejects an unknown access key id *before* weighing the signature, so every
+    error looks the same. What settles it in one run is arithmetic rather than a server — sign a
+    deliberately out-of-order query, capture the `Authorization` header with `-v`, and recompute
+    SigV4 by hand from the request's own `X-Amz-Date` and `x-amz-content-sha256`. The **sorted**
+    canonical query reproduces `curl`'s signature byte-for-byte; the as-written order does not.
+    The same run is a full positive control on the chain: an independent implementation of the
+    documented algorithm agreeing to the last hex digit says the signing is understood, not just
+    working.
 - **The exit code is *not* the classification — this is the exact inverse of the FTP rule above.**
   Every S3 failure that matters comes back as HTTP with `curl` exiting **0**: measured, a missing key
   is 404 `NoSuchKey`, a denied bucket 403 `AccessDenied`, a bad key 403 `InvalidAccessKeyId`, a wrong
@@ -1700,6 +1715,15 @@ what made the milestone affordable and the rest inverted rules borrowed from the
   has no way to diagnose — and the server already knows the answer. Note the corollary that the
   *regional* host is the only safe one to build (`s3.<region>.amazonaws.com`); the legacy global
   `s3.amazonaws.com` is right only for `us-east-1`.
+  - **But read `x-amz-bucket-region` first — the element is a trap in two ways at once.** AWS sends
+    that header on *every* response, the 301 included, and it names the region on its own
+    (measured 2026-08-13). The `<Endpoint>` element does not: it comes back **bucket-prefixed** and
+    in the legacy **dash** spelling — `nasa-nex.s3-us-west-2.amazonaws.com` — neither of which is a
+    shape this project ever builds, so a reader written against our own `s3.<region>.amazonaws.com`
+    recovers nothing from the one document that exists to hand the answer over. Keep the element as
+    the fallback for S3-compatible servers that send no header, and parse it by finding the segment
+    that *begins* `s3` rather than by counting from the left: a bucket name may contain dots, so the
+    segment count is not fixed.
 - **A `NextContinuationToken` must be percent-encoded when it is sent back**, or AWS rejects the page
   with `InvalidArgument` ("The continuation token provided is incorrect"). Measured A/B on the same
   token in one run. It fails **intermittently**, which is what makes it expensive: a token is base64
@@ -1730,6 +1754,38 @@ what made the milestone affordable and the rest inverted rules borrowed from the
   backend exists to reach, i.e. a listing with no dates at all. Two formatters, tried in order. They
   are also not `Sendable`, so they cannot be `static` under Swift 6; hold them per-parse rather than
   per-object, which is where the parser is hot.
+- **A stat is one request, and taking the first row of it names the wrong file.** Listing with
+  `prefix=` the key itself answers all three outcomes at once — a `Contents` row whose key is
+  *exactly* that one is a file, a `CommonPrefixes` of `key/` is a folder, and neither is a path that
+  is not there — which is why S3 needs no `HEAD`-then-`LIST` dance. The catch is the same
+  string-comparison fact as the trailing delimiter above, arriving where it is much less obvious:
+  probed, `prefix=README` came back with `README.alignment_data`, `README.analysis_history`,
+  `README.complete_genomics_data`, `README.crams` and **no `README`**. A first-row reading therefore
+  reports a *sibling's* size and date under the name that was asked about — a plausible answer about
+  the wrong file, which is the quiet direction.
+  - **A file can never be missed by paging and a folder can**, which is worth knowing before adding
+    a second request "for safety". Keys come back in lexicographic order and a string sorts before
+    every string it prefixes, so the object named exactly `key` is always the *first row of the first
+    page*. But `/` is 0x2F, so siblings like `docs.txt` and `docs-old` sort ahead of the `docs/`
+    group and could in principle fill a page before it appears. So the fallback is worth exactly one
+    request, on a truncated page that answered nothing, and never on the ordinary path.
+- **Resume works over S3, answers 206, and 416 is what a complete file gets.** Verified byte-exact
+  against a real object: `-C -` from a 100 000-byte partial of a 257 098-byte object moved exactly
+  157 098 bytes and compared identical to a whole download. Two things follow that are easy to get
+  wrong in opposite directions — **success is the 2xx range, not `== 200`**, or every correct resume
+  is classified as a failure (and only for the users whose transfer was interrupted once); and
+  resuming onto an already-**complete** local file answers **416 Range Not Satisfiable**, so the
+  remote size has to be checked first rather than left to `curl -C -` to discover, exactly as the
+  FTP backend does. Note the second is invisible until the first is right: with a `== 200` rule
+  every resume fails anyway.
+- **`%{stderr}` in `--write-out` is what carries the status back without a temp file**, since the
+  body owns stdout and the *status* is this backend's whole classification. Emit **labelled** lines
+  (`s3-status=…`), not bare values: stderr is not ours alone, and on a transport failure `curl`
+  prints its own prose there *first* — measured, an unresolvable host gives
+  `curl: (6) Could not resolve host: …` followed by `000`, so a reader that takes the stream, or its
+  first line, reads prose as a status. `%header{x-amz-bucket-region}` and `%header{content-length}`
+  ride the same mechanism, and an absent header renders empty rather than failing — which is the
+  only way to read a HEAD's size, since `size_download` is 0 for one.
 - **A mock is not a server, and `moto` answered the upload question wrongly in the confident
   direction.** Probing whether `curl` can PUT a body under SigV4, `moto` stored an **empty object and
   returned HTTP 200** for `--data-binary` while accepting `-T` — which reads exactly like a curl bug

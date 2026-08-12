@@ -238,4 +238,29 @@ struct S3ResponseErrorTests {
         #expect(S3TransportFailure.classify(curlExit: 60) == .certificateNotTrusted)
         #expect(S3TransportFailure.classify(curlExit: 99) == .other)
     }
+
+    /// The redirect names its endpoint in a shape this project never builds — bucket-prefixed and
+    /// spelled with a dash — so the reader is written against what AWS actually sent (probed
+    /// 2026-08-12) rather than against ``S3Location/awsHost(region:)``.
+    @Test(
+        "a region is recovered from the endpoint the redirect names",
+        arguments: [
+            ("nasa-nex.s3-us-west-2.amazonaws.com", "us-west-2"),
+            ("s3-us-west-2.amazonaws.com", "us-west-2"),
+            ("s3.eu-central-1.amazonaws.com", "eu-central-1"),
+            ("my.dotted.bucket.s3.ap-south-1.amazonaws.com", "ap-south-1")
+        ]
+    )
+    func recoversRegionFromEndpoint(endpoint: String, region: String) {
+        #expect(S3Location.region(fromEndpoint: endpoint) == region)
+    }
+
+    @Test("an endpoint that names no region says so")
+    func recoversNoRegionWhereThereIsNone() {
+        // The legacy global host is only ever right for `us-east-1`, and it does not say so —
+        // guessing one from it would sign for a region the server never named.
+        #expect(S3Location.region(fromEndpoint: "s3.amazonaws.com") == nil)
+        #expect(S3Location.region(fromEndpoint: "storage.example.com") == nil)
+        #expect(S3Location.region(fromEndpoint: "") == nil)
+    }
 }

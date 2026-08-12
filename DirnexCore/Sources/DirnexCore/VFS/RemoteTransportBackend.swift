@@ -31,10 +31,7 @@ public protocol RemoteWriteTransport: Sendable {
 /// was found in** rather than from a `stat`, because `sftp`'s `ls` follows symlinks and would report
 /// a link-to-directory as a directory, deleting the *target's* contents. That rule was written twice
 /// and is now written once.
-public protocol RemoteTransportBackend: VFSBackend {
-    /// How this connection names itself in an error the user reads (`user@host:port`).
-    var connectionDescriptor: String { get }
-
+public protocol RemoteTransportBackend: ConnectionScopedBackend {
     /// The transport the shared write verbs are issued through.
     var writeTransport: any RemoteWriteTransport { get }
 
@@ -45,16 +42,8 @@ public protocol RemoteTransportBackend: VFSBackend {
 }
 
 public extension RemoteTransportBackend {
-    /// Refuse a path belonging to another connection before it reaches the wire — a path under a
-    /// *different* account would otherwise be sent to this one as a raw string and act on whatever
-    /// happens to live there.
-    func requireOwnBackend(_ path: VFSPath) throws {
-        guard path.backend == id else {
-            throw VFSError.unsupported(
-                .pathOutsideConnection(path: "\(path)", connection: connectionDescriptor)
-            )
-        }
-    }
+    // `requireOwnBackend` is `ConnectionScopedBackend`'s — the same guard `S3Backend` needs, which
+    // is why it sits one level up rather than here.
 
     func createDirectory(at path: VFSPath) throws {
         try requireOwnBackend(path)

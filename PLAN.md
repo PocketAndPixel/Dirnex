@@ -516,6 +516,41 @@ Slice 1 landed 2026-08-12, core-only and additive (`S3Location`, `S3Key`, `S3Lis
 about corpora: a hand-written fixture proves the parser agrees with whoever wrote it, and both facts
 above are invisible that way.
 
+Slice 2 landed 2026-08-13 and is the **read half**, still core-only and additive
+(`S3ProcessArguments` with `S3ConfigFile` and `S3WriteOut`, `S3Transport`, `S3Backend`, and
+`ConnectionScopedBackend`; +90 tests, app untouched). A bucket now lists, stats and downloads
+against an injected transport fed the bytes `1000genomes` and `nasa-nex` actually sent. Five things
+were probed first and four of them changed the code that was about to be written:
+
+- **The credential rides on stdin and the signature is provably computed** — `-K -` carrying
+  `user = "<id>:<secret>"` beside `--aws-sigv4`, verified with the control that makes it evidence: a
+  fake key delivered that way comes back `InvalidAccessKeyId` (the key was looked up, so a
+  well-formed signature reached AWS) where the *unsigned* same request answers `NoSuchBucket`.
+- **`curl` sorts the query string itself when signing**, so the URL builder must not. Measured by
+  signing a deliberately out-of-order query, capturing the `Authorization` header, and recomputing
+  SigV4 by hand both ways — the sorted canonical query reproduces `curl`'s signature byte-for-byte
+  and the as-written order does not. Unmeasured, this fails as `SignatureDoesNotMatch` for one user
+  with one prefix.
+- **`x-amz-bucket-region` is on the 301**, which retires the plan's "parse the `<Endpoint>`
+  element": AWS's endpoint element is bucket-prefixed *and* spelled in the legacy dash form
+  (`nasa-nex.s3-us-west-2.amazonaws.com`), which is not a shape this project ever builds. The header
+  is now the primary source and the element the fallback, for S3-compatible servers that send no
+  header.
+- **A stat is one request, and the exact match is the whole rule.** Listing with `prefix=` the key
+  itself separates all three outcomes at once — a `Contents` row of exactly that key is a file, a
+  `CommonPrefixes` of `key/` is a folder, neither is not-found. What makes it sharp is that
+  `prefix=README` came back with four `README.*` siblings and no `README`, so a first-row reading
+  reports a *sibling's* size and date under the name that was asked about.
+- **Resume works and answers 206**, byte-identical to a whole download (a 257 098-byte object
+  resumed from a 100 000-byte partial moved exactly 157 098). Two corollaries: success is the 2xx
+  range and not `== 200`, or every correct resume reads as a failure; and resuming onto an
+  already-*complete* file answers **416**, so the remote size is checked first rather than left to
+  `curl -C -` to discover.
+
+The write half is deliberately not in it. `capabilities` says `.read`, so M5's degradation grays the
+rest out, and the upload payload-signing question below is still the thing that needs credentials to
+settle rather than a mock (the `moto` lesson).
+
 **What S3 will not be able to do, and it is better to state it than to discover it.** S3 is not a
 filesystem: rename is copy-then-delete (O(size), and N copies for a "folder"), `createDirectory` has
 no operation behind it beyond writing a marker, there is no settable mtime, no permissions and no

@@ -90,6 +90,32 @@ public struct S3Location: Sendable, Hashable, Codable {
     /// PermanentRedirect** rather than serving it (probed against a real bucket 2026-08-12) — and
     /// the global host is only ever right for `us-east-1`.
     public static func awsHost(region: String) -> String { "s3.\(region).amazonaws.com" }
+
+    /// The AWS region an endpoint host names, or `nil` when it names none.
+    ///
+    /// The one caller is the wrong-region redirect, and the shape it has to read was measured
+    /// rather than derived from ``awsHost(region:)``. AWS's 301 carries
+    /// `<Endpoint>nasa-nex.s3-us-west-2.amazonaws.com</Endpoint>` (probed 2026-08-12) — which is
+    /// **bucket-prefixed** and uses the legacy **dash** spelling, neither of which the host this
+    /// project builds ever has. A reader written against our own format therefore recovers nothing
+    /// from the one document that exists to hand it over.
+    ///
+    /// Both separators are accepted, and the bucket is skipped by taking the segment that begins
+    /// `s3` rather than by counting from the left: a bucket name may legally contain dots, so the
+    /// segment count is not fixed.
+    static func region(fromEndpoint endpoint: String) -> String? {
+        let segments = endpoint.split(separator: ".", omittingEmptySubsequences: false)
+        guard let index = segments.firstIndex(where: { $0 == "s3" || $0.hasPrefix("s3-") }),
+              segments.count > index + 1
+        else { return nil }
+        let marker = segments[index]
+        // `s3-us-west-2.amazonaws.com` carries the region inside the marker itself; `s3.us-west-2…`
+        // puts it in the next segment. The global `s3.amazonaws.com` names no region at all, which
+        // is why the next segment is checked against the suffix rather than taken on faith.
+        if marker.hasPrefix("s3-") { return String(marker.dropFirst(3)) }
+        let candidate = String(segments[index + 1])
+        return candidate == "amazonaws" ? nil : candidate
+    }
 }
 
 public extension S3Location {
