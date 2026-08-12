@@ -33,12 +33,23 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
     /// Every write the backend made, in order — one list rather than several, because the *order*
     /// is what several of these tests are about: a rename that deleted before it copied, or a
     /// folder delete that removed the marker before its contents, would pass a per-verb tally.
+    struct PartUpload: Equatable {
+        let localPath: String
+        let key: String
+        let uploadID: String
+        let partNumber: Int
+    }
+
     enum Write: Equatable {
         case upload(Upload)
         case putEmpty(String)
         case copy(Copy)
         case delete(String)
         case deleteBatch([String])
+        case createMultipart(String)
+        case uploadPart(PartUpload)
+        case completeMultipart(key: String, uploadID: String, parts: [S3UploadedPart])
+        case abortMultipart(key: String, uploadID: String)
     }
 
     /// Handed out in order, one per `listObjects` call. The last one repeats once exhausted, so a
@@ -53,6 +64,16 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
     var deleteBatchResponses: [S3Response] = []
     /// Thrown by every verb when set — the "the request never reached a server" half.
     var thrownError: S3ResponseError?
+
+    /// The answer to `CreateMultipartUpload`. A real `InitiateMultipartUploadResult` by default, so
+    /// a test only overrides it when the *opening* is what it is about.
+    var createMultipartResponse = S3Response.ok(S3Fixtures.initiateMultipart)
+    /// Handed out in order, one per part. Falls back to a 200 carrying a synthetic ETag once
+    /// exhausted, so a test aiming a failure at part 3 says only that.
+    var uploadPartResponses: [S3Response] = []
+    var completeMultipartResponse = S3Response.ok(S3Fixtures.completeMultipart)
+    /// Set to make the abort itself fail, which must never replace the error that provoked it.
+    var abortThrows = false
 
     private(set) var listRequests: [ListRequest] = []
     private(set) var downloads: [Download] = []
@@ -120,6 +141,66 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
         writes.append(.deleteBatch(keys))
         guard batchIndex < deleteBatchResponses.count else { return writeResponse }
         return deleteBatchResponses[batchIndex]
+    }
+
+    // MARK: - Multipart
+
+    func createMultipartUpload(key: String) throws -> S3Response {
+        if let thrownError { throw thrownError }
+        writes.append(.createMultipart(key))
+        return createMultipartResponse
+    }
+
+    func uploadPart(
+        localPath: String,
+        to key: String,
+        uploadID: String,
+        partNumber: Int
+    ) throws -> S3Response {
+        if let thrownError { throw thrownError }
+        // Recorded before the response is chosen, so a test can assert on the slice file the
+        // backend actually produced — including that it existed at the moment of the call.
+        sliceSizes.append(sizeOfFile(localPath))
+        let index = partNumber - 1
+        writes.append(
+            .uploadPart(
+                PartUpload(
+                    localPath: localPath,
+                    key: key,
+                    uploadID: uploadID,
+                    partNumber: partNumber
+                )
+            )
+        )
+        guard index < uploadPartResponses.count else {
+            return S3Response(status: 200, etag: "\"etag-part-\(partNumber)\"")
+        }
+        return uploadPartResponses[index]
+    }
+
+    func completeMultipartUpload(
+        key: String,
+        uploadID: String,
+        parts: [S3UploadedPart]
+    ) throws -> S3Response {
+        if let thrownError { throw thrownError }
+        writes.append(.completeMultipart(key: key, uploadID: uploadID, parts: parts))
+        return completeMultipartResponse
+    }
+
+    func abortMultipartUpload(key: String, uploadID: String) throws -> S3Response {
+        writes.append(.abortMultipart(key: key, uploadID: uploadID))
+        if abortThrows { throw S3ResponseError.transport(.other) }
+        return S3Response(status: 204)
+    }
+
+    /// The size of each slice at the moment its part was uploaded — how a test proves the backend
+    /// cut the ranges the plan describes without reaching into the temp directory afterwards, by
+    /// which time the slice is (correctly) gone.
+    private(set) var sliceSizes: [Int64] = []
+
+    private func sizeOfFile(_ path: String) -> Int64 {
+        (try? FileManager.default.attributesOfItem(atPath: path)[.size] as? Int64) as? Int64 ?? -1
     }
 }
 
@@ -263,6 +344,35 @@ enum S3Fixtures {
     <Deleted><Key>docs/a.txt</Key></Deleted>\
     <Error><Key>docs/sub/b.txt</Key><Code>AccessDenied</Code>\
     <Message>Access Denied</Message></Error></DeleteResult>
+    """
+
+    /// The answer to `CreateMultipartUpload` — the id every later request quotes.
+    static let initiateMultipart = """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <InitiateMultipartUploadResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">\
+    <Bucket>1000genomes</Bucket><Key>big.bin</Key>\
+    <UploadId>2~mZ8kR9tPq/LxV+3nD4bW5cYgH1jF6sA=</UploadId></InitiateMultipartUploadResult>
+    """
+
+    /// The upload id `initiateMultipart` carries, verbatim — deliberately holding `/`, `+` and `=`,
+    /// the three characters that make an opaque token need query encoding on the way back.
+    static let initiateUploadID = "2~mZ8kR9tPq/LxV+3nD4bW5cYgH1jF6sA="
+
+    /// A completion that really completed.
+    static let completeMultipart = """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <CompleteMultipartUploadResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">\
+    <Location>https://1000genomes.s3.us-east-1.amazonaws.com/big.bin</Location>\
+    <Bucket>1000genomes</Bucket><Key>big.bin</Key>\
+    <ETag>&quot;d972596d0b33e62664c950f532f9b3f1-3&quot;</ETag></CompleteMultipartUploadResult>
+    """
+
+    /// A completion that **failed inside a 200** — the shape a status-only reader calls a success
+    /// while the object does not exist.
+    static let completeMultipartFailed = """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <Error><Code>InternalError</Code><Message>We encountered an internal error. Please try again.\
+    </Message><RequestId>656c76696e6727</RequestId><HostId>Uuag1LuByRx9e6j5</HostId></Error>
     """
 
     /// `curl`'s stderr for an unresolvable host, verbatim: its own prose, then the write-out.

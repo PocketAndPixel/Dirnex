@@ -616,6 +616,44 @@ a name carrying a space, `+` and `#` through both sides of the copy-source heade
 move with `EXDEV`, delete one object, sweep a nested prefix in one batch, and a wrong-secret control
 that had to be refused.
 
+Slice 5 landed 2026-08-13 and is **multipart upload**, which closes the last thing that could make
+an ordinary F5 fail on size alone: S3 refuses a single `PUT` above 5 GiB, so before this a large
+file was rejected at the end of however long it took to offer the whole thing. `S3MultipartPlan`,
+`S3MultipartDocument`, `S3PartSlice` and `S3Backend+Multipart` (+38 tests), with the four verbs on
+`S3ProcessArguments`, `S3Transport` and `S3CurlTransport`. Everything below was measured against a
+local endpoint that verifies SigV4 by hand, before any Swift.
+
+- **A part must be a file on disk, and the natural fix for that is a trap.** `-T` is the only
+  affordable upload shape (5.3 MB resident against `--data-binary`'s 1.08 GB on 512 MiB), and it
+  needs something it can `fstat` for a `Content-Length` — a part piped to `-T -` goes out
+  `Transfer-Encoding: chunked`, which S3 rejects for an `UNSIGNED-PAYLOAD` upload. Adding
+  `-H "Content-Length: N"` does **not** fix it: `curl` then sends *both* headers, a contradictory
+  pair that a permissive endpoint reads happily and a real one refuses. So each part is cut to a
+  temp slice, which costs one part of temp space and roughly 1 % of a real upload's wall time.
+- **Two zero-copy routes were measured working and both were declined**, which is worth recording
+  because each looks like the obvious answer. Moving the credential to `-K /dev/fd/3` frees stdin
+  for `--data-binary @-` and signs a *real* payload digest — but `Foundation.Process` exposes only
+  three descriptors, so fd 3 means raw `posix_spawn`, and feeding a body while draining two pipes
+  turns a settled transport into a three-way pump. An APFS `clonefile` plus a truncate, `-C` and a
+  suppressed `Content-Range` sends the exact range with nothing copied — and is APFS-only, needs a
+  writable spot on the *source* volume, and so needs the slice path as its fallback anyway.
+- **The threshold is policy at 64 MiB, well below the 5 GiB the service forces**, because multipart
+  buys two things a single `PUT` cannot: a retry unit smaller than the file, and a progress counter
+  that moves. The whole object is one `curl` invocation on the single-`PUT` path, so a 4 GiB upload
+  showed nothing moving for its entire duration.
+- **An abandoned upload is a bill.** S3 stores the parts of an unfinished upload and charges for
+  them, invisibly to an ordinary listing, so every failing exit aborts — and the abort deliberately
+  swallows its own failure, since the error the caller is carrying is the one worth reporting.
+- **A completion can fail inside a 200**, the same shape `DeleteObjects` was *measured* to have, so
+  the body is read as well as the status. Reading only the status would report a successful upload
+  of an object that does not exist.
+
+Verified live by the same harness against that endpoint, with the server's own log as the judge
+rather than the client's opinion: a 70 MiB file went out as 4 × 16 MiB + 1 × 6 MiB, every part with
+an exact `Content-Length` and **no chunked framing anywhere**, reassembled byte-identical, stat'ed
+at its full size; a small file still took one `PUT`; a refused part ran `create → part → part →
+abort` and never completed; and a wrong-secret control was refused with `SignatureDoesNotMatch`.
+
 **What S3 will not be able to do, and it is better to state it than to discover it.** S3 is not a
 filesystem: rename is copy-then-delete (O(size), and N copies for a "folder"), `createDirectory` has
 no operation behind it beyond writing a marker, there is no settable mtime, no permissions and no
@@ -631,8 +669,8 @@ copies report items rather than bytes.
 
 Deliberately deferred, not forgotten: **account-level browsing** (`ListAllMyBuckets`) as a second
 root — a key scoped to one bucket is the ordinary way these are issued, so an account-rooted design
-fails at the root for exactly the users whose credentials are set up properly; and **multipart
-upload**, which a 5 GB single-PUT ceiling eventually forces. The **upload payload-signing question**
+fails at the root for exactly the users whose credentials are set up properly. **Multipart upload**
+was the other one and closed with Slice 5 above. The **upload payload-signing question**
 closed with Slice 4 and did not need credentials in the end: it looked like "which does AWS accept"
 and was really a memory measurement, since `--data-binary @` holds twice the file and `-T` holds
 nothing, so `UNSIGNED-PAYLOAD` arrives as a consequence rather than as a choice. Worth keeping the

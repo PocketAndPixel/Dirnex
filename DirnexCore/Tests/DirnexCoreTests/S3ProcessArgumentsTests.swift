@@ -48,6 +48,25 @@ struct S3ProcessArgumentsTests {
                 session: session,
                 bodyPath: "/tmp/delete.xml",
                 contentMD5: "1B2M2Y8AsgTpgAmY7PhCfg=="
+            ),
+            S3ProcessArguments.createMultipartUpload(session: session, key: "docs/big.bin"),
+            S3ProcessArguments.uploadPart(
+                session: session,
+                key: "docs/big.bin",
+                uploadID: "upload-id",
+                partNumber: 2,
+                localPath: "/tmp/part.bin"
+            ),
+            S3ProcessArguments.completeMultipartUpload(
+                session: session,
+                key: "docs/big.bin",
+                uploadID: "upload-id",
+                bodyPath: "/tmp/complete.xml"
+            ),
+            S3ProcessArguments.abortMultipartUpload(
+                session: session,
+                key: "docs/big.bin",
+                uploadID: "upload-id"
             )
         ]
         for arguments in everyInvocation {

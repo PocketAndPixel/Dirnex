@@ -196,39 +196,81 @@ public struct S3Backend: ConnectionScopedBackend {
         // Spelled as explicit comparisons rather than a `switch` over the pair: `case (id, .local)`
         // reads as a tuple pattern and is one missing `let` away from binding instead of matching,
         // which would route every direction to whichever arm came first.
-        let transferred: Int64
         if source.backend == id, destination.backend == .local {
-            transferred = try downloadObject(
+            let transferred = try downloadObject(
                 key: S3Key.key(for: source),
                 toLocal: destination.path,
                 at: source
             )
+            if isCancelled() { throw CancellationError() }
+            progress(transferred)
         } else if source.backend == .local, destination.backend == id {
-            transferred = try uploadObject(
+            // Reports its own deltas rather than returning a total for the tail below to report: a
+            // multipart upload reports one per part, and a second report here would count every
+            // byte of a large file twice.
+            try uploadObject(
                 localPath: source.path,
                 key: S3Key.key(for: destination),
-                at: destination
+                at: destination,
+                progress: progress,
+                isCancelled: isCancelled
             )
         } else if source.backend == id, destination.backend == id {
-            transferred = try copyObjectServerSide(from: source, to: destination)
+            let transferred = try copyObjectServerSide(from: source, to: destination)
+            if isCancelled() { throw CancellationError() }
+            progress(transferred)
         } else {
             throw VFSError.unsupported(.copyFile)
         }
-        if isCancelled() { throw CancellationError() }
-        progress(transferred)
     }
 
-    /// Upload `localPath` to `key`, and report what `curl` says it sent.
+    /// Upload `localPath` to `key` — in one `PUT` when it fits, in parts when it does not.
     ///
-    /// The byte count comes from the write-out's upload counter rather than from the local file's
-    /// size, so a short write is visible as a short write instead of being reported as the size the
-    /// file happened to have on disk.
-    private func uploadObject(localPath: String, key: String, at destination: VFSPath) throws -> Int64 {
+    /// The fork is ``S3MultipartPlan/isWorthwhile(totalSize:)`` and it is a *policy* threshold well
+    /// below the 5 GiB the service forces, because multipart buys a retry unit smaller than the file
+    /// and a progress bar that moves; the reasoning is argued at
+    /// ``S3MultipartLimits/multipartThreshold``.
+    ///
+    /// On the single-`PUT` path the byte count comes from the write-out's upload counter rather than
+    /// from the local file's size, so a short write is visible as a short write instead of being
+    /// reported as whatever size the file happened to have on disk.
+    private func uploadObject(
+        localPath: String,
+        key: String,
+        at destination: VFSPath,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws {
         guard !key.isEmpty else { throw VFSError.unsupported(.copyFile) }
+
+        let size = localFileSize(localPath)
+        if S3MultipartPlan.isWorthwhile(totalSize: size) {
+            // No plan means no number of parts can hold it — S3 stops at 5 TiB. Refused here, by
+            // name, rather than offering the whole file and letting the server say `EntityTooLarge`
+            // at the end of it.
+            guard let plan = S3MultipartPlan(totalSize: size) else {
+                throw VFSError.unsupported(
+                    .objectTooLargeForStore(name: destination.lastComponent)
+                )
+            }
+            _ = try uploadInParts(
+                S3MultipartRequest(
+                    localPath: localPath,
+                    key: key,
+                    destination: destination,
+                    plan: plan
+                ),
+                progress: progress,
+                isCancelled: isCancelled
+            )
+            return
+        }
+
         let response = try write(at: destination) {
             try transport.upload(localPath: localPath, to: key)
         }
-        return response.bytesTransferred
+        if isCancelled() { throw CancellationError() }
+        progress(response.bytesTransferred)
     }
 
     /// Duplicate one object inside this bucket without the bytes leaving S3.

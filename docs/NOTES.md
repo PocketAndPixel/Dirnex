@@ -1908,6 +1908,52 @@ what made the milestone affordable and the rest inverted rules borrowed from the
   is permissive. Two of this session's findings came from that endpoint's log rather than from any
   return value: what `-T` claims as its payload hash, and the basename appended to a trailing-slash
   URL.
+- **A multipart *part* is a byte range, and `curl` will only send one from something it can
+  `fstat`.** `-T` is already forced by memory (above), and it needs a length it can state: a part
+  piped to `-T -` goes out `Transfer-Encoding: chunked`, which S3 refuses for an `UNSIGNED-PAYLOAD`
+  upload. The natural fix is the trap — `-H "Content-Length: N"` on a stdin upload does **not**
+  stop the chunking, it makes `curl` send *both* headers, a contradictory pair that a lenient
+  endpoint reads without complaint (measured: it accepted 5 242 880 bytes and reported
+  `size_upload` 5 243 557, the difference being framing it counted as payload). So a part is cut to
+  a temp file. The price is one part of temp space and the file's bytes written and read once more,
+  which is ~1 % of the wall time of the transfer it pays for — worth computing rather than
+  agonizing over.
+  - **Two zero-copy routes measure working and both cost more than they save.** The credential can
+    move to **`-K /dev/fd/3`**, freeing stdin for `--data-binary @-` — verified end to end, wrong
+    secret on fd 3 still refused, so the secret really does arrive that way — and it signs a **real
+    payload digest** instead of `UNSIGNED-PAYLOAD`. What kills it is not `curl`: `Foundation.Process`
+    exposes only stdin, stdout and stderr, so fd 3 means dropping to `posix_spawn` file actions, and
+    writing a body while draining two pipes is a three-way pump on a transport whose deadlock
+    behaviour is already settled. The other is an **APFS clone**: `clonefile`, truncate the tail,
+    `-C <offset>` to skip the head, `-H "Content-Range:"` to strip the header `-C` adds — it sent the
+    exact range with nothing copied. It is APFS-only, needs a writable spot on the *source* volume
+    (which a mounted image or a read-only share has not), and therefore needs the copy path as its
+    fallback regardless.
+  - **`-C <offset>` on an *upload* skips the head and sends everything to the end** — no way to bound
+    it — **and adds `Content-Range: bytes <from>-<to>/<total>`**, which it does not sign. Harmless in
+    a plain resume and wrong for an `UploadPart`, which has no partial-write semantics. `curl` will
+    remove any header it generates if given it with an empty value, which is what makes the clone
+    route expressible at all.
+- **`%header{etag}` carries a part's ETag through the write-out already in use**, so a part upload
+  needs no `-D -` competing with `--output` for a stream. It arrives **quoted**
+  (`"f804fb237efd0e539f99f64aa7299653"`) and must be quoted back in the completion manifest — S3
+  compares it byte for byte, so tidying the quotes away fails the completion with `InvalidPart` on
+  every part.
+- **An upload id is the continuation token's twin and needs the same query encoding.** It is an
+  opaque server-chosen token, so it round-trips raw right up until a server issues one carrying `/`,
+  `+` or `=` — intermittent, per-server, and indistinguishable from a signature problem when it
+  happens.
+- **`CompleteMultipartUpload` can answer 200 with an `<Error>` body.** AWS may begin the response
+  before it has finished assembling, holding the connection open, and then send an error under the
+  status it already committed to. Documented rather than measured here — the local endpoint does not
+  reproduce it — but it is the shape `DeleteObjects` *was* measured to have, and the asymmetry
+  decides it: reading a body that never carries an error costs one parse, while not reading it
+  reports an object that does not exist as uploaded.
+- **An unfinished multipart upload is a bill, not a mess.** S3 keeps the parts and charges storage
+  for them, and they are invisible to an ordinary listing — so an upload that dies without aborting
+  leaves the user paying for bytes they cannot see and did not keep. Abort on every failing exit
+  including cancellation, and let the abort swallow its own failure: it runs where something has
+  already gone wrong, and the caller's error is the one worth reporting.
 
 ### The Trash
 

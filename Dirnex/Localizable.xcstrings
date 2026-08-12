@@ -106987,6 +106987,95 @@
         }
       }
     },
+    "vfs.unsupported.objectTooLargeForStore": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown when a file is larger than the object store can hold at all — S3 stops at 5 TiB, which no number of parts moves. %@ is the file name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ ist zu groß für diesen Speicherdienst."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is too large for this storage service to hold."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» es demasiado grande para este servicio de almacenamiento."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« %@ » est trop volumineux pour ce service de stockage."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” è troppo grande per questo servizio di archiviazione."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」はこのストレージサービスで保存するには大きすぎます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‘%@’은(는) 이 저장소 서비스에 저장하기에 너무 큽니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‘%@’ is te groot voor deze opslagdienst."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@” jest zbyt duży dla tej usługi przechowywania."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” é grande demais para este serviço de armazenamento."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» слишком велик для этого хранилища."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» завеликий для цього сховища."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”过大，此存储服务无法保存。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」過大，此儲存服務無法保存。"
+          }
+        }
+      }
+    },
     "vfs.unsupported.pathOutsideArchive": {
       "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. %1$@ is the path, %2$@ the archive.",
       "localizations": {

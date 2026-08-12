@@ -16,19 +16,24 @@ public struct S3Response: Sendable, Equatable {
     public let contentLength: Int64?
     /// Bytes this invocation moved, for a transfer.
     public let bytesTransferred: Int64
+    /// The `ETag` header, verbatim and quoted — an uploaded part's identity, which the completion
+    /// manifest quotes back byte for byte.
+    public let etag: String?
 
     public init(
         status: Int,
         body: Data = Data(),
         bucketRegion: String? = nil,
         contentLength: Int64? = nil,
-        bytesTransferred: Int64 = 0
+        bytesTransferred: Int64 = 0,
+        etag: String? = nil
     ) {
         self.status = status
         self.body = body
         self.bucketRegion = bucketRegion
         self.contentLength = contentLength
         self.bytesTransferred = bytesTransferred
+        self.etag = etag
     }
 
     /// Whether the server said yes.
@@ -92,4 +97,32 @@ public protocol S3Transport: Sendable {
     /// Serializing the request document and its `Content-MD5` is the transport's, since the body
     /// travels as a file — a size decision argued in ``S3ProcessArguments/deleteObjects(session:bodyPath:contentMD5:)``.
     func deleteObjects(keys: [String]) throws -> S3Response
+
+    /// Open a multipart upload. The answer carries the id every later request quotes.
+    func createMultipartUpload(key: String) throws -> S3Response
+
+    /// Upload one part from a local slice file. The part's ETag comes back in
+    /// ``S3Response/etag``.
+    func uploadPart(
+        localPath: String,
+        to key: String,
+        uploadID: String,
+        partNumber: Int
+    ) throws -> S3Response
+
+    /// Close a multipart upload with the manifest of parts to assemble.
+    ///
+    /// The response body **is** part of the outcome: a completion can answer 200 carrying an
+    /// `<Error>` document, so the status alone does not say the object exists
+    /// (``S3MultipartDocument/completionFailure(from:status:)``). Serializing the manifest and
+    /// giving it a file to travel in is the transport's, as it is for a batch delete.
+    func completeMultipartUpload(
+        key: String,
+        uploadID: String,
+        parts: [S3UploadedPart]
+    ) throws -> S3Response
+
+    /// Abandon a multipart upload and release its stored parts — which S3 bills for until something
+    /// removes them.
+    func abortMultipartUpload(key: String, uploadID: String) throws -> S3Response
 }

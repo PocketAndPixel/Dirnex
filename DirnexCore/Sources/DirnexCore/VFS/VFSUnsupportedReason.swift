@@ -75,6 +75,14 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
     /// A recursive apply was pointed at something that is not on this disk. Mode bits, a BSD flags
     /// word and an ACL are things a real inode has; an archive member and a server listing have none.
     case attributesNeedLocalItem(name: String)
+    /// The file is larger than the object store can hold at all — S3's ceiling is 5 TiB, which no
+    /// number of parts moves.
+    ///
+    /// Named rather than left to the server, because the server's refusal arrives *after* the whole
+    /// file has been offered: this is a limit worth stating up front, in a sentence that says which
+    /// file and that the store is the constraint, instead of an `EntityTooLarge` at the end of a
+    /// long upload.
+    case objectTooLargeForStore(name: String)
 
     // MARK: Routing and archives — authored in the app, named here
 
@@ -114,6 +122,7 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
         case .attributeRestoreNeedsAdministrator: return "attributeRestoreNeedsAdministrator"
         case .attributeChangeNeedsAdministrator: return "attributeChangeNeedsAdministrator"
         case .attributesNeedLocalItem: return "attributesNeedLocalItem"
+        case .objectTooLargeForStore: return "objectTooLargeForStore"
         case .noBackendForPath: return "noBackendForPath"
         case .serverNotConnected: return "serverNotConnected"
         case .archiveToolUnavailableForRead: return "archiveToolUnavailableForRead"
@@ -196,6 +205,8 @@ public extension VFSUnsupportedReason {
             return ("Only an administrator can change “%@”.", [name])
         case let .attributesNeedLocalItem(name):
             return ("“%@” isn’t on this Mac, so it has no permissions to change.", [name])
+        case let .objectTooLargeForStore(name):
+            return ("“%@” is too large for this storage service to hold.", [name])
         case let .noBackendForPath(path):
             return ("No backend can handle %@.", [path])
         case let .serverNotConnected(server):
@@ -246,6 +257,7 @@ public extension VFSUnsupportedReason {
             .attributeRestoreNeedsAdministrator(name: ""),
             .attributeChangeNeedsAdministrator(name: ""),
             .attributesNeedLocalItem(name: ""),
+            .objectTooLargeForStore(name: ""),
             .noBackendForPath(path: ""),
             .serverNotConnected(server: ""),
             .archiveToolUnavailableForRead,

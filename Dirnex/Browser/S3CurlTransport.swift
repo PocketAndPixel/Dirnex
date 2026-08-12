@@ -138,6 +138,79 @@ struct S3CurlTransport: S3Transport {
         )
     }
 
+    // MARK: - Multipart
+
+    func createMultipartUpload(key: String) throws -> S3Response {
+        try perform(
+            S3ProcessArguments.createMultipartUpload(
+                session: session(maxTime: metadataTimeout),
+                key: key
+            ),
+            measuring: .download
+        )
+    }
+
+    func uploadPart(
+        localPath: String,
+        to key: String,
+        uploadID: String,
+        partNumber: Int
+    ) throws -> S3Response {
+        try perform(
+            S3ProcessArguments.uploadPart(
+                session: session(maxTime: transferTimeout),
+                key: key,
+                uploadID: uploadID,
+                partNumber: partNumber,
+                localPath: localPath
+            ),
+            measuring: .upload
+        )
+    }
+
+    /// Close the upload, with the manifest travelling as a temp file.
+    ///
+    /// A file rather than an inline body for the same reason the batch delete uses one: 10 000
+    /// parts of `<Part>` markup runs past `ARG_MAX`, so an inline manifest would work right up to
+    /// the file sizes multipart exists for. It carries no secret — part numbers and ETags — and is
+    /// removed on every exit path, the throwing ones included.
+    func completeMultipartUpload(
+        key: String,
+        uploadID: String,
+        parts: [S3UploadedPart]
+    ) throws -> S3Response {
+        let body = S3MultipartDocument.manifest(parts: parts)
+        let bodyPath = FileManager.default.temporaryDirectory
+            .appendingPathComponent("dirnex-s3-complete-\(UUID().uuidString).xml")
+        do {
+            try body.write(to: bodyPath, options: .atomic)
+        } catch {
+            throw S3ResponseError.transport(.other)
+        }
+        defer { try? FileManager.default.removeItem(at: bodyPath) }
+
+        return try perform(
+            S3ProcessArguments.completeMultipartUpload(
+                session: session(maxTime: transferTimeout),
+                key: key,
+                uploadID: uploadID,
+                bodyPath: bodyPath.path
+            ),
+            measuring: .download
+        )
+    }
+
+    func abortMultipartUpload(key: String, uploadID: String) throws -> S3Response {
+        try perform(
+            S3ProcessArguments.abortMultipartUpload(
+                session: session(maxTime: metadataTimeout),
+                key: key,
+                uploadID: uploadID
+            ),
+            measuring: .download
+        )
+    }
+
     /// Reach the endpoint and come back with nothing to say — the connection test the connect flow
     /// runs before saving anything. Every failure that matters (bad key, denied bucket, wrong
     /// region, unreachable host) surfaces here as a response or a throw, classified.
@@ -183,7 +256,8 @@ struct S3CurlTransport: S3Transport {
             body: result.standardOutput,
             bucketRegion: fields.bucketRegion,
             contentLength: fields.contentLength,
-            bytesTransferred: direction == .upload ? fields.bytesUploaded : fields.bytesDownloaded
+            bytesTransferred: direction == .upload ? fields.bytesUploaded : fields.bytesDownloaded,
+            etag: fields.etag
         )
     }
 

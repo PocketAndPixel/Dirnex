@@ -184,6 +184,81 @@ public enum S3ProcessArguments {
             + ["-X", "PUT", "--data-binary", "", session.location.url(forKey: key)]
     }
 
+    // MARK: - Multipart
+
+    /// Open a multipart upload, whose answer carries the id every later request quotes.
+    ///
+    /// `--data-binary ""` for the same reason ``putEmptyObject(session:key:)`` uses it: this POST
+    /// has no body, and it is the one spelling that states its own emptiness with a real
+    /// `Content-Length: 0` and a real payload digest rather than falling back to chunked framing.
+    public static func createMultipartUpload(session: S3Session, key: String) -> [String] {
+        common(session: session) + configFromStandardInput
+            + ["-X", "POST", "--data-binary", ""]
+            + ["\(session.location.url(forKey: key))?uploads"]
+    }
+
+    /// Upload one part from a local slice file.
+    ///
+    /// `-T` again, so a part streams and memory stays flat whatever the part size — which is what
+    /// lets the part size be chosen for request efficiency instead of being capped by RAM
+    /// (``S3PartSlice`` argues why the slice is a file at all).
+    ///
+    /// **The upload id is percent-encoded**, and that is the continuation-token lesson applied
+    /// before it can bite: an upload id is an opaque server-chosen token, so it is exactly the kind
+    /// of value that round-trips raw right up until the day a server issues one containing a
+    /// character that means something in a query string. The failure would be intermittent and
+    /// per-server, which is the worst shape available.
+    public static func uploadPart(
+        session: S3Session,
+        key: String,
+        uploadID: String,
+        partNumber: Int,
+        localPath: String
+    ) -> [String] {
+        let query = "partNumber=\(partNumber)&uploadId=\(S3Key.encodedForQuery(uploadID))"
+        return common(session: session) + configFromStandardInput
+            + ["--upload-file", localPath]
+            + ["\(session.location.url(forKey: key))?\(query)"]
+    }
+
+    /// Close a multipart upload, handing the server the manifest of parts to assemble.
+    ///
+    /// The manifest travels as a **file** for the reason
+    /// ``deleteObjects(session:bodyPath:contentMD5:)`` does: 10 000 parts of `<Part>` markup runs to
+    /// hundreds of kilobytes, which is past `ARG_MAX`, so an inline body would work until somebody
+    /// uploaded something large enough to need the parts. It carries no secret — part numbers and
+    /// ETags — and stdin is holding the credential regardless.
+    ///
+    /// No `Content-MD5` here, unlike the batch delete: S3 requires that header on `DeleteObjects`
+    /// and does not on this verb.
+    public static func completeMultipartUpload(
+        session: S3Session,
+        key: String,
+        uploadID: String,
+        bodyPath: String
+    ) -> [String] {
+        common(session: session) + configFromStandardInput
+            + ["-X", "POST", "--data-binary", "@\(bodyPath)"]
+            + ["-H", "Content-Type: application/xml"]
+            + ["\(session.location.url(forKey: key))?uploadId=\(S3Key.encodedForQuery(uploadID))"]
+    }
+
+    /// Abandon a multipart upload and release the parts already stored.
+    ///
+    /// **This is a bill, not tidiness.** S3 keeps the parts of an unfinished upload indefinitely and
+    /// charges storage for them, and they are invisible to an ordinary listing — so an upload that
+    /// dies without aborting leaves the user paying for bytes they cannot see and did not keep. It
+    /// is the one request in this backend whose whole purpose is to run after something went wrong.
+    public static func abortMultipartUpload(
+        session: S3Session,
+        key: String,
+        uploadID: String
+    ) -> [String] {
+        common(session: session) + configFromStandardInput
+            + ["-X", "DELETE"]
+            + ["\(session.location.url(forKey: key))?uploadId=\(S3Key.encodedForQuery(uploadID))"]
+    }
+
     /// Copy one object to another key **inside the same bucket**, server-side.
     ///
     /// This is the rename primitive, and the reason a rename costs no local bandwidth: the bytes
@@ -331,7 +406,8 @@ public enum S3WriteOut {
         "s3-region=%header{x-amz-bucket-region}\\n",
         "s3-length=%header{content-length}\\n",
         "s3-size=%{size_download}\\n",
-        "s3-up=%{size_upload}\\n"
+        "s3-up=%{size_upload}\\n",
+        "s3-etag=%header{etag}\\n"
     ].joined()
 
     /// What one invocation reported about its response.
@@ -356,6 +432,15 @@ public enum S3WriteOut {
         /// `<Error>` document. Collapsing them would report a failed upload's size as the sum of
         /// the file and the refusal that rejected it. The caller says which direction it asked for.
         public let bytesUploaded: Int64
+        /// The `ETag` response header, which is how an uploaded **part** identifies itself — the
+        /// value the completion manifest has to quote back.
+        ///
+        /// It rides the write-out rather than a header dump because `%header{etag}` already exists
+        /// for exactly this (measured 2026-08-13 returning `"f804fb…"`, quotes included), so a part
+        /// upload needs no second mechanism and no `-D -` competing with `--output` for a stream.
+        /// Carried **verbatim**, quotes and all: S3 compares the value byte for byte when it
+        /// assembles the object, so a tidied ETag fails the completion (``S3UploadedPart``).
+        public let etag: String?
     }
 
     /// Read the labelled lines out of a stderr stream, ignoring anything else in it.
@@ -375,7 +460,8 @@ public enum S3WriteOut {
             bucketRegion: values["s3-region"],
             contentLength: values["s3-length"].flatMap(Int64.init),
             bytesDownloaded: values["s3-size"].flatMap(Int64.init) ?? 0,
-            bytesUploaded: values["s3-up"].flatMap(Int64.init) ?? 0
+            bytesUploaded: values["s3-up"].flatMap(Int64.init) ?? 0,
+            etag: values["s3-etag"]
         )
     }
 }
