@@ -1,0 +1,219 @@
+import Foundation
+import Testing
+
+@testable import DirnexCore
+
+/// The comparison that stands between a save and somebody else's work (PLAN.md §M21 Slice 10).
+///
+/// Everything here is a pure value comparison, so the fixtures are built rather than captured —
+/// which is honest for once: the question is not what a server sends but what two readings of it
+/// mean, and there is nothing for a corpus to be an oracle about. What the live suite adds later,
+/// and this cannot, is that the second reading is taken at all.
+@Suite("Remote file revision")
+struct RemoteFileRevisionTests {
+    private let noon = Date(timeIntervalSince1970: 1_700_000_000)
+
+    private func entry(
+        backend: VFSBackendID,
+        byteSize: Int64 = 10,
+        modified: Date
+    ) -> FileEntry {
+        FileEntry(
+            path: VFSPath(backend: backend, path: "/notes.txt"),
+            name: "notes.txt",
+            kind: .file,
+            byteSize: byteSize,
+            modificationDate: modified,
+            creationDate: modified,
+            isHidden: false,
+            permissions: 0o644,
+            inode: 0
+        )
+    }
+
+    private var ftpBackend: VFSBackendID {
+        .ftp(FTPLocation(host: "files.example.com", username: "oleg"))
+    }
+
+    private var s3Backend: VFSBackendID {
+        .s3(S3Location(
+            host: "s3.us-east-1.amazonaws.com",
+            bucket: "dirnex-test",
+            region: "us-east-1",
+            accessKeyID: "AKIA"
+        ))
+    }
+
+    // MARK: - Detecting a write
+
+    @Test("an untouched object is not superseded")
+    func unchangedIsNotSuperseded() {
+        let downloaded = RemoteFileRevision(byteSize: 4096, modified: noon)
+
+        #expect(!downloaded.isSuperseded(by: RemoteFileRevision(byteSize: 4096, modified: noon)))
+    }
+
+    @Test("a different size counts whatever the timestamps say")
+    func sizeChangeIsSuperseded() {
+        let downloaded = RemoteFileRevision(byteSize: 4096, modified: noon)
+
+        #expect(downloaded.isSuperseded(by: RemoteFileRevision(byteSize: 4097, modified: noon)))
+    }
+
+    @Test("a different timestamp counts whatever the sizes say")
+    func timestampChangeIsSuperseded() {
+        let downloaded = RemoteFileRevision(byteSize: 4096, modified: noon)
+        let rewritten = RemoteFileRevision(byteSize: 4096, modified: noon.addingTimeInterval(60))
+
+        #expect(downloaded.isSuperseded(by: rewritten))
+    }
+
+    /// The case size and time cannot see, and the whole reason the field exists: a file rewritten
+    /// to the same length inside the same timestamp resolution.
+    @Test("a differing entity tag catches a rewrite of identical size and time")
+    func entityTagCatchesIdenticalSizeAndTime() {
+        let downloaded = RemoteFileRevision(byteSize: 4096, modified: noon, entityTag: "\"aaa\"")
+        let rewritten = RemoteFileRevision(byteSize: 4096, modified: noon, entityTag: "\"bbb\"")
+
+        #expect(downloaded.isSuperseded(by: rewritten))
+        // The negative control for the same rule: without the tags this pair is invisible.
+        #expect(!RemoteFileRevision(byteSize: 4096, modified: noon)
+            .isSuperseded(by: RemoteFileRevision(byteSize: 4096, modified: noon)))
+    }
+
+    /// A matching tag is proof, so nothing else is consulted. Falling through to size and time here
+    /// would let a same-size rewrite past on the one comparison that could have caught it — the
+    /// mirror of the case above, and the reason the tags short-circuit rather than merely joining
+    /// the disjunction.
+    @Test("a matching entity tag settles it, even against a differing size")
+    func matchingEntityTagWins() {
+        let downloaded = RemoteFileRevision(byteSize: 4096, modified: noon, entityTag: "\"aaa\"")
+        let restated = RemoteFileRevision(byteSize: 8192, modified: noon, entityTag: "\"aaa\"")
+
+        #expect(!downloaded.isSuperseded(by: restated))
+    }
+
+    @Test("a tag on only one side falls back to size and time")
+    func oneSidedEntityTagFallsBack() {
+        let downloaded = RemoteFileRevision(byteSize: 4096, modified: noon, entityTag: "\"aaa\"")
+        let untagged = RemoteFileRevision(byteSize: 4096, modified: noon)
+
+        #expect(!downloaded.isSuperseded(by: untagged))
+        #expect(downloaded.isSuperseded(by: RemoteFileRevision(byteSize: 99, modified: noon)))
+    }
+
+    /// Two files that were never dated must not read as "both unchanged" through a sentinel that
+    /// compares equal to itself — which is exactly what `.distantPast` would do if it survived into
+    /// the comparison as a date.
+    @Test("no timestamp on either side still compares by size")
+    func undatedComparesBySize() {
+        let downloaded = RemoteFileRevision(byteSize: 4096, modified: nil)
+
+        #expect(!downloaded.isSuperseded(by: RemoteFileRevision(byteSize: 4096, modified: nil)))
+        #expect(downloaded.isSuperseded(by: RemoteFileRevision(byteSize: 5000, modified: nil)))
+    }
+
+    @Test("gaining a timestamp counts as a change")
+    func acquiringATimestampIsSuperseded() {
+        let downloaded = RemoteFileRevision(byteSize: 4096, modified: nil)
+
+        #expect(downloaded.isSuperseded(by: RemoteFileRevision(byteSize: 4096, modified: noon)))
+    }
+
+    // MARK: - Building one from a listing
+
+    @Test("an entry's unknown date becomes no timestamp, not a date in year 1")
+    func unknownDateBecomesNil() {
+        let folder = entry(backend: s3Backend, modified: FileEntry.unknownDate)
+
+        #expect(RemoteFileRevision(folder).modified == nil)
+    }
+
+    @Test("a real date survives the trip from the entry")
+    func realDateIsCarried() {
+        #expect(RemoteFileRevision(entry(backend: s3Backend, modified: noon)).modified == noon)
+        #expect(RemoteFileRevision(entry(backend: s3Backend, modified: noon)).byteSize == 10)
+    }
+
+    @Test("the FTP caveat rides along without the caller naming a backend")
+    func ftpEntryIsMarkedApproximate() {
+        #expect(RemoteFileRevision(entry(backend: ftpBackend, modified: noon))
+            .timestampIsApproximate)
+        #expect(!RemoteFileRevision(entry(backend: s3Backend, modified: noon))
+            .timestampIsApproximate)
+    }
+
+    // MARK: - What "unchanged" is worth
+
+    @Test("evidence names the blind spot rather than a confidence")
+    func evidenceIsNamed() {
+        let tagged = RemoteFileRevision(byteSize: 1, modified: noon, entityTag: "\"a\"")
+        let dated = RemoteFileRevision(byteSize: 1, modified: noon)
+        let undated = RemoteFileRevision(byteSize: 1, modified: nil)
+        let coarse = RemoteFileRevision(
+            byteSize: 1, modified: noon, timestampIsApproximate: true
+        )
+
+        #expect(tagged.evidence(comparedWith: tagged) == .entityTag)
+        #expect(dated.evidence(comparedWith: dated) == .sizeAndTimestamp)
+        #expect(dated.evidence(comparedWith: undated) == .sizeOnly)
+        #expect(undated.evidence(comparedWith: undated) == .sizeOnly)
+        #expect(coarse.evidence(comparedWith: dated) == .sizeAndApproximateTimestamp)
+    }
+
+    /// A coarse stamp is still a *timestamp*, so the missing date must outrank it: with no date at
+    /// all there is nothing to be approximate about, and reporting the FTP sentence there would name
+    /// a weakness that is not the one in play.
+    @Test("no timestamp outranks an approximate one")
+    func missingTimestampOutranksApproximate() {
+        let coarse = RemoteFileRevision(
+            byteSize: 1, modified: noon, timestampIsApproximate: true
+        )
+        let undated = RemoteFileRevision(byteSize: 1, modified: nil)
+
+        #expect(coarse.evidence(comparedWith: undated) == .sizeOnly)
+    }
+
+    /// An entity tag is exact whatever the backend's clock is like, so it must outrank the FTP
+    /// caveat rather than being diluted by it.
+    @Test("an entity tag outranks an approximate timestamp")
+    func entityTagOutranksApproximate() {
+        let coarse = RemoteFileRevision(
+            byteSize: 1, modified: noon, entityTag: "\"a\"", timestampIsApproximate: true
+        )
+        let tagged = RemoteFileRevision(byteSize: 1, modified: noon, entityTag: "\"a\"")
+
+        #expect(coarse.evidence(comparedWith: tagged) == .entityTag)
+    }
+}
+
+/// The one-line predicate the revision reads its FTP caveat from, pinned where it lives rather than
+/// only through the value that consumes it — the size-bar lesson: a rule with two readers is a rule
+/// that drifts, and this one is invisible at the second reader.
+@Suite("Approximate timestamps by backend")
+struct ApproximateTimestampBackendTests {
+    @Test("only FTP's LIST stamp is approximate")
+    func onlyFTP() {
+        let ftp = VFSBackendID.ftp(FTPLocation(host: "h", username: "u"))
+        let sftp = VFSBackendID.sftp(SFTPLocation(host: "h", username: "u"))
+        let s3 = VFSBackendID.s3(S3Location(
+            host: "h", bucket: "b", region: "r", accessKeyID: "k"
+        ))
+
+        #expect(ftp.hasApproximateTimestamps)
+        #expect(!sftp.hasApproximateTimestamps)
+        #expect(!s3.hasApproximateTimestamps)
+        #expect(!VFSBackendID.local.hasApproximateTimestamps)
+    }
+
+    /// Every mode of FTP, not just the one the fixture happens to use: FTPS is the same `LIST`.
+    @Test("every FTP security mode carries the same caveat")
+    func everyFTPMode() {
+        for security in FTPSecurity.allCases {
+            let backend = VFSBackendID.ftp(
+                FTPLocation(host: "h", username: "u", security: security)
+            )
+            #expect(backend.hasApproximateTimestamps)
+        }
+    }
+}

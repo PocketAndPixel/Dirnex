@@ -932,10 +932,124 @@ shape of that mistake — a local `moto` mock had answered the *acceptance* form
 confident direction (silently storing an empty object for the signed form while a trace showed the
 bytes had gone out fine), and the question it was asked was the wrong one anyway.
 
-#### Slice 10 — planned, not opened: reading and editing a remote file in place
+#### Slice 10 — opened 2026-08-14: reading and editing a remote file in place
 
 Quick View (⌘Y / ⌃Q / F3), F4 Edit with write-back, and ⏎ to open — for **every** remote backend,
 not for S3 alone.
+
+**The core half landed 2026-08-14, additive and app-untouched** (`RemoteFileRevision` with
+`RemoteRevisionEvidence`, `RemoteFetchPolicy`, and one predicate on `VFSBackendID`; +24 tests, 2351
+core tests green, both linters clean). It is deliberately the part none of the five probes below can
+change — every one of them is about the transport or the app, so the value types were affordable
+first and the probes still gate the app pass rather than being skipped.
+
+- **`isSuperseded(by:)` and "how much is that answer worth" are two questions**, and folding them
+  into one confidence number would have made the second unanswerable. A *difference* found here is
+  always real evidence of a write; *no* difference is only as strong as the fields compared, so
+  `evidence(comparedWith:)` names the blind spot instead — `.entityTag`, `.sizeAndTimestamp`,
+  `.sizeAndApproximateTimestamp`, `.sizeOnly` — and the app words each rather than showing a
+  percentage nobody can act on. `.sizeOnly` outranks the approximate case on purpose: with no date
+  at all there is nothing to be approximate *about*, and the FTP sentence there would name a
+  weakness that is not the one in play.
+- **The FTP caveat rides on the value, not on the call site.** `VFSBackendID.hasApproximateTimestamps`
+  is the one spelling — a `LIST` stamp is year-less, zone-less and on the server's clock, which is
+  fine to display and sort by and is not something to decide "nobody has touched this since" on —
+  and `RemoteFileRevision(_ entry:)` reads it off the entry's own path, so a caller wording a
+  conflict dialog cannot forget to ask. Named beside `isRemoteConnection` and `acceptsUploads`
+  because this milestone has now re-derived the one-rule-several-spellings finding four times.
+- **The ETag field ships with no producer, and it earns its place by changing the *rule*.** A
+  matching tag short-circuits the comparison outright rather than joining the disjunction — a
+  matching size and time is an absence of evidence where a matching tag is proof — and the two
+  cannot be collapsed after the fact. Nothing supplies one yet (`S3ListingParser` reads a listing's
+  `<ETag>` past without keeping it, and `FileEntry` has no field to carry it); the negative control
+  is what makes the field testable today, since without the tags the same-size same-second rewrite
+  is invisible to every other assertion in the suite.
+- **`RemoteFetchPolicy` is a table because the numbers are expected to move.** Preview at 16 MiB
+  asks first — the least committed gesture, the most expensive to get wrong, and every renderer
+  behind it holds the whole file — while open and edit sit at 64 MiB, reusing `S3MultipartPlan`'s
+  existing statement of where a transfer stops feeling instant rather than minting a second number
+  that means the same thing. Edit is deliberately *not* lower than open: the file F4 was pressed on
+  is one the user intends to change, so the dialog would stand in front of the work rather than in
+  front of a look. The row that is not a number is the least arguable — an unknown (or negative,
+  i.e. unparsed) size confirms, because not knowing how much is about to be pulled is exactly when
+  to ask.
+- Four negative controls were run and each failed only its own assertions: dropping the entity-tag
+  short-circuit, passing `FileEntry.unknownDate` through as a date, flattening
+  `hasApproximateTimestamps` to `false`, and clamping a negative size to zero.
+
+**The five probes ran 2026-08-14** against the real third-party account, plus a deliberately slow
+local HTTP server for the one that is about our own process plumbing rather than about S3. Two of
+them change the app pass, one holds, one is unanswerable on this endpoint, and one found a bug older
+than this milestone.
+
+- **1 — Cancel mid-GET: Stop does not stop, and the plan's worry was the wrong way round.** Measured
+  through the real `S3Backend` and the app's own `S3CurlTransport`: Stop pressed at 1.00 s,
+  `copyFile` returned at **16.98 s** — the full time the server needed — with the server's own log
+  reading `SERVED all 4194304 bytes` rather than a client disconnect, the destination holding the
+  **complete** file, and `CancellationError` thrown after all of it. The plan feared a half-download
+  cached as a preview; that cannot happen. What happens instead is that the whole cost is paid and
+  the result thrown away. **It is remote-generic and pre-existing**: `isCancelled` is honoured at
+  the file boundary in `S3Backend`, `FTPBackend` and `SFTPBackend` alike, and no transport calls
+  `process.terminate()` except from its own timeout backstop — so Stop has never abandoned a
+  single-file remote transfer, since M5. A preview or edit fetch therefore cannot bound its cost
+  with `isCancelled`, which is the one thing the slice was going to lean on.
+- **2 — A Glacier object is unanswerable here, and that is the finding.** Every non-`STANDARD`
+  storage class is refused outright: `REDUCED_REDUNDANCY`, `STANDARD_IA`, `ONEZONE_IA`,
+  `INTELLIGENT_TIERING`, `GLACIER`, `DEEP_ARCHIVE` and `GLACIER_IR` all come back **400
+  `InvalidStorageClass`**, and only `STANDARD` is accepted. There is no archived-object state to
+  reach, so `403 InvalidObjectState` cannot be exercised without an AWS account — any message we
+  write for it ships unmeasured, and should say so rather than being listed as verified.
+- **3 — Read-after-write holds on this endpoint.** Six writes, six immediate reads: the GET returned
+  the bytes just written every time, and — the half that actually matters — the **listing** reported
+  the new size immediately, which is what `stat` reads and therefore what the conflict check rests
+  on. The endpoint that has already inverted two of this milestone's rules does not invert this one.
+- **4 — The edge-whitespace key survives download and save-back.** Four names (`trailing `,
+  ` leading`, `mid dle`, `plus+hash#and space`) × six assertions, all green — and the design of the
+  probe is the lesson. The first version re-typed the name it had just uploaded, which is blind to
+  Slice 8's bug **by construction**: the trim was invisible precisely because both sides of a
+  hand-built comparison carried it. Rewritten to address the object through the path the *listing*
+  produced, the way the app does, the negative control fires immediately — reintroducing the `<Key>`
+  trim kills the download with `notFound` on `/probe10/edge/trailing`, Slice 8's symptom exactly.
+  Two earlier controls were **inert** and worth recording so they are not tried again: handing the
+  key over raw dies at the first verb rather than creating a sibling, and percent-encoding the
+  separator changes nothing at all, because this endpoint normalizes `%2F` back to `/`.
+- **5 — Time to first byte is 0.51 s, and the inherited 400 ms sheet delay is below the floor.**
+  Five runs, 0.512–0.519 s, decomposing as DNS 0.003 + connect 0.17 + TLS 0.34 + ~0.17 s of server
+  turnaround. Every request is a fresh `curl` — HTTP keeps no session, which is why the transport
+  re-signs each time — so **half a second is the floor for any remote fetch on this endpoint**, not
+  the cost of a large one. `CloudDownloadPrompt`'s 400 ms was tuned against iCloud materialization,
+  where the wait is either ~0 or long; against a network round trip it means the sheet appears on
+  *every* preview and is dismissed ~115 ms later. The threshold has to clear a round trip.
+
+**The cancellation bug probe 1 found is fixed, 2026-08-14, across all three remote backends** —
+taken deliberately wide rather than S3-only, because the slice is remote-generic by design and
+because two spellings of one rule is the trap this milestone has now re-derived five times. The
+seven byte-moving verbs of `S3Transport`, `FTPTransport` and `SFTPTransport` take an `isCancelled`;
+the metadata verbs deliberately do not; and `ProcessWaiting.wait` is the one home of the poll that
+replaces the single bounded `DispatchGroup.wait` all three transports had. +7 core tests
+(`RemoteTransferCancellationTests`, one suite for all three rather than one test each, for the same
+reason the fix is wide).
+
+- **Re-measured on the server that found it: 16.98 s → 1.11 s** against a Stop pressed at 1.00 s,
+  matching the 100 ms poll, with the server logging no `SERVED all` — the client really did go away.
+- **The obvious assertion is worthless here, and the negative control is what showed it.** With one
+  backend reverted, every `#expect(throws: CancellationError.self)` still passed: the *post*-transfer
+  boundary check throws whether or not anything stopped, which **is** the shipped bug. Each test
+  therefore rests on a record of whether the transfer verb was asked, and reverting FTP alone fails
+  exactly its two tests and no others.
+- **It makes a partial file possible for the first time, which is the hazard the plan expected to
+  find already present.** A cancelled download now leaves 278 528 bytes of a 4 MiB object where it
+  used to leave all of them. That is correct for F5 — it is the partial `-C -` resumes from — and it
+  is precisely why the slice's cache must **drop** what a cancelled fetch left rather than keep it: a
+  truncated file renders as a damaged document, not as an error. Probe 1's stated worry, arriving one
+  fix later than expected.
+- SFTP needed one thing the other two did not: only its interactive (password) path was ever
+  time-bounded, so the key-auth path waits on `.distantFuture` and cancellation is the *only* thing
+  that can interrupt it.
+
+Still to come: the app pass. Two of its decisions are now settled by measurement rather than
+assumption — the deferred-sheet threshold has to clear a round trip (probe 5), and the remote cache
+must discard a cancelled fetch's partial (above).
 
 All three stop at one predicate today. `quickViewSourceURL` resolves a local path or an already
 extracted archive member and answers `nil` for anything else, so an S3 row previews nothing; F4 says

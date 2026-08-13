@@ -36,15 +36,35 @@ public protocol SFTPTransport: RemoteWriteTransport {
     /// download picks up from the local file's current length instead of restarting, so `sftp`
     /// fetches only the bytes past that offset — the caller computes the transferred delta from the
     /// pre-existing size (see `SFTPBackend.copyFile`).
+    ///
+    /// `isCancelled` is polled **while the bytes move**, and only the two byte-moving verbs take it
+    /// — see ``upload(_:to:resume:isCancelled:)``.
     @discardableResult
-    func download(_ remotePath: String, to localPath: String, resume: Bool) throws -> Int64
+    func download(
+        _ remotePath: String,
+        to localPath: String,
+        resume: Bool,
+        isCancelled: () -> Bool
+    ) throws -> Int64
 
     /// Upload the local file at `localPath` to a remote path (`put`, or `put -a` to **resume**),
     /// returning the local source's size (which is the remote file's total size once the transfer
     /// finishes). When `resume` is true the upload picks up from the remote file's current length,
     /// so `sftp` sends only the bytes past that offset.
+    ///
+    /// **`isCancelled` is polled while the transfer runs, and a metadata verb deliberately has no
+    /// such parameter.** A transfer is one `sftp` that may run for an hour, so a caller's Stop has
+    /// to reach inside it; a listing is over before anyone could press anything. Measured
+    /// 2026-08-14 on the S3 transport, whose shape this one shares exactly: without it, Stop on a
+    /// 16-second download returned after the full 16 seconds having downloaded the whole file and
+    /// then discarded it (docs/NOTES.md ▸ curl for S3).
     @discardableResult
-    func upload(_ localPath: String, to remotePath: String, resume: Bool) throws -> Int64
+    func upload(
+        _ localPath: String,
+        to remotePath: String,
+        resume: Bool,
+        isCancelled: () -> Bool
+    ) throws -> Int64
 }
 
 /// A remote operation's failure, in the few shapes the backend needs to distinguish so it can map

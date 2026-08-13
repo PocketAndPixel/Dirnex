@@ -114,9 +114,13 @@ public struct FTPBackend: RemoteTransportBackend {
         if isCancelled() { throw CancellationError() }
         let transferred: Int64
         if source.backend == id, destination.backend == .local {
-            transferred = try downloadFile(remote: source, toLocal: destination.path)
+            transferred = try downloadFile(
+                remote: source, toLocal: destination.path, isCancelled: isCancelled
+            )
         } else if source.backend == .local, destination.backend == id {
-            transferred = try uploadFile(fromLocal: source.path, remote: destination)
+            transferred = try uploadFile(
+                fromLocal: source.path, remote: destination, isCancelled: isCancelled
+            )
         } else {
             throw VFSError.unsupported(.remoteToRemoteCopy)
         }
@@ -130,13 +134,19 @@ public struct FTPBackend: RemoteTransportBackend {
     private static let resumeUploadThreshold: Int64 = 1 << 20 // 1 MiB
 
     /// Download `remote` to `localPath`, resuming from a local partial when one is a proper prefix.
-    private func downloadFile(remote source: VFSPath, toLocal localPath: String) throws -> Int64 {
+    private func downloadFile(
+        remote source: VFSPath,
+        toLocal localPath: String,
+        isCancelled: () -> Bool
+    ) throws -> Int64 {
         let existingLocal = localFileSize(localPath)
         // Only when a local partial exists is a remote size worth fetching; `>` short-circuits so a
         // fresh download (the norm) never pays for the round trip.
         let resume = existingLocal > 0 && remoteFileSize(source) > existingLocal
         return try mapErrors(source) {
-            try transport.download(source.path, to: localPath, resume: resume)
+            try transport.download(
+                source.path, to: localPath, resume: resume, isCancelled: isCancelled
+            )
         }
     }
 
@@ -145,12 +155,18 @@ public struct FTPBackend: RemoteTransportBackend {
     /// The remote size is checked here rather than left to `curl -C -`, which would query it too:
     /// `curl` cannot distinguish "no partial to resume" from "the file isn't there at all", so
     /// asking first keeps a fresh upload on the plain path.
-    private func uploadFile(fromLocal localPath: String, remote destination: VFSPath) throws -> Int64 {
+    private func uploadFile(
+        fromLocal localPath: String,
+        remote destination: VFSPath,
+        isCancelled: () -> Bool
+    ) throws -> Int64 {
         let sourceSize = localFileSize(localPath)
         let existingRemote = sourceSize > Self.resumeUploadThreshold ? remoteFileSize(destination) : 0
         let resume = existingRemote > 0 && existingRemote < sourceSize
         return try mapErrors(destination) {
-            try transport.upload(localPath, to: destination.path, resume: resume)
+            try transport.upload(
+                localPath, to: destination.path, resume: resume, isCancelled: isCancelled
+            )
         }
     }
 

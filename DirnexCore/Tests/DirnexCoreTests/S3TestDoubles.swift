@@ -77,6 +77,12 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
 
     private(set) var listRequests: [ListRequest] = []
     private(set) var downloads: [Download] = []
+    /// Transfers this fake was asked to abandon — the record that makes the cancellation rule
+    /// assertable at all. A real transport polls `isCancelled` *while the bytes move*, which a
+    /// headless double cannot reproduce; what it can pin is that the backend hands the flag down to
+    /// the transfer verb instead of only checking it at the file boundary, which is exactly the gap
+    /// measured 2026-08-14 (docs/NOTES.md ▸ curl for S3).
+    private(set) var cancelledTransfers: [String] = []
     private(set) var headKeys: [String] = []
     private(set) var writes: [Write] = []
 
@@ -94,8 +100,16 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
         return listPages[index]
     }
 
-    func download(key: String, to localPath: String, resume: Bool) throws -> S3Response {
+    func download(
+        key: String,
+        to localPath: String,
+        resume: Bool,
+        isCancelled: () -> Bool
+    ) throws -> S3Response {
         if let thrownError { throw thrownError }
+        // A real transport polls this *while the bytes move*; a fake can only record that it was
+        // offered the chance, which is the half a headless test can pin.
+        if isCancelled() { cancelledTransfers.append(key); throw CancellationError() }
         downloads.append(Download(key: key, localPath: localPath, resume: resume))
         return downloadResponse
     }
@@ -108,8 +122,13 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
 
     // MARK: - Writes
 
-    func upload(localPath: String, to key: String) throws -> S3Response {
+    func upload(
+        localPath: String,
+        to key: String,
+        isCancelled: () -> Bool
+    ) throws -> S3Response {
         if let thrownError { throw thrownError }
+        if isCancelled() { cancelledTransfers.append(key); throw CancellationError() }
         writes.append(.upload(Upload(localPath: localPath, key: key)))
         return writeResponse
     }
@@ -155,9 +174,11 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
         localPath: String,
         to key: String,
         uploadID: String,
-        partNumber: Int
+        partNumber: Int,
+        isCancelled: () -> Bool
     ) throws -> S3Response {
         if let thrownError { throw thrownError }
+        if isCancelled() { cancelledTransfers.append(key); throw CancellationError() }
         // Recorded before the response is chosen, so a test can assert on the slice file the
         // backend actually produced — including that it existed at the moment of the call.
         sliceSizes.append(sizeOfFile(localPath))

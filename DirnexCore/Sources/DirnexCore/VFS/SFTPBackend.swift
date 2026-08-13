@@ -103,9 +103,13 @@ public struct SFTPBackend: RemoteTransportBackend {
         if isCancelled() { throw CancellationError() }
         let transferred: Int64
         if source.backend == id, destination.backend == .local {
-            transferred = try downloadFile(remote: source, toLocal: destination.path)
+            transferred = try downloadFile(
+                remote: source, toLocal: destination.path, isCancelled: isCancelled
+            )
         } else if source.backend == .local, destination.backend == id {
-            transferred = try uploadFile(fromLocal: source.path, remote: destination)
+            transferred = try uploadFile(
+                fromLocal: source.path, remote: destination, isCancelled: isCancelled
+            )
         } else {
             throw VFSError.unsupported(.remoteToRemoteCopy)
         }
@@ -120,26 +124,38 @@ public struct SFTPBackend: RemoteTransportBackend {
 
     /// Download `remote` to `localPath`, resuming from a local partial when one is a proper prefix.
     /// Returns the bytes actually transferred (the whole file, or just the remainder on resume).
-    private func downloadFile(remote source: VFSPath, toLocal localPath: String) throws -> Int64 {
+    private func downloadFile(
+        remote source: VFSPath,
+        toLocal localPath: String,
+        isCancelled: () -> Bool
+    ) throws -> Int64 {
         let existingLocal = localFileSize(localPath)
         // Only when a local partial exists is a remote size worth fetching; `>` short-circuits so a
         // fresh download (the norm) never pays for the `stat`.
         let resume = existingLocal > 0 && remoteFileSize(source) > existingLocal
         let finalSize = try mapErrors(source) {
-            try transport.download(source.path, to: localPath, resume: resume)
+            try transport.download(
+                source.path, to: localPath, resume: resume, isCancelled: isCancelled
+            )
         }
         return resume ? max(0, finalSize - existingLocal) : finalSize
     }
 
     /// Upload `localPath` to `remote`, resuming from a remote partial when one is a proper prefix.
     /// Returns the bytes actually transferred (the whole file, or just the remainder on resume).
-    private func uploadFile(fromLocal localPath: String, remote destination: VFSPath) throws -> Int64 {
+    private func uploadFile(
+        fromLocal localPath: String,
+        remote destination: VFSPath,
+        isCancelled: () -> Bool
+    ) throws -> Int64 {
         let sourceSize = localFileSize(localPath)
         // The remote size costs a round trip, so only look when resuming could pay off (a big file).
         let existingRemote = sourceSize > Self.resumeUploadThreshold ? remoteFileSize(destination) : 0
         let resume = existingRemote > 0 && existingRemote < sourceSize
         let finalSize = try mapErrors(destination) {
-            try transport.upload(localPath, to: destination.path, resume: resume)
+            try transport.upload(
+                localPath, to: destination.path, resume: resume, isCancelled: isCancelled
+            )
         }
         return resume ? max(0, finalSize - existingRemote) : finalSize
     }

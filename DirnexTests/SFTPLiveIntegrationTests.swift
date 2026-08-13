@@ -150,13 +150,19 @@ struct SFTPLiveIntegrationTests {
         try Data(prefix).write(to: localPrefix)
 
         // Upload the prefix, then resume with the full file: `put -a` sends only bytes 120…300.
-        try transport.upload(localPrefix.path, to: remote, resume: false)
-        try transport.upload(localFull.path, to: remote, resume: true)
+        try transport.upload(
+            localPrefix.path, to: remote, resume: false, isCancelled: { false }
+        )
+        try transport.upload(
+            localFull.path, to: remote, resume: true, isCancelled: { false }
+        )
 
         // Download resume: a local 120-byte partial is filled to 300 by `get -a`.
         let localDownload = scratch.appendingPathComponent("download.bin")
         try Data(prefix).write(to: localDownload)
-        try transport.download(remote, to: localDownload.path, resume: true)
+        try transport.download(
+            remote, to: localDownload.path, resume: true, isCancelled: { false }
+        )
         #expect(try Data(contentsOf: localDownload) == full)
     }
 

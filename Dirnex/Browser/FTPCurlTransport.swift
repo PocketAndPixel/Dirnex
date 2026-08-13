@@ -112,8 +112,16 @@ struct FTPCurlTransport: FTPTransport {
     /// `%{size_download}` is the bytes moved *by this run* — the remainder when resuming — so the
     /// backend gets its progress delta with no arithmetic. Verified live against a real server.
     @discardableResult
-    func download(_ remotePath: String, to localPath: String, resume: Bool) throws -> Int64 {
-        let result = try runWithTLSRetry(timeout: transferTimeout) { session in
+    func download(
+        _ remotePath: String,
+        to localPath: String,
+        resume: Bool,
+        isCancelled: () -> Bool
+    ) throws -> Int64 {
+        let result = try runWithTLSRetry(
+            timeout: transferTimeout,
+            isCancelled: isCancelled
+        ) { session in
             FTPProcessArguments.download(
                 session: session,
                 remotePath: remotePath,
@@ -125,8 +133,16 @@ struct FTPCurlTransport: FTPTransport {
     }
 
     @discardableResult
-    func upload(_ localPath: String, to remotePath: String, resume: Bool) throws -> Int64 {
-        let result = try runWithTLSRetry(timeout: transferTimeout) { session in
+    func upload(
+        _ localPath: String,
+        to remotePath: String,
+        resume: Bool,
+        isCancelled: () -> Bool
+    ) throws -> Int64 {
+        let result = try runWithTLSRetry(
+            timeout: transferTimeout,
+            isCancelled: isCancelled
+        ) { session in
             FTPProcessArguments.upload(
                 session: session,
                 localPath: localPath,
@@ -191,6 +207,7 @@ struct FTPCurlTransport: FTPTransport {
     /// a folder they know has files in it appear empty, with no error anywhere.
     private func runWithTLSRetry(
         timeout: Int? = nil,
+        isCancelled: () -> Bool = { false },
         arguments: (FTPSession) -> [String]
     ) throws -> RunResult {
         var base = session
@@ -204,11 +221,11 @@ struct FTPCurlTransport: FTPTransport {
             )
         }
         do {
-            return try run(arguments(base))
+            return try run(arguments(base), isCancelled: isCancelled)
         } catch let error as CurlExit where error.code == 18 && location.security.usesTLS {
             let retry = base.with(tls: .forceTLS12)
             do {
-                return try run(arguments(retry))
+                return try run(arguments(retry), isCancelled: isCancelled)
             } catch let retryError as CurlExit {
                 throw FTPTransportError.classify(
                     exitCode: retryError.code,
@@ -230,7 +247,8 @@ struct FTPCurlTransport: FTPTransport {
     /// Spawn `curl` with the credential on stdin, drain both pipes concurrently, and bound the wait.
     /// Blocks; call it off the main thread — the backend is only ever driven by the operation engine
     /// or the panel's background list.
-    private func run(_ arguments: [String]) throws -> RunResult {
+    private func run(_ arguments: [String], isCancelled: () -> Bool = { false }) throws
+        -> RunResult {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/curl")
         process.arguments = arguments
@@ -276,10 +294,19 @@ struct FTPCurlTransport: FTPTransport {
         // `curl`'s own `--max-time` should fire first; this is the backstop for a process that is
         // wedged rather than merely slow, so it is deliberately looser than the flag.
         let budget = curlMaxTime(in: arguments) + 30
-        if group.wait(timeout: .now() + .seconds(budget)) == .timedOut {
+        switch ProcessWaiting.wait(
+            for: group, deadline: .now() + .seconds(budget), isCancelled: isCancelled
+        ) {
+        case .finished:
+            break
+        case .timedOut:
             process.terminate() // SIGTERM closes the pipes so the drains unblock
             group.wait()
             throw FTPTransportError.timedOut
+        case .cancelled:
+            process.terminate()
+            group.wait()
+            throw CancellationError()
         }
         group.wait()
         process.waitUntilExit()

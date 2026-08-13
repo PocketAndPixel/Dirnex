@@ -100,6 +100,18 @@ public struct VFSBackendID: RawRepresentable, Sendable, Hashable, CustomStringCo
     /// receive files. Collapsing them at any point since would have had to be undone here.
     public var acceptsUploads: Bool { isSFTP || isFTP || isS3 }
 
+    /// Whether a modification time from this backend is too coarse to compare two readings of the
+    /// same file with.
+    ///
+    /// FTP alone, and it is the protocol's fault rather than the parser's: `LIST` is not
+    /// standardized, and its stamp is **year-less** for recent files, carries **no time zone**, and
+    /// is on the *server's* clock (docs/NOTES.md ▸ curl). That is fine to display and to sort by,
+    /// which is all any listing ever asked of it, and it is not something to decide "nobody has
+    /// touched this file since I downloaded it" on. Named here beside the other one-line
+    /// predicates so the answer has one spelling: this project's most repeated finding is a rule
+    /// written out at several sites and the compiler checking none of them.
+    public var hasApproximateTimestamps: Bool { isFTP }
+
     public var description: String { rawValue }
 }
 

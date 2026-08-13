@@ -36,6 +36,12 @@ final class FakeFTPTransport: FTPTransport, @unchecked Sendable {
     private(set) var removedDirectories: [String] = []
     private(set) var fileSizeQueries: [String] = []
     private(set) var downloads: [RecordedTransfer] = []
+    /// Transfers this fake was asked to abandon — the record that makes the cancellation rule
+    /// assertable at all. A real transport polls `isCancelled` *while the bytes move*, which a
+    /// headless double cannot reproduce; what it can pin is that the backend hands the flag down to
+    /// the transfer verb instead of only checking it at the file boundary, which is exactly the gap
+    /// measured 2026-08-14 (docs/NOTES.md ▸ curl for S3).
+    private(set) var cancelledTransfers: [String] = []
     private(set) var uploads: [RecordedTransfer] = []
 
     /// One recorded transfer, carrying both endpoints and the resume flag (a struct rather than a
@@ -72,13 +78,25 @@ final class FakeFTPTransport: FTPTransport, @unchecked Sendable {
         removedDirectories.append(remotePath)
     }
 
-    func download(_ remotePath: String, to localPath: String, resume: Bool) throws -> Int64 {
+    func download(
+        _ remotePath: String,
+        to localPath: String,
+        resume: Bool,
+        isCancelled: () -> Bool
+    ) throws -> Int64 {
+        if isCancelled() { cancelledTransfers.append(remotePath); throw CancellationError() }
         if let error { throw error }
         downloads.append(RecordedTransfer(local: localPath, remote: remotePath, resume: resume))
         return transferBytes
     }
 
-    func upload(_ localPath: String, to remotePath: String, resume: Bool) throws -> Int64 {
+    func upload(
+        _ localPath: String,
+        to remotePath: String,
+        resume: Bool,
+        isCancelled: () -> Bool
+    ) throws -> Int64 {
+        if isCancelled() { cancelledTransfers.append(remotePath); throw CancellationError() }
         if let error { throw error }
         uploads.append(RecordedTransfer(local: localPath, remote: remotePath, resume: resume))
         return transferBytes

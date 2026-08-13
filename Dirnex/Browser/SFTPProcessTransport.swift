@@ -69,16 +69,32 @@ struct SFTPProcessTransport: SFTPTransport {
     }
 
     @discardableResult
-    func download(_ remotePath: String, to localPath: String, resume: Bool) throws -> Int64 {
-        _ = try run(batch: SFTPBatchCommand.download(remotePath, to: localPath, resume: resume))
+    func download(
+        _ remotePath: String,
+        to localPath: String,
+        resume: Bool,
+        isCancelled: () -> Bool
+    ) throws -> Int64 {
+        _ = try run(
+            batch: SFTPBatchCommand.download(remotePath, to: localPath, resume: resume),
+            isCancelled: isCancelled
+        )
         // `sftp get`/`get -a` leaves the whole file on disk, so its final size is the total
         // transferred; the backend derives the resumed remainder from the pre-existing length.
         return localFileSize(localPath)
     }
 
     @discardableResult
-    func upload(_ localPath: String, to remotePath: String, resume: Bool) throws -> Int64 {
-        _ = try run(batch: SFTPBatchCommand.upload(localPath, to: remotePath, resume: resume))
+    func upload(
+        _ localPath: String,
+        to remotePath: String,
+        resume: Bool,
+        isCancelled: () -> Bool
+    ) throws -> Int64 {
+        _ = try run(
+            batch: SFTPBatchCommand.upload(localPath, to: remotePath, resume: resume),
+            isCancelled: isCancelled
+        )
         // The local source's size is the remote file's total size after `put`/`put -a` — cheaper
         // and safer than re-statting the remote (which would cost another round trip).
         return localFileSize(localPath)
@@ -115,7 +131,11 @@ struct SFTPProcessTransport: SFTPTransport {
     /// the `ls` rows to stdout (the parser ignores the echo) and errors to stderr, exiting non-zero
     /// on a failed command — so a non-zero status is classified from stderr. Blocks on `sftp`; call
     /// it off the main thread.
-    private func run(batch command: String, tolerateChannelHold: Bool = false) throws -> String {
+    private func run(
+        batch command: String,
+        tolerateChannelHold: Bool = false,
+        isCancelled: () -> Bool = { false }
+    ) throws -> String {
         let isPassword: Bool
         if case .password = authentication { isPassword = true } else { isPassword = false }
 
@@ -168,7 +188,22 @@ struct SFTPProcessTransport: SFTPTransport {
             group.leave()
         }
 
-        if isPassword, group.wait(timeout: .now() + .seconds(passwordTimeout)) == .timedOut {
+        // Only the interactive (password) session is time-bounded — see `passwordTimeout`. The
+        // key-auth path waits as long as the transfer takes, which is why cancellation had to reach
+        // in here rather than ride on a deadline: without it, Stop on a large `get` was noticed only
+        // once the whole file had arrived (docs/NOTES.md ▸ curl for S3, measured on the sibling
+        // transport).
+        let deadline: DispatchTime = isPassword
+            ? .now() + .seconds(passwordTimeout)
+            : .distantFuture
+        switch ProcessWaiting.wait(for: group, deadline: deadline, isCancelled: isCancelled) {
+        case .finished:
+            break
+        case .cancelled:
+            process.terminate()
+            group.wait()
+            throw CancellationError()
+        case .timedOut:
             process.terminate() // SIGTERM closes the pipes so the drains unblock
             group.wait() // terminate closed the pipes, so the readers finish promptly
             if tolerateChannelHold {

@@ -33,15 +33,35 @@ public protocol FTPTransport: RemoteWriteTransport {
     /// actually moved (`-w '%{size_download}'`), so the *delta* comes back directly and the backend
     /// never has to subtract a pre-existing size to report progress. Verified live — a resumed
     /// download of a 3 MiB file from a 1 MiB partial reported exactly 2 097 152.
+    ///
+    /// `isCancelled` is polled **while the bytes move**, and only the two byte-moving verbs take it
+    /// — see ``upload(_:to:resume:isCancelled:)``.
     @discardableResult
-    func download(_ remotePath: String, to localPath: String, resume: Bool) throws -> Int64
+    func download(
+        _ remotePath: String,
+        to localPath: String,
+        resume: Bool,
+        isCancelled: () -> Bool
+    ) throws -> Int64
 
     /// Upload the local file at `localPath` to a remote path, returning **the bytes transferred by
     /// this call**. With `resume`, `curl -C -` asks the server for the remote file's current size
     /// and sends only the remainder — so, unlike the SFTP path, the backend needs no size probe of
     /// its own to resume an upload.
+    ///
+    /// **`isCancelled` is polled while the transfer runs, and a metadata verb deliberately has no
+    /// such parameter.** A transfer is one `curl` that may run for an hour, so a caller's Stop has
+    /// to reach inside it; a `LIST` or a `SIZE` is over before anyone could press anything.
+    /// Measured 2026-08-14 on the S3 transport, whose shape this one shares exactly: without it,
+    /// Stop on a 16-second download returned after the full 16 seconds having downloaded the whole
+    /// file and then discarded it (docs/NOTES.md ▸ curl for S3).
     @discardableResult
-    func upload(_ localPath: String, to remotePath: String, resume: Bool) throws -> Int64
+    func upload(
+        _ localPath: String,
+        to remotePath: String,
+        resume: Bool,
+        isCancelled: () -> Bool
+    ) throws -> Int64
 
     /// The exact size of one remote file (`SIZE`, via `curl -I`), used to decide whether a partial
     /// is resumable. Costs a round trip, so it is a stat-one-item path and never a listing path.

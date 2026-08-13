@@ -198,7 +198,8 @@ public struct S3Backend: ConnectionScopedBackend {
             let transferred = try downloadObject(
                 key: S3Key.key(for: source),
                 toLocal: destination.path,
-                at: source
+                at: source,
+                isCancelled: isCancelled
             )
             if isCancelled() { throw CancellationError() }
             progress(transferred)
@@ -265,7 +266,7 @@ public struct S3Backend: ConnectionScopedBackend {
         }
 
         let response = try write(at: destination) {
-            try transport.upload(localPath: localPath, to: key)
+            try transport.upload(localPath: localPath, to: key, isCancelled: isCancelled)
         }
         if isCancelled() { throw CancellationError() }
         progress(response.bytesTransferred)
@@ -303,11 +304,18 @@ public struct S3Backend: ConnectionScopedBackend {
     /// file answers **416 Range Not Satisfiable**, which this backend would correctly classify as
     /// a failed copy of a file that is in fact already there. `>` short-circuits, so a fresh
     /// download — the norm — never pays for the extra HEAD.
-    private func downloadObject(key: String, toLocal localPath: String, at source: VFSPath) throws -> Int64 {
+    private func downloadObject(
+        key: String,
+        toLocal localPath: String,
+        at source: VFSPath,
+        isCancelled: () -> Bool
+    ) throws -> Int64 {
         let existingLocal = localFileSize(localPath)
         let resume = existingLocal > 0 && remoteSize(ofKey: key) > existingLocal
         let response = try mapping(source) {
-            try transport.download(key: key, to: localPath, resume: resume)
+            try transport.download(
+                key: key, to: localPath, resume: resume, isCancelled: isCancelled
+            )
         }
         _ = try succeed(response, at: source)
         return response.bytesTransferred

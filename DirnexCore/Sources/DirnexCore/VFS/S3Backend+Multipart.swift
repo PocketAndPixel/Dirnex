@@ -58,7 +58,8 @@ extension S3Backend {
                     number: number,
                     range: range,
                     of: request,
-                    uploadID: uploadID
+                    uploadID: uploadID,
+                    isCancelled: isCancelled
                 )
                 parts.append(part)
                 moved += range.upperBound - range.lowerBound
@@ -96,7 +97,8 @@ extension S3Backend {
         number: Int,
         range: Range<Int64>,
         of request: S3MultipartRequest,
-        uploadID: String
+        uploadID: String,
+        isCancelled: () -> Bool
     ) throws -> S3UploadedPart {
         let destination = request.destination
         let slicePath = FileManager.default.temporaryDirectory
@@ -116,7 +118,8 @@ extension S3Backend {
                 localPath: slicePath.path,
                 to: request.key,
                 uploadID: uploadID,
-                partNumber: number
+                partNumber: number,
+                isCancelled: isCancelled
             )
         }
         guard let etag = response.etag, !etag.isEmpty else {

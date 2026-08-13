@@ -73,13 +73,30 @@ public protocol S3Transport: Sendable {
     ) throws -> S3Response
 
     /// Download one object to a local path, resuming from what is already there when `resume`.
-    func download(key: String, to localPath: String, resume: Bool) throws -> S3Response
+    ///
+    /// `isCancelled` is polled **while the bytes move** and is the only thing that can stop a
+    /// transfer early — see ``upload(localPath:to:isCancelled:)`` for why it is a parameter on the
+    /// byte-moving verbs and on nothing else.
+    func download(
+        key: String,
+        to localPath: String,
+        resume: Bool,
+        isCancelled: () -> Bool
+    ) throws -> S3Response
 
     /// One object's metadata. The size arrives in ``S3Response/contentLength``.
     func head(key: String) throws -> S3Response
 
     /// Upload a local file to `key`, streaming it rather than reading it into memory.
-    func upload(localPath: String, to key: String) throws -> S3Response
+    ///
+    /// **The three byte-moving verbs take `isCancelled` and the metadata verbs deliberately do
+    /// not.** A transfer is one `curl` invocation that can run for an hour, so a caller's Stop has
+    /// to reach *inside* it; a listing or a `HEAD` is a round trip that is over before anyone could
+    /// press anything, and giving those a cancellation parameter would suggest a responsiveness
+    /// they cannot use. Measured 2026-08-14: without this, Stop on a 16-second download returned
+    /// after the full 16 seconds with the whole object downloaded and then discarded, because
+    /// `isCancelled` was only ever consulted at the file boundary (docs/NOTES.md ▸ curl for S3).
+    func upload(localPath: String, to key: String, isCancelled: () -> Bool) throws -> S3Response
 
     /// Write a zero-byte object at `key` — the folder marker, and an empty file.
     func putEmptyObject(key: String) throws -> S3Response
@@ -107,7 +124,8 @@ public protocol S3Transport: Sendable {
         localPath: String,
         to key: String,
         uploadID: String,
-        partNumber: Int
+        partNumber: Int,
+        isCancelled: () -> Bool
     ) throws -> S3Response
 
     /// Close a multipart upload with the manifest of parts to assemble.

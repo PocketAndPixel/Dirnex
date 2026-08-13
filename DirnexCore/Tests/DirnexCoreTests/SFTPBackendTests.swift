@@ -401,7 +401,7 @@ extension SFTPBackendTests {
 /// A canned `SFTPTransport`: returns per-path `ls -la` text and records every write call (or throws
 /// a configured error), so the backend's browse *and* write logic is exercised without a live
 /// server (PLAN.md §2 "the app is a thin client").
-private final class FakeSFTPTransport: SFTPTransport, @unchecked Sendable {
+final class FakeSFTPTransport: SFTPTransport, @unchecked Sendable {
     var listings: [String: String] = [:]
     var error: SFTPTransportError?
 
@@ -412,6 +412,12 @@ private final class FakeSFTPTransport: SFTPTransport, @unchecked Sendable {
     private(set) var removedDirectories: [String] = []
     private(set) var symlinks: [(link: String, target: String)] = []
     private(set) var downloads: [RecordedTransfer] = []
+    /// Transfers this fake was asked to abandon — the record that makes the cancellation rule
+    /// assertable at all. A real transport polls `isCancelled` *while the bytes move*, which a
+    /// headless double cannot reproduce; what it can pin is that the backend hands the flag down to
+    /// the transfer verb instead of only checking it at the file boundary, which is exactly the gap
+    /// measured 2026-08-14 (docs/NOTES.md ▸ curl for S3).
+    private(set) var cancelledTransfers: [String] = []
     private(set) var uploads: [RecordedTransfer] = []
 
     /// One recorded `get`/`put`, carrying both endpoints and the resume flag (a struct rather than a
@@ -456,13 +462,25 @@ private final class FakeSFTPTransport: SFTPTransport, @unchecked Sendable {
         symlinks.append((remotePath, target))
     }
 
-    func download(_ remotePath: String, to localPath: String, resume: Bool) throws -> Int64 {
+    func download(
+        _ remotePath: String,
+        to localPath: String,
+        resume: Bool,
+        isCancelled: () -> Bool
+    ) throws -> Int64 {
+        if isCancelled() { cancelledTransfers.append(remotePath); throw CancellationError() }
         if let error { throw error }
         downloads.append(RecordedTransfer(local: localPath, remote: remotePath, resume: resume))
         return downloadBytes
     }
 
-    func upload(_ localPath: String, to remotePath: String, resume: Bool) throws -> Int64 {
+    func upload(
+        _ localPath: String,
+        to remotePath: String,
+        resume: Bool,
+        isCancelled: () -> Bool
+    ) throws -> Int64 {
+        if isCancelled() { cancelledTransfers.append(remotePath); throw CancellationError() }
         if let error { throw error }
         uploads.append(RecordedTransfer(local: localPath, remote: remotePath, resume: resume))
         return uploadBytes

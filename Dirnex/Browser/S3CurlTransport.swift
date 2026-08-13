@@ -55,13 +55,21 @@ struct S3CurlTransport: S3Transport {
         ))
     }
 
-    func download(key: String, to localPath: String, resume: Bool) throws -> S3Response {
-        try perform(S3ProcessArguments.download(
-            session: session(maxTime: transferTimeout),
-            key: key,
-            localPath: localPath,
-            resume: resume
-        ))
+    func download(
+        key: String,
+        to localPath: String,
+        resume: Bool,
+        isCancelled: () -> Bool
+    ) throws -> S3Response {
+        try perform(
+            S3ProcessArguments.download(
+                session: session(maxTime: transferTimeout),
+                key: key,
+                localPath: localPath,
+                resume: resume
+            ),
+            isCancelled: isCancelled
+        )
     }
 
     func head(key: String) throws -> S3Response {
@@ -70,14 +78,19 @@ struct S3CurlTransport: S3Transport {
 
     // MARK: - Writes
 
-    func upload(localPath: String, to key: String) throws -> S3Response {
+    func upload(
+        localPath: String,
+        to key: String,
+        isCancelled: () -> Bool
+    ) throws -> S3Response {
         try perform(
             S3ProcessArguments.upload(
                 session: session(maxTime: transferTimeout),
                 key: key,
                 localPath: localPath
             ),
-            measuring: .upload
+            measuring: .upload,
+            isCancelled: isCancelled
         )
     }
 
@@ -154,7 +167,8 @@ struct S3CurlTransport: S3Transport {
         localPath: String,
         to key: String,
         uploadID: String,
-        partNumber: Int
+        partNumber: Int,
+        isCancelled: () -> Bool
     ) throws -> S3Response {
         try perform(
             S3ProcessArguments.uploadPart(
@@ -164,7 +178,8 @@ struct S3CurlTransport: S3Transport {
                 partNumber: partNumber,
                 localPath: localPath
             ),
-            measuring: .upload
+            measuring: .upload,
+            isCancelled: isCancelled
         )
     }
 
@@ -239,8 +254,9 @@ struct S3CurlTransport: S3Transport {
 
     private func perform(
         _ arguments: [String],
-        measuring direction: S3CurlRunner.Direction = .download
+        measuring direction: S3CurlRunner.Direction = .download,
+        isCancelled: () -> Bool = { false }
     ) throws -> S3Response {
-        try runner.perform(arguments, measuring: direction)
+        try runner.perform(arguments, measuring: direction, isCancelled: isCancelled)
     }
 }

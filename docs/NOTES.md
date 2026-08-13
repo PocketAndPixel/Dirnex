@@ -1894,6 +1894,63 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     classifier that only answers the first leaves plausible garbage on disk. It cannot be caught by
     any test over the argument builder, and the file is the *right size for a document*, so nothing
     downstream complains either.
+- **A remote request's floor is a *round trip*, so a delay threshold tuned against a local wait is
+  below it and the sheet always appears.** Measured 2026-08-14 against the real third-party
+  endpoint: time to first byte for a small object is **0.512–0.519 s** over five runs, decomposing
+  as DNS 0.003 + connect 0.17 + TLS 0.34 + ~0.17 s of server turnaround. Every request is a fresh
+  `curl` — HTTP keeps no session, which is why the transport re-signs each invocation — so the
+  handshake is paid *per request* and half a second is the floor for anything remote, not the price
+  of something big. `CloudDownloadPrompt`'s 400 ms deferral was tuned against iCloud
+  materialization, where the wait is either ~0 (bytes present) or long (a download); against a
+  network round trip it sits **below the floor**, so a progress sheet would flash up on every
+  preview and be dismissed ~115 ms later. Any "don't show a spinner for a fast operation" threshold
+  has to be measured against the *transport* it will run over.
+- **Every storage class but `STANDARD` can be refused outright, which makes the archived-object
+  errors unreachable on a non-AWS endpoint.** Probed 2026-08-14 on the real third-party account:
+  `REDUCED_REDUNDANCY`, `STANDARD_IA`, `ONEZONE_IA`, `INTELLIGENT_TIERING`, `GLACIER`,
+  `DEEP_ARCHIVE` and `GLACIER_IR` each come back **400 `InvalidStorageClass`** on the `PUT`, and
+  only `STANDARD` is accepted. So `403 InvalidObjectState` — the answer a real Glacier object gives
+  a plain `GET`, and the one a file manager pointed at a backup bucket most needs to word well —
+  cannot be produced there at all. Worth knowing before planning a probe around it: any handling
+  written for it ships unmeasured unless somebody has an AWS account, and that is a fact to state
+  rather than a gap to paper over.
+- **Stop does not stop a remote transfer, and it never has — `isCancelled` is honoured at the *file*
+  boundary while the transfer is one `curl` that nothing kills.** Measured 2026-08-14 through the
+  real `S3Backend` and the app's own `S3CurlTransport` against a server trickling 4 MiB over 16 s:
+  Stop pressed at 1.00 s, `copyFile` returned at **16.98 s**, and the server's own log read
+  `SERVED all 4194304 bytes` — no client disconnect — with the destination holding the **complete**
+  file and `CancellationError` thrown after all of it. So the whole cost is paid and the result is
+  then discarded, which is the opposite of the failure everyone expects to find (a truncated file);
+  a partial download is impossible here, and that is exactly why nothing ever looked wrong.
+  - **It is the shape of all three remote backends, not an S3 bug.** `S3Backend`, `FTPBackend` and
+    `SFTPBackend` each check `isCancelled()` before and after the transfer and hand the byte-moving
+    to a transport whose `process.terminate()` is reachable *only* from its own timeout backstop.
+    True for SFTP since M5 and FTP since M13. Grep for `process.terminate()` in a transport and read
+    what guards it — if the guard is a timeout, cancellation is decoration.
+  - **It fails in the quiet direction and the UI actively hides it**: the Stop button dims, the
+    operation eventually reports "cancelled", and the file that arrived is correct — so on the small
+    files anybody tests with, the two are indistinguishable. It needs a transfer slow enough to
+    press Stop *during*, which is why a deliberately rate-limited local server is the instrument and
+    a real object is not.
+  - **Fixed 2026-08-14 by making the join a poll** (`ProcessWaiting.wait`, one home shared by all
+    three transports): wait on the `DispatchGroup` in 100 ms slices, and between slices check
+    `isCancelled` and the deadline, terminating the process for either. Re-measured on the same
+    server: **16.98 s → 1.11 s** against a Stop at 1.00 s, and the server logged no `SERVED all`.
+    The flag reaches the transport because the three protocols' **byte-moving verbs** now take it
+    and the metadata verbs deliberately do not — a listing is one round trip, over before anyone
+    could press anything, and giving it a cancellation parameter would promise a responsiveness it
+    cannot use.
+  - **The `throws` assertion is not evidence, and that is worth knowing before writing the test.**
+    With one backend reverted to the old shape, every `#expect(throws: CancellationError.self)`
+    still passed — the *post*-transfer boundary check throws whether or not anything was stopped,
+    which is exactly what the shipped bug was. What separates them is a record of whether the
+    transfer verb was **asked**, so that is the assertion each test rests on.
+  - **The fix makes a partial file possible for the first time, which is the hazard everyone
+    expected to find already there.** Before, a cancelled download left a *complete* file (278 528
+    of 4 194 304 bytes now, where it used to be all of them). That is right for F5 — it is the
+    partial `-C -` resumes from, which is why `--remove-on-error` is deliberately absent — and it is
+    a trap for anything that **caches** a fetch, because a truncated file renders as a damaged
+    document rather than as an error. A cache must drop, not keep, whatever a cancelled fetch left.
 - **The upload question is a *memory* question wearing a cryptography question's clothes.** "Does
   real S3 want a signed payload or `UNSIGNED-PAYLOAD`?" is what the plan carried for a milestone as
   the thing needing credentials to settle — and it never needed them. Measured 2026-08-13 on one
@@ -2068,6 +2125,20 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     reaches an error message — and names a file one character off from the one the server actually
     refused. `S3BucketListParser` is deliberately left trimming: a bucket name cannot contain
     whitespace at all.
+  - **A probe that re-types the name it wrote cannot see this class of bug, and that is structural
+    rather than careless.** Re-running the whitespace object through download and save-back
+    (2026-08-14, PLAN.md §M21 Slice 10 probe 4), the first version built each request from its own
+    string literal and passed everything — because the bug is a disagreement between *the name the
+    listing produced* and the URL built from it, and a literal is on neither side of that. Address
+    the object through the path the **listing** returned, the way the app does, and reintroducing
+    the trim kills it instantly with `notFound` on the shortened key. The general form is the one
+    this file already records for the WebKit sandbox probe, arriving on a parser: when the subject
+    is a round trip, the probe must not supply the value the round trip is supposed to carry.
+  - Two controls for that probe measured **inert**, and are worth naming so they are not tried
+    again: handing the key over unencoded dies at the *first* verb (a malformed URL) rather than
+    producing the sibling key the assertion exists to catch, and percent-encoding the separator
+    changes nothing whatsoever, because this endpoint normalizes `%2F` back to `/`. A control that
+    fails for the wrong reason is not evidence that the assertion works.
 - **Three more things a real S3-compatible endpoint does that AWS does not**, all measured on the
   same account, and each of them retires a probe you would otherwise write against AWS and believe:
   - **The region is fiction and is not validated.** `us-east-1`, `lax`, `default` and `us-west-1`

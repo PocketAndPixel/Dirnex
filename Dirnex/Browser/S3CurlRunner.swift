@@ -43,11 +43,15 @@ struct S3CurlRunner: Sendable {
     ///
     /// A status of 0 — `curl`'s own `000`, printed when nothing answered — is the only thing that
     /// makes this a transport failure. Everything else is a response, including the refusals.
+    /// `isCancelled` is polled while the process runs, so a caller's Stop reaches **inside** a
+    /// transfer instead of being noticed after it. The default suits every metadata request: a
+    /// listing or a `HEAD` is one round trip, over long before anyone could press anything.
     func perform(
         _ arguments: [String],
-        measuring direction: Direction = .download
+        measuring direction: Direction = .download,
+        isCancelled: () -> Bool = { false }
     ) throws -> S3Response {
-        let result = try run(arguments)
+        let result = try run(arguments, isCancelled: isCancelled)
         let fields = S3WriteOut.parse(stderr: result.standardError)
         guard fields.status != 0 else {
             throw S3ResponseError.transport(.classify(curlExit: result.exitCode))
@@ -70,7 +74,7 @@ struct S3CurlRunner: Sendable {
 
     /// Spawn `curl` with the credential on stdin, drain both pipes concurrently, and bound the
     /// wait. Blocks; call it off the main thread.
-    private func run(_ arguments: [String]) throws -> RunResult {
+    private func run(_ arguments: [String], isCancelled: () -> Bool) throws -> RunResult {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/curl")
         process.arguments = arguments
@@ -115,10 +119,19 @@ struct S3CurlRunner: Sendable {
         // `curl`'s own `--max-time` should fire first; this is the backstop for a process that is
         // wedged rather than merely slow, so it is deliberately looser than the flag.
         let budget = curlMaxTime(in: arguments) + 30
-        if group.wait(timeout: .now() + .seconds(budget)) == .timedOut {
+        switch ProcessWaiting.wait(
+            for: group, deadline: .now() + .seconds(budget), isCancelled: isCancelled
+        ) {
+        case .finished:
+            break
+        case .timedOut:
             process.terminate() // SIGTERM closes the pipes so the drains unblock
             group.wait()
             throw S3ResponseError.transport(.operationTimedOut)
+        case .cancelled:
+            process.terminate()
+            group.wait()
+            throw CancellationError()
         }
         process.waitUntilExit()
 
