@@ -932,6 +932,113 @@ shape of that mistake — a local `moto` mock had answered the *acceptance* form
 confident direction (silently storing an empty object for the signed form while a trace showed the
 bytes had gone out fine), and the question it was asked was the wrong one anyway.
 
+#### Slice 10 — planned, not opened: reading and editing a remote file in place
+
+Quick View (⌘Y / ⌃Q / F3), F4 Edit with write-back, and ⏎ to open — for **every** remote backend,
+not for S3 alone.
+
+All three stop at one predicate today. `quickViewSourceURL` resolves a local path or an already
+extracted archive member and answers `nil` for anything else, so an S3 row previews nothing; F4 says
+«Only files on this Mac can be edited — copy it out first (F5)»; and ⏎ falls off the end of
+`activate`'s chain and does nothing whatsoever, with no message at all. The workaround is the round
+trip F4's own sentence describes, and automating it is what every other client in this space sells.
+
+**The shape is settled by what those clients do, and it is the FTP shape.** Cyberduck's Edit
+downloads to a temp directory, opens the preferred editor and uploads the revision on save — one
+funnel for S3, SFTP and WebDAV alike — and its space-bar Quick Look is that same fetch without the
+editor. Transmit is the same, down to uploading while its own window is hidden behind the editor's.
+The other family mounts the bucket (Mountain Duck, ExpanDrive, `rclone mount`) and is not ours to
+build: that is a File Provider extension, a different product with a different lifecycle. Nobody
+streams — an editor and a Quick Look plugin both want a real file, so every client pre-downloads.
+Dirnex already owns that machinery for archive members (§M4's extract → watch → offer → write back);
+this slice points it at a second kind of elsewhere.
+
+Three decisions taken before any code, each with the alternative it beat:
+
+- **Remote-generic, gated on `isRemoteConnection`.** SFTP and FTP arrive with S3: all three answer
+  `copyFile` in both directions and all three carry `acceptsUploads`. Writing it against `isS3`
+  would be the fourth instance of the finding this milestone keeps re-deriving — one question,
+  several spellings, and the compiler checks none of them.
+- **The cursor never downloads.** Quick View follows the cursor, so a preview that fetches on an
+  arrow key spends a billed request and someone's bandwidth because the cursor passed over a row.
+  Same fork as Quick View's JavaScript switch and Enter-vs-Unlock, and settled the same way: "is
+  this safe" and "should this happen unasked" are different questions. `updateQuickView(unlocking:)`
+  already carries exactly this distinction for encrypted archives, so it is a branch and not a new
+  mechanism — `prepareRemotePreview` reads the cache and never fetches, `openRemotePreview` is the
+  key somebody pressed and may. Cursor movement draws a placeholder naming the file and its size.
+- **A save re-stats before it writes.** S3 has no locking and a save is a whole-object PUT, so the
+  ordinary hazard is silently overwriting an edit someone else made in the meantime. Record size and
+  mtime at download, re-`stat` before uploading, and on a difference say so and let the user choose.
+  One extra request per save on every S3-compatible endpoint, where a conditional `If-Match` PUT is
+  stronger and needs its own probe first (whether `curl` signs it under SigV4, and whether anything
+  but AWS honours it) — parked, not rejected. Note the check is **weaker on FTP**, whose `LIST`
+  stamp is year-less, zone-less and on the server's clock (NOTES.md ▸ curl): say that plainly rather
+  than implying a guarantee the protocol cannot give.
+
+**Probes first, and these are the ones that can change the code that gets written:**
+
+1. **Cancel mid-GET.** `copyFile` takes `isCancelled`; measure that Stop on the download sheet
+   really kills `curl` and leaves **nothing** in the cache — a half-downloaded object cached as a
+   preview is the quiet direction, since it renders as a truncated file rather than as an error.
+2. **A Glacier object.** PUT with `x-amz-storage-class: GLACIER`, then GET: expect `403
+   InvalidObjectState`. Backup buckets are exactly where a file manager gets pointed, and the
+   preview has to say "this object is archived and must be restored first" rather than the generic
+   refusal. Cheap, and only measurable against a real endpoint.
+3. **Read-after-write on the third-party endpoint.** The conflict check assumes a `stat` sees a
+   write that has already landed. AWS has been read-after-write consistent since 2020; the endpoint
+   from Slice 8 has promised nothing, and it is the one that has already inverted two rules.
+4. **The edge-whitespace key, again.** Slice 8's trailing-space object broke every verb that builds
+   a URL from a name while `stat` kept agreeing with the listing. Download-and-upload is two more
+   such verbs, so the same object goes through this path before it ships.
+5. **Time to first byte for a small object**, to check the 400 ms sheet delay inherited from
+   `CloudDownloadPrompt` is still the right threshold — it was tuned against iCloud
+   materialization, not against a network round trip.
+
+**Core first (additive, app untouched).** `RemoteFileRevision` — size + mtime + an optional ETag,
+built from a `FileEntry`, with `isSuperseded(by:)`; deliberately *not* `EditedFileRevision`, which
+answers the opposite question for a local temp copy and must keep ignoring the inode. Plus the pure
+rule for when an explicit fetch is big enough to confirm first, as a table rather than a constant
+buried at a call site. No `VFSBackend` change: the revision comes from `stat`, which every remote
+backend already answers, so the protocol surface stays where it is.
+
+**Then the app.** A window-scoped `RemoteFileCache` beside `archivePreviewCache`, keyed by `VFSPath`
+(which carries the backend id, so two accounts cannot collide) and **stamped with the revision** —
+the `ArchiveIdentity` lesson's second instance: a cache keyed by a path outlives the object that
+path named, and here it would hand over the previous object's bytes under the new object's name.
+Each download lands in its own directory under the same temp root, keeping the file's real name,
+because the editor shows that name and the edit watcher watches the *directory*. Then
+`PanelViewController+RemotePreview` (the passive/explicit pair, mirroring `+ArchivePreview` line for
+line), the remote branch in `quickViewSourceURL`, a placeholder card for the preview surfaces, the
+F4 branch replacing the refusal, and write-back on the window rather than the pane — an edit
+outlives whatever the panes are showing, which is why `+ArchiveWriteBack` already lives there.
+`ArchiveMemberEditRegistry` generalizes to carry a destination (an archive member or a remote path)
+so there is **one** save-detection mechanism with two endings; the remote ending differs in one way
+worth writing down, that it keeps watching after a successful upload and re-baselines the revision,
+because the editor still holds that same copy and a second save must offer again.
+
+**Two things the compiler will not check**, both named here so they are not rediscovered. The
+transfer is a blocking subprocess wait, so it belongs on `BlockingWork` and not in a
+`Task.detached` — the cooperative-pool finding, which `ArchivePreviewCache` predates and should
+follow later. And F4's refusal sentence and its **menu validator** are two copies of one predicate
+(the size-bar lesson): change one and the key works while the item stays gray, which no headless
+test drives.
+
+**Tests, with the negative controls that make them evidence.** Core: the revision table and the
+confirm rule. App: the cache drops a stale entry and keeps a fresh one (neuter the stamp — the first
+must fail while the second passes, or the "fix" is really "re-download every time"); the registry
+routes both destinations; F4 validates enabled for a remote file. The claim that matters most is
+testable directly — a fake transport that **counts requests** while the cursor walks five rows must
+stay at zero, and neutering the passive/explicit split must break exactly that count. Live, in
+`S3AccountLiveIntegrationTests` (`.serialized`, gated on its config file): download → edit → save
+back → verify the bytes with an independent GET, plus the conflict path, driven by mutating the
+object between the download and the save.
+
+**Deliberately out of scope.** Range requests for a partial preview (a truncated image or PDF
+renders as damage, and a head-of-file text preview is a second rendering path for one case);
+local version history of the kind Cyberduck keeps in its editor preferences; and any form of mount.
+The ⏎ gesture is *in* scope and uses the same funnel with the same watch, because leaving it
+silently dead beside a working F4 is stranger than either.
+
 ## 5. Cross-cutting: testing strategy
 
 | Layer | Approach |
