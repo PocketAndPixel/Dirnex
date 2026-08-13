@@ -34,7 +34,7 @@ import DirnexCore
 /// `s3.eu-central-1.wasabisys.com`). Hidden, a strict server is simply unreachable: the failure is
 /// `SignatureDoesNotMatch`, which reads as a *credentials* problem, so the user retypes a key that
 /// was never wrong and has no field to correct the thing that is. It costs a lenient server's user
-/// nothing to leave the row visible, since it is blank and optional (``defaultRegion``).
+/// nothing to leave the row visible, since it is blank and optional (``S3Region``).
 @MainActor
 final class ConnectServerS3Fields {
     /// `Amazon S3` | `S3-Compatible` — which one decides whether the endpoint is derived or typed.
@@ -66,7 +66,7 @@ final class ConnectServerS3Fields {
     private var s3Selected = false
 
     /// The field to focus when S3 is the selected protocol — the access key, which is the first row
-    /// the user must fill in (the region above it is optional, resolving to ``defaultRegion`` when
+    /// the user must fill in (the region above it is optional, and stays blank when
     /// left blank) and the first of the three the bucket picker below waits on. Focusing the bucket
     /// instead would land the caret on the *last* row of the layout, above nothing but "Save as",
     /// and ask for the one value the rows above it exist to fetch.
@@ -140,33 +140,32 @@ final class ConnectServerS3Fields {
     /// Every row this field set owns, for the form's show/hide and its size reservation.
     var allRows: [NSGridRow] { rows + compatibleRows }
 
-    /// What a blank region field resolves to: AWS's own default, and what an S3-compatible server
-    /// that has no regions is usually configured with.
+    /// The region this form records: **what was typed, blank included** — except for Amazon, where a
+    /// blank one cannot name a host.
     ///
-    /// **The field is left empty and this is applied when it is read**, rather than prefilled. A
-    /// region is genuinely optional for most of the servers this backend exists to reach — measured
-    /// 2026-08-13 against a real S3-compatible endpoint, which verified the signature while ignoring
-    /// the credential scope's region entirely, accepting `us-east-1`, `lax` and `default` alike — so
-    /// a prefilled value states a fact about the user's server that the app does not know. The
-    /// placeholder still shows it, which is the honest version of the same hint.
+    /// The field is left empty rather than prefilled, because a region is genuinely optional for
+    /// most of the servers this backend exists to reach (measured — ``S3Region``). What used to
+    /// happen is that the blank was resolved to `us-east-1` *here*, at read time, and that resolved
+    /// value went into the saved record — so clearing the field and pressing Connect brought
+    /// `us-east-1` straight back on the next edit, with nothing on screen to say why. Reported
+    /// 2026-08-14, and the honest fix is not a better default but keeping the blank: it is preserved
+    /// where the connection is *recorded* and resolved where it is *used*
+    /// (``S3Region/signing(_:)``, applied at the moment of signing).
     ///
-    /// It cannot be dropped altogether, in *either* direction. SigV4 always names a region, so the
-    /// signature needs some string; and for the Amazon service the region additionally **derives the
-    /// host** (`s3.<region>.amazonaws.com`), where an empty one would build `s3..amazonaws.com` —
-    /// not a wrong region but a nonexistent server. Defaulting is safe there for a reason that is
-    /// itself measured: a bucket in another region answers 301 naming the region that works, and
+    /// **Amazon is the exception and it is structural**, not a preference: there the host is derived
+    /// from the region (`s3.<region>.amazonaws.com`), so an empty one builds `s3..amazonaws.com` —
+    /// not a wrong server but no server. Defaulting is safe there for a reason that is itself
+    /// measured: a bucket in another region answers 301 naming the region that works, and
     /// `PanelViewController+ConnectS3` re-aims one attempt at it automatically, so a blank field
-    /// costs an AWS user a redirect rather than a failure.
-    static let defaultRegion = "us-east-1"
-
-    /// The region to sign with: what was typed, or ``defaultRegion`` when the field is blank.
+    /// costs an AWS user a redirect rather than a failure. An S3-compatible endpoint is typed in
+    /// full and derives nothing, so it has no such need.
     ///
-    /// One funnel for both readers. `readForm` and `readAccount` ask the same question, and a
-    /// fallback applied in only one of them would leave the bucket picker refusing to ask — its
-    /// guard rejects an empty region — on a form whose Connect button would have worked.
+    /// One funnel for both readers. `readForm` and `readAccount` ask the same question, and a rule
+    /// applied in only one of them would let the two disagree about which connection this is.
     private var regionValue: String {
         let typed = ConnectFormFactory.trimmed(region)
-        return typed.isEmpty ? Self.defaultRegion : typed
+        guard typed.isEmpty, !isCompatible else { return typed }
+        return S3Region.fallback
     }
 
     // MARK: - State
@@ -273,7 +272,10 @@ final class ConnectServerS3Fields {
     func readAccount() -> (account: S3Account, secretAccessKey: String)? {
         let regionValue = regionValue
         let keyValue = ConnectFormFactory.trimmed(accessKeyID)
-        guard ConnectFormFactory.isSafeArgument(regionValue),
+        // The region is the one field that may be **absent** (``S3Region``), so it is checked for
+        // being *unusable* rather than for being filled in: `isSafeArgument` answers both questions
+        // at once and would refuse the blank along with the dangerous.
+        guard !regionValue.hasPrefix("-"),
               ConnectFormFactory.isSafeArgument(keyValue),
               !secretKey.stringValue.isEmpty,
               let resolved = resolvedEndpoint(region: regionValue) else { return nil }

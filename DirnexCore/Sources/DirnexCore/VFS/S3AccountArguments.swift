@@ -119,8 +119,12 @@ public extension S3ProcessArguments {
     }
 
     /// The `CreateBucketConfiguration` document, or `nil` when the request must carry no body.
+    ///
+    /// An **unstated** region takes the same no-body path as `us-east-1`, and for a stronger reason
+    /// than the AWS rule below: naming a region in the body is telling the service where to put the
+    /// bucket, which is precisely what a user who left the field blank did not say (``S3Region``).
     static func createBucketBody(region: String) -> String? {
-        guard region != "us-east-1" else { return nil }
+        guard S3Region.isStated(region), region != S3Region.fallback else { return nil }
         return """
         <?xml version="1.0" encoding="UTF-8"?>\
         <CreateBucketConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">\

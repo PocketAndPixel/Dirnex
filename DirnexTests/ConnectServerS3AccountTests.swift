@@ -208,9 +208,9 @@ struct ConnectServerS3AccountTests {
         #expect(S3ProcessArguments.listBuckets(account: account).last == "http://127.0.0.1:9000/")
     }
 
-    /// The credentials are required and the region is not — it resolves to
-    /// ``ConnectServerS3Fields/defaultRegion`` when blank, which `blankRegionStillListsBuckets`
-    /// covers from the other side.
+    /// The credentials are required and the region is not — a blank one is kept blank for an
+    /// S3-compatible endpoint and resolved only for Amazon, which `blankRegionStillListsBuckets`
+    /// and `blankRegionStaysBlankForCompatible` cover from the other side.
     @Test("no account without a secret or an access key")
     func accountNeedsTheRest() {
         let missingSecret = fields()

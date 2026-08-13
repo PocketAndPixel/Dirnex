@@ -109,10 +109,31 @@ public struct ServerConnection: Sendable, Hashable, Identifiable, Codable {
         case let .s3(location):
             // The same `bucket — host` the path bar's root crumb draws, so a saved row and the pane
             // it opens name the place identically.
-            return "\(location.bucket) — \(location.account.displayEndpoint) (\(location.region))"
-        case let .s3Account(account): return "\(account.displayEndpoint) (\(account.region))"
+            return "\(location.bucket) — \(Self.s3Place(location.account))"
+        case let .s3Account(account): return Self.s3Place(account)
         }
     }
+
+    /// An S3 endpoint and its region, with the region omitted when there is none to state.
+    ///
+    /// The empty case is the point: a connection to a server whose regions are fiction carries no
+    /// region at all (``S3Region``), and `host ()` would be the app inventing a fact — the same one
+    /// the record deliberately does not keep.
+    private static func s3Place(_ account: S3Account) -> String {
+        guard S3Region.isStated(account.region) else { return account.displayEndpoint }
+        return "\(account.displayEndpoint) (\(account.region))"
+    }
+}
+
+/// What happened to an edit handed to ``ServerConnections/commitEdit(of:as:)``.
+///
+/// A refusal carries the name so the caller can say which one is taken — the user is looking at a
+/// sheet with two names in play (the one they opened and the one they typed), so "that name is in
+/// use" without the name is a sentence they have to guess at.
+public enum ServerEditOutcome: Sendable, Equatable {
+    case committed
+    /// A *different* saved server already has this name; nothing was changed.
+    case nameTaken(String)
 }
 
 /// An ordered, name-de-duplicated collection of saved servers — the model behind the sidebar's
@@ -228,6 +249,38 @@ public struct ServerConnections: Sendable, Equatable, Codable {
     public mutating func remove(at index: Int) {
         guard connections.indices.contains(index) else { return }
         connections.remove(at: index)
+    }
+
+    /// Write an **edited** connection back over the one named `previousName`, name included.
+    ///
+    /// The sidebar's Edit… has no update path of its own — it re-opens the Connect sheet and the
+    /// record is whatever the form reads back — so this is the one operation that means "this row,
+    /// but different". Three rules, each of which is a way the obvious `remove` + ``save(_:)`` pair
+    /// gets it wrong:
+    ///
+    /// - **In place.** `save` appends a name it has never seen, so a rename through remove-and-save
+    ///   drops the row to the bottom of the sidebar — a reorder nobody asked for, from an edit that
+    ///   may only have fixed a typo.
+    /// - **A name already taken by a *different* record is refused**, exactly as ``rename(name:to:)``
+    ///   refuses it. The pair would silently overwrite that record and then delete this one, so a
+    ///   mistyped name costs the user a saved server they never touched.
+    /// - **An unknown `previousName` appends**, so this is also the honest answer for "save what the
+    ///   form holds" when the record has since been removed elsewhere.
+    @discardableResult
+    public mutating func commitEdit(
+        of previousName: String,
+        as connection: ServerConnection
+    ) -> ServerEditOutcome {
+        if connection.name != previousName,
+           connections.contains(where: { $0.name == connection.name }) {
+            return .nameTaken(connection.name)
+        }
+        if let index = connections.firstIndex(where: { $0.name == previousName }) {
+            connections[index] = connection
+        } else {
+            connections.append(connection)
+        }
+        return .committed
     }
 
     /// Rename the connection named `name` to `newName` — the sidebar's inline rename. Rejected

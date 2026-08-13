@@ -74,7 +74,10 @@ public struct S3Account: Sendable, Hashable, Codable {
     /// The `--aws-sigv4` argument value. Identical to ``S3Location/signatureSpecifier`` because it
     /// names the region and the service and knows nothing about buckets — which is what makes a
     /// service-level request signable with no new machinery at all.
-    var signatureSpecifier: String { "aws:amz:\(region):s3" }
+    ///
+    /// Signed with ``S3Region/signing(_:)``, so an unstated region still produces a well-formed
+    /// credential scope rather than `aws:amz::s3`.
+    var signatureSpecifier: String { "aws:amz:\(S3Region.signing(region)):s3" }
 }
 
 public extension S3Account {
@@ -138,7 +141,9 @@ public extension S3Account {
         let usesTLS = !host.hasSuffix("+http")
         if !usesTLS { host = String(host.dropLast("+http".count)) }
 
-        guard !accessKeyID.isEmpty, !host.isEmpty, !region.isEmpty else { return nil }
+        // The region may legitimately be empty — see ``S3Region``. Everything else is what the
+        // request is *built* from and a blank one would address nothing.
+        guard !accessKeyID.isEmpty, !host.isEmpty else { return nil }
         self.init(
             host: host,
             port: port,

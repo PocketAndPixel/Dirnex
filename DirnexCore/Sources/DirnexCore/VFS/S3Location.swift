@@ -189,9 +189,9 @@ public extension S3Location {
         let usesTLS = !host.hasSuffix("+http")
         if !usesTLS { host = String(host.dropLast("+http".count)) }
 
-        guard !accessKeyID.isEmpty, !host.isEmpty, !region.isEmpty, !bucket.isEmpty else {
-            return nil
-        }
+        // The region may legitimately be empty — see ``S3Region``. Everything else is what the
+        // request is *built* from and a blank one would address nothing.
+        guard !accessKeyID.isEmpty, !host.isEmpty, !bucket.isEmpty else { return nil }
         self.init(
             host: host,
             port: port,
@@ -252,7 +252,10 @@ public extension S3Location {
     /// The `--aws-sigv4` argument value naming the provider, region and service. `aws:amz` is the
     /// provider pair for S3 and for every S3-compatible server, which is what lets one spelling
     /// reach AWS, R2, B2 and MinIO alike.
-    var signatureSpecifier: String { "aws:amz:\(region):s3" }
+    ///
+    /// Signed with ``S3Region/signing(_:)``, so an unstated region still produces a well-formed
+    /// credential scope rather than `aws:amz::s3`.
+    var signatureSpecifier: String { "aws:amz:\(S3Region.signing(region)):s3" }
 
     /// The Keychain service every S3 secret key is filed under.
     static var keychainService: String { "com.dirnex.s3" }

@@ -153,6 +153,41 @@ struct ConnectServerS3FieldsTests {
         #expect(location.host == "s3.us-east-1.amazonaws.com")
     }
 
+    /// The user's half of the same field, and the opposite answer: an S3-compatible endpoint is
+    /// typed in full, so nothing is derived from the region and a blank one can stay blank — which
+    /// is what the record then keeps. Resolving it here was what brought `us-east-1` back on every
+    /// edit of a server whose regions are fiction (reported 2026-08-14).
+    @Test("a blank region stays blank for an S3-compatible server")
+    func blankRegionStaysBlankForCompatible() throws {
+        let fields = fields()
+        choose(1, in: fields.serviceControl)
+        fields.endpoint.stringValue = "s3.lax.example.net"
+        fields.region.stringValue = ""
+        fields.bucket.stringValue = "photos"
+        fields.accessKeyID.stringValue = "AKIAEXAMPLE"
+        fields.secretKey.stringValue = "s3cret"
+
+        let location = try #require(bucket(of: fields.readForm(saveName: nil)))
+        #expect(location.region.isEmpty)
+        #expect(location.host == "s3.lax.example.net")
+        // And it still signs — the fallback lives at the signature, not in the record.
+        #expect(location.signatureSpecifier == "aws:amz:us-east-1:s3")
+    }
+
+    /// The same for an account, since the two readers share one funnel and a rule applied to one of
+    /// them would let the sheet and its bucket picker disagree about which connection this is.
+    @Test("a blank region stays blank for a compatible account too")
+    func blankRegionStaysBlankForCompatibleAccount() throws {
+        let fields = fields()
+        choose(1, in: fields.serviceControl)
+        fields.endpoint.stringValue = "s3.lax.example.net"
+        fields.region.stringValue = ""
+        fields.accessKeyID.stringValue = "AKIAEXAMPLE"
+        fields.secretKey.stringValue = "s3cret"
+
+        #expect(try #require(fields.readAccount()).account.region.isEmpty)
+    }
+
     @Test("the bucket picker still asks with a blank region")
     func blankRegionStillListsBuckets() throws {
         // The half a fallback applied in `readForm` alone would miss: the picker's own guard rejects

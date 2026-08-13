@@ -11171,6 +11171,95 @@
         }
       }
     },
+    "Another saved server is already called “%@”. Give this one a different name to keep both.": {
+      "comment": "Connect-sheet failure when an edit renames a server onto an existing name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein anderer gesicherter Server heißt bereits „%@“. Gib diesem einen anderen Namen, um beide zu behalten."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Another saved server is already called “%@”. Give this one a different name to keep both."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otro servidor guardado ya se llama «%@». Ponle otro nombre a este para conservar ambos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un autre serveur enregistré s’appelle déjà « %@ ». Donnez un autre nom à celui-ci pour conserver les deux."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un altro server salvato si chiama già “%@”. Assegna un nome diverso a questo per conservarli entrambi."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "別の保存済みサーバーがすでに「%@」という名前です。両方を残すには、こちらに別の名前を付けてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다른 저장된 서버가 이미 “%@”입니다. 둘 다 유지하려면 이 서버에 다른 이름을 지정하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Een andere bewaarde server heet al ‘%@’. Geef deze een andere naam om ze allebei te behouden."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inny zapisany serwer nazywa się już „%@”. Nadaj temu inną nazwę, aby zachować oba."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Outro servidor salvo já se chama “%@”. Dê outro nome a este para manter os dois."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Другой сохранённый сервер уже называется «%@». Дайте этому другое имя, чтобы сохранить оба."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Інший збережений сервер уже називається «%@». Дайте цьому іншу назву, щоб зберегти обидва."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "另一个已存储的服务器已叫做“%@”。为这个服务器取一个不同的名称即可保留两者。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "另一個已儲存的伺服器已叫做「%@」。為這個伺服器取一個不同的名稱即可保留兩者。"
+          }
+        }
+      }
+    },
     "Any date": {
       "comment": "Find Files: the Modified popup's no-filter option.",
       "localizations": {

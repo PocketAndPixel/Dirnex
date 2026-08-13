@@ -121,30 +121,9 @@ extension PanelViewController {
         }
     }
 
-    /// Re-open the connect sheet prefilled from a saved server (the sidebar's "Edit…"). A rename
-    /// removes the old entry once the connection succeeds, so editing updates in place rather than
-    /// duplicating — and a failed edit leaves the original saved server untouched.
-    func editServer(_ server: ServerConnection) {
-        guard let window = view.window else { return }
-        ConnectServerPrompt.present(
-            over: window,
-            prefill: server,
-            attempt: { [weak self] form in
-                guard let self else { return .failed(Self.genericConnectError) }
-                let result = await apply(form)
-                if case .succeeded = result, let newName = form.saveName, newName != server.name {
-                    var store = ServerConnectionStore.load()
-                    if store.remove(name: server.name) { ServerConnectionStore.save(store) }
-                }
-                return result
-            },
-            onSucceeded: { [weak self] in self?.focusTable() }
-        )
-    }
-
     // MARK: - Dispatch
 
-    private func apply(_ form: ConnectServerPrompt.Form) async -> ConnectServerPrompt.Attempt {
+    func apply(_ form: ConnectServerPrompt.Form) async -> ConnectServerPrompt.Attempt {
         switch form.endpoint {
         case let .sftp(location, authentication):
             return await connectSFTP(SFTPConnectRequest(
@@ -453,7 +432,9 @@ extension PanelViewController {
 
     // MARK: - Shared
 
-    private static var genericConnectError: String {
+    /// `internal` rather than `private` because Swift's `private` does not cross files and the Edit…
+    /// half lives in one of its own (docs/NOTES.md ▸ Lint ceilings).
+    static var genericConnectError: String {
         String(
             localized: "The connection couldn’t be set up.",
             comment: "Generic server-connect failure with no more specific reason."
