@@ -61,8 +61,11 @@ extension PanelViewController: NSMenuItemValidation {
         switch menuItem.action {
         case #selector(goToParentDirectory(_:)):
             // "Go Up" walks out of an archive too, but is meaningless at a backend root or on a
-            // virtual search-results pane.
-            return isArchive || (panel.path.backend == .local && panel.parentPath != nil)
+            // virtual search-results pane. Read from `canGoToParent` rather than restating it: this
+            // menu item is the surface no headless test drives, so a validator carrying its own copy
+            // of the rule is how a working command ends up grayed out (docs/NOTES.md — and it was,
+            // for every remote pane, until 2026-08-13).
+            return canGoToParent
         case #selector(goBack(_:)):
             return tabs[activeTabIndex].history.canGoBack
         case #selector(goForward(_:)):

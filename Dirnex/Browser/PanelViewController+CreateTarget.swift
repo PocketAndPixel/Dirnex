@@ -40,8 +40,13 @@ extension PanelViewController {
     /// never "com~apple~CloudDocs", which is a folder the user has never heard of. So only a tree —
     /// where the pane genuinely draws the deeper folder, with its own row on screen — names the
     /// directory underneath. At a tree's root level the two are the same string anyway.
+    ///
+    /// `displayName` rather than `lastComponent` for the same reason the tab chip uses it: at a
+    /// *backend root* `lastComponent` is a bare `"/"`, so F7 on a freshly connected server offered
+    /// «Create a folder in "/"» — seen live on a bucket 2026-08-13, and true of an SFTP or FTP root
+    /// since those shipped. Below a root the two are the same string, so nothing else moves.
     var creationDirectoryName: String {
-        guard panel.isTree, let target = creationDirectory else { return panel.path.lastComponent }
-        return target.lastComponent
+        guard panel.isTree, let target = creationDirectory else { return panel.path.displayName }
+        return target.displayName
     }
 }

@@ -33,23 +33,15 @@ extension PathBarView {
             rebuildICloudCrumbs([])
         } else if path.backend.isArchive {
             rebuildArchiveLabel(for: path, ancestry: archiveAncestry)
-        } else if let location = path.backend.sftpLocation {
-            // A remote SFTP location is re-listable, so it gets clickable breadcrumbs rooted at the
-            // account (`oleg@mac › Users › oleg › Dev`), like a local path — not the dead-end
-            // "results" label a search snapshot gets.
-            rebuildCrumbs(for: path, rootTitle: "\(location.username)@\(location.host)")
-        } else if let location = path.backend.ftpLocation {
-            // An FTP account is re-listable for the same reason and gets the same treatment. Without
-            // this branch it fell through to `rebuildVirtualLabel` and drew "Results for /" — the
-            // search phrasing, on a remote server nobody searched (caught only by connecting).
-            rebuildCrumbs(for: path, rootTitle: "\(location.username)@\(location.host)")
-        } else if let location = path.backend.s3Location {
-            // The third one, and the branch this `else` chain exists to make impossible to forget.
-            // A bucket is rooted at its own name rather than at an account: the key id is what
-            // *reaches* it, not what it is called, and every row underneath is addressed relative
-            // to the bucket. The endpoint rides along because two buckets of the same name on two
-            // providers are a real thing.
-            rebuildCrumbs(for: path, rootTitle: "\(location.bucket) — \(location.host)")
+        } else if path.backend.isRemoteConnection, let rootTitle = path.backendRootTitle {
+            // A connected account is re-listable, so it gets clickable breadcrumbs rooted at
+            // whatever names it (`oleg@mac › Users › oleg › Dev`), like a local path — not the
+            // dead-end "results" label a search snapshot gets. SFTP had this branch first and FTP
+            // fell through to `rebuildVirtualLabel` for a while, drawing "Results for /" — the
+            // search phrasing, on a remote server nobody searched (caught only by connecting). One
+            // predicate and one title source now, so the next backend is named in
+            // `backendRootTitle` and arrives here already correct.
+            rebuildCrumbs(for: path, rootTitle: rootTitle)
         } else {
             rebuildVirtualLabel(for: path)
         }

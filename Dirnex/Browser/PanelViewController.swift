@@ -434,8 +434,11 @@ final class PanelViewController: NSViewController {
                 if let child, let index = panel.displayedIndex(ofID: child) {
                     panel.moveCursor(to: index)
                 }
-                // Land on a real entry; only an empty directory parks the cursor on `..`.
-                cursorOnParentRow = panel.isEmpty && panel.parentPath != nil
+                // Land on a real entry; only an empty directory parks the cursor on `..`. Asked
+                // through `canGoToParent` rather than through `parentPath`, so the flag cannot claim
+                // the cursor is on a row the pane does not draw — which it did for an empty results
+                // listing, whose synthetic path has a parent that is not somewhere to go.
+                cursorOnParentRow = panel.isEmpty && canGoToParent
                 // A restored tab's first listing: re-open the folders a restored tree had expanded,
                 // listing each lazily…
                 restorePendingTreeExpansion()

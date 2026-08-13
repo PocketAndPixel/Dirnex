@@ -654,6 +654,39 @@ an exact `Content-Length` and **no chunked framing anywhere**, reassembled byte-
 at its full size; a small file still took one `PUT`; a refused part ran `create → part → part →
 abort` and never completed; and a wrong-secret control was refused with `SignatureDoesNotMatch`.
 
+Slice 6 landed 2026-08-13 and is the **app pass** — the write half driven through the real UI rather
+than through a harness, and the two gaps that only that could show. The probe endpoint grew a
+server-side copy and a `DeleteObjects` batch (both verifying `Content-MD5` and the signature by
+hand), the app was driven against it by computer-use, and every request was read back out of the
+server's log: F7 sent `PUT /probe/from-app/` with `Content-Length: 0` and the empty string's real
+SHA-256 — no chunked framing; F5 sent the file as `UNSIGNED-PAYLOAD` with an exact length; F2 on a
+name carrying a space came through as `x-amz-copy-source: /probe/hello.txt` → `renamed%20by%20app.txt`
+followed by the delete; F8 on a folder swept three keys in **one** batch. So the wire shape Slices 4
+and 5 were designed to produce is what the app actually produces. The two things it found were both
+in the app and neither is S3-specific in its cause:
+
+- **A remote pane had no `..` row, a dead Backspace and a grayed Go Up** — `parentRowCount`,
+  `goToParent()` and the Go menu's validator each spelled the rule `backend == .local`, so this had
+  been true for SFTP since M5 and FTP since M13 as well. It is the "one rule, several spellings"
+  trap in its worst form, because a *missing* row shows nothing: the pane is an ordinary listing, and
+  both remote parsers correctly strip the server's own `..`, so there was no accidental row either.
+  Walking into an **empty** bucket folder is what removes every alternative at once — no rows, no
+  Backspace, no menu item, the crumb the only way out. One `canGoToParent` now answers it for all
+  three surfaces, deliberately still excluding a results snapshot, whose synthetic parent is not
+  somewhere to go — and a fourth site fell out of naming it, the `cursorOnParentRow` seed, which had
+  been parking an empty results pane's cursor on a row that pane does not draw. Re-verified live: the
+  same empty folder now carries `..`, Backspace walks up onto the row it came from, and Go Up is
+  enabled.
+- **A bucket root had no name.** `VFSPath.displayName` named an archive, an SFTP account and an FTP
+  account and stopped there, so the tab chip read `/` directly above a crumb reading
+  `probe — 127.0.0.1` — the contradiction that property's doc comment exists to prevent — and F7
+  offered «Create a folder in "/"», which `creationDirectoryName` had been saying at an SFTP or FTP
+  root all along. The root title now has one definition (`backendRootTitle`) that both the chip and
+  the crumb read, since they need it at *different depths* and that is exactly how the two drifted.
+
+The `..` widening is verified live on S3 and by test on SFTP and FTP — they share the one predicate,
+but nobody connected to a real server to watch it.
+
 **What S3 will not be able to do, and it is better to state it than to discover it.** S3 is not a
 filesystem: rename is copy-then-delete (O(size), and N copies for a "folder"), `createDirectory` has
 no operation behind it beyond writing a marker, there is no settable mtime, no permissions and no

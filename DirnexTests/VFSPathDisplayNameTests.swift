@@ -39,8 +39,49 @@ struct VFSPathDisplayNameTests {
         #expect(path.displayName == "oleg@example.com")
     }
 
-    @Test("a local path keeps its last component")
+    /// The case that was missing, and the one live run showed it twice over: a bucket root drew a
+    /// bare `"/"` on the tab chip directly above a crumb reading `probe — 127.0.0.1`, and F7 offered
+    /// «Create a folder in "/"». A bucket is named by itself rather than by the key that reaches it,
+    /// with the endpoint alongside, since two providers can hold a bucket of the same name.
+    @Test("an S3 root is named by the bucket and its endpoint")
+    func s3Root() {
+        let path = VFSPath(backend: .s3(Self.bucket), path: "/")
+
+        #expect(path.displayName == "probe — 127.0.0.1")
+    }
+
+    @Test("inside a bucket the key's own last component is already right")
+    func insideBucket() {
+        let path = VFSPath(backend: .s3(Self.bucket), path: "/docs/api")
+
+        #expect(path.displayName == "api")
+    }
+
+    /// `displayName` answers only at a root, while the path bar needs the same title at every depth
+    /// — which is why the title has one definition and both read it. Pinning the deep case is what
+    /// says the two cannot drift back apart.
+    @Test("the root title is the same string at every depth, which is what the crumb needs")
+    func rootTitleAtDepth() {
+        let root = VFSPath(backend: .s3(Self.bucket), path: "/")
+        let deep = VFSPath(backend: .s3(Self.bucket), path: "/docs/api")
+
+        #expect(deep.backendRootTitle == root.backendRootTitle)
+        #expect(deep.backendRootTitle == "probe — 127.0.0.1")
+    }
+
+    @Test("a local path keeps its last component, and has no root title of its own")
     func localPath() {
         #expect(VFSPath.local("/Users/oleg/Dev").displayName == "Dev")
+        #expect(VFSPath.local("/").backendRootTitle == nil)
     }
+
+    private static let bucket = S3Location(
+        host: "127.0.0.1",
+        port: 9599,
+        bucket: "probe",
+        region: "us-east-1",
+        accessKeyID: "AKIAPROBEKEYEXAMPLE",
+        addressing: .path,
+        usesTLS: false
+    )
 }

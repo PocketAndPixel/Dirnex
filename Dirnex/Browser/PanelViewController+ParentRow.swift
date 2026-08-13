@@ -10,12 +10,12 @@ import DirnexCore
 /// helpers here. All of this is read-only with respect to `Panel`.
 extension PanelViewController {
     /// 1 when a `..` row is shown, else 0 — also the offset between a table row and its entry
-    /// index. Shown on any non-root local directory, and inside an archive at every level: the
-    /// `..` walks up the inner tree and, at the archive root, exits to the containing folder. A
+    /// index. Shown wherever the pane can actually walk up (``canGoToParent``): any non-root
+    /// directory, local or on a connected account, and inside an archive at every level, where the
+    /// `..` walks up the inner tree and at the archive root exits to the containing folder. A
     /// virtual *search-results* pane never shows one — its synthetic parent isn't browsable.
     var parentRowCount: Int {
-        if isArchive { return 1 }
-        return panel.path.backend == .local && panel.parentPath != nil ? 1 : 0
+        canGoToParent ? 1 : 0
     }
 
     func isParentRow(_ row: Int) -> Bool {

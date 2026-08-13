@@ -8,14 +8,12 @@ import Foundation
 /// the backend is exercised against the bytes real buckets sent and needs neither a server nor
 /// credentials (PLAN.md §2).
 ///
-/// **This is the read half.** The write verbs are the part S3 does not share with the other remote
-/// backends: `createDirectory` has no operation behind it beyond writing a zero-byte marker, a
-/// rename is copy-then-delete (O(size), and N copies for a "folder"), and there is no `rm -r`.
-/// `RemoteTransportBackend`'s four shared verbs were shaped for FTP and SFTP, where they are
-/// genuine filesystem operations, so S3 conforms to ``ConnectionScopedBackend`` — the guard all
-/// three need — and nothing else. Until the writes land, `capabilities` says `.read` and the
-/// panel grays out every operation that would need more, which is the M5 degradation path working
-/// as designed rather than a gap.
+/// **The write verbs live next door, in `S3Backend+Write.swift`**, because they are the part S3 does
+/// not share with the other remote backends: `createDirectory` has no operation behind it beyond
+/// writing a zero-byte marker, a rename is copy-then-delete (O(size), and N copies for a "folder"),
+/// and there is no `rm -r`. `RemoteTransportBackend`'s four shared verbs were shaped for FTP and
+/// SFTP, where they are genuine filesystem operations, so S3 conforms to ``ConnectionScopedBackend``
+/// — the guard all three need — and answers the four itself.
 public struct S3Backend: ConnectionScopedBackend {
     /// The bucket this backend is rooted at — its identity.
     public let location: S3Location

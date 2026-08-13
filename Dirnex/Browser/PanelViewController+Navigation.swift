@@ -110,6 +110,27 @@ extension PanelViewController {
         }
     }
 
+    /// Whether this pane can walk up from where it is — the **one** definition of that question.
+    ///
+    /// Three places ask it and each used to spell it out: the synthetic `..` row's
+    /// ``parentRowCount``, ``goToParent()`` itself, and the Go menu's validator. All three read
+    /// `backend == .local`, which is the shape docs/NOTES.md warns about — one rule, three
+    /// spellings, and the compiler checks none of them. It cost every *remote* pane its way up:
+    /// SFTP since M5, FTP since M13 and S3 since M21 had no `..` row, a dead Backspace and a grayed
+    /// Go Up, and since both remote listing parsers strip the server's own `..` there was no row to
+    /// fall back on either. Verified live 2026-08-13 standing inside an empty S3 folder — no rows at
+    /// all, so the crumb was the only way out.
+    ///
+    /// A *virtual* pane is still excluded and that is the distinction the property exists to keep: a
+    /// search snapshot's synthetic parent is not a browsable directory, while a connected account's
+    /// is (`isRemoteConnection` — re-listable, and not on this disk).
+    var canGoToParent: Bool {
+        if isArchive { return true }
+        let backend = panel.path.backend
+        guard backend == .local || backend.isRemoteConnection else { return false }
+        return panel.parentPath != nil
+    }
+
     /// Walk up one level, landing the cursor on the directory we came from. Inside an archive
     /// this walks the inner tree and, at the archive root, exits to the containing folder. A
     /// no-op on a virtual results pane — its synthetic parent isn't a browsable directory.
@@ -118,7 +139,7 @@ extension PanelViewController {
             _ = goUpWithinArchive()
             return
         }
-        guard panel.path.backend == .local else { return }
+        guard canGoToParent else { return }
         let current = panel.path
         // Up out of iCloud Drive is the merged listing, not the container machinery that holds it:
         // the real parent of an app library's `Documents` is a one-child folder nobody asked to see,

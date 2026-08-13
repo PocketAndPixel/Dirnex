@@ -751,6 +751,19 @@ at build time.
     spelling it) and one check at the display layer draws the same dash the Size column uses for an
     unmeasured folder. No fixture can catch it, since every listing fixture carries a real date; it
     was obvious in the first second of looking at the app.
+  - **A backend's *root* is a third, and it hides in the one place a name is hardest to notice
+    missing: `lastComponent` at a root is `"/"`, which is not empty, not wrong-looking, and not a
+    crash.** `VFSPath.displayName` had a branch for an archive, for SFTP and for FTP and none for S3,
+    so a bucket-root tab chip read `/` **directly above a crumb reading `probe — 127.0.0.1`** — the
+    exact contradiction that property's own doc comment was written to prevent, one backend later.
+    The same `"/"` reached a sentence: F7 offered «Create a folder in "/"», there via
+    `creationDirectoryName`'s `lastComponent`, which means an SFTP or FTP root had said it since
+    those shipped. Two lessons past "name the new backend": a **root title is wanted at two
+    different depths** — `displayName` needs it only at the root, the path bar's crumb needs it at
+    every depth — so keeping them in one property (`backendRootTitle`) is what stops the pair from
+    drifting, which they already had; and a sentence that *interpolates a path component* is a site
+    that lists backends without looking like one, so it is invisible to a grep for the previous
+    backend's predicate.
 - **Right-click menu items must capture their paths at build time** into `representedObject`,
   and entry-vs-`..` must be decided from the clicked row, not a cursor flag — a right-click on a
   marked row leaves that flag stale.
@@ -3087,6 +3100,24 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   construction, and the menu is the one surface no headless test drives. Same family as the "a display
   string that exists twice will be localized once" and "name the new backend at every site that lists
   the old one" traps: one rule, two spellings, and the compiler checks neither.
+  - **The same rule can also be spelled *three* times and be wrong in all three from the day it was
+    written — and then the missing feature is invisible, because there is nothing on screen to look
+    at.** `parentRowCount`, `goToParent()` and the Go menu's validator each read
+    `backend == .local`, so every **remote** pane had no `..` row, a dead Backspace and a grayed Go
+    Up: SFTP since M5, FTP since M13, S3 since M21. The absent-feature shape is what makes it worse
+    than the size-bar case above, where a *disabled* control at least admits something exists. Here
+    the pane is a perfectly ordinary listing that is simply missing a row, and both remote listing
+    parsers strip the server's own `..` (correctly — `sftp`'s `ls` emits `.` and `..`, FTP's `LIST`
+    does not), so there was no accidental row to fall back on either. Found by connecting and walking
+    into an **empty** folder, which is the case that removes every alternative at once: zero rows, so
+    nothing to double-click; Backspace dead; Go Up gray; only the crumb, and only if you think to
+    look up.
+  - **The fix is a name — `canGoToParent` — and it is worth noting *which* name.** The tempting one
+    is `backend == .local || backend.isRemoteConnection || isArchive` written out once and left as an
+    expression; what makes it hold is that the two callers who cannot see each other (a row count and
+    a menu validator) now ask a question rather than restate an answer. Note the narrowness the
+    property has to keep and that a bare "does `parentPath` exist" would lose: a search snapshot's
+    path *does* have a parent, and it is not somewhere to go.
 - **Tree size bars are one directory per *level*, so the sizes have to live where the rows do.** The
   flat `SizeVisualization(model:)` reads one directory's siblings; a tree's rows span many, and its
   totals cannot sit in `DirectoryModel.directorySizes` — that map is pruned to the *root* listing on
