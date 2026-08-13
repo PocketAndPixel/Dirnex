@@ -178,4 +178,64 @@ struct ConnectServerS3FieldsTests {
 
         #expect(try #require(bucket(of: fields.readForm(saveName: nil))) == saved)
     }
+
+    // MARK: - The account the bucket picker asks
+
+    /// The whole point of the picker: it has to work *before* the field it fills is filled in.
+    @Test("an account reads with the bucket field empty")
+    func accountNeedsNoBucket() throws {
+        let fields = fields()
+        fields.region.stringValue = "eu-central-1"
+        fields.accessKeyID.stringValue = "AKIAEXAMPLE"
+        fields.secretKey.stringValue = "s3cret"
+        fields.bucket.stringValue = ""
+
+        let resolved = try #require(fields.readAccount())
+        #expect(resolved.account.host == "s3.eu-central-1.amazonaws.com")
+        #expect(resolved.account.region == "eu-central-1")
+        #expect(resolved.account.accessKeyID == "AKIAEXAMPLE")
+        #expect(resolved.secretAccessKey == "s3cret")
+        // And the form itself still refuses to connect without one, so the two questions stay
+        // separate rather than the picker quietly loosening what Connect accepts.
+        #expect(fields.readForm(saveName: nil) == nil)
+    }
+
+    @Test("an account takes the typed endpoint for an S3-compatible server")
+    func accountUsesTheTypedEndpoint() throws {
+        let fields = fields()
+        choose(1, in: fields.serviceControl)
+        fields.endpoint.stringValue = "http://127.0.0.1:9000"
+        fields.region.stringValue = "us-east-1"
+        fields.accessKeyID.stringValue = "minioadmin"
+        fields.secretKey.stringValue = "minioadmin"
+
+        let account = try #require(fields.readAccount()).account
+        #expect(account.host == "127.0.0.1")
+        #expect(account.port == 9000)
+        #expect(account.usesTLS == false)
+        // Path-style or not, a service request never names a bucket — so the addressing mode the
+        // form carries has nowhere to go, which is exactly why `S3Account` does not hold one.
+        // Asserted through the arguments rather than the URL property, which is internal to the
+        // core: this is what actually reaches `curl`, so it is the stronger claim anyway.
+        #expect(S3ProcessArguments.listBuckets(account: account).last == "http://127.0.0.1:9000/")
+    }
+
+    @Test("no account without a secret, an access key, or a region")
+    func accountNeedsTheRest() {
+        let missingSecret = fields()
+        missingSecret.region.stringValue = "us-east-1"
+        missingSecret.accessKeyID.stringValue = "AKIAEXAMPLE"
+        #expect(missingSecret.readAccount() == nil)
+
+        let missingKey = fields()
+        missingKey.region.stringValue = "us-east-1"
+        missingKey.secretKey.stringValue = "s3cret"
+        #expect(missingKey.readAccount() == nil)
+
+        let missingRegion = fields()
+        missingRegion.region.stringValue = ""
+        missingRegion.accessKeyID.stringValue = "AKIAEXAMPLE"
+        missingRegion.secretKey.stringValue = "s3cret"
+        #expect(missingRegion.readAccount() == nil)
+    }
 }

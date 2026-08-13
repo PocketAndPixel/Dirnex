@@ -227,122 +227,20 @@ struct S3CurlTransport: S3Transport {
         S3Session(location: location, connectTimeout: connectTimeout, maxTime: maxTime)
     }
 
-    /// Which counter an invocation's `bytesTransferred` should come from.
-    ///
-    /// Named by the caller rather than inferred from whichever number is non-zero, because a
-    /// *refused* upload has both: the whole file went out, and the `<Error>` document came back.
-    private enum Direction {
-        case download
-        case upload
+    /// The process plumbing, which this shares with the account-level bucket list — see
+    /// ``S3CurlRunner`` for the three rules that live there.
+    private var runner: S3CurlRunner {
+        S3CurlRunner(
+            accessKeyID: location.accessKeyID,
+            secretAccessKey: secretAccessKey,
+            fallbackTimeout: metadataTimeout
+        )
     }
 
-    /// Run one invocation and turn it into the answer the backend classifies.
-    ///
-    /// The status is read from the labelled write-out on stderr rather than from the exit code, and
-    /// a status of 0 — `curl`'s own `000`, printed when nothing answered — is the only thing that
-    /// makes this a transport failure. Everything else is a response, including the ones the server
-    /// refused.
     private func perform(
         _ arguments: [String],
-        measuring direction: Direction = .download
+        measuring direction: S3CurlRunner.Direction = .download
     ) throws -> S3Response {
-        let result = try run(arguments)
-        let fields = S3WriteOut.parse(stderr: result.standardError)
-        guard fields.status != 0 else {
-            throw S3ResponseError.transport(.classify(curlExit: result.exitCode))
-        }
-        return S3Response(
-            status: fields.status,
-            body: result.standardOutput,
-            bucketRegion: fields.bucketRegion,
-            contentLength: fields.contentLength,
-            bytesTransferred: direction == .upload ? fields.bytesUploaded : fields.bytesDownloaded,
-            etag: fields.etag
-        )
-    }
-
-    private struct RunResult {
-        let standardOutput: Data
-        let standardError: String
-        let exitCode: Int32
-    }
-
-    /// Spawn `curl` with the credential on stdin, drain both pipes concurrently, and bound the
-    /// wait. Blocks; call it off the main thread — the backend is only ever driven by the operation
-    /// engine or the panel's background list.
-    private func run(_ arguments: [String]) throws -> RunResult {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/curl")
-        process.arguments = arguments
-
-        let input = Pipe()
-        let output = Pipe()
-        let errorPipe = Pipe()
-        process.standardInput = input
-        process.standardOutput = output
-        process.standardError = errorPipe
-
-        do {
-            try process.run()
-        } catch {
-            throw S3ResponseError.transport(.other)
-        }
-
-        // The secret goes in here and nowhere else — not in `arguments`, not on disk.
-        let config = S3ConfigFile.credentials(
-            accessKeyID: location.accessKeyID,
-            secretAccessKey: secretAccessKey
-        )
-        input.fileHandleForWriting.write(Data(config.utf8))
-        try? input.fileHandleForWriting.close()
-
-        // Drain both pipes on background queues so neither can fill and deadlock the other, and
-        // join them through a group so the wait can be bounded.
-        let drained = Drained()
-        let group = DispatchGroup()
-        let ioQueue = DispatchQueue(label: "com.dirnex.s3.io", attributes: .concurrent)
-        group.enter()
-        ioQueue.async {
-            drained.standardOutput = output.fileHandleForReading.readDataToEndOfFile()
-            group.leave()
-        }
-        group.enter()
-        ioQueue.async {
-            drained.standardError = errorPipe.fileHandleForReading.readDataToEndOfFile()
-            group.leave()
-        }
-
-        // `curl`'s own `--max-time` should fire first; this is the backstop for a process that is
-        // wedged rather than merely slow, so it is deliberately looser than the flag.
-        let budget = curlMaxTime(in: arguments) + 30
-        if group.wait(timeout: .now() + .seconds(budget)) == .timedOut {
-            process.terminate() // SIGTERM closes the pipes so the drains unblock
-            group.wait()
-            throw S3ResponseError.transport(.operationTimedOut)
-        }
-        process.waitUntilExit()
-
-        return RunResult(
-            standardOutput: drained.standardOutput,
-            standardError: String(bytes: drained.standardError, encoding: .utf8) ?? "",
-            exitCode: process.terminationStatus
-        )
-    }
-
-    /// The two drained streams, in a reference box so the concurrent readers write into shared
-    /// storage rather than into captured `var`s. Safe by the group: each field has exactly one
-    /// writer, and nothing reads either until both drains have joined.
-    private final class Drained: @unchecked Sendable {
-        var standardOutput = Data()
-        var standardError = Data()
-    }
-
-    /// The `--max-time` value already in the arguments, so the backstop is always derived from what
-    /// `curl` was actually told rather than from a second, drifting constant.
-    private func curlMaxTime(in arguments: [String]) -> Int {
-        guard let index = arguments.firstIndex(of: "--max-time"),
-              index + 1 < arguments.count,
-              let value = Int(arguments[index + 1]) else { return metadataTimeout }
-        return value
+        try runner.perform(arguments, measuring: direction)
     }
 }

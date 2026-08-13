@@ -77,6 +77,61 @@ enum ConnectText {
         )
     }
 
+    // MARK: - The bucket picker
+
+    /// The picker button's tooltip and its accessibility label — the button itself is a glyph, for
+    /// the reason docs/NOTES.md gives for the shortcut recorder's pill: it sits in a row whose width
+    /// belongs to the bucket field, and prose in a control that cannot grow either overruns or
+    /// clips. A tooltip has no width to overrun, so the words live there in all fourteen languages.
+    static var listBuckets: String {
+        String(
+            localized: "Show the buckets this key can see",
+            comment: "Tooltip on the S3 connect sheet's bucket-picker button."
+        )
+    }
+
+    static var bucketListEmpty: String {
+        String(
+            localized: "No buckets in this account",
+            comment: "Shown in the S3 bucket picker when the account has none."
+        )
+    }
+
+    /// Not an error, and it must not read as one: a key scoped to a single bucket is the ordinary
+    /// way these are issued, so this is the picker explaining itself rather than reporting a fault.
+    /// It names the way forward, because typing the bucket is still the thing to do.
+    static var bucketListNotPermitted: String {
+        String(
+            localized: "This key can’t list buckets — type the name",
+            comment: "Shown in the S3 bucket picker when the key lacks s3:ListAllMyBuckets."
+        )
+    }
+
+    static var bucketListBadCredentials: String {
+        String(
+            localized: "The access key or secret wasn’t accepted",
+            comment: "Shown in the S3 bucket picker when the credentials themselves are refused."
+        )
+    }
+
+    /// Deliberately *not* the refusal sentence above, though the same button raises both. Nothing
+    /// has been sent yet when this shows, so "wasn't accepted" would claim a server said no to
+    /// something it never saw — and it points at the fields rather than at the credentials, which is
+    /// where the user has to go next.
+    static var bucketListNeedsCredentials: String {
+        String(
+            localized: "Fill in the access key and secret first",
+            comment: "Shown in the S3 bucket picker when the form has no credentials to send yet."
+        )
+    }
+
+    static var bucketListFailed: String {
+        String(
+            localized: "Couldn’t reach the endpoint",
+            comment: "Shown in the S3 bucket picker when the request never got a usable answer."
+        )
+    }
+
     /// The checkbox for servers that cannot be addressed `<bucket>.<host>` — a MinIO container, a
     /// NAS, anything reached by IP. Named after what the user's own documentation calls it.
     static var pathStyle: String {

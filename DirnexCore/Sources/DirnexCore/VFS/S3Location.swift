@@ -44,8 +44,12 @@ public enum S3Addressing: String, Sendable, Hashable, Codable, CaseIterable {
 /// It is deliberately *bucket*-rooted rather than account-rooted. Listing an account's buckets is a
 /// separate call (`ListAllMyBuckets`) that a great many real keys are not permitted to make — a
 /// key scoped to one bucket is the ordinary way these are issued — so an account-rooted design
-/// fails at the root for exactly the users whose credentials are set up properly. Browsing an
-/// account's buckets is worth adding as a *second* root later; it is not the one to rest on.
+/// fails at the root for exactly the users whose credentials are set up properly.
+///
+/// That call is nonetheless made, as an **assist rather than a root**: ``S3Account`` and the connect
+/// sheet's bucket picker offer the buckets a key *can* see, beside a field that is still typed. The
+/// same argument that rules it out as a root is what makes it safe as an option — a key that cannot
+/// ask loses nothing it had.
 public struct S3Location: Sendable, Hashable, Codable {
     /// Host of the S3 endpoint, without a scheme or a bucket: `s3.us-east-1.amazonaws.com`,
     /// `<account>.r2.cloudflarestorage.com`, or a bare address for a server on the LAN.

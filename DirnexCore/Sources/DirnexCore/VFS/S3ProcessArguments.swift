@@ -52,12 +52,28 @@ public enum S3ProcessArguments {
     ///   the request against a host the signature was not computed for, turning a diagnosable
     ///   "wrong region" into an undiagnosable signature failure.
     public static func common(session: S3Session) -> [String] {
+        common(
+            signatureSpecifier: session.location.signatureSpecifier,
+            connectTimeout: session.connectTimeout,
+            maxTime: session.maxTime
+        )
+    }
+
+    /// The same flags for a request that has no bucket, and therefore no ``S3Session`` — the
+    /// account-level `ListAllMyBuckets` in `S3AccountArguments.swift`. Factored rather than copied
+    /// so the two absences argued above stay one decision: a second spelling of this list is how
+    /// `--location` gets added to one of them by somebody who never read the reason.
+    static func common(
+        signatureSpecifier: String,
+        connectTimeout: Int,
+        maxTime: Int
+    ) -> [String] {
         [
             // `-sS`: no progress meter, but keep curl's own error text on stderr.
             "-sS",
-            "--connect-timeout", String(session.connectTimeout),
-            "--max-time", String(session.maxTime),
-            "--aws-sigv4", session.location.signatureSpecifier,
+            "--connect-timeout", String(connectTimeout),
+            "--max-time", String(maxTime),
+            "--aws-sigv4", signatureSpecifier,
             "--write-out", S3WriteOut.format
         ]
     }

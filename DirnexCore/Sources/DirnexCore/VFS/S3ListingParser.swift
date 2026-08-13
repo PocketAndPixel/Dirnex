@@ -189,6 +189,15 @@ public enum S3ListingParseError: Error, Sendable, Equatable {
     /// The bytes parsed as XML but are not a `ListBucketResult` — in practice an `<Error>`
     /// document, which the caller classifies with ``S3ResponseError`` instead.
     case notAListing
+    /// The same, for the account-level `ListAllMyBucketsResult` (``S3BucketListParser``).
+    case notABucketList
+    /// A bucket list handed back the continuation token it had just been asked with, which is a
+    /// server disagreeing with itself and a loop that would never end.
+    case bucketListDidNotAdvance
+    /// A bucket list ran past its page limit. Refused rather than truncated, for the reason
+    /// ``S3Backend/listDirectory(at:)`` refuses one: a partial answer that looks complete is the
+    /// failure that matters.
+    case bucketListTooLong
 }
 
 private extension S3ListingParser {

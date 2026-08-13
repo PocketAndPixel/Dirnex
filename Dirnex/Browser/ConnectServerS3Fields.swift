@@ -33,6 +33,10 @@ final class ConnectServerS3Fields {
         action: nil
     )
 
+    /// Fills the bucket field in from the account, for the keys allowed to ask
+    /// (``ConnectServerS3BucketPicker``). An assist beside the field, never a replacement for it.
+    let bucketPicker = ConnectServerS3BucketPicker()
+
     /// The rows shown whenever S3 is the selected protocol.
     private var rows: [NSGridRow] = []
     /// Endpoint and path-style; shown only for an S3-compatible server, since Amazon derives one
@@ -49,6 +53,7 @@ final class ConnectServerS3Fields {
     // MARK: - Building
 
     func buildRows(in grid: NSGridView) -> [NSView] {
+        let bucketRow = bucketRow()
         rows = [
             grid.addRow(with: [ConnectFormFactory.label(ConnectText.service), serviceControl])
         ]
@@ -58,10 +63,11 @@ final class ConnectServerS3Fields {
         ]
         rows += [
             grid.addRow(with: [ConnectFormFactory.label(ConnectText.region), region]),
-            grid.addRow(with: [ConnectFormFactory.label(ConnectText.bucket), bucket]),
+            grid.addRow(with: [ConnectFormFactory.label(ConnectText.bucket), bucketRow]),
             grid.addRow(with: [ConnectFormFactory.label(ConnectText.accessKeyID), accessKeyID]),
             grid.addRow(with: [ConnectFormFactory.label(ConnectText.secretKey), secretKey])
         ]
+        wireBucketPicker()
 
         serviceControl.addItems(withTitles: [ConnectText.amazonS3, ConnectText.s3Compatible])
         serviceControl.selectItem(at: Service.amazon.rawValue)
@@ -69,7 +75,38 @@ final class ConnectServerS3Fields {
         serviceControl.action = #selector(serviceChanged)
         region.stringValue = Self.defaultRegion
 
-        return [serviceControl, endpoint, region, bucket, accessKeyID, secretKey]
+        // **The row, not the field.** `ConnectServerForm` pins every control it is handed to the
+        // form's 364 pt column, so returning `bucket` here would size the *field* to 364 and leave
+        // the stack 34 pt wider than its grid cell. The button then draws perfectly — `NSView` does
+        // not clip — and is **unclickable**, because hit testing does respect bounds. Measured live:
+        // the glyph was on screen, correctly placed, and no click on it ever reached the action.
+        return [serviceControl, endpoint, region, bucketRow, accessKeyID, secretKey]
+    }
+
+    /// The bucket field with its picker button beside it. A stack rather than a third grid column,
+    /// because the button belongs to this one row: a column would reserve its width in *every* row
+    /// of the form, including the four the other three protocols draw.
+    private func bucketRow() -> NSView {
+        let row = NSStackView(views: [bucket, bucketPicker.view])
+        row.orientation = .horizontal
+        row.spacing = 6
+        // The stack carries the form's width (see `buildRows`), so the field takes whatever the
+        // button leaves rather than the two of them adding up past the column.
+        bucket.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        bucket.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        bucketPicker.view.setContentHuggingPriority(.required, for: .horizontal)
+        return row
+    }
+
+    private func wireBucketPicker() {
+        bucketPicker.account = { [weak self] in self?.readAccount() }
+        bucketPicker.didChoose = { [weak self] name, region in
+            guard let self else { return }
+            bucket.stringValue = name
+            // Only when the server named one: a bucket list spans regions, and overwriting a region
+            // the user typed with nothing would break the connect that was about to work.
+            if let region, !region.isEmpty { self.region.stringValue = region }
+        }
     }
 
     /// Every row this field set owns, for the form's show/hide and its size reservation.
@@ -150,6 +187,36 @@ final class ConnectServerS3Fields {
 
     // MARK: - Reading
 
+    /// The account the bucket picker asks, or `nil` when what is typed so far cannot make one.
+    ///
+    /// **It requires everything `readForm` does except the bucket**, which is the point: the picker
+    /// exists to supply that one field, so demanding it would make the button useful only to
+    /// somebody who no longer needs it.
+    func readAccount() -> (account: S3Account, secretAccessKey: String)? {
+        let regionValue = ConnectFormFactory.trimmed(region)
+        let keyValue = ConnectFormFactory.trimmed(accessKeyID)
+        guard ConnectFormFactory.isSafeArgument(regionValue),
+              ConnectFormFactory.isSafeArgument(keyValue),
+              !secretKey.stringValue.isEmpty,
+              let resolved = resolvedEndpoint(region: regionValue) else { return nil }
+        let account = S3Account(
+            host: resolved.host,
+            port: resolved.port,
+            region: regionValue,
+            accessKeyID: keyValue,
+            usesTLS: resolved.usesTLS
+        )
+        return (account, secretKey.stringValue)
+    }
+
+    /// Where the request goes: typed for an S3-compatible server, derived from the region for
+    /// Amazon — where a field the user could get wrong would buy them nothing, since a bucket
+    /// addressed through the wrong host answers 301 rather than serving it.
+    private func resolvedEndpoint(region regionValue: String) -> S3Endpoint? {
+        guard isCompatible else { return S3Endpoint(host: S3Location.awsHost(region: regionValue)) }
+        return S3Endpoint.parse(endpoint.stringValue)
+    }
+
     /// The validated endpoint and secret, or `nil` when a required field is empty or unusable.
     func readForm(saveName: String?) -> ConnectServerPrompt.Form? {
         let bucketValue = ConnectFormFactory.trimmed(bucket)
@@ -162,13 +229,7 @@ final class ConnectServerS3Fields {
         // but a blank one is certainly a mistake, so it is rejected rather than sent empty.
         guard !secretKey.stringValue.isEmpty else { return nil }
 
-        let resolved: S3Endpoint
-        if isCompatible {
-            guard let parsed = S3Endpoint.parse(endpoint.stringValue) else { return nil }
-            resolved = parsed
-        } else {
-            resolved = S3Endpoint(host: S3Location.awsHost(region: regionValue))
-        }
+        guard let resolved = resolvedEndpoint(region: regionValue) else { return nil }
         let location = S3Location(
             host: resolved.host,
             port: resolved.port,

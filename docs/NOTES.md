@@ -764,6 +764,29 @@ at build time.
     drifting, which they already had; and a sentence that *interpolates a path component* is a site
     that lists backends without looking like one, so it is invisible to a grep for the previous
     backend's predicate.
+- **A subview that overflows its superview draws perfectly and is unclickable, because `NSView` does
+  not clip and hit testing *does* respect bounds.** This is the `clipsToBounds` note above from the
+  other side, and the symptom is the opposite of informative: the control is on screen, correctly
+  placed, correctly drawn, and every click on it goes nowhere — no log, no error, nothing to see.
+  M21's bucket-picker button arrived this way. `ConnectServerForm` pins **every control it is handed**
+  to the form's 364 pt column, so a row built as `[field, button]` and handed over as its *field*
+  sized the field to 364 and left the enclosing stack 34 pt wider than its `NSGridView` cell. Hand
+  the layout the **row**, not the thing inside it — and the general form of the rule is that when a
+  container sizes what it is given, what you give it has to be what you want sized.
+  - **Instrument it rather than reasoning about it.** Two rounds of plausible theories (a menu that
+    failed to pop, a dealloc'd target, a modal sheet eating the click) were all wrong; one `NSLog` in
+    the action, with the binary run from a shell, settled in a single run that the action was never
+    reached at all — which is what turns "why does the menu not appear" into "the click never
+    arrives", a completely different hunt.
+- **`NSProgressIndicator.isDisplayedWhenStopped = false` stops it *drawing*, not *existing*, so a
+  stopped spinner laid over a control eats every click that lands on it.** Measured on the same
+  button, immediately after the frame bug above was fixed: the spinner is centered on a 28 pt button
+  and is the last subview, so clicks on the **middle** did nothing while clicks on the **rim** fired
+  the action perfectly. That asymmetry is the tell, and it is worse than a dead control — half of it
+  works, so it reads as a flaky click or a mis-aimed cursor rather than as a bug. The property is
+  about drawing; use `isHidden` for the overlay, since a hidden view is not hit-tested. Watch for it
+  anywhere a spinner shares a frame with what it is reporting on, which is the natural way to build a
+  button that shows its own progress without changing width.
 - **Right-click menu items must capture their paths at build time** into `representedObject`,
   and entry-vs-`..` must be decided from the clicked row, not a cursor flag — a right-click on a
   marked row leaves that flag stale.

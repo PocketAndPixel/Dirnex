@@ -687,6 +687,44 @@ in the app and neither is S3-specific in its cause:
 The `..` widening is verified live on S3 and by test on SFTP and FTP — they share the one predicate,
 but nobody connected to a real server to watch it.
 
+Slice 7 landed 2026-08-13 and is the **bucket picker**: the connect sheet can now fill in the one
+field nothing else could supply. `S3Account`, `S3BucketListParser`, `S3BucketEnumeration` and
+`S3ProcessArguments.listBuckets` in the core (+17 tests); `S3CurlRunner`, `S3BucketLister` and
+`ConnectServerS3BucketPicker` in the app (+9). It is the deferral below answered in the shape that
+survives its own objection — an **assist, never a root**. The field stays a field, so a key scoped to
+one bucket loses nothing it had; only a key allowed to ask gains anything.
+
+- **The signature needed nothing new, and that was worth measuring rather than assuming.** Probed
+  against the endpoint that recomputes SigV4 by hand: `curl --aws-sigv4` signs a service-level
+  `GET /` — no bucket in the path *or* the host — with canonical URI `/`, an empty canonical query
+  and the real digest of the empty body, and it verified; a wrong secret against the same URL was
+  refused, which is the control that makes the pass evidence. So account-level access is a URL with
+  the bucket left out, which is exactly what `S3Account` is and why an `S3Location` with an ignored
+  `bucket` will not do: under virtual-host addressing the bucket lives in the *host*, where `GET /`
+  is S3's legacy `ListObjects` — a well-formed listing of the wrong thing, handed to a parser looking
+  for buckets.
+- **Both refusals are 403 and only the `<Code>` separates them**, which is the inverted classifier
+  arriving at one more site and this time deciding *who is told they have a problem*. `AccessDenied`
+  is the ordinary answer for a properly scoped key and must not read as a fault; `SignatureDoesNotMatch`
+  and `InvalidAccessKeyId` are worth reporting, because Connect is about to fail the same way. Both
+  were driven live, and the server's own log is what makes the claim sharp: the *denied* request's
+  signature **verified** — the credentials were fine and the policy said no — while the other
+  genuinely mismatched, and the app told them apart.
+- **These fixtures are from the API reference, not captured, and the suite says so.** There is no
+  public account to list and this Mac holds no AWS credentials, so unlike the object-listing suite —
+  real bytes off real buckets — a green run here proves the parser reads the documented shape and
+  tolerates its variations, not that it agrees with what AWS sends. Everything it does leans one way
+  (require only `<Name>`; read *both* continuation spellings, since the reference gives this response
+  `ContinuationToken` where every other paginated response says `NextContinuationToken`).
+- **Two AppKit bugs that only launching could find, and both fail in the quiet direction**: the
+  button drew perfectly and was unclickable because the form pins every control it is handed to
+  364 pt, so the row overflowed its grid cell (`NSView` does not clip; hit testing does respect
+  bounds); and then it was clickable only on its *rim*, because a stopped `NSProgressIndicator` is
+  still hit-tested. Both are in docs/NOTES.md ▸ AppKit.
+- **One wrong sentence found by using it**: the first click on a freshly opened sheet reported "The
+  access key or secret wasn't accepted" for a form that had sent nothing. An empty form now has its
+  own string, because a refusal is a claim about a server that has not been asked.
+
 **What S3 will not be able to do, and it is better to state it than to discover it.** S3 is not a
 filesystem: rename is copy-then-delete (O(size), and N copies for a "folder"), `createDirectory` has
 no operation behind it beyond writing a marker, there is no settable mtime, no permissions and no
@@ -702,7 +740,11 @@ copies report items rather than bytes.
 
 Deliberately deferred, not forgotten: **account-level browsing** (`ListAllMyBuckets`) as a second
 root — a key scoped to one bucket is the ordinary way these are issued, so an account-rooted design
-fails at the root for exactly the users whose credentials are set up properly. **Multipart upload**
+fails at the root for exactly the users whose credentials are set up properly. Still deferred as a
+*root*, and Slice 7 is why the distinction was worth keeping: the same call makes an excellent
+**assist** — a picker beside a field that is still typed — precisely because a key that cannot make
+it costs the user nothing. Worth carrying past S3: when a capability is rejected for what it does at
+the *root*, ask what it does as an *option* before filing it away. **Multipart upload**
 was the other one and closed with Slice 5 above. The **upload payload-signing question**
 closed with Slice 4 and did not need credentials in the end: it looked like "which does AWS accept"
 and was really a memory measurement, since `--data-binary @` holds twice the file and `-T` holds
