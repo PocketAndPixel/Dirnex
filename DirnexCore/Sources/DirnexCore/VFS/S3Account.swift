@@ -171,11 +171,23 @@ public extension S3Account {
         )
     }
 
-    /// How this account names itself in an error the user reads.
+    /// The endpoint as a person reads it: the bare host, stating only what would otherwise be lost
+    /// — a non-default port, and `http://` when the connection is not encrypted.
     ///
-    /// The endpoint rather than the key id, because that is what the user typed and what they can
-    /// check — and two accounts on one endpoint are told apart by the key id in the *sidebar*, not
-    /// in an error sentence.
+    /// Derived from ``origin`` rather than rebuilt, so the "state the port only when it is not the
+    /// scheme's default" rule keeps one definition. `https://` is the one part worth hiding: it is
+    /// the ordinary case, and what the reader needs to notice is its *absence*.
+    var displayEndpoint: String {
+        let secure = "https://"
+        return origin.hasPrefix(secure) ? String(origin.dropFirst(secure.count)) : origin
+    }
+
+    /// How this account names itself in an error the user reads — the key id *and* the endpoint.
+    ///
+    /// The one surface that keeps the key id, and deliberately: an error naming which connection
+    /// refused is worth being exact about, where the sidebar tooltip and the path bar are chrome a
+    /// user reads at a glance and drop it (``displayEndpoint``). So this is also the only place two
+    /// accounts on one endpoint are distinguished by anything but the name the user gave the row.
     var connectionDescriptor: String { "\(accessKeyID)@\(host)" }
 
     /// The Keychain account key for this account's secret access key.

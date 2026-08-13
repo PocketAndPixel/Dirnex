@@ -70,14 +70,17 @@ struct VFSPathDisplayNameTests {
     }
 
     /// The same gap one level up, and the next backend to arrive with a root of its own: an account
-    /// pane's path is `/` and nothing else. It is named by the **key id** and the endpoint rather
-    /// than by the endpoint alone, because two accounts on one provider — a personal key and a work
-    /// key — is the case the pane exists for, and the endpoint cannot tell them apart.
-    @Test("an S3 account root is named by the key and its endpoint")
+    /// pane's path is `/` and nothing else, so this title is the *entire* crumb trail and the whole
+    /// tab chip. It is the endpoint alone — a key id is characters the user never typed, and it read
+    /// as noise where the one thing on screen should say where the pane is standing. Two accounts on
+    /// one endpoint are told apart in the sidebar, which carries the user's own names and the full
+    /// descriptor as a subtitle.
+    @Test("an S3 account root is named by its endpoint alone, with no key id")
     func s3AccountRoot() {
         let path = VFSPath(backend: .s3Account(Self.bucket.account), path: "/")
 
-        #expect(path.displayName == "AKIAPROBEKEYEXAMPLE@127.0.0.1")
+        #expect(path.displayName == "127.0.0.1")
+        #expect(!path.displayName.contains("AKIAPROBEKEYEXAMPLE"))
     }
 
     /// And it is not the bucket's title, which is what would happen if the two shared a branch: an

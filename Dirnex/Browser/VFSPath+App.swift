@@ -21,7 +21,7 @@ extension VFSPath {
     ///
     /// A bucket is rooted at its own name rather than at an account: the key id is what *reaches*
     /// it, not what it is called. The endpoint rides along because two buckets of the same name on
-    /// two providers are a real thing.
+    /// two providers are a real thing — and an account, which has no bucket, is the endpoint alone.
     var backendRootTitle: String? {
         if let archivePath = backend.archivePath {
             // For a nested mount this is the extracted member's file name — the inner archive's own.
@@ -37,10 +37,18 @@ extension VFSPath {
             return "\(location.bucket) — \(location.host)"
         }
         if let account = backend.s3Account {
-            // The key id and not the endpoint alone, because two accounts on one endpoint is the
-            // case this pane exists for — a personal key and a work key on the same provider draw
-            // two rows in the sidebar and two tabs here, and only the id tells them apart.
-            return "\(account.accessKeyID)@\(account.host)"
+            // The endpoint alone. An access key id is 20+ characters of noise a user never typed and
+            // cannot read at a glance, and it was the *whole* crumb here, since an account pane's
+            // path is `/` and nothing else — so the one line naming where the pane is standing was
+            // mostly key. It also agrees with what the backend already calls this listing:
+            // `S3AccountBackend.rootEntry` names the root `account.host`.
+            //
+            // The price is that two accounts on one endpoint — a personal key and a work key — draw
+            // the same title, and the sidebar tooltip made the same trade (`ServerConnection
+            // .address`), so nothing in the chrome names the key any more. They are told apart
+            // where they are *chosen*: by the name the user gave each row, and by the region, which
+            // both the tooltip and the connect sheet show.
+            return account.host
         }
         return nil
     }

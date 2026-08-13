@@ -87,15 +87,30 @@ public struct ServerConnection: Sendable, Hashable, Identifiable, Codable {
 
     /// A compact human-readable address for the sidebar subtitle / tooltip: the SFTP descriptor
     /// (`sftp://user@host:port`), the FTP descriptor (whose scheme names the security mode), the
-    /// SMB URL (`smb://[user@]host[/share]`), or the S3 descriptor — a bucket's or a whole
-    /// account's, which the scheme tells apart along with the addressing mode.
+    /// SMB URL (`smb://[user@]host[/share]`), or — for S3 — the *place*: `host (region)`, with the
+    /// bucket in front when the connection names one.
+    ///
+    /// **S3 is the one that is not its descriptor**, and the difference is the access key id. The
+    /// other three carry a user name the user typed and can read; an S3 descriptor leads with 20+
+    /// characters of key that identify nothing to a person, and it was the first thing in the
+    /// tooltip. The region rides along because it is not decorative — it is signed into every
+    /// request's credential scope, and it is the `<LocationConstraint>` that decides where F7
+    /// creates a bucket — and because it is what separates two saved connections to one endpoint.
+    ///
+    /// What the display form drops is recoverable where it is acted on rather than read: the key id
+    /// is in the Edit sheet and in ``S3Account/connectionDescriptor`` (which errors use), and the
+    /// addressing mode is the sheet's own checkbox. The **descriptor** is untouched and remains the
+    /// identity — anything asserting round-trips or a re-addressing must read it, not this.
     public var address: String {
         switch endpoint {
         case let .sftp(location, _): return location.descriptor
         case let .ftp(location, _, _): return location.descriptor
         case let .smb(location): return location.url
-        case let .s3(location): return location.descriptor
-        case let .s3Account(account): return account.descriptor
+        case let .s3(location):
+            // The same `bucket — host` the path bar's root crumb draws, so a saved row and the pane
+            // it opens name the place identically.
+            return "\(location.bucket) — \(location.account.displayEndpoint) (\(location.region))"
+        case let .s3Account(account): return "\(account.displayEndpoint) (\(account.region))"
         }
     }
 }

@@ -43,11 +43,36 @@ struct ServerConnectionS3Tests {
         )
     }
 
-    @Test("a saved bucket reports its kind and its descriptor")
+    /// The address is what the sidebar tooltip draws, and for S3 it is the **place** rather than the
+    /// descriptor: an access key id is 20+ characters that identify nothing to a person, and it led
+    /// the tooltip. The descriptor is asserted separately (`readdressBucket`), since it is the
+    /// identity and has to keep every field.
+    @Test("a saved bucket reads as its place — bucket, endpoint, region — and never as its key")
     func s3EndpointRendering() {
         #expect(s3("Photos").kind == .s3)
-        #expect(s3("Photos").address
-            == "s3://AKIAEXAMPLE@s3.eu-central-1.amazonaws.com:443/eu-central-1/photos")
+        #expect(s3("Photos").address == "photos — s3.eu-central-1.amazonaws.com (eu-central-1)")
+        #expect(!s3("Photos").address.contains("AKIAEXAMPLE"))
+    }
+
+    /// The two facts the bare host would swallow, and each is a thing a user has to be able to see:
+    /// a non-default port distinguishes two servers on one machine, and a missing `https` is the
+    /// only sign a connection is in the clear. `https` on the default port stays silent, which is
+    /// the common case and the reason to hide it at all.
+    @Test("the address states a non-default port and plaintext, and stays quiet otherwise")
+    func s3AddressStatesWhatMatters() {
+        let minio = ServerConnection(
+            name: "MinIO",
+            endpoint: .s3Account(S3Account(
+                host: "127.0.0.1",
+                port: 9000,
+                region: "us-east-1",
+                accessKeyID: "minioadmin",
+                usesTLS: false
+            ))
+        )
+
+        #expect(minio.address == "http://127.0.0.1:9000 (us-east-1)")
+        #expect(!s3Account("Amazon").address.contains("http"))
     }
 
     /// A saved bucket carries the access key id and *nothing* that unlocks it. Asserted over the
@@ -85,14 +110,15 @@ struct ServerConnectionS3Tests {
         )
     }
 
-    /// One protocol, so one glyph and one branch — but two *places*, which is what the descriptor
-    /// has to keep apart. The `s3a://` scheme is what does it, and asserting both here is what
-    /// stops a saved account and a saved bucket from ever being read as each other.
+    /// One protocol, so one glyph and one branch — but two *places*, which is what both the
+    /// descriptor and the address have to keep apart. An account has no bucket to name, so it is
+    /// the endpoint and the region; the bucket's row leads with the bucket, which is what stops a
+    /// saved account and a saved bucket on one endpoint from reading as each other.
     @Test("a saved account is the same kind as a bucket and a different address")
     func s3AccountRendering() {
         #expect(s3Account("Amazon").kind == .s3)
-        #expect(s3Account("Amazon").address
-            == "s3a://AKIAEXAMPLE@s3.eu-central-1.amazonaws.com:443/eu-central-1")
+        #expect(s3Account("Amazon").address == "s3.eu-central-1.amazonaws.com (eu-central-1)")
+        #expect(!s3Account("Amazon").address.contains("AKIAEXAMPLE"))
         #expect(s3Account("Amazon").address != s3("Amazon").address)
     }
 
@@ -122,12 +148,25 @@ struct ServerConnectionS3Tests {
     /// The descriptor is the assertion, because it spells all six fields *and* the mode: a correction
     /// that dropped the port or the region would still be a valid saved server, pointing somewhere
     /// else.
+    ///
+    /// Read off the **endpoint** rather than off `address`, which used to be the same string and is
+    /// now the display form. Note the shape of the trap rather than the mismatch: pointing these at
+    /// `address` fails loudly and the tempting repair — paste the new display string in — leaves the
+    /// one thing the test exists to pin unwitnessed, since a display string carries no mode at all.
+    private func s3Descriptor(of connection: ServerConnection?) -> String? {
+        switch connection?.endpoint {
+        case let .s3(location): return location.descriptor
+        case let .s3Account(account): return account.descriptor
+        default: return nil
+        }
+    }
+
     @Test("correcting a saved bucket changes the mode and keeps everything else")
     func readdressBucket() {
         var list = ServerConnections(connections: [s3("Photos")])
         let changed = list.readdressS3(name: "Photos", to: .path)
         #expect(changed)
-        #expect(list.connection(named: "Photos")?.address
+        #expect(s3Descriptor(of: list.connection(named: "Photos"))
             == "s3p://AKIAEXAMPLE@s3.eu-central-1.amazonaws.com:443/eu-central-1/photos")
     }
 
@@ -139,7 +178,7 @@ struct ServerConnectionS3Tests {
         var list = ServerConnections(connections: [s3Account("Amazon")])
         let changed = list.readdressS3(name: "Amazon", to: .path)
         #expect(changed)
-        #expect(list.connection(named: "Amazon")?.address
+        #expect(s3Descriptor(of: list.connection(named: "Amazon"))
             == "s3ap://AKIAEXAMPLE@s3.eu-central-1.amazonaws.com:443/eu-central-1")
     }
 
