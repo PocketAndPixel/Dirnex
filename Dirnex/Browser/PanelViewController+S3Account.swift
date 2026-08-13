@@ -117,12 +117,21 @@ extension PanelViewController {
             return
         }
         let location = account.bucketLocation(named: name)
+        // An addressing correction discovered here belongs to the **account**, not to this bucket:
+        // nothing asked for this bucket to be saved, while the account may well be a sidebar row —
+        // and it is that row which would otherwise re-discover the same failure on every bucket
+        // anyone enters from it. The live account is deliberately left alone: correcting it would
+        // change its descriptor, hence its backend id, and pull this pane out from under the listing
+        // the user is standing in. Each entry re-pays one failed handshake, which happens below HTTP
+        // and is quick.
+        let savedAccountName = ServerConnectionStore.load().name(of: .s3Account(account))
         runConnect(host: account.host) { [self] in
             await connectS3(S3ConnectRequest(
                 location: location,
                 secretAccessKey: secret,
                 saveName: nil,
-                activityName: nil
+                activityName: nil,
+                savedServerName: savedAccountName
             ))
         }
     }

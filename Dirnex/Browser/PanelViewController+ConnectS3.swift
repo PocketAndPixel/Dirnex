@@ -7,13 +7,21 @@ import DirnexCore
 /// `CompositeBackend`, file the secret only once it has authenticated, navigate — with one addition
 /// the protocol allows and neither of the others can:
 ///
-/// **A wrong region corrects itself.** Addressing a bucket through the wrong region answers 301
-/// naming the region that would have worked, in a header AWS sends on every response (probed
-/// 2026-08-12). From outside, a wrong region is otherwise indistinguishable from a missing bucket,
-/// so without this the user gets "no such bucket" for a bucket that is right there. Unlike FTPS's
-/// certificate prompt this asks nothing: re-signing for the region the *service itself* named is not
-/// a trust decision, and there is no weaker outcome to accept. The corrected region is what gets
-/// saved, so the correction happens once rather than on every connect.
+/// **Two things correct themselves**, and — unlike FTPS's certificate prompt — neither asks the user
+/// anything, for the same reason in both cases: there is no weaker outcome to accept. What each
+/// works out is what gets *saved*, so a correction happens once rather than on every connect.
+///
+/// *A wrong region.* Addressing a bucket through the wrong region answers 301 naming the region that
+/// would have worked, in a header AWS sends on every response (probed 2026-08-12). From outside, a
+/// wrong region is otherwise indistinguishable from a missing bucket, so without this the user gets
+/// "no such bucket" for a bucket that is right there. Re-signing for the region the *service itself*
+/// named is not a trust decision.
+///
+/// *A bucket that cannot be spelled into the host.* Under virtual-host addressing the name TLS
+/// verifies is `<bucket>.<host>`, which is one label deeper than a wildcard certificate covers, so a
+/// valid publicly-issued certificate fails and path-style is the answer — see
+/// ``handleS3TransportFailure(_:request:)``. Path-style still verifies, against the host the user
+/// typed, so nothing is traded away here either.
 extension PanelViewController {
     /// Everything one S3 connect attempt needs, bundled so the connect and its region retry pass it
     /// around as a single value — the shape `SFTPConnectRequest` and `FTPConnectRequest` established.
@@ -24,10 +32,22 @@ extension PanelViewController {
         /// The sidebar Servers row's name when the connect was launched from that row (so its busy
         /// spinner can be started and stopped), `nil` for a one-off Connect to Server… sheet.
         let activityName: String?
+        /// The saved server a correction has to be written back into, when there is one. Distinct
+        /// from `saveName`, which means "save under this name on success" and is `nil` for a sidebar
+        /// connect precisely because the server is *already* saved; without this the corrected mode
+        /// would have nowhere to go and the next click on the same row would re-discover it.
+        ///
+        /// It may name an **account** rather than this bucket — that is the case entering a bucket
+        /// from an account pane — because what gets corrected is a fact about the endpoint, not about
+        /// one bucket.
+        let savedServerName: String?
         /// Whether this attempt has already been re-aimed at a region the server named. One
         /// correction per connect: a server that keeps redirecting — an endpoint behind something
         /// that answers the probe and the retry differently — would otherwise redirect forever.
         var hasCorrectedRegion = false
+        /// Whether this attempt has already been re-addressed path-style. One correction per connect
+        /// for the same reason `hasCorrectedRegion` is: the retry goes back through `connectS3`.
+        var hasCorrectedAddressing = false
     }
 
     func connectS3(_ request: S3ConnectRequest) async -> ConnectServerPrompt.Attempt {
@@ -68,11 +88,13 @@ extension PanelViewController {
             composite.connectS3(location: location, secretAccessKey: request.secretAccessKey)
             if let saveName = request.saveName {
                 saveS3Server(name: saveName, location: location)
+            } else if let savedName = request.savedServerName {
+                readdressSavedS3Server(name: savedName, to: location.addressing)
             }
             navigate(to: VFSPath(backend: .s3(location), path: "/"))
             return .succeeded
         case let .failure(error):
-            return .failed(Self.s3ConnectFailureDetail(error, location: location))
+            return await handleS3TransportFailure(error, request: request)
         }
     }
 
@@ -92,6 +114,59 @@ extension PanelViewController {
         retry.location = Self.movingRegion(of: request.location, to: region)
         retry.hasCorrectedRegion = true
         return await connectS3(retry)
+    }
+
+    /// A failure that happened below HTTP. One of them is recoverable without asking the user
+    /// anything, and it is the one the *addressing mode* answers rather than the server: TLS
+    /// verification.
+    ///
+    /// **Under virtual-host addressing the bucket is part of the host name**, so the name being
+    /// verified is `<bucket>.<host>` — and a wildcard certificate is only one label deep (RFC 6125).
+    /// Measured 2026-08-13 against a real endpoint whose certificate is `*.lax.sharktech.net`:
+    /// `s3.lax.sharktech.net` verifies and `dirnex-test.s3.lax.sharktech.net` is `curl` exit 60,
+    /// while the path-style URL for that same bucket verifies and reaches the service. So a perfectly
+    /// valid, publicly-issued certificate fails, and the remedy is an addressing mode rather than
+    /// anything to do with trust. Keyed on the mode and not on the service picker, because AWS
+    /// reaches the same state for a bucket whose own name contains dots.
+    ///
+    /// Retrying rather than reporting, because **nothing is traded away**: path-style still verifies
+    /// the certificate, against the host the user actually typed — no `--insecure`, no pin, no
+    /// plaintext — so there is no weaker outcome for them to weigh, which is exactly the argument the
+    /// region correction above makes. And the retry *measures* what a sentence could only guess: if it
+    /// connects it was the addressing, and if it fails at TLS again the endpoint really is untrusted.
+    /// That second case is the one the old advice got backwards, since it told a self-signed endpoint
+    /// to tick a checkbox that cannot help it — and it now falls out for free, because reporting the
+    /// retry's own failure runs `s3CertificateDetail` over a path-style location, which reads as being
+    /// about the endpoint.
+    private func handleS3TransportFailure(
+        _ error: Error,
+        request: S3ConnectRequest
+    ) async -> ConnectServerPrompt.Attempt {
+        guard let retry = Self.addressingCorrection(for: error, request: request) else {
+            return .failed(Self.s3ConnectFailureDetail(error, location: request.location))
+        }
+        return await connectS3(retry)
+    }
+
+    /// The attempt to retry path-style, or `nil` when this failure is not one re-addressing can fix.
+    ///
+    /// Pure and `static` so its three conditions can be pinned by a test — the retry itself runs
+    /// `curl`, and these are exactly the conditions that drift unnoticed: a mode other than
+    /// virtual-host has nothing to correct, a failure other than exit 60 is not about the host name,
+    /// and a second correction inside one connect would be a loop.
+    static func addressingCorrection(
+        for error: Error,
+        request: S3ConnectRequest
+    ) -> S3ConnectRequest? {
+        guard let responseError = error as? S3ResponseError,
+              case .transport(.certificateNotTrusted) = responseError,
+              request.location.addressing == .virtualHost,
+              !request.hasCorrectedAddressing
+        else { return nil }
+        var retry = request
+        retry.location = request.location.addressed(.path)
+        retry.hasCorrectedAddressing = true
+        return retry
     }
 
     /// The same connection signed for `region` — and, for an AWS endpoint, addressed at that
@@ -285,6 +360,19 @@ extension PanelViewController {
             """,
             comment: "S3 connect failure detail: TLS verification failed for the endpoint itself."
         )
+    }
+
+    /// Write a corrected addressing mode back into the saved server this connect came from — which
+    /// may be the *account* a bucket was entered from, since what was learned is a fact about the
+    /// endpoint.
+    ///
+    /// Called after every successful connect that came from a saved record rather than only after a
+    /// corrected one: `readdressS3` answers `false` when the mode already matches, so the ordinary
+    /// path writes nothing and posts no change notification (the shape `repinFTP` established).
+    private func readdressSavedS3Server(name: String, to addressing: S3Addressing) {
+        var store = ServerConnectionStore.load()
+        guard store.readdressS3(name: name, to: addressing) else { return }
+        ServerConnectionStore.save(store)
     }
 
     private func saveS3Server(name: String, location: S3Location) {

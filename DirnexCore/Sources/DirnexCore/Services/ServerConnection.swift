@@ -160,6 +160,47 @@ public struct ServerConnections: Sendable, Equatable, Codable {
         return true
     }
 
+    /// Replace the addressing mode of the S3 server named `name` — a bucket's or a whole account's —
+    /// keeping everything else about it. Returns whether anything changed; the caller persists only
+    /// then.
+    ///
+    /// The twin of ``repinFTP(name:trustedPublicKey:)``, and it exists for the same reason: a
+    /// correction the connect flow worked out has to reach the *saved* server, or the next click on
+    /// that sidebar row re-discovers it. What is corrected here is TLS-reachability — under
+    /// virtual-host addressing the bucket is part of the host name, and a wildcard certificate is
+    /// only one label deep, so an endpoint can be perfectly trustworthy and still unreachable that
+    /// way. The connect retries path-style; this is where the answer is kept.
+    ///
+    /// Both S3 cases, because the correction is a fact about the **endpoint** rather than about one
+    /// bucket: entering a bucket from a saved account is how it is usually discovered, and the record
+    /// worth fixing is then the account's.
+    ///
+    /// Deliberately narrow, exactly as `repinFTP` is: it will not create a record, will not touch a
+    /// connection of another kind, and answers `false` when the mode already matches — so a caller
+    /// that calls it on every successful connect writes nothing on the ordinary path.
+    @discardableResult
+    public mutating func readdressS3(name: String, to addressing: S3Addressing) -> Bool {
+        guard let index = connections.firstIndex(where: { $0.name == name }) else { return false }
+        switch connections[index].endpoint {
+        case let .s3(location) where location.addressing != addressing:
+            connections[index].endpoint = .s3(location.addressed(addressing))
+        case let .s3Account(account) where account.addressing != addressing:
+            connections[index].endpoint = .s3Account(account.addressed(addressing))
+        default:
+            return false
+        }
+        return true
+    }
+
+    /// The name of the saved server that *is* `endpoint`, or `nil` when none is.
+    ///
+    /// The inverse of ``connection(named:)``, and needed because a **pane** knows its coordinates and
+    /// not the name they were saved under: a correction discovered while browsing has to find the
+    /// record to write it into. Identity is the name, so at most one connection can match.
+    public func name(of endpoint: ServerEndpoint) -> String? {
+        connections.first { $0.endpoint == endpoint }?.name
+    }
+
     /// Delete the connection named `name`, if present. Returns whether one was removed.
     @discardableResult
     public mutating func remove(name: String) -> Bool {

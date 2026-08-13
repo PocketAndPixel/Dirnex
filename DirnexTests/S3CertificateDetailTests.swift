@@ -62,6 +62,86 @@ struct S3CertificateDetailTests {
         #expect(detail.contains("my.dotted.bucket.s3.lax.sharktech.net"))
     }
 
+    // MARK: - Correcting the addressing instead of reporting it
+
+    private func request(
+        addressing: S3Addressing,
+        corrected: Bool = false
+    ) -> PanelViewController.S3ConnectRequest {
+        PanelViewController.S3ConnectRequest(
+            location: location(addressing: addressing),
+            secretAccessKey: "shhh",
+            saveName: nil,
+            activityName: nil,
+            savedServerName: "Sharktech",
+            hasCorrectedRegion: true,
+            hasCorrectedAddressing: corrected
+        )
+    }
+
+    /// The recovery the wording above exists to *avoid needing*: the endpoint is reachable path-style
+    /// with its certificate fully verified (measured against the real server), so the connect retries
+    /// rather than handing the user a sentence about a checkbox.
+    @Test("a virtual-host TLS failure is retried path-style")
+    func virtualHostFailureIsCorrected() throws {
+        let retry = try #require(PanelViewController.addressingCorrection(
+            for: S3ResponseError.transport(.certificateNotTrusted),
+            request: request(addressing: .virtualHost)
+        ))
+        #expect(retry.location.addressing == .path)
+        #expect(retry.hasCorrectedAddressing)
+        // Everything else survives, and each of these is load-bearing: a dropped `savedServerName`
+        // loses the correction on the way to the store, a dropped `hasCorrectedRegion` re-opens the
+        // region loop it was set to close, and a dropped bucket or key connects somewhere else.
+        #expect(retry.location.bucket == "photos")
+        #expect(retry.location.host == "s3.lax.sharktech.net")
+        #expect(retry.location.accessKeyID == "AKIAEXAMPLE")
+        #expect(retry.savedServerName == "Sharktech")
+        #expect(retry.hasCorrectedRegion)
+        #expect(retry.secretAccessKey == "shhh")
+    }
+
+    /// Under path-style there is no bucket in the host, so exit 60 is the endpoint's own certificate
+    /// and there is nothing to re-address — this is the branch that must report instead of retrying,
+    /// and it is what makes the retry a *measurement* of which failure it was.
+    @Test("a path-style TLS failure is not retried")
+    func pathStyleFailureIsReported() {
+        #expect(PanelViewController.addressingCorrection(
+            for: S3ResponseError.transport(.certificateNotTrusted),
+            request: request(addressing: .path)
+        ) == nil)
+    }
+
+    @Test("one correction per connect")
+    func correctionHappensOnce() {
+        // The retry goes back through `connectS3`, so without this an endpoint that keeps failing
+        // verification would re-address forever.
+        #expect(PanelViewController.addressingCorrection(
+            for: S3ResponseError.transport(.certificateNotTrusted),
+            request: request(addressing: .virtualHost, corrected: true)
+        ) == nil)
+    }
+
+    /// Only exit 60 is about the host *name*. An unresolvable host or a timeout says nothing about
+    /// addressing, and a refusal the service explained has already been answered by `handleS3Refusal`
+    /// — re-addressing any of them would swap the connection out from under a correct diagnosis.
+    @Test("only a certificate failure is re-addressed")
+    func otherFailuresAreNotCorrected() {
+        let virtualHost = request(addressing: .virtualHost)
+        for failure: S3TransportFailure in [.couldNotResolveHost, .operationTimedOut, .other] {
+            #expect(PanelViewController.addressingCorrection(
+                for: S3ResponseError.transport(failure),
+                request: virtualHost
+            ) == nil)
+        }
+        #expect(PanelViewController.addressingCorrection(
+            for: S3ResponseError.service(
+                S3ServiceError(status: 403, code: "AccessDenied", message: "")
+            ),
+            request: virtualHost
+        ) == nil)
+    }
+
     /// A translation that drops a placeholder silently swallows the argument it was naming — here
     /// either the failing host or the name of the control the user is being sent to. Counting them
     /// is the assertion docs/NOTES.md ▸ Localization asks for, and it is checked against the

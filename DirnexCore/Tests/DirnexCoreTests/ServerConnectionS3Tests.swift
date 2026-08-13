@@ -117,6 +117,79 @@ struct ServerConnectionS3Tests {
         #expect(decoded.connection(named: "B")?.kind == .s3)
     }
 
+    // MARK: - Correcting the addressing mode
+
+    /// The descriptor is the assertion, because it spells all six fields *and* the mode: a correction
+    /// that dropped the port or the region would still be a valid saved server, pointing somewhere
+    /// else.
+    @Test("correcting a saved bucket changes the mode and keeps everything else")
+    func readdressBucket() {
+        var list = ServerConnections(connections: [s3("Photos")])
+        let changed = list.readdressS3(name: "Photos", to: .path)
+        #expect(changed)
+        #expect(list.connection(named: "Photos")?.address
+            == "s3p://AKIAEXAMPLE@s3.eu-central-1.amazonaws.com:443/eu-central-1/photos")
+    }
+
+    /// The account case is the one the pane gesture reaches: a bucket entered from a saved account
+    /// discovers the correction, and the account is the record that has to keep it, or every other
+    /// bucket anyone enters from that row re-discovers the same failure.
+    @Test("correcting a saved account changes the mode and keeps everything else")
+    func readdressAccount() {
+        var list = ServerConnections(connections: [s3Account("Amazon")])
+        let changed = list.readdressS3(name: "Amazon", to: .path)
+        #expect(changed)
+        #expect(list.connection(named: "Amazon")?.address
+            == "s3ap://AKIAEXAMPLE@s3.eu-central-1.amazonaws.com:443/eu-central-1")
+    }
+
+    /// Answering `false` when there is nothing to do is what lets the app call this after *every*
+    /// successful connect from a saved record rather than only after a corrected one — the shape
+    /// `repinFTP` established. Without it the ordinary path would rewrite the store and post a
+    /// change notification on each connect.
+    @Test("correcting to the mode already stored changes nothing")
+    func readdressUnchanged() {
+        var list = ServerConnections(connections: [s3("Photos"), s3Account("Amazon")])
+        let before = list
+        let bucketChanged = list.readdressS3(name: "Photos", to: .virtualHost)
+        let accountChanged = list.readdressS3(name: "Amazon", to: .virtualHost)
+        #expect(!bucketChanged)
+        #expect(!accountChanged)
+        #expect(list == before)
+    }
+
+    /// Narrowness, both halves: a name that is not S3 must be left alone rather than rebuilt as an S3
+    /// record, and a name that is not in the store must not be *created* as one. The second is what
+    /// keeps a correction from resurrecting a server the user has deleted mid-connect.
+    @Test("correcting refuses another kind and refuses to invent a record")
+    func readdressRefusesElsewhere() {
+        var list = ServerConnections(connections: [sftp("Shell"), smb("NAS")])
+        let otherKindChanged = list.readdressS3(name: "Shell", to: .path)
+        let missingChanged = list.readdressS3(name: "Nothing", to: .path)
+        #expect(!otherKindChanged)
+        #expect(!missingChanged)
+        #expect(list.connections.count == 2)
+        #expect(list.connection(named: "Shell")?.kind == .sftp)
+    }
+
+    /// The reverse lookup a pane needs: it holds the account's coordinates — recovered from its
+    /// backend id — and not the name they were saved under. Asserted with a *rebuilt* value rather
+    /// than the stored one, since that is the round trip the caller actually performs.
+    @Test("a saved server can be found by the endpoint it is")
+    func nameOfEndpoint() {
+        let list = ServerConnections(connections: [sftp("Shell"), s3Account("Amazon")])
+        let account = S3Account(
+            host: "s3.eu-central-1.amazonaws.com",
+            region: "eu-central-1",
+            accessKeyID: "AKIAEXAMPLE"
+        )
+        #expect(list.name(of: .s3Account(account)) == "Amazon")
+        // The same endpoint one addressing mode over is a *different* saved server, which is what
+        // stops a corrected record being found again and re-corrected on the next connect.
+        #expect(list.name(of: .s3Account(account.addressed(.path))) == nil)
+        #expect(list.name(of: .s3Account(account.addressed(.virtualHost))) == "Amazon")
+    }
+
     /// Both S3 endpoints round-trip *as themselves*. The failure this rules out is the quiet one:
     /// an account decoded as its `us-east-1` bucket, or a bucket decoded as the account above it,
     /// would connect to somewhere real and wrong.

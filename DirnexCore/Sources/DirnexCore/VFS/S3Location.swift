@@ -208,6 +208,23 @@ public extension S3Location {
         self.init(descriptor: backendID.rawValue)
     }
 
+    /// The same connection spelled the other way — every field kept, ``addressing`` replaced.
+    ///
+    /// One definition rather than an `S3Location(…)` rebuilt at each call site, because the fields a
+    /// rebuild carries over are exactly the ones nothing would notice being dropped: a re-addressed
+    /// connection that quietly lost its port or its `usesTLS` still connects, to somewhere else.
+    func addressed(_ addressing: S3Addressing) -> S3Location {
+        S3Location(
+            host: host,
+            port: port,
+            bucket: bucket,
+            region: region,
+            accessKeyID: accessKeyID,
+            addressing: addressing,
+            usesTLS: usesTLS
+        )
+    }
+
     /// The origin every request to this connection is built on, port included only when it is not
     /// the scheme's default — a redundant `:443` is legal but changes the `Host` header, and SigV4
     /// signs that header, so it is one more way for a signature to disagree with the server.

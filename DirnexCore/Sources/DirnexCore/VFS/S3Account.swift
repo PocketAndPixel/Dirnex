@@ -154,6 +154,23 @@ public extension S3Account {
         self.init(descriptor: backendID.rawValue)
     }
 
+    /// The same account with ``addressing`` replaced — the twin of ``S3Location/addressed(_:)``, and
+    /// one definition apiece for the same reason: a rebuild that drops a field still connects.
+    ///
+    /// It matters here even though the one request an account makes ignores the mode, because the
+    /// mode is what every *bucket* reached from this account inherits. An account corrected to
+    /// path-style is the whole point of correcting it.
+    func addressed(_ addressing: S3Addressing) -> S3Account {
+        S3Account(
+            host: host,
+            port: port,
+            region: region,
+            accessKeyID: accessKeyID,
+            addressing: addressing,
+            usesTLS: usesTLS
+        )
+    }
+
     /// How this account names itself in an error the user reads.
     ///
     /// The endpoint rather than the key id, because that is what the user typed and what they can

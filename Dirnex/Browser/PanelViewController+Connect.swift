@@ -86,7 +86,10 @@ extension PanelViewController {
                     location: location,
                     secretAccessKey: secret,
                     saveName: nil,
-                    activityName: server.name
+                    activityName: server.name,
+                    // Already saved, so an addressing correction has a record to land in — without
+                    // this the next click on this row would re-discover the same failure.
+                    savedServerName: server.name
                 ))
             }
         case let .s3Account(account):
@@ -168,7 +171,10 @@ extension PanelViewController {
                 location: location,
                 secretAccessKey: form.password ?? "",
                 saveName: form.saveName,
-                activityName: nil
+                activityName: nil,
+                // The sheet's own `saveName` is the record to write, when there is one — a corrected
+                // addressing mode reaches the store through the success branch's `saveS3Server`.
+                savedServerName: nil
             ))
         case let .s3Account(account):
             // The form's bucket field was left blank, which is the answer "browse the account"

@@ -900,6 +900,21 @@ branch exists to prevent. `S3AccountLiveIntegrationTests` is that run, kept and 
 file. What no automated signal covers is the *drawn* surfaces — the sheet's placeholder, the sidebar
 row, the account crumb, the New Bucket dialog — which want one look by hand.
 
+**Follow-up, 2026-08-13 — a virtual-host TLS failure now corrects itself.** Reported by a user
+connecting with the bucket field blank and pressing Enter on a bucket: exit 60, and a sentence naming
+a checkbox that was not on screen. Slice 9's own reasoning above says why the connect could not have
+caught it — a service request has no bucket in the host, so the wildcard covers it and the probe
+validates nothing about how a *bucket* will be addressed. The fix is the second self-correction in
+`connectS3`, on the same argument the region one makes: path-style still verifies the certificate,
+against the host the user typed, so there is no weaker outcome to accept and nothing to ask about.
+It also *measures* what the sentence could only guess — exit 60 cannot separate a wildcard that is
+one label too shallow from a genuinely self-signed endpoint, and the retry answers which it was,
+fixing the case the shipped message had backwards (it advised a self-signed endpoint to tick a
+checkbox that cannot help it). `savedServerName` carries the answer back into the saved record, which
+for a bucket entered from an account pane is the **account's** — the live account is left alone
+because its addressing rides in its descriptor and its descriptor is its backend id. +10 tests, both
+directions of the negative control run. Details in docs/NOTES.md ▸ curl for S3.
+
 The deferral this answers, kept for its reasoning: **account-level browsing** (`ListAllMyBuckets`) as
 a second root — a key scoped to one bucket is the ordinary way these are issued, so an account-rooted
 design fails at the root for exactly the users whose credentials are set up properly. Slice 7 is why

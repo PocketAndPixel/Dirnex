@@ -140,6 +140,44 @@ final class S3AccountLiveIntegrationTests {
         #expect(controller.parentRowCount == 1)
     }
 
+    /// The addressing correction, live — the gesture a user reported on 2026-08-13: connect with the
+    /// bucket field blank, then Enter on a bucket row.
+    ///
+    /// That is the only place this failure can surface, and the reason is structural: the account
+    /// connect before it is `GET https://<endpoint>/`, which carries no bucket in the host and so
+    /// cannot fail on one. On an endpoint whose wildcard certificate is a label too shallow, `curl`
+    /// exits 60 here before any HTTP, so the *first* assertion cannot pass without the retry — and on
+    /// an endpoint that does cover bucket-prefixed hosts it passes directly.
+    ///
+    /// The config's own `pathStyle` is the recorded truth about which of those this endpoint is, so it
+    /// is what the mode is asserted against: an endpoint that needs path-style must have been
+    /// corrected to it, and one that does not must have been left alone. That keeps the claim
+    /// falsifiable in **both** directions — a neutered correction fails it on the first kind of
+    /// endpoint, and one that fires when it should not fails it on the second.
+    @Test("entering a bucket under virtual-host addressing reaches it, correcting if it must")
+    func entersABucketUnderVirtualHost() async throws {
+        let live = try #require(S3LiveEnvironment.current)
+        let config = S3LiveEnvironment.Config(
+            account: live.account.addressed(.virtualHost),
+            secretAccessKey: live.secretAccessKey,
+            bucket: live.bucket
+        )
+        // The saved-server store is the *developer's own sidebar* — this target runs inside the app
+        // (docs/NOTES.md ▸ Testing) — and a corrected connect writes the mode back into any record
+        // that matches the account. Snapshot it so a live run leaves the sidebar exactly as found.
+        let savedServers = ServerConnectionStore.load()
+        defer { ServerConnectionStore.save(savedServers) }
+
+        let controller = await connectedPane(config)
+        controller.enterS3Bucket(named: config.bucket)
+        await waitUntil("the bucket to list") { controller.panel.path.backend.isS3 }
+
+        let location = try #require(controller.panel.path.backend.s3Location)
+        #expect(location.bucket == config.bucket)
+        #expect(controller.panel.path.isRoot)
+        #expect(location.addressing == live.account.addressing)
+    }
+
     /// And back out again, landing the cursor on the bucket that was left — the half that makes it
     /// a walk rather than a jump.
     @Test("walking up from a bucket root returns to the account, cursor on the bucket")

@@ -136,6 +136,28 @@ struct S3LocationTests {
         #expect(S3Location.awsHost(region: "eu-central-1") == "s3.eu-central-1.amazonaws.com")
     }
 
+    // MARK: - Re-addressing
+
+    /// Re-addressing keeps every other field, and `minio` is the fixture that can prove it: a
+    /// rebuild that silently dropped the port or `usesTLS` would still be a usable connection —
+    /// to `https://dirnex.127.0.0.1:443` instead of the server on 9000. The virtual-host direction
+    /// is the one under test precisely because nothing sensible would ever ask for it, so the
+    /// assertion is about the *carrying over* rather than about the mode.
+    @Test("re-addressing changes the mode and nothing else")
+    func addressedKeepsEveryOtherField() {
+        let flipped = Self.minio.addressed(.virtualHost)
+        #expect(flipped.addressing == .virtualHost)
+        #expect(flipped.port == 9000)
+        #expect(!flipped.usesTLS)
+        #expect(flipped.host == "127.0.0.1")
+        #expect(flipped.bucket == "dirnex")
+        #expect(flipped.region == "us-east-1")
+        #expect(flipped.accessKeyID == "minioadmin")
+        // And it is reversible, which is what makes it safe to apply on a retry: the value the app
+        // falls back to reporting on is the one it started with.
+        #expect(flipped.addressed(.path) == Self.minio)
+    }
+
     // MARK: - Keychain
 
     @Test("two buckets reached by one key id keep separate Keychain entries")

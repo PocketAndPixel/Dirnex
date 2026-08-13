@@ -2106,6 +2106,39 @@ what made the milestone affordable and the rest inverted rules borrowed from the
       checkbox is localized, so spelling its English name inside a translated sentence would name a
       control that does not exist in thirteen of the fourteen languages — the duplicate-display-
       string trap from ▸ Localization, in the one place the user is being told what to click.
+    - **That message was the wrong fix, and the reason is that the connect *cannot* detect this: a
+      bucket-less connect never puts a bucket in the host.** `ListAllMyBuckets` is
+      `GET https://<endpoint>/`, which the one-label wildcard covers perfectly — so connecting with
+      the bucket field blank succeeds, lists the buckets, validates nothing about bucket addressing,
+      and hands the failure to a *click* two gestures later. Reported by a user 2026-08-13 doing
+      exactly that. The sentence then names a checkbox that is **not on screen**, because the sheet it
+      lives in was closed when the account connected — a dead end where the whole diagnosis is
+      correct, which is the shape to watch for: a probe that is blind to the one setting every later
+      request depends on.
+      - **The retry is a *measurement*, and it is what the region correction's own argument already
+        licensed.** Path-style still verifies the certificate, against the host the user typed — no
+        `--insecure`, no pin, no plaintext — so there is no weaker outcome to accept and nothing to
+        ask about, exactly as with re-signing for a region the service named. Measured on the endpoint
+        that exposed it: virtual-host is exit 60 while the path-style URL for the *same* bucket
+        verifies and answers (`InvalidAccessKeyId` signed, `AccessDenied` unsigned — the
+        signed/unsigned control above). And it settles the ambiguity the sentence could only guess at,
+        since exit 60 alone cannot separate "wildcard too shallow" from "self-signed": if the retry
+        connects it was the addressing, and if it fails again the endpoint really is untrusted. The
+        second case is one the shipped message got **backwards** — it told a self-signed endpoint to
+        tick a checkbox that cannot help it — and reporting the retry's own failure fixes it for free,
+        because the certificate sentence reads a path-style location as being about the endpoint.
+      - **A correction is worthless until it reaches the saved record, and the record is not always
+        the one that was connected.** Entering a bucket from an account pane corrects a *bucket*
+        connection nobody asked to save, while the row that will re-discover the same failure on the
+        next bucket is the **account's** — so the handle to write back through (`savedServerName`,
+        the shape FTPS's re-pin already needed) names the account there and the bucket elsewhere. The
+        store method answers `false` when the mode already matches, which is what lets the app call it
+        after every connect from a saved record rather than only after a corrected one.
+      - **The live account is deliberately left uncorrected**, because its addressing rides in its
+        descriptor and its descriptor *is* its `VFSBackendID` — correcting it would re-register the
+        backend under `s3ap://` and pull the pane out from under the listing the user is standing in.
+        The price is one failed handshake per bucket entered in that session, which happens below HTTP
+        and is quick; the saved row is corrected, so the next connect from it costs nothing.
 
 ### The Trash
 
