@@ -1990,6 +1990,45 @@ what made the milestone affordable and the rest inverted rules borrowed from the
   leaves the user paying for bytes they cannot see and did not keep. Abort on every failing exit
   including cancellation, and let the abort swallow its own failure: it runs where something has
   already gone wrong, and the caller's error is the one worth reporting.
+- **A key's leading and trailing whitespace is part of its name, and one `trimmingCharacters` over a
+  parsed XML value costs three verbs at once.** `S3ListingParser` trimmed every element it read,
+  which is right for a size, a date, a boolean or a token and wrong for a `<Key>` or a `<Prefix>`.
+  Measured 2026-08-13 against a real third-party endpoint: an object stored as `edge2/name ` drew as
+  `name`, so F5 and F2 answered **`notFound` for a row sitting in the pane**, and F8 **reported
+  success having deleted nothing** — the row was still there afterwards. A common prefix of
+  `" folder/"` drew as `folder` and **entered empty**, its contents invisible.
+  - **`stat` is what kept it quiet, by working.** The trim is applied to both sides of that
+    comparison, so the listed name and the stat'ed key agreed with each other while both disagreed
+    with the server. Only the verbs that touch *bytes* build a URL from the name, and only they
+    missed — so the pane looked entirely healthy right up until the file was used.
+  - **It cannot be reproduced against AWS, which is why it survived the whole milestone.** AWS
+    honors `encoding-type=url`, so an edge space arrives as `%20` and the trim finds nothing to
+    take; it takes a server that *ignores* that parameter to send the space as itself. The echo
+    protects the **decode** (`isURLEncoded`, above) and nothing protected the **trim** — the same
+    parameter, one layer further down, with no second reader to notice.
+  - The same one-line shape sits in `S3DeleteBatch`'s response parser, where a trimmed `<Key>` only
+    reaches an error message — and names a file one character off from the one the server actually
+    refused. `S3BucketListParser` is deliberately left trimming: a bucket name cannot contain
+    whitespace at all.
+- **Three more things a real S3-compatible endpoint does that AWS does not**, all measured on the
+  same account, and each of them retires a probe you would otherwise write against AWS and believe:
+  - **The region is fiction and is not validated.** `us-east-1`, `lax`, `default` and `us-west-1`
+    all signed and verified against the same bucket, with a wrong-secret control refused in the same
+    run — so the signature *is* checked and the credential scope's region simply is not. No
+    `x-amz-bucket-region` header on any response either, so the wrong-region 301 recovery path has
+    nothing to recover from and cannot be exercised there at all.
+  - **A raw continuation token fails as `SignatureDoesNotMatch`, not AWS's `InvalidArgument`.**
+    Measured A/B on one token: `curl` canonicalizes the query it signs, so an unencoded `=` inside a
+    token's value makes client and server disagree about where the value ends. The practical half is
+    the diagnosis — on this family of server that latent bug reads as a **credentials** problem and
+    sends the user to retype a key that was never wrong. Their tokens are base64 that routinely
+    carries `==`, so an endpoint like this exposes it on the first page where a small AWS bucket
+    hides it entirely.
+  - **A single-label wildcard certificate forces path-style addressing**, and it fails before any S3
+    conversation happens. `*.lax.sharktech.net` covers the endpoint and not `<bucket>.s3.lax…`, so a
+    virtual-host request dies at **curl exit 60**. Worth knowing that the addressing mode can be
+    settled from the *certificate* rather than by trying both: `openssl s_client` answers it in one
+    run, and a wildcard is one label deep by RFC 6125 whatever it looks like.
 
 ### The Trash
 

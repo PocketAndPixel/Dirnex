@@ -157,7 +157,11 @@ public extension S3DeleteResult {
         ) {
             let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
             switch elementName {
-            case "Key": key = value
+            // Untrimmed, for the reason `S3ListingParser` spells out: an edge space is part of the
+            // key. Here it only reaches an error message — `S3Backend.failure` builds the failing
+            // object's path from it — so a trimmed key names a file one character off from the one
+            // the server refused, which is the least helpful possible way to report a refusal.
+            case "Key": key = text
             case "Code": code = value
             case "Message": message = value
             case "Deleted" where !key.isEmpty: deleted.append(key)

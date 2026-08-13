@@ -120,6 +120,25 @@ struct S3DeleteBatchTests {
         // body would report deletions that did happen as failures.
         #expect(result.errors.isEmpty)
     }
+
+    @Test("a refused key keeps whitespace at its edges")
+    func keepsEdgeWhitespaceInRefusedKey() {
+        // Same rule as `S3ListingParser`: the key is a name, so its edges are data. This one only
+        // reaches an error message — `S3Backend` builds the failing object's path from it — but a
+        // key trimmed by one character names a file the server never mentioned, which is the least
+        // useful thing a refusal can say.
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <DeleteResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">\
+        <Deleted><Key>kept </Key></Deleted>\
+        <Error><Key> refused.txt</Key><Code>AccessDenied</Code><Message>Access Denied</Message>\
+        </Error></DeleteResult>
+        """
+        let result = S3DeleteResult.parse(Data(xml.utf8))
+        #expect(result.deleted == ["kept "])
+        #expect(result.errors.map(\.key) == [" refused.txt"])
+        #expect(result.errors.map(\.code) == ["AccessDenied"])
+    }
 }
 
 /// Reads `<Key>` elements out of a request document, written by hand rather than reusing the

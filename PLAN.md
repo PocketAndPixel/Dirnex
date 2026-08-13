@@ -725,6 +725,71 @@ one bucket loses nothing it had; only a key allowed to ask gains anything.
   access key or secret wasn't accepted" for a form that had sent nothing. An empty form now has its
   own string, because a refusal is a claim about a server that has not been asked.
 
+Slice 8 landed 2026-08-13 and is the **first pass against a real third-party endpoint** — a paid
+S3-compatible account (`s3.lax.sharktech.net`), where every earlier slice had been verified against a
+local SigV4-verifying probe endpoint and anonymous reads of public AWS buckets. The whole write half
+was re-run through the real `S3Backend` and the app's own `S3CurlTransport`, compiled in Swift 6
+mode: listing, F7, upload, byte-exact download, F2 through a name carrying a space, `+` and `#`, the
+empty-file `PUT`, the `EXDEV` folder-move deferral, multipart (70 MiB → 4 × 16 MiB + 6 MiB, five
+progress reports, byte-identical round trip), server-side copy, single delete, a one-batch prefix
+sweep, and a wrong-secret control that was refused. Slice 7's bucket parser was scored against real
+`ListAllMyBuckets` bytes for the first time — its API-reference fixtures turned out faithful,
+including the empty-account shape a brand-new account actually returns.
+
+It found one real bug, and the shape of it is the milestone's own lesson arriving one layer lower.
+`S3ListingParser` trimmed whitespace off every XML value it read, so a key whose *edges* are
+whitespace was misnamed by one character — and everything that then addressed it by that name
+missed: F5 and F2 answered `notFound` for a row visible in the pane, F8 **reported success having
+deleted nothing**, and a common prefix of `" folder/"` entered *empty*. `stat` kept working
+throughout and is what hid it, since the trim applied to both sides of its comparison. It is
+unreachable against AWS by construction — AWS honors `encoding-type=url`, so the space arrives as
+`%20` and there is nothing to trim. The echo protects the decode; nothing protected the trim. Fixed
+by trimming per field (never a `<Key>` or `<Prefix>`, always a size, date, boolean or token), with
+the same one-line shape corrected in `S3DeleteBatch`'s response parser and deliberately left alone in
+`S3BucketListParser`, where a bucket name cannot carry whitespace. +6 tests in a suite of their own,
+whose fixtures are this endpoint's bytes precisely because AWS cannot produce them; the negative
+control fails 10 assertions with the fix backed out. Re-verified live: the row now draws its space,
+downloads, renames, and deletes for real, and the folder opens with its file in it.
+
+Three endpoint facts came out of it that are worth having before the next S3-compatible server
+(docs/NOTES.md ▸ curl ▸ S3): the region is **not validated** there and no `x-amz-bucket-region`
+header is sent, so the wrong-region 301 path cannot be exercised at all; a raw continuation token
+fails as **`SignatureDoesNotMatch`** rather than AWS's `InvalidArgument`, which would have sent a
+user to retype a credential that was never wrong; and a **single-label wildcard certificate** forces
+path-style addressing, failing at curl exit 60 before any S3 conversation — settleable from the
+certificate in one `openssl s_client` run rather than by trying both modes.
+
+The **UI pass against the same endpoint** followed, driven by computer-use, with the server's own
+listing as the judge rather than the pane's. Connect through the sheet, the bucket picker filling its
+field from the live account, the bucket root listing with folders drawing `—` for size *and* date,
+Enter into a folder, Backspace back out over a real `..` row, F5 out, F7, F2 and F8 — and the server
+afterwards held exactly what the pane claimed. Two things it confirmed that only the real UI could:
+F7's sheet reads «Create a folder in "dirnex-test — s3.lax.sharktech.net"» rather than the `/` that
+Slice 6 fixed, and the whitespace fix survives the whole stack — the trailing-space object drew with
+its space, and F5 landed it on the local disk as `edge ` with the byte intact.
+
+The region field was **emptied** in the same pass. It had been prefilled `us-east-1`, which states a
+fact about the user's server that the app does not know: measured, this endpoint verifies the
+signature while ignoring the credential scope's region entirely. The field now starts blank behind
+its placeholder and resolves to `us-east-1` when read — in one funnel both readers share, since the
+bucket picker's own guard rejects an empty region and would otherwise refuse to ask on a form whose
+Connect button works. It cannot simply be dropped: SigV4 always names a region, and for the Amazon
+service the region *derives the host*, where empty would address `s3..amazonaws.com`. Defaulting is
+safe there because a bucket elsewhere answers 301 and the connect flow already re-aims at the region
+the service names. Verified live with the field left blank end to end — the picker listed the account
+and the connect succeeded.
+
+**One thing the UI pass found and did not fix.** Connecting to this endpoint with the default
+virtual-host addressing fails, correctly, at curl exit 60 — and the sheet reports "The endpoint's TLS
+certificate couldn't be verified. A server with a self-signed certificate has to be reached over
+http:// for now." Every clause of that is wrong here: the certificate is a valid GoDaddy-issued
+`*.lax.sharktech.net`, nothing is self-signed, and the actual remedy is the **path-style checkbox two
+rows above** — the wildcard is one label deep and so cannot cover `<bucket>.s3.lax…`. So the app
+diagnoses an addressing problem as a trust problem and points the user at **plaintext HTTP** as the
+cure, which is both wrong and the one direction nobody should be nudged. It is the default path for
+any S3-compatible provider whose certificate is not wildcard-deep, so it is the first thing such a
+user meets.
+
 **What S3 will not be able to do, and it is better to state it than to discover it.** S3 is not a
 filesystem: rename is copy-then-delete (O(size), and N copies for a "folder"), `createDirectory` has
 no operation behind it beyond writing a marker, there is no settable mtime, no permissions and no

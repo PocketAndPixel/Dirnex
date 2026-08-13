@@ -107,16 +107,58 @@ struct ConnectServerS3FieldsTests {
 
     @Test(
         "every required field is required",
-        arguments: ["bucket", "region", "accessKeyID", "secretKey"]
+        arguments: ["bucket", "accessKeyID", "secretKey"]
     )
     func missingFieldIsRefused(blank: String) {
         let fields = fields()
-        fields.region.stringValue = blank == "region" ? "" : "us-east-1"
+        fields.region.stringValue = "us-east-1"
         fields.bucket.stringValue = blank == "bucket" ? "" : "photos"
         fields.accessKeyID.stringValue = blank == "accessKeyID" ? "" : "AKIAEXAMPLE"
         fields.secretKey.stringValue = blank == "secretKey" ? "" : "s3cret"
 
         #expect(fields.readForm(saveName: nil) == nil)
+    }
+
+    // MARK: - The region is the one field that is optional
+
+    /// The field starts **empty** rather than prefilled, because a region is genuinely optional for
+    /// most S3-compatible servers — measured 2026-08-13 against a real one, which verified the
+    /// signature while ignoring the credential scope's region entirely. A prefilled value states a
+    /// fact about the user's server that the app does not know; the placeholder says the same thing
+    /// honestly.
+    @Test("the region field starts empty")
+    func regionStartsEmpty() {
+        let fields = fields()
+        #expect(fields.region.stringValue.isEmpty)
+    }
+
+    @Test("a blank region connects, signed for the default")
+    func blankRegionUsesTheDefault() throws {
+        let fields = fields()
+        fields.region.stringValue = ""
+        fields.bucket.stringValue = "photos"
+        fields.accessKeyID.stringValue = "AKIAEXAMPLE"
+        fields.secretKey.stringValue = "s3cret"
+
+        let location = try #require(bucket(of: fields.readForm(saveName: nil)))
+        #expect(location.region == "us-east-1")
+        // SigV4 always names a region and — for the Amazon service — the *host* is derived from it,
+        // so a blank field resolving to an empty region would address `s3..amazonaws.com`: not a
+        // wrong server but no server. This is what stops that.
+        #expect(location.host == "s3.us-east-1.amazonaws.com")
+    }
+
+    @Test("the bucket picker still asks with a blank region")
+    func blankRegionStillListsBuckets() throws {
+        // The half a fallback applied in `readForm` alone would miss: the picker's own guard rejects
+        // an empty region, so it would sit refusing to ask on a form whose Connect button works.
+        let fields = fields()
+        fields.region.stringValue = ""
+        fields.accessKeyID.stringValue = "AKIAEXAMPLE"
+        fields.secretKey.stringValue = "s3cret"
+
+        let account = try #require(fields.readAccount())
+        #expect(account.account.region == "us-east-1")
     }
 
     /// A secret is not trimmed — it is 40 characters of base64 and every one of them counts — where
@@ -220,7 +262,10 @@ struct ConnectServerS3FieldsTests {
         #expect(S3ProcessArguments.listBuckets(account: account).last == "http://127.0.0.1:9000/")
     }
 
-    @Test("no account without a secret, an access key, or a region")
+    /// The credentials are required and the region is not — it resolves to
+    /// ``ConnectServerS3Fields/defaultRegion`` when blank, which `blankRegionStillListsBuckets`
+    /// covers from the other side.
+    @Test("no account without a secret or an access key")
     func accountNeedsTheRest() {
         let missingSecret = fields()
         missingSecret.region.stringValue = "us-east-1"
@@ -231,11 +276,5 @@ struct ConnectServerS3FieldsTests {
         missingKey.region.stringValue = "us-east-1"
         missingKey.secretKey.stringValue = "s3cret"
         #expect(missingKey.readAccount() == nil)
-
-        let missingRegion = fields()
-        missingRegion.region.stringValue = ""
-        missingRegion.accessKeyID.stringValue = "AKIAEXAMPLE"
-        missingRegion.secretKey.stringValue = "s3cret"
-        #expect(missingRegion.readAccount() == nil)
     }
 }

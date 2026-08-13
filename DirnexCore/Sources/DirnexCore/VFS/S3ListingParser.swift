@@ -255,11 +255,27 @@ private extension S3ListingParser {
             let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
 
             switch (parent, elementName) {
-            case ("Contents", "Key"): key = value
+            // A key and a prefix are read **untrimmed**: whitespace at their edges is part of the
+            // name, and S3 allows it. Everything else here is a number, a date, a boolean or an
+            // opaque token, where surrounding whitespace could only be XML formatting.
+            //
+            // Measured 2026-08-13 against a real S3-compatible endpoint, where a blanket trim cost
+            // three verbs at once: an object stored as `edge2/name ` drew as `name`, so F5 and F2
+            // answered `notFound` for a row sitting in the pane, and F8 **reported success having
+            // deleted nothing** — the trim is symmetric, so `stat` still matched and hid it. A
+            // common prefix of `" folder/"` drew as `folder` and entered *empty*, its contents
+            // invisible.
+            //
+            // It cannot be reproduced against AWS, which is why it survived the whole milestone:
+            // AWS honors `encoding-type=url`, so an edge space arrives as `%20` and the trim finds
+            // nothing to take. Only a server that ignores that parameter — this endpoint returns
+            // keys raw, with no `<EncodingType>` echo — sends the space as itself. The echo
+            // protects the *decode* (``S3ListingPage/isURLEncoded``); nothing protected the trim.
+            case ("Contents", "Key"): key = text
             case ("Contents", "Size"): size = Int64(value) ?? 0
             case ("Contents", "LastModified"): lastModified = dates.parse(value)
-            case ("CommonPrefixes", "Prefix") where !value.isEmpty:
-                commonPrefixes.append(value)
+            case ("CommonPrefixes", "Prefix") where !text.isEmpty:
+                commonPrefixes.append(text)
             case ("ListBucketResult", "NextContinuationToken") where !value.isEmpty:
                 nextContinuationToken = value
             case ("ListBucketResult", "IsTruncated"): isTruncated = value == "true"
