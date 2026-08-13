@@ -49,10 +49,17 @@ enum ConnectText {
         String(localized: "Bucket:", comment: "Connect field label: the S3 bucket to browse.")
     }
 
+    /// The placeholder carries the empty-bucket path, because a blank field that *does* something
+    /// and says nothing is a feature nobody finds (PLAN.md §M21 Slice 9). It is the only always-on
+    /// surface for it: the picker button beside the field explains itself only once clicked, and
+    /// only for a key allowed to list — which is the same key this hint is for.
     static var bucketHint: String {
         String(
-            localized: "bucket name",
-            comment: "Placeholder in the Connect dialog's S3 bucket field."
+            localized: "bucket name — leave blank to browse all",
+            comment: """
+            Placeholder in the Connect dialog's S3 bucket field. A blank bucket connects to the \
+            whole account and lists its buckets, so the hint is the feature's only visible sign.
+            """
         )
     }
 

@@ -36,6 +36,12 @@ extension VFSPath {
         if let location = backend.s3Location {
             return "\(location.bucket) — \(location.host)"
         }
+        if let account = backend.s3Account {
+            // The key id and not the endpoint alone, because two accounts on one endpoint is the
+            // case this pane exists for — a personal key and a work key on the same provider draw
+            // two rows in the sidebar and two tabs here, and only the id tells them apart.
+            return "\(account.accessKeyID)@\(account.host)"
+        }
         return nil
     }
 

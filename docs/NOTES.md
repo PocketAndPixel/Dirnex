@@ -176,6 +176,19 @@ at build time.
   feature rather than a broken wait. Use `await Task.sleep` in a poll loop for anything asserting
   what an async load put on screen, and treat "the existing helper works" as evidence about the
   existing assertions only.
+- **A live suite that drives one server, or writes one shared credential, has to be `.serialized` —
+  and the collision fails in the *setup*, so it reads as the feature being broken.** Swift Testing
+  runs a suite's tests in parallel by default, which for `S3AccountLiveIntegrationTests` meant four
+  panes' worth of `curl` against a single-threaded probe server *and* one instance's `deinit`
+  deleting the Keychain item another instance was still using. What lands on screen is
+  `timed out waiting for the account root to list` — a failure of the shared `connectedPane` helper,
+  naming the connect, when nothing about the connect is wrong. Two things follow. Reach for
+  `.serialized` on the merits (shared external state), not as a flake workaround; and be suspicious
+  of a failure inside a *helper* every test calls, since that is where a parallelism problem
+  surfaces and where it looks least like one. The cleanup itself is still right: the flows file a
+  secret on every successful connect, so leaving it behind puts a live-looking credential in whoever
+  ran the suite — and removing it from inside the test host raises no authorization prompt, where
+  `security` at a shell would.
 
 ## AppKit
 
@@ -1193,6 +1206,18 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
     while English fits at 486. 2 × 2 fits every language at 348.
   - Reach for the measurement first — it is a 20-line throwaway that reads the real catalog — and let
     a scrolling pane carry whatever a future translation adds anyway.
+- **A *placeholder* cannot be measured the way a label is, and the two natural instruments both
+  answer "it fits" for every language.** Measuring the S3 bucket field's hint across the 14
+  catalogs: `field.placeholderString = text; field.fittingSize.width` reads **0.0**, and
+  `field.stringValue = text; field.intrinsicContentSize.width` reads **-1.0** — `noIntrinsicMetric`,
+  because a bare `NSTextField()` is a *wrapping* cell (see the single-line note above) and an
+  editable field has no intrinsic width to give. Both are silent, and both fail in the reassuring
+  direction: a table of zeros under a budget looks like clearance. What works is the text as a
+  **value** in `NSTextField(string:)` — single-line by construction — with `sizeToFit()` and the
+  resulting frame, which then reports the real 165–320 pt spread and finds the languages to shorten
+  (Polish cleared a 330 pt field by 10 pt, which the note above says is not clearance). A
+  placeholder is drawn in the value's own rect with the value's font, so measuring the value is the
+  honest proxy; measuring the placeholder measures nothing at all.
 - **A fixed-width horizontal `NSStackView` collapses a *segmented control* under a longer
   translation, not just a label.** The sync sheet's controls row (`Направление:` + a 3-segment
   direction control + `Сравнивать по:` + a 2-segment comparison control + a hint, pinned to 680 pt)

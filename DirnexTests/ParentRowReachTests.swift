@@ -26,10 +26,27 @@ private enum RemoteFixture {
         )
     )
 
+    /// The bucket above, as the account that holds it — the place a bucket root's `..` leads to.
+    static let s3Account = VFSBackendID.s3Account(
+        S3Location(
+            host: "127.0.0.1",
+            port: 9599,
+            bucket: "probe",
+            region: "us-east-1",
+            accessKeyID: "AKIAPROBEKEYEXAMPLE",
+            addressing: .path,
+            usesTLS: false
+        ).account
+    )
+
     static let all = [sftp, ftp, s3]
+
+    /// The two whose root really is the top of everything they can reach. S3's is not: a bucket
+    /// root's way out is the account (§M21 Slice 9), which is a backend crossing rather than a path.
+    static let rootIsTheTop = [sftp, ftp]
 }
 
-/// Which panes can walk up, and therefore draw a `..` row (PLAN.md §M1, widened §M21).
+/// Which panes can walk up, and therefore draw a `..` row (PLAN.md §M1, widened §M21 twice).
 ///
 /// The rule had three spellings — `parentRowCount`, `goToParent()` and the Go menu's validator — and
 /// all three read `backend == .local`. So every **remote** pane had no `..` row, a dead Backspace and
@@ -65,10 +82,45 @@ struct ParentRowReachTests {
         #expect(pane.parentRowCount == 1)
     }
 
-    @Test("a connected account's own root does not", arguments: RemoteFixture.all)
+    @Test("a connected account's own root does not", arguments: RemoteFixture.rootIsTheTop)
     func remoteRootDoesNot(backend: VFSBackendID) {
         let pane = Self.pane(at: VFSPath(backend: backend, path: "/"))
 
+        #expect(!pane.canGoToParent)
+        #expect(pane.parentRowCount == 0)
+    }
+
+    // MARK: - A bucket's root is the exception, and the account's is not
+
+    /// The one pane whose `..` is not a path at all. A bucket root's path is `/`, so `parentPath`
+    /// is `nil` and always will be — while the place above it, the account that holds it, is a
+    /// different backend reached by connecting to it.
+    @Test("a bucket's own root walks up, into the account that holds it")
+    func bucketRootLeavesForItsAccount() {
+        let pane = Self.pane(at: VFSPath(backend: RemoteFixture.s3, path: "/"))
+
+        #expect(pane.leavesBucketForItsAccount)
+        #expect(pane.canGoToParent)
+        #expect(pane.parentRowCount == 1)
+    }
+
+    /// The narrowness, from the other side: a folder *inside* a bucket walks up by path like every
+    /// other remote folder, and must not be routed through a connect that would leave the bucket.
+    @Test("a folder inside a bucket still walks up by path")
+    func bucketFolderWalksByPath() {
+        let pane = Self.pane(at: VFSPath(backend: RemoteFixture.s3, path: "/docs"))
+
+        #expect(!pane.leavesBucketForItsAccount)
+        #expect(pane.canGoToParent)
+    }
+
+    /// And there is nothing above an account: it is the top of what one key can reach, so its own
+    /// root goes back to answering the ordinary way.
+    @Test("an account's own root is the top")
+    func accountRootIsTheTop() {
+        let pane = Self.pane(at: VFSPath(backend: RemoteFixture.s3Account, path: "/"))
+
+        #expect(!pane.leavesBucketForItsAccount)
         #expect(!pane.canGoToParent)
         #expect(pane.parentRowCount == 0)
     }

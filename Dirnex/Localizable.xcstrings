@@ -13485,6 +13485,95 @@
         }
       }
     },
+    "Bucket name": {
+      "comment": "Placeholder in the New Bucket name field (the New Folder dialog on an S3 account).",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bucket-Name"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bucket name"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nombre del bucket"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nom du compartiment"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nome del bucket"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バケット名"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "버킷 이름"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bucketnaam"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nazwa zasobnika"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nome do bucket"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Имя бакета"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Назва бакета"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "存储桶名称"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "儲存桶名稱"
+          }
+        }
+      }
+    },
     "Bucket:": {
       "comment": "Connect field label: the S3 bucket to browse.",
       "localizations": {
@@ -27520,6 +27609,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "建立"
+          }
+        }
+      }
+    },
+    "Create a bucket on “%@”.": {
+      "comment": "New Bucket dialog body; %@ is the S3 account the pane is listing.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bucket auf „%@“ erstellen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create a bucket on “%@”."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crea un bucket en «%@»."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Créez un compartiment sur « %@ »."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crea un bucket su “%@”."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」にバケットを作成します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‘%@’에 버킷을 생성합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maak een bucket aan op ‘%@’."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utwórz zasobnik w „%@”."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crie um bucket em “%@”."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Создать бакет в «%@»."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Створити бакет у «%@»."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在“%@”中创建存储桶。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在「%@」中建立儲存桶。"
           }
         }
       }
@@ -44664,6 +44842,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "新項目（正在移動）"
+          }
+        }
+      }
+    },
+    "New Bucket": {
+      "comment": "Title of the New Folder dialog when the pane lists an S3 account's buckets.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neuer Bucket"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Bucket"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nuevo bucket"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nouveau compartiment"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nuovo bucket"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新規バケット"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 버킷"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nieuwe bucket"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nowy zasobnik"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Novo Bucket"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Новый бакет"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Новий бакет"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新建存储桶"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新增儲存桶"
           }
         }
       }
@@ -67662,6 +67929,95 @@
         }
       }
     },
+    "That key signed in, but it isn’t allowed to list the buckets on %@. Type a bucket name to connect to just that one.": {
+      "comment": "S3 connect failure detail when the key lacks s3:ListAllMyBuckets; %@ is the endpoint. Not a fault: a key scoped to one bucket is the ordinary way these are issued.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Schlüssel wurde akzeptiert, darf die Buckets auf %@ aber nicht auflisten. Geben Sie einen Bucket-Namen ein, um sich nur mit diesem zu verbinden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That key signed in, but it isn’t allowed to list the buckets on %@. Type a bucket name to connect to just that one."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La clave se autenticó, pero no tiene permiso para listar los buckets de %@. Escribe el nombre de un bucket para conectarte solo a ese."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La clé a été acceptée, mais elle n’a pas le droit de lister les compartiments de %@. Saisissez le nom d’un compartiment pour vous connecter à celui-ci uniquement."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La chiave è stata accettata, ma non può elencare i bucket su %@. Digita il nome di un bucket per connetterti solo a quello."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キーは認証されましたが、%@ のバケット一覧を表示する権限がありません。バケット名を入力すると、そのバケットだけに接続できます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "키는 인증되었지만 %@의 버킷 목록을 볼 권한이 없습니다. 버킷 이름을 입력하면 해당 버킷에만 연결됩니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De sleutel is geaccepteerd, maar mag de buckets op %@ niet tonen. Typ een bucketnaam om alleen daarmee te verbinden."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klucz został przyjęty, ale nie ma uprawnień do wyświetlenia zasobników na %@. Wpisz nazwę zasobnika, aby połączyć się tylko z nim."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A chave foi aceita, mas não tem permissão para listar os buckets em %@. Digite o nome de um bucket para conectar-se apenas a ele."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ключ принят, но у него нет прав на просмотр списка бакетов на %@. Введите имя бакета, чтобы подключиться только к нему."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ключ прийнято, але він не має прав на перегляд списку бакетів на %@. Введіть назву бакета, щоб під’єднатися лише до нього."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密钥已通过验证，但无权列出 %@ 上的存储桶。输入存储桶名称即可仅连接该存储桶。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "金鑰已通過驗證，但無權列出 %@ 上的儲存桶。輸入儲存桶名稱即可僅連接該儲存桶。"
+          }
+        }
+      }
+    },
     "That key signed in, but it isn’t allowed to list “%@”. Check the bucket policy or the permissions on the key.": {
       "comment": "S3 connect failure detail; %@ is the bucket name. The key is valid, the policy is not.",
       "localizations": {
@@ -83036,91 +83392,91 @@
         }
       }
     },
-    "bucket name": {
-      "comment": "Placeholder in the Connect dialog's S3 bucket field.",
+    "bucket name — leave blank to browse all": {
+      "comment": "Placeholder in the Connect dialog's S3 bucket field. A blank bucket connects to the whole account and lists its buckets, so the hint is the feature's only visible sign.",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bucket-Name"
+            "value": "Bucket-Name — leer lassen für alle"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "bucket name"
+            "value": "bucket name — leave blank to browse all"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "nombre del bucket"
+            "value": "nombre del bucket — en blanco para todos"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "nom du compartiment"
+            "value": "nom du compartiment — vide pour tous"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "nome del bucket"
+            "value": "nome del bucket — vuoto per vederli tutti"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "バケット名"
+            "value": "バケット名 — 空欄ですべて表示"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "버킷 이름"
+            "value": "버킷 이름 — 비우면 전체 보기"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "bucketnaam"
+            "value": "bucketnaam — leeg voor alle"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "nazwa zasobnika"
+            "value": "nazwa zasobnika — puste dla wszystkich"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "nome do bucket"
+            "value": "nome do bucket — em branco para ver todos"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "имя бакета"
+            "value": "имя бакета — пусто, чтобы видеть все"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "ім’я бакета"
+            "value": "назва бакета — порожньо, щоб бачити всі"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "存储桶名称"
+            "value": "存储桶名称 — 留空浏览全部"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "儲存桶名稱"
+            "value": "儲存桶名稱 — 留空瀏覽全部"
           }
         }
       }

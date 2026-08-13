@@ -119,7 +119,7 @@ extension PanelViewController {
 
     // MARK: - Errors
 
-    private static var genericS3ConnectError: String {
+    static var genericS3ConnectError: String {
         String(
             localized: "The connection couldn’t be set up.",
             comment: "Generic server-connect failure with no more specific reason."
@@ -171,7 +171,7 @@ extension PanelViewController {
     /// S3-compatible server answering in its own shape. The status is all there is, so it is what
     /// the sentence is built from rather than the server's own English (which is the *remote's*
     /// words, in a language nobody chose — docs/NOTES.md ▸ Localization).
-    private static func s3StatusDetail(_ service: S3ServiceError) -> String {
+    static func s3StatusDetail(_ service: S3ServiceError) -> String {
         switch service.status {
         case 401, 403:
             return String(
@@ -196,6 +196,15 @@ extension PanelViewController {
     /// — but the service case is mapped rather than left to a `default`, so it is handled instead of
     /// silently reading as "something went wrong".
     static func s3ConnectFailureDetail(_ error: Error, location: S3Location) -> String {
+        s3ConnectFailureDetail(error, certificateDetail: s3CertificateDetail(location: location))
+    }
+
+    /// The same mapping with the TLS sentence handed in, because that is the one branch where a
+    /// *bucket* connection and an *account* connection genuinely differ: a bucket may carry its name
+    /// in the host, and an account never does — a service request is `GET https://<endpoint>/`, so a
+    /// verification failure there really is about the endpoint's own certificate and the path-style
+    /// advice would be beside the point.
+    static func s3ConnectFailureDetail(_ error: Error, certificateDetail: String) -> String {
         guard let responseError = error as? S3ResponseError else {
             return (error as NSError).localizedDescription
         }
@@ -215,7 +224,7 @@ extension PanelViewController {
                     comment: "S3 connect failure detail: the request exceeded its time budget."
                 )
             case .certificateNotTrusted:
-                return Self.s3CertificateDetail(location: location)
+                return certificateDetail
             case .other:
                 return String(
                     localized: "The request couldn’t be sent.",
@@ -249,16 +258,8 @@ extension PanelViewController {
     /// sentence names the control the user is looking at in all fourteen languages — the duplicate-
     /// display-string trap from docs/NOTES.md ▸ Localization, avoided by not making a second copy.
     static func s3CertificateDetail(location: S3Location) -> String {
-        guard location.addressing == .virtualHost else {
-            // Path-style: the name being verified *is* the endpoint, so this really is about trust.
-            return String(
-                localized: """
-                The endpoint’s TLS certificate couldn’t be verified. A server with a \
-                self-signed certificate has to be reached over http:// for now.
-                """,
-                comment: "S3 connect failure detail: TLS verification failed for the endpoint itself."
-            )
-        }
+        // Path-style: the name being verified *is* the endpoint, so this really is about trust.
+        guard location.addressing == .virtualHost else { return s3EndpointCertificateDetail }
         let authority = "\(location.bucket).\(location.host)"
         return String(
             localized: """
@@ -270,6 +271,19 @@ extension PanelViewController {
             S3 connect failure detail: TLS failed while the bucket was in the host name. \
             %1$@ is <bucket>.<host>; %2$@ is the title of the path-style checkbox in the same sheet.
             """
+        )
+    }
+
+    /// TLS verification failed for a name the user actually typed — the endpoint itself. Reached
+    /// under path-style addressing, where the bucket is in the path, and for every *account*
+    /// request, which never names a bucket at all.
+    static var s3EndpointCertificateDetail: String {
+        String(
+            localized: """
+            The endpoint’s TLS certificate couldn’t be verified. A server with a \
+            self-signed certificate has to be reached over http:// for now.
+            """,
+            comment: "S3 connect failure detail: TLS verification failed for the endpoint itself."
         )
     }
 

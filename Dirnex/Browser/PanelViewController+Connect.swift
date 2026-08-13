@@ -6,7 +6,9 @@ import DirnexCore
 /// to the sidebar's Servers section. Three protocols share one entry point:
 ///
 /// - **S3** browses through a `VFSBackend` over the system `curl`, which signs SigV4 itself; its
-///   connect and its wrong-region correction live in `PanelViewController+ConnectS3` (§M21).
+///   connect and its wrong-region correction live in `PanelViewController+ConnectS3` (§M21). A
+///   blank bucket connects to the *account* instead and lists its buckets as rows
+///   (`PanelViewController+S3Account`), which is a second root and never the only one.
 /// - **SFTP** browses through a `VFSBackend`: a throwaway transport probes the connection (resolving
 ///   the remote home doubles as an auth/host test), then the same config is registered on the pane's
 ///   `CompositeBackend` so listings route to it. Password auth feeds `sftp` via `SSH_ASKPASS`.
@@ -43,7 +45,7 @@ extension PanelViewController {
                 return
             }
             let stored = SecretKeychain.password(for: location)
-            runSidebarConnect(host: location.host) { [self] in
+            runConnect(host: location.host) { [self] in
                 await connectSFTP(SFTPConnectRequest(
                     location: location,
                     authentication: authentication,
@@ -60,7 +62,7 @@ extension PanelViewController {
                 return
             }
             let storedFTP = SecretKeychain.password(for: location) ?? ""
-            runSidebarConnect(host: location.host) { [self] in
+            runConnect(host: location.host) { [self] in
                 await connectFTP(FTPConnectRequest(
                     location: location,
                     authentication: authentication,
@@ -79,9 +81,24 @@ extension PanelViewController {
                 editServer(server)
                 return
             }
-            runSidebarConnect(host: location.host) { [self] in
+            runConnect(host: location.host) { [self] in
                 await connectS3(S3ConnectRequest(
                     location: location,
+                    secretAccessKey: secret,
+                    saveName: nil,
+                    activityName: server.name
+                ))
+            }
+        case let .s3Account(account):
+            // Same rule one level up: an account has no anonymous variant either, so a saved one
+            // whose secret is gone opens the prefilled sheet rather than failing.
+            guard let secret = SecretKeychain.password(for: account) else {
+                editServer(server)
+                return
+            }
+            runConnect(host: account.host) { [self] in
+                await connectS3Account(S3AccountConnectRequest(
+                    account: account,
                     secretAccessKey: secret,
                     saveName: nil,
                     activityName: server.name
@@ -93,7 +110,7 @@ extension PanelViewController {
                 return
             }
             let stored = location.username == nil ? nil : SecretKeychain.password(for: location)
-            runSidebarConnect(host: location.host) { [self] in
+            runConnect(host: location.host) { [self] in
                 await mountSMB(
                     location: location, password: stored, saveName: nil, activityName: server.name
                 )
@@ -153,6 +170,15 @@ extension PanelViewController {
                 saveName: form.saveName,
                 activityName: nil
             ))
+        case let .s3Account(account):
+            // The form's bucket field was left blank, which is the answer "browse the account"
+            // rather than a field forgotten (`ConnectServerS3Fields.readForm`).
+            return await connectS3Account(S3AccountConnectRequest(
+                account: account,
+                secretAccessKey: form.password ?? "",
+                saveName: form.saveName,
+                activityName: nil
+            ))
         case let .smb(location):
             return await mountSMB(
                 location: location, password: form.password, saveName: form.saveName,
@@ -161,9 +187,11 @@ extension PanelViewController {
         }
     }
 
-    /// Run a saved-server connect launched from the sidebar (no sheet to keep open): success hands
-    /// focus to the pane, a failure surfaces the standard error alert.
-    private func runSidebarConnect(
+    /// Run a connect launched from outside the sheet — a saved server clicked in the sidebar, or a
+    /// pane gesture that crosses into another backend (entering a bucket from an S3 account pane,
+    /// or walking up out of one). There is no sheet to keep open, so success hands focus to the pane
+    /// and a failure surfaces the standard error alert.
+    func runConnect(
         host: String,
         _ attempt: @escaping () async -> ConnectServerPrompt.Attempt
     ) {
@@ -426,7 +454,7 @@ extension PanelViewController {
         )
     }
 
-    private func connectFailureTitle(_ host: String) -> String {
+    func connectFailureTitle(_ host: String) -> String {
         String(
             localized: "Couldn’t connect to “\(host)”.",
             comment: "Error when a server connection fails; %@ is the host name."

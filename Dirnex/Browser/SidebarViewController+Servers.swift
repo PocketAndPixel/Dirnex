@@ -143,6 +143,11 @@ extension SidebarViewController {
             // Unconditional: a saved bucket always has a secret filed, since SigV4 is the only way
             // in and there is no anonymous variant to skip.
             SecretKeychain.removePassword(for: location)
+        case let .s3Account(account):
+            // The account's own item, which is a bucket's key without the trailing `/<bucket>` —
+            // so removing a saved account leaves the buckets reached from it able to reconnect,
+            // which is right: each of those was a connection the user made on its own.
+            SecretKeychain.removePassword(for: account)
         }
     }
 }

@@ -42,3 +42,13 @@ extension FTPLocation: KeychainAddressable {
 /// stays in the location itself — it is half of the account key here, which is what keeps one id
 /// reaching several buckets from collapsing onto one Keychain item (``S3Location/keychainAccount``).
 extension S3Location: KeychainAddressable {}
+
+/// An S3 **account** files the same secret under the same service, keyed by
+/// ``S3Account/keychainAccount`` — a bucket key's without the trailing `/<bucket>`.
+///
+/// The shared service is deliberate rather than incidental: it is one credential for one endpoint,
+/// so a user clearing "the S3 passwords" in Keychain Access sees one group. What keeps the items
+/// distinct is the account key's shape, which is why the two are defined next to each other.
+extension S3Account: KeychainAddressable {
+    public static var keychainService: String { S3Location.keychainService }
+}

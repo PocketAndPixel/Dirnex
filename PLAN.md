@@ -855,11 +855,50 @@ server does not validate regions. The trailing slash `S3Location.bucketURL` alre
 on both write verbs (probed both ways), so the account arguments reuse the one definition of how a
 bucket is addressed rather than growing a second.
 
-Still to come in the app pass: the connect sheet's empty-bucket path, the sidebar row, entering a
-bucket as a *connect* (so the region correction applies), and **Backspace out of a bucket root** —
-which is a backend crossing rather than a path walk, since a bucket root's path is `/` and has no
-parent to find. It probes once before navigating, so a key that cannot list buckets gets a sentence
-in place rather than a pane it has landed in that shows an error.
+The app pass landed the same day and is four **backend crossings** — the connect sheet's
+empty-bucket path, the saved-account sidebar row, entering a bucket as a *connect* (so the region
+correction applies), and **Backspace out of a bucket root**, which is a crossing rather than a path
+walk since a bucket root's path is `/` and has no parent to find. It probes once before navigating,
+so a key that cannot list buckets gets a sentence where it is standing rather than a pane it has
+landed in that can only show an error. `PanelViewController+S3Account` holds all three gestures;
+`ServerEndpoint.s3Account` and `S3AccountCurlTransport` are what the sidebar and the composite need.
+
+- **A blank bucket field is an answer, not an omission**, and giving it a meaning is safe precisely
+  because it had none: `S3BucketName.minimumLength` is 3, so nothing that used to connect now
+  connects somewhere else. The cost is a typo landing in the account pane instead of an error, which
+  is one keystroke from recovery — the bucket meant is a row there. The placeholder carries the hint,
+  because a blank field that *does* something and says nothing is a feature nobody finds; it is the
+  only always-on surface for it, since the picker button beside it explains itself only once clicked.
+- **A case of its own rather than an optional bucket on `.s3`.** They are different *places* — two
+  backend ids, two requests, and a saved server has to come back as the one it was saved as — where
+  an optional field would make every existing reader ask a question that has only ever had one
+  answer. `S3Account` is disjoint from `S3Location` at both keys that matter (the `s3a://` scheme and
+  the Keychain account), so neither can ever be read as the other.
+- **`readAccount` had to start carrying the addressing mode**, and this is the slice's own instance
+  of the finding it keeps re-deriving: the account built for Slice 7's picker was built *without*
+  one, correctly, because a service request names no bucket. The moment an account became a place,
+  every bucket reached from it — plus `CreateBucket` and `DeleteBucket` — spelled one into a URL, and
+  two builders of the same value disagreeing is how this project loses an afternoon.
+- **Entering a bucket routes through `connectS3`** rather than re-implementing it, so the 301 region
+  correction, the Keychain filing and the certificate sentences apply to a row the same way they
+  apply to the sheet. The one thing that genuinely differs is the TLS message: an account request is
+  `GET https://<endpoint>/` with no bucket in the host, so the path-style advice a bucket's failure
+  gives would name a checkbox that could not have caused it.
+- **F7 there names a bucket, not a folder.** Left generic it would have prefilled "untitled folder",
+  which breaks two naming rules by construction — a default that can only earn a refusal about a rule
+  the user never chose to break — and the folder-shaped slash check would have preempted
+  `S3BucketName`'s sentence, which is the one that says *which* rule broke.
+
+Verified live against the real third-party account (path-style, which its single-label wildcard
+certificate requires): connect with no bucket → the account pane lists its bucket; Enter → the bucket
+lists, with a `..` row; Go Up → back to the account with the cursor on the bucket it left; and F7's
+create + F8's delete of a scratch bucket, confirmed gone from the account afterwards by an
+independent `ListAllMyBuckets`. Two negative controls make that mean something: with the endpoint
+stopped all four fail, and with `leavesBucketForItsAccount` neutered the walk-up fails **while its
+neighbours pass** — landing the cursor on a folder *inside* the bucket, which is exactly the bug the
+branch exists to prevent. `S3AccountLiveIntegrationTests` is that run, kept and gated on a config
+file. What no automated signal covers is the *drawn* surfaces — the sheet's placeholder, the sidebar
+row, the account crumb, the New Bucket dialog — which want one look by hand.
 
 The deferral this answers, kept for its reasoning: **account-level browsing** (`ListAllMyBuckets`) as
 a second root — a key scoped to one bucket is the ordinary way these are issued, so an account-rooted

@@ -69,6 +69,27 @@ struct VFSPathDisplayNameTests {
         #expect(deep.backendRootTitle == "probe — 127.0.0.1")
     }
 
+    /// The same gap one level up, and the next backend to arrive with a root of its own: an account
+    /// pane's path is `/` and nothing else. It is named by the **key id** and the endpoint rather
+    /// than by the endpoint alone, because two accounts on one provider — a personal key and a work
+    /// key — is the case the pane exists for, and the endpoint cannot tell them apart.
+    @Test("an S3 account root is named by the key and its endpoint")
+    func s3AccountRoot() {
+        let path = VFSPath(backend: .s3Account(Self.bucket.account), path: "/")
+
+        #expect(path.displayName == "AKIAPROBEKEYEXAMPLE@127.0.0.1")
+    }
+
+    /// And it is not the bucket's title, which is what would happen if the two shared a branch: an
+    /// account pane would then name whichever bucket the descriptor happened to parse as.
+    @Test("an account and a bucket on one endpoint name themselves differently")
+    func accountAndBucketNamesDiffer() {
+        let bucket = VFSPath(backend: .s3(Self.bucket), path: "/")
+        let account = VFSPath(backend: .s3Account(Self.bucket.account), path: "/")
+
+        #expect(bucket.displayName != account.displayName)
+    }
+
     @Test("a local path keeps its last component, and has no root title of its own")
     func localPath() {
         #expect(VFSPath.local("/Users/oleg/Dev").displayName == "Dev")

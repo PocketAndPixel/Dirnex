@@ -264,6 +264,9 @@ final class ConnectServerForm: NSObject {
         case let .s3(location):
             protocolControl.selectItem(at: Protocols.s3.rawValue)
             s3.apply(location: location)
+        case let .s3Account(account):
+            protocolControl.selectItem(at: Protocols.s3.rawValue)
+            s3.apply(account: account)
         }
     }
 

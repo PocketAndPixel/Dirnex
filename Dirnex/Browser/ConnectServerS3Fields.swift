@@ -9,6 +9,11 @@ import DirnexCore
 /// sits at SwiftLint's `type_body_length` with three protocols in it, and a fourth set of stored
 /// controls does not fit.
 ///
+/// **The bucket row is the only optional one, and leaving it blank means something** (§M21 Slice 9):
+/// the connection is to the *account*, whose buckets become the pane's rows. That is a second root
+/// and never the only one — a key scoped to one bucket cannot list an account at all, and for that
+/// key nothing about this form has changed.
+///
 /// **The service picker is the design decision here.** Amazon and everything that merely speaks its
 /// protocol need the same request and disagree on exactly two things — where the endpoint comes from
 /// and how the bucket is spelled into the URL — so the two are one layout with two rows that appear.
@@ -201,44 +206,70 @@ final class ConnectServerS3Fields {
     // MARK: - Prefill
 
     func apply(location: S3Location) {
-        region.stringValue = location.region
         bucket.stringValue = location.bucket
-        accessKeyID.stringValue = location.accessKeyID
-        secretKey.stringValue = SecretKeychain.password(for: location) ?? ""
+        apply(location.account, secret: SecretKeychain.password(for: location) ?? "")
+    }
+
+    /// Prefill from a saved **account**: the same rows with the bucket left blank, which is exactly
+    /// the state that saved it — so editing one and pressing Connect reconnects to the account
+    /// rather than silently needing a bucket typed in.
+    func apply(account: S3Account) {
+        bucket.stringValue = ""
+        apply(account, secret: SecretKeychain.password(for: account) ?? "")
+    }
+
+    /// The rows an account and a bucket share, which is all of them but one.
+    ///
+    /// One funnel rather than two prefills, because the *service* derivation below is the part that
+    /// must not fork: it decides which rows are even visible, and two copies of it would disagree
+    /// the first time either was corrected.
+    private func apply(_ account: S3Account, secret: String) {
+        region.stringValue = account.region
+        accessKeyID.stringValue = account.accessKeyID
+        secretKey.stringValue = secret
         // A saved connection is read back as *compatible* whenever its host is not the one Amazon's
         // region derives — including a bucket on AWS reached through a legacy or accelerated host.
         // Deciding it from the host rather than storing a service flag is what keeps the two from
         // disagreeing: the host is what the request is actually built from.
-        let derived = S3Location.awsHost(region: location.region)
-        let isAmazon = location.host == derived
-            && location.addressing == .virtualHost
-            && location.usesTLS
-            && location.port == 443
+        let derived = S3Location.awsHost(region: account.region)
+        let isAmazon = account.host == derived
+            && account.addressing == .virtualHost
+            && account.usesTLS
+            && account.port == 443
         serviceControl.selectItem(at: (isAmazon ? Service.amazon : .compatible).rawValue)
         if !isAmazon {
-            endpoint.stringValue = Self.endpointText(for: location)
-            pathStyleCheckbox.state = location.addressing == .path ? .on : .off
+            endpoint.stringValue = Self.endpointText(for: account)
+            pathStyleCheckbox.state = account.addressing == .path ? .on : .off
         }
         refreshConditionalRows()
     }
 
-    /// The endpoint field's text for a saved location: the scheme only when it is the one the field
-    /// does not assume, and the port only when it is not the scheme's default — so a round-trip
-    /// through the form gives back what the user typed rather than a canonicalized spelling of it.
-    private static func endpointText(for location: S3Location) -> String {
-        let isDefaultPort = (location.usesTLS && location.port == 443)
-            || (!location.usesTLS && location.port == 80)
-        let authority = isDefaultPort ? location.host : "\(location.host):\(location.port)"
-        return location.usesTLS ? authority : "http://\(authority)"
+    /// The endpoint field's text for a saved connection: the scheme only when it is the one the
+    /// field does not assume, and the port only when it is not the scheme's default — so a
+    /// round-trip through the form gives back what the user typed rather than a canonicalized
+    /// spelling of it.
+    private static func endpointText(for account: S3Account) -> String {
+        let isDefaultPort = (account.usesTLS && account.port == 443)
+            || (!account.usesTLS && account.port == 80)
+        let authority = isDefaultPort ? account.host : "\(account.host):\(account.port)"
+        return account.usesTLS ? authority : "http://\(authority)"
     }
 
     // MARK: - Reading
 
-    /// The account the bucket picker asks, or `nil` when what is typed so far cannot make one.
+    /// The account the bucket picker asks and the empty-bucket connect browses, or `nil` when what
+    /// is typed so far cannot make one.
     ///
     /// **It requires everything `readForm` does except the bucket**, which is the point: the picker
     /// exists to supply that one field, so demanding it would make the button useful only to
     /// somebody who no longer needs it.
+    ///
+    /// The addressing mode rides along even though the one request this was originally built for —
+    /// `ListAllMyBuckets` — has no bucket to spell into a URL and ignores it. It stopped being
+    /// decorative the moment an account became a *place*: `CreateBucket`, `DeleteBucket` and
+    /// `HeadBucket` all name a bucket, and so does every connection made by walking into one. An
+    /// account built without it here and with it elsewhere would be the same question with two
+    /// answers, which is this project's most repeated finding.
     func readAccount() -> (account: S3Account, secretAccessKey: String)? {
         let regionValue = regionValue
         let keyValue = ConnectFormFactory.trimmed(accessKeyID)
@@ -251,9 +282,16 @@ final class ConnectServerS3Fields {
             port: resolved.port,
             region: regionValue,
             accessKeyID: keyValue,
+            addressing: addressing,
             usesTLS: resolved.usesTLS
         )
         return (account, secretKey.stringValue)
+    }
+
+    /// How a bucket reached from this form is spelled into the URL. Path-style is a *compatible*-only
+    /// row, so ticking it and switching back to Amazon must not leave it behind.
+    private var addressing: S3Addressing {
+        isCompatible && pathStyleCheckbox.state == .on ? .path : .virtualHost
     }
 
     /// Where the request goes: typed for an S3-compatible server, derived from the region for
@@ -265,30 +303,35 @@ final class ConnectServerS3Fields {
     }
 
     /// The validated endpoint and secret, or `nil` when a required field is empty or unusable.
+    ///
+    /// **A blank bucket is an answer, not an omission** (PLAN.md §M21 Slice 9): it connects to the
+    /// account and browses its buckets as rows. Every other field is still required — the endpoint
+    /// this reaches, the key that signs for it and the region it signs in are exactly the same ones
+    /// a bucket connection needs, which is why the two share `readAccount`.
+    ///
+    /// The blank field is safe to give a meaning to precisely because it had none: a bucket name
+    /// cannot be empty (`S3BucketName.minimumLength` is 3), so nothing that used to connect now
+    /// connects somewhere else. What it costs is a typo landing in the account pane instead of an
+    /// error, and that is recoverable in one keystroke — the bucket the user meant is a row there.
     func readForm(saveName: String?) -> ConnectServerPrompt.Form? {
-        let bucketValue = ConnectFormFactory.trimmed(bucket)
-        let regionValue = regionValue
-        let keyValue = ConnectFormFactory.trimmed(accessKeyID)
-        guard ConnectFormFactory.isSafeArgument(bucketValue),
-              ConnectFormFactory.isSafeArgument(regionValue),
-              ConnectFormFactory.isSafeArgument(keyValue) else { return nil }
         // The secret isn't trimmed — it is 40 characters of base64 and every one of them counts —
-        // but a blank one is certainly a mistake, so it is rejected rather than sent empty.
-        guard !secretKey.stringValue.isEmpty else { return nil }
+        // but a blank one is certainly a mistake, and `readAccount` rejects it rather than signing
+        // with nothing.
+        guard let resolved = readAccount() else { return nil }
+        let account = resolved.account
+        let bucketValue = ConnectFormFactory.trimmed(bucket)
+        guard !bucketValue.isEmpty else {
+            return ConnectServerPrompt.Form(
+                endpoint: .s3Account(account),
+                password: resolved.secretAccessKey,
+                saveName: saveName
+            )
+        }
+        guard ConnectFormFactory.isSafeArgument(bucketValue) else { return nil }
 
-        guard let resolved = resolvedEndpoint(region: regionValue) else { return nil }
-        let location = S3Location(
-            host: resolved.host,
-            port: resolved.port,
-            bucket: bucketValue,
-            region: regionValue,
-            accessKeyID: keyValue,
-            addressing: isCompatible && pathStyleCheckbox.state == .on ? .path : .virtualHost,
-            usesTLS: resolved.usesTLS
-        )
         return ConnectServerPrompt.Form(
-            endpoint: .s3(location),
-            password: secretKey.stringValue,
+            endpoint: .s3(account.bucketLocation(named: bucketValue)),
+            password: resolved.secretAccessKey,
             saveName: saveName
         )
     }

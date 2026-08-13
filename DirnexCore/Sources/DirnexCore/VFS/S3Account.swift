@@ -19,7 +19,9 @@ import Foundation
 ///
 /// Like ``S3Location`` it holds **no secret**: the secret access key is fed to `curl` through a
 /// `-K -` config file on stdin and never reaches `argv` (NOTES.md ▸ curl).
-public struct S3Account: Sendable, Hashable {
+/// `Codable` for the same reason ``S3Location`` is and with the same safety: a saved account is a
+/// `ServerEndpoint` in the sidebar's plain-JSON store, and everything here is an address.
+public struct S3Account: Sendable, Hashable, Codable {
     /// Host of the S3 endpoint, without a scheme and — see above — without a bucket.
     public let host: String
     /// TCP port. 443 unless the user says otherwise.

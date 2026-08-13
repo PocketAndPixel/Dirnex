@@ -4,10 +4,11 @@ import Foundation
 /// Asks an S3 account which buckets its key can see, for the connect sheet's bucket picker
 /// (PLAN.md §M21 Slice 7).
 ///
-/// It is deliberately **not** an `S3Transport`: that protocol is a connection to one bucket, and
-/// this request exists precisely because the bucket is the thing not yet known. It shares the
-/// process plumbing through ``S3CurlRunner`` and the page loop through `S3BucketEnumeration`, so
-/// what is left here is one call.
+/// It issues the request through ``S3AccountCurlTransport`` — the same object `S3AccountBackend`
+/// speaks to — and the page loop through `S3BucketEnumeration`, so what is left here is the one
+/// thing neither of those can supply: **which refusal this is**. That distinction is the picker's
+/// whole reason to exist and is lost by the time a `VFSError` is thrown, which is why this is not
+/// simply a call to the backend's own `listDirectory`.
 ///
 /// It runs **off the main thread** and therefore names no strings. Every outcome is a reason the
 /// picker turns into a sentence, which is the rule docs/NOTES.md states for the core — a layer that
@@ -47,17 +48,13 @@ enum S3BucketLister {
     /// One account-level `ListAllMyBuckets`, walked to the end. Blocks on the network; call it off
     /// the main thread.
     static func buckets(for account: S3Account, secretAccessKey: String) -> Outcome {
-        let runner = S3CurlRunner(
-            accessKeyID: account.accessKeyID,
+        let transport = S3AccountCurlTransport(
+            account: account,
             secretAccessKey: secretAccessKey
         )
         do {
             let buckets = try S3BucketEnumeration.allBuckets { token in
-                let arguments = S3ProcessArguments.listBuckets(
-                    account: account,
-                    continuationToken: token
-                )
-                let response = try runner.perform(arguments)
+                let response = try transport.listBuckets(continuationToken: token)
                 guard response.isSuccess else {
                     throw S3ResponseError.service(
                         S3ServiceError.parse(

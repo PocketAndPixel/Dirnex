@@ -4,8 +4,8 @@ import Foundation
 /// The pane's backend: routes each `VFSPath` to the concrete backend that owns it — the
 /// real `LocalBackend` for on-disk paths, a lazily-mounted read-only `ArchiveBackend` for
 /// `archive:…` paths (PLAN.md §M4 "cash in the VFS abstraction — browse zip/tar as folders"), and a
-/// connected `SFTPBackend` / `FTPBackend` / `S3Backend` for each live remote account
-/// (§M5, §M13, §M21).
+/// connected `SFTPBackend` / `FTPBackend` / `S3Backend` for each live remote account — plus, for
+/// S3, an `S3AccountBackend` listing an endpoint's buckets (§M5, §M13, §M21).
 ///
 /// Composing, rather than swapping, the pane's backend keeps every existing `self.backend`
 /// call site — listing, stat, sizing, copy/move, the shared queue — working unchanged; only
@@ -37,6 +37,15 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
     /// alive — every request re-signs — so a "connection" here is the credential plus the endpoint,
     /// held so a pane can keep listing without asking the Keychain on every page.
     private var s3Connections: [String: S3Backend] = [:]
+    /// Live S3 *account* connections keyed by the account descriptor (`s3a://<key id>@<host>:…`) —
+    /// a pane listing an endpoint's buckets rather than one bucket's objects (PLAN.md §M21 Slice 9).
+    ///
+    /// A second dictionary rather than a wider value type in `s3Connections`, because the two are
+    /// keyed by descriptors that can never collide (`S3Addressing.accountScheme`) and answer
+    /// different protocols. Registering an account leaves every connected bucket exactly as it was,
+    /// which is what makes walking out of a bucket into its account — and back down into another —
+    /// two independent connections rather than one being replaced.
+    private var s3AccountConnections: [String: S3AccountBackend] = [:]
 
     init(local: LocalBackend) {
         self.local = local
@@ -106,6 +115,26 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         return backend
     }
 
+    /// Establish (or replace) a connection to a whole S3 account, returning its backend so the
+    /// caller can test it (list the buckets) before navigating a pane onto it. `secretAccessKey` is
+    /// the plaintext the transport feeds to `curl` on stdin, exactly as the bucket connection's is.
+    ///
+    /// An account is a *second* root and never the only one, which is why this sits beside
+    /// `connectS3` rather than replacing it: a key scoped to one bucket cannot make this call at
+    /// all, and the bucket-rooted connection it does use is untouched by any of this.
+    @discardableResult
+    func connectS3Account(account: S3Account, secretAccessKey: String) -> S3AccountBackend {
+        let transport = S3AccountCurlTransport(
+            account: account,
+            secretAccessKey: secretAccessKey
+        )
+        let backend = S3AccountBackend(account: account, transport: transport)
+        lock.lock()
+        defer { lock.unlock() }
+        s3AccountConnections[account.descriptor] = backend
+        return backend
+    }
+
     /// Drop the cached mount for the archive at `archivePath`, so its next list/stat re-reads it
     /// from disk with a fresh `bsdtar -tvf`. Called after a rewrite (F8 delete inside an archive)
     /// changes the archive's contents, so the pane's re-list reflects the new table of contents
@@ -149,6 +178,14 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         // perform. This stopped being a no-op when the write half landed — before it, both sides of
         // the `??` were the same value, so the fallback was untestable and provably harmless.
         if path.backend.isS3 { return s3Backend(for: path.backend)?.capabilities ?? .read }
+        // An account pane is `[.read, .write]` too, and it means something narrower: the writes are
+        // *creating and deleting buckets*, which is what F7 and F8 do on rows that are buckets.
+        // There is deliberately no `.rename` — S3 cannot rename a bucket at any level — and
+        // `acceptsUploads` is false for this backend, so F5 into it is refused up front rather than
+        // failing inside the queue (`VFSBackendID.acceptsUploads`).
+        if path.backend.isS3Account {
+            return s3AccountBackend(for: path.backend)?.capabilities ?? .read
+        }
         // The merged Trash listing is writable-but-Trash-less for the same reason, one level up:
         // its entries are real files that can only be deleted for good. Everything else virtual (an
         // archive browse, a search-results listing) is read-only.
@@ -243,7 +280,23 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         if path.backend.isSFTP { return try connectedSFTP(for: path.backend) }
         if path.backend.isFTP { return try connectedFTP(for: path.backend) }
         if path.backend.isS3 { return try connectedS3(for: path.backend) }
+        if path.backend.isS3Account { return try connectedS3Account(for: path.backend) }
         throw VFSError.unsupported(.noBackendForPath(path: "\(path)"))
+    }
+
+    private func connectedS3Account(for backendID: VFSBackendID) throws -> S3AccountBackend {
+        guard let backend = s3AccountBackend(for: backendID) else {
+            throw VFSError.unsupported(.serverNotConnected(server: "\(backendID)"))
+        }
+        return backend
+    }
+
+    /// The connected S3 account backend for `backendID`, or `nil` when there's no live connection —
+    /// the non-throwing lookup `capabilities(for:)` needs (it must never throw and must stay cheap).
+    private func s3AccountBackend(for backendID: VFSBackendID) -> S3AccountBackend? {
+        lock.lock()
+        defer { lock.unlock() }
+        return s3AccountConnections[backendID.rawValue]
     }
 
     private func connectedS3(for backendID: VFSBackendID) throws -> S3Backend {

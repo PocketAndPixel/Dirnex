@@ -129,4 +129,44 @@ struct CompositeBackendTests {
             try backend.listDirectory(at: VFSPath(backend: .s3(other), path: "/"))
         }
     }
+
+    // MARK: - Accounts
+
+    /// An account pane is writable in a narrower sense than a bucket's — its writes create and
+    /// delete *buckets* — and it must not advertise `.rename`, which S3 cannot do to a bucket at
+    /// any level. An unconnected one grays its writes exactly as an unconnected bucket does.
+    @Test("an s3 account is writable once connected, and never renameable")
+    func s3AccountBecomesWritableWhenConnected() {
+        let account = Self.bucket.account
+        let path = VFSPath(backend: .s3Account(account), path: "/")
+        #expect(backend.capabilities(for: path) == .read)
+
+        backend.connectS3Account(account: account, secretAccessKey: "secret")
+        let caps = backend.capabilities(for: path)
+        #expect(caps.contains(.read))
+        #expect(caps.contains(.write))
+        #expect(!caps.contains(.rename))
+        #expect(!caps.contains(.trash))
+        #expect(caps.deleteStrategy == .permanent)
+    }
+
+    /// The two connections are independent in **both** directions, which is what walking out of a
+    /// bucket into its account and back down into another one rests on. They are keyed by
+    /// descriptors that cannot collide — `s3://` against `s3a://` — so neither registration can
+    /// stand in for the other, and connecting an account must not quietly make every bucket on the
+    /// endpoint routable without a credential of its own.
+    @Test("connecting an account connects neither its buckets nor the other way round")
+    func accountsAndBucketsAreIndependentConnections() {
+        let account = Self.bucket.account
+        backend.connectS3Account(account: account, secretAccessKey: "a")
+        #expect(throws: (any Error).self) {
+            try backend.listDirectory(at: VFSPath(backend: .s3(Self.bucket), path: "/"))
+        }
+
+        let fresh = CompositeBackend(local: LocalBackend())
+        fresh.connectS3(location: Self.bucket, secretAccessKey: "a")
+        #expect(throws: (any Error).self) {
+            try fresh.listDirectory(at: VFSPath(backend: .s3Account(account), path: "/"))
+        }
+    }
 }

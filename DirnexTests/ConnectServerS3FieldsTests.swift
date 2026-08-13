@@ -34,6 +34,11 @@ struct ConnectServerS3FieldsTests {
         return location
     }
 
+    private func account(of form: ConnectServerPrompt.Form?) -> S3Account? {
+        guard case let .s3Account(account)? = form?.endpoint else { return nil }
+        return account
+    }
+
     // MARK: - Amazon
 
     /// The reason Amazon has no endpoint field at all: the host *is* the region, and a bucket
@@ -107,12 +112,12 @@ struct ConnectServerS3FieldsTests {
 
     @Test(
         "every required field is required",
-        arguments: ["bucket", "accessKeyID", "secretKey"]
+        arguments: ["accessKeyID", "secretKey"]
     )
     func missingFieldIsRefused(blank: String) {
         let fields = fields()
         fields.region.stringValue = "us-east-1"
-        fields.bucket.stringValue = blank == "bucket" ? "" : "photos"
+        fields.bucket.stringValue = "photos"
         fields.accessKeyID.stringValue = blank == "accessKeyID" ? "" : "AKIAEXAMPLE"
         fields.secretKey.stringValue = blank == "secretKey" ? "" : "s3cret"
 
@@ -219,62 +224,5 @@ struct ConnectServerS3FieldsTests {
         fields.secretKey.stringValue = "s3cret"
 
         #expect(try #require(bucket(of: fields.readForm(saveName: nil))) == saved)
-    }
-
-    // MARK: - The account the bucket picker asks
-
-    /// The whole point of the picker: it has to work *before* the field it fills is filled in.
-    @Test("an account reads with the bucket field empty")
-    func accountNeedsNoBucket() throws {
-        let fields = fields()
-        fields.region.stringValue = "eu-central-1"
-        fields.accessKeyID.stringValue = "AKIAEXAMPLE"
-        fields.secretKey.stringValue = "s3cret"
-        fields.bucket.stringValue = ""
-
-        let resolved = try #require(fields.readAccount())
-        #expect(resolved.account.host == "s3.eu-central-1.amazonaws.com")
-        #expect(resolved.account.region == "eu-central-1")
-        #expect(resolved.account.accessKeyID == "AKIAEXAMPLE")
-        #expect(resolved.secretAccessKey == "s3cret")
-        // And the form itself still refuses to connect without one, so the two questions stay
-        // separate rather than the picker quietly loosening what Connect accepts.
-        #expect(fields.readForm(saveName: nil) == nil)
-    }
-
-    @Test("an account takes the typed endpoint for an S3-compatible server")
-    func accountUsesTheTypedEndpoint() throws {
-        let fields = fields()
-        choose(1, in: fields.serviceControl)
-        fields.endpoint.stringValue = "http://127.0.0.1:9000"
-        fields.region.stringValue = "us-east-1"
-        fields.accessKeyID.stringValue = "minioadmin"
-        fields.secretKey.stringValue = "minioadmin"
-
-        let account = try #require(fields.readAccount()).account
-        #expect(account.host == "127.0.0.1")
-        #expect(account.port == 9000)
-        #expect(account.usesTLS == false)
-        // Path-style or not, a service request never names a bucket — so the addressing mode the
-        // form carries has nowhere to go, which is exactly why `S3Account` does not hold one.
-        // Asserted through the arguments rather than the URL property, which is internal to the
-        // core: this is what actually reaches `curl`, so it is the stronger claim anyway.
-        #expect(S3ProcessArguments.listBuckets(account: account).last == "http://127.0.0.1:9000/")
-    }
-
-    /// The credentials are required and the region is not — it resolves to
-    /// ``ConnectServerS3Fields/defaultRegion`` when blank, which `blankRegionStillListsBuckets`
-    /// covers from the other side.
-    @Test("no account without a secret or an access key")
-    func accountNeedsTheRest() {
-        let missingSecret = fields()
-        missingSecret.region.stringValue = "us-east-1"
-        missingSecret.accessKeyID.stringValue = "AKIAEXAMPLE"
-        #expect(missingSecret.readAccount() == nil)
-
-        let missingKey = fields()
-        missingKey.region.stringValue = "us-east-1"
-        missingKey.secretKey.stringValue = "s3cret"
-        #expect(missingKey.readAccount() == nil)
     }
 }

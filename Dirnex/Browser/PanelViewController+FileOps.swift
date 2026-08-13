@@ -51,18 +51,33 @@ extension PanelViewController {
         // a tree it is the folder the cursor's row lives in, so the new folder appears as a sibling
         // right where the cursor is rather than back at the root.
         guard let target = creationDirectory else { return }
+        // An S3 account pane's rows are **buckets**, so F7 there creates one (PLAN.md §M21
+        // Slice 9). Not a naming quibble: an account has no folders to make, and a bucket's name
+        // has to keep rules a folder's does not — which is why the prefilled default goes away
+        // below rather than arriving as a value that cannot be used.
+        let createsBucket = target.backend.isS3Account
         let alert = NSAlert()
-        alert.messageText = String(
-            localized: "New Folder",
-            comment: "Title of the New Folder dialog."
-        )
+        alert.messageText = createsBucket
+            ? String(
+                localized: "New Bucket",
+                comment: "Title of the New Folder dialog when the pane lists an S3 account's buckets."
+            )
+            : String(
+                localized: "New Folder",
+                comment: "Title of the New Folder dialog."
+            )
         // Named for what the pane shows, not for the directory underneath: "iCloud Drive", not
         // "com~apple~CloudDocs", which is a folder the user has never heard of. A tree is the
         // exception `creationDirectoryName` exists for — it really is drawing the deeper folder.
-        alert.informativeText = String(
-            localized: "Create a folder in “\(creationDirectoryName)”.",
-            comment: "New Folder dialog body; %@ is the containing folder name."
-        )
+        alert.informativeText = createsBucket
+            ? String(
+                localized: "Create a bucket on “\(creationDirectoryName)”.",
+                comment: "New Bucket dialog body; %@ is the S3 account the pane is listing."
+            )
+            : String(
+                localized: "Create a folder in “\(creationDirectoryName)”.",
+                comment: "New Folder dialog body; %@ is the containing folder name."
+            )
         alert.addButton(
             withTitle: String(
                 localized: "Create",
@@ -74,14 +89,22 @@ extension PanelViewController {
 
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
         field.keepToOneLine()
-        field.stringValue = String(
+        // A bucket starts blank. "untitled folder" is not a legal bucket name — a space and a
+        // capital would each break a rule — so prefilling it would hand the user a default that
+        // earns a refusal about a rule they never chose to break.
+        field.stringValue = createsBucket ? "" : String(
             localized: "untitled folder",
             comment: "Default name prefilled in the New Folder dialog."
         )
-        field.placeholderString = String(
-            localized: "Folder name",
-            comment: "Placeholder in the New Folder name field."
-        )
+        field.placeholderString = createsBucket
+            ? String(
+                localized: "Bucket name",
+                comment: "Placeholder in the New Bucket name field (the New Folder dialog on an S3 account)."
+            )
+            : String(
+                localized: "Folder name",
+                comment: "Placeholder in the New Folder name field."
+            )
         alert.accessoryView = field
         alert.window.initialFirstResponder = field
 
@@ -100,7 +123,10 @@ extension PanelViewController {
 
     private func createFolder(named name: String, in directory: VFSPath) {
         guard !name.isEmpty else { return } // an empty name is a silent cancel
-        guard !name.contains("/") else {
+        // A bucket's rules are the service's, and `S3BucketName` is what says *which* one broke —
+        // a slash lands on "use lowercase letters, digits, dots and hyphens", which is the sentence
+        // that helps. Running the folder-shaped check first would preempt it with a worse one.
+        guard directory.backend.isS3Account || !name.contains("/") else {
             presentOperationFailure(
                 message: String(
                     localized: "Can’t create the folder",

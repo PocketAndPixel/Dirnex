@@ -18,6 +18,14 @@ extension PanelViewController {
             host?.panelRequestsVaultOpen(vault, showingIn: self)
             return
         }
+        // Also before the directory branch, and for the same shape of reason: a bucket row *is* a
+        // directory, and the path it points at is one this backend deliberately refuses to list
+        // (`S3AccountBackend` is depth 0 — everything below a bucket is reached by connecting to
+        // it). Walking in is a backend crossing, so it is a connect (PLAN.md §M21 Slice 9).
+        if panel.path.backend.isS3Account {
+            enterS3Bucket(named: entry.name)
+            return
+        }
         if let target = panel.openTarget(for: entry) {
             // A folder opened from a results tab must not replace the results in place — route it
             // elsewhere so the listing survives (PLAN.md §M4 search, §M8 Recents and Trash).
@@ -124,8 +132,15 @@ extension PanelViewController {
     /// A *virtual* pane is still excluded and that is the distinction the property exists to keep: a
     /// search snapshot's synthetic parent is not a browsable directory, while a connected account's
     /// is (`isRemoteConnection` — re-listable, and not on this disk).
+    /// A bucket root is the one place where "up" is not a path at all: its path is `/`, so
+    /// `parentPath` is `nil` and always will be, while the place above it — the account that holds
+    /// it — is a different backend (`leavesBucketForItsAccount`). The row is offered even for a key
+    /// that turns out not to be allowed to list buckets, because the alternative is asking the
+    /// service on every listing to decide whether to draw a row; the walk itself probes once and
+    /// says so where the user is standing (PLAN.md §M21 Slice 9).
     var canGoToParent: Bool {
         if isArchive { return true }
+        if leavesBucketForItsAccount { return true }
         let backend = panel.path.backend
         guard backend == .local || backend.isRemoteConnection else { return false }
         return panel.parentPath != nil
@@ -137,6 +152,12 @@ extension PanelViewController {
     func goToParent() {
         if isArchive {
             _ = goUpWithinArchive()
+            return
+        }
+        // Before the `parentPath` walk, because a bucket root has no parent to walk to — the place
+        // above it is the account, which is a connect (`PanelViewController+S3Account`).
+        if leavesBucketForItsAccount {
+            leaveBucketForItsAccount()
             return
         }
         guard canGoToParent else { return }

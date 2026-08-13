@@ -35,6 +35,19 @@ public enum ServerEndpoint: Sendable, Hashable, Codable {
     /// not a secret — already lives in the `S3Location`. The secret access key stays in the
     /// Keychain, filed under ``S3Location/keychainAccount``.
     case s3(S3Location)
+    /// A whole S3 **account** — the same endpoint, region and key with no bucket named — browsed as
+    /// a flat list of the buckets that key can see (PLAN.md §M21 Slice 9).
+    ///
+    /// A case of its own rather than an optional bucket on ``s3(_:)``, because the two are different
+    /// *places* rather than one place with a field missing: they carry different backend ids, they
+    /// are reached by different requests, and a saved server has to come back as the one it was
+    /// saved as. An optional bucket would make every existing reader of a saved connection ask a
+    /// question that has only ever had one answer.
+    ///
+    /// The secret access key is filed exactly as a bucket's is, under
+    /// ``S3Account/keychainAccount`` — which is a bucket key's without the trailing `/<bucket>`, so
+    /// an account and every bucket in it keep separate items.
+    case s3Account(S3Account)
 }
 
 /// A named, re-connectable remote server — the model behind the sidebar's **Servers** section
@@ -65,20 +78,24 @@ public struct ServerConnection: Sendable, Hashable, Identifiable, Codable {
         case .sftp: return .sftp
         case .ftp: return .ftp
         case .smb: return .smb
-        case .s3: return .s3
+        // An account and a bucket are one protocol, so they wear one glyph and take one branch in
+        // every switch that asks "which service is this". What differs between them is the *place*,
+        // which is the endpoint's business and not the kind's.
+        case .s3, .s3Account: return .s3
         }
     }
 
     /// A compact human-readable address for the sidebar subtitle / tooltip: the SFTP descriptor
     /// (`sftp://user@host:port`), the FTP descriptor (whose scheme names the security mode), the
-    /// SMB URL (`smb://[user@]host[/share]`), or the S3 descriptor (whose scheme names the
-    /// addressing mode).
+    /// SMB URL (`smb://[user@]host[/share]`), or the S3 descriptor — a bucket's or a whole
+    /// account's, which the scheme tells apart along with the addressing mode.
     public var address: String {
         switch endpoint {
         case let .sftp(location, _): return location.descriptor
         case let .ftp(location, _, _): return location.descriptor
         case let .smb(location): return location.url
         case let .s3(location): return location.descriptor
+        case let .s3Account(account): return account.descriptor
         }
     }
 }

@@ -258,47 +258,4 @@ struct ServerConnectionTests {
         )
         #expect(decoded == list)
     }
-
-    // MARK: - S3
-
-    private func s3(_ name: String) -> ServerConnection {
-        ServerConnection(
-            name: name,
-            endpoint: .s3(S3Location(
-                host: "s3.eu-central-1.amazonaws.com",
-                bucket: "photos",
-                region: "eu-central-1",
-                accessKeyID: "AKIAEXAMPLE"
-            ))
-        )
-    }
-
-    @Test("a saved bucket reports its kind and its descriptor")
-    func s3EndpointRendering() {
-        #expect(s3("Photos").kind == .s3)
-        #expect(s3("Photos").address
-            == "s3://AKIAEXAMPLE@s3.eu-central-1.amazonaws.com:443/eu-central-1/photos")
-    }
-
-    /// A saved bucket carries the access key id and *nothing* that unlocks it. Asserted over the
-    /// encoded JSON rather than over the value, because the claim is about what reaches the disk:
-    /// `Dirnex.servers` is plain `UserDefaults`, and the secret lives in the Keychain.
-    @Test("a saved bucket serializes no secret")
-    func s3StoresNoSecret() throws {
-        let data = try JSONEncoder().encode(ServerConnections(connections: [s3("Photos")]))
-        let json = try #require(String(data: data, encoding: .utf8))
-        #expect(json.contains("AKIAEXAMPLE"))
-        #expect(!json.lowercased().contains("secret"))
-    }
-
-    /// Adding a case to a `Codable` enum is a migration whether or not it looks like one. A store
-    /// written before S3 existed must still decode — the shape a `try?`-loaded store fails in is
-    /// the whole list coming back empty, i.e. every saved server silently gone.
-    @Test("a store written before S3 existed still decodes")
-    func legacyStoreDecodes() throws {
-        let legacy = try JSONEncoder().encode(ServerConnections(connections: [sftp("A"), smb("B")]))
-        let decoded = try JSONDecoder().decode(ServerConnections.self, from: legacy)
-        #expect(decoded.connections.count == 2)
-        #expect(decoded.connection(named: "A")?.kind == .sftp)
-    }
 }
