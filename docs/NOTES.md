@@ -1990,6 +1990,39 @@ what made the milestone affordable and the rest inverted rules borrowed from the
   leaves the user paying for bytes they cannot see and did not keep. Abort on every failing exit
   including cancellation, and let the abort swallow its own failure: it runs where something has
   already gone wrong, and the caller's error is the one worth reporting.
+- **The bucket verbs invert two of this backend's own rules, and both inversions are measured.**
+  `CreateBucket`, `DeleteBucket` and `HeadBucket` were probed 2026-08-13 against a SigV4-verifying
+  local endpoint and then a real third-party account. They need **no new signing machinery** — all
+  three sign as `host;x-amz-content-sha256;x-amz-date` with a *real* payload digest, never
+  `UNSIGNED-PAYLOAD`, because they use `--data-binary` rather than `-T`; the memory argument that
+  forces `-T` on a file (5.3 MB against 1.08 GB on 512 MiB) does not apply to a body that is either
+  empty or 191 bytes. Two consequences worth having before writing any of them:
+  - **A successful `DeleteBucket` is 204**, so a reader keyed on `== 200` classifies every correct
+    delete as a failure — the resumed download's 206 trap, arriving on a verb where it is not about
+    resuming at all. `S3Response.isSuccess` is already a range; the point is that a *new* verb has
+    to use it rather than inherit it by luck.
+  - **A trailing slash is safe on both write verbs** (probed both ways: the bucket lands under its
+    own name, no slash in the name), which is what lets the account arguments reuse
+    `S3Location.bucketURL` instead of growing a second definition of how a bucket is addressed. Note
+    this is safe *because* `-T` is not involved — the same flag whose basename-appending behavior
+    makes a trailing slash forbidden on an upload URL.
+- **A real server can be the permissive one, and here it is: `CreateBucket` on a name the account
+  already holds answers 200 and changes nothing.** Measured on a live third-party endpoint. AWS
+  refuses the same request (`BucketAlreadyOwnedByYou`), so there is no server behavior to rely on and
+  the existence check has to be the client's — without it, "create a bucket" on a taken name reports
+  success and does nothing, the quiet direction, on the one provider where it is easiest to test. The
+  `moto` finding above says a mock will agree with a broken client; this is its twin, and the general
+  form covers both: **when a probe's subject is "will this be refused", a single endpoint's yes is
+  not evidence, whoever runs it.**
+- **Every broken bucket-name rule comes back as one indistinguishable `400 InvalidBucketName`.**
+  Probed with five deliberately different mistakes — an uppercase letter, a two-character name, an
+  underscore, an IP-shaped name and a 64-character name — and the answer to all five is the same
+  status, the same code and the same sentence ("The specified bucket is not valid"). So local
+  validation is not a round-trip optimisation but the only way the user learns *which* rule broke,
+  which inverts the usual instinct to let the service be the authority on its own names. The
+  corollary is the one that bites later: a **dotted** name is perfectly legal and was accepted in the
+  same run, and it is the one that strands the user, because a wildcard certificate is one label deep
+  — so it belongs in a warning about *addressing* and never in a naming refusal.
 - **A key's leading and trailing whitespace is part of its name, and one `trimmingCharacters` over a
   parsed XML value costs three verbs at once.** `S3ListingParser` trimmed every element it read,
   which is right for a size, a date, a boolean or a token and wrong for a `<Key>` or a `<Prefix>`.

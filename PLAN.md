@@ -821,13 +821,55 @@ folder delete is **atomic**, and a byte counter cannot advance during a server-s
 paying a round trip per object for it (~25 min of pure latency on a 50 000-file prefix), so those
 copies report items rather than bytes.
 
-Deliberately deferred, not forgotten: **account-level browsing** (`ListAllMyBuckets`) as a second
-root — a key scoped to one bucket is the ordinary way these are issued, so an account-rooted design
-fails at the root for exactly the users whose credentials are set up properly. Still deferred as a
-*root*, and Slice 7 is why the distinction was worth keeping: the same call makes an excellent
-**assist** — a picker beside a field that is still typed — precisely because a key that cannot make
-it costs the user nothing. Worth carrying past S3: when a capability is rejected for what it does at
-the *root*, ask what it does as an *option* before filing it away. **Multipart upload**
+Slice 9 opened 2026-08-13 and is **bucket management** — the deferral below, answered. Core-only and
+additive so far (`S3BucketName`, `S3AccountBackend` with its own `S3AccountTransport`, the account
+descriptor and `bucketLocation`, three argument builders, two `VFSUnsupportedReason` cases
+translated in all fourteen; +30 tests, app code untouched). An account is a **second root, never the
+only one** — the pane lists buckets as rows, so F7 creates one and F8 deletes one through the
+machinery that already exists, and the objection below survives intact: a key that cannot call
+`ListAllMyBuckets` keeps exactly what it had.
+
+Everything was probed before any Swift — a local endpoint that recomputes SigV4 by hand for the
+request shape, then the real third-party account for the semantics, with every probe bucket cleaned
+up afterwards. Two findings changed the code that was about to be written:
+
+- **Creating a bucket that already exists answers 200, silently.** No `409`, no code, nothing
+  changed — so relying on the service means F7 on a taken name reports success and does nothing.
+  AWS *does* refuse (`BucketAlreadyOwnedByYou`), which is exactly why the check has to be ours: a
+  local stat first is the only behaviour that is correct on both. The `moto` lesson from Slice 4
+  arriving from the other side — this time the *real* server was the one being permissive.
+- **Every broken naming rule comes back as one indistinguishable `400 InvalidBucketName`.** Five
+  different mistakes — uppercase, two characters, an underscore, an IP-shaped name, 64 characters —
+  one sentence, "The specified bucket is not valid", with nothing a user can act on. So
+  `S3BucketName` is not a round-trip optimisation: refusing locally is the only way anyone learns it
+  was the capital letter. A **dotted** name is legal and was accepted in the same run, and is the
+  one that strands a user later, since a wildcard certificate is one label deep — a warning about
+  addressing, never a naming refusal.
+
+Three more that shaped the verbs: a successful `DeleteBucket` is **204**, so a classifier keyed on
+`== 200` fails every correct delete (the resumed download's 206, on another verb); `409
+BucketNotEmpty` needs its own sentence because the shared 409 mapping is `alreadyExists`, which
+answers a *delete* with "this already exists"; and `HeadBucket` sends **no** `x-amz-bucket-region` on
+this endpoint, so entering a bucket keeps the account's region — correct there precisely because that
+server does not validate regions. The trailing slash `S3Location.bucketURL` already produces is safe
+on both write verbs (probed both ways), so the account arguments reuse the one definition of how a
+bucket is addressed rather than growing a second.
+
+Still to come in the app pass: the connect sheet's empty-bucket path, the sidebar row, entering a
+bucket as a *connect* (so the region correction applies), and **Backspace out of a bucket root** —
+which is a backend crossing rather than a path walk, since a bucket root's path is `/` and has no
+parent to find. It probes once before navigating, so a key that cannot list buckets gets a sentence
+in place rather than a pane it has landed in that shows an error.
+
+The deferral this answers, kept for its reasoning: **account-level browsing** (`ListAllMyBuckets`) as
+a second root — a key scoped to one bucket is the ordinary way these are issued, so an account-rooted
+design fails at the root for exactly the users whose credentials are set up properly. Slice 7 is why
+the distinction was worth keeping: the same call makes an excellent **assist** — a picker beside a
+field that is still typed — precisely because a key that cannot make it costs the user nothing. Slice
+9 is the third position that argument allows and the one that was missed for two slices: an
+*optional* root is neither the root nor a mere assist, and it inherits the assist's whole safety
+argument. Worth carrying past S3: when a capability is rejected for what it does at the *root*, ask
+what it does as an *option* before filing it away. **Multipart upload**
 was the other one and closed with Slice 5 above. The **upload payload-signing question**
 closed with Slice 4 and did not need credentials in the end: it looked like "which does AWS accept"
 and was really a memory measurement, since `--data-binary @` holds twice the file and `-T` holds

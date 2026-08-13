@@ -31,6 +31,33 @@ public enum S3Addressing: String, Sendable, Hashable, Codable, CaseIterable {
             .sorted { $0.scheme.count > $1.scheme.count }
             .first { descriptor.hasPrefix($0.scheme) }
     }
+
+    /// The scheme an **account** descriptor is spelled with — the same mode, one level up
+    /// (``S3Account``).
+    ///
+    /// A separate pair rather than a flag inside the bucket grammar, so the two can never be
+    /// confused by a prefix test: neither `s3a://` nor `s3ap://` begins with `s3://` or `s3p://`,
+    /// and vice versa, so `VFSBackendID.isS3` stays false for an account and `isS3Account` stays
+    /// false for a bucket. That matters more than tidiness — a bucket id read as an account would
+    /// list the endpoint's buckets under a pane the user opened on their files.
+    ///
+    /// The addressing mode has to ride along even though a service-level `GET /` ignores it,
+    /// because every *bucket* reached from the account is addressed with it: it is what decides
+    /// whether `CreateBucket` is `PUT https://<bucket>.<host>/` or `PUT https://<host>/<bucket>`.
+    var accountScheme: String {
+        switch self {
+        case .virtualHost: return "s3a://"
+        case .path: return "s3ap://"
+        }
+    }
+
+    /// The mode an *account* descriptor's scheme names, or `nil` when it isn't one. Longest prefix
+    /// wins, so `s3ap://` is never read as `s3a://` with a stray `p`.
+    static func matchingAccount(descriptor: String) -> S3Addressing? {
+        allCases
+            .sorted { $0.accountScheme.count > $1.accountScheme.count }
+            .first { descriptor.hasPrefix($0.accountScheme) }
+    }
 }
 
 /// Where an S3 backend connects: one bucket on one endpoint, with the access key id that reaches it

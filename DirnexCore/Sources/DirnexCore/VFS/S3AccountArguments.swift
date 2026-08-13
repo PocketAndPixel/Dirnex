@@ -43,4 +43,102 @@ public extension S3ProcessArguments {
             maxTime: maxTime
         ) + configFromStandardInput + [url]
     }
+
+    /// `CreateBucket`.
+    ///
+    /// Everything below was measured 2026-08-13 against a real S3-compatible endpoint, with every
+    /// request's SigV4 recomputed by hand and a wrong-secret control refused in the same run:
+    ///
+    /// - **`--data-binary` rather than `-T`**, so the request carries a *real* payload digest
+    ///   rather than `UNSIGNED-PAYLOAD`. The opposite of the upload verb's trade, and for the
+    ///   opposite reason: the body here is either nothing or 191 bytes, so the memory argument that
+    ///   forces `-T` on a file (5.3 MB against 1.08 GB on 512 MiB) does not apply at all.
+    /// - **The URL may end in `/` and does**, because it is ``S3Location/bucketURL`` — the one
+    ///   definition of how a bucket is addressed, reused rather than rebuilt. Probed both ways: the
+    ///   bucket lands under its own name either way, with no trailing slash in the name. That is
+    ///   safe here specifically because `-T` is not involved (which would append a basename).
+    /// - **`Expect: 100-continue` can never appear**, since `curl` only adds it above ~1 KiB. So the
+    ///   flat 1.02 s an ignoring server costs (docs/NOTES.md ▸ curl) is unreachable on this verb.
+    ///
+    /// The region body is **omitted for `us-east-1`**, which is the one rule here taken from AWS's
+    /// documentation rather than measured: AWS refuses a `LocationConstraint` naming its default
+    /// region, while every other region requires one. The third-party endpoint probed accepts the
+    /// body and ignores it (its regions are fiction), so omitting is the intersection that is
+    /// correct on both — a body neither server needs is the only shape that cannot be refused.
+    static func createBucket(
+        account: S3Account,
+        name: String,
+        connectTimeout: Int = 15,
+        maxTime: Int = 30
+    ) -> [String] {
+        var arguments = accountCommon(account, connectTimeout, maxTime) + ["-X", "PUT"]
+        if let body = createBucketBody(region: account.region) {
+            arguments += ["--data-binary", body, "-H", "Content-Type: application/xml"]
+        } else {
+            // The same "state your own emptiness" spelling `putEmptyObject` uses: an explicit
+            // `Content-Length: 0` and the empty string's real SHA-256, rather than a bare `-X PUT`
+            // that sends no length header for a strict server to disagree about.
+            arguments += ["--data-binary", ""]
+        }
+        return arguments + [account.bucketLocation(named: name).bucketURL]
+    }
+
+    /// `DeleteBucket`.
+    ///
+    /// **Success is 204**, not 200 (measured), so a caller keyed on `== 200` classifies every
+    /// successful delete as a failure — the same trap a resumed download's 206 sets, which is why
+    /// ``S3Response/isSuccess`` is a range. The two refusals worth telling apart both arrive with
+    /// their own code: `409 BucketNotEmpty` and `404 NoSuchBucket`.
+    static func deleteBucket(
+        account: S3Account,
+        name: String,
+        connectTimeout: Int = 15,
+        maxTime: Int = 30
+    ) -> [String] {
+        accountCommon(account, connectTimeout, maxTime)
+            + ["-X", "DELETE", account.bucketLocation(named: name).bucketURL]
+    }
+
+    /// `HeadBucket` — whether the bucket is there, and which region it answers for.
+    ///
+    /// The region is the reason this exists: a bucket list spans regions while a connection is
+    /// signed for one, so entering a bucket needs its own. It rides `%header{x-amz-bucket-region}`,
+    /// already in ``S3WriteOut/format``, so this verb needs no new plumbing.
+    ///
+    /// It is **not** a substitute for the `<BucketRegion>` element or for the 301 correction, and
+    /// measuring said why: a real S3-compatible endpoint sends the header on *no* response at all
+    /// (2026-08-13), so this answers `nil` there and the account's own region has to carry over.
+    static func headBucket(
+        account: S3Account,
+        name: String,
+        connectTimeout: Int = 15,
+        maxTime: Int = 30
+    ) -> [String] {
+        accountCommon(account, connectTimeout, maxTime)
+            + ["--head", "--output", "/dev/null", account.bucketLocation(named: name).bucketURL]
+    }
+
+    /// The `CreateBucketConfiguration` document, or `nil` when the request must carry no body.
+    static func createBucketBody(region: String) -> String? {
+        guard region != "us-east-1" else { return nil }
+        return """
+        <?xml version="1.0" encoding="UTF-8"?>\
+        <CreateBucketConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">\
+        <LocationConstraint>\(region)</LocationConstraint>\
+        </CreateBucketConfiguration>
+        """
+    }
+
+    /// The flags and credential every account-level invocation carries.
+    private static func accountCommon(
+        _ account: S3Account,
+        _ connectTimeout: Int,
+        _ maxTime: Int
+    ) -> [String] {
+        common(
+            signatureSpecifier: account.signatureSpecifier,
+            connectTimeout: connectTimeout,
+            maxTime: maxTime
+        ) + configFromStandardInput
+    }
 }

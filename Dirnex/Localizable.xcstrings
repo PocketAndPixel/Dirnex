@@ -108768,6 +108768,184 @@
         }
       }
     },
+    "vfs.unsupported.bucketNameNotValid": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. %@ is the bucket name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ ist kein gültiger Bucket-Name. Verwenden Sie 3–63 Zeichen: Kleinbuchstaben, Ziffern, Punkte und Bindestriche, beginnend und endend mit einem Buchstaben oder einer Ziffer."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” isn’t a valid bucket name. Use 3–63 characters: lowercase letters, digits, dots and hyphens, starting and ending with a letter or digit."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» no es un nombre de bucket válido. Usa de 3 a 63 caracteres: minúsculas, dígitos, puntos y guiones, empezando y terminando por una letra o un dígito."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« %@ » n’est pas un nom de bucket valide. Utilisez 3 à 63 caractères : minuscules, chiffres, points et traits d’union, en commençant et en terminant par une lettre ou un chiffre."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” non è un nome di bucket valido. Usa da 3 a 63 caratteri: lettere minuscole, cifre, punti e trattini, iniziando e terminando con una lettera o una cifra."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」はバケット名として使えません。3〜63文字の小文字・数字・ピリオド・ハイフンを使い、先頭と末尾は英数字にしてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‘%@’은(는) 올바른 버킷 이름이 아닙니다. 3~63자의 소문자, 숫자, 마침표, 하이픈을 사용하고 처음과 끝은 문자나 숫자여야 합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‘%@’ is geen geldige bucketnaam. Gebruik 3–63 tekens: kleine letters, cijfers, punten en koppeltekens, beginnend en eindigend met een letter of cijfer."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@” nie jest prawidłową nazwą bucketu. Użyj od 3 do 63 znaków: małych liter, cyfr, kropek i myślników, zaczynając i kończąc literą lub cyfrą."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” não é um nome de bucket válido. Use de 3 a 63 caracteres: letras minúsculas, dígitos, pontos e hifens, começando e terminando com letra ou dígito."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» — недопустимое имя бакета. Используйте от 3 до 63 символов: строчные буквы, цифры, точки и дефисы, начиная и заканчивая буквой или цифрой."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» — неприпустима назва бакета. Використовуйте від 3 до 63 символів: малі літери, цифри, крапки й дефіси, починаючи та закінчуючи літерою або цифрою."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”不是有效的存储桶名称。请使用 3–63 个字符：小写字母、数字、点和连字符，且以字母或数字开头和结尾。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」不是有效的儲存桶名稱。請使用 3–63 個字元：小寫字母、數字、點和連字號，且以字母或數字開頭和結尾。"
+          }
+        }
+      }
+    },
+    "vfs.unsupported.bucketNotEmpty": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. %@ is the bucket name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ enthält noch Dateien. Leeren Sie den Bucket, bevor Sie ihn löschen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” still has files in it. Empty it first, then delete it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» todavía contiene archivos. Vacíalo antes de eliminarlo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« %@ » contient encore des fichiers. Videz-le avant de le supprimer."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” contiene ancora dei file. Svuotalo prima di eliminarlo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」にはまだファイルがあります。空にしてから削除してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‘%@’에 아직 파일이 있습니다. 먼저 비운 다음 삭제하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‘%@’ bevat nog bestanden. Maak de bucket eerst leeg en verwijder hem dan."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@” wciąż zawiera pliki. Najpierw go opróżnij, a potem usuń."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” ainda contém arquivos. Esvazie-o antes de excluí-lo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В «%@» ещё есть файлы. Сначала очистите бакет, потом удаляйте."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У «%@» ще є файли. Спершу очистіть бакет, потім видаляйте."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”中仍有文件。请先清空，然后再删除。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」中仍有檔案。請先清空，然後再刪除。"
+          }
+        }
+      }
+    },
     "vfs.unsupported.cloudStatusNeedsLocalFile": {
       "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure.",
       "localizations": {

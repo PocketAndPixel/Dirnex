@@ -83,6 +83,26 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
     /// file and that the store is the constraint, instead of an `EntityTooLarge` at the end of a
     /// long upload.
     case objectTooLargeForStore(name: String)
+    /// A bucket cannot be deleted while anything is still in it — S3 answers `409 BucketNotEmpty`
+    /// (measured against a real endpoint 2026-08-13).
+    ///
+    /// Named rather than mapped, because the generic mapping is actively wrong here: a 409 becomes
+    /// `alreadyExists`, which for a *delete* reads as "this already exists" — a sentence about the
+    /// opposite operation. And this is the refusal the user meets most, since emptying a bucket is
+    /// a separate job they have to go and do.
+    ///
+    /// It is deliberately a refusal and never a prompt to sweep the contents: S3 has no `rm -r`, so
+    /// "delete anyway" would mean enumerating and billing an unbounded number of keys behind one
+    /// keystroke. The service's own rule is the guard rail, and this sentence hands it over.
+    case bucketNotEmpty(name: String)
+    /// A bucket name that breaks S3's naming rules, refused before the request goes out.
+    ///
+    /// The refusal is local because **the server's is useless**: measured 2026-08-13, an uppercase
+    /// letter, a two-character name, an underscore, an IP-shaped name and a 64-character name all
+    /// came back as one `400 InvalidBucketName` — "The specified bucket is not valid" — with
+    /// nothing to say which rule broke. This sentence at least names the shape of a legal name;
+    /// ``S3BucketNameProblem`` carries the specific rule for a form that can show it inline.
+    case bucketNameNotValid(name: String)
 
     // MARK: Routing and archives — authored in the app, named here
 
@@ -123,6 +143,8 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
         case .attributeChangeNeedsAdministrator: return "attributeChangeNeedsAdministrator"
         case .attributesNeedLocalItem: return "attributesNeedLocalItem"
         case .objectTooLargeForStore: return "objectTooLargeForStore"
+        case .bucketNotEmpty: return "bucketNotEmpty"
+        case .bucketNameNotValid: return "bucketNameNotValid"
         case .noBackendForPath: return "noBackendForPath"
         case .serverNotConnected: return "serverNotConnected"
         case .archiveToolUnavailableForRead: return "archiveToolUnavailableForRead"
@@ -207,6 +229,16 @@ public extension VFSUnsupportedReason {
             return ("“%@” isn’t on this Mac, so it has no permissions to change.", [name])
         case let .objectTooLargeForStore(name):
             return ("“%@” is too large for this storage service to hold.", [name])
+        case let .bucketNotEmpty(name):
+            return ("“%@” still has files in it. Empty it first, then delete it.", [name])
+        case let .bucketNameNotValid(name):
+            return (
+                """
+                “%@” isn’t a valid bucket name. Use 3–63 characters: lowercase letters, \
+                digits, dots and hyphens, starting and ending with a letter or digit.
+                """,
+                [name]
+            )
         case let .noBackendForPath(path):
             return ("No backend can handle %@.", [path])
         case let .serverNotConnected(server):
@@ -258,6 +290,8 @@ public extension VFSUnsupportedReason {
             .attributeChangeNeedsAdministrator(name: ""),
             .attributesNeedLocalItem(name: ""),
             .objectTooLargeForStore(name: ""),
+            .bucketNotEmpty(name: ""),
+            .bucketNameNotValid(name: ""),
             .noBackendForPath(path: ""),
             .serverNotConnected(server: ""),
             .archiveToolUnavailableForRead,

@@ -87,16 +87,17 @@ public struct VFSBackendID: RawRepresentable, Sendable, Hashable, CustomStringCo
     /// dead-end "results" label — and ⌘C is refused, because these entries have no local URL to
     /// put on the pasteboard. It says nothing about whether the account can be **written** to; that
     /// is ``acceptsUploads``, which is a different question with a different answer.
-    public var isRemoteConnection: Bool { isSFTP || isFTP || isS3 }
+    public var isRemoteConnection: Bool { isSFTP || isFTP || isS3 || isS3Account }
 
     /// Whether a copy *into* this backend has an upload primitive behind it.
     ///
-    /// Still separate from ``isRemoteConnection`` even now that the two agree, and deliberately so.
-    /// They answer different questions — "can I browse back and forth here" against "can bytes land
-    /// here" — and S3 spent a milestone distinguishing them: while the backend was read-only, a
-    /// pane that accepted F5 would have failed *inside the queue*, after the job started, instead of
-    /// saying up front that the other panel is not somewhere it can copy into. Collapsing them now
-    /// that both read the same would put the next read-only backend straight back into that failure.
+    /// Separate from ``isRemoteConnection`` and now visibly so: **an S3 account pane is browsable
+    /// and is not somewhere bytes can land.** Its rows are buckets, and S3 has no verb for "put
+    /// this file in the account" — a copy there is meaningless rather than merely unimplemented.
+    /// That gap is the whole reason the two properties were kept apart while they still read the
+    /// same: S3 spent a milestone read-only, where a pane accepting F5 would have failed *inside
+    /// the queue*, after the job started, instead of saying up front that the other panel cannot
+    /// receive files. Collapsing them at any point since would have had to be undone here.
     public var acceptsUploads: Bool { isSFTP || isFTP || isS3 }
 
     public var description: String { rawValue }
