@@ -46,9 +46,12 @@ final class ConnectServerS3Fields {
     /// other three even as the service picker changes.
     private var s3Selected = false
 
-    /// The field to focus when S3 is the selected protocol — the bucket, which is the one field
-    /// nothing else can supply and the thing the user came here to name.
-    var firstResponder: NSView { bucket }
+    /// The field to focus when S3 is the selected protocol — the access key, which is the first row
+    /// nothing has filled in already (the region carries a default) and the first of the three the
+    /// bucket picker below waits on. Focusing the bucket instead would land the caret on the *last*
+    /// row of the layout, above nothing but "Save as", and ask for the one value the rows above it
+    /// exist to fetch.
+    var firstResponder: NSView { accessKeyID }
 
     // MARK: - Building
 
@@ -61,11 +64,14 @@ final class ConnectServerS3Fields {
             grid.addRow(with: [ConnectFormFactory.label(ConnectText.endpoint), endpoint]),
             grid.addRow(with: [NSGridCell.emptyContentView, pathStyleCheckbox])
         ]
+        // Bucket goes *below* the credentials, because that is the order the row can be filled in:
+        // the picker beside it needs the region, the key id and the secret before it can ask for a
+        // list, so a bucket row above them is a row whose own assist is not yet usable.
         rows += [
             grid.addRow(with: [ConnectFormFactory.label(ConnectText.region), region]),
-            grid.addRow(with: [ConnectFormFactory.label(ConnectText.bucket), bucketRow]),
             grid.addRow(with: [ConnectFormFactory.label(ConnectText.accessKeyID), accessKeyID]),
-            grid.addRow(with: [ConnectFormFactory.label(ConnectText.secretKey), secretKey])
+            grid.addRow(with: [ConnectFormFactory.label(ConnectText.secretKey), secretKey]),
+            grid.addRow(with: [ConnectFormFactory.label(ConnectText.bucket), bucketRow])
         ]
         wireBucketPicker()
 
@@ -80,14 +86,18 @@ final class ConnectServerS3Fields {
         // the stack 34 pt wider than its grid cell. The button then draws perfectly — `NSView` does
         // not clip — and is **unclickable**, because hit testing does respect bounds. Measured live:
         // the glyph was on screen, correctly placed, and no click on it ever reached the action.
-        return [serviceControl, endpoint, region, bucketRow, accessKeyID, secretKey]
+        return [serviceControl, endpoint, region, accessKeyID, secretKey, bucketRow]
     }
 
     /// The bucket field with its picker button beside it. A stack rather than a third grid column,
     /// because the button belongs to this one row: a column would reserve its width in *every* row
     /// of the form, including the four the other three protocols draw.
+    ///
+    /// The button leads and the field follows, so it sits at the column's edge where the eye already
+    /// is on the way down from the credentials above — the gesture that fills the field comes before
+    /// the field it fills, rather than being something to find past the end of it.
     private func bucketRow() -> NSView {
-        let row = NSStackView(views: [bucket, bucketPicker.view])
+        let row = NSStackView(views: [bucketPicker.view, bucket])
         row.orientation = .horizontal
         row.spacing = 6
         // The stack carries the form's width (see `buildRows`), so the field takes whatever the
