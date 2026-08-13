@@ -19,9 +19,13 @@ import Foundation
 /// A global `DispatchQueue` is the right destination for exactly the property usually held against
 /// it: it overcommits, growing its thread count when its threads block, which is what long
 /// synchronous I/O needs and what the cooperative pool deliberately will not do.
-enum BlockingWork {
+/// Public because the app has the same problem and must not solve it a second way: every remote
+/// transport blocks on a subprocess, so a fetch or an upload started from an AppKit controller is
+/// exactly the shape described above (PLAN.md §M21 Slice 10). A second spelling in the app would be
+/// the one place the reasoning is not written down.
+public enum BlockingWork {
     /// Run `body` off the cooperative pool, returning its result to the awaiting caller.
-    static func run<T: Sendable>(
+    public static func run<T: Sendable>(
         qos: DispatchQoS.QoSClass = .userInitiated,
         _ body: @escaping @Sendable () -> T
     ) async -> T {

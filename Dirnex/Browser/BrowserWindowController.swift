@@ -73,9 +73,14 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     /// extracting from one asks once rather than once per gesture (PLAN.md §M19). In memory only.
     let archivePassphrases = ArchivePassphraseStore()
 
-    /// Archive members the user has opened for editing, watched so a save can be offered back into
-    /// the archive (PLAN.md §M4 write-back). Wired to its handler in `windowDidLoad`.
-    let archiveMemberEdits = ArchiveMemberEditRegistry()
+    /// Archive members and remote files the user has opened for editing, watched so a save can be
+    /// offered back where it came from (PLAN.md §M4 write-back, §M21 Slice 10). Wired to its handler
+    /// in `windowDidLoad`.
+    let editedFiles = EditedFileRegistry()
+
+    /// Remote files pulled down for preview, opening or editing (PLAN.md §M21 Slice 10), shared
+    /// across both panes and every surface — so ⌘Y then ⏎ then F4 on one object costs one transfer.
+    let remoteFileCache = RemoteFileCache()
 
     /// Where each nested-archive mount was extracted from, shared across both panes so walking out
     /// of and breadcrumbing an archive-inside-an-archive resolves its outer chain (PLAN.md §M4
@@ -272,7 +277,7 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         installQuickLookSheetGuard()
         observeVolumeUnmount()
         installFunctionBar()
-        archiveMemberEdits.onEdited = { [weak self] edit in self?.offerArchiveWriteBack(edit) }
+        editedFiles.onEdited = { [weak self] edit in self?.offerWriteBack(edit) }
     }
 
     /// Put a sidebar show/hide button immediately to the right of the traffic lights, in

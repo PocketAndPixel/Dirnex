@@ -34,11 +34,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // what makes AppKit ask `PanelViewController.validRequestor` at all.
         NSApp.registerServicesMenuSendTypes([.fileURL], returnTypes: [])
 
-        // Clear any archive copy-out temp files and rewrite scratch dirs left by a previous session
-        // (PLAN.md §M4 F5 copy-out / F8 delete). Safe here — nothing is extracting or rewriting yet,
-        // so there's no in-flight operation to race.
+        // Clear any archive copy-out temp files, rewrite scratch dirs and downloaded remote copies
+        // left by a previous session (PLAN.md §M4 F5 copy-out / F8 delete, §M21 Slice 10). Safe here
+        // — nothing is extracting, rewriting or fetching yet, so there's no in-flight operation to
+        // race. The remote one also matters for what it *removes*: a session's downloads are the
+        // user's files sitting in a temp directory, so they do not outlive the session that fetched
+        // them any longer than the OS makes unavoidable.
         ArchiveExtractor.purgeTemporaries()
         ArchiveWriter.purgeTemporaries()
+        RemoteFileCache.purgeTemporaries()
 
         // Merge the standard places into the pin list before any window builds its sidebar
         // (PLAN.md §M8) — the Favorites section reads the favorites now, so an un-seeded store

@@ -113,11 +113,16 @@ protocol PanelHost: AnyObject {
     /// extracts it with F5, and enters a nested archive inside it — from either pane.
     var archivePassphrases: ArchivePassphraseStore { get }
 
-    /// The window's record of archive members opened for editing, watched so a save can be offered
-    /// back into the archive (PLAN.md §M4 write-back). Owned by the window because an edit outlives
-    /// whatever the panes are showing — the tab that started it may be long gone by the time the
-    /// user saves.
-    var archiveMemberEdits: ArchiveMemberEditRegistry { get }
+    /// The window's record of archive members and remote files opened for editing, watched so a save
+    /// can be offered back where it came from (PLAN.md §M4 write-back, §M21 Slice 10). Owned by the
+    /// window because an edit outlives whatever the panes are showing — the tab that started it may
+    /// be long gone by the time the user saves.
+    var editedFiles: EditedFileRegistry { get }
+
+    /// The window's copies of remote files pulled down for preview, opening or editing
+    /// (PLAN.md §M21 Slice 10). Owned by the window for the same reason, and shared by both panes so
+    /// previewing an object and then opening it costs one transfer.
+    var remoteFileCache: RemoteFileCache { get }
 }
 
 /// One file pane: a path bar, an `NSTableView` of the current directory, and a status

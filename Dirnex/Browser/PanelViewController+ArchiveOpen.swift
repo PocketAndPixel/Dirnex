@@ -14,7 +14,7 @@ import DirnexCore
 /// because an editor that saved would otherwise drop the user's work into a temp directory purged at
 /// the next launch — silently, with the pane still listing the member as though the edit had landed.
 /// A locked file at least failed in front of them. Write-back is the other half and the real answer:
-/// the copy is registered with `ArchiveMemberEditRegistry`, which watches it and, on a save, offers
+/// the copy is registered with `EditedFileRegistry`, which watches it and, on a save, offers
 /// the rewrite (`BrowserWindowController+ArchiveWriteBack`).
 ///
 /// A **nested** archive is the exception and stays read-only: its own bytes are already an extracted
@@ -53,9 +53,10 @@ extension PanelViewController {
             try await cache.extractedURL(for: member, passphrase: passphrase)
         } onSuccess: { [weak self] url in
             if writable {
-                self?.host?.archiveMemberEdits.watch(ArchiveMemberEdit(
-                    archivePath: archivePath,
-                    innerDirectory: innerDirectory,
+                self?.host?.editedFiles.watch(EditedFile(
+                    destination: .archiveMember(
+                        archivePath: archivePath, innerDirectory: innerDirectory
+                    ),
                     temporaryURL: url,
                     name: entry.name
                 ))

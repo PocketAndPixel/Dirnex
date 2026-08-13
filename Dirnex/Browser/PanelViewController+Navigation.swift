@@ -72,6 +72,12 @@ extension PanelViewController {
             // temp and open *that* with its default app, the Total Commander gesture. Read-only,
             // because nothing writes an edit back into the archive (PLAN.md §M4).
             beginArchiveMemberOpen(for: entry)
+        } else if entry.path.backend.isRemoteConnection {
+            // A file on a server, for the same reason and by the same route: download it to temp and
+            // open *that*, registering the copy so a save is offered back up (PLAN.md §M21 Slice
+            // 10). Until this existed ⏎ fell off the end of this chain and did nothing whatsoever —
+            // not even a message, which is the one outcome worse than a refusal.
+            beginRemoteFileOpen(for: entry)
         }
     }
 

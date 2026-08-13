@@ -15,9 +15,14 @@ import DirnexCore
 /// Silently rewriting an archive because a text editor flushed a buffer is the version of this
 /// feature nobody asked for.
 extension BrowserWindowController {
-    /// A watched member has been saved — offer to write it back.
-    func offerArchiveWriteBack(_ edit: ArchiveMemberEdit) {
-        let archiveName = (edit.archivePath as NSString).lastPathComponent
+    /// A watched member has been saved — offer to write it back into `archivePath`, at
+    /// `innerDirectory`.
+    func offerArchiveWriteBack(
+        _ edit: EditedFile,
+        archivePath: String,
+        innerDirectory: String
+    ) {
+        let archiveName = (archivePath as NSString).lastPathComponent
         let alert = NSAlert()
         alert.messageText = String(
             localized: "Save “\(edit.name)” back into “\(archiveName)”?",
@@ -50,7 +55,9 @@ extension BrowserWindowController {
 
         let handler: (NSApplication.ModalResponse) -> Void = { [weak self] response in
             guard response == .alertFirstButtonReturn else { return }
-            self?.writeArchiveMemberBack(edit)
+            self?.writeArchiveMemberBack(
+                edit, archivePath: archivePath, innerDirectory: innerDirectory
+            )
         }
         if let window {
             alert.beginSheetModal(for: window, completionHandler: handler)
@@ -62,18 +69,22 @@ extension BrowserWindowController {
     /// Add the edited copy back into the archive at the inner directory it came from, replacing the
     /// member of the same name — which is exactly `ArchiveWriter.add`, so write-back inherits the
     /// extract → edit → repack → atomic-swap rewrite and its encrypted route unchanged.
-    private func writeArchiveMemberBack(_ edit: ArchiveMemberEdit) {
+    private func writeArchiveMemberBack(
+        _ edit: EditedFile,
+        archivePath: String,
+        innerDirectory: String
+    ) {
         // The passphrase prompt and its retry belong to a pane (it owns the sheet's parent window
         // and the funnel), so the write runs through whichever pane is focused. The *edit* did not
         // come from that pane and does not need to: `edit` carries everything the write needs.
         let pane = focusedPanel
         let temporaryPath = edit.temporaryURL.path
-        pane.withArchivePassphrase(forArchiveAt: edit.archivePath) { passphrase in
+        pane.withArchivePassphrase(forArchiveAt: archivePath) { passphrase in
             try await Task.detached(priority: .userInitiated) {
                 try ArchiveWriter.add(
                     localPaths: [temporaryPath],
-                    toInnerDirectory: edit.innerDirectory,
-                    ofArchiveAt: edit.archivePath,
+                    toInnerDirectory: innerDirectory,
+                    ofArchiveAt: archivePath,
                     passphrase: passphrase
                 )
             }.value
@@ -82,9 +93,9 @@ extension BrowserWindowController {
             // Stop watching the copy that has now been absorbed: the archive is a new file, and the
             // next open re-extracts. Leaving the watcher would offer the same edit again on the
             // editor's next autosave, against an archive that already has it.
-            archiveMemberEdits.stopWatching(edit.temporaryURL)
+            editedFiles.stopWatching(edit.temporaryURL)
             // Any pane showing this archive is now listing a stale mount.
-            refreshPanesShowingArchive(at: edit.archivePath)
+            refreshPanesShowingArchive(at: archivePath)
         } onFailure: { [weak self] error in
             self?.focusedPanel.presentOperationFailure(
                 message: String(

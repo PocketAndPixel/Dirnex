@@ -115,6 +115,18 @@ extension PanelViewController: FileTableViewInput {
             // The *open* spelling, because this is the key the user pressed — an encrypted archive
             // asks for its passphrase here rather than showing nothing (PLAN.md §M19).
             openArchivePreview { [weak self] in self?.refreshQuickLookIfVisible() }
+            // The same, one kind of elsewhere further out (PLAN.md §M21 Slice 10) — and this is the
+            // key that resolves a Quick View placeholder, so the landing fetch re-drives that
+            // surface too rather than leaving the card up until the cursor next moves.
+            openRemotePreview { [weak self] in
+                guard let self else { return }
+                refreshQuickLookIfVisible()
+                // The bytes the Quick View placeholder was standing in for have arrived, so the
+                // surface showing that card has to be re-driven — this is the same funnel a cursor
+                // step uses (`updateChrome`), which is where "re-deliver the preview for this pane"
+                // already lives.
+                host?.panelCursorDidChange(self)
+            }
         }
     }
 

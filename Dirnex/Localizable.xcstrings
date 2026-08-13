@@ -25716,6 +25716,95 @@
         }
       }
     },
+    "Couldn’t open this item for editing": {
+      "comment": "Alert title when a file on a server can't be downloaded to be edited.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t open this item for editing"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Objekt konnte nicht zum Bearbeiten geöffnet werden"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo abrir este elemento para editarlo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible d’ouvrir cet élément pour le modifier"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile aprire questo elemento per la modifica"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この項目を編集用に開けませんでした"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 항목을 편집용으로 열 수 없습니다"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kan dit onderdeel niet openen om te bewerken"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można otworzyć tego elementu do edycji"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível abrir este item para edição"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось открыть этот объект для правки"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося відкрити цей об’єкт для редагування"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法打开此项目进行编辑"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法開啟此項目進行編輯"
+          }
+        }
+      }
+    },
     "Couldn’t open with “%@”.": {
       "comment": "Open With failure; %@ is the app name.",
       "localizations": {
@@ -27342,6 +27431,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "無法更新「%@」的已知主機。"
+          }
+        }
+      }
+    },
+    "Couldn’t upload “%@”": {
+      "comment": "Alert title when uploading an edited file back to its server fails; %@ is the file's name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t upload “%@”"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ konnte nicht hochgeladen werden"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo subir “%@”"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible d’envoyer «%@»"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile caricare “%@”"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”をアップロードできませんでした"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”을(를) 업로드할 수 없습니다"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kan “%@” niet uploaden"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można wysłać „%@”"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível enviar “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось выгрузить «%@»"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося вивантажити «%@»"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法上传“%@”"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法上傳「%@」"
           }
         }
       }
@@ -31266,6 +31444,95 @@
         }
       }
     },
+    "Dirnex couldn’t reach the file on the server to check whether it has changed. %@": {
+      "comment": "Remote write-back body when the pre-upload check failed; %@ is the shared “uploading replaces…” sentence.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex couldn’t reach the file on the server to check whether it has changed. %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex konnte die Datei auf dem Server nicht erreichen, um zu prüfen, ob sie sich geändert hat. %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex no pudo acceder al archivo en el servidor para comprobar si ha cambiado. %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex n’a pas pu accéder au fichier sur le serveur pour vérifier s’il a changé. %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex non è riuscito a raggiungere il file sul server per verificare se è cambiato. %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバー上のファイルに接続できず、変更されたかどうかを確認できませんでした。%@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버의 파일에 접근할 수 없어 변경 여부를 확인하지 못했습니다. %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex kon het bestand op de server niet bereiken om te controleren of het is gewijzigd. %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex nie mógł połączyć się z plikiem na serwerze, aby sprawdzić, czy się zmienił. %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Dirnex não conseguiu acessar o arquivo no servidor para verificar se ele mudou. %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex не смог обратиться к файлу на сервере, чтобы проверить, изменился ли он. %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex не зміг звернутися до файлу на сервері, щоб перевірити, чи він змінився. %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 无法访问服务器上的文件以检查它是否已更改。%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 無法存取伺服器上的檔案以檢查它是否已變更。%@"
+          }
+        }
+      }
+    },
     "Dirnex has no open browser window to act on.": {
       "comment": "Automation error when Dirnex is running with no browser window to act on.",
       "localizations": {
@@ -31351,6 +31618,184 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dirnex 沒有可操作的瀏覽器視窗。"
+          }
+        }
+      }
+    },
+    "Dirnex has no record of what this file looked like when it was downloaded, so it can’t tell whether anyone has changed it since. %@": {
+      "comment": "Remote write-back body when nothing was recorded to compare against; %@ is the shared “uploading replaces…” sentence.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex has no record of what this file looked like when it was downloaded, so it can’t tell whether anyone has changed it since. %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex hat nicht festgehalten, wie diese Datei beim Herunterladen aussah, und kann daher nicht sagen, ob sie seither jemand geändert hat. %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex no guardó cómo era este archivo al descargarlo, así que no puede saber si alguien lo ha cambiado desde entonces. %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex n’a pas gardé trace de l’état de ce fichier au téléchargement et ne peut donc pas savoir si quelqu’un l’a modifié depuis. %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex non ha registrato com’era questo file al momento del download, quindi non può sapere se qualcuno lo ha modificato da allora. %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ダウンロード時のこのファイルの状態が記録されていないため、その後に誰かが変更したかどうかを判断できません。%@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다운로드 당시 이 파일의 상태가 기록되어 있지 않아, 이후 누군가 변경했는지 알 수 없습니다. %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex heeft niet vastgelegd hoe dit bestand er bij het downloaden uitzag en kan dus niet zien of iemand het sindsdien heeft gewijzigd. %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex nie zapisał, jak ten plik wyglądał przy pobieraniu, więc nie może stwierdzić, czy ktoś go od tego czasu zmienił. %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Dirnex não registrou como este arquivo estava quando foi baixado, então não pode dizer se alguém o alterou desde então. %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex не сохранил, каким этот файл был при загрузке, поэтому не может определить, изменял ли его кто-то с тех пор. %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex не зберіг, яким цей файл був під час завантаження, тож не може визначити, чи хтось змінював його відтоді. %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 没有记录此文件下载时的状态，因此无法判断此后是否有人更改过它。%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 沒有記錄此檔案下載時的狀態，因此無法判斷此後是否有人更改過它。%@"
+          }
+        }
+      }
+    },
+    "Dirnex is fetching this file from the server before opening it.": {
+      "comment": "Remote download progress body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex is fetching this file from the server before opening it."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex lädt diese Datei vom Server, bevor sie geöffnet wird."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex está descargando este archivo del servidor antes de abrirlo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex télécharge ce fichier depuis le serveur avant de l’ouvrir."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex sta scaricando questo file dal server prima di aprirlo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開く前に、サーバーからこのファイルを取得しています。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "열기 전에 서버에서 이 파일을 가져오는 중입니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex haalt dit bestand van de server op voordat het wordt geopend."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex pobiera ten plik z serwera przed otwarciem."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Dirnex está baixando este arquivo do servidor antes de abri-lo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex загружает этот файл с сервера, прежде чем открыть его."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex завантажує цей файл із сервера, перш ніж відкрити його."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 正在从服务器获取此文件，然后再打开它。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 正在從伺服器取得此檔案，然後再開啟它。"
           }
         }
       }
@@ -32089,6 +32534,184 @@
           "stringUnit": {
             "state": "translated",
             "value": "不知道「%@」來自哪裡"
+          }
+        }
+      }
+    },
+    "Download": {
+      "comment": "Button that starts downloading a remote file.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laden"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Télécharger"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scarica"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ダウンロード"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다운로드"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pobierz"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baixar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загрузить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Завантажити"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下载"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下載"
+          }
+        }
+      }
+    },
+    "Download “%@” from the server?": {
+      "comment": "Title of the confirmation before fetching a large remote file; %@ is the name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download “%@” from the server?"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ vom Server laden?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Descargar “%@” del servidor?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Télécharger «%@» depuis le serveur ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scaricare “%@” dal server?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバーから“%@”をダウンロードしますか？"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버에서 “%@”을(를) 다운로드하시겠습니까?"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” van de server downloaden?"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pobrać „%@” z serwera?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baixar “%@” do servidor?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загрузить «%@» с сервера?"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Завантажити «%@» із сервера?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要从服务器下载“%@”吗？"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要從伺服器下載「%@」嗎？"
           }
         }
       }
@@ -64557,6 +65180,95 @@
         }
       }
     },
+    "Size not reported by the server": {
+      "comment": "Quick View placeholder subtitle when a remote file's size is unknown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Size not reported by the server"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Größe vom Server nicht angegeben"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El servidor no indica el tamaño"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taille non indiquée par le serveur"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dimensione non indicata dal server"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバーはサイズを返していません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버가 크기를 알려주지 않음"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grootte niet opgegeven door de server"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serwer nie podał rozmiaru"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tamanho não informado pelo servidor"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер не сообщил размер"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер не повідомив розмір"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器未提供大小"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伺服器未提供大小"
+          }
+        }
+      }
+    },
     "Size visualization": {
       "localizations": {
         "de": {
@@ -70244,6 +70956,362 @@
         }
       }
     },
+    "The file on the server has changed since you downloaded it — someone else has edited it. %@": {
+      "comment": "Remote write-back body when the server's copy was modified in the meantime; %@ is the shared “uploading replaces…” sentence.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The file on the server has changed since you downloaded it — someone else has edited it. %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Datei auf dem Server hat sich seit dem Herunterladen geändert – jemand anderes hat sie bearbeitet. %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El archivo del servidor ha cambiado desde que lo descargaste: otra persona lo ha editado. %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le fichier sur le serveur a changé depuis son téléchargement : quelqu’un d’autre l’a modifié. %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il file sul server è cambiato da quando l’hai scaricato: qualcun altro lo ha modificato. %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ダウンロード後にサーバー上のファイルが変更されています。ほかの誰かが編集しました。%@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다운로드한 뒤 서버의 파일이 변경되었습니다 — 다른 사람이 편집했습니다. %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Het bestand op de server is gewijzigd sinds je het hebt gedownload — iemand anders heeft het bewerkt. %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plik na serwerze zmienił się od czasu pobrania — ktoś inny go edytował. %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O arquivo no servidor mudou desde que você o baixou — outra pessoa o editou. %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файл на сервере изменился с момента загрузки — его отредактировал кто-то другой. %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файл на сервері змінився від моменту завантаження — його відредагував хтось інший. %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自您下载以来，服务器上的文件已更改 — 有其他人编辑过它。%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自您下載以來，伺服器上的檔案已變更 — 有其他人編輯過它。%@"
+          }
+        }
+      }
+    },
+    "The file on the server is byte-for-byte the one you downloaded. %@": {
+      "comment": "Remote write-back body when entity tags proved the server's copy is unchanged; %@ is the shared “uploading replaces…” sentence.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The file on the server is byte-for-byte the one you downloaded. %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Datei auf dem Server ist Byte für Byte die, die du heruntergeladen hast. %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El archivo del servidor es byte a byte el que descargaste. %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le fichier sur le serveur est identique octet pour octet à celui que vous avez téléchargé. %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il file sul server è byte per byte quello che hai scaricato. %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバー上のファイルは、ダウンロードしたものとバイト単位で同一です。%@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버의 파일은 다운로드한 파일과 바이트 단위로 동일합니다. %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Het bestand op de server is byte voor byte hetzelfde als wat je hebt gedownload. %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plik na serwerze jest bajt w bajt tym, który pobrano. %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O arquivo no servidor é, byte a byte, o mesmo que você baixou. %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файл на сервере побайтово совпадает с загруженным. %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файл на сервері побайтово збігається із завантаженим. %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器上的文件与您下载的文件逐字节相同。%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伺服器上的檔案與您下載的檔案逐位元組相同。%@"
+          }
+        }
+      }
+    },
+    "The file on the server still has the size and modification date it had when you downloaded it — but FTP reports times without a year and on the server’s own clock, so a recent change may not show up here. %@": {
+      "comment": "Remote write-back body over FTP, whose LIST timestamps are too coarse to rely on; %@ is the shared “uploading replaces…” sentence.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The file on the server still has the size and modification date it had when you downloaded it — but FTP reports times without a year and on the server’s own clock, so a recent change may not show up here. %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Datei auf dem Server hat noch Größe und Änderungsdatum wie beim Herunterladen – FTP meldet Zeiten aber ohne Jahr und nach der Uhr des Servers, sodass eine kürzliche Änderung hier nicht auffallen muss. %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El archivo del servidor conserva el tamaño y la fecha de modificación que tenía al descargarlo, pero FTP informa las horas sin año y según el reloj del servidor, así que un cambio reciente puede no verse aquí. %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le fichier sur le serveur a toujours la taille et la date de modification qu’il avait au téléchargement, mais FTP indique les heures sans l’année et selon l’horloge du serveur : une modification récente peut donc passer inaperçue ici. %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il file sul server ha ancora la dimensione e la data di modifica che aveva al download, ma FTP riporta gli orari senza l’anno e secondo l’orologio del server, quindi una modifica recente potrebbe non risultare qui. %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバー上のファイルは、ダウンロード時のサイズと更新日のままです。ただし FTP は年を含まないサーバー側の時刻を返すため、最近の変更はここに現れないことがあります。%@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버의 파일은 다운로드 당시의 크기와 수정 날짜를 그대로 유지하고 있습니다. 다만 FTP는 연도 없이 서버 자체 시계 기준으로 시각을 알려주므로, 최근 변경은 여기에 나타나지 않을 수 있습니다. %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Het bestand op de server heeft nog de grootte en wijzigingsdatum van bij het downloaden, maar FTP geeft tijden zonder jaartal en volgens de klok van de server, dus een recente wijziging is hier misschien niet te zien. %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plik na serwerze ma nadal rozmiar i datę modyfikacji z chwili pobrania, ale FTP podaje czas bez roku i według zegara serwera, więc niedawna zmiana może się tu nie ujawnić. %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O arquivo no servidor ainda tem o tamanho e a data de modificação de quando você o baixou, mas o FTP informa horários sem o ano e pelo relógio do servidor, então uma alteração recente pode não aparecer aqui. %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У файла на сервере прежние размер и дата изменения, но FTP сообщает время без года и по часам сервера, поэтому недавнее изменение здесь может не проявиться. %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файл на сервері має той самий розмір і дату зміни, що й під час завантаження, але FTP повідомляє час без року й за годинником сервера, тож нещодавня зміна може тут не проявитися. %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器上的文件仍保持您下载时的大小和修改日期，但 FTP 报告的时间不含年份且以服务器自身的时钟为准，因此最近的更改可能不会在此显示。%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伺服器上的檔案仍保持您下載時的大小和修改日期，但 FTP 回報的時間不含年份且以伺服器自身的時鐘為準，因此最近的變更可能不會在此顯示。%@"
+          }
+        }
+      }
+    },
+    "The file on the server still has the size and modification date it had when you downloaded it. %@": {
+      "comment": "Remote write-back body when size and a trustworthy timestamp both matched; %@ is the shared “uploading replaces…” sentence.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The file on the server still has the size and modification date it had when you downloaded it. %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Datei auf dem Server hat noch Größe und Änderungsdatum wie beim Herunterladen. %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El archivo del servidor conserva el tamaño y la fecha de modificación que tenía al descargarlo. %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le fichier sur le serveur a toujours la taille et la date de modification qu’il avait au téléchargement. %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il file sul server ha ancora la dimensione e la data di modifica che aveva al download. %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバー上のファイルは、ダウンロード時のサイズと更新日のままです。%@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버의 파일은 다운로드 당시의 크기와 수정 날짜를 그대로 유지하고 있습니다. %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Het bestand op de server heeft nog de grootte en wijzigingsdatum van bij het downloaden. %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plik na serwerze ma nadal rozmiar i datę modyfikacji z chwili pobrania. %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O arquivo no servidor ainda tem o tamanho e a data de modificação de quando você o baixou. %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У файла на сервере прежние размер и дата изменения. %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файл на сервері має той самий розмір і дату зміни, що й під час завантаження. %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器上的文件仍保持您下载时的大小和修改日期。%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伺服器上的檔案仍保持您下載時的大小和修改日期。%@"
+          }
+        }
+      }
+    },
     "The file or folder to reveal.": {
       "comment": "Shortcuts parameter description for Reveal in Dirnex.",
       "localizations": {
@@ -71757,6 +72825,95 @@
         }
       }
     },
+    "The server didn’t report how large this file is. Dirnex has to download it before it can be shown.": {
+      "comment": "Body of the remote-fetch confirmation when the size is unknown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server didn’t report how large this file is. Dirnex has to download it before it can be shown."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server hat die Größe dieser Datei nicht angegeben. Dirnex muss sie laden, bevor sie angezeigt werden kann."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El servidor no indicó el tamaño de este archivo. Dirnex tiene que descargarlo antes de poder mostrarlo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le serveur n’a pas indiqué la taille de ce fichier. Dirnex doit le télécharger avant de pouvoir l’afficher."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il server non ha indicato la dimensione di questo file. Dirnex deve scaricarlo prima di poterlo mostrare."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバーはこのファイルのサイズを返していません。表示するには、まずダウンロードする必要があります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버가 이 파일의 크기를 알려주지 않았습니다. 표시하려면 먼저 다운로드해야 합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De server heeft niet opgegeven hoe groot dit bestand is. Dirnex moet het downloaden voordat het kan worden getoond."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serwer nie podał rozmiaru tego pliku. Dirnex musi go pobrać, zanim będzie mógł go pokazać."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O servidor não informou o tamanho deste arquivo. O Dirnex precisa baixá-lo antes de poder exibi-lo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер не сообщил размер этого файла. Чтобы показать его, Dirnex должен его загрузить."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер не повідомив розмір цього файлу. Щоб показати його, Dirnex має його завантажити."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器未告知此文件的大小。Dirnex 必须先下载它才能显示。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伺服器未告知此檔案的大小。Dirnex 必須先下載它才能顯示。"
+          }
+        }
+      }
+    },
     "The server is presenting a different certificate than the one you trusted, and the new one couldn’t be read to show you.": {
       "comment": "FTP connect failure detail: the pin no longer matches and the new certificate could not be fetched to weigh.",
       "localizations": {
@@ -72198,6 +73355,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "伺服器拒絕了該請求。"
+          }
+        }
+      }
+    },
+    "The server reports no modification date for this file, so only its size could be checked — a change that kept the same length wouldn’t show up here. %@": {
+      "comment": "Remote write-back body when the server gave no timestamp at all; %@ is the shared “uploading replaces…” sentence.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server reports no modification date for this file, so only its size could be checked — a change that kept the same length wouldn’t show up here. %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server meldet für diese Datei kein Änderungsdatum, daher konnte nur die Größe geprüft werden – eine Änderung mit gleicher Länge fiele hier nicht auf. %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El servidor no indica fecha de modificación para este archivo, así que solo se pudo comprobar el tamaño: un cambio que mantuviera la misma longitud no se vería aquí. %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le serveur n’indique aucune date de modification pour ce fichier ; seule la taille a pu être vérifiée, et une modification de même longueur passerait donc inaperçue. %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il server non indica una data di modifica per questo file, quindi è stato possibile controllare solo la dimensione: una modifica della stessa lunghezza non risulterebbe qui. %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバーはこのファイルの更新日を返していないため、確認できたのはサイズだけです。長さが変わらない変更はここに現れません。%@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버가 이 파일의 수정 날짜를 알려주지 않아 크기만 확인할 수 있었습니다 — 길이가 같은 변경은 여기에 나타나지 않습니다. %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De server geeft voor dit bestand geen wijzigingsdatum, dus alleen de grootte kon worden gecontroleerd — een wijziging met dezelfde lengte zou hier niet opvallen. %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serwer nie podaje daty modyfikacji tego pliku, więc można było sprawdzić tylko rozmiar — zmiana o tej samej długości nie byłaby tu widoczna. %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O servidor não informa data de modificação para este arquivo, então só o tamanho pôde ser verificado — uma alteração que mantivesse o mesmo tamanho não apareceria aqui. %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер не сообщает дату изменения этого файла, поэтому удалось сверить только размер — изменение с той же длиной здесь не проявится. %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер не повідомляє дату зміни цього файлу, тож удалося звірити лише розмір — зміна з тією самою довжиною тут не проявиться. %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器未提供此文件的修改日期，因此只能核对大小 — 长度不变的更改不会在此显示。%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伺服器未提供此檔案的修改日期，因此只能核對大小 — 長度不變的變更不會在此顯示。%@"
           }
         }
       }
@@ -74245,6 +75491,184 @@
           "stringUnit": {
             "state": "translated",
             "value": "此項目繼承自上層檔案夾，顯示的是它在此處的作用方式。移除它即可讓它不再作用於此項目。"
+          }
+        }
+      }
+    },
+    "This file is %@. Dirnex has to download it before it can be shown.": {
+      "comment": "Body of the large-remote-file confirmation; %@ is a formatted size such as “84 MB”.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This file is %@. Dirnex has to download it before it can be shown."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Datei ist %@ groß. Dirnex muss sie laden, bevor sie angezeigt werden kann."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este archivo ocupa %@. Dirnex tiene que descargarlo antes de poder mostrarlo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce fichier fait %@. Dirnex doit le télécharger avant de pouvoir l’afficher."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo file occupa %@. Dirnex deve scaricarlo prima di poterlo mostrare."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このファイルは %@ です。表示するには、まずダウンロードする必要があります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 파일은 %@입니다. 표시하려면 먼저 다운로드해야 합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dit bestand is %@. Dirnex moet het downloaden voordat het kan worden getoond."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten plik ma %@. Dirnex musi go pobrać, zanim będzie mógł go pokazać."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este arquivo tem %@. O Dirnex precisa baixá-lo antes de poder exibi-lo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Размер этого файла — %@. Чтобы показать его, Dirnex должен его загрузить."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Розмір цього файлу — %@. Щоб показати його, Dirnex має його завантажити."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此文件大小为 %@。Dirnex 必须先下载它才能显示。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此檔案大小為 %@。Dirnex 必須先下載它才能顯示。"
+          }
+        }
+      }
+    },
+    "This file is on the server and hasn’t been downloaded. Press ⌘Y to fetch it, or ⏎ to open it.": {
+      "comment": "Quick View placeholder hint naming the keys that download a remote file.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This file is on the server and hasn’t been downloaded. Press ⌘Y to fetch it, or ⏎ to open it."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Datei liegt auf dem Server und wurde nicht geladen. ⌘Y lädt sie, ⏎ öffnet sie."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este archivo está en el servidor y no se ha descargado. Pulsa ⌘Y para obtenerlo o ⏎ para abrirlo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce fichier est sur le serveur et n’a pas été téléchargé. Appuyez sur ⌘Y pour le récupérer, ou ⏎ pour l’ouvrir."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo file è sul server e non è stato scaricato. Premi ⌘Y per recuperarlo o ⏎ per aprirlo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このファイルはサーバー上にあり、まだダウンロードされていません。⌘Y で取得、⏎ で開きます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 파일은 서버에 있으며 아직 다운로드되지 않았습니다. ⌘Y로 가져오거나 ⏎로 여십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dit bestand staat op de server en is niet gedownload. Druk op ⌘Y om het op te halen, of ⏎ om het te openen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten plik jest na serwerze i nie został pobrany. Naciśnij ⌘Y, aby go pobrać, lub ⏎, aby go otworzyć."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este arquivo está no servidor e não foi baixado. Pressione ⌘Y para obtê-lo ou ⏎ para abri-lo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот файл находится на сервере и ещё не загружен. Нажмите ⌘Y, чтобы получить его, или ⏎, чтобы открыть."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цей файл міститься на сервері й ще не завантажений. Натисніть ⌘Y, щоб отримати його, або ⏎, щоб відкрити."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此文件位于服务器上，尚未下载。按 ⌘Y 获取，或按 ⏎ 打开。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此檔案位於伺服器上，尚未下載。按 ⌘Y 取得，或按 ⏎ 開啟。"
           }
         }
       }
@@ -77805,6 +79229,273 @@
           "stringUnit": {
             "state": "translated",
             "value": "有可用更新"
+          }
+        }
+      }
+    },
+    "Upload": {
+      "comment": "Button that uploads an edited file back to the server it came from.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upload"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hochladen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subir"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Envoyer"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carica"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アップロード"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업로드"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upload"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyślij"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выгрузить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вивантажити"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上传"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上傳"
+          }
+        }
+      }
+    },
+    "Upload “%@” back to the server?": {
+      "comment": "Title of the write-back prompt after a file downloaded from a server was edited; %@ is the file's name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upload “%@” back to the server?"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ zurück auf den Server laden?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Subir “%@” de vuelta al servidor?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renvoyer «%@» sur le serveur ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caricare di nuovo “%@” sul server?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”をサーバーに書き戻しますか？"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”을(를) 서버에 다시 업로드하시겠습니까?"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” terug naar de server uploaden?"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wysłać „%@” z powrotem na serwer?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviar “%@” de volta ao servidor?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выгрузить «%@» обратно на сервер?"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вивантажити «%@» назад на сервер?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要将“%@”上传回服务器吗？"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要將「%@」上傳回伺服器嗎？"
+          }
+        }
+      }
+    },
+    "Uploading replaces the copy on the server and can’t be undone.": {
+      "comment": "Sentence appended to every remote write-back prompt.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uploading replaces the copy on the server and can’t be undone."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Hochladen ersetzt die Kopie auf dem Server und lässt sich nicht rückgängig machen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subirlo reemplaza la copia del servidor y no se puede deshacer."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’envoi remplace la copie sur le serveur et est irréversible."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il caricamento sostituisce la copia sul server e non può essere annullato."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アップロードするとサーバー上のコピーが置き換わり、取り消せません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업로드하면 서버의 사본이 대체되며 되돌릴 수 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uploaden vervangt de kopie op de server en kan niet ongedaan worden gemaakt."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wysłanie zastąpi kopię na serwerze i nie można tego cofnąć."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O envio substitui a cópia no servidor e não pode ser desfeito."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выгрузка заменит копию на сервере, и отменить это будет нельзя."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вивантаження замінить копію на сервері, і скасувати це буде неможливо."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上传会替换服务器上的副本，且无法撤销。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上傳會取代伺服器上的副本，且無法還原。"
           }
         }
       }

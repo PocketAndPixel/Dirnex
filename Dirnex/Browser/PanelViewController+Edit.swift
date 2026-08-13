@@ -9,6 +9,20 @@ import DirnexCore
 ///
 /// Which editor, and what "Automatic" means, is the pure tested `ExternalTextEditor`; this is the
 /// AppKit shell — which file, whether there is one at all, and what to tell the user.
+
+/// Where the file under the cursor would be edited, and so how F4 gets its bytes and where a save
+/// goes back to. See `PanelViewController.editRoute(for:)`.
+enum EditRoute: Equatable {
+    /// A file on this Mac: hand the path over as it stands.
+    case local
+    /// A member of a writable archive: edit its extracted copy, repack the save (PLAN.md §M4).
+    case archiveMember
+    /// A file on a server: edit a downloaded copy, upload the save (PLAN.md §M21 Slice 10).
+    case remoteFile
+    /// Nothing F4 can do — a nested archive's member, whose own bytes are already a temp copy.
+    case unavailable
+}
+
 extension PanelViewController {
     // MARK: - Menu / palette actions (dispatched to the focused pane via the responder chain)
 
@@ -24,26 +38,45 @@ extension PanelViewController {
             if isCursorOnNothing { promptForFileToEdit() }
             return
         }
-        // A member of a writable archive edits its extracted copy and offers to write the save back
-        // (PLAN.md §M4) — the restriction below existed only because that write-back didn't.
-        if entry.path.backend.isArchive, isWritableArchive, !entry.isDirectoryLike {
+        switch editRoute(for: entry) {
+        case .local:
+            edit(entry)
+        case .archiveMember:
             beginArchiveMemberEdit(for: entry)
-            return
-        }
-        guard entry.path.backend == .local else {
-            // A remote file, or a member of a *nested* archive — whose bytes are themselves an
-            // extracted copy, so a write-back would land somewhere thrown away. Both would edit a
-            // temp copy whose saves go nowhere. Said out loud rather than silently declined: a
-            // no-op that looks like it worked is the expensive kind of wrong.
+        case .remoteFile:
+            beginRemoteFileEdit(for: entry)
+        case .unavailable:
+            // A member of a *nested* archive — whose bytes are themselves an extracted copy, so a
+            // write-back would land somewhere thrown away. It would edit a temp copy whose saves go
+            // nowhere. Said out loud rather than silently declined: a no-op that looks like it
+            // worked is the expensive kind of wrong.
             showTransientStatus(
                 String(
                     localized: "Only files on this Mac can be edited — copy it out first (F5).",
                     comment: "Status when F4 is pressed on an archive member or remote file."
                 )
             )
-            return
         }
-        edit(entry)
+    }
+
+    /// What F4 would do with `entry` — **the one answer** the key and its menu validator both read.
+    ///
+    /// They used to be two copies of one predicate, and they had already drifted: the key routed an
+    /// archive member to its extracted copy (PLAN.md §M4) while `validateEditItem` still answered
+    /// `backend == .local`, so the menu item was gray inside an archive — and a disabled item
+    /// swallows its own key equivalent, which is what turns a cosmetic-looking mismatch into a dead
+    /// key (docs/NOTES.md ▸ AppKit). Adding the remote branch beside it would have made that two
+    /// misses instead of one, so it is one function now and the switch below is exhaustive.
+    func editRoute(for entry: FileEntry) -> EditRoute {
+        if entry.path.backend.isArchive {
+            // A member of a *writable* archive edits its extracted copy and offers to write the save
+            // back; a nested archive's own bytes are already a temp copy, so it cannot.
+            return isWritableArchive && !entry.isDirectoryLike ? .archiveMember : .unavailable
+        }
+        // A file on a server downloads to a temp copy and offers to upload the save — the same
+        // extract → watch → write-back shape (PLAN.md §M21 Slice 10).
+        if canEditRemoteFile(entry) { return .remoteFile }
+        return entry.path.backend == .local ? .local : .unavailable
     }
 
     /// ⇧F4 — name the file first. Prefilled with the cursor's name and selected, so Enter is "edit
@@ -68,10 +101,11 @@ extension PanelViewController {
                 comment: "F4 menu title when no specific editor is chosen."
             )
             // Enabled exactly where the key does something, so "inert" is a *grayed* item rather
-            // than a keystroke that vanishes: a local file to open, or nothing under the cursor at
-            // all, where F4 becomes the ⇧F4 dialog. A folder or a non-local file grays out.
+            // than a keystroke that vanishes: a file F4 has a route for, or nothing under the cursor
+            // at all, where F4 becomes the ⇧F4 dialog. A folder, or a file no route reaches, grays
+            // out. `editRoute` is what makes "exactly" true rather than aspirational.
             guard editor != nil else { return false }
-            if let entry = cursorEntryToEdit() { return entry.path.backend == .local }
+            if let entry = cursorEntryToEdit() { return editRoute(for: entry) != .unavailable }
             return isCursorOnNothing && canCreateFileHere
         case #selector(editNewFile(_:)):
             menuItem.title = editor.map { String(

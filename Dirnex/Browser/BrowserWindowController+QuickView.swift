@@ -214,6 +214,11 @@ extension BrowserWindowController {
         }
         if unlocking {
             active.openArchivePreview(onReady: onReady)
+            // The remote half has no passive counterpart *at all*, which is the point: an archive
+            // member is already on this Mac, so extracting one on cursor movement costs a subprocess
+            // — a remote file costs a billed request and somebody's bandwidth, so only the key
+            // somebody pressed may fetch it (PLAN.md §M21 Slice 10).
+            active.openRemotePreview(onReady: onReady)
         } else {
             active.prepareArchivePreview(onReady: onReady)
         }
@@ -225,15 +230,26 @@ extension BrowserWindowController {
     private func deliverPreview(from active: PanelViewController) {
         let url = active.quickViewSourceURL
         let style = AppPreferences.shared.quickViewRenderStyle
+        // What to draw when there is no file to draw: a remote row nobody has fetched gets a card
+        // naming it rather than a blank surface, which would read as an empty file or a broken
+        // preview (PLAN.md §M21 Slice 10). `nil` everywhere else, and the surface then blanks.
+        let placeholder = active.remotePreviewPlaceholder
         switch quickViewMode {
         case .off:
             return
         case .pane:
-            counterpart(of: active).showQuickViewPreview(of: url, style: style)
+            counterpart(of: active)
+                .showQuickViewPreview(of: url, style: style, placeholder: placeholder)
         case .fullWindow:
-            present(ensureFullWindowPreview(), url: url, style: style, from: active)
+            present(
+                ensureFullWindowPreview(),
+                url: url, style: style, placeholder: placeholder, from: active
+            )
         case .fullScreen:
-            present(ensureFullScreenPreview(), url: url, style: style, from: active)
+            present(
+                ensureFullScreenPreview(),
+                url: url, style: style, placeholder: placeholder, from: active
+            )
         }
         // The full-size surfaces sit over the *focused* table, so anything a backend does with
         // first responder as it loads would silently turn ↑/↓ into document scrolling — the mode's
@@ -249,10 +265,11 @@ extension BrowserWindowController {
         _ preview: QuickViewPreviewView,
         url: URL?,
         style: QuickViewRenderStyle,
+        placeholder: RemotePreviewPlaceholder?,
         from active: PanelViewController
     ) {
         preview.isHidden = false
-        preview.show(url, style: style)
+        preview.show(url, style: style, placeholder: placeholder)
         preview.setCaption(quickViewCaption(for: url, style: style, from: active))
     }
 

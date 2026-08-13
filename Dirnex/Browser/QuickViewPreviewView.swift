@@ -69,12 +69,19 @@ final class QuickViewPreviewView: NSView {
     var textSurface: QuickViewTextView?
     /// Internal for the same reason, from `QuickViewPreviewView+HTML`.
     var webSurface: QuickViewWebView?
+    /// Internal for the same reason, from `QuickViewPreviewView+Placeholder`.
+    var placeholderCard: QuickViewPlaceholderCard?
     /// The URL currently loaded, so an unrelated refresh that re-drives the same file is skipped
     /// instead of flickering the preview.
     private var loadedURL: URL?
     /// The style it was loaded in, which is the other half of that identity: the same file in the
     /// other style is a different thing to show, not the same thing again.
     private var loadedStyle = QuickViewRenderStyle.default
+    /// The placeholder it was last showing, which is the *third* half of that identity — and the one
+    /// the guard cannot do without once placeholders exist. Every un-fetched remote file resolves to
+    /// a `nil` URL, so without this a step from one to the next is "already showing that" and the
+    /// card would go on naming the file the cursor has left.
+    private var loadedPlaceholder: RemotePreviewPlaceholder?
     /// Set once the first `show` has run, so `show(nil)` on a fresh view still blanks the backends
     /// rather than being mistaken for "already showing nil".
     private var hasLoaded = false
@@ -123,11 +130,25 @@ final class QuickViewPreviewView: NSView {
     /// The style is part of what is being shown, not a setting beside it: the guard below skips a
     /// re-drive of the file already on screen, and pressing `2` on the file you are looking at is
     /// exactly that call with a different answer expected (PLAN.md §M16).
-    func show(_ url: URL?, style: QuickViewRenderStyle) {
-        guard url != loadedURL || style != loadedStyle || !hasLoaded else { return }
+    func show(
+        _ url: URL?,
+        style: QuickViewRenderStyle,
+        placeholder: RemotePreviewPlaceholder? = nil
+    ) {
+        guard url != loadedURL || style != loadedStyle || placeholder != loadedPlaceholder
+            || !hasLoaded else { return }
         loadedURL = url
         loadedStyle = style
+        loadedPlaceholder = placeholder
         hasLoaded = true
+        // The one funnel every render goes through, which is why the card is raised and lowered here
+        // rather than at each backend: a fifth stand-down in four hand-written lists is four chances
+        // to forget one, and the one forgotten leaves the card drawn over a real preview.
+        if url == nil, let placeholder {
+            showPlaceholder(placeholder)
+            return
+        }
+        standDownPlaceholder()
         if let url, Self.isPDF(url) {
             showPDF(url)
         } else if let url, Self.isImage(url) {
@@ -164,7 +185,9 @@ final class QuickViewPreviewView: NSView {
     func clear() {
         loadedURL = nil
         loadedStyle = .default
+        loadedPlaceholder = nil
         hasLoaded = false
+        standDownPlaceholder()
         previewView?.previewItem = nil
         pdfView?.document = nil
         // Retire any pending fade-out: the surface is going away, and a stray one landing on the

@@ -3361,6 +3361,18 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     a menu validator) now ask a question rather than restate an answer. Note the narrowness the
     property has to keep and that a bare "does `parentPath` exist" would lose: a search snapshot's
     path *does* have a parent, and it is not somewhere to go.
+  - **The third instance is the one that says when to look: a predicate whose behavior side has
+    grown a *branch* has already drifted, and the drift is invisible until somebody adds a second
+    one.** F4's key learned an archive route at M4 while `validateEditItem` went on answering
+    `backend == .local`, so Edit was gray on every archive member and F4 dead there for the whole
+    life of that feature; nobody noticed until M21 Slice 10 came to add a *remote* route beside it,
+    which would have shipped the same miss twice. The tell is not a failing test — there is none —
+    it is that the action is an `if`/`switch` over kinds while its validator is a single comparison.
+    The fix is the same shape as `canGoToParent`, one step further: `editRoute(for:)` returns *which*
+    route, so the key switches on it and the validator asks only whether it is `.unavailable`. A
+    route added later cannot reach one without the other. Pin it by driving the **real** validator
+    against a pane whose cursor stands on the entry — re-stating the route's own rule in the test
+    passes however far the two have drifted, which is exactly the failure being guarded against.
 - **Tree size bars are one directory per *level*, so the sizes have to live where the rows do.** The
   flat `SizeVisualization(model:)` reads one directory's siblings; a tree's rows span many, and its
   totals cannot sit in `DirectoryModel.directorySizes` — that map is pruned to the *root* listing on

@@ -1047,9 +1047,47 @@ reason the fix is wide).
   time-bounded, so the key-auth path waits on `.distantFuture` and cancellation is the *only* thing
   that can interrupt it.
 
-Still to come: the app pass. Two of its decisions are now settled by measurement rather than
-assumption — the deferred-sheet threshold has to clear a round trip (probe 5), and the remote cache
-must discard a cancelled fetch's partial (above).
+**The app pass landed 2026-08-14**, and both decisions the probes settled are in it: the deferred
+sheet sits at **1200 ms**, which clears probe 5's 0.51 s floor with room for an endpoint twice as far
+away, and `RemoteFileCache` removes a cancelled fetch's partial rather than keeping it. ⌘Y / ⌃Q, ⏎
+and F4 all work on SFTP, FTP and S3 alike; a save is offered back up with the server re-`stat`ed
+first. +25 app tests (2358 core, 444 app, both linters clean), three headless negative controls and
+one live one, and 19 strings in all 14 catalogs.
+
+- **Nothing is spent on cursor movement, and that is *structural* rather than a rule somebody keeps.**
+  The passive path (`cachedRemoteFileURL` → `RemoteFileCache.cachedURL(for:)`) does not take a
+  backend at all, and its freshness check reads the revision off the `FileEntry` the pane is already
+  drawing — so it costs nothing, where the archive cache's equivalent affords a `stat` because an
+  archive's `stat` is a syscall and a remote one is half a second and a bill. `showActivePreview`
+  therefore has an `openRemotePreview` on its `unlocking` branch and *no* counterpart on the other,
+  which is the difference from `+ArchivePreview` worth noticing when reading the two side by side.
+- **The write-back's `stat` happens before the sheet, not after the user agrees** — so the sentence
+  being agreed to is the true one, and the four `RemoteRevisionEvidence` cases become four different
+  sentences instead of a confidence number. Six distinct bodies, asserted as six distinct strings:
+  matching a phrase would pass on the sentence saying the opposite.
+- **A successful upload re-baselines the recorded revision, and this is not optional.** Leaving the
+  pre-upload one makes our *own* write read back as "someone else has edited it" on the next save —
+  the one sentence in this feature that must never be wrong. It costs one extra request, and a
+  failed re-read drops the entry rather than keeping a stale revision, since "cannot tell" is true
+  where a stale one is confidently false.
+- **F4's key and its menu validator had *already* drifted, before this slice touched them.** The key
+  routed an archive member to its extracted copy (§M4) while `validateEditItem` still answered
+  `backend == .local`, so Edit was gray inside an archive — and a disabled `NSMenuItem` swallows its
+  own key equivalent, so F4 was dead there. Adding the remote branch beside it would have made that
+  two misses instead of one. One `editRoute(for:)` now answers for both, verified live: **Edit with
+  TextEdit / F4 enabled on a member of a `pkg.zip`**.
+- **The negative controls each fired on exactly their own assertions.** Dropping the revision stamp
+  failed the two staleness tests and left every request count at zero; never serving a cached copy
+  failed reuse and re-baselining and left staleness untouched; keeping the partial failed only the
+  cancelled-fetch assertion. And reintroducing Slice 8's `<Key>` trim killed the **live**
+  whitespace-key test with `notFound` on `/dirnex-live-probe/slice10/trailing` — Slice 8's symptom
+  verbatim, on a test that addresses the object through the path the listing produced rather than
+  re-typing the one it uploaded.
+- The placeholder card was rendered to a bitmap and looked at (it cannot be judged any other way),
+  at 420 pt and at 300 pt: glyph, name, size and a hint naming ⌘Y and ⏎, wrapping inside its bound
+  rather than overrunning it. `BlockingWork` became `public` — the transports block on a subprocess,
+  so a fetch started from an AppKit controller is exactly the shape that type argues about, and a
+  second spelling in the app would be the one place the reasoning is not written down.
 
 All three stop at one predicate today. `quickViewSourceURL` resolves a local path or an already
 extracted archive member and answers `nil` for anything else, so an S3 row previews nothing; F4 says

@@ -15,10 +15,14 @@ extension PanelViewController {
     ///
     /// The style is handed in rather than read here, so the window that owns the mode is the one
     /// place that answers "which style are we in" for every surface it drives.
-    func showQuickViewPreview(of url: URL?, style: QuickViewRenderStyle) {
+    func showQuickViewPreview(
+        of url: URL?,
+        style: QuickViewRenderStyle,
+        placeholder: RemotePreviewPlaceholder? = nil
+    ) {
         let preview = ensureQuickViewPreview()
         preview.isHidden = false
-        preview.show(url, style: style)
+        preview.show(url, style: style, placeholder: placeholder)
     }
 
     /// Uncover the file list, restoring the normal pane. Safe to call when Quick View was never
@@ -32,9 +36,15 @@ extension PanelViewController {
     /// `..` row or in an empty directory. A local entry resolves at once; an archive member
     /// resolves to its extracted temp file once cached (nil until `prepareArchivePreview` lands
     /// it), so the window re-drives the preview when the extraction finishes.
+    ///
+    /// A **remote** file resolves the same way and never fetches here (PLAN.md §M21 Slice 10): this
+    /// is read on every cursor movement, and a transfer on an arrow key would spend a billed request
+    /// because the cursor passed over a row. Until somebody presses the key, `nil` is the honest
+    /// answer and the surface draws `remotePreviewPlaceholder` instead of a blank.
     var quickViewSourceURL: URL? {
         guard !cursorOnParentRow, let entry = panel.currentEntry else { return nil }
         if entry.path.backend == .local { return entry.path.localURL }
+        if entry.path.backend.isRemoteConnection { return cachedRemoteFileURL }
         guard let member = previewableArchiveMember else { return nil }
         return host?.archivePreviewCache.cachedURL(for: member)
     }
