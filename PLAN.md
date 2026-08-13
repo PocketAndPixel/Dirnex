@@ -779,16 +779,34 @@ safe there because a bucket elsewhere answers 301 and the connect flow already r
 the service names. Verified live with the field left blank end to end — the picker listed the account
 and the connect succeeded.
 
-**One thing the UI pass found and did not fix.** Connecting to this endpoint with the default
-virtual-host addressing fails, correctly, at curl exit 60 — and the sheet reports "The endpoint's TLS
-certificate couldn't be verified. A server with a self-signed certificate has to be reached over
-http:// for now." Every clause of that is wrong here: the certificate is a valid GoDaddy-issued
-`*.lax.sharktech.net`, nothing is self-signed, and the actual remedy is the **path-style checkbox two
-rows above** — the wildcard is one label deep and so cannot cover `<bucket>.s3.lax…`. So the app
-diagnoses an addressing problem as a trust problem and points the user at **plaintext HTTP** as the
-cure, which is both wrong and the one direction nobody should be nudged. It is the default path for
-any S3-compatible provider whose certificate is not wildcard-deep, so it is the first thing such a
-user meets.
+**The UI pass found one wrong sentence, and it is now fixed.** Connecting to this endpoint with the
+default virtual-host addressing fails, correctly, at curl exit 60 — and the sheet reported "The
+endpoint's TLS certificate couldn't be verified. A server with a self-signed certificate has to be
+reached over http:// for now." Every clause of that was wrong here: the certificate is a valid
+GoDaddy-issued `*.lax.sharktech.net`, nothing is self-signed, and the actual remedy is the
+**path-style checkbox two rows above** — a wildcard is one label deep (RFC 6125), so it cannot cover
+`<bucket>.s3.lax…`. The app was diagnosing an addressing problem as a trust problem and pointing the
+user at **plaintext HTTP** as the cure, on the default path for any S3-compatible provider whose
+certificate is not wildcard-deep — i.e. the first thing such a user meets.
+
+`s3CertificateDetail(location:)` now splits the one exit code by what the *request* asked for, since
+that is what decides which failure it is. Under virtual-host addressing the name being verified is
+`<bucket>.<host>` rather than the endpoint that was typed, so the message names that host and the
+path-style checkbox; under path-style the verified name *is* the endpoint, so a failure really is
+about trust and the original sentence stands. It is keyed on the addressing mode rather than on the
+service picker deliberately: AWS reaches the identical state, because `*.s3.<region>.amazonaws.com`
+is also one label deep and so a bucket whose own name contains dots cannot be addressed virtual-host
+over TLS either — path-style is the same answer there. The checkbox is named by interpolating its
+own title rather than by spelling it out, so the sentence names the control the user is looking at in
+all fourteen languages instead of becoming the second copy of a display string that gets localized
+once. +4 tests; the new key is translated in all fourteen and verified in the compiled `.strings`
+rather than in the catalog.
+
+Verified live on the endpoint that produced it, both directions in one run: the failing connect now
+reads «The endpoint's TLS certificate couldn't be verified for "dirnex-test.s3.lax.sharktech.net".
+The bucket is part of the host name until "Path-style addressing" is turned on, and most certificates
+don't cover that», and ticking that box and pressing Connect again succeeds — which is what makes the
+new sentence *advice* rather than merely better wording.
 
 **What S3 will not be able to do, and it is better to state it than to discover it.** S3 is not a
 filesystem: rename is copy-then-delete (O(size), and N copies for a "folder"), `createDirectory` has

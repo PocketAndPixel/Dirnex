@@ -2029,6 +2029,25 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     virtual-host request dies at **curl exit 60**. Worth knowing that the addressing mode can be
     settled from the *certificate* rather than by trying both: `openssl s_client` answers it in one
     run, and a wildcard is one label deep by RFC 6125 whatever it looks like.
+    - **The message that exit code deserves depends on the request you sent, not on the server** —
+      and getting that wrong sent users toward plaintext. Under virtual-host addressing the name
+      being verified is `<bucket>.<host>`, which is not the endpoint the user typed and not a name
+      they can see anywhere in the form, so a valid publicly-issued certificate fails and the remedy
+      is an *addressing* checkbox. Dirnex's one certificate sentence had been written for the other
+      case (a NAS's self-signed certificate, where the honest advice really is `http://`), so on the
+      **default** path of every provider whose certificate is not wildcard-deep it diagnosed an
+      addressing problem as a trust problem and recommended the one direction nobody should be
+      nudged. Split such a message on the shape of the request; the exit code alone cannot tell you
+      which failure you have.
+    - **AWS reaches the same state, which is why the branch is not "is this an S3-compatible
+      server".** `*.s3.<region>.amazonaws.com` is one label deep too, so a bucket whose own name
+      contains **dots** cannot be addressed virtual-host over TLS on AWS either, and path-style is
+      the same answer. A rule keyed on the service picker would be right for the endpoint that
+      exposed the bug and wrong for Amazon.
+    - **When a message names a control, interpolate that control's own title.** The path-style
+      checkbox is localized, so spelling its English name inside a translated sentence would name a
+      control that does not exist in thirteen of the fourteen languages — the duplicate-display-
+      string trap from ▸ Localization, in the one place the user is being told what to click.
 
 ### The Trash
 

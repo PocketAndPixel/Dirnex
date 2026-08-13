@@ -72,7 +72,7 @@ extension PanelViewController {
             navigate(to: VFSPath(backend: .s3(location), path: "/"))
             return .succeeded
         case let .failure(error):
-            return .failed(Self.s3ConnectFailureDetail(error))
+            return .failed(Self.s3ConnectFailureDetail(error, location: location))
         }
     }
 
@@ -195,7 +195,7 @@ extension PanelViewController {
     /// `S3ResponseError.transport` can arrive here — a refusal is a returned response, handled above
     /// — but the service case is mapped rather than left to a `default`, so it is handled instead of
     /// silently reading as "something went wrong".
-    static func s3ConnectFailureDetail(_ error: Error) -> String {
+    static func s3ConnectFailureDetail(_ error: Error, location: S3Location) -> String {
         guard let responseError = error as? S3ResponseError else {
             return (error as NSError).localizedDescription
         }
@@ -215,13 +215,7 @@ extension PanelViewController {
                     comment: "S3 connect failure detail: the request exceeded its time budget."
                 )
             case .certificateNotTrusted:
-                return String(
-                    localized: """
-                    The endpoint’s TLS certificate couldn’t be verified. A server with a \
-                    self-signed certificate has to be reached over http:// for now.
-                    """,
-                    comment: "S3 connect failure detail: TLS verification failed."
-                )
+                return Self.s3CertificateDetail(location: location)
             case .other:
                 return String(
                     localized: "The request couldn’t be sent.",
@@ -229,6 +223,54 @@ extension PanelViewController {
                 )
             }
         }
+    }
+
+    /// Why TLS verification failed, which is two different failures wearing one `curl` exit code.
+    ///
+    /// **Under virtual-host addressing the bucket is part of the host name**, so the name being
+    /// verified is `<bucket>.<host>` rather than the endpoint the user typed — and a wildcard
+    /// certificate is only **one label deep** (RFC 6125). `*.lax.sharktech.net` therefore covers
+    /// `s3.lax.sharktech.net` and not `my-bucket.s3.lax.sharktech.net`, so a perfectly valid,
+    /// publicly-issued certificate fails, and the remedy is the path-style checkbox rather than
+    /// anything to do with trust. Measured live 2026-08-13 against a real S3-compatible endpoint,
+    /// where this is what a user meets on their *first* connect, since the form offers virtual-host
+    /// first.
+    ///
+    /// The old wording — "a server with a self-signed certificate has to be reached over http://" —
+    /// was wrong in every clause for that case, and wrong in the expensive direction: it diagnosed an
+    /// addressing problem as a trust problem and pointed the user at **plaintext** as the cure.
+    ///
+    /// It is deliberately keyed on the *addressing mode* rather than on the service picker, because
+    /// AWS reaches the same state: `*.s3.<region>.amazonaws.com` is also one label deep, so a bucket
+    /// whose own name contains dots cannot be addressed virtual-host over TLS either. Path-style is
+    /// the same answer there.
+    ///
+    /// The checkbox is named by interpolating its own title rather than by spelling it out, so the
+    /// sentence names the control the user is looking at in all fourteen languages — the duplicate-
+    /// display-string trap from docs/NOTES.md ▸ Localization, avoided by not making a second copy.
+    static func s3CertificateDetail(location: S3Location) -> String {
+        guard location.addressing == .virtualHost else {
+            // Path-style: the name being verified *is* the endpoint, so this really is about trust.
+            return String(
+                localized: """
+                The endpoint’s TLS certificate couldn’t be verified. A server with a \
+                self-signed certificate has to be reached over http:// for now.
+                """,
+                comment: "S3 connect failure detail: TLS verification failed for the endpoint itself."
+            )
+        }
+        let authority = "\(location.bucket).\(location.host)"
+        return String(
+            localized: """
+            The endpoint’s TLS certificate couldn’t be verified for “\(authority)”. \
+            The bucket is part of the host name until “\(ConnectText.pathStyle)” is turned on, \
+            and most certificates don’t cover that.
+            """,
+            comment: """
+            S3 connect failure detail: TLS failed while the bucket was in the host name. \
+            %1$@ is <bucket>.<host>; %2$@ is the title of the path-style checkbox in the same sheet.
+            """
+        )
     }
 
     private func saveS3Server(name: String, location: S3Location) {
