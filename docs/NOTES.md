@@ -824,6 +824,52 @@ at build time.
   display and the function bar was cut off — while every frame *inside* the preview was provably
   correct, which sends you looking in the wrong place. Pin its compression resistance and hugging to
   the floor whenever it is a passenger in a layout rather than the thing being sized.
+- **ImageIO identifies a file by its *name*, so `NSImage(data:)` cannot read a camera RAW at all —
+  and what it returns instead is a plausible picture.** A NEF is a TIFF container, so bytes handed
+  over with no name identify as `public.tiff` and the embedded **160×120** thumbnail comes back as
+  the primary image; at its 300 dpi that is 38 pt, which `scaleProportionallyDown` will not upscale,
+  so the preview draws a postage stamp with nothing logged (reported 2026-08-14). The control that
+  settles the mechanism in one run is renaming the file to `.dat`: **every** route then collapses to
+  160×120, including `CGImageSourceCreateWithURL`, which otherwise needs no hint at all because it
+  can see the name. Generalizes past RAW — any format ambiguous from its bytes has this shape, and
+  `Data` is where the name is thrown away.
+  - **`CGImageSourceCreateImageAtIndex` does not apply EXIF orientation and `NSImage(data:)` does**,
+    so "hand ImageIO the file name" is a fix that lays every portrait photograph on its side, JPEGs
+    included. Measured on a JPEG tagged orientation 6: `NSImage(data:)` → 400×800, `CreateImageAtIndex`
+    → 800×400. The one ImageIO spelling that transforms is
+    `CGImageSourceCreateThumbnailAtIndex(…WithTransform: true)` — and it is not the safe uniform
+    answer it looks like: with `maxPixelSize` set to the image's own larger dimension it returns full
+    resolution, but it **diverged from a true demosaic on one RAW of five** (8.69 levels mean, with
+    *higher* apparent detail, which is the shape of the camera's own sharpened preview). So it can
+    silently substitute the embedded JPEG for the decode.
+  - **`CIRAWFilter` is the RAW route, and it is not a quality upgrade — it is an orientation and
+    speed one.** Measured at 1:1 over ARW/CR2/NEF/RW2/DNG, centre and edge, it agrees with
+    `CreateImageAtIndex` to **0.02–0.10** levels of 255 with identical variance-of-Laplacian: the same
+    demosaic. It applies orientation, and it is **3–4×** faster (99–170 ms against 370–509 ms) being
+    GPU-backed. It handles RAW *only*, so it is a branch beside `NSImage(data:)` and never a
+    replacement. Route on the `.rawImage` conformance rather than an extension list: of 24 RAW
+    extensions checked, 21 resolve to a declared UTI and all 21 are among the 30 RAW types ImageIO
+    knows, while `x3f`, `gpr` and `kdc` resolve to `dyn.…` types that conform to nothing — so they
+    already fail an `.image` gate and route to Quick Look untouched.
+  - **`CIContext.createCGImage` returns a *lazy* image in 0 ms and defers the whole demosaic to
+    whoever first draws it**, which is the main thread, for 223–241 ms, on a preview that appears on
+    cursor movement. So decoding "off the main actor" through it moves nothing; it relocates the
+    stall. `render(_:toBitmap:)` does the work where it is called, and the finished bitmap draws
+    cheaper afterwards too (7–9 ms against 18 ms). Render into a bitmap you own whenever the point of
+    the call is *where* the work happens.
+    - **Three natural assertions cannot see the lazy version**, which is why it shipped for an hour:
+      the dimensions are right either way (five RAW files in 0.26 s — the tell is that it is faster
+      than one decode), reading `dataProvider.data` merely **forces** the render it was meant to
+      detect, and timing `decode` against a 20 ms floor failed by **16 µs**, since setting a RAW
+      filter up costs about that much on its own. What discriminates is the *residual* work after the
+      call returns — **0.0 ms** against 68–132 ms — which is a property rather than a stopwatch
+      reading and so does not drift with the machine.
+  - **An apparent quality difference measured at reduced scale was the harness**, not the decodes: a
+    16-bit Display P3 image and an 8-bit `DeviceRGB` one drawn scaled into one context differ by 2–7
+    levels over 23–72 % of pixels, while at 1:1 they are identical. Compare decodes at 1:1; a
+    downscale is a second operation and it is the one being measured. (Core Image's own default output
+    is that untagged `DeviceRGB`, so tag it explicitly or the preview's colour is whatever the display
+    assumes.)
 - **Verify a probe before spending someone else's time on it.** `NSEvent.touches(matching:in:)`
   raises on a scroll event and silently unwound the event monitor it was added to — so the feature
   under measurement stopped working, the document panned instead, and three rounds of a user's

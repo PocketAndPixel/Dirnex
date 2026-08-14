@@ -1688,6 +1688,50 @@ beside the button moves the covered pane's cursor. Nothing else in the suite can
 other backend is the only visible thing in the container when it is asked about, so those tests pass
 whatever the ordering is.
 
+#### Slice 14 — 2026-08-15: camera RAW in the preview
+
+Reported as "NEF images are small in the quick view", with a 29 MB frame drawn as a postage stamp in
+the middle of the surface. It is not a scaling bug: the preview was showing a **different image**.
+`showImage` reads the file into `Data` and calls `NSImage(data:)`, which hands ImageIO bare bytes with
+no file name — and a NEF is a TIFF container, so it identifies as `public.tiff` and returns the
+embedded **160×120** thumbnail as the primary image. At that thumbnail's 300 dpi it is 38 pt across,
+and `scaleProportionallyDown` never upscales. Renaming the same file to `.dat` collapses *every*
+route to 160×120, which is the control proving the file name is the whole mechanism.
+
+Camera RAW now decodes through **`CIRAWFilter`** (`RAWImageDecoder`), routed by a `.rawImage`
+conformance test beside the existing `isImage`; everything else keeps `NSImage(data:)` untouched. Two
+measurements decided it against the ImageIO alternatives, and both inverted a recommendation made
+before them:
+
+- **`CGImageSourceCreateImageAtIndex` ignores EXIF orientation** and lays a portrait frame on its
+  side. `NSImage(data:)` *does* honour it today, so the obvious "just give ImageIO the file name" fix
+  would have shipped every portrait photograph sideways — ordinary JPEGs included.
+- **`CGImageSourceCreateThumbnailAtIndex`, the one ImageIO spelling that does transform, diverges
+  from a true demosaic** on one of five files (8.69 levels mean, with *higher* apparent detail — the
+  shape of a camera's own sharpened preview). So the uniform ImageIO route would have quietly
+  substituted the camera's JPEG for the RAW decode on some files.
+
+On quality the two pipelines do not differ: measured at 1:1 over ARW/CR2/NEF/RW2/DNG, centre and
+edge, they agree to **0.02–0.10** levels of 255 with identical variance-of-Laplacian — the same
+demosaic — while Core Image is **3–4×** faster (99–170 ms against 370–509 ms), being GPU-backed. An
+apparent 2–7 level difference seen first was the harness downscaling a 16-bit P3 image against an
+8-bit `DeviceRGB` one, not the decodes.
+
+**The bug the fix introduced, and what caught it.** `CIContext.createCGImage` returns a **lazy**
+image in **0 ms** and defers the whole demosaic to whoever first draws it — the main thread, for
+223–241 ms, on a preview that appears when the cursor moves. So the first version moved nothing off
+the main actor; it relocated the stall. `render(_:toBitmap:)` does the work in the detached task, and
+the finished bitmap also draws cheaper afterwards (7–9 ms against 18 ms). The tell was the *test
+suite's own duration*: five RAW files in 0.26 s, faster than a single decode.
+
++5 app tests (2401 core / 500 app green, both linters clean). Three weaker assertions were tried
+against the lazy version first and all three **passed** it: the dimensions (the extent is right
+either way), `dataProvider.data` (it merely forces the render it was meant to detect), and a 20 ms
+floor on `decode` itself, which failed by **16 µs** — a coin toss, since setting a RAW filter up
+costs about that much. What separates them is the *residual* work after `decode` returns: **0.0 ms**
+against 68–132 ms, a property rather than a stopwatch reading. Verified live on all five formats,
+with the portrait CR2 upright and an ordinary JPEG unchanged as the narrowness control.
+
 ## 5. Cross-cutting: testing strategy
 
 | Layer | Approach |
