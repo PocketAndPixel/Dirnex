@@ -1287,6 +1287,128 @@ the run's duration was measuring reaction time.
   marked shown once presented, so dropping one would consume it in silence. 459 green in 15.0 s
   afterwards, with the screen watched.
 
+#### Slice 11 — 2026-08-14: Space-on-dir over a server
+
+The milestone has said since it opened that "every listing is a billable request, which makes the
+recursive sizer cost money over a bucket", filed under the permanent consequences. Nothing acted on
+it: `computeDirectorySize` had no backend gate at all, where the *auto* scan beside it
+(`areSizeBarsVisible`) has been `backend == .local` since M15. So Space on a prefix walked the whole
+subtree, and it was unstoppable by construction — `DirectoryLoader.size` passes no `isCancelled`
+*and* runs in a `Task.detached`, whose own doc comment says it deliberately outlives its caller's
+cancellation. Right for a local walk, where finishing costs nothing and banks a total; indefensible
+for one somebody is paying for.
+
+**Probed first, and the numbers are what decided the shape.** Against the live third-party account
+through the real `S3Backend` and the app's own `S3CurlTransport`:
+
+- **One `ListObjectsV2` per directory, serial, 0.601–0.699 s each** (mean 0.621) — Slice 10 probe 5's
+  0.51 s round-trip floor, once per folder. Ten directories cost **6.21 s**; extrapolated,
+  1000 is **10.3 minutes and 1000 billed requests**, 10 000 is 1.7 hours.
+- **Nothing was on screen while it ran.** The size column kept its dash, no spinner, no status line.
+- **The cooperative-pool worry did not reproduce, and that shrank the slice.** 32 concurrent remote
+  walks under `LIBDISPATCH_COOPERATIVE_POOL_STRICT=1` left a 50 ms heartbeat at a worst gap of
+  **56 ms**, against **57 ms** for the no-walk control — so this is not a `BlockingWork` case, and
+  the fix is about cost and cancellability rather than about where the walk runs. Worth recording as
+  a negative: the natural reading of NOTES.md ▸ Swift 6 says otherwise, and acting on it would have
+  been effort spent on a problem that is not there.
+
+**The decision the cost forces, and it is not the one a download gets.** A remote *fetch* can be
+confirmed against a number already on the row (`RemoteFetchPolicy`); a walk cannot, because finding
+out how many folders there are **is** the walk. So a pre-confirmation could only say "this might be
+expensive", which is a dialog people learn to click through. Space stays a gesture that spends —
+the app's own rule since Quick View, that the key somebody pressed may spend where the cursor may
+not — and the three things that make that affordable come off **one** value:
+
+- **Bounded.** `DirectorySizeBudget` (core, +10 tests) carries a `directoryLimit`, `nil` locally and
+  **1000** for anything `isRemoteConnection` — `S3Backend.pageLimit`'s number and its argument one
+  level up, past anything a person points at and short of billing indefinitely. It is checked
+  *before* the request, so the limit counts listings **made**: on a billed backend "refused" and
+  "made and then discarded" are different numbers. Exceeding it **throws**
+  `DirectorySizeBudgetExceeded` rather than returning the partial, for the reason a filtered-out row
+  is dropped rather than drawn as "Zero KB" — a partial rendered as the answer is a claim about the
+  folder where the truth is a claim about the question.
+- **Abandoned.** `abandonsWhenUnwatched` is *derived* from the limit rather than stored beside it,
+  because it is the same question — who pays for a walk nobody is waiting for — so a backend that
+  gains a budget gains the cancellation with it rather than needing a second edit somebody has to
+  remember. The pane keeps the task handle and cancels at the two `loadToken` bumps that mean it
+  moved (`navigate`, `activateTab`); a refresh of the same directory deliberately leaves a walk
+  alone, since its row is still on screen.
+- **Visible.** The size column gains two states a byte count cannot express — `…` while measuring,
+  `?` after a give-up — and the give-up's *sentence* goes to the status line, where prose has room.
+  A give-up drawing the same dash as "never measured" is the one that matters: it invites a re-press
+  that spends the whole budget again.
+
+The local walk is deliberately **untouched** — untracked, unbounded, still outliving the gesture —
+and that is pinned by a test of its own, because the easy wrong fix is to bound and cancel
+everything and throw away a total that costs nothing to finish.
+
++10 core tests and +16 app tests (2381 core / 475 app green, both linters clean, and all three
+`scripts/check_*.py` passing — the localization one is what proves the new key is extracted *and*
+in the catalogs, which is the wrapped-but-untranslated case no coverage test sees). One string in
+all 14 catalogs, verified in the compiled `.strings` rather than in the catalog. Four negative
+controls, each failing only its own assertions: `.unbounded` in place of the budget made the
+bottomless walk reach **9110 listings in 20 s** and still climbing where the fix stops at 1000;
+discarding the task handle without cancelling took a cancel-at-520 to 1001; collapsing the
+display states back to one dash failed exactly the two "distinguishable" assertions while the
+"unmeasured still draws a dash" one stayed green; and putting the over-long Russian back in the
+catalog failed the width test alone, naming `ru 713 pt` — which also proves that test reads the
+built bundle rather than the source catalog.
+
+**Verified live against the real endpoint** through the real backend and transport: a budget of 4
+over a ten-directory tree gave up after **exactly 4** listings (2.43 s), the unbounded control
+completed at 10 with the right total, and a cancel at 1.5 s left the count frozen at **3** through
+two further seconds of grace — the requests stopped rather than being ignored.
+
+**And verified live in the app**, against that same bucket through the running build. With the
+shipped budget: Space on the ten-folder `sizerprobe` prefix drew `…` in the size column — while
+`docs` and `photos` beside it kept their dashes — for the ~6 s the walk took, and the total landed
+at **10 KB**, ten folders carrying one 1 KiB file each. Then, on a throwaway build with the remote
+budget cut to 4 (1000 directories is a bucket nobody should create, so the give-up is unreachable
+otherwise): the same prefix came back `?` while a neighbouring `docs` completed at 42 bytes in the
+same listing, the status line carried its sentence whole, and hovering the `?` produced the
+tooltip, wrapped over three lines. The budget and the `NSLog` came back out afterwards and both
+suites were re-run against the restored source.
+
+- **The give-up sentence did not fit the line it goes to, and it took three measurements to
+  establish that — two of which were wrong.** The status label is `.byTruncatingTail` at
+  `.defaultLow` compression resistance, deliberately, so a long type-to-filter string cannot shove
+  the split divider across; the cost of that correct decision is that an over-long *sentence* loses
+  its **tail**, which in an explanatory sentence is the explanation. The first draft measured
+  **557 pt in English and 713 pt in Russian** against a pane of **542 pt**, so it clipped in
+  **10 of 14 languages** and put `Stopped measuring “x” — it holds more folders than Dirnex will…`
+  on screen.
+  - **Getting the available width is where this went wrong twice, and the second attempt was worse
+    than the first.** Subtracting an assumed sidebar from the window frame gave 532 — near enough,
+    and arrived at by exactly the derivation docs/NOTES.md forbids. "Correcting" it with an `NSLog`
+    of `statusLabel.frame.width` in the running app gave **409.5**, which looked authoritative and
+    is meaningless: the label is sized to its own text, so that number is the *sentence* plus 3.5 pt
+    of padding. Two consecutive logs give it away — `label` was always `sentence + 3.5`. The honest
+    instrument is the enclosing stack's width, and better still
+    `NSCell.expansionFrame(withFrame:in:)`, AppKit's own "is this truncated" asked of the real label
+    in the real pane: probed that way the first draft truncates and every candidate at ~496 pt and
+    below does not. **A live probe is not automatically a measurement of what you meant.**
+  - The residual is the **folder name**, which is unbounded — 40 characters puts even a short
+    sentence at 468 pt — so truncation here can be made unlikely and never impossible. That is what
+    settled the design rather than any single width: the short note stays on the status line and the
+    *reason* moves to a **tooltip** on the `?` cell, where nothing bounds it and where it outlives
+    the status line's four-second expiry. Until then the glyph was permanently unexplained for
+    anyone who looked away — the recorder pill's "prose belongs where its length is free" rule,
+    arriving on a table cell.
+  - `StatusSentenceWidthTests` pins the sentence at **400 pt against the measured 542**, the
+    headroom being deliberate: budgeting to the pane itself would pass a sentence that fits the
+    fixture's folder name and truncates on somebody's longer one. A sweep of all 18 sentences that
+    reach the status line found none of the others over.
+
+- **One test-design lesson, paid for twice.** The first version of the app suite installed a fixture
+  model on the pane straight after `loadViewIfNeeded()`, and `viewDidLoad` → `activateTab` →
+  `navigate` lists *asynchronously* — so a walk that finished in ~1 ms had its total wiped by the
+  arriving listing and read as "the size never landed", while the same test over a backend slow
+  enough to lose the race the other way passed. Taking the row from the pane's **own** listing
+  removes the race instead of widening a timeout around it. The sibling of it: the pane lists its
+  own directory on load, so a request count has to be read as a **delta** — asserting the raw count
+  read 1001 against a budget of 1000 and looked exactly like an off-by-one in the sizer, which it
+  was not.
+
 All three stop at one predicate today. `quickViewSourceURL` resolves a local path or an already
 extracted archive member and answers `nil` for anything else, so an S3 row previews nothing; F4 says
 «Only files on this Mac can be edited — copy it out first (F5)»; and ⏎ falls off the end of

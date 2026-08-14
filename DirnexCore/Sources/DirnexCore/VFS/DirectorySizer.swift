@@ -34,21 +34,36 @@ public enum DirectorySizer {
     /// produce a number even when it is itself ignored, or the ignored rows in a listing would all
     /// read as empty.
     ///
+    /// `budget` bounds how many directories the walk may list, and defaults to
+    /// ``DirectorySizeBudget/unbounded`` so it changed no caller when it arrived. It exists for the
+    /// remote backends, where a directory is a billed request at a network round trip rather than
+    /// a `readdir` — see that type for the measurement and for why it throws instead of returning
+    /// a partial.
+    ///
     /// **Label both closures at the call site.** With two of them a bare trailing closure binds to
     /// `excluding`, not to `isCancelled` — which is silently the opposite of what every pre-existing
     /// caller meant, and only failed loudly here because the two have different arities.
     public static func size(
         of path: VFSPath,
         using backend: some VFSBackend,
+        budget: DirectorySizeBudget = .unbounded,
         excluding isExcluded: (VFSPath) -> Bool = { _ in false },
         isCancelled: () -> Bool = { false }
     ) throws -> Int64 {
         var total: Int64 = 0
         var stack: [VFSPath] = [path]
+        var listed = 0
         while let directory = stack.popLast() {
             if isCancelled() { throw CancellationError() }
+            // Checked before the request, not after, so the limit is a count of listings *made*
+            // rather than one made and thrown away — on a billed backend those are different
+            // numbers, and the one that matters is what was spent.
+            guard budget.allows(directoriesListed: listed) else {
+                throw DirectorySizeBudgetExceeded(directoriesListed: listed)
+            }
             let entries: [FileEntry]
             do {
+                listed += 1
                 entries = try backend.listDirectory(at: directory)
             } catch {
                 continue // unreadable subtree contributes nothing

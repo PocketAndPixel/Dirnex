@@ -83,10 +83,17 @@ extension PanelViewController: NSTableViewDelegate {
         case .size:
             // `panel.computedSize` reads the drawing surface, so a directory sized at any tree level
             // shows its total here, not just the root's rows.
+            let sizeState = directorySizeState(for: entry)
             cell.textField?.stringValue = FileFormatting.sizeString(
-                for: entry, computedSize: panel.computedSize(of: entry)
+                for: entry,
+                computedSize: panel.computedSize(of: entry),
+                state: sizeState
             )
             cell.textField?.alignment = .right
+            // Assigned on every render, `nil` included: this cell comes out of the same reuse pool
+            // as every other size cell, so a tooltip set once and only cleared conditionally would
+            // ride a recycled cell onto an unrelated row (docs/NOTES.md ▸ AppKit).
+            cell.toolTip = FileFormatting.sizeToolTip(for: entry, state: sizeState)
         case .date:
             cell.textField?.stringValue = FileFormatting.dateString(for: entry)
             cell.textField?.alignment = .natural

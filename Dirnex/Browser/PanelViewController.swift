@@ -205,6 +205,16 @@ final class PanelViewController: NSViewController {
     /// already moved on is discarded instead of clobbering the current directory.
     /// Internal so `PanelViewController+Tabs` can discard a stale load on tab switch.
     var loadToken = 0
+    /// Space-on-dir walks in flight over a **billed** backend, by the folder each is measuring —
+    /// the handles `cancelUnwatchedDirectorySizeWalks` cancels when this pane stops looking
+    /// (PLAN.md §M21 Slice 11). A local walk is deliberately absent: it is fire-and-forget by
+    /// design, because finishing one costs nothing and banks a total (`DirectoryLoader.size`).
+    /// Internal for `PanelViewController+Sizing`; a stored property cannot live in an extension.
+    var directorySizeWalks: [VFSPath: Task<DirectoryLoader.SizeOutcome, Never>] = [:]
+    /// Folders whose walk reached its budget and gave up. Kept apart from "never measured" so the
+    /// size column can draw them differently — the two are indistinguishable otherwise, and the
+    /// dash would invite a re-press that spends the whole budget again.
+    var directorySizesGaveUp: Set<VFSPath> = []
     /// A short-lived message that outranks the computed item count in the status line — how a
     /// detached background action (an external diff launch) reports itself without stealing focus
     /// with an alert. `nil` when the line is showing its normal contents. Driven entirely by
@@ -395,6 +405,9 @@ final class PanelViewController: NSViewController {
     /// Internal so `PanelViewController+Tabs` can load a freshly opened tab.
     func navigate(to path: VFSPath, focus child: VFSPath? = nil, recordHistory: Bool = true) {
         loadToken += 1
+        // Whatever this pane was paying a server to measure, it has stopped looking at. A local
+        // walk is untracked and deliberately survives — see `PanelViewController+Sizing`.
+        cancelUnwatchedDirectorySizeWalks()
         let token = loadToken
         let tabIndex = activeTabIndex
         // Captured before the async load: was this tab showing a *non-re-listable* virtual pane

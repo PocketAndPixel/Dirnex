@@ -23,11 +23,56 @@ enum FileFormatting {
     /// Size column text. A file shows its own byte size. A directory shows a dash until
     /// a recursive total has been computed for it (Space-on-dir, PLAN.md §M1), then that
     /// byte count — Total Commander's in-place directory sizing.
-    static func sizeString(for entry: FileEntry, computedSize: Int64? = nil) -> String {
+    ///
+    /// `state` carries the two things a byte count cannot say, and both exist only because a walk
+    /// over a server is slow and billed rather than instant (PLAN.md §M21 Slice 11): that one is
+    /// **running**, which locally is over before a frame is drawn and remotely takes seconds per
+    /// folder, and that one **gave up** at its budget, which must not draw the same dash as "never
+    /// measured" — the user would press Space again and spend the whole budget a second time.
+    ///
+    /// Both are glyphs rather than words on purpose. This column's width is measured against byte
+    /// counts, and a phrase here would be the fixed-width-control trap from docs/NOTES.md ▸
+    /// Localization in the one place there is no room to grow: prose belongs where its length is
+    /// free, which for the give-up is ``sizeToolTip(for:state:)``.
+    static func sizeString(
+        for entry: FileEntry,
+        computedSize: Int64? = nil,
+        state: DirectorySizeDisplayState = .idle
+    ) -> String {
         if entry.isDirectoryLike {
-            return computedSize.map { byteFormatter.string(fromByteCount: $0) } ?? "—"
+            if let computedSize { return byteFormatter.string(fromByteCount: computedSize) }
+            switch state {
+            case .measuring: return "…"
+            case .gaveUp: return "?"
+            case .idle: return "—"
+            }
         }
         return byteFormatter.string(fromByteCount: entry.byteSize)
+    }
+
+    /// What the size cell explains on hover, or `nil` when there is nothing to explain.
+    ///
+    /// The `?` is a symbol nobody has been taught, and the status line that teaches it expires after
+    /// four seconds while the marker stays on the row indefinitely — so without this the glyph is
+    /// permanently unexplained for anyone who looked away. A tooltip is the one surface here whose
+    /// length is genuinely free: it wraps, it is not in a column, and it is not competing with a
+    /// folder name of unbounded length, which is what makes the status line's own truncation
+    /// survivable rather than fatal (PLAN.md §M21 Slice 11).
+    ///
+    /// `.measuring` deliberately gets none. It lasts seconds and says what it means — a tooltip
+    /// nobody can hover in time is noise, and it would have to be cleared again a moment later.
+    static func sizeToolTip(for entry: FileEntry, state: DirectorySizeDisplayState) -> String? {
+        guard entry.isDirectoryLike, state == .gaveUp else { return nil }
+        return String(
+            localized: """
+            Measuring stopped: this folder holds more folders than Dirnex counts over a network \
+            connection. Press Space to try again.
+            """,
+            comment: """
+            Tooltip on a folder whose recursive size over a server gave up at its budget, \
+            explaining the “?” in the size column. Length is free here — it wraps.
+            """
+        )
     }
 
     static func byteString(_ bytes: Int64) -> String {

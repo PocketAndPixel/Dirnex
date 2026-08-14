@@ -116,4 +116,53 @@ enum DirectoryLoader {
             isCancelled: { Task.isCancelled }
         )
     }
+
+    /// How a budgeted walk ended. Three outcomes rather than an `Int64?`, because a walk that
+    /// **gave up** and one that failed look identical from outside and mean opposite things to the
+    /// person watching: one says "this folder is bigger than we will count over a network", the
+    /// other says "we could not read it". Collapsing them puts the same dash on both and invites
+    /// the user to press Space again on the one that will cost another thousand requests.
+    enum SizeOutcome: Sendable, Equatable {
+        case total(Int64)
+        /// The walk reached its ``DirectorySizeBudget``. Deliberately carries no partial — see that
+        /// type for why a partial rendered as the answer is a claim about the wrong thing.
+        case gaveUp
+        /// Cancelled, or the top-level listing failed. Both mean "no total" and the cache stores
+        /// neither, which is the pre-existing meaning of this function's `nil`.
+        case unavailable
+    }
+
+    /// The Space-on-dir walk for a backend whose listings are **billed round trips** (PLAN.md §M21
+    /// Slice 11) — bounded by `budget`, and abandonable through the returned task's own handle.
+    ///
+    /// It is `Task.detached` for the same reason `size` is: the walk blocks, so it must not run on
+    /// the caller's main actor. What differs is that the caller *keeps* the handle. A detached task
+    /// does not inherit cancellation, which is exactly right here — nothing should cancel this
+    /// except the pane deciding it has stopped looking, and it says so by calling `cancel()`.
+    ///
+    /// Measured against the live endpoint before it was written: cancelling lands within one
+    /// listing (~0.6 s there), because `DirectorySizer` reads the flag once per directory popped.
+    static func budgetedSize(
+        _ backend: any VFSBackend,
+        of path: VFSPath,
+        budget: DirectorySizeBudget,
+        excluding isExcluded: @escaping @Sendable (VFSPath) -> Bool = { _ in false }
+    ) -> Task<SizeOutcome, Never> {
+        Task.detached(priority: .utility) {
+            do {
+                let total = try DirectorySizer.size(
+                    of: path,
+                    using: backend,
+                    budget: budget,
+                    excluding: isExcluded,
+                    isCancelled: { Task.isCancelled }
+                )
+                return .total(total)
+            } catch is DirectorySizeBudgetExceeded {
+                return .gaveUp
+            } catch {
+                return .unavailable
+            }
+        }
+    }
 }

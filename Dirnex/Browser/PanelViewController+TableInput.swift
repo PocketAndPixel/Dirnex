@@ -159,13 +159,19 @@ extension PanelViewController: FileTableViewInput {
 
 // MARK: - Rendering helpers
 
-private extension PanelViewController {
+extension PanelViewController {
+    /// Repaint one row in place. Internal rather than file-private because `+Sizing` repaints a
+    /// single row when a server-side size walk starts, lands or gives up — Swift's `private` does
+    /// not cross files (docs/NOTES.md ▸ file splitting), and a second copy of two lines is how the
+    /// two would drift.
     func redrawRow(_ row: Int) {
         guard row >= 0, row < tableView.numberOfRows else { return }
         let columns = IndexSet(integersIn: 0..<tableView.numberOfColumns)
         tableView.reloadData(forRowIndexes: IndexSet(integer: row), columnIndexes: columns)
     }
+}
 
+private extension PanelViewController {
     /// Replace the type-to-filter and re-render. `Panel`/`DirectoryModel` re-anchor the
     /// cursor by identity across the change, so the cursor stays on the same file when
     /// it survives the narrowing.

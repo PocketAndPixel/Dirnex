@@ -1303,6 +1303,40 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   - The one thing a glyph cannot say is *which* state you are in, so the two placeholder states must
     stay visually distinct without words — here the accent ring and tint already carried recording,
     and the glyph change is a second, redundant signal rather than the only one.
+- **The status line under each pane is the same trap with the failure inverted: it is *correctly*
+  set to truncate, so an over-long sentence loses its own ending and nothing anywhere complains.**
+  `statusLabel` is `.byTruncatingTail` at `.defaultLow` compression resistance — deliberately, or a
+  long type-to-filter string would shove the split divider across — which means the four preceding
+  entries' remedies (widen it, compress a neighbor, constrain and wrap) are all unavailable by
+  design, and the only lever left is the sentence's own length. What goes missing is the **tail**,
+  which in an explanatory sentence is the explanation: M21 Slice 11's give-up message rendered as
+  `Stopped measuring “x” — it holds more folders than Dirnex will…`, i.e. the half stating *why* was
+  exactly the half cut. Measured in the label's own font across all 14 catalogs — **557 pt in
+  English, 713 pt in Russian** against a pane of **542 pt** — it clipped in **10 of 14 languages**
+  while the English screenshot with a short folder name looked perfect.
+  - **`statusLabel.frame.width` is not the width available, and reading it is the trap that looks
+    like the fix.** The label is sized to its own text, so its frame is the *sentence* plus ~3.5 pt
+    — logging it during the give-up reported **409.5 pt** for a 406 pt sentence and **282.5** for a
+    279 pt one, i.e. it measures the string you already have. Acting on it shortened a sentence that
+    did not need shortening and, worse, wrote a fabricated "the label is 409.5 pt" into three files.
+    Ask the **enclosing stack** for the constraint, and ask
+    **`NSCell.expansionFrame(withFrame:in:)`** whether the text is actually truncated — AppKit's own
+    answer, on the real label in the real pane, which needs no arithmetic and cannot be off by a
+    sidebar. The general form: *a live probe is only a measurement of what you actually asked for*,
+    and "I logged it from the running app" is not by itself evidence.
+  - **Budget below the pane, not at it, because the interpolated file name is unbounded.** A
+    40-character folder puts even a short sentence at 468 pt, so no wording makes truncation
+    impossible — only unlikely. Which is what decides the *design*: a short note on the status line,
+    and the explanation in a **tooltip** on the cell, where length is free and where it outlives the
+    status line's four-second expiry. A glyph whose only explanation expires is unexplained for
+    anyone who looked away.
+  - **Sweep the whole surface once while the harness is written.** Harvesting every literal that
+    reaches `showTransientStatus` and measuring all 18 took minutes and settled that no *other*
+    sentence was over — which is what makes "the new one is the outlier" a measurement rather than
+    a hope, and would have named the others if it were not.
+  - Pin it with a test that reads the **compiled** `.strings` (a catalog entry can be absent from
+    the build) and give it a negative control, or a later shortening leaves a budget nobody has
+    watched fail.
 - **Resizing a window for a probe: `defaults write "NSWindow Frame <autosave>"` then relaunch.**
   `System Events` needs assistive access that `osascript` does not have (`-1719`), Dirnex's `.sdef`
   exposes no windows (`-1728`), and a synthetic corner drag misses the resize edge. The frame

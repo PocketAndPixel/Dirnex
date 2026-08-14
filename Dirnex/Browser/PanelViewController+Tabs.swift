@@ -15,6 +15,11 @@ extension PanelViewController {
     /// stored cursor/marks/filter instantly, then refreshes in the background so it is
     /// current after having been unwatched while inactive.
     func activateTab() {
+        // The one funnel every tab change goes through — switching, closing, restoring — so a
+        // server-side size walk started in the tab being left is abandoned here rather than at each
+        // caller (PLAN.md §M21 Slice 11). Harmless on the first activation, when nothing is in
+        // flight.
+        cancelUnwatchedDirectorySizeWalks()
         applyColumnLayout(for: tabs[activeTabIndex])
         refreshTabBar()
         if tabs[activeTabIndex].hasLoaded {

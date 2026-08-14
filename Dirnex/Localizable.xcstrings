@@ -43230,6 +43230,95 @@
         }
       }
     },
+    "Measuring stopped: this folder holds more folders than Dirnex counts over a network connection. Press Space to try again.": {
+      "comment": "Tooltip on a folder whose recursive size over a server gave up at its budget, explaining the “?” in the size column. Length is free here — it wraps.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Messung gestoppt: Dieser Ordner enthält mehr Ordner, als Dirnex über eine Netzwerkverbindung zählt. Drücken Sie die Leertaste, um es erneut zu versuchen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Measuring stopped: this folder holds more folders than Dirnex counts over a network connection. Press Space to try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Medición detenida: esta carpeta contiene más carpetas de las que Dirnex cuenta a través de una conexión de red. Pulsa Espacio para intentarlo de nuevo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mesure interrompue : ce dossier contient plus de dossiers que Dirnex n’en compte via une connexion réseau. Appuyez sur Espace pour réessayer."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Misurazione interrotta: questa cartella contiene più cartelle di quante Dirnex ne conti tramite una connessione di rete. Premi Spazio per riprovare."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "計測を中止しました。このフォルダには、Dirnex がネットワーク接続で数えるフォルダ数を超えるフォルダがあります。スペースキーでもう一度試せます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "측정을 중단했습니다. 이 폴더에는 Dirnex가 네트워크 연결로 세는 것보다 많은 폴더가 있습니다. 다시 시도하려면 스페이스를 누르세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meting gestopt: deze map bevat meer mappen dan Dirnex via een netwerkverbinding telt. Druk op de spatiebalk om het opnieuw te proberen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zatrzymano mierzenie: ten folder zawiera więcej folderów, niż Dirnex zlicza przez połączenie sieciowe. Naciśnij Spację, aby spróbować ponownie."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Medição interrompida: esta pasta contém mais pastas do que o Dirnex conta por uma conexão de rede. Pressione Espaço para tentar novamente."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Измерение остановлено: в этой папке больше вложенных папок, чем Dirnex считает по сетевому соединению. Нажмите пробел, чтобы попробовать снова."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вимірювання зупинено: ця тека містить більше вкладених тек, ніж Dirnex рахує через мережеве з’єднання. Натисніть пробіл, щоб спробувати ще раз."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已停止测量：此文件夹包含的文件夹数量超过 Dirnex 通过网络连接统计的上限。按空格键可重试。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已停止測量：此資料夾包含的資料夾數量超過 Dirnex 透過網路連線統計的上限。按空白鍵可重試。"
+          }
+        }
+      }
+    },
     "Merge conflict": {
       "comment": "Git status badge tooltip: an unresolved merge — the one state that blocks.",
       "localizations": {
@@ -67569,6 +67658,95 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "Stopped measuring “%@” — too many folders.": {
+      "comment": "Status line shown when a recursive folder size over a server gave up at its budget. The argument is the folder's name. Keep it short: this line tail-truncates at the pane's width, so a longer sentence loses its own ending. The fuller explanation is a separate tooltip string.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Messung von „%@“ gestoppt — zu viele Ordner."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stopped measuring “%@” — too many folders."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Medición de «%@» detenida: demasiadas carpetas."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mesure de «%@» interrompue : trop de dossiers."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Misurazione di “%@” interrotta: troppe cartelle."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”の計測を中止しました。フォルダが多すぎます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” 측정 중단: 폴더가 너무 많습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meting van “%@” gestopt — te veel mappen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zatrzymano mierzenie „%@” — zbyt wiele folderów."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Medição de “%@” interrompida: pastas demais."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Измерение «%@» остановлено — слишком много папок."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вимірювання «%@» зупинено — забагато тек."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已停止测量“%@”——文件夹过多。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已停止測量「%@」——資料夾過多。"
           }
         }
       }
