@@ -31444,6 +31444,95 @@
         }
       }
     },
+    "Dirnex couldn’t download this file.": {
+      "comment": "Quick View placeholder hint after an automatic remote fetch failed.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex konnte diese Datei nicht laden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex couldn’t download this file."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex no ha podido descargar este archivo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex n’a pas pu télécharger ce fichier."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex non è riuscito a scaricare questo file."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex はこのファイルをダウンロードできませんでした。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex가 이 파일을 다운로드하지 못했습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex kon dit bestand niet downloaden."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex nie mógł pobrać tego pliku."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Dirnex não conseguiu baixar este arquivo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex не удалось загрузить этот файл."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex не вдалося завантажити цей файл."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 无法下载此文件。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 無法下載此檔案。"
+          }
+        }
+      }
+    },
     "Dirnex couldn’t reach the file on the server to check whether it has changed. %@": {
       "comment": "Remote write-back body when the pre-upload check failed; %@ is the shared “uploading replaces…” sentence.",
       "localizations": {
@@ -31529,6 +31618,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dirnex 無法存取伺服器上的檔案以檢查它是否已變更。%@"
+          }
+        }
+      }
+    },
+    "Dirnex doesn’t download a file automatically without knowing how large it is.": {
+      "comment": "Quick View placeholder hint for a remote file whose size the server never reported.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex lädt eine Datei nicht automatisch, solange ihre Größe unbekannt ist."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex doesn’t download a file automatically without knowing how large it is."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex no descarga un archivo automáticamente sin saber su tamaño."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex ne télécharge pas automatiquement un fichier dont la taille est inconnue."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex non scarica automaticamente un file di cui non conosce le dimensioni."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サイズが不明なファイルを Dirnex が自動でダウンロードすることはありません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex는 크기를 모르는 파일을 자동으로 다운로드하지 않습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex downloadt een bestand niet automatisch zonder de grootte te kennen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex nie pobiera automatycznie pliku o nieznanym rozmiarze."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Dirnex não baixa automaticamente um arquivo sem saber seu tamanho."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex не загружает файл автоматически, не зная его размера."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex не завантажує файл автоматично, не знаючи його розміру."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在不知道文件大小的情况下，Dirnex 不会自动下载。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在不知道檔案大小的情況下，Dirnex 不會自動下載。"
           }
         }
       }
@@ -32712,6 +32890,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "要從伺服器下載「%@」嗎？"
+          }
+        }
+      }
+    },
+    "Downloading from the server…": {
+      "comment": "Quick View placeholder hint while a remote file is being fetched.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird vom Server geladen …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloading from the server…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargando del servidor…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Téléchargement depuis le serveur…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download dal server…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバーからダウンロード中…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버에서 다운로드하는 중…"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bezig met downloaden van de server…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pobieranie z serwera…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baixando do servidor…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загрузка с сервера…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Завантаження із сервера…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在从服务器下载…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在從伺服器下載…"
           }
         }
       }
@@ -37160,6 +37427,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "僅檔案"
+          }
+        }
+      }
+    },
+    "Files this large aren’t downloaded automatically.": {
+      "comment": "Quick View placeholder hint for a remote file over the size Dirnex fetches on its own as the cursor moves.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dateien dieser Größe werden nicht automatisch geladen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Files this large aren’t downloaded automatically."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los archivos de este tamaño no se descargan automáticamente."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les fichiers de cette taille ne sont pas téléchargés automatiquement."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I file di queste dimensioni non vengono scaricati automaticamente."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このサイズのファイルは自動ではダウンロードされません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 정도 크기의 파일은 자동으로 다운로드되지 않습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bestanden van dit formaat worden niet automatisch gedownload."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pliki tej wielkości nie są pobierane automatycznie."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arquivos deste tamanho não são baixados automaticamente."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файлы такого размера не загружаются автоматически."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файли такого розміру не завантажуються автоматично."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这么大的文件不会自动下载。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "這麼大的檔案不會自動下載。"
           }
         }
       }
@@ -76128,95 +76484,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "此檔案大小為 %@。Dirnex 必須先下載它才能顯示。"
-          }
-        }
-      }
-    },
-    "This file is on the server and hasn’t been downloaded. Press ⌘Y to fetch it, or ⏎ to open it.": {
-      "comment": "Quick View placeholder hint naming the keys that download a remote file.",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This file is on the server and hasn’t been downloaded. Press ⌘Y to fetch it, or ⏎ to open it."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Diese Datei liegt auf dem Server und wurde nicht geladen. ⌘Y lädt sie, ⏎ öffnet sie."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Este archivo está en el servidor y no se ha descargado. Pulsa ⌘Y para obtenerlo o ⏎ para abrirlo."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ce fichier est sur le serveur et n’a pas été téléchargé. Appuyez sur ⌘Y pour le récupérer, ou ⏎ pour l’ouvrir."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Questo file è sul server e non è stato scaricato. Premi ⌘Y per recuperarlo o ⏎ per aprirlo."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "このファイルはサーバー上にあり、まだダウンロードされていません。⌘Y で取得、⏎ で開きます。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이 파일은 서버에 있으며 아직 다운로드되지 않았습니다. ⌘Y로 가져오거나 ⏎로 여십시오."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dit bestand staat op de server en is niet gedownload. Druk op ⌘Y om het op te halen, of ⏎ om het te openen."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ten plik jest na serwerze i nie został pobrany. Naciśnij ⌘Y, aby go pobrać, lub ⏎, aby go otworzyć."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Este arquivo está no servidor e não foi baixado. Pressione ⌘Y para obtê-lo ou ⏎ para abri-lo."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Этот файл находится на сервере и ещё не загружен. Нажмите ⌘Y, чтобы получить его, или ⏎, чтобы открыть."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Цей файл міститься на сервері й ще не завантажений. Натисніть ⌘Y, щоб отримати його, або ⏎, щоб відкрити."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "此文件位于服务器上，尚未下载。按 ⌘Y 获取，或按 ⏎ 打开。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "此檔案位於伺服器上，尚未下載。按 ⌘Y 取得，或按 ⏎ 開啟。"
           }
         }
       }

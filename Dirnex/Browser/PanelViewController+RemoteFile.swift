@@ -11,11 +11,18 @@ import DirnexCore
 ///
 /// **Two entry points, and the difference is who asked.** A local file or an extracted archive
 /// member costs nothing to look at; a remote one costs a billed request and somebody's bandwidth. So
-/// the passive path — the preview following the cursor — reads the cache and **cannot** fetch:
-/// ``cachedRemoteFileURL`` has no transfer in it at all, which makes "an arrow key never spends a
-/// request" structural rather than a rule somebody has to keep. ``openRemotePreview(onReady:)``,
-/// ⏎ and F4 are keys somebody pressed and may. Same fork as Quick View's JavaScript switch and
-/// Enter-vs-Unlock: "is this safe" and "should this happen unasked" are different questions.
+/// the passive path — the preview following the cursor — is bounded three ways it cannot exceed
+/// (``prepareRemotePreview()``: a settle delay, a size cap, and abandonment the moment the cursor
+/// leaves), while ``openRemotePreview(alreadyConfirmed:onReady:)``, ⏎ and F4 are keys somebody
+/// pressed and may spend whatever the user agrees to. Same fork as Quick View's JavaScript switch
+/// and Enter-vs-Unlock: "is this safe" and "should this happen unasked" are different questions.
+///
+/// **The passive path used to be no path at all**, and that shipped as a bug: turning Quick View on
+/// fetched the row under the cursor and *nothing after it*, so entering a folder with the preview
+/// still up drew the placeholder card for every file in it and the mode looked broken. The rule it
+/// was protecting is real — a fetch per arrow key is a request per row the cursor passed over — but
+/// the rule it was actually enforcing was "one file per time you switch the mode on", which is not a
+/// rule anybody could have discovered. Reported by a user 2026-08-14.
 extension PanelViewController {
     /// The remote file under this pane's cursor that a fetch could bring down: `nil` unless the pane
     /// is browsing a server and the cursor sits on a *file* (not the `..` row, not a directory, and
@@ -37,25 +44,94 @@ extension PanelViewController {
         return host?.remoteFileCache.cachedURL(for: entry)
     }
 
-    /// What a preview surface draws when the cursor is on a remote file nothing has fetched — the
-    /// file's name and size, and how to ask for it. `nil` when there is no such row, or when the
-    /// bytes are already here and the real preview can be shown.
+    /// What a preview surface draws when the cursor is on a remote file whose bytes are not here —
+    /// the file's name, its size, and what is (or is not) being done about it. `nil` when there is
+    /// no such row, or when the bytes have arrived and the real preview can be shown.
     var remotePreviewPlaceholder: RemotePreviewPlaceholder? {
         guard let entry = remoteFileUnderCursor, cachedRemoteFileURL == nil else { return nil }
+        let state: RemotePreviewPlaceholder.State = switch host?.remoteFileCache
+            .automaticState(for: entry) {
+        case .running?: .downloading
+        case .failed?: .failed
+        case nil: .awaitingRequest
+        }
         return RemotePreviewPlaceholder(
             name: entry.name,
-            size: entry.byteSize >= 0 ? FileFormatting.byteString(entry.byteSize) : nil
+            size: entry.byteSize >= 0 ? FileFormatting.byteString(entry.byteSize) : nil,
+            state: state
         )
+    }
+
+    // MARK: - Following the cursor
+
+    /// Start the fetch the *preview* wants: the cursor has come to rest on a remote file, Quick View
+    /// (or the ⌘Y panel) is up, and the bytes are not here. The remote twin of
+    /// ``prepareArchivePreview(onReady:)``, and — like it — silent about failure, because it runs on
+    /// cursor movement and an alert per arrow key is a question nobody asked.
+    ///
+    /// **Three bounds, and together they are what makes an unasked transfer defensible.** The cache
+    /// waits out a settle delay, so a *sweep* through a folder requests nothing; `RemoteFetchPolicy`
+    /// weighs the size against `.cursorPreview`, which **declines** rather than confirming, so a
+    /// large or unmeasured object leaves the card up instead of raising a dialog on a keystroke; and
+    /// leaving the row abandons the transfer outright, so the cost is what elapsed while the user was
+    /// actually looking at it. Take any one away and this is the arrow-key spend the original
+    /// no-passive-path rule was written against.
+    ///
+    /// Re-drives **both** preview surfaces on landing rather than taking an `onReady`: with Quick
+    /// View and the ⌘Y panel both up there is one transfer and two things to repaint, and a callback
+    /// belonging to whichever of them scheduled it would leave the other showing the placeholder for
+    /// a file that is now on disk.
+    func prepareRemotePreview() {
+        guard let cache = host?.remoteFileCache else { return }
+        guard let entry = remoteFileUnderCursor, cache.cachedURL(for: entry) == nil,
+              RemoteFetchPolicy.decision(
+                  forByteSize: entry.byteSize, purpose: .cursorPreview
+              ) == .fetch
+        else {
+            cache.cancelAutomaticFetch()
+            return
+        }
+        cache.scheduleAutomaticFetch(entry, using: backend) { [weak self] in
+            guard let self else { return }
+            host?.panelCursorDidChange(self)
+            refreshQuickLookIfVisible()
+        }
+    }
+
+    /// Stand the cursor-following fetch down because the surface that wanted it has gone away —
+    /// Quick View closing, or the ⌘Y panel being dismissed.
+    ///
+    /// Guarded on the *other* surface, which follows the same cursor and is served by the same one
+    /// transfer: with both up, closing one must not take the bytes away from the one still on
+    /// screen. Nothing is stranded either way, since every preview delivery re-schedules the row and
+    /// re-scheduling one already pending is a no-op.
+    func endRemotePreview() {
+        guard !isQuickLookFollowingThisPane else { return }
+        host?.remoteFileCache.cancelAutomaticFetch()
     }
 
     // MARK: - The explicit gestures
 
     /// Fetch the file under the cursor so a preview can show it, then call `onReady` — the ⌘Y toggle,
-    /// or ⌃Q / ⌃⇧Q / ⌃⌥Q switching Quick View on. Does nothing when the cursor is not on a remote
-    /// file or its bytes are already here, so a caller can invoke it after every preview refresh.
-    func openRemotePreview(onReady: @escaping @MainActor () -> Void) {
+    /// ⌃Q / ⌃⇧Q / ⌃⌥Q switching Quick View on, and the placeholder card's own Download button. Does
+    /// nothing when the cursor is not on a remote file or its bytes are already here, so a caller can
+    /// invoke it after every preview refresh.
+    ///
+    /// `alreadyConfirmed` says the gesture has itself put the file's size in front of the user and
+    /// been told to go ahead, which is true of exactly one caller: the card draws the name and the
+    /// size directly above its Download button, so `RemoteFetchPolicy`'s confirmation would be
+    /// asking a question the click has already answered. It skips the *question* only — the deferred
+    /// progress sheet, Stop, and the failure report all still happen.
+    func openRemotePreview(
+        alreadyConfirmed: Bool = false,
+        onReady: @escaping @MainActor () -> Void
+    ) {
         guard let entry = remoteFileUnderCursor, cachedRemoteFileURL == nil else { return }
-        fetchRemoteFile(entry, for: .preview) { [weak self] _ in
+        // A key supersedes the transfer nobody asked for rather than racing it for the same object —
+        // and this is also the path that clears a failed attempt, so pressing the button after one
+        // tries again instead of finding the row already spoken for.
+        host?.remoteFileCache.cancelAutomaticFetch()
+        fetchRemoteFile(entry, for: .preview, alreadyConfirmed: alreadyConfirmed) { [weak self] _ in
             // The cursor may have moved on during the transfer; showing what it has left behind
             // would put a stranger's file on screen under the current row's name.
             guard self?.remoteFileUnderCursor == entry else { return }
@@ -116,19 +192,27 @@ extension PanelViewController {
     private func fetchRemoteFile(
         _ entry: FileEntry,
         for purpose: RemoteFetchPurpose,
+        alreadyConfirmed: Bool = false,
         then proceed: @escaping @MainActor (URL) -> Void,
         failureMessage: @escaping () -> String
     ) {
         guard let cache = host?.remoteFileCache else { return }
-        RemoteFetchPrompt.fetch(
-            entry,
-            for: purpose,
-            in: .init(backend: backend, cache: cache, window: view.window),
-            then: proceed
-        ) { [weak self] error in
+        let context = RemoteFetchPrompt.Context(
+            backend: backend, cache: cache, window: view.window
+        )
+        let onFailure: (any Error) -> Void = { [weak self] error in
             self?.presentOperationFailure(
                 message: failureMessage(),
                 detail: self?.describe(error) ?? ""
+            )
+        }
+        if alreadyConfirmed {
+            RemoteFetchPrompt.fetchConfirmed(
+                entry, in: context, then: proceed, onFailure: onFailure
+            )
+        } else {
+            RemoteFetchPrompt.fetch(
+                entry, for: purpose, in: context, then: proceed, onFailure: onFailure
             )
         }
     }
@@ -147,13 +231,30 @@ extension PanelViewController {
     }
 }
 
-/// What a preview surface draws in place of a remote file nobody has asked for yet.
+/// What a preview surface draws in place of a remote file whose bytes are not here.
 ///
 /// A card rather than a blank surface, because a blank one reads as "this file is empty" or as the
-/// preview being broken — where the truth is that Dirnex is deliberately *not* spending a request on
-/// a row the cursor merely passed over.
+/// preview being broken — where the truth is one of three quite different things, which is why the
+/// state is part of the value rather than left to the card to guess.
 struct RemotePreviewPlaceholder: Equatable {
+    /// Why there is no preview, which is the whole content of this card.
+    ///
+    /// Part of the value, and therefore part of the surface's loaded identity (see
+    /// `QuickViewPreviewView.show`): every un-fetched remote file resolves to a `nil` URL, so
+    /// without the state in here a card that starts downloading would go on saying it had not.
+    enum State: Equatable {
+        /// Nothing is happening and nothing will unless the user asks: the object is over
+        /// `RemoteFetchPolicy`'s automatic threshold, or the server never said how large it is.
+        case awaitingRequest
+        /// A fetch is scheduled or running for this row.
+        case downloading
+        /// The automatic attempt failed. Silent by design — the card is the report, and its button
+        /// is how the user gets the real error out of the explicit path.
+        case failed
+    }
+
     let name: String
     /// The formatted size, or `nil` when the server reported none.
     let size: String?
+    let state: State
 }

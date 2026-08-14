@@ -18,10 +18,12 @@ extension PanelViewController {
     func showQuickViewPreview(
         of url: URL?,
         style: QuickViewRenderStyle,
-        placeholder: RemotePreviewPlaceholder? = nil
+        placeholder: RemotePreviewPlaceholder? = nil,
+        download: (() -> Void)? = nil
     ) {
         let preview = ensureQuickViewPreview()
         preview.isHidden = false
+        preview.placeholderDownloadAction = download
         preview.show(url, style: style, placeholder: placeholder)
     }
 
@@ -30,6 +32,9 @@ extension PanelViewController {
     func hideQuickViewPreview() {
         quickViewPreview?.isHidden = true
         quickViewPreview?.clear()
+        // Released with the content, not kept: the closure holds the pane it was built for, and a
+        // surface put away still holding one would fetch on behalf of a preview nobody is looking at.
+        quickViewPreview?.placeholderDownloadAction = nil
     }
 
     /// The file under this pane's cursor as a URL, for another surface to preview — `nil` on the

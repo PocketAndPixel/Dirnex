@@ -190,7 +190,13 @@ extension BrowserWindowController {
         }
         if quickViewMode != .fullWindow { standDown(fullWindowPreview) }
         if quickViewMode != .fullScreen { standDown(fullScreenPreview) }
-        guard isQuickViewEnabled else { return }
+        guard isQuickViewEnabled else {
+            // The surface that asked for a remote file has just gone away, so a transfer still
+            // running for it is spending on something nobody is looking at. A no-op while the ⌘Y
+            // panel is still following the same cursor.
+            focusedPanel.endRemotePreview()
+            return
+        }
         let active = focusedPanel
         // In pane mode the active pane shows its list and the *other* one previews; in the full
         // modes the preview covers everything, so no pane needs uncovering beyond the above.
@@ -205,19 +211,24 @@ extension BrowserWindowController {
     /// Point the current surface at the file under `active`'s cursor. A local file (or an
     /// already-extracted archive member) shows at once; an archive member not yet on disk is
     /// extracted on demand and shown when it lands — provided Quick View is still on and the
-    /// cursor hasn't moved on in the meantime.
+    /// cursor hasn't moved on in the meantime. A remote object is fetched on the same terms, with
+    /// three bounds the extraction does not need (`prepareRemotePreview`).
     private func showActivePreview(from active: PanelViewController, unlocking: Bool = false) {
-        deliverPreview(from: active)
         let onReady: @MainActor () -> Void = { [weak self, weak active] in
             guard let self, let active, isQuickViewEnabled, active === focusedPanel else { return }
             deliverPreview(from: active)
         }
+        // The passive remote half runs *before* the delivery below rather than beside its archive
+        // twin after it, because scheduling a fetch is itself a state the card has to draw: the
+        // placeholder a line later must already say the download is on its way, instead of waiting
+        // for the next cursor step to notice.
+        if !unlocking { active.prepareRemotePreview() }
+        deliverPreview(from: active)
         if unlocking {
             active.openArchivePreview(onReady: onReady)
-            // The remote half has no passive counterpart *at all*, which is the point: an archive
-            // member is already on this Mac, so extracting one on cursor movement costs a subprocess
-            // — a remote file costs a billed request and somebody's bandwidth, so only the key
-            // somebody pressed may fetch it (PLAN.md §M21 Slice 10).
+            // The explicit spelling, for the same reason the archive one above is: an arriving key
+            // press may spend whatever the user agrees to, where the passive path is capped and
+            // silent (PLAN.md §M21 Slice 10).
             active.openRemotePreview(onReady: onReady)
         } else {
             active.prepareArchivePreview(onReady: onReady)
@@ -230,26 +241,29 @@ extension BrowserWindowController {
     private func deliverPreview(from active: PanelViewController) {
         let url = active.quickViewSourceURL
         let style = AppPreferences.shared.quickViewRenderStyle
-        // What to draw when there is no file to draw: a remote row nobody has fetched gets a card
-        // naming it rather than a blank surface, which would read as an empty file or a broken
+        // What to draw when there is no file to draw: a remote row whose bytes are not here gets a
+        // card naming it rather than a blank surface, which would read as an empty file or a broken
         // preview (PLAN.md §M21 Slice 10). `nil` everywhere else, and the surface then blanks.
         let placeholder = active.remotePreviewPlaceholder
+        let content = PreviewContent(
+            url: url,
+            style: style,
+            placeholder: placeholder,
+            // Only where there is a card to carry it: a button armed for a surface that is showing
+            // a real file would fetch on behalf of a row nobody is looking at.
+            download: placeholder.map { _ in downloadAction(for: active) }
+        )
         switch quickViewMode {
         case .off:
             return
         case .pane:
-            counterpart(of: active)
-                .showQuickViewPreview(of: url, style: style, placeholder: placeholder)
+            counterpart(of: active).showQuickViewPreview(
+                of: url, style: style, placeholder: placeholder, download: content.download
+            )
         case .fullWindow:
-            present(
-                ensureFullWindowPreview(),
-                url: url, style: style, placeholder: placeholder, from: active
-            )
+            present(ensureFullWindowPreview(), content, from: active)
         case .fullScreen:
-            present(
-                ensureFullScreenPreview(),
-                url: url, style: style, placeholder: placeholder, from: active
-            )
+            present(ensureFullScreenPreview(), content, from: active)
         }
         // The full-size surfaces sit over the *focused* table, so anything a backend does with
         // first responder as it loads would silently turn ↑/↓ into document scrolling — the mode's
@@ -257,20 +271,50 @@ extension BrowserWindowController {
         if quickViewMode.isFullSize { restoreTableFocus(to: active) }
     }
 
-    /// Unhide `preview`, load `url` into it, and name the file in its header.
+    /// What the placeholder card's Download button does: ask for the object under `active`'s cursor
+    /// explicitly, then re-draw whichever surface is showing it.
+    ///
+    /// `alreadyConfirmed`, because the card the button sits on has already named the file and its
+    /// size — `RemoteFetchPolicy`'s own confirmation would be putting the same question a second
+    /// time to somebody who has just answered it by clicking.
+    private func downloadAction(for active: PanelViewController) -> () -> Void {
+        { [weak self, weak active] in
+            guard let self, let active else { return }
+            active.openRemotePreview(alreadyConfirmed: true) { [weak self, weak active] in
+                guard let self, let active, isQuickViewEnabled, active === focusedPanel else {
+                    return
+                }
+                deliverPreview(from: active)
+            }
+        }
+    }
+
+    /// Everything a surface is being asked to show: the file, how, and — when there is no file — the
+    /// card standing in for it together with the button that resolves it.
+    ///
+    /// Gathered into a value because the four are one answer, computed once per delivery so every
+    /// surface a window drives agrees. The placeholder and its action in particular must never be
+    /// passed separately: an armed button with no card is a fetch nothing on screen asked for.
+    private struct PreviewContent {
+        let url: URL?
+        let style: QuickViewRenderStyle
+        let placeholder: RemotePreviewPlaceholder?
+        let download: (() -> Void)?
+    }
+
+    /// Unhide `preview`, load `content` into it, and name the file in its header.
     ///
     /// The header also carries the *style* — but only for a file that genuinely has two, so the
     /// hint appears exactly where `1` / `2` would do something and says nothing everywhere else.
     private func present(
         _ preview: QuickViewPreviewView,
-        url: URL?,
-        style: QuickViewRenderStyle,
-        placeholder: RemotePreviewPlaceholder?,
+        _ content: PreviewContent,
         from active: PanelViewController
     ) {
         preview.isHidden = false
-        preview.show(url, style: style, placeholder: placeholder)
-        preview.setCaption(quickViewCaption(for: url, style: style, from: active))
+        preview.placeholderDownloadAction = content.download
+        preview.show(content.url, style: content.style, placeholder: content.placeholder)
+        preview.setCaption(quickViewCaption(for: content.url, style: content.style, from: active))
     }
 
     /// `active`'s own caption, plus the two things only the window knows: the style the file is

@@ -1287,6 +1287,59 @@ the run's duration was measuring reaction time.
   marked shown once presented, so dropping one would consume it in silence. 459 green in 15.0 s
   afterwards, with the screen watched.
 
+**The preview stopped following the cursor, 2026-08-14 — reported by a user, and the rule it was
+protecting was not the rule it was enforcing.** With Quick View up on a bucket root, entering
+`photos/` drew the placeholder card for the file inside and never resolved it: `showActivePreview`
+had `openRemotePreview` on its `unlocking` branch and *no* passive counterpart at all, so the only
+row a session ever fetched was whichever one the cursor happened to be on when the mode was switched
+on. The rule — "an arrow key never spends a billed request" — is real and is kept. What shipped
+instead was "one file per time you turn Quick View on", which is not a rule anybody could have
+discovered, and which read as the feature being broken. The fork was put to Oleg with three options
+(auto-fetch with bounds / explicit-only with a working affordance / fetch once per directory) and the
+first was chosen, paired with the card fix the third of them would still have needed.
+
+- **`RemoteFetchPurpose.cursorPreview` is the whole core change, and its point is that a refusal is
+  not a size.** It shares Preview's 16 MiB rather than minting a lower number that would mean nearly
+  the same thing — the argument the table's own doc comment already makes for open and edit — and
+  what differs is the new `RemoteFetchDecision.decline`: an automatic gesture over its threshold must
+  **not confirm**, because a dialog raised because the cursor came to rest somewhere is itself a
+  question nobody invited. `isAutomatic` names that rather than the one call site spelling
+  `== .cursorPreview`, so a second automatic gesture inherits the answer.
+- **Three bounds, and each is load-bearing on its own.** A 400 ms **settle delay** (a held arrow key
+  repeats every 30–90 ms, so travelling requests nothing); the **size cap that declines**; and
+  **abandonment when the cursor leaves**, which is what makes 16 MiB safe rather than merely small —
+  the user pays for the seconds they were looking at the row, not for the file. Single-flight is
+  structural: `RemoteFileCache` holds one pending fetch, because there is one preview and it follows
+  one cursor.
+- **The obvious cancellation test was worthless, and only a negative control showed it.** Every
+  assertion passed with `cancelAutomaticFetch` neutered to a bare `automatic = nil`, because a fake
+  backend that finishes inside the same turn is satisfied by the scheduler's identity guard and never
+  reaches the transfer. A `.block` outcome that sits until `isCancelled` — plus a record of whether
+  it was *told* to stop — is what pins the claim, and it fails on demand. Same shape as probe 1's
+  finding one pass earlier: `throws CancellationError` is not evidence that anything was interrupted.
+  The other two controls fired on exactly their own assertions (settle delay → five transfers for one
+  sweep; failure memory → a retry loop, `copyCount` 2).
+- **The card grew the state it always needed**, and the ⌘Y hint it used to carry was replaced: with
+  small files now arriving on their own, what remains on screen is a *large* one, so the card says
+  which of three things is true (over the threshold / size unreported / downloading / the attempt
+  failed) and carries a **Download** button — the one control exempted from the surface's blanket
+  "swallow the mouse", exempted at the *button* rather than the card so the exemption is exactly as
+  large as the affordance. It routes through `RemoteFetchPrompt.fetchConfirmed`, since the card draws
+  the name and the size directly above the button and `RemoteFetchPolicy`'s confirmation would be
+  asking a question the click has just answered.
+- **The ⌘Y panel gets the same fetch, which retires half of the cost recorded above.** That panel
+  used to be empty for *every* un-fetched row; now it is empty only for one over the cap, since Quick
+  Look is Apple's window and still cannot be handed our card. One transfer serves both surfaces, so
+  the landing re-drives both rather than taking a callback from whichever scheduled it.
+- **Verified live against the real bucket, in both directions.** The isolating run turns Quick View
+  on with the cursor on a *folder* — so the mode-on fetch does nothing and only the automatic path
+  can produce a preview — then arrows onto a file: the card resolved into a rendered preview. Then
+  the reported case itself: into `photos/` with the preview still up, and `one.txt` drew its
+  contents. The over-threshold half was reached by temporarily lowering the automatic threshold to
+  **4 bytes** and rebuilding, which is what put the real card on screen (glyph, name, size, sentence,
+  button) and let the button be clicked — one click, no confirmation, preview shown. 2383 core / 481
+  app green, both linters clean, 4 strings in all 14 catalogs.
+
 #### Slice 11 — 2026-08-14: Space-on-dir over a server
 
 The milestone has said since it opened that "every listing is a billable request, which makes the

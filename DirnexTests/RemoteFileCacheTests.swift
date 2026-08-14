@@ -6,17 +6,27 @@ import Testing
 
 /// The window's cache of downloaded remote files (PLAN.md §M21 Slice 10).
 ///
-/// Two claims carry the slice, and they pull in opposite directions — which is why each needs the
-/// other's negative control to mean anything. **Nothing is spent on cursor movement**: a preview
-/// that fetched on an arrow key would bill a request because the cursor passed over a row, so the
-/// passive path must reach the backend zero times. And **nothing stale is ever served**: a cache
-/// keyed by a path outlives the object that path named (the `ArchiveIdentity` lesson, one kind of
-/// elsewhere further out), and here it would hand over the previous object's bytes under the new
-/// object's name.
+/// Three claims carry it, and they pull against each other — which is why each needs the others'
+/// negative controls to mean anything.
 ///
-/// Neuter either and the other's tests keep passing, which is the whole reason both are pinned:
-/// dropping the revision stamp makes "stale is dropped" fail while every request count stays at
-/// zero, and making the read path fetch makes the counts fail while freshness is untouched.
+/// **The read path spends nothing.** `cachedURL(for:)` is called on every cursor movement and does
+/// not take a backend at all, so a preview surface asking "are the bytes here" must reach the server
+/// zero times, `stat` included.
+///
+/// **Nothing stale is ever served.** A cache keyed by a path outlives the object that path named
+/// (the `ArchiveIdentity` lesson, one kind of elsewhere further out), and here it would hand over
+/// the previous object's bytes under the new object's name.
+///
+/// **A fetch nobody asked for is bounded three ways.** The cursor-following fetch is what makes
+/// Quick View follow the cursor on a server at all, and what keeps it honest is that a *sweep* costs
+/// nothing (the settle delay), a large object is declined rather than asked about
+/// (`RemoteFetchPolicy`, tested in the core), and leaving the row abandons the transfer. Take a bound
+/// away and this is a request per row the cursor passed over.
+///
+/// Neuter any one and the others' tests keep passing, which is the whole reason all three are
+/// pinned: dropping the revision stamp makes "stale is dropped" fail while every request count stays
+/// at zero, making the read path fetch makes the counts fail while freshness is untouched, and
+/// dropping the settle delay makes only the sweep fail.
 
 /// At file scope rather than on the suite: the fake backend below is `Sendable` and answers from
 /// whichever thread the transfer runs on, so it cannot reach a main-actor-isolated static.
@@ -55,10 +65,10 @@ private enum Fixture {
 @MainActor
 @Suite("Remote file cache")
 struct RemoteFileCacheTests {
-    // MARK: - Nothing is spent on cursor movement
+    // MARK: - The read path spends nothing
 
-    /// The claim the slice rests on, in the form a test can hold: five rows walked, zero requests.
-    @Test("walking the cursor over five un-fetched remote files reaches the backend zero times")
+    /// The claim the slice rests on, in the form a test can hold: five rows read, zero requests.
+    @Test("asking whether five un-fetched remote files are here reaches the backend zero times")
     func cursorMovementSpendsNothing() {
         let backend = CountingBackend()
         let cache = RemoteFileCache()
@@ -214,6 +224,164 @@ struct RemoteFileCacheTests {
         // with what was just written.
         #expect(cache.cachedURL(for: uploaded) == url)
     }
+
+    // MARK: - The fetch nobody pressed a key for
+
+    /// The bound that makes the whole thing affordable: travelling through a folder must cost
+    /// nothing. Five rows scheduled back to back is what a held arrow key looks like from here —
+    /// each supersedes the last inside the settle delay, so only where the cursor *stopped* is ever
+    /// requested. Without the delay this is five transfers, which is the arrow-key spend the
+    /// original no-passive-path rule was written against.
+    ///
+    /// The rows are stepped **with real gaps between them**, and that is the whole design of the
+    /// test: scheduled back to back in one synchronous loop they would supersede each other before
+    /// any of their tasks had run at all, so the assertion would pass with no settle delay
+    /// whatsoever — a test that agrees with the bug. 50 ms apart is roughly a held arrow key, and
+    /// the main actor suspends in between, which is what gives a delay-less scheduler its chance to
+    /// spend five requests.
+    @Test("sweeping the cursor across five rows transfers only the one it came to rest on")
+    func aSweepTransfersOnlyTheRowItStopsOn() async {
+        let backend = CountingBackend()
+        let cache = RemoteFileCache()
+        let names = ["a.txt", "b.txt", "c.txt", "d.txt", "e.txt"]
+
+        for name in names {
+            cache.scheduleAutomaticFetch(Fixture.entry(name), using: backend, onSettled: {})
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        // On the *cache*, not on `copyCount`: the counter is bumped as the transfer starts, so
+        // waiting on it can return before the copy has been recorded — which fails as "the row it
+        // stopped on was not fetched", i.e. as the feature being broken rather than as the wait.
+        await settle { cache.cachedURL(for: Fixture.entry("e.txt")) != nil }
+
+        #expect(backend.copyCount == 1)
+        // And it is the *last* row, not the first: a scheduler that kept the earliest request would
+        // put a file the cursor has left on screen under the current row's name.
+        #expect(cache.cachedURL(for: Fixture.entry("e.txt")) != nil)
+        #expect(cache.cachedURL(for: Fixture.entry("a.txt")) == nil)
+    }
+
+    /// The second bound, cheap half: leaving before the delay elapses means the request is never
+    /// issued at all.
+    @Test("leaving the row before the settle delay transfers nothing at all")
+    func leavingTheRowTransfersNothing() async {
+        let backend = CountingBackend()
+        let cache = RemoteFileCache()
+        let entry = Fixture.entry("a.txt")
+
+        cache.scheduleAutomaticFetch(entry, using: backend, onSettled: {})
+        cache.cancelAutomaticFetch()
+        await settle { false }
+
+        #expect(backend.copyCount == 0)
+        #expect(cache.automaticState(for: entry) == nil)
+        #expect(cache.cachedURL(for: entry) == nil)
+    }
+
+    /// The second bound, and the half that actually bounds anything: a transfer **already on the
+    /// wire** is abandoned when the cursor leaves. This is what makes a 16 MiB cap safe rather than
+    /// merely small — the user pays for the seconds they spent looking at the row, not for the file.
+    ///
+    /// It needs a transfer slow enough to leave *during*, which is why the fake blocks. Every other
+    /// test here finishes inside the same turn, so all of them are satisfied by the scheduler's
+    /// identity guard and none of them can see whether cancellation reaches the transfer at all —
+    /// measured, by neutering `cancelAutomaticFetch` and watching the whole suite stay green.
+    @Test("leaving the row abandons a transfer that is already running")
+    func leavingTheRowAbandonsARunningTransfer() async {
+        let backend = CountingBackend(outcome: .block)
+        let cache = RemoteFileCache()
+        let entry = Fixture.entry("a.txt")
+
+        cache.scheduleAutomaticFetch(entry, using: backend, onSettled: {})
+        await settle { backend.copyCount == 1 }
+        #expect(backend.copyCount == 1)
+
+        cache.cancelAutomaticFetch()
+        await settle { backend.wasCancelledMidTransfer }
+
+        #expect(backend.wasCancelledMidTransfer)
+        #expect(cache.cachedURL(for: entry) == nil)
+    }
+
+    @Test("a landed automatic fetch reports itself and leaves the copy served")
+    func landedFetchReportsAndCaches() async {
+        let backend = CountingBackend()
+        let cache = RemoteFileCache()
+        let entry = Fixture.entry("a.txt")
+        let settled = Landing()
+
+        #expect(cache.automaticState(for: entry) == nil)
+        cache.scheduleAutomaticFetch(entry, using: backend) { settled.times += 1 }
+        // Immediately, not once the bytes arrive: the placeholder card drawn on this very delivery
+        // has to say a download is on its way rather than that none is.
+        #expect(cache.automaticState(for: entry) == .running)
+        await settle { settled.times > 0 }
+
+        #expect(settled.times == 1)
+        #expect(cache.cachedURL(for: entry) != nil)
+        // Cleared on success, so the next delivery reads "nothing pending" and finds the bytes.
+        #expect(cache.automaticState(for: entry) == nil)
+    }
+
+    /// A failure is reported to the caller once and then *remembered*, and both halves matter. The
+    /// report is what stops the card claiming a download is still coming; the memory is what stops
+    /// the re-delivery that report causes from starting the same doomed transfer again — an
+    /// unattended retry loop against a server, which is the expensive direction.
+    @Test("a failed automatic fetch reports once and is not retried by the delivery it causes")
+    func failedFetchReportsOnceAndDoesNotLoop() async {
+        let backend = CountingBackend(outcome: .fail)
+        let cache = RemoteFileCache()
+        let entry = Fixture.entry("a.txt")
+        let settled = Landing()
+
+        cache.scheduleAutomaticFetch(entry, using: backend) { settled.times += 1 }
+        await settle { settled.times > 0 }
+        #expect(cache.automaticState(for: entry) == .failed)
+
+        // What every later preview delivery for this row does — including the one the report above
+        // triggered.
+        for _ in 0..<3 {
+            cache.scheduleAutomaticFetch(entry, using: backend) { settled.times += 1 }
+        }
+        await settle { false }
+
+        #expect(backend.copyCount == 1)
+        #expect(settled.times == 1)
+    }
+
+    /// The state belongs to *a row*, not to the cache: a card is drawn per cursor position, and one
+    /// that read a neighbour's pending fetch would say a download was on its way for a file nothing
+    /// had been asked about.
+    @Test("the pending state answers only for the row it belongs to")
+    func pendingStateIsPerRow() async {
+        let backend = CountingBackend()
+        let cache = RemoteFileCache()
+
+        cache.scheduleAutomaticFetch(Fixture.entry("a.txt"), using: backend, onSettled: {})
+
+        #expect(cache.automaticState(for: Fixture.entry("a.txt")) == .running)
+        #expect(cache.automaticState(for: Fixture.entry("b.txt")) == nil)
+        cache.cancelAutomaticFetch()
+        await settle { false }
+    }
+
+    /// Poll until `isDone`, or until comfortably past the settle delay — `await`, never a run-loop
+    /// spin, since what is being waited for is a detached transfer's continuation and a spin never
+    /// suspends the main actor (docs/NOTES.md ▸ Testing). The `false` predicate is the deliberate
+    /// spelling of "wait out the delay and prove nothing happened".
+    private func settle(until isDone: () -> Bool) async {
+        for _ in 0..<40 {
+            if isDone() { return }
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+    }
+}
+
+/// A main-actor counter for the landing callback. A plain `var` captured by an `@escaping
+/// @MainActor` closure cannot be mutated from it; a tiny reference type can.
+@MainActor
+private final class Landing {
+    var times = 0
 }
 
 /// A backend that answers a download with known bytes and counts every call it is asked to make.
@@ -226,6 +394,9 @@ private final class CountingBackend: VFSBackend, @unchecked Sendable {
         /// Write a short prefix and then throw, the shape a stopped `curl` now leaves.
         case cancel
         case fail
+        /// Sit in the transfer until `isCancelled` says otherwise — a stand-in for the seconds a
+        /// real object spends on the wire, which every other outcome here finishes too fast to have.
+        case block
     }
 
     static let body = "downloaded!"
@@ -237,6 +408,7 @@ private final class CountingBackend: VFSBackend, @unchecked Sendable {
     private let lock = NSLock()
     private var counts = (copy: 0, stat: 0, list: 0)
     private var destination: String?
+    private var observedCancellation = false
 
     init(outcome: Outcome = .succeed) {
         self.outcome = outcome
@@ -246,6 +418,11 @@ private final class CountingBackend: VFSBackend, @unchecked Sendable {
     var statCount: Int { lock.withLock { counts.stat } }
     var listCount: Int { lock.withLock { counts.list } }
     var lastDestination: String? { lock.withLock { destination } }
+    /// Whether a `.block` transfer was actually told to stop, as opposed to running to its own
+    /// backstop. The assertion a cancellation test rests on: `throws CancellationError` is not
+    /// evidence here for the same reason it was not in Slice 10's probe — the caller's own boundary
+    /// check throws whether or not anything was interrupted.
+    var wasCancelledMidTransfer: Bool { lock.withLock { observedCancellation } }
 
     func listDirectory(at path: VFSPath) throws -> [FileEntry] {
         lock.withLock { counts.list += 1 }
@@ -277,6 +454,16 @@ private final class CountingBackend: VFSBackend, @unchecked Sendable {
             throw CancellationError()
         case .fail:
             throw VFSError.notFound(source)
+        case .block:
+            // On `BlockingWork`'s global queue, not a cooperative worker, which is the whole reason
+            // that type exists — so sleeping here spends a thread the pool will replace rather than
+            // one the process shares (docs/NOTES.md ▸ Swift 6 and concurrency).
+            for _ in 0..<500 where !isCancelled() {
+                usleep(10_000)
+            }
+            guard isCancelled() else { return }
+            lock.withLock { observedCancellation = true }
+            throw CancellationError()
         }
     }
 }

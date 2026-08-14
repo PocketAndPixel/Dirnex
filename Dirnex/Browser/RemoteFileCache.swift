@@ -143,4 +143,121 @@ final class RemoteFileCache {
         fetched[source] = Entry(url: destination, revision: RemoteFileRevision(entry))
         return destination
     }
+
+    // MARK: - The fetch nobody pressed a key for
+
+    /// What the cursor-following fetch is doing for the row a preview placeholder stands in for.
+    enum AutomaticState: Equatable {
+        /// Scheduled — still inside the settle delay — or transferring.
+        case running
+        /// The last automatic attempt for this row failed. Held until the cursor moves off it, and
+        /// held for two reasons: the card has to say so rather than sitting on "hasn't been
+        /// downloaded" while nothing is happening, and it is what stops the next delivery starting
+        /// the same doomed transfer again.
+        case failed
+    }
+
+    /// How long the cursor has to rest on a row before its bytes are worth pulling.
+    ///
+    /// The delay is what makes a *sweep* free, which is the whole safety argument: an arrow key
+    /// held down repeats every 30–90 ms, so travelling through a folder requests nothing, and one
+    /// tap that comes to rest starts one transfer. Deliberately shorter than the ~0.5 s round trip
+    /// that follows it (docs/NOTES.md ▸ curl for S3) — the settle must not be what the wait is made
+    /// of.
+    private static let settleDelay: Duration = .milliseconds(400)
+
+    /// The one automatic fetch that can be in flight, because there is one preview and it follows
+    /// one cursor. Single-flight is structural rather than a rule somebody keeps: scheduling a
+    /// different row abandons whatever the last one was doing, which is also what bounds the cost of
+    /// arrowing across a folder of large objects.
+    private var automatic: AutomaticFetch?
+
+    /// The state of the automatic fetch standing behind `entry`, or `nil` when none is.
+    func automaticState(for entry: FileEntry) -> AutomaticState? {
+        guard let automatic, automatic.path == entry.path else { return nil }
+        return automatic.state
+    }
+
+    /// Pull `entry`'s bytes down because the cursor has come to rest on it, and call `onSettled`
+    /// when the outcome is worth re-drawing — either the bytes landed, or the attempt failed and the
+    /// card has to stop claiming one is on its way.
+    ///
+    /// **The caller has already decided this is allowed.** `RemoteFetchPolicy` weighs the size
+    /// against `.cursorPreview`, which declines rather than confirming, so nothing here can raise a
+    /// dialog on a keystroke. Failures are equally silent: an alert nobody asked for, dismissed with
+    /// every arrow key, is worse than a card that says the download did not work and offers a
+    /// button that *does* report.
+    ///
+    /// Re-scheduling the row already pending is a no-op, which is what lets every preview delivery
+    /// call this without looping — including the delivery that this method's own `onSettled` causes.
+    func scheduleAutomaticFetch(
+        _ entry: FileEntry,
+        using backend: any VFSBackend,
+        onSettled: @escaping @MainActor () -> Void
+    ) {
+        if let automatic, automatic.path == entry.path { return }
+        cancelAutomaticFetch()
+        let pending = AutomaticFetch(path: entry.path)
+        automatic = pending
+        let cancellation = pending.cancellation
+        pending.task = Task { [weak self] in
+            try? await Task.sleep(for: Self.settleDelay)
+            guard let self, automatic === pending, !cancellation.isCancelled else { return }
+            do {
+                _ = try await fetch(
+                    entry,
+                    using: backend,
+                    progress: { _ in },
+                    isCancelled: { cancellation.isCancelled }
+                )
+            } catch {
+                // Our own cancellation is not a failure to report: the cursor moved on, and the row
+                // this card belonged to is no longer on screen.
+                guard automatic === pending, !cancellation.isCancelled else { return }
+                pending.state = .failed
+                onSettled()
+                return
+            }
+            guard automatic === pending else { return }
+            automatic = nil
+            onSettled()
+        }
+    }
+
+    /// Abandon whatever automatic fetch is in flight, and forget a failed one.
+    ///
+    /// Called when the cursor leaves the row, and by the explicit gestures — a key somebody pressed
+    /// supersedes a transfer nobody asked for, rather than racing it for the same object.
+    func cancelAutomaticFetch() {
+        guard let automatic else { return }
+        automatic.cancellation.isCancelled = true
+        automatic.task?.cancel()
+        self.automatic = nil
+    }
+
+    /// One row's automatic attempt: which object, how it is going, and the flag the transfer's own
+    /// thread reads to find out it has been abandoned.
+    private final class AutomaticFetch {
+        let path: VFSPath
+        var state: AutomaticState = .running
+        var task: Task<Void, Never>?
+        /// Read from the transfer's thread, so it cannot be main-actor state — the same shape
+        /// `RemoteFetchPrompt.Control` uses, minus the byte counter nothing draws here.
+        let cancellation = CancellationFlag()
+
+        init(path: VFSPath) {
+            self.path = path
+        }
+    }
+}
+
+/// A one-bit `Sendable` box, so the main actor can tell a running transfer to stop.
+final class CancellationFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = false
+
+    var isCancelled: Bool {
+        get { lock.withLock { value } }
+        set { lock.withLock { value = newValue } }
+    }
 }

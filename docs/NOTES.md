@@ -235,6 +235,17 @@ at build time.
         unprompted by this rule and were deliberately **left alone**: each is handed a window by
         construction, and each is marked as shown once presented — so dropping it would consume the
         one-shot in silence, which is a worse failure than the one being prevented.
+- **A cancellation test whose fake finishes inside the same turn cannot see cancellation at all, and
+  every assertion in it passes against a scheduler that never cancels anything.** Measured on the
+  Quick View auto-fetch: with `cancelAutomaticFetch` neutered to a bare `pending = nil`, the whole
+  suite stayed green — because the *identity guard* ("is this still the row we scheduled?") answers
+  first, and a fake backend that returns immediately never gives the flag anything to interrupt. So
+  the tests were about the guard, and the thing they were named for was untested. Two things fix it,
+  and both are needed: a fake that **blocks** until it is told to stop, and a record of whether it
+  **was** told — asserting the caller's `throws CancellationError` proves nothing here for the same
+  reason it proved nothing one pass earlier (a post-transfer boundary check throws either way, ▸ curl
+  for S3). The general form: when the subject is "does stopping reach the work", the fake has to be
+  slow enough to stop, and only the *work's own* record is evidence.
 
 ## AppKit
 
@@ -3182,6 +3193,30 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   pipelines satisfy both gates automatically, so this is a local-verification problem only.
 
 ## Design lessons that generalize
+
+- **A cost rule enforced at the gesture that opens a *mode* is not the rule it claims to be, and the
+  rule it actually enforces is one nobody can discover.** Quick View's remote fetch was allowed only
+  on the keystroke that switched the mode on, in the name of "an arrow key never spends a billed
+  request". That rule is right. What shipped was **"one file per time you turn Quick View on"** —
+  so entering a folder with the preview still up drew a placeholder for every file in it, and the
+  mode read as broken. Reported by a user 2026-08-14; nothing else could have found it, since every
+  test, both linters and the feature's own live verification pass had only ever exercised the
+  gesture that *does* fetch.
+  - **The tell is a mode whose per-item cost is gated on the mode's own on-switch.** A mode is a
+    standing request, so the honest place for a cost rule is the *item*: bound it there (a settle
+    delay so a sweep is free, a size cap, abandonment when attention leaves) and the mode goes back
+    to meaning what its name says. The gate-at-the-switch version fails in the quiet direction — it
+    is indistinguishable from a feature that only half works.
+  - **A refusal is not a size, and folding the two loses the case that matters.** The size table
+    answers "is this worth fetching"; what an *automatic* gesture needs on top is that being refused
+    must not raise a dialog, because a question asked because the cursor came to rest somewhere is
+    itself unasked. Hence a third decision (`decline`) rather than a lower threshold — the two acts
+    are the same act, and a second constant a few megabytes from the first would only drift.
+  - **Ask before picking, when a report is really a request to change a decision.** "The preview
+    doesn't work" was a *design* the milestone had argued for at length and written down twice, so
+    the three live options went to Oleg rather than being resolved by reading the plan back at him.
+    A user reporting a documented behavior as a bug is evidence about the behavior, not about the
+    user.
 
 - **A guard whose comment explains why it can never fire is the one to re-read when a backend widens
   a signal — and the *reason* it fires is exactly the operation it was reached for.**

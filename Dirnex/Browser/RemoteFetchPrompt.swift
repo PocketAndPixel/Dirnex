@@ -59,7 +59,43 @@ final class RemoteFetchPrompt {
             prompt.start()
         case .confirm:
             prompt.confirm()
+        case .decline:
+            // Unreachable for the gestures that come through here — only `.cursorPreview` declines,
+            // and it does not use this type at all (`RemoteFileCache.scheduleAutomaticFetch` is its
+            // whole path, deliberately, because it must never be able to raise a dialog). Named
+            // rather than defaulted so a future automatic gesture routed here fails at the compiler
+            // instead of silently inheriting the confirmation it exists to avoid.
+            break
         }
+    }
+
+    /// Fetch `entry` **without weighing its size** — for a caller that has already put that size in
+    /// front of the user and been told to go ahead.
+    ///
+    /// The Quick View placeholder card is the only one: it draws the file's name and size directly
+    /// above its Download button, so `RemoteFetchPolicy`'s confirmation would be asking a question
+    /// the click has already answered. Everything downstream of the decision is unchanged — the
+    /// deferred progress sheet, Stop, the cache and the failure report — so this skips the
+    /// *question* and nothing else.
+    ///
+    /// A second entry point rather than a `Bool` on the one above, because the two differ in who
+    /// decides, not in a setting: here the caller is asserting that the decision has been made.
+    static func fetchConfirmed(
+        _ entry: FileEntry,
+        in context: Context,
+        then proceed: @escaping (URL) -> Void,
+        onFailure: @escaping (any Error) -> Void
+    ) {
+        if let url = context.cache.cachedURL(for: entry) {
+            proceed(url)
+            return
+        }
+        RemoteFetchPrompt(
+            entry: entry,
+            context: context,
+            proceed: proceed,
+            onFailure: onFailure
+        ).start()
     }
 
     /// Whether the listing gave a size worth believing.

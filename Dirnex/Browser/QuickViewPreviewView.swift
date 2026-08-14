@@ -71,6 +71,10 @@ final class QuickViewPreviewView: NSView {
     var webSurface: QuickViewWebView?
     /// Internal for the same reason, from `QuickViewPreviewView+Placeholder`.
     var placeholderCard: QuickViewPlaceholderCard?
+    /// What the placeholder card's Download button does, set just before each `show`. Deliberately
+    /// not part of `RemotePreviewPlaceholder`, which is half of what "already showing this" means
+    /// (`loadedPlaceholder`) and so has to stay `Equatable`.
+    var placeholderDownloadAction: (() -> Void)?
     /// The URL currently loaded, so an unrelated refresh that re-drives the same file is skipped
     /// instead of flickering the preview.
     private var loadedURL: URL?
@@ -257,7 +261,9 @@ final class QuickViewPreviewView: NSView {
     /// *selects* — the thing Quick Look's preview cannot offer — and the web view is where a page
     /// taller than the surface **scrolls at all**, which is the whole of §M16. All three consume
     /// what they handle, which is what separates them from the remote view. The header keeps the
-    /// mouse too — it is this surface's own chrome.
+    /// mouse too — as does the placeholder card's Download button, the only way to ask for a remote
+    /// file too large to fetch on its own. The *button* is exempt and not the card, so the exemption
+    /// is exactly as large as the affordance.
     override func hitTest(_ point: NSPoint) -> NSView? {
         guard !isHidden, frame.contains(point) else { return nil }
         if let hit = super.hitTest(point), hit.isInteractiveQuickViewBackend(
@@ -265,7 +271,8 @@ final class QuickViewPreviewView: NSView {
                 pdfView,
                 textSurface?.interactiveSubtree,
                 webSurface?.interactiveSubtree,
-                headerView
+                headerView,
+                placeholderCard?.downloadButton
             ]
         ) {
             return hit

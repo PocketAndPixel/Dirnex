@@ -35,6 +35,10 @@ extension PanelViewController: @preconcurrency QLPreviewPanelDataSource, @precon
         MainActor.assumeIsolated {
             previewPanel.dataSource = nil
             previewPanel.delegate = nil
+            // The panel has stopped following this pane, so a transfer started on its behalf is for
+            // a surface nobody is looking at — unless Quick View is up, which follows the same
+            // cursor and is served by that same one transfer.
+            if host?.isQuickViewEnabled != true { host?.remoteFileCache.cancelAutomaticFetch() }
         }
     }
 
@@ -60,20 +64,37 @@ extension PanelViewController: @preconcurrency QLPreviewPanelDataSource, @precon
     /// browsed archive the member under the cursor is extracted on demand, then this runs again
     /// to show it — `prepareArchivePreview` no-ops once it's cached, so there is no loop.
     ///
-    /// **There is deliberately no remote counterpart to that extraction, and adding one here would
-    /// be the bug.** This runs on every cursor movement, so a fetch in it would spend a billed
-    /// request because the cursor passed over a row — the rule the whole slice is built on
-    /// (PLAN.md §M21 Slice 10). The cost is that arrowing onto a server row nobody has fetched
-    /// leaves the panel on its own empty state: Quick Look is Apple's window and cannot be handed
-    /// the placeholder card the pane's own surfaces draw. `openRemotePreview` belongs to the key
-    /// somebody pressed, which is `fileTableToggleQuickLook`, and to nothing else.
+    /// **The remote counterpart is here too, and the reason it is safe is not the reason the
+    /// extraction is.** An archive member is already on this Mac, so extracting one costs a
+    /// subprocess; a server object costs a billed request and somebody's bandwidth, and this method
+    /// runs on every cursor movement. `prepareRemotePreview` is therefore bounded where
+    /// `prepareArchivePreview` needs no bound at all — a settle delay, a size cap that *declines*
+    /// rather than asking, and abandonment when the cursor leaves (PLAN.md §M21 Slice 10). It
+    /// re-drives this method itself when the bytes land, so nothing here has to pass a callback.
+    ///
+    /// What is still true is that a row over the cap leaves this panel on its own empty state:
+    /// Quick Look is Apple's window and cannot be handed the placeholder card the pane's own
+    /// surfaces draw, with its size and its Download button. That is the remaining cost, and it is
+    /// smaller than the one it replaced — the panel used to be empty for *every* un-fetched row.
     func refreshQuickLookIfVisible() {
-        guard QLPreviewPanel.sharedPreviewPanelExists(),
-              let previewPanel = QLPreviewPanel.shared(),
-              previewPanel.isVisible,
-              (previewPanel.currentController as? PanelViewController) === self else { return }
+        guard isQuickLookFollowingThisPane, let previewPanel = QLPreviewPanel.shared() else {
+            return
+        }
         previewPanel.reloadData()
         prepareArchivePreview { [weak self] in self?.refreshQuickLookIfVisible() }
+        prepareRemotePreview()
+    }
+
+    /// Whether the shared preview panel is currently showing *this* pane's cursor.
+    ///
+    /// Its own property because two quite different questions rest on it: whether a refresh applies
+    /// here at all, and — from `endRemotePreview` — whether a transfer some other surface has just
+    /// stopped wanting is still wanted by this one. `QLPreviewPanel.shared()` *creates* the panel,
+    /// so the existence check has to come first (docs/NOTES.md ▸ AppKit).
+    var isQuickLookFollowingThisPane: Bool {
+        QLPreviewPanel.sharedPreviewPanelExists()
+            && QLPreviewPanel.shared()?.isVisible == true
+            && (QLPreviewPanel.shared()?.currentController as? PanelViewController) === self
     }
 
     /// What Quick Look previews: where the rows are not files on this Mac, just the one under the
