@@ -1,3 +1,4 @@
+import AppKit
 import DirnexCore
 import Foundation
 import Testing
@@ -218,6 +219,7 @@ final class S3AccountLiveIntegrationTests {
                 .contains { controller.panel.model[$0].name == "dirnex-live-probe" }
         }
     }
+
 }
 
 /// The opt-in configuration for the live S3 suite.

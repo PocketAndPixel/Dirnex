@@ -3394,6 +3394,34 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
       linters were green throughout. It took pressing the key — the one the app's own placeholder
       card names in its hint, which is the detail that makes the failure read as a lie rather than
       as a limitation.
+  - **The fifth disagreed in *both* directions at once, which is what a routing backend makes
+    possible: `backend.capabilities` and `backend.capabilities(for:)` are two different questions and
+    both spellings compile everywhere.** F2's and ⇧F2's flows guarded on the first — the
+    `CompositeBackend`'s backend-wide set, which is *always* the local backend's — while
+    `validateMenuItem` asked the second, the set of whoever owns the current path. So on a connected
+    bucket File ▸ Rename… was gray while F2 renamed the object perfectly, and in the merged iCloud
+    listing the item was **enabled** over a flow that returned in silence, because those rows are
+    ordinary local files (local capabilities) inside a listing with no directory of its own. One
+    predicate (`canRenameHere`, carrying `!isVirtualDirectory` as its second half) is the fix; the
+    tell to grep for is a `capabilities` with no `(for:)` in a file that also knows about `panel.path`.
+    - **A capability withheld from a backend that has the verb reads as a decision and is usually a
+      miss.** `S3Backend` advertised `[.read, .write]` with `moveItem` implemented and a live bucket
+      full of objects renamed through the UI. FTP and SFTP have carried `.rename` since they shipped,
+      so the *asymmetry between backends* is the cheap scan — not the capability's own doc comment,
+      which will happily explain a gap nobody chose.
+    - **A negative control that presents a window wedges the suite instead of failing it, and that is
+      worse than no control.** `beginMultiRename` ends in `presentAsMovableWindow`, so the reverted
+      version put an app-modal window up in the test host: the run never finished and `xcodebuild`
+      had to be killed at ten minutes, which reads as broken infrastructure rather than as the
+      regression it is. The F2 half is drivable because `beginRename` sets `renamingEntryID` before
+      it touches a view — but **only with `loadViewIfNeeded()` first**: `tableView` is a stored
+      property, so an unloaded pane has one with no columns, and a flow that wrongly got past the
+      guard returns at `nameColumnDisplayIndex` instead, leaving the assertion green. Measured both
+      ways; without that one line the whole suite passes against a deliberately reverted flow.
+    - **The pane's own routing is the instrument, and a `LocalBackend` pane cannot see this bug at
+      all** — it answers its own capabilities for every path, so both spellings agree and any test
+      built on one passes however far they have drifted. Build the pane on a real `CompositeBackend`
+      and register the connection; that touches no network.
 - **Tree size bars are one directory per *level*, so the sizes have to live where the rows do.** The
   flat `SizeVisualization(model:)` reads one directory's siblings; a tree's rows span many, and its
   totals cannot sit in `DirectoryModel.directorySizes` — that map is pruned to the *root* listing on

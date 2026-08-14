@@ -97,6 +97,10 @@ struct CompositeBackendTests {
         let caps = backend.capabilities(for: path)
         #expect(caps.contains(.read))
         #expect(caps.contains(.write))
+        // The set the *pane* reads, which is the whole point of routing per path: F2 and its menu
+        // item both ask this one, so a bucket that renames must say so here or the item grays over
+        // a working key (`RenameReachTests`).
+        #expect(caps.contains(.rename))
         // Trash-less and clone-less: F8 degrades to the confirmed permanent delete, and a copy
         // never takes the instant-clone path a real filesystem offers.
         #expect(!caps.contains(.trash))

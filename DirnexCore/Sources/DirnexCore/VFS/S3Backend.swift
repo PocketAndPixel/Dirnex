@@ -35,14 +35,28 @@ public struct S3Backend: ConnectionScopedBackend {
     public var id: VFSBackendID { .s3(location) }
     public var connectionDescriptor: String { location.connectionDescriptor }
 
-    /// Read and write. No `.clone`, since a copy-on-write clone is a single-filesystem primitive
-    /// and S3's server-side copy really does move the bytes (it is just S3 paying for it, not this
-    /// machine) — advertising `.clone` would send `CopyEngine` down a path whose whole premise is
-    /// that the copy is free and instant.
+    /// Read, write and rename. No `.clone`, since a copy-on-write clone is a single-filesystem
+    /// primitive and S3's server-side copy really does move the bytes (it is just S3 paying for it,
+    /// not this machine) — advertising `.clone` would send `CopyEngine` down a path whose whole
+    /// premise is that the copy is free and instant.
     ///
     /// No `.watch` either, and that one is permanent: S3 has no change notification, so an S3 pane
     /// re-lists on focus and on demand as the FTP and SFTP panes do.
-    public var capabilities: VFSCapabilities { [.read, .write] }
+    ///
+    /// `.rename` was missing until 2026-08-14 and its absence was the *inconsistent* half of a
+    /// two-spellings bug, not a decision: ``S3Backend/moveItem(at:to:)`` has always renamed an
+    /// object with a server-side copy and a delete, and the live bucket carries a file renamed
+    /// through the UI. What the pane did with `[.read, .write]` was gray File ▸ Rename… while F2
+    /// went on working, because the key asked the *composite's* backend-wide capabilities (the local
+    /// backend's) and the validator asked this per-path set — the one-rule-several-spellings family
+    /// (docs/NOTES.md ▸ AppKit). Both sites now ask this one.
+    ///
+    /// A **folder** is the stated caveat rather than a counter-argument: `moveItem` answers `EXDEV`
+    /// for a prefix, which is the request to run it as a recursive copy-then-delete, and the inline
+    /// rename does not have that machinery — it calls the primitive directly. So F2 on a prefix
+    /// reports an error where it used to report the same error one gesture later. That is unchanged
+    /// by this capability, which decides only whether the *menu item* agrees with the key.
+    public var capabilities: VFSCapabilities { [.read, .write, .rename] }
 
     // MARK: - Listing
 

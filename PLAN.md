@@ -1143,6 +1143,43 @@ tests, 2364 core / 452 app green, both linters clean.
   the parser keeps it verbatim and nothing reads into it. An empty `<ETag>` is `nil` rather than
   `""`, or two tag-less objects would compare equal and be read as proof neither had changed.
 
+**Rename's two spellings, 2026-08-14 — the fifth instance, and the first that was wrong in both
+directions at once.** Found while verifying this slice live: with the cursor on an S3 object,
+File ▸ Rename… and Multi-Rename were **gray while F2 itself worked**. `S3Backend` advertised
+`[.read, .write]` with `moveItem` implemented since the write half shipped — a miss, not a decision,
+since FTP and SFTP have carried `.rename` since they shipped and the live bucket already held an
+object renamed through the UI — so it is `[.read, .write, .rename]` now. But the capability was only
+the half that was *visible*: `beginRename` and `beginMultiRename` guarded on `backend.capabilities`,
+the composite's backend-wide set, which is always the **local** backend's, while `validateMenuItem`
+asked `capabilities(for: panel.path)`. Both compile everywhere and they are different questions.
+One predicate — `canRenameHere`, carrying `!isVirtualDirectory` as its second half — is what the two
+flows and the two menu items now all read. +4 tests (`RenameReachTests`, plus a live one), 2364 core
+/ 456 app green, both linters clean.
+
+- **The other direction was the merged iCloud listing, and nothing had reported it**: the item was
+  *enabled* over a flow that returned in silence, because those rows are ordinary local files (so the
+  capability says yes) inside a listing with no directory of its own. Graying it is the honest answer
+  — half those rows are an app's `Documents` folder wearing the app's name, which is not what
+  renaming them would do. Fixed by the same predicate, in the same edit.
+- **Three negative controls, each failing only its own assertions**: withdrawing `.rename` from
+  `S3Backend` (the capability tests, plus the connected-bucket rows), reverting the two flows to
+  `backend.capabilities` (only the key's refusals, and only where the two sets differ), and dropping
+  `!isVirtualDirectory` from the predicate (only the iCloud row, in all three tests).
+- **A fourth control is deliberately absent and the reason is recorded in the suite**: a reverted
+  `beginMultiRename` presents an app-modal window from the test host, which **wedges** the run
+  instead of failing it. The F2 half is drivable and needs `loadViewIfNeeded()` to mean anything —
+  measured, without it the whole suite passes against a reverted flow, because an unloaded pane's
+  table has no columns and the flow returns one guard later.
+- **Verified live against the saved account**: the item is enabled on an object, and renaming through
+  it re-lists with the new name, the same 42 bytes, a fresh `LastModified`, and the old key gone.
+- **The folder caveat is measured rather than inferred, and it is unchanged by any of this.** F2 on a
+  prefix draws «Can't rename "docs" — The system reported an error (code 18)»: `moveItem` answers
+  `EXDEV` for a prefix, which is the request `CopyEngine` runs as a recursive copy-then-delete, and
+  inline rename calls the primitive directly. Nothing is written (the folder is untouched
+  afterwards), and it was reachable by key before this change; what is new is that the menu item now
+  reaches it too. Worth a decision of its own — either a named `VFSUnsupportedReason` in place of the
+  raw errno, or routing a prefix rename onto the operation queue.
+
 All three stop at one predicate today. `quickViewSourceURL` resolves a local path or an already
 extracted archive member and answers `nil` for anything else, so an S3 row previews nothing; F4 says
 «Only files on this Mac can be edited — copy it out first (F5)»; and ⏎ falls off the end of

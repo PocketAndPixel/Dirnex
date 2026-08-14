@@ -20,13 +20,14 @@ extension PanelViewController {
     // MARK: - Begin
 
     /// Start editing the cursor entry's name in place. No-op when already renaming, when
-    /// the cursor is on `..`/empty, or when the backend can't rename.
+    /// the cursor is on `..`/empty, or when this pane can't rename.
     func beginRename() {
         guard renamingEntryID == nil else { return }
-        // Rename computes the new path from the pane's directory — a virtual pane (search
-        // results or an archive) hasn't got a writable one; open the real folder first.
-        guard !isVirtualDirectory else { return }
-        guard backend.capabilities.contains(.rename) else { return }
+        // `canRenameHere` — the same property File ▸ Rename… grays itself off, rather than a second
+        // spelling of it. The two had drifted, and a menu item's own key equivalent is dispatched
+        // through the item, so a mismatch is a key that works where the menu says it cannot (or the
+        // reverse, which is worse: an enabled item over a flow that returns here in silence).
+        guard canRenameHere else { return }
         guard !cursorOnParentRow, let entry = panel.currentEntry else { return }
         guard let columnIndex = nameColumnDisplayIndex else { return }
 

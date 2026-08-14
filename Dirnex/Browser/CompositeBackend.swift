@@ -172,13 +172,13 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         }
         if path.backend.isSFTP { return sftpBackend(for: path.backend)?.capabilities ?? .read }
         if path.backend.isFTP { return ftpBackend(for: path.backend)?.capabilities ?? .read }
-        // A connected bucket is `[.read, .write]` — Trash-less and clone-less, the same M5
+        // A connected bucket is `[.read, .write, .rename]` — Trash-less and clone-less, the same M5
         // degradation shape as SFTP. A path whose connection is gone falls back to `.read` for the
         // reason SFTP does: gray the writes rather than offer ones there is no credential to
         // perform. This stopped being a no-op when the write half landed — before it, both sides of
         // the `??` were the same value, so the fallback was untestable and provably harmless.
         if path.backend.isS3 { return s3Backend(for: path.backend)?.capabilities ?? .read }
-        // An account pane is `[.read, .write]` too, and it means something narrower: the writes are
+        // An account pane is `[.read, .write]`, and it means something narrower: the writes are
         // *creating and deleting buckets*, which is what F7 and F8 do on rows that are buckets.
         // There is deliberately no `.rename` — S3 cannot rename a bucket at any level — and
         // `acceptsUploads` is false for this backend, so F5 into it is refused up front rather than

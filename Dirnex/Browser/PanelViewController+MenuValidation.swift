@@ -188,9 +188,28 @@ extension PanelViewController: NSMenuItemValidation {
         backend.capabilities(for: panel.path).contains(.write) && creationDirectory != nil
     }
 
-    /// This pane can rename an item in place — the owning backend advertises `.rename`.
-    private var canRenameHere: Bool {
-        backend.capabilities(for: panel.path).contains(.rename)
+    /// This pane can rename an item in place — the owning backend advertises `.rename`, and the pane
+    /// is standing in a real directory rather than a synthesized listing.
+    ///
+    /// Internal, and asked by the **flows** as well as by this validator (F2's `beginRename`, ⇧F2's
+    /// `beginMultiRename`), because two hand-written copies of one rule is how they drifted: the
+    /// flows guarded on `backend.capabilities` — the composite's *backend-wide* set, which is always
+    /// the local backend's — while this asked `capabilities(for:)`, the set of whichever backend owns
+    /// the current path. The two then disagreed in both directions at once. On S3 the item was gray
+    /// and the key worked, because S3 did not advertise `.rename` and the local backend does; in the
+    /// merged iCloud listing the item was *enabled* and the key silently did nothing, because those
+    /// rows are ordinary local files (so the capability is the local one) sitting in a listing with
+    /// no directory of its own. One property answers both, so neither surface can be reached without
+    /// the other (docs/NOTES.md ▸ AppKit — the size-bar and `canGoToParent` lessons).
+    ///
+    /// `isVirtualDirectory` is the second half rather than a capability because it is not about the
+    /// backend at all: an iCloud row's real path *is* renameable, and renaming an app library's
+    /// `Documents` folder — which is what half those rows are — is not what the name on screen
+    /// offers. Same shape as `canWriteHere`, whose `creationDirectory` half exists for the mirror
+    /// case. Safe in a validator, which does not reconcile the cursor first: *which* directory
+    /// follows the cursor in a tree, but *whether the pane has one* never does.
+    var canRenameHere: Bool {
+        !isVirtualDirectory && backend.capabilities(for: panel.path).contains(.rename)
     }
 
     /// Boolean view toggles that carry a checkmark tracking their state and are always

@@ -18,11 +18,13 @@ extension PanelViewController {
     }
 
     /// Open the tool on the operation targets (the marked set, else the cursor entry — never
-    /// `..`). No-op when there's nothing to rename or the backend can't rename.
-    private func beginMultiRename() {
-        // The batch tool renames within the pane's directory, which a virtual pane lacks.
-        guard !isVirtualDirectory else { return }
-        guard backend.capabilities.contains(.rename) else { return }
+    /// `..`). No-op when there's nothing to rename or this pane can't rename.
+    ///
+    /// Internal rather than private so `RenameReachTests` can drive the real refusal; the whole
+    /// point of the fix it pins is that this guard and the menu item's are one property.
+    func beginMultiRename() {
+        // `canRenameHere`, the same property ⇧F2's menu item grays itself off — see `beginRename`.
+        guard canRenameHere else { return }
         let targets = selectionTargets()
         guard !targets.isEmpty else { return }
 

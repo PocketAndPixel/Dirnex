@@ -33,11 +33,16 @@ struct S3BackendWriteTests {
 
     // MARK: - Capabilities
 
-    @Test("the bucket advertises write, and never clone or watch")
+    @Test("the bucket advertises write and rename, and never clone or watch")
     func capabilities() {
         let capabilities = backend(FakeS3Transport()).capabilities
         #expect(capabilities.contains(.read))
         #expect(capabilities.contains(.write))
+        // The one this suite already proves twice over: `moveItem` renames an object with a
+        // server-side copy and a delete, and answers `EXDEV` for a prefix so `CopyEngine` runs the
+        // recursive case. Withholding `.rename` grayed File ▸ Rename… over a verb that works —
+        // FTP and SFTP, whose rename is one command, have advertised it since they shipped.
+        #expect(capabilities.contains(.rename))
         // A server-side copy really moves the bytes — S3 pays, not this machine — so it is not the
         // instant same-filesystem primitive `.clone` promises `CopyEngine`.
         #expect(!capabilities.contains(.clone))
