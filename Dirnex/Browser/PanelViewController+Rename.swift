@@ -114,6 +114,10 @@ extension PanelViewController {
         // case-only change ("foo" → "Foo") is allowed: on case-insensitive APFS the
         // destination "exists" but is the same inode, and `rename` performs the case fix.
         let caseOnlyChange = newName.lowercased() == oldName.lowercased()
+        // The entry as the pane already knows it, captured before the attempt: a backend that
+        // cannot rename in place (an S3 prefix — `EXDEV`) hands the work to the queue, which needs
+        // a `FileEntry`, and re-`stat`ing to get one would be a second billed round trip.
+        let sourceEntry = panel.displayedIndex(ofID: source).flatMap { panel.displayedEntry(at: $0) }
         let backend = backend
         Task {
             do {
@@ -127,6 +131,14 @@ extension PanelViewController {
                 focusTable()
                 host?.recordUndoableAction(.rename(from: source, to: destination))
             } catch {
+                // `EXDEV` is the backend asking for the long way round, not a failure: run it as a
+                // job (PLAN.md §M21). Without the entry there is nothing to enqueue, so it falls
+                // through to the ordinary alert rather than reporting a success nobody performed.
+                if RenameDeferral.isDeferred(error), let sourceEntry {
+                    focusTable()
+                    queueDeferredRenames([DeferredRename(source: sourceEntry, newName: newName)])
+                    return
+                }
                 presentOperationFailure(
                     message: String(
                         localized: "Can’t rename “\(oldName)”",

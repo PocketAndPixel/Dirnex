@@ -1178,7 +1178,81 @@ flows and the two menu items now all read. +4 tests (`RenameReachTests`, plus a 
   inline rename calls the primitive directly. Nothing is written (the folder is untouched
   afterwards), and it was reachable by key before this change; what is new is that the menu item now
   reaches it too. Worth a decision of its own — either a named `VFSUnsupportedReason` in place of the
-  raw errno, or routing a prefix rename onto the operation queue.
+  raw errno, or routing a prefix rename onto the operation queue. **Taken 2026-08-14, the second
+  way** (below).
+
+**A folder rename runs as a job, 2026-08-14 — the caveat above, answered.** F2 and ⇧F2 on an S3
+prefix now do the thing rather than name the reason they cannot: `EXDEV` is handed to the queue,
+which already knows how to finish it. `FileOperation.renamedTo` with its
+`init(renaming:to:in:)`, one line in `CopyEngine`, `PanelViewController+RenameQueue` and one
+`submit(_:)` both transfer paths share; +7 core tests, +4 app tests, 2371 core / 460 app green,
+both linters clean, 4 strings in all 14 catalogs.
+
+- **Nothing new moves bytes, which is the whole reason it was affordable.** `moveItem` has answered
+  `EXDEV` for a prefix since Slice 4, and `CopyEngine.perform` has turned that into a recursive
+  copy-then-delete for longer than S3 has existed here — with a determinate bar, Stop, the conflict
+  policy, per-item failures and an undo record from the outcomes. What was missing was a job that
+  lands its **one** source under a *different* name, which is four lines of value type.
+- **A field on a `.move`, not a `Kind` of its own.** A rename that reaches the queue *is* a move; a
+  `.rename` kind would fork every `switch` over `Kind` — four label sites in the app, the undo
+  journal's label map, `CopyEngine`'s own `kind == .move` tests — to change a caption on a job whose
+  behavior is identical. Only `init(renaming:to:in:)` sets the field, so "several sources under one
+  new name" is unrepresentable rather than merely undocumented, and the queue bar's "Move" is
+  preceded by a confirmation that says what is really about to happen.
+- **The confirmation is not politeness.** A prefix rename is N billed copies and N deletes with no
+  atomicity available at any layer (§ the permanent consequences above), so the sheet says so —
+  including that stopping partway leaves some items under each name, which is the one outcome a user
+  cannot infer from a progress bar. F2 on a local folder is untouched: a local rename never crosses
+  a volume, so it never reaches this.
+- **The undo half was a guard resting on an invariant this change retires**, and it is the milestone's
+  own lesson arriving in the core rather than the app. `UndoJournal.crossVolumeRestore` required
+  `from.lastComponent == to.lastComponent`, with the reason written out — "a rename never crosses
+  volumes, so it never gets here" — so ⌘Z on a queued rename would have refused **exactly** the
+  operation it was reached for, `EXDEV` on a restore that had nothing wrong with it. It now builds
+  the same rename operation, which for a same-name move is `entry.name`: one path, no branch, and no
+  invariant left for the next backend to break. The tell to grep for is a comment explaining why two
+  things *cannot* collide (docs/NOTES.md ▸ Design lessons).
+- **⇧F2 came with it rather than after it.** Multi-rename swallowed the same `EXDEV` into "Couldn't
+  rename 3 items — The other items were renamed", so fixing F2 alone would have been this milestone's
+  most-repeated finding once more. Both flows now classify through one `RenameDeferral` and enqueue
+  through one funnel; the batch's *other* failures are reported from the confirmation's completion,
+  since a second sheet raised on a window that already has one is queued invisibly.
+- **What the app tests can and cannot reach, said out loud in the suite.** The classification and the
+  operation are pinned headlessly — including that the job takes the **row's own** directory, which
+  in a tree is not the pane's, the second-index-space trap inline rename already hit for real. The
+  flow itself is not driven: it ends in a confirmation, and on a window-less pane that is
+  `NSAlert.runModal()`, which **wedges** a run rather than failing it (`RenameReachTests` measured
+  that cost for ⇧F2's modal window). The keystroke is verified live instead.
+- **Two negative controls, each failing only its own assertions**: reverting `CopyEngine` to
+  `entry.name` failed the four rename tests while the ordinary-move and `landingName` ones stayed
+  green, and restoring `crossVolumeRestore`'s name guard failed exactly the undo test — with the
+  reoccupied-name test still passing, which is what says the guard that was removed was the right
+  one.
+- `UndoJournal.swift` reached SwiftLint's 500-line ceiling on the way, and was split by concept
+  rather than shaved: `UndoJournal+Revert.swift` now holds everything that touches bytes, leaving the
+  stacks and the record builders behind. (`swiftformat --lint` had also been failing on
+  `S3AccountLiveIntegrationTests.swift` since the previous commit; fixed in passing.)
+
+**Verified live against the real third-party bucket**, with the server's own listing as the judge
+rather than the pane's. A `renameprobe/` prefix holding `alpha.txt` and `sub/beta.txt`: F2 → the
+sheet reads «Rename "renameprobe" to "renamed-probe"?» → the queue bar shows *Moving renameprobe* →
+the pane re-lists under the new name, and an independent `ListObjectsV2` holds
+`renamed-probe/alpha.txt` and `renamed-probe/sub/beta.txt` with `renameprobe/` gone and the bytes
+intact. Then three more, because each is a branch the tests cannot drive: **⌘Z** put the whole
+subtree back under `renameprobe/` (the widened `crossVolumeRestore`, live); **Cancel** wrote nothing
+at all — no `should-not-happen` key anywhere in the bucket; and **⇧F2** raised the identical sheet
+through the batch path and landed `batchprobe/` with both files. Probe data removed afterwards.
+
+**One thing the run found that is *not* about this feature, and is worth its own decision.** With the
+four new app tests in, `S3AccountLiveIntegrationTests`' first test times out in the **full** parallel
+run — 72 s and 209 s on two runs — while passing in 1.2 s on its own, and passing beside
+`RemoteFileEditLiveIntegrationTests`. Three controls place it: skipping the four new tests → 455
+green in 27 s; keeping them and skipping `RenameReachTests` instead → 456 green in 18 s; and
+`-parallel-testing-enabled NO` → **all 459 green**. So it is the live suite's tolerance for parallel
+load, not the change: a fourth `@MainActor` pane-building suite is enough to starve a connect that
+blocks on `curl`, and the failure surfaces in the shared `connectedPane` helper, which reads as the
+feature being broken (docs/NOTES.md ▸ Testing already records that shape for the same suite). What it
+needs is a decision about how the live suites run, not another `.serialized`.
 
 All three stop at one predicate today. `quickViewSourceURL` resolves a local path or an already
 extracted archive member and answers `nil` for anything else, so an S3 row previews nothing; F4 says

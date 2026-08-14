@@ -222,13 +222,23 @@ extension PanelViewController {
         sources: [FileEntry],
         destination: VFSPath
     ) {
+        submit(
+            FileOperation(
+                kind: kind,
+                sources: sources,
+                destinationDirectory: destination
+            )
+        )
+    }
+
+    /// Hand an already-built operation to the queue under the same policy and prompters
+    /// `submitTransfer` uses. Separate because a rename the backend refused in place
+    /// (`PanelViewController+RenameQueue`) is a job whose destination *name* differs from its
+    /// source's, which only ``FileOperation/init(renaming:to:in:)`` can express — and having two
+    /// spellings of "enqueue with the conflict and error prompters" is how the two drift.
+    func submit(_ operation: FileOperation) {
         let conflictPrompter = ConflictPrompter(window: view.window)
         let errorPrompter = ErrorPrompter(window: view.window)
-        let operation = FileOperation(
-            kind: kind,
-            sources: sources,
-            destinationDirectory: destination
-        )
         host?.enqueue(
             operation,
             conflictPolicy: .ask,

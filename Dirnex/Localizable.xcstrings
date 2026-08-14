@@ -57728,6 +57728,287 @@
         }
       }
     },
+    "Rename %lld items?": {
+      "comment": "Confirmation title for a batch of renames that have to run as jobs; %lld is the count.",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Objekt umbenennen?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Objekte umbenennen?"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Rename %lld item?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Rename %lld items?"
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "¿Renombrar %lld ítem?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "¿Renombrar %lld ítems?"
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Renommer %lld élément ?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Renommer %lld éléments ?"
+                }
+              }
+            }
+          }
+        },
+        "it": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Rinominare %lld elemento?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Rinominare %lld elementi?"
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld項目の名前を変更しますか？"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld項目の名前を変更しますか？"
+                }
+              }
+            }
+          }
+        },
+        "ko": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld개 항목의 이름을 변경하겠습니까?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld개 항목의 이름을 변경하겠습니까?"
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Wil je %lld onderdeel hernoemen?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Wil je %lld onderdelen hernoemen?"
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Zmienić nazwę %lld rzeczy?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Zmienić nazwy %lld rzeczy?"
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Renomear %lld item?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Renomear %lld itens?"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Переименовать %lld объекта?"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Переименовать %lld объектов?"
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Переименовать %lld объект?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Переименовать %lld объектов?"
+                }
+              }
+            }
+          }
+        },
+        "uk": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Перейменувати %lld об’єкти?"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Перейменувати %lld об’єктів?"
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Перейменувати %lld об’єкт?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Перейменувати %lld об’єкта?"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "重新命名 %lld 个项目？"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "重新命名 %lld 个项目？"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "重新命名 %lld 個項目？"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "重新命名 %lld 個項目？"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Rename Favorite": {
       "comment": "Title of the dialog that renames a pinned sidebar favorite.",
       "localizations": {
@@ -57991,6 +58272,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "重新命名保險庫"
+          }
+        }
+      }
+    },
+    "Rename “%@” to “%@”?": {
+      "comment": "Confirmation title for a rename that has to run as a job; the two %@ are the current name and the new one.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ in „%@“ umbenennen?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rename “%@” to “%@”?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Renombrar «%@» como «%@»?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renommer «%@» en «%@» ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rinominare “%@” in “%@”?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”の名前を“%@”に変更しますか？"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”의 이름을 “%@”(으)로 변경하겠습니까?"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wil je “%@” hernoemen naar “%@”?"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zmienić nazwę „%@” na „%@”?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renomear “%@” para “%@”?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переименовать «%@» в «%@»?"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перейменувати «%@» на «%@»?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将“%@”重新命名为“%@”？"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "將「%@」重新命名為「%@」？"
           }
         }
       }
@@ -76292,6 +76662,184 @@
           "stringUnit": {
             "state": "translated",
             "value": "此金鑰無法列出儲存桶 — 請輸入名稱"
+          }
+        }
+      }
+    },
+    "This location can’t rename them in place, so everything inside each one is copied to its new name and the originals are then deleted. The jobs run in the background and can be stopped — stopping partway leaves some items under each name.": {
+      "comment": "Confirmation body for a batch of renames that have to run as jobs.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An diesem Ort können sie nicht direkt umbenannt werden: Der Inhalt jedes Objekts wird unter seinem neuen Namen kopiert und die Originale werden anschließend gelöscht. Die Vorgänge laufen im Hintergrund und können gestoppt werden – werden sie vorzeitig gestoppt, liegen einige Objekte unter dem einen und einige unter dem anderen Namen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This location can’t rename them in place, so everything inside each one is copied to its new name and the originals are then deleted. The jobs run in the background and can be stopped — stopping partway leaves some items under each name."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta ubicación no puede renombrarlos directamente, así que el contenido de cada uno se copia con su nuevo nombre y luego se eliminan los originales. Las tareas se ejecutan en segundo plano y se pueden detener; si se detienen a medias, algunos ítems quedan con cada nombre."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cet emplacement ne peut pas les renommer sur place : le contenu de chacun est copié sous son nouveau nom, puis les originaux sont supprimés. Les tâches s’exécutent en arrière-plan et peuvent être arrêtées — si elles sont arrêtées en cours de route, certains éléments restent sous chaque nom."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa posizione non può rinominarli sul posto, quindi il contenuto di ciascuno viene copiato con il suo nuovo nome e gli originali vengono poi eliminati. Le operazioni vengono eseguite in background e possono essere interrotte: se vengono interrotte a metà, alcuni elementi restano sotto ciascun nome."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この場所ではその場で名前変更できないため、それぞれの中身が新しい名前にコピーされ、そのあとに元のファイルが削除されます。処理はバックグラウンドで実行され、停止できます。途中で停止すると、一部の項目が両方の名前に分かれて残ります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 위치에서는 제자리에서 이름을 변경할 수 없으므로, 각 항목의 내용이 새 이름으로 복사된 다음 원본이 삭제됩니다. 이 작업들은 백그라운드에서 실행되며 중지할 수 있습니다. 도중에 중지하면 일부 항목이 두 이름에 나뉘어 남습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze locatie kan ze niet ter plekke hernoemen: de inhoud van elk onderdeel wordt naar de nieuwe naam gekopieerd en daarna worden de originelen verwijderd. De taken draaien op de achtergrond en kunnen worden gestopt — stop je halverwege, dan staan sommige onderdelen onder de ene en sommige onder de andere naam."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta lokalizacja nie może zmienić ich nazw w miejscu, więc zawartość każdego z nich zostanie skopiowana pod nową nazwę, a oryginały następnie usunięte. Zadania działają w tle i można je zatrzymać — zatrzymane w połowie zostawiają część rzeczy pod każdą z nazw."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este local não pode renomeá-los no lugar, então o conteúdo de cada um é copiado para o novo nome e os originais são apagados em seguida. As tarefas são executadas em segundo plano e podem ser interrompidas — se forem interrompidas no meio, alguns itens ficam com cada nome."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В этом расположении нельзя переименовать их на месте, поэтому содержимое каждого копируется под новым именем, а оригиналы затем удаляются. Задачи выполняются в фоне, их можно остановить — но если остановить на середине, часть объектов останется под каждым из имён."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У цьому розташуванні не можна перейменувати їх на місці, тому вміст кожного копіюється під новою назвою, а оригінали потім вилучаються. Завдання виконуються у фоні, їх можна зупинити — але якщо зупинити на середині, частина об’єктів залишиться під кожною з назв."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此位置无法就地重新命名它们，因此每一项的内容会被复制到新名称下，随后删除原件。这些任务在后台运行，可以停止；中途停止会让一部分项目留在各自的名称下。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此位置無法就地重新命名它們，因此每一項的內容會被拷貝到新名稱下，隨後刪除原件。這些工作在背景執行，可以停止；中途停止會讓部分項目留在各自的名稱下。"
+          }
+        }
+      }
+    },
+    "This location can’t rename “%@” in place, so everything inside it is copied to the new name and the originals are then deleted. The job runs in the background and can be stopped — stopping partway leaves some items under each name.": {
+      "comment": "Confirmation body for a rename that has to run as a job; %@ is the current name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An diesem Ort kann „%@“ nicht direkt umbenannt werden: Der gesamte Inhalt wird unter dem neuen Namen kopiert und die Originale werden anschließend gelöscht. Der Vorgang läuft im Hintergrund und kann gestoppt werden – wird er vorzeitig gestoppt, liegen einige Objekte unter dem einen und einige unter dem anderen Namen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This location can’t rename “%@” in place, so everything inside it is copied to the new name and the originals are then deleted. The job runs in the background and can be stopped — stopping partway leaves some items under each name."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta ubicación no puede renombrar «%@» directamente, así que todo su contenido se copia con el nuevo nombre y luego se eliminan los originales. La tarea se ejecuta en segundo plano y se puede detener; si se detiene a medias, algunos ítems quedan con cada nombre."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cet emplacement ne peut pas renommer «%@» sur place : tout son contenu est copié sous le nouveau nom, puis les originaux sont supprimés. La tâche s’exécute en arrière-plan et peut être arrêtée — si elle est arrêtée en cours de route, certains éléments restent sous chaque nom."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa posizione non può rinominare “%@” sul posto, quindi tutto il suo contenuto viene copiato con il nuovo nome e gli originali vengono poi eliminati. L’operazione viene eseguita in background e può essere interrotta: se viene interrotta a metà, alcuni elementi restano sotto ciascun nome."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この場所では“%@”をその場で名前変更できないため、中身がすべて新しい名前にコピーされ、そのあとに元のファイルが削除されます。処理はバックグラウンドで実行され、停止できます。途中で停止すると、一部の項目が両方の名前に分かれて残ります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 위치에서는 “%@”의 이름을 제자리에서 변경할 수 없으므로, 안에 있는 모든 항목이 새 이름으로 복사된 다음 원본이 삭제됩니다. 이 작업은 백그라운드에서 실행되며 중지할 수 있습니다. 도중에 중지하면 일부 항목이 두 이름에 나뉘어 남습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze locatie kan “%@” niet ter plekke hernoemen: alles wat erin zit wordt naar de nieuwe naam gekopieerd en daarna worden de originelen verwijderd. De taak draait op de achtergrond en kan worden gestopt — stop je halverwege, dan staan sommige onderdelen onder de ene en sommige onder de andere naam."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta lokalizacja nie może zmienić nazwy „%@” w miejscu, więc cała jej zawartość zostanie skopiowana pod nową nazwę, a oryginały następnie usunięte. Zadanie działa w tle i można je zatrzymać — zatrzymane w połowie zostawia część rzeczy pod każdą z nazw."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este local não pode renomear “%@” no lugar, então todo o seu conteúdo é copiado para o novo nome e os originais são apagados em seguida. A tarefa é executada em segundo plano e pode ser interrompida — se for interrompida no meio, alguns itens ficam com cada nome."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В этом расположении нельзя переименовать «%@» на месте, поэтому всё, что внутри, копируется под новым именем, а оригиналы затем удаляются. Задача выполняется в фоне, её можно остановить — но если остановить на середине, часть объектов останется под каждым из имён."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У цьому розташуванні не можна перейменувати «%@» на місці, тому все, що всередині, копіюється під новою назвою, а оригінали потім вилучаються. Завдання виконується у фоні, його можна зупинити — але якщо зупинити на середині, частина об’єктів залишиться під кожною з назв."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此位置无法就地重新命名“%@”，因此其中的所有内容会被复制到新名称下，随后删除原件。该任务在后台运行，可以停止；中途停止会让一部分项目留在各自的名称下。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此位置無法就地重新命名「%@」，因此其中的所有內容會被拷貝到新名稱下，隨後刪除原件。該工作在背景執行，可以停止；中途停止會讓部分項目留在各自的名稱下。"
           }
         }
       }

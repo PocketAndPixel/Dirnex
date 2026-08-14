@@ -37,7 +37,7 @@ extension PanelViewController {
             existingNamesByDirectory: existingNamesByDirectory(for: targets)
         )
         controller.onApply = { [weak self] proposals in
-            self?.applyMultiRename(proposals)
+            self?.applyMultiRename(proposals, targets: targets)
         }
         presentAsMovableWindow(controller)
     }
@@ -63,7 +63,11 @@ extension PanelViewController {
     /// Perform the batch off the main thread, then refresh the pane and journal the whole thing
     /// as one undo record. The planner guarantees each target is unique and lands on no existing
     /// bystander, so a plain `moveItem` per item is safe and order-independent.
-    private func applyMultiRename(_ proposals: [RenameProposal]) {
+    ///
+    /// `targets` is what the tool was opened on, carried through so an item the backend refuses to
+    /// rename in place (`EXDEV` — an S3 prefix) can be handed to the queue as the `FileEntry` the
+    /// pane already had, rather than re-`stat`ed over the network for a value nobody discarded.
+    private func applyMultiRename(_ proposals: [RenameProposal], targets: [FileEntry]) {
         // Each item is renamed in its *own* directory, not the pane's. A tree selection spans
         // levels, so the destination has to come from each source's parent — `panel.path` (the
         // tree root) would rename in place *and* move every child item up to the root, the same
@@ -75,20 +79,32 @@ extension PanelViewController {
         }
         guard !jobs.isEmpty else { focusTable(); return }
 
+        let entriesByPath = Dictionary(
+            targets.map { ($0.path, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
         let backend = backend
         Task {
             let result = await Task.detached(priority: .userInitiated) { () -> MultiRenameResult in
                 var renamed: [(original: VFSPath, renamed: VFSPath)] = []
+                var deferred: [(from: VFSPath, to: VFSPath)] = []
                 var failures: [VFSPath] = []
                 for job in jobs {
                     do {
                         try backend.moveItem(at: job.from, to: job.to)
                         renamed.append((original: job.from, renamed: job.to))
                     } catch {
-                        failures.append(job.from)
+                        // `EXDEV` is the backend asking for the long way round rather than a
+                        // refusal, so it is collected apart and offered to the queue below — the
+                        // same reading `PanelViewController+Rename` gives it for one item.
+                        if RenameDeferral.isDeferred(error) {
+                            deferred.append(job)
+                        } else {
+                            failures.append(job.from)
+                        }
                     }
                 }
-                return MultiRenameResult(renamed: renamed, failures: failures)
+                return MultiRenameResult(renamed: renamed, deferred: deferred, failures: failures)
             }.value
 
             panel.clearSelection()
@@ -98,9 +114,19 @@ extension PanelViewController {
             if let record = UndoRecord.multiRename(result.renamed) {
                 host?.recordUndoableAction(record)
             }
-            if !result.failures.isEmpty {
-                presentMultiRenameFailures(result.failures)
-            }
+            // The failures report waits for the confirmation to close: a second sheet raised on a
+            // window that already has one is queued invisibly (docs/NOTES.md ▸ AppKit).
+            let failures = result.failures
+            queueDeferredRenames(
+                result.deferred.compactMap { job in
+                    entriesByPath[job.from].map {
+                        DeferredRename(source: $0, newName: job.to.lastComponent)
+                    }
+                },
+                then: { [weak self] in
+                    if !failures.isEmpty { self?.presentMultiRenameFailures(failures) }
+                }
+            )
         }
     }
 
@@ -116,8 +142,10 @@ extension PanelViewController {
 }
 
 /// What a batch rename produced, in a `Sendable` shape so it can cross back from the background
-/// task: the items that were renamed (for the undo record) and the ones that failed.
+/// task: the items that were renamed (for the undo record), the ones the backend can only rename
+/// through the queue, and the ones that failed for real.
 private struct MultiRenameResult: Sendable {
     let renamed: [(original: VFSPath, renamed: VFSPath)]
+    let deferred: [(from: VFSPath, to: VFSPath)]
     let failures: [VFSPath]
 }

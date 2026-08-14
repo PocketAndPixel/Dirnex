@@ -47,10 +47,46 @@ public struct FileOperation: Sendable {
     public let sources: [FileEntry]
     public let destinationDirectory: VFSPath
 
+    /// The name the single source lands under, when this job is a **rename** the backend could not
+    /// perform in place. `nil` — every other job — lands each source under its own name.
+    ///
+    /// It is a field on a `.move` rather than a `Kind` of its own because a rename that reaches the
+    /// queue *is* a move: the only reason it is here is that the backend answered `EXDEV`, which is
+    /// exactly the signal ``CopyEngine`` already turns into a recursive copy-then-delete. A
+    /// `.rename` kind would fork every `switch` over ``Kind`` — four label sites in the app, the
+    /// undo journal's label map, and `CopyEngine`'s own `kind == .move` tests — to change a caption
+    /// on a job whose behavior is identical. What the user is told about the difference belongs in
+    /// the confirmation that raised it, which is where the app says it.
+    ///
+    /// Only ``init(renaming:to:in:)`` sets it, so "several sources under one new name" is
+    /// unrepresentable rather than merely undocumented.
+    public let renamedTo: String?
+
     public init(kind: Kind, sources: [FileEntry], destinationDirectory: VFSPath) {
         self.kind = kind
         self.sources = sources
         self.destinationDirectory = destinationDirectory
+        renamedTo = nil
+    }
+
+    /// A rename that has to run as a job: `source` keeps its directory and takes `newName`.
+    ///
+    /// The caller reaches for this only after ``VFSBackend/moveItem(at:to:)`` has refused with
+    /// `EXDEV` — an S3 prefix today, since a "folder" there is N objects and renaming it is N
+    /// server-side copies and N deletes. Everything that makes that bearable is the queue's
+    /// already: a determinate bar, Stop, the conflict policy, per-item failures, and an undo
+    /// record built from the outcomes.
+    public init(renaming source: FileEntry, to newName: String, in directory: VFSPath) {
+        kind = .move
+        sources = [source]
+        destinationDirectory = directory
+        renamedTo = newName
+    }
+
+    /// The name `entry` lands under in ``destinationDirectory`` — its own, unless this job is a
+    /// rename. The one place the distinction is read, so a second spelling cannot drift from it.
+    public func landingName(for entry: FileEntry) -> String {
+        renamedTo ?? entry.name
     }
 }
 

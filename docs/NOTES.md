@@ -189,6 +189,18 @@ at build time.
   secret on every successful connect, so leaving it behind puts a live-looking credential in whoever
   ran the suite — and removing it from inside the test host raises no authorization prompt, where
   `security` at a shell would.
+  - **`.serialized` only orders a suite against *itself*, and the same failure comes back from the
+    rest of the run.** Measured 2026-08-14: adding **four** trivial `@MainActor` tests (0.004 s of
+    work) made that suite's first test time out at 72 s and then 209 s in the full parallel run,
+    while it passed in 1.2 s alone and beside the other live suite. Nothing about the new tests
+    touches S3 — the connect blocks on a `curl` subprocess, and one more parallel `@MainActor` suite
+    is enough to starve it. Two things worth carrying. **`-parallel-testing-enabled NO` is the
+    instrument**: it separates "my change broke this" from "this run is too crowded" in one
+    measurement (459 green serially against a failure in the same tree run in parallel), where
+    re-running or bisecting the *source* answers neither. And the tell is a **cost mismatch** — four
+    milliseconds of new test cannot slow a connect by 200 seconds, so the added tests are the
+    trigger and not the cause; look for what the failing test is *waiting on* rather than for what
+    the new code does.
 
 ## AppKit
 
@@ -3103,6 +3115,31 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
 
 ## Design lessons that generalize
 
+- **A guard whose comment explains why it can never fire is the one to re-read when a backend widens
+  a signal — and the *reason* it fires is exactly the operation it was reached for.**
+  `UndoJournal.crossVolumeRestore` required both ends of a restore to share a name, saying so out
+  loud: "a rename never crosses volumes, so it never gets here". True on every filesystem, and
+  retired the moment a **rename** could answer `EXDEV` — an S3 prefix, whose rename is N copies and
+  is therefore handed to `CopyEngine` (PLAN.md §M21). Undoing one puts the item back under the name
+  it had *before*, which is not the name it has now, so the guard would have refused precisely the
+  case that made it reachable, with a bare `EXDEV` on a restore that had nothing wrong with it.
+  Nothing catches this: the compiler sees an `Int32` on both sides, every existing test passes
+  (they all restore same-name moves), and the tell is *prose*. The fix is to delete the invariant
+  rather than special-case it — a rename-carrying operation whose target name is `entry.name` for a
+  same-name move is one path with no branch. Same family as "an invariant held by a flag becomes a
+  bug the day the flag becomes a setting" (▸ Encryption, the vault-in-Finder case), arriving from
+  the other direction: there a *flag* became a setting, here a *signal* gained a second producer.
+  - **Reach for the queue's existing `EXDEV` fallback before designing a job**, which is the
+    constructive half and is the second time this milestone paid off: a folder *move* on S3 needed
+    no new job type for the same reason (§M21 Slice 4). What a rename needed on top was four lines
+    of value type — the one source's landing **name** — because everything else the operation wants
+    (a determinate bar, Stop, the conflict policy, per-item failures, an undo record) is what the
+    queue already is.
+  - **A field on the existing kind beat a `Kind` of its own, and the cost of the alternative is the
+    argument.** A `.rename` case would fork every `switch` over `FileOperation.Kind` — four label
+    sites in the app, the undo journal's label map, the engine's own `kind == .move` tests — to
+    change a *caption* on a job whose behavior is identical. Let the confirmation that raised it say
+    what is really happening, and keep one code path.
 - **A restriction whose comment explains *why* it exists is a feature request with a date on it, and
   the fix usually retires several of them at once.** F4 declined archive members with "would edit an
   extracted temp copy whose saves go nowhere"; the extracted copy Enter opened was `chmod 0444` for

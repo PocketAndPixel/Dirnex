@@ -142,7 +142,9 @@ private final class CopyRun {
     /// bytes discarded first), `.skip` it (collect and continue — the default), or `.abort`
     /// the whole operation. The loop re-attempts as long as the resolver keeps asking.
     private func transfer(_ entry: FileEntry, bytes: Int64) -> Bool {
-        let destination = operation.destinationDirectory.appending(entry.name)
+        // `landingName` rather than `entry.name`: a rename the backend refused in place arrives here
+        // as a one-source move that lands under a *different* name (`FileOperation.renamedTo`).
+        let destination = operation.destinationDirectory.appending(operation.landingName(for: entry))
         // The byte tally to roll back to before each attempt, so a failed-then-retried copy
         // doesn't double-count the bytes it wrote before failing.
         let bytesBefore = completedBytes
