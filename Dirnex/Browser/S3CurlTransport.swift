@@ -59,6 +59,7 @@ struct S3CurlTransport: S3Transport {
         key: String,
         to localPath: String,
         resume: Bool,
+        progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> S3Response {
         try perform(
@@ -68,6 +69,8 @@ struct S3CurlTransport: S3Transport {
                 localPath: localPath,
                 resume: resume
             ),
+            watching: .destinationFile(path: localPath),
+            progress: progress,
             isCancelled: isCancelled
         )
     }
@@ -81,6 +84,7 @@ struct S3CurlTransport: S3Transport {
     func upload(
         localPath: String,
         to key: String,
+        progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> S3Response {
         try perform(
@@ -90,6 +94,8 @@ struct S3CurlTransport: S3Transport {
                 localPath: localPath
             ),
             measuring: .upload,
+            watching: .uploadMeter(totalBytes: Self.fileSize(localPath)),
+            progress: progress,
             isCancelled: isCancelled
         )
     }
@@ -164,21 +170,23 @@ struct S3CurlTransport: S3Transport {
     }
 
     func uploadPart(
-        localPath: String,
-        to key: String,
-        uploadID: String,
-        partNumber: Int,
+        _ part: S3PartRequest,
+        progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> S3Response {
         try perform(
             S3ProcessArguments.uploadPart(
                 session: session(maxTime: transferTimeout),
-                key: key,
-                uploadID: uploadID,
-                partNumber: partNumber,
-                localPath: localPath
+                key: part.key,
+                uploadID: part.uploadID,
+                partNumber: part.number,
+                localPath: part.localPath
             ),
             measuring: .upload,
+            // The slice, not the whole file: this invocation's meter is a percentage of the part it
+            // was handed, and the orchestration above tops each part up to its exact length.
+            watching: .uploadMeter(totalBytes: Self.fileSize(part.localPath)),
+            progress: progress,
             isCancelled: isCancelled
         )
     }
@@ -255,8 +263,25 @@ struct S3CurlTransport: S3Transport {
     private func perform(
         _ arguments: [String],
         measuring direction: S3CurlRunner.Direction = .download,
+        watching source: S3CurlRunner.ProgressSource = .none,
+        progress: (Int64) -> Void = { _ in },
         isCancelled: () -> Bool = { false }
     ) throws -> S3Response {
-        try runner.perform(arguments, measuring: direction, isCancelled: isCancelled)
+        try runner.perform(
+            arguments,
+            measuring: direction,
+            watching: source,
+            progress: progress,
+            isCancelled: isCancelled
+        )
+    }
+
+    /// The size an upload is a percentage *of*. Zero for a file that cannot be read, which reads as
+    /// "no estimate available" — the transfer still runs and still reports its exact count at the
+    /// end, it simply has nothing to draw a moving bar from.
+    private static func fileSize(_ path: String) -> Int64 {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: path),
+              let size = attributes[.size] as? Int64 else { return 0 }
+        return size
     }
 }

@@ -31,12 +31,22 @@ struct S3MultipartRequest {
     let plan: S3MultipartPlan
 }
 
+/// One part as the *plan* describes it — which number it is and which bytes it covers — before
+/// anything has been cut or sent. Paired for the reason the request above is: the two always travel
+/// together, and separately they push the sending step past the parameter-count ceiling.
+private struct PlannedPart {
+    let number: Int
+    let range: Range<Int64>
+}
+
 extension S3Backend {
-    /// Upload a file in parts, reporting each part's bytes as it lands.
+    /// Upload a file in parts, reporting bytes as they move.
     ///
     /// `progress` is called with a **delta**, matching `VFSBackend.copyFile`'s contract and what
-    /// `CopyEngine` expects — the part's own length, not the running total, which would make the
-    /// engine's bar count every byte twice over.
+    /// `CopyEngine` expects — never the running total, which would make the engine's bar count every
+    /// byte twice over. Each part reports as it goes and is then topped up to its exact length once
+    /// it lands, so what the caller adds up is the plan's own arithmetic however coarse the
+    /// in-flight estimate was (``S3Transport/uploadPart(localPath:to:uploadID:partNumber:progress:isCancelled:)``).
     func uploadInParts(
         _ request: S3MultipartRequest,
         progress: (Int64) -> Void,
@@ -54,16 +64,21 @@ extension S3Backend {
                 guard let range = plan.range(ofPart: number) else {
                     throw VFSError.io(path: destination, code: EIO)
                 }
+                var streamed: Int64 = 0
                 let part = try sendPart(
-                    number: number,
-                    range: range,
+                    PlannedPart(number: number, range: range),
                     of: request,
                     uploadID: uploadID,
+                    progress: { delta in
+                        streamed += delta
+                        progress(delta)
+                    },
                     isCancelled: isCancelled
                 )
                 parts.append(part)
-                moved += range.upperBound - range.lowerBound
-                progress(range.upperBound - range.lowerBound)
+                let length = range.upperBound - range.lowerBound
+                moved += length
+                reportRemainder(of: length, streamed: streamed, to: progress)
             }
             if isCancelled() { throw CancellationError() }
             try closeUpload(key: request.key, uploadID: uploadID, parts: parts, at: destination)
@@ -94,10 +109,10 @@ extension S3Backend {
     /// The slice is removed on every exit path including the throwing ones, so a failed upload of a
     /// 100 GB file does not leave a part behind in the temp directory.
     private func sendPart(
-        number: Int,
-        range: Range<Int64>,
+        _ planned: PlannedPart,
         of request: S3MultipartRequest,
         uploadID: String,
+        progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> S3UploadedPart {
         let destination = request.destination
@@ -106,7 +121,11 @@ extension S3Backend {
         defer { try? FileManager.default.removeItem(at: slicePath) }
 
         do {
-            _ = try S3PartSlice.write(from: request.localPath, range: range, to: slicePath.path)
+            _ = try S3PartSlice.write(
+                from: request.localPath,
+                range: planned.range,
+                to: slicePath.path
+            )
         } catch {
             // The source is local, so a slice failure is about this machine's disk or about the file
             // changing underneath the upload — never about S3.
@@ -115,10 +134,13 @@ extension S3Backend {
 
         let response = try write(at: destination) {
             try transport.uploadPart(
-                localPath: slicePath.path,
-                to: request.key,
-                uploadID: uploadID,
-                partNumber: number,
+                S3PartRequest(
+                    localPath: slicePath.path,
+                    key: request.key,
+                    uploadID: uploadID,
+                    number: planned.number
+                ),
+                progress: progress,
                 isCancelled: isCancelled
             )
         }
@@ -127,7 +149,7 @@ extension S3Backend {
             // completed — fail here, where the abort still runs, rather than at the completion.
             throw VFSError.io(path: destination, code: EIO)
         }
-        return S3UploadedPart(number: number, etag: etag)
+        return S3UploadedPart(number: planned.number, etag: etag)
     }
 
     /// Hand over the manifest, and read the **body** as well as the status.

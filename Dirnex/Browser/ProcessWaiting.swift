@@ -32,11 +32,18 @@ enum ProcessWaiting {
         case cancelled
     }
 
-    /// Wait for `group`, giving up at `deadline` and polling `isCancelled` as it goes.
+    /// Wait for `group`, giving up at `deadline`, polling `isCancelled` as it goes and calling
+    /// `onPoll` on every turn.
     ///
     /// The interval is a compromise with nothing subtle in it: short enough that Stop feels
     /// immediate, long enough that an hour-long transfer does not spend a thread waking up. It
     /// costs a metadata request nothing, since that finishes inside the first wait.
+    ///
+    /// `onPoll` is where a transfer's *progress* is read, and it rides this loop for a reason
+    /// beyond convenience: this runs on the **caller's own thread** — the operation engine's, which
+    /// is parked here for the length of the transfer — so a byte count delivered from it reaches
+    /// `CopyEngine`'s tally on the thread that owns it, with no second thread touching the run's
+    /// state while it is blocked.
     ///
     /// Note the ordering — the group is checked **before** cancellation, so a process that has
     /// already finished reports `.finished` even if Stop arrived in the same instant. Answering
@@ -45,10 +52,12 @@ enum ProcessWaiting {
     static func wait(
         for group: DispatchGroup,
         deadline: DispatchTime,
-        isCancelled: () -> Bool
+        isCancelled: () -> Bool,
+        onPoll: () -> Void = {}
     ) -> Outcome {
         while true {
             if group.wait(timeout: .now() + pollInterval) == .success { return .finished }
+            onPoll()
             if isCancelled() { return .cancelled }
             if DispatchTime.now() >= deadline { return .timedOut }
         }

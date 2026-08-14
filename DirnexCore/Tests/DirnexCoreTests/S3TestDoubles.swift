@@ -65,6 +65,15 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
     /// Thrown by every verb when set — the "the request never reached a server" half.
     var thrownError: S3ResponseError?
 
+    /// Deltas each byte-moving verb reports before it answers — what a real transport streams off
+    /// `curl`'s meter or the destination file's growth while the transfer runs.
+    ///
+    /// Empty by default, which is the *old* behavior (one report at the end) and keeps every test
+    /// that is not about progress unchanged. A test that sets it is exercising the reconciliation:
+    /// what arrives mid-transfer is a rounded estimate, so the caller has to end on the exact count
+    /// rather than on the sum of the estimates.
+    var streamedProgress: [Int64] = []
+
     /// The answer to `CreateMultipartUpload`. A real `InitiateMultipartUploadResult` by default, so
     /// a test only overrides it when the *opening* is what it is about.
     var createMultipartResponse = S3Response.ok(S3Fixtures.initiateMultipart)
@@ -104,6 +113,7 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
         key: String,
         to localPath: String,
         resume: Bool,
+        progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> S3Response {
         if let thrownError { throw thrownError }
@@ -111,6 +121,7 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
         // offered the chance, which is the half a headless test can pin.
         if isCancelled() { cancelledTransfers.append(key); throw CancellationError() }
         downloads.append(Download(key: key, localPath: localPath, resume: resume))
+        for delta in streamedProgress { progress(delta) }
         return downloadResponse
     }
 
@@ -125,11 +136,13 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
     func upload(
         localPath: String,
         to key: String,
+        progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> S3Response {
         if let thrownError { throw thrownError }
         if isCancelled() { cancelledTransfers.append(key); throw CancellationError() }
         writes.append(.upload(Upload(localPath: localPath, key: key)))
+        for delta in streamedProgress { progress(delta) }
         return writeResponse
     }
 
@@ -171,30 +184,38 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
     }
 
     func uploadPart(
-        localPath: String,
-        to key: String,
-        uploadID: String,
-        partNumber: Int,
+        _ part: S3PartRequest,
+        progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> S3Response {
         if let thrownError { throw thrownError }
-        if isCancelled() { cancelledTransfers.append(key); throw CancellationError() }
+        if isCancelled() { cancelledTransfers.append(part.key); throw CancellationError() }
         // Recorded before the response is chosen, so a test can assert on the slice file the
         // backend actually produced — including that it existed at the moment of the call.
-        sliceSizes.append(sizeOfFile(localPath))
-        let index = partNumber - 1
+        sliceSizes.append(sizeOfFile(part.localPath))
+        // Capped at the slice, which is a real constraint rather than tidiness: a part's meter is a
+        // percentage *of that part*, so it cannot report more than the slice holds. An uncapped
+        // double would let a test "pass" on arithmetic the wire can never produce — and the short
+        // final part is exactly where that would hide.
+        var remaining = sizeOfFile(part.localPath)
+        for delta in streamedProgress where remaining > 0 {
+            let capped = min(delta, remaining)
+            remaining -= capped
+            progress(capped)
+        }
         writes.append(
             .uploadPart(
                 PartUpload(
-                    localPath: localPath,
-                    key: key,
-                    uploadID: uploadID,
-                    partNumber: partNumber
+                    localPath: part.localPath,
+                    key: part.key,
+                    uploadID: part.uploadID,
+                    partNumber: part.number
                 )
             )
         )
+        let index = part.number - 1
         guard index < uploadPartResponses.count else {
-            return S3Response(status: 200, etag: "\"etag-part-\(partNumber)\"")
+            return S3Response(status: 200, etag: "\"etag-part-\(part.number)\"")
         }
         return uploadPartResponses[index]
     }

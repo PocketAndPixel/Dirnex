@@ -75,12 +75,15 @@ public protocol S3Transport: Sendable {
     /// Download one object to a local path, resuming from what is already there when `resume`.
     ///
     /// `isCancelled` is polled **while the bytes move** and is the only thing that can stop a
-    /// transfer early — see ``upload(localPath:to:isCancelled:)`` for why it is a parameter on the
-    /// byte-moving verbs and on nothing else.
+    /// transfer early — see ``upload(localPath:to:progress:isCancelled:)`` for why it is a parameter
+    /// on the byte-moving verbs and on nothing else. `progress` rides with it for the same reason
+    /// and on the same poll: it reports **deltas** as they land, so a transfer that runs for minutes
+    /// is not one silent invocation that reports everything at the end.
     func download(
         key: String,
         to localPath: String,
         resume: Bool,
+        progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> S3Response
 
@@ -89,14 +92,27 @@ public protocol S3Transport: Sendable {
 
     /// Upload a local file to `key`, streaming it rather than reading it into memory.
     ///
-    /// **The three byte-moving verbs take `isCancelled` and the metadata verbs deliberately do
-    /// not.** A transfer is one `curl` invocation that can run for an hour, so a caller's Stop has
-    /// to reach *inside* it; a listing or a `HEAD` is a round trip that is over before anyone could
-    /// press anything, and giving those a cancellation parameter would suggest a responsiveness
-    /// they cannot use. Measured 2026-08-14: without this, Stop on a 16-second download returned
-    /// after the full 16 seconds with the whole object downloaded and then discarded, because
-    /// `isCancelled` was only ever consulted at the file boundary (docs/NOTES.md ▸ curl for S3).
-    func upload(localPath: String, to key: String, isCancelled: () -> Bool) throws -> S3Response
+    /// **The three byte-moving verbs take `progress` and `isCancelled`, and the metadata verbs
+    /// deliberately do not.** A transfer is one `curl` invocation that can run for an hour, so both
+    /// a caller's Stop and its progress bar have to reach *inside* it; a listing or a `HEAD` is a
+    /// round trip that is over before anyone could press anything, and giving those either
+    /// parameter would suggest a responsiveness they cannot use. Both halves were measured against
+    /// the real endpoint rather than assumed: without `isCancelled`, Stop on a 16-second download
+    /// returned after the full 16 seconds with the whole object downloaded and then discarded; and
+    /// without `progress`, a 29 MB upload reported its bytes once, **99 seconds** after it started
+    /// (docs/NOTES.md ▸ curl for S3).
+    ///
+    /// `progress` is called with a **delta**, matching `VFSBackend.copyFile`'s contract, and it is
+    /// an *estimate* while the bytes are moving: it comes from `curl`'s own percentage meter, whose
+    /// resolution is one per cent. The exact figure is the write-out's, and it arrives in
+    /// ``S3Response/bytesTransferred`` — so a caller that wants a total that is right to the byte
+    /// reconciles against that at the end rather than summing the deltas.
+    func upload(
+        localPath: String,
+        to key: String,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> S3Response
 
     /// Write a zero-byte object at `key` — the folder marker, and an empty file.
     func putEmptyObject(key: String) throws -> S3Response
@@ -120,11 +136,12 @@ public protocol S3Transport: Sendable {
 
     /// Upload one part from a local slice file. The part's ETag comes back in
     /// ``S3Response/etag``.
+    ///
+    /// `progress` reports within the part, which is what keeps the bar moving on a plan whose parts
+    /// are 16 MiB and whose file may be hundreds of them.
     func uploadPart(
-        localPath: String,
-        to key: String,
-        uploadID: String,
-        partNumber: Int,
+        _ part: S3PartRequest,
+        progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> S3Response
 

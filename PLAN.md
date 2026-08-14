@@ -1600,6 +1600,64 @@ local version history of the kind Cyberduck keeps in its editor preferences; and
 The ⏎ gesture is *in* scope and uses the same funnel with the same watch, because leaving it
 silently dead beside a working F4 is stranger than either.
 
+#### Slice 12 — 2026-08-14: a transfer that says where it has got to
+
+Reported as **"can't copy a file to S3"**, with a screenshot of the queue bar reading
+`Zero KB of Zero KB · Copying DSC_0002.NEF` — and then, a minute later, "after 20-30 seconds, it was
+immediately copied". The copy was never broken. Two independent defects compounded into a bar that
+looked dead, and neither is visible from inside the code that owns it.
+
+**The transfer reported nothing until it was over.** `S3Transport`'s byte-moving verbs had no
+progress hook at all, and `S3Backend.copyFile`'s own doc comment said so out loud — "the whole
+object transfers as one `curl` invocation, so `progress` reports once". Measured against the live
+endpoint with the app's exact upload arguments: **29 MB took 99 seconds**, silent throughout. That
+is the whole user-visible bug, and the sentence describing it had been sitting in the source since
+the verb was written, which is this file's most repeated shape — a limitation stated in prose is a
+feature request with a date on it.
+
+**And the readout latched, which is why the *total* read zero too.** `QueueBarView` coalesces the
+byte line to once a second, and it did it by **dropping** updates rather than deferring them. A job
+publishes when it is enqueued — nothing scanned yet, so `Zero KB of Zero KB` is honest — and again
+microseconds later carrying the real 27.7 MB; the second update lands inside the first one's second
+and was thrown away. With nothing else ever publishing, no later update could correct it. A local
+copy hides this completely by publishing every 8 MiB. The tell in the screenshot is that the status
+line *beside* it named the file correctly, from the same snapshot — so the two disagreed about
+whether anything had been measured.
+
+**The two directions have different observables, which is why the fix is an enum and not a flag.**
+A download writes a file on this machine, so its size is the byte count — exact, free, and needing
+no change to the download's carefully measured flags. An upload changes nothing locally; `curl`'s
+percentage meter is the only thing that knows, and `-s` silences it, so the upload verbs now pass
+`-S`. `CurlProgressMeter` (core, +8 tests) parses it, pinned against **bytes captured from that
+99-second run**: rows are `\r`-separated because the meter overwrites itself, the leading integer is
+the overall percentage in both directions, and everything else on that stream — two header lines,
+`curl`'s prose, the labelled `s3-…` write-out fields — fails to start with an integer, which is the
+whole filter. What arrives mid-transfer is therefore an estimate at 1 % resolution, so every path
+ends by reporting the **remainder** against the exact figure from the write-out: the bar is smooth
+and the number it settles on is still the one `curl` measured.
+
+**The bug the fix reintroduced, caught only by running it.** With everything green — 2401 core, all
+the fixtures, both linters — the first live run reported **zero** sightings for a 12-second upload
+while the download streamed perfectly. `FileHandle.read(upToCount:)` is not a chunked read: probed
+on a child writing three lines a second apart, it returned **once, at exit, holding all three**, so
+the whole meter arrived after the transfer it was describing. `availableData` delivers each write as
+it lands (+0.01 s, +1.01 s, +2.02 s). It fails in the quiet direction — every byte still arrives, so
+the response classifies correctly and only the progress silently never moves — which is the same
+failure the slice exists to remove, one layer down.
+
++14 core tests, +3 app tests, +2 live (2401 core / 496 app green, both linters clean). Three
+negative controls: neutering the streaming failed exactly the three progress assertions while the
+"reported nothing, so report it all at the end" one stayed green; putting the dropping coalescer
+back reproduced **`Zero KB of Zero KB`** verbatim in the label, which is the user's screenshot as an
+assertion; and an uncapped fake part upload was rejected by the multipart test, because a part's
+meter is a percentage *of that part* and a double that can exceed its slice would pass on arithmetic
+the wire cannot produce. **Verified live** through the real transport against the real endpoint:
+first report at 1.1 s of a 12.4-second upload and 1.2 s of a 20.4-second download.
+
+**Left undone, and named rather than quietly skipped:** FTP and SFTP have the identical silence —
+the same `ProcessWaiting` hook and the same meter are already in place for them to use, since
+`FTPCurlTransport` drives the same `curl`.
+
 ## 5. Cross-cutting: testing strategy
 
 | Layer | Approach |

@@ -79,6 +79,18 @@ final class QueueBarView: NSView {
     private static let detailRefreshInterval: TimeInterval = 1
     private var lastDetailRefresh: Date = .distantPast
     private var lastPausedState: Bool?
+    /// The most recent readout that arrived too soon to draw, and the timer that will draw it.
+    ///
+    /// **Coalescing has to defer the update, never drop it.** Dropping is what shipped, and it
+    /// latches: a job publishes when it is enqueued (nothing scanned yet, so the readout is
+    /// genuinely `Zero KB of Zero KB`) and again microseconds later carrying the real total — and
+    /// that second update lands inside the first one's second and is thrown away. If nothing
+    /// publishes afterwards there is no later update to correct it, so the stale text stays until
+    /// the job ends. A local copy hides this by publishing every 8 MiB; a remote transfer, which
+    /// reports about once a second at best, sat on `Zero KB of Zero KB` for its whole duration while
+    /// the status line beside it correctly named the file being copied (reported 2026-08-14).
+    private var pendingDetail: (aggregate: AggregateProgress, paused: Bool)?
+    private var detailFlushTimer: Timer?
 
     private static let byteFormatter: ByteCountFormatter = {
         let formatter = ByteCountFormatter()
@@ -256,9 +268,9 @@ final class QueueBarView: NSView {
         // it immediately when the run pauses or resumes so that transition never looks stuck.
         let pausedChanged = lastPausedState != snapshot.isPaused
         if pausedChanged || Date().timeIntervalSince(lastDetailRefresh) >= Self.detailRefreshInterval {
-            detailLabel.stringValue = detailText(for: aggregate, paused: snapshot.isPaused)
-            lastDetailRefresh = Date()
-            lastPausedState = snapshot.isPaused
+            drawDetail(aggregate, paused: snapshot.isPaused)
+        } else {
+            deferDetail(aggregate, paused: snapshot.isPaused)
         }
 
         let symbol = snapshot.isPaused ? "play.fill" : "pause.fill"
@@ -277,6 +289,42 @@ final class QueueBarView: NSView {
         updateJobList(snapshot)
         refreshDisclosure()
         syncHeight()
+    }
+
+    /// What the byte/throughput/ETA line currently says. The assertion surface for the coalescing
+    /// rule above, which is otherwise only observable by looking at the window.
+    var detailReadout: String { detailLabel.stringValue }
+
+    /// Draw the readout now, and drop any deferred one — it is older than what is being drawn.
+    private func drawDetail(_ aggregate: AggregateProgress, paused: Bool) {
+        detailFlushTimer?.invalidate()
+        detailFlushTimer = nil
+        pendingDetail = nil
+        detailLabel.stringValue = detailText(for: aggregate, paused: paused)
+        lastDetailRefresh = Date()
+        lastPausedState = paused
+    }
+
+    /// Hold a readout that arrived too soon and arm a timer to draw it when the interval is up.
+    ///
+    /// The timer is what makes this a *deferral*: it fires whether or not another update ever
+    /// arrives, which is exactly the case the dropped version could not survive. It runs in
+    /// `.common` modes so a readout is not frozen while a menu is open or a pane is being scrolled,
+    /// and re-arming is left to the existing timer — the pending value is simply replaced, so a
+    /// burst of updates still draws once.
+    private func deferDetail(_ aggregate: AggregateProgress, paused: Bool) {
+        pendingDetail = (aggregate, paused)
+        guard detailFlushTimer == nil else { return }
+        let due = Self.detailRefreshInterval - Date().timeIntervalSince(lastDetailRefresh)
+        let timer = Timer(timeInterval: max(0, due), repeats: false) { [weak self] _ in
+            // A main-runloop timer fires on the main thread by construction, so the assumption holds.
+            MainActor.assumeIsolated {
+                guard let self, let pending = self.pendingDetail else { return }
+                self.drawDetail(pending.aggregate, paused: pending.paused)
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        detailFlushTimer = timer
     }
 
     // MARK: - Actions

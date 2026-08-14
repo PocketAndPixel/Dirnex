@@ -196,8 +196,14 @@ public struct S3Backend: ConnectionScopedBackend {
     /// on this machine in between, which is two operations wearing one name and neither backend's
     /// to schedule.
     ///
-    /// The whole object transfers as one `curl` invocation, so `progress` reports once with the
-    /// byte count and `isCancelled` is honored at the file boundary, matching `FTPBackend`.
+    /// The whole object transfers as one `curl` invocation, so both `progress` and `isCancelled`
+    /// have to reach inside it: the transport polls them while the bytes move
+    /// (``S3Transport/upload(localPath:to:progress:isCancelled:)``).
+    ///
+    /// What arrives during the transfer is an estimate at one-per-cent resolution; what arrives at
+    /// the end is exact. Each direction therefore reports the **remainder** once the transfer
+    /// returns — the exact count less whatever was streamed — so the running bar is smooth and the
+    /// figure it settles on is the byte count `curl` measured, never a rounded sum.
     public func copyFile(
         at source: VFSPath,
         to destination: VFSPath,
@@ -209,14 +215,19 @@ public struct S3Backend: ConnectionScopedBackend {
         // reads as a tuple pattern and is one missing `let` away from binding instead of matching,
         // which would route every direction to whichever arm came first.
         if source.backend == id, destination.backend == .local {
+            var streamed: Int64 = 0
             let transferred = try downloadObject(
                 key: S3Key.key(for: source),
                 toLocal: destination.path,
                 at: source,
+                progress: { delta in
+                    streamed += delta
+                    progress(delta)
+                },
                 isCancelled: isCancelled
             )
             if isCancelled() { throw CancellationError() }
-            progress(transferred)
+            reportRemainder(of: transferred, streamed: streamed, to: progress)
         } else if source.backend == .local, destination.backend == id {
             // Reports its own deltas rather than returning a total for the tail below to report: a
             // multipart upload reports one per part, and a second report here would count every
@@ -279,11 +290,33 @@ public struct S3Backend: ConnectionScopedBackend {
             return
         }
 
+        var streamed: Int64 = 0
         let response = try write(at: destination) {
-            try transport.upload(localPath: localPath, to: key, isCancelled: isCancelled)
+            try transport.upload(
+                localPath: localPath,
+                to: key,
+                progress: { delta in
+                    streamed += delta
+                    progress(delta)
+                },
+                isCancelled: isCancelled
+            )
         }
         if isCancelled() { throw CancellationError() }
-        progress(response.bytesTransferred)
+        reportRemainder(of: response.bytesTransferred, streamed: streamed, to: progress)
+    }
+
+    /// Close the gap between what was streamed while a transfer ran and what it really moved.
+    ///
+    /// Only ever forward, and only when there is something to say. A caller's byte tally adds, so a
+    /// negative delta would walk its bar backwards — and an estimate that overshot (a short write,
+    /// against a percentage of the size the file had when it started) is left standing rather than
+    /// corrected downward. What this guarantees is the direction that matters: a finished transfer
+    /// is never reported as *less* than the bytes `curl` measured.
+    func reportRemainder(of exact: Int64, streamed: Int64, to progress: (Int64) -> Void) {
+        let remainder = exact - streamed
+        guard remainder > 0 else { return }
+        progress(remainder)
     }
 
     /// Duplicate one object inside this bucket without the bytes leaving S3.
@@ -322,13 +355,18 @@ public struct S3Backend: ConnectionScopedBackend {
         key: String,
         toLocal localPath: String,
         at source: VFSPath,
+        progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> Int64 {
         let existingLocal = localFileSize(localPath)
         let resume = existingLocal > 0 && remoteSize(ofKey: key) > existingLocal
         let response = try mapping(source) {
             try transport.download(
-                key: key, to: localPath, resume: resume, isCancelled: isCancelled
+                key: key,
+                to: localPath,
+                resume: resume,
+                progress: progress,
+                isCancelled: isCancelled
             )
         }
         _ = try succeed(response, at: source)

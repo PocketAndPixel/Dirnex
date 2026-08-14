@@ -39,6 +39,23 @@ struct S3CurlRunner: Sendable {
         case upload
     }
 
+    /// What to watch while a transfer runs, so it can report where it has got to.
+    ///
+    /// The two directions have genuinely different observables, which is why this is an enum rather
+    /// than one mechanism with a flag:
+    ///
+    /// - A **download** writes a file on this machine, so its size is the byte count, exactly, for
+    ///   free, and with no change to the invocation's own flags.
+    /// - An **upload** changes nothing locally. `curl`'s percentage meter is the only thing that
+    ///   knows, which is why the upload arguments stop passing `-s` (``CurlProgressMeter``).
+    ///
+    /// `.none` is every metadata request: one round trip, nothing to report on the way.
+    enum ProgressSource {
+        case none
+        case destinationFile(path: String)
+        case uploadMeter(totalBytes: Int64)
+    }
+
     /// Run one invocation and turn it into the answer the caller classifies.
     ///
     /// A status of 0 — `curl`'s own `000`, printed when nothing answered — is the only thing that
@@ -49,9 +66,16 @@ struct S3CurlRunner: Sendable {
     func perform(
         _ arguments: [String],
         measuring direction: Direction = .download,
+        watching source: ProgressSource = .none,
+        progress: (Int64) -> Void = { _ in },
         isCancelled: () -> Bool = { false }
     ) throws -> S3Response {
-        let result = try run(arguments, isCancelled: isCancelled)
+        let result = try run(
+            arguments,
+            watching: source,
+            progress: progress,
+            isCancelled: isCancelled
+        )
         let fields = S3WriteOut.parse(stderr: result.standardError)
         guard fields.status != 0 else {
             throw S3ResponseError.transport(.classify(curlExit: result.exitCode))
@@ -74,7 +98,12 @@ struct S3CurlRunner: Sendable {
 
     /// Spawn `curl` with the credential on stdin, drain both pipes concurrently, and bound the
     /// wait. Blocks; call it off the main thread.
-    private func run(_ arguments: [String], isCancelled: () -> Bool) throws -> RunResult {
+    private func run(
+        _ arguments: [String],
+        watching source: ProgressSource,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> RunResult {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/curl")
         process.arguments = arguments
@@ -103,6 +132,7 @@ struct S3CurlRunner: Sendable {
         // Drain both pipes on background queues so neither can fill and deadlock the other, and
         // join them through a group so the wait can be bounded.
         let drained = Drained()
+        let meter = LiveMeter()
         let group = DispatchGroup()
         let ioQueue = DispatchQueue(label: "com.dirnex.s3.io", attributes: .concurrent)
         group.enter()
@@ -112,15 +142,39 @@ struct S3CurlRunner: Sendable {
         }
         group.enter()
         ioQueue.async {
-            drained.standardError = errorPipe.fileHandleForReading.readDataToEndOfFile()
+            // Chunked rather than `readDataToEndOfFile`, so the progress meter can be read *while*
+            // it is being written. It drains just as continuously, which is the property that
+            // matters — a reader that stops reading is the two-pipe deadlock.
+            //
+            // **`availableData`, never `read(upToCount:)`.** The obvious spelling is not chunked at
+            // all: measured on a child writing three lines a second apart, `read(upToCount: 4096)`
+            // returned once, at exit, holding all three — it loops until it has the count asked for
+            // or EOF. Against `curl` that hands the whole meter over after the transfer is done,
+            // which is *precisely* the silence this reader exists to end, and it fails invisibly:
+            // every byte still arrives, so the response is classified correctly and only the
+            // progress quietly never moves.
+            let handle = errorPipe.fileHandleForReading
+            while case let chunk = handle.availableData, !chunk.isEmpty {
+                drained.standardError.append(chunk)
+                // A read boundary can fall inside a multi-byte character, which is why this decode
+                // is allowed to fail and be skipped. It costs nothing that matters: the meter is
+                // pure ASCII, so only `curl`'s own prose can produce an undecodable chunk, and the
+                // authoritative bytes are the ones appended above. What is skipped is one tick of
+                // an estimate, never a byte of the answer.
+                if let text = String(bytes: chunk, encoding: .utf8) { meter.consume(text) }
+            }
             group.leave()
         }
 
         // `curl`'s own `--max-time` should fire first; this is the backstop for a process that is
         // wedged rather than merely slow, so it is deliberately looser than the flag.
         let budget = curlMaxTime(in: arguments) + 30
+        var reporter = ProgressReporter(source: source, meter: meter)
         switch ProcessWaiting.wait(
-            for: group, deadline: .now() + .seconds(budget), isCancelled: isCancelled
+            for: group,
+            deadline: .now() + .seconds(budget),
+            isCancelled: isCancelled,
+            onPoll: { reporter.report(to: progress) }
         ) {
         case .finished:
             break
@@ -148,6 +202,77 @@ struct S3CurlRunner: Sendable {
     private final class Drained: @unchecked Sendable {
         var standardOutput = Data()
         var standardError = Data()
+    }
+
+    /// The progress meter, written by the stderr drain and read by the polling thread.
+    ///
+    /// Unlike ``Drained`` this one is read *while* it is being written — that is the whole point of
+    /// it — so it carries a lock rather than resting on the group's join.
+    private final class LiveMeter: @unchecked Sendable {
+        private let lock = NSLock()
+        private var meter = CurlProgressMeter()
+
+        func consume(_ text: String) {
+            lock.lock()
+            defer { lock.unlock() }
+            meter.consume(text)
+        }
+
+        func bytesTransferred(ofTotal total: Int64) -> Int64? {
+            lock.lock()
+            defer { lock.unlock() }
+            return meter.bytesTransferred(ofTotal: total)
+        }
+    }
+
+    /// Turns whichever observable the caller named into the **deltas** `VFSBackend.copyFile` wants.
+    ///
+    /// It only ever reports forward. A download's file can legitimately shrink — a fresh (rather
+    /// than resumed) download truncates whatever partial was there — and an estimate that went
+    /// backwards would make the queue's byte tally, which only adds, wrong for the rest of the job.
+    private struct ProgressReporter {
+        let source: ProgressSource
+        let meter: LiveMeter
+        /// The destination's size when the process was spawned: for a resume, bytes that are
+        /// already the user's and must not be counted again.
+        private var baseline: Int64?
+        private var lastSeen: Int64 = 0
+        private var reported: Int64 = 0
+
+        init(source: ProgressSource, meter: LiveMeter) {
+            self.source = source
+            self.meter = meter
+            if case let .destinationFile(path) = source { baseline = Self.fileSize(path) }
+        }
+
+        mutating func report(to progress: (Int64) -> Void) {
+            guard let moved = movedSoFar(), moved > reported else { return }
+            let delta = moved - reported
+            reported = moved
+            progress(delta)
+        }
+
+        private mutating func movedSoFar() -> Int64? {
+            switch source {
+            case .none:
+                return nil
+            case let .destinationFile(path):
+                let size = Self.fileSize(path)
+                // Smaller than last time means `curl` truncated a partial it is not resuming from,
+                // so the bytes it is writing now are all new.
+                if size < lastSeen { baseline = 0 }
+                lastSeen = size
+                return max(0, size - (baseline ?? 0))
+            case let .uploadMeter(totalBytes):
+                return meter.bytesTransferred(ofTotal: totalBytes)
+            }
+        }
+
+        private static func fileSize(_ path: String) -> Int64 {
+            guard let attributes = try? FileManager.default.attributesOfItem(atPath: path),
+                  let size = attributes[.size] as? Int64 else { return 0 }
+            return size
+        }
     }
 
     /// The `--max-time` value already in the arguments, so the backstop is always derived from what

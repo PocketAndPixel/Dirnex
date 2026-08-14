@@ -467,6 +467,27 @@ at build time.
     character and confirm it lands in the field — if the field kept focus it receives the whole
     `doCommandBy:` family, Escape included. After the click-to-run change the only click that leaves
     the panel open is one in the empty space below the last row, which is exactly where to aim it.
+- **A coalescer must *defer* the update it withholds, never drop it — dropping latches, and it
+  latches on the very first value.** The queue bar refreshes its byte readout at most once a second
+  so the throughput and ETA are legible, and it did that by ignoring anything that arrived too soon.
+  A job publishes the moment it is **enqueued**, before anything is scanned, so the honest readout
+  then is `Zero KB of Zero KB` — and the update carrying the real total arrives microseconds later,
+  inside that same second, and was discarded. Nothing publishes again for the length of the
+  transfer, so there is no later update to correct it: reported 2026-08-14 as an S3 copy showing
+  `Zero KB of Zero KB` for its whole duration. A one-shot `Timer` holding the pending value is the
+  whole fix, and it is what makes the rule hold whether or not anything else ever arrives.
+  - **A local copy hides it completely**, publishing every 8 MiB, so the readout catches up within
+    the second and nobody ever sees the stale text. Only a slow-publishing job exposes it, which is
+    why it shipped: the class of bug needs a *rate* to reproduce, not an input.
+  - **The tell in the screenshot was two labels disagreeing about the same snapshot.** The status
+    line beside it read `Copying DSC_0002.NEF` — correct, and drawn from the same publish — so
+    something had certainly been measured. Whenever one field of a rendered snapshot is right and
+    its neighbour is stale, suspect the *drawing* rule rather than the data.
+  - Testable directly, which is worth doing because the fix is a timer and timers are where "it
+    works when I try it" lives: drive `update(with:)` twice inside the window, then poll (never a
+    run-loop spin) for the label to change on its own. Put the dropping version back as the negative
+    control — it reproduces the user's screenshot verbatim, which is what proves the test and the
+    report are about the same thing.
 - **An `@objc` *optional* delegate requirement implemented on a `@MainActor` class in Swift 6 can
   compile, conform, and never be emitted as an Objective-C method at all — so the framework never
   calls it.** `QuickViewWebView` implemented `webView(_:decidePolicyFor:preferences:decisionHandler:)`
@@ -2042,6 +2063,37 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     partial `-C -` resumes from, which is why `--remove-on-error` is deliberately absent — and it is
     a trap for anything that **caches** a fetch, because a truncated file renders as a damaged
     document rather than as an error. A cache must drop, not keep, whatever a cancelled fetch left.
+- **An upload has no local observable, so `curl`'s progress meter is the only thing that knows — and
+  `-s` silences it.** Every S3 invocation carried `-sS`, chosen for "no meter, but keep the error
+  text", which for a *transfer* means the byte count reaches the caller exactly once, when there is
+  nothing left to report: measured 2026-08-14 against the real endpoint, **29 MB took 99 seconds**,
+  every one of them silent. A user reported that as the copy not working, which is the honest
+  reading of a bar that never moves. `-S` alone keeps the error text and lets the meter through, and
+  the labelled `s3-…` write-out fields still land after it — exactly what a labelled reader is for.
+  A **download** needs none of this and should not be given it: its destination is a local file that
+  grows, so its size is the byte count, exactly, and that invocation's carefully measured flags
+  (`--fail`, `-C -`, no `--remove-on-error`) are left alone.
+  - **What to parse is the leading integer, and the separator is a carriage return.** Captured from
+    that run: `\r  1 27.6M    0     0    1  447k      0   228k  0:02:03  0:00:01  0:02:02  228k`.
+    Rows overwrite themselves, so a reader splitting on newlines sees one enormous line and reports
+    nothing at all; every other column is human-rounded to three significant figures (`447k`,
+    `27.6M`), so the percentage is the only field exact as printed. It is `% Received` for a
+    download and `% Xferd` for an upload, and `curl` puts the same number first in both. Everything
+    else on that stream — two header lines, `curl`'s own prose, the write-out fields — fails to
+    start with an integer, which is the whole filter.
+  - **A percentage is an estimate, so it must not decide the final count.** At 1 % resolution a
+    transfer reports about a hundred times, which is what a bar needs; the exact figure is the
+    write-out's. Report the **remainder** at the end (exact less what was streamed) rather than
+    summing the estimates, and only ever forward — a queue's byte tally adds, so a negative delta
+    walks its bar backwards.
+- **`FileHandle.read(upToCount:)` is not a chunked read: it loops until it has the count asked for
+  or EOF.** Probed on a child writing three lines a second apart, it returned **once, at exit,
+  holding all three**, where `availableData` delivered them at +0.01 s, +1.01 s and +2.02 s. So a
+  drain written the obvious way hands the whole of `curl`'s meter over *after* the transfer it
+  describes — which is precisely the silence above, reintroduced one layer down by the code fixing
+  it. It fails in the quietest direction available: every byte still arrives, so the response is
+  classified correctly, both suites stay green, and only the progress never moves. It survived every
+  headless test and was caught by the first live run.
 - **The upload question is a *memory* question wearing a cryptography question's clothes.** "Does
   real S3 want a signed payload or `UNSIGNED-PAYLOAD`?" is what the plan carried for a milestone as
   the thing needing credentials to settle — and it never needed them. Measured 2026-08-13 on one

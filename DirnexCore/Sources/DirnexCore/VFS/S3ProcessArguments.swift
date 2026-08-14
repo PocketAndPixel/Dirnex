@@ -51,11 +51,20 @@ public enum S3ProcessArguments {
     ///   have worked, and that answer is worth more than the redirect. Following it would re-issue
     ///   the request against a host the signature was not computed for, turning a diagnosable
     ///   "wrong region" into an undiagnosable signature failure.
-    public static func common(session: S3Session) -> [String] {
+    ///
+    /// `showingProgress` is the third flag, and it is the one an *upload* has to turn on. `-s`
+    /// suppresses `curl`'s progress meter, which for a `-T` upload is the only observable there is:
+    /// nothing local grows the way a download's destination file does, so with the meter silenced a
+    /// transfer reports its bytes exactly once, when it is over — measured 2026-08-14 as 99 seconds
+    /// of silence for 29 MB. `-S` alone keeps the error text `-sS` was chosen for while letting the
+    /// meter through, and the labelled write-out fields still land after it, which is precisely what
+    /// ``S3WriteOut/parse(stderr:)`` was built to tolerate.
+    public static func common(session: S3Session, showingProgress: Bool = false) -> [String] {
         common(
             signatureSpecifier: session.location.signatureSpecifier,
             connectTimeout: session.connectTimeout,
-            maxTime: session.maxTime
+            maxTime: session.maxTime,
+            showingProgress: showingProgress
         )
     }
 
@@ -66,11 +75,13 @@ public enum S3ProcessArguments {
     static func common(
         signatureSpecifier: String,
         connectTimeout: Int,
-        maxTime: Int
+        maxTime: Int,
+        showingProgress: Bool = false
     ) -> [String] {
         [
-            // `-sS`: no progress meter, but keep curl's own error text on stderr.
-            "-sS",
+            // `-sS`: no progress meter, but keep curl's own error text on stderr. `-S` alone is the
+            // same minus the silencing, for the transfers that need the meter to report at all.
+            showingProgress ? "-S" : "-sS",
             "--connect-timeout", String(connectTimeout),
             "--max-time", String(maxTime),
             "--aws-sigv4", signatureSpecifier,
@@ -124,6 +135,11 @@ public enum S3ProcessArguments {
     /// - **`--fail` does not truncate a partial that is already there.** Probed both with and
     ///   without `-C -`: a 403 left a 1000-byte partial byte-identical, so a transient refusal
     ///   costs a user nothing they had already downloaded.
+    ///
+    /// A third flag is absent for a happier reason: this is the one transfer that needs no
+    /// `showingProgress`. The destination file is a local file that grows, so the transport reports
+    /// progress by watching it — **exact bytes**, where an upload's meter can only offer a rounded
+    /// percentage — and this invocation's carefully measured flags are left exactly as they were.
     public static func download(
         session: S3Session,
         key: String,
@@ -174,7 +190,7 @@ public enum S3ProcessArguments {
     ///   to a bucket the key cannot write to sends the whole file before learning about the 403 —
     ///   and `curl`'s threshold already restricts the cost to files big enough for that to matter.
     public static func upload(session: S3Session, key: String, localPath: String) -> [String] {
-        common(session: session) + configFromStandardInput
+        common(session: session, showingProgress: true) + configFromStandardInput
             + ["--upload-file", localPath, session.location.url(forKey: key)]
     }
 
@@ -232,7 +248,7 @@ public enum S3ProcessArguments {
         localPath: String
     ) -> [String] {
         let query = "partNumber=\(partNumber)&uploadId=\(S3Key.encodedForQuery(uploadID))"
-        return common(session: session) + configFromStandardInput
+        return common(session: session, showingProgress: true) + configFromStandardInput
             + ["--upload-file", localPath]
             + ["\(session.location.url(forKey: key))?\(query)"]
     }

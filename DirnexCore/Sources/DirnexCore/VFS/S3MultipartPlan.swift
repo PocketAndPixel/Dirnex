@@ -141,3 +141,26 @@ public struct S3UploadedPart: Sendable, Equatable {
         self.etag = etag
     }
 }
+
+/// One part on its way out: the slice to send and everything needed to address it.
+///
+/// Bundled for the same reason ``S3MultipartRequest`` is — a part upload names four things that
+/// never vary independently, and spelling them out left the transport verb carrying six parameters
+/// once it grew a progress hook.
+public struct S3PartRequest: Sendable, Equatable {
+    /// The temp file holding this part's bytes.
+    public let localPath: String
+    /// The object the finished upload will become.
+    public let key: String
+    /// The upload this part belongs to.
+    public let uploadID: String
+    /// The part number, counting from 1 — the order the completion manifest assembles in.
+    public let number: Int
+
+    public init(localPath: String, key: String, uploadID: String, number: Int) {
+        self.localPath = localPath
+        self.key = key
+        self.uploadID = uploadID
+        self.number = number
+    }
+}
