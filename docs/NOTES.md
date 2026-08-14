@@ -189,18 +189,31 @@ at build time.
   secret on every successful connect, so leaving it behind puts a live-looking credential in whoever
   ran the suite — and removing it from inside the test host raises no authorization prompt, where
   `security` at a shell would.
-  - **`.serialized` only orders a suite against *itself*, and the same failure comes back from the
-    rest of the run.** Measured 2026-08-14: adding **four** trivial `@MainActor` tests (0.004 s of
-    work) made that suite's first test time out at 72 s and then 209 s in the full parallel run,
-    while it passed in 1.2 s alone and beside the other live suite. Nothing about the new tests
-    touches S3 — the connect blocks on a `curl` subprocess, and one more parallel `@MainActor` suite
-    is enough to starve it. Two things worth carrying. **`-parallel-testing-enabled NO` is the
-    instrument**: it separates "my change broke this" from "this run is too crowded" in one
-    measurement (459 green serially against a failure in the same tree run in parallel), where
-    re-running or bisecting the *source* answers neither. And the tell is a **cost mismatch** — four
-    milliseconds of new test cannot slow a connect by 200 seconds, so the added tests are the
-    trigger and not the cause; look for what the failing test is *waiting on* rather than for what
-    the new code does.
+  - **A headless suite that loads a pane's view raises the app's own error alerts, and an
+    `NSAlert.runModal()` fallback then blocks the entire run until a human clicks OK.** The tell is
+    a test "timing out" for a duration that is really somebody's reaction time. Measured
+    2026-08-14: `RenameReachTests` calls `loadViewIfNeeded()` (it must, or the flow under test
+    returns one guard earlier), `viewDidLoad` → `activateTab()` → `navigate(to:)` lists the
+    fixture's path, and every non-local fixture — an unconnected bucket, an archive, `search:`,
+    `trash:`, `icloud:` — ends at `presentLoadFailure`, which had the house `if let window …
+    beginSheetModal … else runModal()` shape. With no window that is six app-modal alerts in one
+    run. `S3AccountLiveIntegrationTests` was the suite that *reported* it, timing out at 72 s and
+    209 s while passing in 1.2 s alone, because it was queued behind them.
+    - **Three headless controls agreed on a wrong cause**, and each looked like evidence: skipping
+      the new tests → green, skipping `RenameReachTests` instead → green, and
+      `-parallel-testing-enabled NO` → all 459 green. Every one of them changes *how much runs*, so
+      every one of them moves the dialogs around; none can see a window. What settled it was the
+      **user saying they had clicked six dialogs away**. When a test suite's timing is
+      unexplainable, look at the screen before theorising about scheduling — and note that a
+      passing serial run is not evidence about parallelism if a human was clearing dialogs in both.
+    - **The fix is to withhold the alert, not to fix the test.** A load failure is the one alert
+      raised *unasked* — a navigation the app performs by itself — so a pane with no window has
+      nobody to tell; the same state is reachable in the app during launch restoration, before
+      `showWindow`. `guard let window = view.window else { return }` in place of the `runModal`
+      fallback: 459 green in **16.2 s**, against **111 s for eight tests** with the fallback back in
+      (all of it dismissing dialogs). Worth checking any other alert a headless suite can reach by
+      the same route — the rule that a `runModal` fallback is correct (▸ AppKit) assumes a *user*
+      asked for the thing that failed.
 
 ## AppKit
 

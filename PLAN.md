@@ -1243,16 +1243,34 @@ subtree back under `renameprobe/` (the widened `crossVolumeRestore`, live); **Ca
 at all — no `should-not-happen` key anywhere in the bucket; and **⇧F2** raised the identical sheet
 through the batch path and landed `batchprobe/` with both files. Probe data removed afterwards.
 
-**One thing the run found that is *not* about this feature, and is worth its own decision.** With the
-four new app tests in, `S3AccountLiveIntegrationTests`' first test times out in the **full** parallel
-run — 72 s and 209 s on two runs — while passing in 1.2 s on its own, and passing beside
-`RemoteFileEditLiveIntegrationTests`. Three controls place it: skipping the four new tests → 455
-green in 27 s; keeping them and skipping `RenameReachTests` instead → 456 green in 18 s; and
-`-parallel-testing-enabled NO` → **all 459 green**. So it is the live suite's tolerance for parallel
-load, not the change: a fourth `@MainActor` pane-building suite is enough to starve a connect that
-blocks on `curl`, and the failure surfaces in the shared `connectedPane` helper, which reads as the
-feature being broken (docs/NOTES.md ▸ Testing already records that shape for the same suite). What it
-needs is a decision about how the live suites run, not another `.serialized`.
+**The run also found a real bug in the app, and it was found by the *user watching the screen*.** The
+full suite had begun failing `S3AccountLiveIntegrationTests`' first test — 72 s and 209 s on two runs
+against 1.2 s alone — and three controls pointed at parallel load (skip the new tests → green;
+skip `RenameReachTests` instead → green; `-parallel-testing-enabled NO` → all green), which was a
+plausible reading and the wrong one. Oleg reported dismissing **six modal alerts, one after another,
+from a single test-host run**, and their titles are `RenameReachTests`' fixture table read aloud:
+«Can't open "dir" — Not connected to s3://AKIAEXAMPLE@…», `pkg.zip`, `search:/Results`,
+`trash:/Trash`, `icloud:/`.
+
+`viewDidLoad` → `activateTab()` → `navigate(to:)`, and a failed listing ends at
+`presentLoadFailure`, whose `runModal` fallback fires whenever the pane has **no window** — which is
+every pane a headless suite builds. So the suite that has to call `loadViewIfNeeded()` (§ the rename
+reach fix, one commit earlier) put an app-modal alert on screen for each non-local row and **blocked
+the whole process until a human clicked OK**. The "timeout" was the live suite waiting behind them;
+the run's duration was measuring reaction time.
+
+- **Fixed by not raising it at all with no window.** This is the one alert that fires *unasked* — a
+  navigation the app performs on its own — so a pane nobody can see has nobody to tell, and the
+  same shape is reachable in the app during launch restoration, before `showWindow`. A pane on
+  screen still gets its sheet.
+- **Measured both ways**: 459 green in **16.2 s** with the guard, and the reverted version put the
+  identical queue of alerts back, taking **111 s for eight tests** — all of it dismissing dialogs.
+  That also retires the parallel-load theory: every earlier timing, including the three "controls",
+  was reaction time.
+- **The lesson is about the instrument.** Three headless controls agreed on a wrong cause, because
+  each of them changes *how much runs* and none of them can see a window. The signal that settled it
+  was a person looking at the screen — the same class as the menu-bar claim M20 shipped and the
+  `.stringsdata` sweep that never ran. Recorded in docs/NOTES.md ▸ Testing.
 
 All three stop at one predicate today. `quickViewSourceURL` resolves a local path or an already
 extracted archive member and answers `nil` for anything else, so an S3 row previews nothing; F4 says
