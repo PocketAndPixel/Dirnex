@@ -8,6 +8,11 @@ import Quartz
 /// previews the marked set (starting at the cursor) or, with nothing marked, the file
 /// under the cursor — matching Finder. The panel is refreshed live as the cursor and
 /// marks change via `refreshQuickLookIfVisible()`.
+///
+/// A pane whose rows are *not* files on this Mac — a browsed archive, or a server — offers exactly
+/// one: the row under the cursor, once something has extracted or fetched it. See
+/// ``previewsCursorFileOnly`` for why, and ``quickLookURL(for:)`` for the resolver both of those
+/// cases share with the Quick View surfaces rather than restating.
 extension PanelViewController: @preconcurrency QLPreviewPanelDataSource, @preconcurrency QLPreviewPanelDelegate {
     override func acceptsPreviewPanelControl(_ panel: QLPreviewPanel!) -> Bool {
         true
@@ -54,6 +59,14 @@ extension PanelViewController: @preconcurrency QLPreviewPanelDataSource, @precon
     /// Refresh an open preview after the cursor or marks change so it tracks the pane. Inside a
     /// browsed archive the member under the cursor is extracted on demand, then this runs again
     /// to show it — `prepareArchivePreview` no-ops once it's cached, so there is no loop.
+    ///
+    /// **There is deliberately no remote counterpart to that extraction, and adding one here would
+    /// be the bug.** This runs on every cursor movement, so a fetch in it would spend a billed
+    /// request because the cursor passed over a row — the rule the whole slice is built on
+    /// (PLAN.md §M21 Slice 10). The cost is that arrowing onto a server row nobody has fetched
+    /// leaves the panel on its own empty state: Quick Look is Apple's window and cannot be handed
+    /// the placeholder card the pane's own surfaces draw. `openRemotePreview` belongs to the key
+    /// somebody pressed, which is `fileTableToggleQuickLook`, and to nothing else.
     func refreshQuickLookIfVisible() {
         guard QLPreviewPanel.sharedPreviewPanelExists(),
               let previewPanel = QLPreviewPanel.shared(),
@@ -63,11 +76,12 @@ extension PanelViewController: @preconcurrency QLPreviewPanelDataSource, @precon
         prepareArchivePreview { [weak self] in self?.refreshQuickLookIfVisible() }
     }
 
-    /// What Quick Look previews: inside a browsed archive, just the member under the cursor once
-    /// it's been extracted; otherwise the marked set (with the cursor as the starting item), or
-    /// failing that the file under the cursor. Entries that resolve to no on-disk URL are dropped.
+    /// What Quick Look previews: where the rows are not files on this Mac, just the one under the
+    /// cursor once its bytes are here; otherwise the marked set (with the cursor as the starting
+    /// item), or failing that the file under the cursor. Entries that resolve to no on-disk URL are
+    /// dropped.
     private func quickLookItems() -> [FileEntry] {
-        if isArchive {
+        if previewsCursorFileOnly {
             guard !cursorOnParentRow, let current = panel.currentEntry,
                   quickLookURL(for: current) != nil else { return [] }
             return [current]
@@ -80,12 +94,31 @@ extension PanelViewController: @preconcurrency QLPreviewPanelDataSource, @precon
         return []
     }
 
-    /// The on-disk URL Quick Look previews for `entry`: its real URL for a local file, or the
-    /// extracted temp file for an archive member once cached (`nil` until extraction lands).
+    /// Whether Quick Look can only ever be handed *one* file here — the row under the cursor.
+    ///
+    /// True wherever the rows are not files on this Mac. An archive member must be extracted and a
+    /// remote object downloaded before anything can preview it, and only the cursor's own is ever
+    /// brought down: a marked set would cost a subprocess per row inside an archive and, on a
+    /// server, a billed request and somebody's bandwidth per row (PLAN.md §M21 Slice 10).
+    var previewsCursorFileOnly: Bool {
+        isArchive || panel.path.backend.isRemoteConnection
+    }
+
+    /// The on-disk URL Quick Look previews for `entry`: its real URL for a file on this Mac, and for
+    /// anything else the copy that was extracted or fetched for it — `nil` until one lands, which is
+    /// the ordinary state of a server row nobody has asked for yet.
+    ///
+    /// Everything but the local case defers to ``quickViewSourceURL``, the pane's one answer to
+    /// "where are this row's bytes", instead of resolving it a second time — and that is exactly
+    /// what this file had got wrong. The funnel grew a remote branch at Slice 10 while this resolver
+    /// kept its own archive-only copy, so ⌘Y on a server file reported **“No items selected”** for a
+    /// row the Quick View surface beside it was previewing perfectly, having spent the fetch on the
+    /// way (the key does ask for one). Found by pressing the key the placeholder card itself names.
+    /// One question, two spellings, and the compiler checks neither (docs/NOTES.md ▸ AppKit).
     private func quickLookURL(for entry: FileEntry) -> URL? {
         if entry.path.backend == .local { return entry.path.localURL }
-        guard !entry.isDirectoryLike, let archivePath = panel.path.backend.archivePath else { return nil }
-        let member = ArchiveMember(archivePath: archivePath, innerPath: entry.path.path)
-        return host?.archivePreviewCache.cachedURL(for: member)
+        // The funnel answers for the *cursor*, which is the only row these panes offer (above).
+        guard entry.id == panel.currentEntry?.id else { return nil }
+        return quickViewSourceURL
     }
 }

@@ -3373,6 +3373,27 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     route added later cannot reach one without the other. Pin it by driving the **real** validator
     against a pane whose cursor stands on the entry — re-stating the route's own rule in the test
     passes however far the two have drifted, which is exactly the failure being guarded against.
+  - **The fourth is a *resolver* rather than a validator, and it fails while the surface next to it
+    looks perfect.** "Where are this row's bytes on disk" is asked by two things — the Quick View
+    surfaces through `quickViewSourceURL`, and the `QLPreviewPanel` data source through its own
+    `quickLookURL(for:)` — and M21 Slice 10 taught the first about servers and left the second
+    knowing only about this Mac and about archives. So ⌘Y on an S3 object spent the download (the
+    key does ask for one) and then drew Quick Look's **“No items selected”**, a foot away from an
+    in-pane preview of that same row rendering correctly. Two things generalize past it. The tell
+    that a resolver has a twin is a `switch`-shaped chain over *backends* in a file that is not the
+    one the feature lives in — grep for the predicate the new branch added (`isRemoteConnection`)
+    and read what else answers the same question in a different file. And the fix is a **deferral**,
+    not a third branch: the second site hands everything but the trivial case to the first, so there
+    is one definition and the next backend cannot miss it.
+    - **A row whose bytes are already cached is what isolates it in one keystroke.** With the copy
+      on disk the transfer is out of the question entirely, so an empty panel can only be the data
+      source; without that step the obvious reading is that the fetch failed, which is a different
+      hunt. Reach for it whenever a surface fed by a transfer looks broken.
+    - **Nothing automated can see this class**, and it is worth being explicit about why: the panel
+      is Apple's window, the data source's answer is never rendered by us, and both suites plus both
+      linters were green throughout. It took pressing the key — the one the app's own placeholder
+      card names in its hint, which is the detail that makes the failure read as a lie rather than
+      as a limitation.
 - **Tree size bars are one directory per *level*, so the sizes have to live where the rows do.** The
   flat `SizeVisualization(model:)` reads one directory's siblings; a tree's rows span many, and its
   totals cannot sit in `DirectoryModel.directorySizes` — that map is pruned to the *root* listing on

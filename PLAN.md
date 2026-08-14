@@ -1089,6 +1089,60 @@ one live one, and 19 strings in all 14 catalogs.
   so a fetch started from an AppKit controller is exactly the shape that type argues about, and a
   second spelling in the app would be the one place the reasoning is not written down.
 
+**Live in the app, 2026-08-14 — and ⌘Y previewed nothing.** The slice had been verified by tests
+(headless, live-integration and one bitmap) and never by pressing its keys, so this run did that
+against the saved S3 account: ⌃Q drew the placeholder card on cursor movement and fetched when
+switched on, ⏎ opened the object in TextEdit under its real name, F4 edited it, and the save came
+back up with the re-baseline holding — a second save read "still has the size and modification date
+it had", not "someone else has edited it". **⌘Y was the one that failed**, and it is this milestone's
+most-repeated finding once more: `quickViewSourceURL` grew a remote branch at the app pass while
+`quickLookURL(for:)` — the *other* resolver of the same question, the one the `QLPreviewPanel` data
+source reads — kept its archive-only copy. So ⌘Y spent the download (the key does ask for one) and
+then showed **“No items selected”** for a row the Quick View surface beside it was drawing
+perfectly. The placeholder card names ⌘Y in its own hint, so the app was telling the user to press
+the key that showed nothing.
+
+- **The fix is a name and a deferral, not a third branch**: `previewsCursorFileOnly` (archive *or*
+  remote — one file, the one under the cursor, once its bytes are here) and a resolver that hands
+  everything non-local to `quickViewSourceURL` instead of resolving a second time. +4 app tests; the
+  control neutered the predicate back to `isArchive` and failed on exactly the four remote backends
+  while both local tests stayed green.
+- **What isolated it was a *cached* row.** Pressing ⌘Y on an object whose bytes were already on
+  disk still said "No items selected", which removes the fetch from the question entirely and points
+  at the data source. Worth reaching for whenever a surface that depends on a transfer looks broken.
+- **The empty panel on an un-fetched row is deliberate and is the cost.** Quick Look is Apple's
+  window and cannot be handed our placeholder card, and `refreshQuickLookIfVisible` runs on every
+  cursor step — so fetching there would be the arrow-key spend the whole slice is built to avoid.
+  Re-verified after the fix: arrowing onto an un-fetched row leaves the panel empty and downloads
+  nothing. Said out loud in that function's doc comment, since "add the remote counterpart here" is
+  the natural-looking edit that would undo the rule.
+
+**The ETag field has a producer, 2026-08-14.** It shipped at the core pass with none — named above as
+changing `isSuperseded(by:)`'s *rule* rather than its inputs — and S3 sends `<ETag>` on every
+`ListObjectsV2` row, which is the same response a row is already built from, so the strongest
+comparison available costs no request. `FileEntry.entityTag` carries it (defaulted, so every other
+producer is untouched), `S3ListingParser` keeps it **with its quotes** through both the listing path
+and the `entry(forKey:in:at:)` path `stat` uses, and `RemoteFileRevision(_ entry:)` reads it. +6 core
+tests, 2364 core / 452 app green, both linters clean.
+
+- **Two producers means two controls, and each fired on its own half**: dropping the parser's `ETag`
+  case failed the five parser-side assertions while the revision tests (which build entries by hand)
+  stayed green, and making the revision ignore `entry.entityTag` failed exactly the two revision
+  tests while the parser's stayed green.
+- **The live suite caught the change itself, in the informative direction.** Its untouched-object
+  test asserted `.sizeAndTimestamp` — the honest answer while nothing supplied a tag — and now reads
+  `.entityTag` against the real third-party endpoint, which is the measurement that says that
+  endpoint really does send them. It now also pins that the tag is non-`nil` and that both readings
+  carry the *same* one, so the evidence case cannot pass by both sides being empty.
+- **The visible half is a sentence that had never been reachable.** `.entityTag`'s body — "The file
+  on the server is byte-for-byte the one you downloaded" — was dead code with a full set of
+  translations. Live now on every save: the F4 → edit → ⌘S sheet draws it, and a second save after
+  an upload draws it again rather than reporting our own write as somebody else's.
+- The tag is opaque and compared only against another reading of the *same* object — an AWS tag is
+  an MD5 for a single-part upload and a digest-of-digests with `-<parts>` for a multipart one — so
+  the parser keeps it verbatim and nothing reads into it. An empty `<ETag>` is `nil` rather than
+  `""`, or two tag-less objects would compare equal and be read as proof neither had changed.
+
 All three stop at one predicate today. `quickViewSourceURL` resolves a local path or an already
 extracted archive member and answers `nil` for anything else, so an S3 row previews nothing; F4 says
 «Only files on this Mac can be edited — copy it out first (F5)»; and ⏎ falls off the end of

@@ -36,12 +36,15 @@ public struct RemoteFileRevision: Sendable, Equatable {
     ///
     /// This is the field that makes the comparison **exact**, and it is the only one that can see
     /// the case the other two cannot: a file rewritten to the same length inside the same
-    /// timestamp resolution. Nothing supplies one yet — `S3ListingParser` reads a listing's
-    /// `<ETag>` element past without keeping it, and `FileEntry` has no field to carry it — so
-    /// today it is always `nil` and the comparison falls back to size and time. It is here rather
-    /// than deferred because it changes ``isSuperseded(by:)``'s *rule*, not just its inputs: an
-    /// entity tag that matches is proof of sameness, where a matching size and time is only an
-    /// absence of evidence, and the two cannot be collapsed into one comparison after the fact.
+    /// timestamp resolution. It changes ``isSuperseded(by:)``'s *rule* rather than merely its
+    /// inputs — an entity tag that matches is proof of sameness, where a matching size and time is
+    /// only an absence of evidence — which is why it could not have been collapsed into the
+    /// disjunction after the fact.
+    ///
+    /// Supplied by S3 alone, out of the `<ETag>` of the very `ListObjectsV2` response the row was
+    /// built from, so it costs no request of its own (``FileEntry/entityTag``). SFTP and FTP have
+    /// no such thing and go on comparing size and time; FTP's is approximate on top of that, which
+    /// is what ``timestampIsApproximate`` says out loud.
     public let entityTag: String?
 
     /// Whether ``modified`` is too coarse to be trusted as an "unchanged" answer.
@@ -75,7 +78,7 @@ public struct RemoteFileRevision: Sendable, Equatable {
         self.init(
             byteSize: entry.byteSize,
             modified: entry.hasModificationDate ? entry.modificationDate : nil,
-            entityTag: nil,
+            entityTag: entry.entityTag,
             timestampIsApproximate: entry.path.backend.hasApproximateTimestamps
         )
     }

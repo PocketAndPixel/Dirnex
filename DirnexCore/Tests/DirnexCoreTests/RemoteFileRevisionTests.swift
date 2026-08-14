@@ -16,7 +16,8 @@ struct RemoteFileRevisionTests {
     private func entry(
         backend: VFSBackendID,
         byteSize: Int64 = 10,
-        modified: Date
+        modified: Date,
+        entityTag: String? = nil
     ) -> FileEntry {
         FileEntry(
             path: VFSPath(backend: backend, path: "/notes.txt"),
@@ -27,7 +28,8 @@ struct RemoteFileRevisionTests {
             creationDate: modified,
             isHidden: false,
             permissions: 0o644,
-            inode: 0
+            inode: 0,
+            entityTag: entityTag
         )
     }
 
@@ -133,6 +135,40 @@ struct RemoteFileRevisionTests {
     func realDateIsCarried() {
         #expect(RemoteFileRevision(entry(backend: s3Backend, modified: noon)).modified == noon)
         #expect(RemoteFileRevision(entry(backend: s3Backend, modified: noon)).byteSize == 10)
+    }
+
+    /// The field's producer, which it shipped without: S3 sends an `<ETag>` in the very listing a
+    /// row is built from, so the strongest comparison available costs no request of its own.
+    @Test("an S3 entry's ETag reaches the revision")
+    func entityTagIsCarriedFromTheEntry() {
+        let tagged = entry(backend: s3Backend, modified: noon, entityTag: "\"aaa\"")
+
+        #expect(RemoteFileRevision(tagged).entityTag == "\"aaa\"")
+        // And a backend that has no such notion still says so, rather than inventing one.
+        #expect(RemoteFileRevision(entry(backend: ftpBackend, modified: noon)).entityTag == nil)
+    }
+
+    /// The whole point of carrying it, in the form that matters: two readings of one object that
+    /// agree on size and second, taken from **entries** the way the app takes them. Without the
+    /// producer this pair is indistinguishable from an untouched file, which is the quiet
+    /// direction — a save that silently overwrites somebody's work.
+    @Test("a rewrite of identical size and time is caught once the entries carry tags")
+    func entryTagsCatchAnInvisibleRewrite() {
+        let downloaded = RemoteFileRevision(
+            entry(backend: s3Backend, modified: noon, entityTag: "\"aaa\"")
+        )
+        let rewritten = RemoteFileRevision(
+            entry(backend: s3Backend, modified: noon, entityTag: "\"bbb\"")
+        )
+
+        #expect(downloaded.isSuperseded(by: rewritten))
+        #expect(downloaded.evidence(comparedWith: rewritten) == .entityTag)
+        // The control that says the pair really is invisible to everything else: strip the tags
+        // and the same two readings compare equal.
+        let untagged = RemoteFileRevision(entry(backend: s3Backend, modified: noon))
+        #expect(!untagged.isSuperseded(by: RemoteFileRevision(
+            entry(backend: s3Backend, modified: noon)
+        )))
     }
 
     @Test("the FTP caveat rides along without the caller naming a backend")

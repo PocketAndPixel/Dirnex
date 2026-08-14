@@ -71,6 +71,53 @@ struct S3ListingParserTests {
         #expect(object.size == 3194)
         // 2017-04-14T14:11:15Z
         #expect(object.lastModified == Date(timeIntervalSince1970: 1_492_179_075))
+        // Quotes and all: they are part of the value AWS sends (as `&quot;` entities, which is
+        // what makes this fixture worth having), and the tag is only ever compared against another
+        // reading of the same object — so tidying them off is the edit that makes two readings
+        // disagree. Asserted here because the tag is what `RemoteFileRevision` upgrades a save's
+        // conflict check with (PLAN.md §M21 Slice 10).
+        #expect(object.entityTag == "\"d7acdb4ab69421f18ae39031a6c226c9\"")
+    }
+
+    /// A multipart upload's tag is a digest-of-digests with a part count on the end. Nothing here
+    /// reads it, which is the point — it is opaque, and the parser must not develop an opinion.
+    @Test("a multipart ETag is carried whole, part count and all")
+    func readsMultipartETag() throws {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Name>b</Name>\
+        <KeyCount>1</KeyCount><IsTruncated>false</IsTruncated><Contents><Key>big.iso</Key>\
+        <LastModified>2026-08-13T10:00:00.000Z</LastModified>\
+        <ETag>&quot;9b2cf535f27731c974343645a3985328-4&quot;</ETag><Size>41943040</Size>\
+        </Contents></ListBucketResult>
+        """
+        let object = try #require(Self.page(xml).objects.first)
+
+        #expect(object.entityTag == "\"9b2cf535f27731c974343645a3985328-4\"")
+    }
+
+    /// Not every S3-compatible server sends one, and a listing without it is still a listing — the
+    /// same rule `lastModified` follows. Two things are pinned at once, and the second is the one
+    /// that bites: a tag must be `nil` rather than `""` (so "no tag" cannot compare equal to
+    /// another object's "no tag" and be read as proof that neither has changed), and a row that
+    /// carries none must not **inherit** its predecessor's — the accumulator is reused per
+    /// `<Contents>`, which is exactly how one refused key became a batch of them in
+    /// `S3DeleteBatch`'s parser (docs/NOTES.md ▸ curl for S3).
+    @Test("a row with no ETag carries none, and does not inherit the row above it")
+    func objectWithoutETag() throws {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Name>b</Name>\
+        <KeyCount>3</KeyCount><IsTruncated>false</IsTruncated><Contents><Key>a.txt</Key>\
+        <LastModified>2026-08-13T10:00:00.000Z</LastModified>\
+        <ETag>&quot;aaa&quot;</ETag><Size>1</Size></Contents><Contents><Key>b.txt</Key>\
+        <LastModified>2026-08-13T10:00:00.000Z</LastModified><Size>2</Size></Contents>\
+        <Contents><Key>c.txt</Key><LastModified>2026-08-13T10:00:00.000Z</LastModified>\
+        <ETag></ETag><Size>3</Size></Contents></ListBucketResult>
+        """
+        let objects = try Self.page(xml).objects
+
+        #expect(objects.map(\.entityTag) == ["\"aaa\"", nil, nil])
     }
 
     @Test("a top-level Prefix echo is not mistaken for a common prefix")
@@ -231,6 +278,35 @@ struct S3ListingParserTests {
         let page = try S3ListingParser.parse(Data(xml.utf8))
         let directory = VFSPath(backend: VFSBackendID("s3://K@h:443/r/b"), path: "/")
         #expect(S3ListingParser.entries(from: page, in: directory).map(\.name) == ["z", "a.txt"])
+    }
+
+    // MARK: - The tag reaching the row
+
+    /// A file row carries the tag and a folder row cannot: a common prefix is not an object, so
+    /// there is nothing for it to have.
+    @Test("a file row carries its ETag and a folder row carries none")
+    func rowsCarryTheirETag() throws {
+        let directory = VFSPath(backend: VFSBackendID("s3://K@h:443/r/b"), path: "/")
+        let files = S3ListingParser.entries(from: try Self.page(Self.filesPage), in: directory)
+        let folders = S3ListingParser.entries(from: try Self.page(Self.foldersPage), in: directory)
+
+        #expect(files.first?.entityTag == "\"d7acdb4ab69421f18ae39031a6c226c9\"")
+        let untagged = folders.allSatisfy { $0.entityTag == nil }
+        #expect(untagged)
+    }
+
+    /// The path that actually decides a save, and the one a listing-only test would miss: a
+    /// conflict check re-`stat`s, and `S3Backend.stat` answers out of a one-key listing through
+    /// `entry(forKey:in:at:)`. A tag that reaches the pane's rows but not this one leaves the
+    /// comparison exactly as weak as it was before the field existed (PLAN.md §M21 Slice 10).
+    @Test("a stat's row carries the ETag too")
+    func statRowCarriesTheETag() throws {
+        let path = VFSPath(backend: VFSBackendID("s3://K@h:443/r/b"), path: "/GENERAL_QUALITY.xml")
+        let entry = try #require(S3ListingParser.entry(
+            forKey: "GENERAL_QUALITY.xml", in: try Self.page(Self.filesPage), at: path
+        ))
+
+        #expect(entry.entityTag == "\"d7acdb4ab69421f18ae39031a6c226c9\"")
     }
 
     @Test("a date the server spells without fractional seconds still reads")

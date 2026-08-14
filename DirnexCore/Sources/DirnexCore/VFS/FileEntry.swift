@@ -61,6 +61,21 @@ public struct FileEntry: Sendable, Hashable, Identifiable {
     /// recursive sizer, content search, byte-compare — must consult this before it opens
     /// anything, or it silently pulls the user's whole cloud drive down.
     public let isDataless: Bool
+    /// The server's entity tag for this row, when the listing carried one — S3's `<ETag>` today,
+    /// `nil` for every other backend and for every folder row.
+    ///
+    /// It exists for one question: whether the object on the server is still the one that was
+    /// downloaded (``RemoteFileRevision``). Size and time can only ever be an *absence* of
+    /// evidence — a rewrite that kept the length inside one second's resolution is invisible to
+    /// both — where a matching tag is proof, which is why it changes that comparison's rule rather
+    /// than joining it. Free here: it arrives in the same `ListObjectsV2` response the row is
+    /// already built from, so no verb pays for it.
+    ///
+    /// Opaque, and compared only against another reading of *the same object* — an AWS tag is an
+    /// MD5 for a single-part upload and a digest-of-digests with a `-<parts>` suffix for a
+    /// multipart one, so it says nothing about content two objects share and must never be read as
+    /// a checksum of the bytes.
+    public let entityTag: String?
 
     public init(
         path: VFSPath,
@@ -77,7 +92,8 @@ public struct FileEntry: Sendable, Hashable, Identifiable {
         inode: UInt64,
         symlinkDestination: String? = nil,
         symlinkTargetKind: Kind? = nil,
-        isDataless: Bool = false
+        isDataless: Bool = false,
+        entityTag: String? = nil
     ) {
         self.path = path
         self.name = name
@@ -94,6 +110,7 @@ public struct FileEntry: Sendable, Hashable, Identifiable {
         self.symlinkDestination = symlinkDestination
         self.symlinkTargetKind = symlinkTargetKind
         self.isDataless = isDataless
+        self.entityTag = entityTag
     }
 
     public var id: VFSPath { path }

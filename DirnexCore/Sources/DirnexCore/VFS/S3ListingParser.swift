@@ -9,11 +9,20 @@ public struct S3Object: Sendable, Equatable {
     /// `nil` when the server sent a stamp in a shape this cannot read. A listing is still usable
     /// without it, so an unreadable date must not fail the page.
     public let lastModified: Date?
+    /// The object's `<ETag>`, kept **with its quotes** — `"f804fb237efd0e539f99f64aa7299653"`, or
+    /// `…-4` for a multipart upload.
+    ///
+    /// Carried verbatim because it is only ever compared against another reading of the same
+    /// object (``FileEntry/entityTag``), and tidying the quotes away is the edit that makes two
+    /// readings of one object disagree. `nil` for a server that sends none, which is a listing this
+    /// backend must still be able to use.
+    public let entityTag: String?
 
-    public init(key: String, size: Int64, lastModified: Date?) {
+    public init(key: String, size: Int64, lastModified: Date?, entityTag: String? = nil) {
         self.key = key
         self.size = size
         self.lastModified = lastModified
+        self.entityTag = entityTag
     }
 }
 
@@ -94,6 +103,7 @@ public enum S3ListingParser {
                 kind: .file,
                 size: object.size,
                 date: object.lastModified,
+                entityTag: object.entityTag,
                 in: directory
             )
         }
@@ -125,7 +135,8 @@ public enum S3ListingParser {
                 name: path.lastComponent,
                 kind: .file,
                 size: object.size,
-                date: object.lastModified
+                date: object.lastModified,
+                entityTag: object.entityTag
             )
         }
         guard page.commonPrefixes.contains(where: { decode($0) == "\(key)/" }) else { return nil }
@@ -144,11 +155,19 @@ public enum S3ListingParser {
         kind: FileEntry.Kind,
         size: Int64,
         date: Date?,
+        entityTag: String? = nil,
         in directory: VFSPath
     ) -> FileEntry? {
         let name = S3Key.displayName(ofKey: key)
         guard !name.isEmpty else { return nil }
-        return entry(at: directory.appending(name), name: name, kind: kind, size: size, date: date)
+        return entry(
+            at: directory.appending(name),
+            name: name,
+            kind: kind,
+            size: size,
+            date: date,
+            entityTag: entityTag
+        )
     }
 
     private static func entry(
@@ -156,7 +175,8 @@ public enum S3ListingParser {
         name: String,
         kind: FileEntry.Kind,
         size: Int64,
-        date: Date?
+        date: Date?,
+        entityTag: String? = nil
     ) -> FileEntry {
         // S3 has no mtime you can set and no birth time at all, so both dates are the object's
         // `LastModified` and a folder — which is not an object — has neither.
@@ -179,7 +199,10 @@ public enum S3ListingParser {
             inode: 0,
             symlinkDestination: nil,
             symlinkTargetKind: nil,
-            isDataless: false
+            isDataless: false,
+            // A folder row is a common prefix rather than an object, so it has no tag to carry —
+            // and the callers that build one pass none, which is what keeps the default honest.
+            entityTag: entityTag
         )
     }
 }
@@ -218,6 +241,7 @@ private extension S3ListingParser {
         private var key: String?
         private var size: Int64 = 0
         private var lastModified: Date?
+        private var entityTag: String?
         private let dates = S3Date()
 
         func parser(
@@ -234,6 +258,7 @@ private extension S3ListingParser {
                 key = nil
                 size = 0
                 lastModified = nil
+                entityTag = nil
             }
         }
 
@@ -274,6 +299,12 @@ private extension S3ListingParser {
             case ("Contents", "Key"): key = text
             case ("Contents", "Size"): size = Int64(value) ?? 0
             case ("Contents", "LastModified"): lastModified = dates.parse(value)
+            // Trimmed, like the token and the numbers above and unlike a key: the quotes are the
+            // value's own and any whitespace around them is XML formatting. An empty one is `nil`,
+            // so "the server sent no tag" and "the server sent an empty tag" reach the comparison
+            // as the same answer — no evidence — rather than as a tag that matches every other
+            // empty one.
+            case ("Contents", "ETag") where !value.isEmpty: entityTag = value
             case ("CommonPrefixes", "Prefix") where !text.isEmpty:
                 commonPrefixes.append(text)
             case ("ListBucketResult", "NextContinuationToken") where !value.isEmpty:
@@ -282,7 +313,9 @@ private extension S3ListingParser {
             case ("ListBucketResult", "EncodingType"): encodingType = value
             case (_, "Contents"):
                 if let key, !key.isEmpty {
-                    objects.append(S3Object(key: key, size: size, lastModified: lastModified))
+                    objects.append(S3Object(
+                        key: key, size: size, lastModified: lastModified, entityTag: entityTag
+                    ))
                 }
             default: break
             }

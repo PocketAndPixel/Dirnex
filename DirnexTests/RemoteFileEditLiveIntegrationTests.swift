@@ -222,8 +222,15 @@ final class RemoteFileEditLiveIntegrationTests {
             Result { try backend.stat(at: entry.path) }
         }.get()
         #expect(!recorded.isSuperseded(by: RemoteFileRevision(current)))
-        // Over S3 the check rests on size *and* a real timestamp — the strongest thing available
-        // without an entity tag, and not the FTP caveat.
-        #expect(recorded.evidence(comparedWith: RemoteFileRevision(current)) == .sizeAndTimestamp)
+        // The strongest answer there is: both readings carried an entity tag and the tags matched,
+        // so this is proof of sameness rather than an absence of evidence. It reads
+        // `.sizeAndTimestamp` — still true, and weaker — for as long as nothing supplies a tag,
+        // which is what this endpoint settled: it sends `<ETag>` on every `ListObjectsV2` row, so
+        // the tag rides in on the same request the row is built from and no verb pays for it.
+        #expect(recorded.evidence(comparedWith: RemoteFileRevision(current)) == .entityTag)
+        // Held separately, because the assertion above would also pass if *neither* side had one
+        // and the case had been mis-ordered: the tag is really there, and it is the object's own.
+        #expect(recorded.entityTag != nil)
+        #expect(recorded.entityTag == RemoteFileRevision(current).entityTag)
     }
 }
