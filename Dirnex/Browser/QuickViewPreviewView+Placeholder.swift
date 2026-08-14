@@ -18,6 +18,20 @@ extension QuickViewPreviewView {
     func showPlaceholder(_ placeholder: RemotePreviewPlaceholder) {
         let card = ensurePlaceholderCard()
         showQuickLook(nil)
+        // Raised to the front *after* the stand-down, and this is what makes the card's buttons
+        // clickable at all. Every backend is pinned into the same container, so the last one added
+        // is on top — and `showQuickLook(nil)` leaves the `QLPreviewView` **visible** with no item,
+        // which on a surface that has shown nothing else is built right here, one line above, i.e.
+        // *after* the card. It renders out of process, so it is transparent and the card is drawn
+        // perfectly; it also answers `hitTest` and then declines the event (docs/NOTES.md ▸ AppKit),
+        // so the surface's blanket swallow took every press and Download was dead for the session.
+        // That is exactly how the mode is reached — ⌃Q with the cursor already on a remote file —
+        // and previewing any local file first hid it, since the card was then added on top.
+        // Reported by a user 2026-08-14.
+        //
+        // A reorder, not a re-add: AppKit moves a view already in this superview rather than
+        // removing it, so the pinning constraints and the frame survive (probed).
+        content.addSubview(card, positioned: .above, relativeTo: nil)
         card.isHidden = false
         card.onDownload = placeholderActions?.download
         card.onStop = placeholderActions?.stop

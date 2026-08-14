@@ -652,6 +652,27 @@ at build time.
     images already took — decode it (`TextPreview`) and render it in an in-process `NSTextView`,
     where selection and ⌘C are the view's own. Worth stating because "just let this one through"
     looks like the small fix and is the one thing that is not available.
+  - **The exemption list is a *set* and the container is a *stack*, so being on the list buys
+    nothing if something else is on top — and the thing on top is invisible, which is why it reads
+    as a dead button rather than as z-order.** Quick View's placeholder card carries the only
+    controls a declined remote fetch offers (Download, Stop), both duly exempted from the blanket
+    swallow. `showPlaceholder` then built the card *first* and called `showQuickLook(nil)` after,
+    which leaves an item-less `QLPreviewView` **visible** in the same pinned container — added
+    second, therefore in front. It renders out of process, so it draws nothing and the card is
+    perfect; it answers `hitTest` and declines, so the surface swallowed every press and Download
+    was dead for the whole session. Reported by a user 2026-08-14, on the *ordinary* way into the
+    mode: ⌃Q with the cursor already on a remote file is a surface whose first content is the card,
+    while previewing any local file first builds the Quick Look view early and hides the bug
+    completely — so a verification pass that looked at one file before the remote one cannot see it.
+    Raise the overlay explicitly (`addSubview(_:positioned: .above, relativeTo: nil)`, a pure
+    reorder — probed, the pinning constraints and the frame survive) rather than relying on the
+    order two `ensure*` calls happen to run in.
+    - It is headlessly testable and worth pinning, because nothing else in the suite can see it:
+      every other backend is the only *visible* thing in the container when it is asked about, so
+      they pass whatever the ordering is. The test has to show the card on a surface that has
+      displayed nothing else, and it needs the narrowness control beside it (a press on the card's
+      **body** must still be swallowed) or "raise the card" quietly becomes "let the whole card
+      through".
 - **A backend the user can click into, inside a preview that covers the *inactive* pane, hands every
   command to the wrong pane.** The pane-mode preview is a subview of the pane it covers, so first
   responder lands inside that pane's hierarchy and the responder chain runs through the **covered**

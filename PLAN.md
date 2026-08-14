@@ -1658,6 +1658,36 @@ first report at 1.1 s of a 12.4-second upload and 1.2 s of a 20.4-second downloa
 the same `ProcessWaiting` hook and the same meter are already in place for them to use, since
 `FTPCurlTransport` drives the same `curl`.
 
+#### Slice 13 — 2026-08-14: the Download button the mouse could not reach
+
+Reported as "the Download button on the Quick View is not active", with the placeholder card drawn
+perfectly over a 29 MB S3 object. The button was armed, visible, un-hidden and correctly wired; what
+it was not was **on top**.
+
+Every backend the preview surface owns is pinned into one container, so the last one added is in
+front — and `showPlaceholder` built the card first and called `showQuickLook(nil)` second, which
+leaves an item-less `QLPreviewView` **visible** and therefore added after the card. It renders out of
+process, so it draws nothing and the card looks right; it also answers `hitTest` and then *declines*
+the event, which is the finding docs/NOTES.md already carries from M11 — so the surface's blanket
+swallow took every press. The fix is one line: raise the card explicitly after the stand-down
+(`addSubview(_:positioned: .above, relativeTo: nil)`, probed to be a pure reorder that keeps the
+pinning constraints and the frame), rather than depending on the order two `ensure*` calls happen to
+run in.
+
+**Why it shipped, and why no verification pass would have caught it.** The ordering is decided by
+whatever the surface shows *first*, and the failing order is the ordinary way into the mode: ⌃Q with
+the cursor already on a remote file. Preview any local file first and the Quick Look view is built
+early, the card lands on top, and the button works — so the bug is invisible to anyone who looked at
+one file before the remote one, which is what a person checking a preview naturally does.
+
++3 app tests (2401 core / 499 app green, both linters clean), and the reproduction was the negative
+control: against the shipped code the hit-test assertions fail with the surface itself as the hit,
+the user's symptom exactly. The third test is the narrowness control — a press on the card's **body**
+must still be swallowed, or "raise the card" quietly becomes "let the whole card through" and a click
+beside the button moves the covered pane's cursor. Nothing else in the suite can see this class: every
+other backend is the only visible thing in the container when it is asked about, so those tests pass
+whatever the ordering is.
+
 ## 5. Cross-cutting: testing strategy
 
 | Layer | Approach |
