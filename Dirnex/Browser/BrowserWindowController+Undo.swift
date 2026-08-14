@@ -138,7 +138,10 @@ extension BrowserWindowController {
     }
 
     /// Internal rather than private: the recursive attributes apply reports through the same alert,
-    /// and Swift's `private` does not cross files (docs/NOTES.md §"Lint ceilings").
+    /// and Swift's `private` does not cross files (docs/NOTES.md §"Lint ceilings"). That second
+    /// caller is why this reports through `beginSheetIfVisible` — it lands from a **queued job**
+    /// finishing, where ⌘Z's own report lands from a keystroke; with no window neither has anybody
+    /// to tell, so the two need no different answer.
     func presentIssues(title: String, lines: [String]) {
         let alert = NSAlert()
         alert.alertStyle = .warning
@@ -146,6 +149,6 @@ extension BrowserWindowController {
         alert.informativeText = lines.joined(separator: "\n")
         alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))
         alert.enableEscapeToCancel()
-        if let window { alert.beginSheetModal(for: window) } else { alert.runModal() }
+        alert.beginSheetIfVisible(over: window)
     }
 }

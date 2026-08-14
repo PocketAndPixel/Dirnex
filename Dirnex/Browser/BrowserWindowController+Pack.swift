@@ -82,6 +82,7 @@ extension BrowserWindowController {
         alert.informativeText = LocalizedCatalog.sentence(for: error)
         alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))
         alert.enableEscapeToCancel()
-        if let window { alert.beginSheetModal(for: window) } else { alert.runModal() }
+        // A job that finished minutes after it was queued — see `beginSheetIfVisible`.
+        alert.beginSheetIfVisible(over: window)
     }
 }

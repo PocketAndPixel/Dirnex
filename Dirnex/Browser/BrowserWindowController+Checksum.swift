@@ -110,7 +110,8 @@ extension BrowserWindowController {
         present(alert)
     }
 
+    /// A job that finished minutes after it was queued — see `beginSheetIfVisible`.
     private func present(_ alert: NSAlert) {
-        if let window { alert.beginSheetModal(for: window) } else { alert.runModal() }
+        alert.beginSheetIfVisible(over: window)
     }
 }

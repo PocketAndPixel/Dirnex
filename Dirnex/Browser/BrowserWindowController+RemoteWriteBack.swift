@@ -66,11 +66,8 @@ extension BrowserWindowController {
             guard response == .alertFirstButtonReturn else { return }
             self?.uploadEditedFile(edit, to: path)
         }
-        if let host = NSAlert.sheetHost(over: window) {
-            alert.beginSheetModal(for: host, completionHandler: handler)
-        } else {
-            handler(alert.runModal())
-        }
+        // The watcher raised this, not the user — see `beginSheetIfVisible`.
+        alert.beginSheetIfVisible(over: window, completionHandler: handler)
     }
 
     /// What the re-`stat` found, in the user's terms.

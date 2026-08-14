@@ -206,14 +206,35 @@ at build time.
       **user saying they had clicked six dialogs away**. When a test suite's timing is
       unexplainable, look at the screen before theorising about scheduling — and note that a
       passing serial run is not evidence about parallelism if a human was clearing dialogs in both.
-    - **The fix is to withhold the alert, not to fix the test.** A load failure is the one alert
-      raised *unasked* — a navigation the app performs by itself — so a pane with no window has
-      nobody to tell; the same state is reachable in the app during launch restoration, before
-      `showWindow`. `guard let window = view.window else { return }` in place of the `runModal`
-      fallback: 459 green in **16.2 s**, against **111 s for eight tests** with the fallback back in
-      (all of it dismissing dialogs). Worth checking any other alert a headless suite can reach by
-      the same route — the rule that a `runModal` fallback is correct (▸ AppKit) assumes a *user*
-      asked for the thing that failed.
+    - **The fix is to withhold the alert, not to fix the test.** A load failure is an alert raised
+      *unasked* — a navigation the app performs by itself — so a pane with no window has nobody to
+      tell; the same state is reachable in the app during launch restoration, before `showWindow`.
+      Dropping it in place of the `runModal` fallback: 459 green in **16.2 s**, against **111 s for
+      eight tests** with the fallback back in (all of it dismissing dialogs).
+    - **The rule that came out of auditing the other 48 sites: `runModal` is right when a *user is
+      waiting for the answer*, and the audit question is "who is waiting?", not "is there a
+      window?".** Three kinds hide behind one `else runModal()`:
+      1. **A user pressed something** — every confirmation, prompt and post-gesture failure (the
+         great majority). An alert detached from the app beats no answer: keep the fallback.
+      2. **A blocked worker is waiting** — `ConflictDialog` and `ErrorDialog`, called from the copy
+         thread, which is parked until the answer comes back. Here `runModal` is not merely
+         acceptable, it is *required*: dropping it hangs the job or silently picks a resolution.
+      3. **Nobody is waiting** — the app raised it on its own schedule: a listing that failed during
+         a navigation the app started, a queued job finishing minutes later, a watcher noticing an
+         editor's save. With no window there is nobody to tell, and `runModal` does not just
+         misplace the alert, it blocks the process on a dialog that arrived by itself.
+      Only the third kind is the bug, and it was **six** sites: `presentLoadFailure`, both
+      write-back offers (`EditedFileRegistry` is a watcher), and the queue's failure, pack and
+      checksum reports — plus `presentIssues`, which is dual-triggered (⌘Z *and* a recursive-apply
+      job) and therefore answers the harder half. They now share one funnel,
+      `NSAlert.beginSheetIfVisible(over:)`, so the reasoning lives in one doc comment rather than in
+      six copies of `if let window`. It routes through `sheetHost(over:)` as a side benefit: a
+      report landing while a dialog is up now attaches to *that* dialog instead of being queued
+      invisibly behind it.
+      - Two launch-time one-shots (`DisplacedScriptKeysNotice`, the Full Disk Access wall) are
+        unprompted by this rule and were deliberately **left alone**: each is handed a window by
+        construction, and each is marked as shown once presented — so dropping it would consume the
+        one-shot in silence, which is a worse failure than the one being prevented.
 
 ## AppKit
 

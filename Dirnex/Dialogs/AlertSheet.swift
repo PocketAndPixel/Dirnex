@@ -27,6 +27,32 @@ extension NSAlert {
         NSApp.modalWindow ?? window?.attachedSheet ?? window
     }
 
+    /// Present as a sheet where the user can see it — and **not at all** when there is no window.
+    ///
+    /// The `runModal()` fallback above is right for an alert a *user is waiting on*: they pressed
+    /// something, and an answer detached from the app beats no answer. It is wrong for the third
+    /// kind, the one this method serves — an alert the **app** raises unasked, on its own schedule:
+    /// a listing that failed during a navigation the app started, a queued job finishing minutes
+    /// later, a watcher noticing an editor's save. Nobody is waiting for those, so with no window
+    /// there is nobody to tell, and `runModal` does not merely misplace the alert — it **blocks the
+    /// process** on a dialog that arrived by itself.
+    ///
+    /// That is not hypothetical: it is how the app's own test host came to raise six app-modal
+    /// alerts in one run, each stalling the suite until a human clicked OK, which read as an
+    /// unrelated live test timing out (2026-08-14, found by the user watching the screen — see
+    /// docs/NOTES.md ▸ Testing). The same state is reachable in the app during launch restoration,
+    /// before `showWindow`.
+    ///
+    /// Hosting goes through ``sheetHost(over:)`` like every other sheet, so a report landing while a
+    /// dialog is up attaches to *that* dialog rather than being queued invisibly behind it.
+    func beginSheetIfVisible(
+        over window: NSWindow?,
+        completionHandler: ((NSApplication.ModalResponse) -> Void)? = nil
+    ) {
+        guard let host = NSAlert.sheetHost(over: window) else { return }
+        beginSheetModal(for: host, completionHandler: completionHandler)
+    }
+
     /// Present as a sheet on ``sheetHost(over:)`` and wait for the answer.
     ///
     /// `onPresented` runs once the sheet is up, for the one thing a sheet cannot do for itself:

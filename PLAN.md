@@ -1271,6 +1271,21 @@ the run's duration was measuring reaction time.
   each of them changes *how much runs* and none of them can see a window. The signal that settled it
   was a person looking at the screen — the same class as the menu-bar claim M20 shipped and the
   `.stringsdata` sweep that never ran. Recorded in docs/NOTES.md ▸ Testing.
+- **The other 48 `runModal` fallbacks were audited, and the question that sorts them is "who is
+  waiting for the answer?"** Three kinds share one `else runModal()`: a **user** pressed something
+  (the great majority — keep the fallback, a detached alert beats no answer); a **blocked worker** is
+  parked on it (`ConflictDialog`, `ErrorDialog`, called from the copy thread — here `runModal` is
+  *required*, since dropping it hangs the job or silently picks a resolution); and **nobody** is,
+  because the app raised it on its own schedule. Only the third is the bug, and it was six sites:
+  the load failure, both write-back offers (a watcher notices the editor's save), and the queue's
+  failure / pack / checksum reports — plus `presentIssues`, dual-triggered by ⌘Z *and* a
+  recursive-apply job. All six now share `NSAlert.beginSheetIfVisible(over:)`, so the rule lives in
+  one doc comment instead of six copies of `if let window`, and they gain `sheetHost(over:)` — a
+  report landing while a dialog is up attaches to that dialog rather than queueing invisibly behind
+  it. Two launch-time one-shots (the displaced-script notice, the Full Disk Access wall) are
+  unprompted too and were left alone on purpose: each is handed a window by construction and each is
+  marked shown once presented, so dropping one would consume it in silence. 459 green in 15.0 s
+  afterwards, with the screen watched.
 
 All three stop at one predicate today. `quickViewSourceURL` resolves a local path or an already
 extracted archive member and answers `nil` for anything else, so an S3 row previews nothing; F4 says

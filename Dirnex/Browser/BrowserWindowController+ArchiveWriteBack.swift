@@ -59,11 +59,8 @@ extension BrowserWindowController {
                 edit, archivePath: archivePath, innerDirectory: innerDirectory
             )
         }
-        if let window {
-            alert.beginSheetModal(for: window, completionHandler: handler)
-        } else {
-            handler(alert.runModal())
-        }
+        // The watcher raised this, not the user — see `beginSheetIfVisible`.
+        alert.beginSheetIfVisible(over: window, completionHandler: handler)
     }
 
     /// Add the edited copy back into the archive at the inner directory it came from, replacing the
