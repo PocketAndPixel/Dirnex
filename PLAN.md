@@ -1340,6 +1340,42 @@ first was chosen, paired with the card fix the third of them would still have ne
   button) and let the button be clicked — one click, no confirmation, preview shown. 2383 core / 481
   app green, both linters clean, 4 strings in all 14 catalogs.
 
+**The threshold became the user's, and the card learned to report, 2026-08-14 — asked for by the same
+user in the same breath as the report above.** A photographer working in 40–300 MB raw files is the
+case the 16 MiB cap is wrong for, and a fixed number cannot be right for both them and someone on a
+tethered connection; and a preview that fetches on its own has to say what it is doing, or a slow link
+is indistinguishable from the mode being broken again.
+
+- **The limit is a preference the *core* reads as data, not a constant it owns.**
+  `RemoteFetchPolicy` now takes the automatic cap rather than holding it, so the table keeps deciding
+  and Settings decides the number: `AppPreferences.quickViewFetchLimit`, in Settings ▸ Panels beside
+  the other Quick View row, defaulting to the 10 MiB the shipped behaviour already had. **Off** is a
+  real value and is why the card needed a fourth sentence — at a limit of 0 a 21-byte file is not
+  "this large", it is a mode the user turned off, and saying the former would read as arithmetic
+  nobody can argue with. An open preview re-evaluates on change, so the setting is not a
+  next-launch one.
+- **`decline` is what makes the limit safe to raise.** Nothing about a bigger number changes the rule
+  that an automatic gesture must not *ask*: over the cap the card appears and the user clicks, which
+  is the same one gesture at 10 MiB and at 300.
+- **Progress is a byte count the fetch already had, published rather than computed.**
+  `RemoteFileCache` counts what has landed, the card polls it, and the bar is **determinate** —
+  indeterminate would say "something is happening" where the honest answer is available. The readout
+  is suppressed until the first byte, since "Zero KB of 42 bytes" is a claim about the transfer that
+  is really a claim about the clock, and it borrows the queue bar's existing byte string rather than
+  minting a second spelling of the same sentence.
+- **Stop had to be *remembered*, and the first live run is what showed it.** A stopped fetch that
+  merely forgot itself would be restarted by the next cursor event, or — worse, on a small file —
+  leave the card claiming the file is too large. So the cancellation is recorded against the row and
+  the card says "Download stopped." over a Download button; the negative control (forget instead of
+  remember) fires as a retry loop, `copyCount` 2. Same asymmetry as `EditedFileRevision`: the state
+  worth keeping is the one the user asked for.
+- **Verified live against the real bucket, all four states.** The downloading card with its bar,
+  caption and Stop; Stop clicked mid-flight → "Download stopped." with the right size on a 42-byte
+  file and no restart on the next arrow key; completion → the text rendered; and, after restoring the
+  400 ms settle the probe had stretched to 8 s, the reported case again — into `docs/` with the
+  preview up, `notes.txt` drew its contents. 2387 core / 491 app green, both linters clean, all three
+  check scripts clean, 5 strings in all 14 catalogs.
+
 #### Slice 11 — 2026-08-14: Space-on-dir over a server
 
 The milestone has said since it opened that "every listing is a billable request, which makes the

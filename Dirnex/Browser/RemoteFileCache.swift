@@ -155,6 +155,14 @@ final class RemoteFileCache {
         /// downloaded" while nothing is happening, and it is what stops the next delivery starting
         /// the same doomed transfer again.
         case failed
+        /// The user pressed Stop on this row.
+        ///
+        /// A state of its own rather than simply forgetting the fetch, and the difference is the
+        /// whole point: forgetting it would let the very next preview delivery start the download
+        /// again, so a file under the limit could not be stopped at all — every cursor step would
+        /// re-schedule what had just been called off. Held for the same span as `.failed`, and
+        /// cleared the moment the cursor moves on, so coming back to the row offers it afresh.
+        case stopped
     }
 
     /// How long the cursor has to rest on a row before its bytes are worth pulling.
@@ -176,6 +184,20 @@ final class RemoteFileCache {
     func automaticState(for entry: FileEntry) -> AutomaticState? {
         guard let automatic, automatic.path == entry.path else { return nil }
         return automatic.state
+    }
+
+    /// How many bytes the automatic fetch of `entry` has moved so far, or `nil` when none is
+    /// running for that row.
+    ///
+    /// A **pull**, deliberately: a fetch reports every chunk, and turning each into a re-delivery of
+    /// the whole preview would repaint the surface hundreds of times for a number in one label. The
+    /// card polls this instead, which is the shape `RemoteFetchPrompt`'s sheet already uses and for
+    /// the same reason.
+    func automaticProgress(for entry: FileEntry) -> Int64? {
+        guard let automatic, automatic.path == entry.path, automatic.state == .running else {
+            return nil
+        }
+        return automatic.moved.value
     }
 
     /// Pull `entry`'s bytes down because the cursor has come to rest on it, and call `onSettled`
@@ -200,6 +222,7 @@ final class RemoteFileCache {
         let pending = AutomaticFetch(path: entry.path)
         automatic = pending
         let cancellation = pending.cancellation
+        let moved = pending.moved
         pending.task = Task { [weak self] in
             try? await Task.sleep(for: Self.settleDelay)
             guard let self, automatic === pending, !cancellation.isCancelled else { return }
@@ -207,7 +230,7 @@ final class RemoteFileCache {
                 _ = try await fetch(
                     entry,
                     using: backend,
-                    progress: { _ in },
+                    progress: { moved.value = $0 },
                     isCancelled: { cancellation.isCancelled }
                 )
             } catch {
@@ -224,7 +247,7 @@ final class RemoteFileCache {
         }
     }
 
-    /// Abandon whatever automatic fetch is in flight, and forget a failed one.
+    /// Abandon whatever automatic fetch is in flight, and forget a failed or stopped one.
     ///
     /// Called when the cursor leaves the row, and by the explicit gestures — a key somebody pressed
     /// supersedes a transfer nobody asked for, rather than racing it for the same object.
@@ -235,15 +258,28 @@ final class RemoteFileCache {
         self.automatic = nil
     }
 
+    /// The same, except that the row is **remembered** as stopped — the Stop button rather than the
+    /// cursor moving away. See ``AutomaticState/stopped`` for why the distinction is load-bearing:
+    /// without it a file under the limit cannot be stopped at all, because the delivery that Stop
+    /// itself causes would start it again.
+    func stopAutomaticFetch() {
+        guard let automatic else { return }
+        automatic.cancellation.isCancelled = true
+        automatic.task?.cancel()
+        automatic.state = .stopped
+    }
+
     /// One row's automatic attempt: which object, how it is going, and the flag the transfer's own
     /// thread reads to find out it has been abandoned.
     private final class AutomaticFetch {
         let path: VFSPath
         var state: AutomaticState = .running
         var task: Task<Void, Never>?
-        /// Read from the transfer's thread, so it cannot be main-actor state — the same shape
-        /// `RemoteFetchPrompt.Control` uses, minus the byte counter nothing draws here.
+        /// Both read from the transfer's thread, so neither can be main-actor state — the same shape
+        /// `RemoteFetchPrompt.Control` uses, split into two boxes because they travel separately:
+        /// the flag goes *into* the transfer and the counter comes back out of it.
         let cancellation = CancellationFlag()
+        let moved = ByteCounter()
 
         init(path: VFSPath) {
             self.path = path
@@ -254,10 +290,22 @@ final class RemoteFileCache {
 /// A one-bit `Sendable` box, so the main actor can tell a running transfer to stop.
 final class CancellationFlag: @unchecked Sendable {
     private let lock = NSLock()
-    private var value = false
+    private var flag = false
 
     var isCancelled: Bool {
-        get { lock.withLock { value } }
-        set { lock.withLock { value = newValue } }
+        get { lock.withLock { flag } }
+        set { lock.withLock { flag = newValue } }
+    }
+}
+
+/// A `Sendable` running total, so a transfer can report from its own thread and the main actor can
+/// read it whenever it next draws.
+final class ByteCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var total: Int64 = 0
+
+    var value: Int64 {
+        get { lock.withLock { total } }
+        set { lock.withLock { total = newValue } }
     }
 }

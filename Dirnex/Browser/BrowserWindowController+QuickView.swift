@@ -20,6 +20,7 @@ extension BrowserWindowController {
         installQuickViewSwipeMonitor()
         observeQuickViewRenderStyle()
         observeQuickViewJavaScript()
+        observeQuickViewFetchLimit()
         observeQuickViewFullScreen()
     }
 
@@ -121,6 +122,28 @@ extension BrowserWindowController {
     }
 
     @objc func quickViewRenderStyleDidChange(_ notification: Notification) {
+        guard isQuickViewEnabled else { return }
+        updateQuickView()
+    }
+
+    /// Subscribe to `quickViewFetchLimitDidChange`, so raising the limit resolves the card the user
+    /// is *looking at* rather than the one they would see after the next cursor step.
+    ///
+    /// `updateQuickView()` rather than a re-delivery, because what has changed is the answer to
+    /// "may this be fetched" — which is asked by `prepareRemotePreview` on the way in, not by the
+    /// surface on the way out. Lowering the limit mid-transfer deliberately does *not* stop it: the
+    /// bytes are already being spent, and abandoning them would leave the user with nothing to show
+    /// for a download they had already paid for.
+    func observeQuickViewFetchLimit() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(quickViewFetchLimitDidChange),
+            name: AppPreferences.quickViewFetchLimitDidChange,
+            object: nil
+        )
+    }
+
+    @objc func quickViewFetchLimitDidChange(_ notification: Notification) {
         guard isQuickViewEnabled else { return }
         updateQuickView()
     }
@@ -249,16 +272,16 @@ extension BrowserWindowController {
             url: url,
             style: style,
             placeholder: placeholder,
-            // Only where there is a card to carry it: a button armed for a surface that is showing
-            // a real file would fetch on behalf of a row nobody is looking at.
-            download: placeholder.map { _ in downloadAction(for: active) }
+            // Only where there is a card to carry them: controls armed for a surface that is showing
+            // a real file would act on behalf of a row nobody is looking at.
+            actions: placeholder.map { _ in previewActions(for: active) }
         )
         switch quickViewMode {
         case .off:
             return
         case .pane:
             counterpart(of: active).showQuickViewPreview(
-                of: url, style: style, placeholder: placeholder, download: content.download
+                of: url, style: style, placeholder: placeholder, actions: content.actions
             )
         case .fullWindow:
             present(ensureFullWindowPreview(), content, from: active)
@@ -271,22 +294,28 @@ extension BrowserWindowController {
         if quickViewMode.isFullSize { restoreTableFocus(to: active) }
     }
 
-    /// What the placeholder card's Download button does: ask for the object under `active`'s cursor
-    /// explicitly, then re-draw whichever surface is showing it.
+    /// What the placeholder card's controls do, bound to the pane whose cursor it is standing in for.
     ///
-    /// `alreadyConfirmed`, because the card the button sits on has already named the file and its
-    /// size — `RemoteFetchPolicy`'s own confirmation would be putting the same question a second
-    /// time to somebody who has just answered it by clicking.
-    private func downloadAction(for active: PanelViewController) -> () -> Void {
-        { [weak self, weak active] in
-            guard let self, let active else { return }
-            active.openRemotePreview(alreadyConfirmed: true) { [weak self, weak active] in
-                guard let self, let active, isQuickViewEnabled, active === focusedPanel else {
-                    return
-                }
-                deliverPreview(from: active)
-            }
+    /// Download goes through `alreadyConfirmed`, because the card the button sits on has already
+    /// named the file and its size — `RemoteFetchPolicy`'s own confirmation would be putting the
+    /// same question a second time to somebody who has just answered it by clicking. Stop calls off
+    /// the fetch the app started by itself, which is otherwise only reachable by moving the cursor
+    /// away from the file you are waiting for.
+    private func previewActions(for active: PanelViewController) -> RemotePreviewActions {
+        let redraw: @MainActor () -> Void = { [weak self, weak active] in
+            guard let self, let active, isQuickViewEnabled, active === focusedPanel else { return }
+            deliverPreview(from: active)
         }
+        return RemotePreviewActions(
+            download: { [weak active] in
+                active?.openRemotePreview(alreadyConfirmed: true, onReady: redraw)
+            },
+            stop: { [weak active] in
+                active?.stopRemotePreviewFetch()
+                redraw()
+            },
+            progress: { [weak active] in active?.remotePreviewProgress }
+        )
     }
 
     /// Everything a surface is being asked to show: the file, how, and — when there is no file — the
@@ -299,7 +328,7 @@ extension BrowserWindowController {
         let url: URL?
         let style: QuickViewRenderStyle
         let placeholder: RemotePreviewPlaceholder?
-        let download: (() -> Void)?
+        let actions: RemotePreviewActions?
     }
 
     /// Unhide `preview`, load `content` into it, and name the file in its header.
@@ -312,7 +341,7 @@ extension BrowserWindowController {
         from active: PanelViewController
     ) {
         preview.isHidden = false
-        preview.placeholderDownloadAction = content.download
+        preview.placeholderActions = content.actions
         preview.show(content.url, style: content.style, placeholder: content.placeholder)
         preview.setCaption(quickViewCaption(for: content.url, style: content.style, from: active))
     }

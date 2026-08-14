@@ -19,7 +19,9 @@ extension QuickViewPreviewView {
         let card = ensurePlaceholderCard()
         showQuickLook(nil)
         card.isHidden = false
-        card.onDownload = placeholderDownloadAction
+        card.onDownload = placeholderActions?.download
+        card.onStop = placeholderActions?.stop
+        card.progressSource = placeholderActions?.progress
         card.show(placeholder)
     }
 
@@ -48,15 +50,34 @@ final class QuickViewPlaceholderCard: NSView {
     /// button outright: a control that does nothing is worse than no control, and a card drawn by a
     /// surface with nobody to ask on its behalf is exactly that.
     var onDownload: (() -> Void)?
+    /// What Stop does, on the same terms.
+    var onStop: (() -> Void)?
+    /// How many bytes have arrived, asked once every ``pollInterval`` while a download is running.
+    ///
+    /// A pull rather than a push, which is what keeps a chunk-by-chunk report from becoming a
+    /// repaint of the whole preview — the shape `RemoteFetchPrompt.followProgress` already uses,
+    /// and for the same reason.
+    var progressSource: (() -> Int64?)?
 
     private let glyph = NSImageView()
-    private let spinner = NSProgressIndicator()
     private let nameLabel = NSTextField(labelWithString: "")
     private let sizeLabel = NSTextField(labelWithString: "")
     private let hintLabel = NSTextField(labelWithString: "")
-    /// Internal, not private: `QuickViewPreviewView.hitTest` has to exempt this one control from the
-    /// surface's blanket "swallow the mouse", and Swift's `private` does not cross files.
+    private let bar = NSProgressIndicator()
+    /// Internal, not private: `QuickViewPreviewView.hitTest` has to exempt these two controls from
+    /// the surface's blanket "swallow the mouse", and Swift's `private` does not cross files.
     let downloadButton = NSButton()
+    let stopButton = NSButton()
+
+    /// The file's total, so the bar and its readout have something to divide by. `nil` for a server
+    /// that reported no size, which is what makes the bar indeterminate.
+    private var expectedBytes: Int64?
+    /// Bumped by every `show`, so a poll armed for the previous row stands down rather than writing
+    /// that row's byte count into the card now on screen. A counter rather than a `Timer`, for the
+    /// same reason `headerFadeGeneration` is one: the timer's block would have to be `@Sendable`.
+    private var pollGeneration = 0
+    /// Often enough to look live, rare enough that a slow transfer costs a handful of reads a second.
+    private static let pollInterval: Duration = .milliseconds(100)
 
     init() {
         super.init(frame: .zero)
@@ -78,41 +99,71 @@ final class QuickViewPlaceholderCard: NSView {
             localized: "Size not reported by the server",
             comment: "Quick View placeholder subtitle when a remote file's size is unknown."
         )
-        apply(placeholder.state, hasSize: placeholder.size != nil)
+        expectedBytes = placeholder.byteSize
+        apply(placeholder.state)
     }
 
-    /// Put the card into `state`. Three things move: the glyph (or the spinner in its place), the
-    /// sentence, and whether the button is offered.
+    /// Put the card into `state`: the glyph or the progress bar, the sentence, and which of the two
+    /// buttons is offered.
     ///
-    /// `hasSize` splits the waiting sentence in two, and both halves are true statements about
-    /// *this* file rather than one hedge covering both: over the threshold is a fact about the size,
-    /// and an unreported size is a fact about the server. `RemoteFetchPolicy` refuses each for its
-    /// own reason, so the card says which.
-    private func apply(_ state: RemotePreviewPlaceholder.State, hasSize: Bool) {
+    /// The *why* of a waiting card is decided by the pane and carried in the state, not worked out
+    /// here from the size: only the pane knows the user's limit, and at a limit of zero every
+    /// size-based sentence is false.
+    private func apply(_ state: RemotePreviewPlaceholder.State) {
         let isDownloading = state == .downloading
-        glyph.isHidden = isDownloading
-        spinner.isHidden = !isDownloading
-        if isDownloading {
-            spinner.startAnimation(nil)
-        } else {
-            spinner.stopAnimation(nil)
-        }
+        bar.isHidden = !isDownloading
         glyph.image = Self.symbol(
             state == .failed ? "exclamationmark.triangle" : "arrow.down.circle"
         )
-        hintLabel.stringValue = Self.hint(for: state, hasSize: hasSize)
+        hintLabel.stringValue = Self.hint(for: state)
         // An `NSProgressIndicator` that is merely *not drawn* still eats every click that lands on
-        // it (docs/NOTES.md ▸ AppKit), which is exactly the trap this card would fall into: the
-        // spinner sits directly above the button in the same stack. `isHidden` is the property that
-        // takes a view out of hit-testing, and it is what both of these use.
+        // it (docs/NOTES.md ▸ AppKit), which is exactly the trap this card would fall into: the bar
+        // sits in the same stack as the buttons. `isHidden` is the property that takes a view out of
+        // hit-testing, and it is what all of these use.
         downloadButton.isHidden = isDownloading || onDownload == nil
+        stopButton.isHidden = !isDownloading || onStop == nil
+        // Always bumped, so a poll left over from the previous row stops whatever this state is.
+        pollGeneration += 1
+        guard isDownloading else {
+            bar.stopAnimation(nil)
+            return
+        }
+        startPolling(generation: pollGeneration)
     }
 
-    private static func hint(
-        for state: RemotePreviewPlaceholder.State,
-        hasSize: Bool
-    ) -> String {
+    /// Follow the byte counter until the download stops being the card's state.
+    ///
+    /// A determinate bar whenever the listing gave a size, which is the ordinary case — the fraction
+    /// is then a fact, the same argument that makes `RemoteFetchPrompt`'s sheet determinate. The
+    /// readout underneath is what a slow connection actually needs: a bar creeping across says
+    /// "something is happening", and "42,1 MB of 260 MB" says whether it will be worth waiting for.
+    private func startPolling(generation: Int) {
+        bar.isIndeterminate = expectedBytes == nil
+        bar.minValue = 0
+        bar.maxValue = Double(max(expectedBytes ?? 1, 1))
+        bar.doubleValue = 0
+        if bar.isIndeterminate { bar.startAnimation(nil) }
+        Task { [weak self] in
+            while true {
+                guard let self, pollGeneration == generation else { return }
+                let moved = progressSource?()
+                // `moved > 0`, not merely non-`nil`: `ByteCountFormatter` renders zero as
+                // **"Zero KB"**, so a readout drawn before the first chunk says "Zero KB of 21
+                // bytes" — two different units and a word where a number belongs. Until something
+                // has actually arrived, "Downloading…" is both prettier and more accurate.
+                if let moved, moved > 0, let total = expectedBytes {
+                    bar.doubleValue = Double(moved)
+                    hintLabel.stringValue = Self.downloadedHint(moved, of: total)
+                }
+                try? await Task.sleep(for: Self.pollInterval)
+            }
+        }
+    }
+
+    private static func hint(for state: RemotePreviewPlaceholder.State) -> String {
         switch state {
+        case let .awaitingRequest(reason):
+            hint(for: reason)
         case .downloading:
             String(
                 localized: "Downloading from the server…",
@@ -123,7 +174,22 @@ final class QuickViewPlaceholderCard: NSView {
                 localized: "Dirnex couldn’t download this file.",
                 comment: "Quick View placeholder hint after an automatic remote fetch failed."
             )
-        case .awaitingRequest where hasSize:
+        case .stopped:
+            String(
+                localized: "Download stopped.",
+                comment: """
+                Quick View placeholder hint after the user pressed Stop on a remote download.
+                """
+            )
+        }
+    }
+
+    /// The three reasons nothing is being fetched, as three sentences. Each names the thing that
+    /// actually decided — the size, the server, or the setting — because a hedge that covered all
+    /// three would send the user looking in the wrong place.
+    private static func hint(for reason: RemotePreviewPlaceholder.WaitReason) -> String {
+        switch reason {
+        case .tooLarge:
             String(
                 localized: "Files this large aren’t downloaded automatically.",
                 comment: """
@@ -131,7 +197,7 @@ final class QuickViewPlaceholderCard: NSView {
                 own as the cursor moves.
                 """
             )
-        case .awaitingRequest:
+        case .sizeUnknown:
             String(
                 localized: """
                 Dirnex doesn’t download a file automatically without knowing how large it is.
@@ -140,7 +206,29 @@ final class QuickViewPlaceholderCard: NSView {
                 Quick View placeholder hint for a remote file whose size the server never reported.
                 """
             )
+        case .automaticDownloadsOff:
+            String(
+                localized: "Automatic preview downloads are turned off in Settings.",
+                comment: """
+                Quick View placeholder hint when the Settings ▸ Panels download size is set to zero.
+                """
+            )
         }
+    }
+
+    /// The live readout under the bar. Both halves formatted the same way the file list formats a
+    /// size, so "42,1 MB of 260 MB" reads against the number the row itself is showing.
+    ///
+    /// The same key the queue bar's own readout uses, deliberately — one English sentence meaning one
+    /// thing, already translated — and therefore the same `comment` **verbatim**, since it takes a
+    /// `StaticString` and two comments on one key hand the translator whichever `xcstringstool` kept.
+    private static func downloadedHint(_ moved: Int64, of total: Int64) -> String {
+        String(
+            localized: """
+            \(FileFormatting.byteString(moved)) of \(FileFormatting.byteString(total))
+            """,
+            comment: "Byte readout: %1$@ transferred of %2$@ total, both already formatted."
+        )
     }
 
     private static func symbol(_ name: String) -> NSImage? {
@@ -152,6 +240,10 @@ final class QuickViewPlaceholderCard: NSView {
         onDownload?()
     }
 
+    @objc private func stop(_ sender: Any?) {
+        onStop?()
+    }
+
     private func buildSubviews() {
         glyph.contentTintColor = .tertiaryLabelColor
         // An `NSImageView` defends its image's size at priority 750, which in a stack is enough to
@@ -160,10 +252,9 @@ final class QuickViewPlaceholderCard: NSView {
         glyph.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         glyph.setContentHuggingPriority(.defaultLow, for: .horizontal)
 
-        spinner.style = .spinning
-        spinner.controlSize = .regular
-        spinner.isIndeterminate = true
-        spinner.isHidden = true
+        bar.style = .bar
+        bar.isIndeterminate = false
+        bar.isHidden = true
 
         nameLabel.font = .systemFont(ofSize: NSFont.systemFontSize, weight: .semibold)
         nameLabel.alignment = .center
@@ -193,41 +284,54 @@ final class QuickViewPlaceholderCard: NSView {
         )
         downloadButton.target = self
         downloadButton.action = #selector(download)
+
+        stopButton.bezelStyle = .rounded
+        stopButton.title = String(
+            localized: "Stop",
+            comment: "Button that cancels the download."
+        )
+        stopButton.target = self
+        stopButton.action = #selector(stop)
+        stopButton.isHidden = true
+
         // The surface refuses first responder so the arrows keep driving the file list; a button
         // inside it that took focus under full keyboard access would undo that on one click.
-        downloadButton.refusesFirstResponder = true
+        for button in [downloadButton, stopButton] { button.refusesFirstResponder = true }
 
         layOut()
     }
 
     private func layOut() {
+        // A fixed square slot for the glyph, so nothing below it shifts as the card changes state —
+        // the card is on screen *because* nothing is moving, and a layout that twitches reads as the
+        // preview flickering. The glyph stays through the download rather than being swapped out:
+        // "this file is coming down" is still what the arrow means.
         let indicator = NSView()
         indicator.translatesAutoresizingMaskIntoConstraints = false
-        for view in [glyph, spinner] {
-            view.translatesAutoresizingMaskIntoConstraints = false
-            indicator.addSubview(view)
-            NSLayoutConstraint.activate([
-                view.centerXAnchor.constraint(equalTo: indicator.centerXAnchor),
-                view.centerYAnchor.constraint(equalTo: indicator.centerYAnchor)
-            ])
-        }
-        // A fixed slot for whichever of the two is showing, so the name below does not jump by a
-        // dozen points the moment a download starts — the card is on screen *because* nothing is
-        // moving, and a layout that twitches reads as the preview flickering.
+        glyph.translatesAutoresizingMaskIntoConstraints = false
+        indicator.addSubview(glyph)
         NSLayoutConstraint.activate([
+            glyph.centerXAnchor.constraint(equalTo: indicator.centerXAnchor),
+            glyph.centerYAnchor.constraint(equalTo: indicator.centerYAnchor),
             indicator.heightAnchor.constraint(equalToConstant: 44),
             indicator.widthAnchor.constraint(equalToConstant: 44)
         ])
 
-        let stack = NSStackView(views: [indicator, nameLabel, sizeLabel, hintLabel, downloadButton])
+        let stack = NSStackView(views: [
+            indicator, nameLabel, sizeLabel, bar, hintLabel, downloadButton, stopButton
+        ])
         stack.orientation = .vertical
         stack.alignment = .centerX
         stack.spacing = 6
         stack.setCustomSpacing(12, after: indicator)
-        stack.setCustomSpacing(14, after: sizeLabel)
+        stack.setCustomSpacing(12, after: sizeLabel)
         stack.setCustomSpacing(14, after: hintLabel)
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
+        // The bar spans the card's column rather than taking its own intrinsic width. It is an
+        // arranged subview, so hiding it takes its row *and its spacing* out of the layout — which
+        // is what lets the idle card look exactly as it did before progress existed.
+        bar.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         // 280 pt is what the hint wants, not what it must have: a pane narrower than that would
         // otherwise have an unsatisfiable layout, and this surface is shown at three sizes down to
         // half of a 640 pt window. Preferred rather than required, bounded by the surface itself.

@@ -1,4 +1,5 @@
 import Combine
+import DirnexCore
 import Foundation
 
 /// The app-wide toggles the Settings window's General / Panels / Operations tabs edit
@@ -194,6 +195,47 @@ final class AppPreferences: ObservableObject {
         "Dirnex.quickViewJavaScriptDidChange"
     )
 
+    /// Panels ▸ how large a file Quick View may pull down from a server on its own, in **bytes**
+    /// (PLAN.md §M21 Slice 10).
+    ///
+    /// The one number in `RemoteFetchPolicy`'s table the user owns, and the only one whose right
+    /// value is a fact about *them* rather than about the gesture: somebody whose photographs run to
+    /// 300 MB is asking a reasonable thing of a preview, and somebody on a metered link is right to
+    /// want none of it. Below it the preview follows the cursor by itself; above it the placeholder
+    /// card appears with the file's size and a Download button, and ⌘Y confirms before spending.
+    /// **Zero is a setting** — never fetch unasked — and is exactly what Quick View did before this
+    /// existed.
+    ///
+    /// Stored in bytes and edited in decimal megabytes, so what the field says is what the file list
+    /// beside it says. Clamped on the way in *and* on the way out (`RemoteFetchPolicy` computes every
+    /// threshold through its own clamp), because a defaults domain is hand-editable by design.
+    @Published var quickViewFetchLimit: Int64 {
+        didSet {
+            let clamped = RemoteFetchPolicy.clampedPreviewLimit(quickViewFetchLimit)
+            guard clamped == quickViewFetchLimit else {
+                quickViewFetchLimit = clamped
+                return
+            }
+            guard quickViewFetchLimit != oldValue else { return }
+            defaults.set(quickViewFetchLimit, forKey: Keys.quickViewFetchLimit)
+            NotificationCenter.default.post(name: Self.quickViewFetchLimitDidChange, object: self)
+        }
+    }
+
+    /// The same limit in the decimal megabytes the Settings field edits. A computed forward rather
+    /// than a second stored value, so the two can never disagree about what is in force.
+    var quickViewFetchLimitMegabytes: Int {
+        get { Int(quickViewFetchLimit / 1_000_000) }
+        set { quickViewFetchLimit = Int64(newValue) * 1_000_000 }
+    }
+
+    /// Posted (on the main actor) when `quickViewFetchLimit` changes, so an open Quick View
+    /// re-weighs the row it is showing — raising the limit has to resolve the card the user is
+    /// looking at, not the one they see after the next cursor step.
+    static let quickViewFetchLimitDidChange = Notification.Name(
+        "Dirnex.quickViewFetchLimitDidChange"
+    )
+
     /// A read of the same value for the one caller that needs it *per navigation* rather than per
     /// change: `QuickViewWebView`'s policy delegate, which is handed a fresh `WKWebpagePreferences`
     /// for every load and sets it there. Reading it at each navigation is what makes the toggle
@@ -378,6 +420,13 @@ final class AppPreferences: ObservableObject {
         // Defaults off (see the property), which is what `bool(forKey:)` already answers for a
         // never-written key.
         quickViewJavaScriptEnabled = defaults.bool(forKey: Keys.quickViewJavaScriptEnabled)
+        // `object(forKey:)`, not `integer(forKey:)`: a missing key reads as **0** there, which is a
+        // legitimate value here ("never fetch unasked") — so the cheap spelling would hand every
+        // fresh install the one setting that turns the feature off, and read as it never working.
+        quickViewFetchLimit = RemoteFetchPolicy.clampedPreviewLimit(
+            (defaults.object(forKey: Keys.quickViewFetchLimit) as? NSNumber)?.int64Value
+                ?? RemoteFetchPolicy.defaultPreviewLimit
+        )
         // Empty (never written) = the source, the shipped default, and so is anything an
         // older/newer build can't parse.
         quickViewRenderStyle = QuickViewRenderStyle(
@@ -412,6 +461,7 @@ final class AppPreferences: ObservableObject {
         static let sizeVizDisplayMode = "Dirnex.pref.sizeVizDisplayMode"
         static let quickViewRenderStyle = "Dirnex.pref.quickViewRenderStyle"
         static let quickViewJavaScriptEnabled = "Dirnex.pref.quickViewJavaScriptEnabled"
+        static let quickViewFetchLimit = "Dirnex.pref.quickViewFetchLimit"
         static let accentColorHex = "Dirnex.pref.accentColorHex"
         static let cursorColorHex = "Dirnex.pref.cursorColorHex"
         static let markColorHex = "Dirnex.pref.markColorHex"

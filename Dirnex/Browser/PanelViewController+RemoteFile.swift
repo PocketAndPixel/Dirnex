@@ -53,13 +53,49 @@ extension PanelViewController {
             .automaticState(for: entry) {
         case .running?: .downloading
         case .failed?: .failed
-        case nil: .awaitingRequest
+        case .stopped?: .stopped
+        case nil: .awaitingRequest(awaitingReason(for: entry))
         }
         return RemotePreviewPlaceholder(
             name: entry.name,
             size: entry.byteSize >= 0 ? FileFormatting.byteString(entry.byteSize) : nil,
+            // The raw size beside the formatted one, because the two answer different questions: the
+            // string is what the card *says*, and this is what its progress bar divides by. A server
+            // that reported none leaves the bar indeterminate rather than dividing by a guess.
+            byteSize: entry.byteSize >= 0 ? entry.byteSize : nil,
             state: state
         )
+    }
+
+    /// Why `entry` is sitting there un-fetched, which is a question only this side can answer: the
+    /// card knows the file and the surface knows the layout, and neither knows the setting.
+    ///
+    /// The order matters. A limit of zero is a statement about *every* file, so it outranks a
+    /// judgement about this one — otherwise turning downloads off would make Dirnex claim a 21-byte
+    /// object is too large, which is the shape of thing a user quite reasonably reports as a bug.
+    private func awaitingReason(for entry: FileEntry) -> RemotePreviewPlaceholder.WaitReason {
+        if AppPreferences.shared.quickViewFetchLimit == 0 { return .automaticDownloadsOff }
+        return entry.byteSize >= 0 ? .tooLarge : .sizeUnknown
+    }
+
+    /// How far the cursor-following fetch has got, for the card's bar to draw — `nil` when nothing is
+    /// running for the row under the cursor. Read on a poll, not pushed, so a chunk-by-chunk report
+    /// cannot turn into a repaint of the whole surface.
+    var remotePreviewProgress: Int64? {
+        guard let entry = remoteFileUnderCursor else { return nil }
+        return host?.remoteFileCache.automaticProgress(for: entry)
+    }
+
+    /// Stop the cursor-following fetch — the card's Stop button, which is the only way to call off a
+    /// download the app started by itself without moving the cursor off the file you want to look at.
+    ///
+    /// `stopAutomaticFetch`, not `cancelAutomaticFetch`, and the difference is the whole reason the
+    /// button works: the plain cancel *forgets* the row, so the delivery this very press causes would
+    /// schedule the download again for anything under the limit. The partial goes either way —
+    /// `RemoteFileCache` drops what a cancelled fetch left, since a truncated file renders as damage
+    /// rather than as an error.
+    func stopRemotePreviewFetch() {
+        host?.remoteFileCache.stopAutomaticFetch()
     }
 
     // MARK: - Following the cursor
@@ -85,7 +121,9 @@ extension PanelViewController {
         guard let cache = host?.remoteFileCache else { return }
         guard let entry = remoteFileUnderCursor, cache.cachedURL(for: entry) == nil,
               RemoteFetchPolicy.decision(
-                  forByteSize: entry.byteSize, purpose: .cursorPreview
+                  forByteSize: entry.byteSize,
+                  purpose: .cursorPreview,
+                  previewLimit: AppPreferences.shared.quickViewFetchLimit
               ) == .fetch
         else {
             cache.cancelAutomaticFetch()
@@ -243,18 +281,55 @@ struct RemotePreviewPlaceholder: Equatable {
     /// `QuickViewPreviewView.show`): every un-fetched remote file resolves to a `nil` URL, so
     /// without the state in here a card that starts downloading would go on saying it had not.
     enum State: Equatable {
-        /// Nothing is happening and nothing will unless the user asks: the object is over
-        /// `RemoteFetchPolicy`'s automatic threshold, or the server never said how large it is.
-        case awaitingRequest
+        /// Nothing is happening and nothing will unless the user asks — carrying *why*, because the
+        /// three reasons are three different sentences and only the pane can tell them apart: it is
+        /// the one place that has both the file's size and the user's limit in hand.
+        case awaitingRequest(WaitReason)
         /// A fetch is scheduled or running for this row.
         case downloading
         /// The automatic attempt failed. Silent by design — the card is the report, and its button
         /// is how the user gets the real error out of the explicit path.
         case failed
+        /// The user pressed Stop. Distinct from ``awaitingRequest`` because nothing is wrong with
+        /// the file and nothing is wrong with its size: saying "files this large aren't downloaded
+        /// automatically" about a small one somebody just stopped would be plainly false.
+        case stopped
+    }
+
+    /// Why nothing is being fetched. Each is a fact about a different thing — the size, the server,
+    /// or the setting — and one hedge covering all three would be true of none of them.
+    ///
+    /// A sibling of ``State`` rather than nested inside it: SwiftLint allows one level of nesting,
+    /// and the pairing reads the same either way.
+    enum WaitReason: Equatable {
+        /// Over the limit in Settings.
+        case tooLarge
+        /// The server never reported a size, so there is no way to know what it would cost.
+        case sizeUnknown
+        /// The limit is zero: the user has asked for nothing to be downloaded unasked. Its own case
+        /// because "files this large" is absurd about a 21-byte file, which is exactly what the
+        /// tooLarge sentence would say at a limit of zero.
+        case automaticDownloadsOff
     }
 
     let name: String
     /// The formatted size, or `nil` when the server reported none.
     let size: String?
+    /// The same size in bytes, for a progress bar to divide by. `nil` leaves the bar indeterminate,
+    /// which is the honest drawing when nobody has said how much is coming.
+    let byteSize: Int64?
     let state: State
+}
+
+/// The three things the placeholder card needs a *pane* for: asking, calling it off, and how far it
+/// has got.
+///
+/// Kept beside `RemotePreviewPlaceholder` and deliberately apart from it. That value describes what
+/// is on screen and is compared to decide whether anything has changed; these are closures, which
+/// are neither `Equatable` nor a description of anything — and the progress one is a **pull**, so it
+/// is not state the surface holds at all.
+struct RemotePreviewActions {
+    let download: () -> Void
+    let stop: () -> Void
+    let progress: () -> Int64?
 }

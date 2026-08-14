@@ -71,10 +71,10 @@ final class QuickViewPreviewView: NSView {
     var webSurface: QuickViewWebView?
     /// Internal for the same reason, from `QuickViewPreviewView+Placeholder`.
     var placeholderCard: QuickViewPlaceholderCard?
-    /// What the placeholder card's Download button does, set just before each `show`. Deliberately
-    /// not part of `RemotePreviewPlaceholder`, which is half of what "already showing this" means
+    /// What the placeholder card's controls do, set just before each `show`. Deliberately not part
+    /// of `RemotePreviewPlaceholder`, which is half of what "already showing this" means
     /// (`loadedPlaceholder`) and so has to stay `Equatable`.
-    var placeholderDownloadAction: (() -> Void)?
+    var placeholderActions: RemotePreviewActions?
     /// The URL currently loaded, so an unrelated refresh that re-drives the same file is skipped
     /// instead of flickering the preview.
     private var loadedURL: URL?
@@ -246,8 +246,8 @@ final class QuickViewPreviewView: NSView {
         dirtyRect.intersection(bounds).fill()
     }
 
-    /// Take the mouse for the whole surface, so nothing underneath can be clicked or dragged
-    /// through it.
+    /// Take the mouse for the whole surface, so nothing underneath can be clicked or dragged through
+    /// it.
     ///
     /// Winning the hit test is *not* enough on its own, which is the trap here. `QLPreviewView`
     /// renders out of process, and its `QLLayerBasedPreviewContainerView` answers `hitTest` and then
@@ -261,9 +261,9 @@ final class QuickViewPreviewView: NSView {
     /// *selects* — the thing Quick Look's preview cannot offer — and the web view is where a page
     /// taller than the surface **scrolls at all**, which is the whole of §M16. All three consume
     /// what they handle, which is what separates them from the remote view. The header keeps the
-    /// mouse too — as does the placeholder card's Download button, the only way to ask for a remote
-    /// file too large to fetch on its own. The *button* is exempt and not the card, so the exemption
-    /// is exactly as large as the affordance.
+    /// mouse too — as do the placeholder card's Download and Stop buttons, which are the only way to
+    /// ask for a large remote file or call one off. The *buttons* are exempt and not the card, so the
+    /// exemption is exactly as large as the affordance.
     override func hitTest(_ point: NSPoint) -> NSView? {
         guard !isHidden, frame.contains(point) else { return nil }
         if let hit = super.hitTest(point), hit.isInteractiveQuickViewBackend(
@@ -272,7 +272,8 @@ final class QuickViewPreviewView: NSView {
                 textSurface?.interactiveSubtree,
                 webSurface?.interactiveSubtree,
                 headerView,
-                placeholderCard?.downloadButton
+                placeholderCard?.downloadButton,
+                placeholderCard?.stopButton
             ]
         ) {
             return hit
@@ -461,40 +462,6 @@ final class QuickViewPreviewView: NSView {
             try? await Task.sleep(for: .seconds(Self.headerFadeDelay))
             guard let self, headerFadeGeneration == generation else { return }
             headerView.animator().alphaValue = 0
-        }
-    }
-}
-
-// MARK: - Where focus is
-
-/// In an extension rather than the class body, which sits at SwiftLint's `type_body_length`
-/// ceiling — and this is a separate concept from the rendering above: not what the surface draws,
-/// but whether the keyboard is currently inside one.
-extension QuickViewPreviewView {
-    /// Whether `responder` is focus sitting *inside* one of `surfaces` — the state in which a key
-    /// the file list owns has gone to a preview backend instead.
-    ///
-    /// The in-process backends take first responder the moment the user clicks into one: the text
-    /// view to select a line, `PDFView` to scroll a document. From there they consume the arrows the
-    /// mode navigates with, which is what `BrowserWindowController`'s key monitor asks this before
-    /// undoing. Every surface is offered rather than the current mode's alone — a mode change hides
-    /// a surface without moving focus out of it.
-    static func hasFocus(_ responder: NSResponder?, among surfaces: [QuickViewPreviewView?]) -> Bool {
-        guard let focused = responder as? NSView else { return false }
-        return surfaces.contains { surface in
-            guard let surface else { return false }
-            return focused.isDescendant(of: surface)
-        }
-    }
-}
-
-private extension NSView {
-    /// Whether this hit belongs to one of the Quick View parts that should keep the mouse — a
-    /// backend that handles it in-process, or the surface's own header.
-    func isInteractiveQuickViewBackend(among parts: [NSView?]) -> Bool {
-        parts.contains { part in
-            guard let part, !part.isHidden else { return false }
-            return isDescendant(of: part)
         }
     }
 }

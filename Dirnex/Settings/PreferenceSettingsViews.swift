@@ -79,6 +79,8 @@ struct PanelsSettingsView: View {
                 .foregroundStyle(.secondary)
             }
 
+            QuickViewFetchLimitSection(preferences: preferences)
+
             Section {
                 Toggle(
                     "Run JavaScript in rendered HTML previews",

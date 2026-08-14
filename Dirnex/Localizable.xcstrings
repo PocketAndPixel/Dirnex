@@ -1248,7 +1248,7 @@
       }
     },
     "%@ of %@": {
-      "comment": "Queue-bar byte readout: %1$@ transferred of %2$@ total.",
+      "comment": "Byte readout: %1$@ transferred of %2$@ total, both already formatted.",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -12858,6 +12858,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "自動（%@）"
+          }
+        }
+      }
+    },
+    "Automatic preview downloads are turned off in Settings.": {
+      "comment": "Quick View placeholder hint when the Settings ▸ Panels download size is set to zero.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatische Vorschau-Downloads sind in den Einstellungen deaktiviert."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic preview downloads are turned off in Settings."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las descargas automáticas de vistas previas están desactivadas en Ajustes."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le téléchargement automatique des aperçus est désactivé dans les réglages."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il download automatico delle anteprime è disattivato nelle Impostazioni."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プレビューの自動ダウンロードは設定でオフになっています。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "미리보기 자동 다운로드가 설정에서 꺼져 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatisch downloaden van voorvertoningen staat uit in Instellingen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatyczne pobieranie podglądów jest wyłączone w Ustawieniach."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O download automático de pré-visualizações está desativado nos Ajustes."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Автоматическая загрузка предпросмотра отключена в настройках."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Автоматичне завантаження попереднього перегляду вимкнено в налаштуваннях."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "预览的自动下载已在“设置”中关闭。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "預覽的自動下載已在「設定」中關閉。"
           }
         }
       }
@@ -32805,6 +32894,184 @@
         }
       }
     },
+    "Download previews from servers up to (MB)": {
+      "comment": "Settings ▸ Panels label for the size field limiting what Quick View downloads on its own. The unit is inside the label so a translation can reorder the sentence.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorschauen von Servern laden bis (MB)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download previews from servers up to (MB)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargar vistas previas de servidores hasta (MB)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Télécharger les aperçus des serveurs jusqu’à (Mo)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scarica anteprime dai server fino a (MB)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバーからプレビューを取得する上限（MB）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버에서 미리보기를 내려받을 최대 크기(MB)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voorvertoningen van servers downloaden tot (MB)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pobieraj podglądy z serwerów do (MB)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baixar pré-visualizações de servidores até (MB)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загружать предпросмотр с серверов до (МБ)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Завантажувати попередній перегляд із серверів до (МБ)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从服务器下载预览的上限（MB）"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "從伺服器下載預覽的上限（MB）"
+          }
+        }
+      }
+    },
+    "Download stopped.": {
+      "comment": "Quick View placeholder hint after the user pressed Stop on a remote download.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laden gestoppt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download stopped."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descarga detenida."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Téléchargement arrêté."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download interrotto."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ダウンロードを停止しました。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다운로드를 중지했습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloaden gestopt."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pobieranie zatrzymane."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download interrompido."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загрузка остановлена."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Завантаження зупинено."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下载已停止。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下載已停止。"
+          }
+        }
+      }
+    },
     "Download “%@” from the server?": {
       "comment": "Title of the confirmation before fetching a large remote file; %@ is the name.",
       "localizations": {
@@ -40365,6 +40632,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "主機："
+          }
+        }
+      }
+    },
+    "How much Quick View may download by itself as the cursor moves over a file on a server. Anything larger still previews — the card names the file and its size and waits for you to press Download, or ⌘Y. Set it to 0 to download nothing unasked. Files on this Mac are never affected.": {
+      "comment": "Settings ▸ Panels footer under the Quick View download-size field.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wie viel Schnellansicht von sich aus lädt, während der Cursor über eine Datei auf einem Server läuft. Größeres wird weiterhin angezeigt – die Karte nennt Datei und Größe und wartet auf „Laden“ oder ⌘Y. Mit 0 wird nichts ungefragt geladen. Dateien auf diesem Mac sind nie betroffen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How much Quick View may download by itself as the cursor moves over a file on a server. Anything larger still previews — the card names the file and its size and waits for you to press Download, or ⌘Y. Set it to 0 to download nothing unasked. Files on this Mac are never affected."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuánto descarga la Vista rápida por su cuenta mientras el cursor pasa por un archivo de un servidor. Los mayores se siguen pudiendo ver: la tarjeta indica el archivo y su tamaño y espera a que pulses Descargar, o ⌘Y. Ponlo a 0 para no descargar nada sin pedirlo. Los archivos de este Mac nunca se ven afectados."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce que l’Aperçu télécharge de lui-même quand le curseur passe sur un fichier d’un serveur. Les fichiers plus gros restent consultables : la carte indique le nom et la taille et attend que vous choisissiez Télécharger, ou ⌘Y. Mettez 0 pour ne rien télécharger sans le demander. Les fichiers de ce Mac ne sont jamais concernés."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quanto Vista rapida scarica da sé mentre il cursore passa su un file di un server. I file più grandi restano visualizzabili: la scheda indica nome e dimensione e attende che premi Scarica, o ⌘Y. Imposta 0 per non scaricare nulla senza richiesta. I file su questo Mac non sono mai interessati."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバー上のファイルにカーソルが移動したとき、クイックビューが自動で取得する上限です。これを超えるファイルもプレビューできます。カードにファイル名とサイズが表示され、「ダウンロード」または ⌘Y を待ちます。0 にすると無断では何も取得しません。この Mac 上のファイルには影響しません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버의 파일 위로 커서가 움직일 때 훑어보기가 스스로 내려받는 최대 크기입니다. 더 큰 파일도 미리 볼 수 있습니다. 카드에 파일 이름과 크기가 표시되고 다운로드 또는 ⌘Y를 기다립니다. 0으로 두면 묻지 않고는 아무것도 내려받지 않습니다. 이 Mac의 파일은 영향을 받지 않습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoeveel Snelle weergave uit zichzelf downloadt terwijl de cursor over een bestand op een server beweegt. Grotere bestanden blijven te bekijken – de kaart noemt het bestand en de grootte en wacht op Download of ⌘Y. Zet het op 0 om niets ongevraagd te downloaden. Bestanden op deze Mac worden nooit beïnvloed."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ile Szybki podgląd pobiera samodzielnie, gdy kursor przesuwa się po pliku na serwerze. Większe pliki nadal można podejrzeć — karta podaje nazwę i rozmiar i czeka na Pobierz albo ⌘Y. Ustaw 0, aby nic nie było pobierane bez pytania. Pliki na tym Macu nigdy nie są tym objęte."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quanto a Visualização rápida baixa por conta própria enquanto o cursor passa por um arquivo em um servidor. Arquivos maiores continuam podendo ser vistos: o cartão informa o nome e o tamanho e espera você tocar em Baixar, ou ⌘Y. Defina 0 para não baixar nada sem pedir. Arquivos neste Mac nunca são afetados."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сколько «Быстрый просмотр» загружает сам, когда курсор проходит по файлу на сервере. Файлы крупнее тоже можно посмотреть: карточка покажет имя и размер и подождёт нажатия «Загрузить» или ⌘Y. Значение 0 — не загружать ничего без запроса. Файлов на этом Mac это не касается."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скільки «Швидкий перегляд» завантажує самостійно, коли курсор проходить по файлу на сервері. Більші файли теж можна переглянути: картка покаже ім’я та розмір і чекатиме натискання «Завантажити» або ⌘Y. Значення 0 — не завантажувати нічого без запиту. Файлів на цьому Mac це не стосується."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "光标经过服务器上的文件时，快速查看可自行下载的上限。更大的文件仍可预览——卡片会显示文件名和大小，等待你按“下载”或 ⌘Y。设为 0 则不会在未经请求时下载任何内容。本机上的文件不受影响。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "游標經過伺服器上的檔案時，快速查看可自行下載的上限。更大的檔案仍可預覽——卡片會顯示檔名和大小，等待你按「下載」或 ⌘Y。設為 0 則不會在未經請求時下載任何內容。本機上的檔案不受影響。"
           }
         }
       }

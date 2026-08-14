@@ -338,9 +338,13 @@ extension QueueBarView {
     func detailText(for aggregate: AggregateProgress, paused: Bool) -> String {
         let done = Self.byteFormatter.string(fromByteCount: aggregate.completedBytes)
         let total = Self.byteFormatter.string(fromByteCount: aggregate.totalBytes)
+        // The comment is repeated verbatim at the Quick View placeholder card, which keys the same
+        // string: `String(localized:comment:)` takes a `StaticString`, so a shared comment cannot be
+        // hoisted, and two sites keying one string with *different* comments hand the translator
+        // whichever one `xcstringstool` kept (docs/NOTES.md ▸ Localization).
         var parts = [String(
             localized: "\(done) of \(total)",
-            comment: "Queue-bar byte readout: %1$@ transferred of %2$@ total."
+            comment: "Byte readout: %1$@ transferred of %2$@ total, both already formatted."
         )]
         if !paused, aggregate.bytesPerSecond > 0 {
             let rate = Self.byteFormatter.string(fromByteCount: Int64(aggregate.bytesPerSecond))

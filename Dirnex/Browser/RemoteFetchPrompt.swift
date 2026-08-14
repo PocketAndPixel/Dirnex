@@ -53,7 +53,9 @@ final class RemoteFetchPrompt {
             onFailure: onFailure
         )
         switch RemoteFetchPolicy.decision(
-            forByteSize: prompt.hasKnownSize ? entry.byteSize : nil, purpose: purpose
+            forByteSize: prompt.hasKnownSize ? entry.byteSize : nil,
+            purpose: purpose,
+            previewLimit: AppPreferences.shared.quickViewFetchLimit
         ) {
         case .fetch:
             prompt.start()

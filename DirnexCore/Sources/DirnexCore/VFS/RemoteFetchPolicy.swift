@@ -75,12 +75,44 @@ public enum RemoteFetchDecision: Sendable, Equatable {
 /// would mean nearly the same thing and would drift. What differs is not how much is worth fetching
 /// but what happens when it is too much, and that is the ``RemoteFetchDecision/decline`` row rather
 /// than a threshold.
+///
+/// **The preview row is the one number here the user owns** (Settings ▸ Panels), because it is the
+/// only one whose right value is a fact about *their* files and *their* connection rather than about
+/// the gesture: somebody whose photographs run to 300 MB is asking a reasonable question of a
+/// preview, and somebody on a metered link is right to want none of it. So it arrives as a
+/// parameter, and the rest of the table is expressed against it — open and edit stay at 64 MiB but
+/// never below the preview limit, because "previewing this is fine, opening it must be confirmed"
+/// is a contradiction the ordering below is written to prevent.
 public enum RemoteFetchPolicy {
-    /// The size at or below which `purpose` fetches without asking.
-    public static func threshold(for purpose: RemoteFetchPurpose) -> Int64 {
-        switch purpose {
-        case .cursorPreview, .preview: 16 * 1024 * 1024
-        case .open, .edit: 64 * 1024 * 1024
+    /// What the preview limit is until somebody changes it.
+    ///
+    /// 10 MB in the decimal sense the Settings field shows, not 10 MiB: this is a number a user
+    /// types and compares against the sizes their file list is already displaying, and quietly
+    /// meaning something 4.9 % larger than what they typed is the kind of dishonesty nobody would
+    /// ever catch.
+    public static let defaultPreviewLimit: Int64 = 10 * 1_000_000
+
+    /// The band the Settings field offers, in bytes. Zero is a real setting and the reason the range
+    /// starts there — "never download a preview I did not ask for" is the honest answer on a metered
+    /// connection, and it is exactly the behaviour Quick View had before the limit existed.
+    public static let previewLimitRange: ClosedRange<Int64> = 0...(4096 * 1_000_000)
+
+    /// `bytes` brought inside ``previewLimitRange``. One place, so a value typed into Settings, one
+    /// restored from a defaults domain somebody hand-edited, and one carried over from an older
+    /// build cannot disagree about what is allowed.
+    public static func clampedPreviewLimit(_ bytes: Int64) -> Int64 {
+        min(max(bytes, previewLimitRange.lowerBound), previewLimitRange.upperBound)
+    }
+
+    /// The size at or below which `purpose` fetches without asking, given the user's preview limit.
+    public static func threshold(for purpose: RemoteFetchPurpose, previewLimit: Int64) -> Int64 {
+        let limit = clampedPreviewLimit(previewLimit)
+        return switch purpose {
+        case .cursorPreview, .preview: limit
+        // Never below the preview limit: a user who has said a 300 MB preview is fine has answered
+        // the smaller question too, and confirming an *open* they would not be asked about for a
+        // mere look is the ordering this table exists to keep straight.
+        case .open, .edit: max(64 * 1024 * 1024, limit)
         }
     }
 
@@ -95,10 +127,11 @@ public enum RemoteFetchPolicy {
     /// the cursor and there is nobody to put a question to.
     public static func decision(
         forByteSize byteSize: Int64?,
-        purpose: RemoteFetchPurpose
+        purpose: RemoteFetchPurpose,
+        previewLimit: Int64
     ) -> RemoteFetchDecision {
         let refusal: RemoteFetchDecision = purpose.isAutomatic ? .decline : .confirm
         guard let byteSize, byteSize >= 0 else { return refusal }
-        return byteSize <= threshold(for: purpose) ? .fetch : refusal
+        return byteSize <= threshold(for: purpose, previewLimit: previewLimit) ? .fetch : refusal
     }
 }
