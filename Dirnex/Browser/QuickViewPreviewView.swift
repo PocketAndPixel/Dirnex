@@ -103,6 +103,11 @@ final class QuickViewPreviewView: NSView {
     /// Internal, not private: `QuickViewPreviewView+Text` bumps it too.
     var loadToken = 0
 
+    /// The page turn's wait for the file it is dealing — see `QuickViewPreviewView+Swipe`, which
+    /// owns every rule about it. One stored property because a Swift extension cannot hold state,
+    /// not because the concept belongs here.
+    var flipGate = FlipGate()
+
     init(backingColor: NSColor, header: Header) {
         self.backingColor = backingColor
         headerStyle = header
@@ -198,7 +203,10 @@ final class QuickViewPreviewView: NSView {
         // next file would blank the header the moment it was shown.
         headerFadeGeneration += 1
         // A surface put away mid-swipe must not come back still shifted, or the next file opens
-        // hanging off its edge with no gesture to bring it home.
+        // hanging off its edge with no gesture to bring it home. A page turn still waiting on a
+        // decode goes with it, for the same reason and one step earlier: it would slide a file the
+        // surface is no longer showing.
+        cancelPendingFlip()
         resetSwipe()
         imageView?.image = nil
         textSurface?.clearText()

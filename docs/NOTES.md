@@ -870,6 +870,28 @@ at build time.
     downscale is a second operation and it is the one being measured. (Core Image's own default output
     is that untagged `DeviceRGB`, so tag it explicitly or the preview's colour is whatever the display
     assumes.)
+- **An animation that announces a change has to be timed against the change, not against the
+  gesture — and "the content is up by now" is an assumption with a *rate* in it, so it expires
+  silently the day something gets slower.** Quick View's page turn ran its 160 ms slide the instant
+  the cursor moved, which was right while every image arrived within a frame or two, and became
+  "slides the current image and only then changes it to the next one" the day RAW files started
+  taking a real decode (149–231 ms, measured in the app). Nothing broke; the assumption simply came
+  due, and the tell is that the *movement stops meaning what it said*.
+  - **Instrumenting it answered a design question, not just the diagnosis.** The log showed
+    `showImage` entered in the **same millisecond** as `flip` — so the load starts synchronously
+    inside `advance()` even though it finishes much later, which is what makes a "still loading" flag
+    visible to the caller and the fix four lines instead of a redesign. Worth checking rather than
+    assuming, because this file's own warning about a selection notification landing a runloop later
+    predicts the opposite and would have sent the fix somewhere much larger.
+  - **Bound the wait.** Holding the animation until the content lands is right; holding it forever on
+    a file that never decodes leaves the surface still, which is worse than the bug. Past the bound
+    the old behaviour returns — wrong-looking rather than stuck.
+  - **The assertion is the animation object, not the pixels.** A `CABasicAnimation` installed under a
+    known key answers "has the page turned" with no window, no screenshot and no wait, which is the
+    only reason this class is testable at all — the visible symptom is a 160 ms window that no
+    screenshot will reliably catch. Pair it with the narrowness controls (it *does* slide at once
+    when nothing is loading; a flip cancelled with the surface is not revived by a late load), or
+    "wait for content" quietly becomes "never animate".
 - **Verify a probe before spending someone else's time on it.** `NSEvent.touches(matching:in:)`
   raises on a scroll event and silently unwound the event monitor it was added to — so the feature
   under measurement stopped working, the document panned instead, and three rounds of a user's

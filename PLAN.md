@@ -1732,6 +1732,44 @@ costs about that much. What separates them is the *residual* work after `decode`
 against 68–132 ms, a property rather than a stopwatch reading. Verified live on all five formats,
 with the portrait CR2 upright and an ordinary JPEG unchanged as the narrowness control.
 
+#### Slice 15 — 2026-08-15: the page turn that dealt the previous card
+
+Reported the day Slice 14 landed: swiping or arrowing through RAW files "slides the current image and
+only then changes it to the next one", while JPEG and PNG were fine. Not a new bug so much as a newly
+*visible* one — `flip` calls `advance()` and starts its slide immediately, which assumes the next file
+is on screen synchronously, and that held only while every image arrived within a frame or two.
+Slice 14 turned the RAW path from an instant 160×120 thumbnail into a real demosaic, so the
+assumption came due.
+
+Instrumented in the running app, which settled both halves of it in one run:
+
+```
+   0.0 ms  flip begin
+   1.0 ms  showImage begin DSC_0477-Pano.dng      ← the load starts inside advance()
+   1.0 ms  flip advance returned
+   1.0 ms  flip animate start                     ← the 160 ms slide starts here
+ 232.0 ms  showImage installed                    ← the picture arrives long after it ended
+```
+
+The first three lines are the good news: `show` really is entered synchronously inside `advance()`, so
+a "still loading" flag set by the backend **is** visible to `flip` — docs/NOTES.md's warning about the
+selection notification landing a runloop later does not apply on this path, which is what makes the
+fix four lines rather than a redesign. `flip` now hands its slide to `whenContentReady`, which runs it
+at once when nothing is loading and otherwise holds it until `contentDidLoad`. Re-measured after:
+`flip SLIDE starts` lands in the *same millisecond* as the install, three flips out of three.
+
+The state is a `FlipGate` living in `QuickViewPreviewView+Swipe` — the class was at both SwiftLint
+ceilings, so this is the split-by-concept the house rule calls for rather than four more properties
+on a type that had no room. A 0.5 s bound keeps a file that never decodes from leaving the surface
+still; past it the old behaviour returns, which is wrong-looking rather than stuck, and it clears
+every RAW measured here (slowest: a 149 MB pano at 359 ms).
+
++4 app tests (2401 core / 497 app green, both linters clean), asserting on the `CABasicAnimation` the
+slide installs, so "has the page turned" needs no window, screenshot or wait. The negative control is
+the shipped behaviour: with the wait removed, the two tests about waiting fail and the two narrowness
+controls — slides at once when nothing is loading, and a flip cancelled with the surface is not
+revived by a late load — keep passing, which is what says they are measuring different things.
+
 ## 5. Cross-cutting: testing strategy
 
 | Layer | Approach |

@@ -98,10 +98,14 @@ extension QuickViewPreviewView {
         loadToken += 1
         let token = loadToken
         let isRAW = Self.isRAW(url)
+        flipGate.isLoading = true
         Task { [weak self] in
             let image = await Self.loadImage(at: url, isRAW: isRAW)
             guard let self, token == loadToken else { return }
             view.image = image
+            // Announce even when `image` is nil: a file that fails to decode has still finished
+            // loading, and a page turn waiting on it would otherwise sit out its whole bound.
+            contentDidLoad()
         }
     }
 
