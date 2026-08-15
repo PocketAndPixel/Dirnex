@@ -4,7 +4,7 @@ import DirnexCore
 /// Spotlight file search (⌥F7 / palette "Find Files…") — PLAN.md §M4 "Search (Alt+F7 / palette):
 /// mdfind-backed name+content search" and "Search results → virtual panel listing".
 ///
-/// The pane presents the `SearchController` sheet, runs the resulting `SpotlightQuery` through
+/// The pane presents the `SearchController` sheet, runs the resulting `FileQuery` through
 /// `SpotlightSearchRunner` off the main thread, and installs the hits as a **virtual results
 /// tab**: a `PanelTab` on the synthetic `.search` backend whose entries carry their real
 /// on-disk paths. The tab supports the normal cursor/selection and Copy-to-the-other-pane (F5)
@@ -20,24 +20,60 @@ extension PanelViewController {
     // MARK: - Menu / key action (dispatched to the focused pane via the responder chain)
 
     @objc func findFiles(_ sender: Any?) {
-        let controller = SearchController(currentFolderName: searchScopeDirectory().lastComponent)
-        controller.onSearch = { [weak self] query, scopeToFolder in
-            self?.runSearch(query, scopeToCurrentFolder: scopeToFolder)
+        guard let scope = searchScopeDirectory() else { return }
+        let controller = SearchController(
+            currentFolderName: scope.displayName,
+            fields: SearchFields.answerable(by: scope.backend),
+            // The second scope option is "everywhere Spotlight indexed" locally and "everything on
+            // this server" on a walk, which is the connection's own root — there being no index to
+            // search and nowhere else to look.
+            connectionRootTitle: SearchRoute.forBackend(scope.backend) == .walk
+                ? scope.backendRootTitle
+                : nil
+        )
+        controller.onSearch = { [weak self] query, choice in
+            self?.runSearch(query, from: scope, choice: choice)
         }
         presentAsMovableWindow(controller)
     }
 
-    // MARK: - Running the search
-
-    /// The real directory a "This Folder" search scopes to — the current directory when the pane
-    /// shows one, else Home (a results pane has no real directory of its own to search within).
-    private func searchScopeDirectory() -> VFSPath {
-        panel.path.backend == .local ? panel.path : .local(NSHomeDirectory())
+    /// Whether this pane has anything to search — gates ⌥F7 and its menu item.
+    var canFindFiles: Bool {
+        searchScopeDirectory() != nil
     }
 
-    private func runSearch(_ query: SpotlightQuery, scopeToCurrentFolder: Bool) {
-        let scope: VFSPath? = scopeToCurrentFolder ? searchScopeDirectory() : nil
-        performSearch(query, scope: scope)
+    // MARK: - Running the search
+
+    /// The real directory a "This Folder" search scopes to, or `nil` when this pane has nowhere to
+    /// search at all.
+    ///
+    /// Two different fallbacks hide behind that `nil`, which is why the question is asked through
+    /// `SearchRoute` rather than by testing the backend here. A **virtual results listing** — search
+    /// hits, the merged Trash, iCloud Drive — has no directory of its own, but its rows are ordinary
+    /// local files, so Home is a sensible place to point at. An **S3 account** pane has no such
+    /// fallback: its rows are buckets, and quietly searching this Mac's home folder because the pane
+    /// showed a list of buckets would answer a question nobody asked.
+    private func searchScopeDirectory() -> VFSPath? {
+        switch SearchRoute.forBackend(panel.path.backend) {
+        case .spotlight, .walk:
+            return panel.path
+        case .unavailable:
+            return panel.path.backend.isRemoteConnection ? nil : .local(NSHomeDirectory())
+        }
+    }
+
+    private func runSearch(_ query: FileQuery, from scope: VFSPath, choice: SearchController.Scope) {
+        switch SearchRoute.forBackend(scope.backend) {
+        case .spotlight:
+            performSearch(query, scope: choice == .currentFolder ? scope : nil)
+        case .walk:
+            // "Everything here" is the connection's or archive's own root, which is a real listable
+            // path — unlike Spotlight's "everywhere", which is the absence of a scope.
+            let root = choice == .currentFolder ? scope : VFSPath(backend: scope.backend, path: "/")
+            performWalkSearch(query, under: root)
+        case .unavailable:
+            break // unreachable: `searchScopeDirectory` already refused
+        }
     }
 
     /// Re-run a saved search from the sidebar (PLAN.md §M4 "Saved searches … in the places
@@ -56,17 +92,17 @@ extension PanelViewController {
     /// a thing you put on files so you can find them again wherever you left them, so scoping it to
     /// whatever folder happens to be open would defeat the point of having tagged them.
     ///
-    /// Matched by name only, because a name is all Spotlight indexes (`SpotlightQuery.tags`) — which
+    /// Matched by name only, because a name is all Spotlight indexes (`FileQuery.tags`) — which
     /// costs nothing here, since a tag *is* its name to macOS and the color is only how it is drawn.
     func runTagSearch(_ tag: FinderTag) {
-        performSearch(SpotlightQuery(tags: [tag.name]), scope: nil, title: tag.name)
+        performSearch(FileQuery(tags: [tag.name]), scope: nil, title: tag.name)
     }
 
     /// Run `query` within `scope` (its subtree), or everywhere when `scope` is `nil`, off the
     /// main thread, then install the hits as a virtual results tab. `title`, when given, is the
     /// tab's chip label (a saved search's name); a fresh ⌥F7 search leaves it `nil` and the chip
     /// shows the query summary.
-    private func performSearch(_ query: SpotlightQuery, scope: VFSPath?, title: String? = nil) {
+    private func performSearch(_ query: FileQuery, scope: VFSPath?, title: String? = nil) {
         let backend = backend
         Task {
             let results = await SpotlightSearchRunner.run(query, scope: scope, backend: backend)
@@ -119,7 +155,7 @@ extension PanelViewController {
     /// query that produced them and carrying it so "Save Search…" can persist it.
     private func openSearchResults(
         _ entries: [FileEntry],
-        query: SpotlightQuery,
+        query: FileQuery,
         scope: VFSPath?,
         truncated: Bool,
         title: String? = nil

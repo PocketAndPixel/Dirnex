@@ -6,13 +6,13 @@ import Foundation
 ///
 /// Recents is the recently-*used* files, everywhere indexed, which macOS records as
 /// `kMDItemLastUsedDate` — the LaunchServices "last opened" stamp, distinct from the modification
-/// date `SpotlightQuery.modifiedWithin` filters on. That distinction is the whole reason this is its
-/// own tiny type rather than a `SpotlightQuery`: a cache file the system rewrites hourly has a fresh
+/// date `FileQuery.modifiedWithin` filters on. That distinction is the whole reason this is its
+/// own tiny type rather than a `FileQuery`: a cache file the system rewrites hourly has a fresh
 /// *modification* date but is never *opened*, so a last-used filter is what keeps Recents to the
 /// documents a person actually touched instead of a wall of `~/Library` churn (probed 2026-07-21:
 /// the last-used filter returned 181 clean items, only two of them under `Library`).
 ///
-/// Pure and testable like `SpotlightQuery`: this builds the `mdfind` predicate and argument vector
+/// Pure and testable like `FileQuery`: this builds the `mdfind` predicate and argument vector
 /// and touches no disk; the app runs `mdfind` with them off the main thread (`SpotlightSearchRunner`)
 /// and stats the hits into a virtual results panel.
 public struct RecentsQuery: Sendable, Equatable {
@@ -57,7 +57,7 @@ public struct RecentsQuery: Sendable, Equatable {
     /// The raw `mdfind` metadata predicate: used within the window, and not an application bundle.
     ///
     /// The window is expressed as a relative `$time.now(-seconds)` offset rather than a wall-clock
-    /// literal, matching `SpotlightQuery`, so the string is deterministic and testable.
+    /// literal, matching `FileQuery`, so the string is deterministic and testable.
     public func metadataPredicate() -> String {
         "(kMDItemLastUsedDate >= $time.now(-\(usedWithinSeconds)))"
             + " && (kMDItemContentTypeTree != \"\(Self.excludedContentType)\")"

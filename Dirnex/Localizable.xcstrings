@@ -10015,6 +10015,95 @@
         }
       }
     },
+    "All of “%@”": {
+      "comment": "Find Files: the Search-in popup option covering a whole connection or archive; %@ is its name, such as a bucket, a server or an archive file.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alles in „%@“"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All of “%@”"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todo en «%@»"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tout dans «%@»"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tutto in “%@”"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” 全体"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” 전체"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alles in “%@”"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Całość „%@”"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tudo em “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Всё в «%@»"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Усе в «%@»"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”的全部"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」的全部"
+          }
+        }
+      }
+    },
     "All tags": {
       "comment": "Accessibility label for the sidebar's “All Tags…” row glyph.",
       "localizations": {
@@ -15528,6 +15617,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "無法重新命名「%@」"
+          }
+        }
+      }
+    },
+    "Can’t run this search on “%@”": {
+      "comment": "Unanswerable-search title; %@ is the server or folder.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Suche ist in „%@“ nicht möglich"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can’t run this search on “%@”"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se puede ejecutar esta búsqueda en «%@»"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible d’effectuer cette recherche dans «%@»"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile eseguire questa ricerca in “%@”"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” ではこの検索を実行できません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”에서는 이 검색을 실행할 수 없습니다"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze zoekopdracht kan niet worden uitgevoerd in “%@”"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można wykonać tego wyszukiwania w „%@”"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não é possível executar esta busca em “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот поиск нельзя выполнить в «%@»"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цей пошук не можна виконати в «%@»"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法在“%@”中执行此搜索"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法在「%@」中執行此搜尋"
           }
         }
       }
@@ -27346,6 +27524,95 @@
         }
       }
     },
+    "Couldn’t search “%@”": {
+      "comment": "Search failure title; %@ is the folder or server searched.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ konnte nicht durchsucht werden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t search “%@”"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo buscar en «%@»"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de rechercher dans «%@»"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile cercare in “%@”"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” を検索できませんでした"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”을(를) 검색할 수 없습니다"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kan niet zoeken in “%@”"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się przeszukać „%@”"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível buscar em “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось выполнить поиск в «%@»"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося виконати пошук у «%@»"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法搜索“%@”"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法搜尋「%@」"
+          }
+        }
+      }
+    },
     "Couldn’t unlock the vault": {
       "comment": "Title of the alert shown when a vault could not be opened.",
       "localizations": {
@@ -35652,6 +35919,95 @@
         }
       }
     },
+    "Every folder on a server is a separate request, so Dirnex stops after a while. Folders searched: %lld. The matches found so far are shown — search a folder further in to cover the rest.": {
+      "comment": "Search-budget body; %lld is how many folders were searched.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jeder Ordner auf einem Server ist eine eigene Anfrage, daher bricht Dirnex nach einer Weile ab. Durchsuchte Ordner: %lld. Die bisher gefundenen Treffer werden angezeigt – suchen Sie in einem tiefer liegenden Ordner, um den Rest abzudecken."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Every folder on a server is a separate request, so Dirnex stops after a while. Folders searched: %lld. The matches found so far are shown — search a folder further in to cover the rest."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cada carpeta de un servidor es una solicitud independiente, por lo que Dirnex se detiene al cabo de un rato. Carpetas buscadas: %lld. Se muestran las coincidencias encontradas hasta ahora; busca en una carpeta más interna para cubrir el resto."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sur un serveur, chaque dossier est une requête distincte : Dirnex s’arrête donc au bout d’un moment. Dossiers parcourus : %lld. Les résultats déjà trouvés sont affichés — lancez la recherche dans un dossier plus profond pour couvrir le reste."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Su un server ogni cartella è una richiesta separata, quindi Dirnex si ferma dopo un po’. Cartelle esaminate: %lld. Vengono mostrate le corrispondenze trovate finora: cerca in una cartella più interna per coprire il resto."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバーではフォルダごとに個別のリクエストが必要なため、Dirnex は途中で停止します。検索したフォルダ: %lld。ここまでに見つかった項目を表示しています。残りは下位のフォルダで検索してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버에서는 폴더마다 별도의 요청이 필요하므로 Dirnex는 일정 시간이 지나면 중단합니다. 검색한 폴더: %lld. 지금까지 찾은 결과를 표시합니다. 나머지는 더 안쪽 폴더에서 검색하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elke map op een server is een aparte aanvraag, dus Dirnex stopt na een tijdje. Doorzochte mappen: %lld. De tot nu toe gevonden resultaten worden getoond — zoek in een map dieper om de rest te dekken."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Każdy folder na serwerze to osobne żądanie, więc Dirnex przerywa po pewnym czasie. Przeszukane foldery: %lld. Pokazano dotychczas znalezione wyniki — przeszukaj folder położony głębiej, aby objąć resztę."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cada pasta em um servidor é uma solicitação separada, então o Dirnex para depois de um tempo. Pastas pesquisadas: %lld. As correspondências encontradas até agora são exibidas — pesquise em uma pasta mais interna para cobrir o restante."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Каждая папка на сервере — это отдельный запрос, поэтому Dirnex через некоторое время останавливается. Просмотрено папок: %lld. Показаны найденные к этому моменту совпадения — чтобы охватить остальное, выполните поиск во вложенной папке."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Кожна папка на сервері — це окремий запит, тому Dirnex за деякий час зупиняється. Переглянуто папок: %lld. Показано знайдені на цей момент збіги — щоб охопити решту, виконайте пошук у вкладеній папці."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器上的每个文件夹都是一次单独的请求，因此 Dirnex 会在一段时间后停止。已搜索文件夹：%lld。显示的是目前找到的结果——请在更深的文件夹中搜索以覆盖其余部分。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伺服器上的每個檔案夾都是一次獨立的請求，因此 Dirnex 會在一段時間後停止。已搜尋檔案夾：%lld。顯示的是目前找到的結果——請在更深層的檔案夾中搜尋以涵蓋其餘部分。"
+          }
+        }
+      }
+    },
     "Everyone": {
       "comment": "Info panel mode grid column: the bits for everybody else.",
       "localizations": {
@@ -38851,6 +39207,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "僅檔案夾"
+          }
+        }
+      }
+    },
+    "Folders searched: %lld · Found: %lld": {
+      "comment": "Search progress detail. %1$lld is how many folders have been listed so far, %2$lld how many matches were found in them.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durchsuchte Ordner: %1$lld · Gefunden: %2$lld"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folders searched: %lld · Found: %lld"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carpetas buscadas: %1$lld · Encontrados: %2$lld"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dossiers parcourus : %1$lld · Trouvés : %2$lld"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cartelle esaminate: %1$lld · Trovati: %2$lld"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "検索したフォルダ: %1$lld · 見つかった項目: %2$lld"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "검색한 폴더: %1$lld · 찾음: %2$lld"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Doorzochte mappen: %1$lld · Gevonden: %2$lld"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przeszukane foldery: %1$lld · Znaleziono: %2$lld"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pastas pesquisadas: %1$lld · Encontrados: %2$lld"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Просмотрено папок: %1$lld · Найдено: %2$lld"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переглянуто папок: %1$lld · Знайдено: %2$lld"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已搜索文件夹：%1$lld · 找到：%2$lld"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已搜尋檔案夾：%1$lld · 找到：%2$lld"
           }
         }
       }
@@ -64303,6 +64748,273 @@
         }
       }
     },
+    "Search stopped early": {
+      "comment": "Search-budget title.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suche vorzeitig beendet"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search stopped early"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Búsqueda detenida antes de tiempo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recherche interrompue"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ricerca interrotta in anticipo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "検索を途中で停止しました"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "검색이 중간에 중단됨"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zoekopdracht voortijdig gestopt"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyszukiwanie przerwane wcześniej"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Busca interrompida antes do fim"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поиск остановлен досрочно"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пошук зупинено достроково"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "搜索已提前停止"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "搜尋已提前停止"
+          }
+        }
+      }
+    },
+    "Search stopped · Found: %lld": {
+      "comment": "Pane status line after the user stopped a search. %lld is how many matches had been found by then, all of which are shown.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suche gestoppt · Gefunden: %lld"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search stopped · Found: %lld"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Búsqueda detenida · Encontrados: %lld"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recherche arrêtée · Trouvés : %lld"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ricerca interrotta · Trovati: %lld"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "検索を停止 · 見つかった項目: %lld"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "검색 중단됨 · 찾음: %lld"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zoekopdracht gestopt · Gevonden: %lld"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyszukiwanie zatrzymane · Znaleziono: %lld"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Busca interrompida · Encontrados: %lld"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поиск остановлен · Найдено: %lld"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пошук зупинено · Знайдено: %lld"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "搜索已停止 · 找到：%lld"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "搜尋已停止 · 找到：%lld"
+          }
+        }
+      }
+    },
+    "Searching “%@”…": {
+      "comment": "Search progress title; %@ is the folder or server being searched.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ wird durchsucht …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Searching “%@”…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscando en «%@»…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recherche dans «%@»…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ricerca in “%@”…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” を検索中…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” 검색 중…"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bezig met zoeken in “%@”…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przeszukiwanie „%@”…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscando em “%@”…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поиск в «%@»…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пошук у «%@»…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在搜索“%@”…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在搜尋「%@」…"
+          }
+        }
+      }
+    },
     "Secret key:": {
       "comment": "Connect field label: the S3 secret access key, kept in the Keychain.",
       "localizations": {
@@ -78086,6 +78798,273 @@
           "stringUnit": {
             "state": "translated",
             "value": "這會重寫封存檔，且無法還原。"
+          }
+        }
+      }
+    },
+    "This search looks inside files and matches tags, and neither is available here — only what a folder listing carries can be searched.": {
+      "comment": "Unanswerable-search body: both content and tags are out of reach.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Suche durchsucht Dateiinhalte und Tags; beides ist hier nicht verfügbar – durchsucht werden kann nur, was eine Ordnerauflistung enthält."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This search looks inside files and matches tags, and neither is available here — only what a folder listing carries can be searched."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta búsqueda mira dentro de los archivos y usa etiquetas, y aquí no hay ninguna de las dos cosas: solo se puede buscar lo que contiene un listado de carpeta."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette recherche examine le contenu des fichiers et les tags, or ni l’un ni l’autre n’est disponible ici — seules les informations d’un listing de dossier peuvent être recherchées."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa ricerca guarda dentro i file e usa i tag: qui non è disponibile nessuno dei due — si può cercare solo ciò che un elenco di cartella contiene."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この検索はファイルの内容とタグを対象としますが、どちらもここでは利用できません。フォルダの一覧に含まれる情報のみ検索できます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 검색은 파일 내용과 태그를 사용하지만 여기서는 둘 다 사용할 수 없습니다. 폴더 목록에 있는 정보만 검색할 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze zoekopdracht kijkt in bestanden en gebruikt tags; geen van beide is hier beschikbaar — alleen wat een mapoverzicht bevat, kan worden doorzocht."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To wyszukiwanie przegląda zawartość plików i etykiety, a tutaj nie ma ani jednego, ani drugiego — przeszukać można tylko to, co zawiera lista folderu."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta busca olha dentro dos arquivos e usa etiquetas, e nenhuma das duas coisas está disponível aqui — só é possível buscar o que uma listagem de pasta contém."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот поиск заглядывает внутрь файлов и учитывает метки, но ни того, ни другого здесь нет — искать можно только по тому, что есть в списке папки."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цей пошук зазирає всередину файлів і враховує мітки, але ні того, ні іншого тут немає — шукати можна лише за тим, що є в списку папки."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此搜索需要查看文件内容并匹配标签，而这里两者都不可用——只能搜索文件夹列表中包含的信息。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此搜尋需要查看檔案內容並比對標籤，而這裡兩者都無法使用——只能搜尋檔案夾列表中包含的資訊。"
+          }
+        }
+      }
+    },
+    "This search looks inside files, which needs the Spotlight index and is only available on this Mac.": {
+      "comment": "Unanswerable-search body: file contents are out of reach.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Suche durchsucht Dateiinhalte. Das erfordert den Spotlight-Index und ist nur auf diesem Mac möglich."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This search looks inside files, which needs the Spotlight index and is only available on this Mac."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta búsqueda mira dentro de los archivos, lo que requiere el índice de Spotlight y solo está disponible en este Mac."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette recherche examine le contenu des fichiers, ce qui nécessite l’index Spotlight et n’est possible que sur ce Mac."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa ricerca guarda dentro i file: richiede l’indice di Spotlight ed è disponibile solo su questo Mac."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この検索はファイルの内容を対象とします。Spotlight のインデックスが必要なため、この Mac でのみ利用できます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 검색은 파일 내용을 대상으로 하며, Spotlight 색인이 필요하므로 이 Mac에서만 사용할 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze zoekopdracht kijkt in bestanden. Daarvoor is de Spotlight-index nodig, die alleen op deze Mac beschikbaar is."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To wyszukiwanie przegląda zawartość plików, co wymaga indeksu Spotlight i jest dostępne tylko na tym Macu."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta busca olha dentro dos arquivos, o que exige o índice do Spotlight e só está disponível neste Mac."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот поиск заглядывает внутрь файлов: для этого нужен индекс Spotlight, доступный только на этом Mac."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цей пошук зазирає всередину файлів: для цього потрібен індекс Spotlight, доступний лише на цьому Mac."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此搜索需要查看文件内容，这依赖 Spotlight 索引，仅在本 Mac 上可用。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此搜尋需要查看檔案內容，這依賴 Spotlight 索引，僅在本 Mac 上可用。"
+          }
+        }
+      }
+    },
+    "This search matches Finder tags, which only files on this Mac carry.": {
+      "comment": "Unanswerable-search body: Finder tags are out of reach.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Suche verwendet Finder-Tags, die nur Dateien auf diesem Mac tragen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This search matches Finder tags, which only files on this Mac carry."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta búsqueda usa etiquetas del Finder, que solo tienen los archivos de este Mac."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette recherche utilise les tags du Finder, que seuls les fichiers de ce Mac possèdent."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa ricerca usa i tag del Finder, che solo i file su questo Mac hanno."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この検索は Finder のタグを対象としますが、タグを持つのはこの Mac 上のファイルだけです。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 검색은 Finder 태그를 사용하며, 태그는 이 Mac의 파일에만 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze zoekopdracht gebruikt Finder-tags, die alleen bestanden op deze Mac hebben."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To wyszukiwanie używa etykiet Findera, które mają tylko pliki na tym Macu."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta busca usa etiquetas do Finder, que apenas os arquivos deste Mac possuem."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот поиск использует метки Finder, а они есть только у файлов на этом Mac."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цей пошук використовує мітки Finder, а вони є лише у файлів на цьому Mac."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此搜索需要匹配访达标签，而只有本 Mac 上的文件才带有标签。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此搜尋需要比對 Finder 標籤，而只有本 Mac 上的檔案才帶有標籤。"
           }
         }
       }

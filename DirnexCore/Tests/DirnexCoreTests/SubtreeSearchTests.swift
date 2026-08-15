@@ -32,7 +32,7 @@ struct SubtreeSearchTests {
         ])
     }
 
-    private func predicate(_ query: SpotlightQuery) throws -> SearchPredicate {
+    private func predicate(_ query: FileQuery) throws -> SearchPredicate {
         try SearchPredicate(query, answering: .listed)
     }
 
@@ -43,7 +43,7 @@ struct SubtreeSearchTests {
         let results = try SubtreeSearch.find(
             under: .local("/root"),
             using: tree(),
-            matching: predicate(SpotlightQuery(nameContains: "report"))
+            matching: predicate(FileQuery(nameContains: "report"))
         )
         #expect(
             Set(results.hits.map(\.name))
@@ -60,7 +60,7 @@ struct SubtreeSearchTests {
         let results = try SubtreeSearch.find(
             under: .local("/root"),
             using: tree(),
-            matching: predicate(SpotlightQuery(nameContains: "root"))
+            matching: predicate(FileQuery(nameContains: "root"))
         )
         #expect(results.hits.isEmpty)
     }
@@ -76,7 +76,7 @@ struct SubtreeSearchTests {
         _ = try SubtreeSearch.find(
             under: .local("/root"),
             using: backend,
-            matching: predicate(SpotlightQuery(nameContains: "nothing-matches-this"))
+            matching: predicate(FileQuery(nameContains: "nothing-matches-this"))
         )
         #expect(
             backend.listed.map(\.path)
@@ -92,7 +92,7 @@ struct SubtreeSearchTests {
         let results = try SubtreeSearch.find(
             under: .local("/root"),
             using: backend,
-            matching: predicate(SpotlightQuery(nameContains: "report")),
+            matching: predicate(FileQuery(nameContains: "report")),
             budget: DirectorySizeBudget(directoryLimit: 2)
         )
         #expect(results.completion == .budgetExceeded)
@@ -110,25 +110,57 @@ struct SubtreeSearchTests {
         let results = try SubtreeSearch.find(
             under: .local("/root"),
             using: tree(),
-            matching: predicate(SpotlightQuery(nameContains: "report")),
+            matching: predicate(FileQuery(nameContains: "report")),
             limit: 2
         )
         #expect(results.completion == .truncated)
         #expect(results.hits.count == 2)
     }
 
-    /// A cancelled search has no answer at all, unlike a truncated one — so it throws where
-    /// truncation returns. Same distinction, and the same `CancellationError`, as the sizer's.
-    @Test("cancellation throws")
-    func cancellationThrows() throws {
-        #expect(throws: CancellationError.self) {
-            try SubtreeSearch.find(
-                under: .local("/root"),
-                using: tree(),
-                matching: predicate(SpotlightQuery(nameContains: "report")),
-                isCancelled: { true }
-            )
-        }
+    /// Stop means "that's enough, show me what you have" — so a stopped walk keeps its hits, unlike
+    /// a cancelled size walk, which has nothing honest to report. Driven with a flag that flips
+    /// after the first listing, since stopping *before* anything ran would pass against a version
+    /// that discarded everything.
+    @Test("a stopped walk keeps what it found")
+    func stoppingKeepsHits() throws {
+        var listedOnce = false
+        let results = try SubtreeSearch.find(
+            under: .local("/root"),
+            using: tree(),
+            matching: predicate(FileQuery(nameContains: "report")),
+            isCancelled: { listedOnce },
+            onProgress: { _ in listedOnce = true }
+        )
+        #expect(results.completion == .stopped)
+        #expect(results.hits.map(\.name) == ["report-top.txt"])
+        #expect(results.directoriesListed == 1)
+    }
+
+    @Test("stopping before anything is listed simply finds nothing")
+    func stoppingImmediately() throws {
+        let results = try SubtreeSearch.find(
+            under: .local("/root"),
+            using: tree(),
+            matching: predicate(FileQuery(nameContains: "report")),
+            isCancelled: { true }
+        )
+        #expect(results.completion == .stopped)
+        #expect(results.hits.isEmpty)
+    }
+
+    /// A flat backend cannot return partway through, so it says the same thing by throwing —
+    /// and the caller must not be able to tell the two routes apart.
+    @Test("a shortcut that is cancelled reports a stop, not an error")
+    func shortcutCancellationIsAStop() throws {
+        let backend = FlatBackend(entries: [.file("/root/report.txt", size: 1)])
+        backend.cancelDuringSubtreeListing = true
+        let results = try SubtreeSearch.find(
+            under: .local("/root"),
+            using: backend,
+            matching: predicate(FileQuery(nameContains: "report"))
+        )
+        #expect(results.completion == .stopped)
+        #expect(results.hits.isEmpty)
     }
 
     @Test("an unreadable subdirectory is skipped, not fatal")
@@ -138,7 +170,7 @@ struct SubtreeSearchTests {
         let results = try SubtreeSearch.find(
             under: .local("/root"),
             using: backend,
-            matching: predicate(SpotlightQuery(nameContains: "report"))
+            matching: predicate(FileQuery(nameContains: "report"))
         )
         #expect(results.completion == .complete)
         // Everything outside the refused branch is still a real answer.
@@ -153,7 +185,7 @@ struct SubtreeSearchTests {
         _ = try SubtreeSearch.find(
             under: .local("/root"),
             using: tree(),
-            matching: predicate(SpotlightQuery(nameContains: "report")),
+            matching: predicate(FileQuery(nameContains: "report")),
             onProgress: { seen.append($0) }
         )
         #expect(seen.count == 5)
@@ -176,7 +208,7 @@ struct SubtreeSearchTests {
         let results = try SubtreeSearch.find(
             under: .local("/root"),
             using: backend,
-            matching: predicate(SpotlightQuery(nameContains: "report"))
+            matching: predicate(FileQuery(nameContains: "report"))
         )
         #expect(Set(results.hits.map(\.name)) == ["report-a.txt", "report-deep.txt"])
         #expect(backend.walkedDirectories == 0)
@@ -194,7 +226,7 @@ struct SubtreeSearchTests {
         let results = try SubtreeSearch.find(
             under: .local("/root"),
             using: backend,
-            matching: predicate(SpotlightQuery(nameContains: "report")),
+            matching: predicate(FileQuery(nameContains: "report")),
             limit: 2
         )
         #expect(results.hits.count == 2)
@@ -290,6 +322,9 @@ private final class FlatBackend: VFSBackend, @unchecked Sendable {
     private let entries: [Object]
     private let lock = NSLock()
     private var walked = 0
+    /// Makes the shortcut throw `CancellationError`, which is how a paged enumeration says it was
+    /// stopped partway through.
+    var cancelDuringSubtreeListing = false
 
     init(entries: [Object]) {
         self.entries = entries
@@ -305,7 +340,8 @@ private final class FlatBackend: VFSBackend, @unchecked Sendable {
     var capabilities: VFSCapabilities { [.read] }
 
     func subtreeListing(at path: VFSPath, isCancelled: () -> Bool) throws -> [FileEntry]? {
-        entries.map {
+        if cancelDuringSubtreeListing { throw CancellationError() }
+        return entries.map {
             fakeEntry(
                 at: $0.path,
                 name: ($0.path as NSString).lastPathComponent,

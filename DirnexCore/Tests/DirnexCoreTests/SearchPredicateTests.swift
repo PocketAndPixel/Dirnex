@@ -89,7 +89,7 @@ struct SearchPredicateTests {
 
     @Test("a content search cannot be compiled for a listing")
     func contentIsRefused() {
-        let query = SpotlightQuery(nameContains: "report", contentContains: "invoice")
+        let query = FileQuery(nameContains: "report", contentContains: "invoice")
         let error = #expect(throws: SearchQueryUnanswerable.self) {
             try SearchPredicate(query, answering: .listed)
         }
@@ -100,7 +100,7 @@ struct SearchPredicateTests {
     /// they typed, and naming half of it sends them to delete the wrong term.
     @Test("every unanswerable field is reported, not just the first")
     func allMissingFieldsReported() {
-        let query = SpotlightQuery(contentContains: "invoice", tags: ["Work"])
+        let query = FileQuery(contentContains: "invoice", tags: ["Work"])
         let error = #expect(throws: SearchQueryUnanswerable.self) {
             try SearchPredicate(query, answering: .listed)
         }
@@ -111,7 +111,7 @@ struct SearchPredicateTests {
     /// this, "refuse content" could silently have become "refuse everything".
     @Test("name, kind, size and date compile against a listing")
     func listingFieldsCompile() throws {
-        let query = SpotlightQuery(
+        let query = FileQuery(
             nameContains: "a",
             kinds: [.image],
             minSizeBytes: 1024,
@@ -124,7 +124,7 @@ struct SearchPredicateTests {
     func whitespaceIsNotAQuestion() throws {
         // A blank content field left untouched in the dialog must not make the query unrunnable.
         _ = try SearchPredicate(
-            SpotlightQuery(nameContains: "x", contentContains: "   "),
+            FileQuery(nameContains: "x", contentContains: "   "),
             answering: .listed
         )
     }
@@ -133,7 +133,7 @@ struct SearchPredicateTests {
 
     @Test("the name match is case- and diacritic-insensitive, like the metadata predicate's `cd`")
     func nameFolding() throws {
-        let predicate = try SearchPredicate(SpotlightQuery(nameContains: "cafe"), answering: .listed)
+        let predicate = try SearchPredicate(FileQuery(nameContains: "cafe"), answering: .listed)
         #expect(predicate.matches(entry("Café Notes.txt")))
         #expect(predicate.matches(entry("CAFE.txt")))
         #expect(!predicate.matches(entry("tea.txt")))
@@ -143,7 +143,7 @@ struct SearchPredicateTests {
 
     @Test("kind is decided from the extension, and conformance rather than equality")
     func kindFromExtension() throws {
-        let predicate = try SearchPredicate(SpotlightQuery(kinds: [.image]), answering: .listed)
+        let predicate = try SearchPredicate(FileQuery(kinds: [.image]), answering: .listed)
         #expect(predicate.matches(entry("a.png")))
         #expect(predicate.matches(entry("b.HEIC")))
         #expect(!predicate.matches(entry("c.txt")))
@@ -155,10 +155,10 @@ struct SearchPredicateTests {
     /// folder, and deriving a UTI from that extension is exactly how it would come back as one.
     @Test("a directory never matches a file kind, whatever it is called")
     func directoryIsNotTypedByName() throws {
-        let images = try SearchPredicate(SpotlightQuery(kinds: [.image]), answering: .listed)
+        let images = try SearchPredicate(FileQuery(kinds: [.image]), answering: .listed)
         #expect(!images.matches(entry("holiday.png", kind: .directory)))
 
-        let folders = try SearchPredicate(SpotlightQuery(kinds: [.folder]), answering: .listed)
+        let folders = try SearchPredicate(FileQuery(kinds: [.folder]), answering: .listed)
         #expect(folders.matches(entry("holiday.png", kind: .directory)))
         #expect(!folders.matches(entry("holiday.png")))
     }
@@ -168,7 +168,7 @@ struct SearchPredicateTests {
     @Test("a directory never satisfies a size filter")
     func sizeIsAboutFiles() throws {
         let predicate = try SearchPredicate(
-            SpotlightQuery(minSizeBytes: 1024),
+            FileQuery(minSizeBytes: 1024),
             answering: .listed
         )
         #expect(predicate.matches(entry("big.bin", size: 4096)))
@@ -183,7 +183,7 @@ struct SearchPredicateTests {
     func unknownDateNeverMatches() throws {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let predicate = try SearchPredicate(
-            SpotlightQuery(modifiedWithin: .week),
+            FileQuery(modifiedWithin: .week),
             answering: .listed,
             now: now
         )
@@ -203,7 +203,7 @@ struct SearchPredicateTests {
     func windowIsFixed() throws {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let predicate = try SearchPredicate(
-            SpotlightQuery(modifiedWithin: .today),
+            FileQuery(modifiedWithin: .today),
             answering: .listed,
             now: now
         )
@@ -219,7 +219,7 @@ struct SearchPredicateTests {
     @Test("clauses narrow, exactly as the metadata predicate's do")
     func clausesAnd() throws {
         let predicate = try SearchPredicate(
-            SpotlightQuery(nameContains: "holiday", kinds: [.image], minSizeBytes: 1000),
+            FileQuery(nameContains: "holiday", kinds: [.image], minSizeBytes: 1000),
             answering: .listed
         )
         #expect(predicate.matches(entry("holiday-01.jpg", size: 2000)))

@@ -25,8 +25,13 @@ extension PanelViewController: NSMenuItemValidation {
             return !selectionTargets().isEmpty && host?.panelCounterpart(of: self) != nil
         case #selector(moveToOtherPane(_:)):
             // Move can't come out of a read-only archive (there's nothing to remove); a results
-            // panel still allows it (each target carries its real on-disk path).
-            return !isArchive && !selectionTargets().isEmpty && host?.panelCounterpart(of: self) != nil
+            // panel still allows it (each target carries its real on-disk path) — unless its rows
+            // are themselves archive members, which is what a search inside an archive produces.
+            let targets = selectionTargets()
+            return !isArchive
+                && extractionArchivePath(for: targets) == nil
+                && !targets.isEmpty
+                && host?.panelCounterpart(of: self) != nil
         case #selector(copy(_:)):
             // `copy:` only reaches the pane when the file table is first responder — a name/
             // path field editor intercepts ⌘C for text copy — so this validates the file case.
@@ -66,6 +71,13 @@ extension PanelViewController: NSMenuItemValidation {
             // of the rule is how a working command ends up grayed out (docs/NOTES.md — and it was,
             // for every remote pane, until 2026-08-13).
             return canGoToParent
+        case #selector(findFiles(_:)):
+            // Read from `canFindFiles` rather than restating its rule, for the reason `canGoToParent`
+            // above exists: a validator carrying its own copy is how a working command ends up gray,
+            // and this is the surface no headless test drives. An S3 *account* pane is the one place
+            // it is false — its rows are buckets, so there is nothing to search and nothing local to
+            // fall back to.
+            return canFindFiles
         case #selector(goBack(_:)):
             return tabs[activeTabIndex].history.canGoBack
         case #selector(goForward(_:)):

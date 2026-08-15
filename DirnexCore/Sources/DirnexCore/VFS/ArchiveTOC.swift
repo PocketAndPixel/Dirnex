@@ -7,7 +7,7 @@ import Foundation
 ///
 /// Pure and hermetic: it never spawns a process or touches disk. The app's
 /// `ArchiveMounter` runs `bsdtar` off-main and hands the text here, mirroring how the
-/// pure `SpotlightQuery` pairs with the I/O-doing `SpotlightSearchRunner`. Keeping the
+/// pure `FileQuery` pairs with the I/O-doing `SpotlightSearchRunner`. Keeping the
 /// parsing here makes it independently unit-testable against captured real `bsdtar`
 /// output, and lets `ArchiveBackend` answer `list`/`stat` without any I/O.
 public struct ArchiveTOC: Sendable, Equatable {

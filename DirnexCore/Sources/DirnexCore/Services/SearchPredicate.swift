@@ -1,7 +1,7 @@
 import Foundation
 import UniformTypeIdentifiers
 
-/// A ``SpotlightQuery`` compiled into a test one ``FileEntry`` at a time — the half of M22 that
+/// A ``FileQuery`` compiled into a test one ``FileEntry`` at a time — the half of M22 that
 /// makes a search runnable where there is no index (PLAN.md §M22).
 ///
 /// It is the *same* query the Spotlight route renders into `kMDItem…`, so "Images larger than 1 MB"
@@ -32,7 +32,7 @@ public struct SearchPredicate: Sendable {
     ///
     /// - Throws: ``SearchQueryUnanswerable`` when `query` asks about a field outside `fields`.
     public init(
-        _ query: SpotlightQuery,
+        _ query: FileQuery,
         answering fields: SearchFields,
         now: Date = Date()
     ) throws {
@@ -113,7 +113,7 @@ public struct SearchPredicate: Sendable {
     /// Public so the app can ask *before* offering to run something: a saved search re-run against a
     /// scope that cannot answer it should say which term it cannot honour, not fail at the walk.
     public static func unanswerable(
-        in query: SpotlightQuery,
+        in query: FileQuery,
         given fields: SearchFields
     ) -> SearchFields {
         var asked: SearchFields = []
@@ -127,7 +127,7 @@ public struct SearchPredicate: Sendable {
     }
 }
 
-/// Thrown when a ``SpotlightQuery`` asks about something the place it is being run against cannot
+/// Thrown when a ``FileQuery`` asks about something the place it is being run against cannot
 /// answer — content or Finder tags on a connected server, in practice.
 ///
 /// Carries *which* fields rather than merely failing, because the sentence the user needs names the

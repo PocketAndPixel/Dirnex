@@ -70,7 +70,7 @@ final class PanelTab {
     /// produced them — retained so "Save Search…" can persist a re-runnable saved search
     /// (PLAN.md §M4). `nil` for a normal directory tab. Session-scoped: a restored tab is never
     /// a results tab (search results aren't persisted), so this is never encoded.
-    var searchQuery: SpotlightQuery?
+    var searchQuery: FileQuery?
     var searchScope: VFSPath?
     /// The Git working tree this tab's directory belongs to, and the snapshot its rows are painted
     /// from (PLAN.md §M6) — both `nil` outside a repository, and the snapshot also `nil` until the

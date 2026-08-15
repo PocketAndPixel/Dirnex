@@ -1,22 +1,44 @@
 import AppKit
 import DirnexCore
 
-/// The Find Files dialog (⌥F7 / palette "Find Files…") — a small form over a `SpotlightQuery`
+/// The Find Files dialog (⌥F7 / palette "Find Files…") — a small form over a `FileQuery`
 /// (PLAN.md §M4 "Search … with filter chips (kind, size, date)"). The user fills in any
 /// combination of a name substring, a content substring, and the kind/size/date chips, picks a
 /// scope, and "Find" hands the query back to the panel, which runs `mdfind` and shows the hits
 /// in a virtual results panel.
 ///
 /// Presented via `presentAsMovableWindow` (which retains it for its on-screen lifetime). All the query
-/// logic is the tested `DirnexCore.SpotlightQuery`; this is just the AppKit shell that binds
+/// logic is the tested `DirnexCore.FileQuery`; this is just the AppKit shell that binds
 /// controls to it.
 @MainActor
 final class SearchController: NSViewController {
+    /// Where the search will run.
+    enum Scope: Equatable {
+        /// The folder the pane is showing, and everything under it.
+        case currentFolder
+        /// Everything reachable — every indexed volume on the Spotlight route, and the connection's
+        /// or archive's own root on a walk. One case rather than two because the *dialog* asks one
+        /// question ("here, or everything?"); which "everything" it resolves to belongs to the pane,
+        /// which knows what it is connected to.
+        case everything
+    }
+
     /// The folder the "This Folder" scope option searches within, shown in that option's title.
     private let currentFolderName: String
-    /// Handed the assembled query and whether to scope it to the current folder (vs. everywhere)
-    /// when the user commits. The panel runs the search.
-    var onSearch: ((SpotlightQuery, _ scopeToCurrentFolder: Bool) -> Void)?
+    /// What this scope can actually be asked about — the fields outside it are not drawn at all
+    /// (PLAN.md §M22).
+    ///
+    /// Hidden rather than disabled, deliberately. A grayed-out "Content contains" is a promise the
+    /// app is not keeping and an invitation to go looking for the setting that would enable it,
+    /// where an absent row reads as what it is: this place answers questions about names, kinds,
+    /// sizes and dates.
+    private let fields: SearchFields
+    /// What the whole connection is called, when the second scope option means "everything on this
+    /// server" rather than "everywhere Spotlight indexed" — `nil` on the local route.
+    private let connectionRootTitle: String?
+    /// Handed the assembled query and the chosen scope when the user commits. The panel runs the
+    /// search.
+    var onSearch: ((FileQuery, _ scope: Scope) -> Void)?
 
     // Controls
     private let nameField = NSTextField()
@@ -28,72 +50,15 @@ final class SearchController: NSViewController {
     /// because a tag *is* a token: it rounds each name into a chip you can delete as one, which is
     /// what the plan's word describes, and it completes against the names already in use rather
     /// than asking the user to spell them from memory. Several tags narrow (they AND) — see
-    /// `SpotlightQuery.tags`.
+    /// `FileQuery.tags`.
     private let tagField = NSTokenField()
     private let scopePopup = NSPopUpButton()
     private let findButton = NSButton()
 
-    private let kindOptions: [(title: String, kind: SearchKind?)] =
-        [
-            (
-                String(
-                    localized: "Any kind",
-                    comment: "Find Files: the Kind popup's no-filter option."
-                ),
-                nil
-            )
-        ]
-        + SearchKind.allCases.map { (LocalizedCatalog.title(for: $0), $0) }
-
-    private let sizeOptions: [(title: String, bytes: Int64?)] = [
-        (
-            String(localized: "Any size", comment: "Find Files: the Size popup's no-filter option."),
-            nil
-        ),
-        (
-            String(
-                localized: "Larger than 1 MB",
-                comment: "Find Files: a minimum-size filter option."
-            ),
-            1_048_576
-        ),
-        (
-            String(
-                localized: "Larger than 10 MB",
-                comment: "Find Files: a minimum-size filter option."
-            ),
-            10_485_760
-        ),
-        (
-            String(
-                localized: "Larger than 100 MB",
-                comment: "Find Files: a minimum-size filter option."
-            ),
-            104_857_600
-        ),
-        (
-            String(
-                localized: "Larger than 1 GB",
-                comment: "Find Files: a minimum-size filter option."
-            ),
-            1_073_741_824
-        )
-    ]
-
-    private let dateOptions: [(title: String, age: SearchAge?)] =
-        [
-            (
-                String(
-                    localized: "Any date",
-                    comment: "Find Files: the Modified popup's no-filter option."
-                ),
-                nil
-            )
-        ]
-        + SearchAge.allCases.map { (LocalizedCatalog.title(for: $0), $0) }
-
-    init(currentFolderName: String) {
+    init(currentFolderName: String, fields: SearchFields, connectionRootTitle: String?) {
         self.currentFolderName = currentFolderName
+        self.fields = fields
+        self.connectionRootTitle = connectionRootTitle
         super.init(nibName: nil, bundle: nil)
         title = DialogTitle.ofCommand("go.search")
     }
@@ -145,42 +110,105 @@ final class SearchController: NSViewController {
         // names held in memory, so there is nothing to wait for.
         tagField.tokenizingCharacterSet = CharacterSet(charactersIn: ",")
         tagField.completionDelay = 0
-        for (title, _) in kindOptions { kindPopup.addItem(withTitle: title) }
-        for (title, _) in sizeOptions { sizePopup.addItem(withTitle: title) }
-        for (title, _) in dateOptions { datePopup.addItem(withTitle: title) }
+        for (title, _) in SearchFilterOptions.kinds { kindPopup.addItem(withTitle: title) }
+        for (title, _) in SearchFilterOptions.sizes { sizePopup.addItem(withTitle: title) }
+        for (title, _) in SearchFilterOptions.ages { datePopup.addItem(withTitle: title) }
         scopePopup.addItem(withTitle: String(
             localized: "This Folder (“\(currentFolderName)”)",
             comment: "Find Files: the Search-in popup option scoping to the current folder; %@ is its name."
         ))
-        scopePopup.addItem(withTitle: String(
-            localized: "Everywhere",
-            comment: "Find Files: the Search-in popup option searching the whole index."
-        ))
+        scopePopup.addItem(withTitle: everythingScopeTitle)
         for popup in [kindPopup, sizePopup, datePopup] {
             popup.target = self
             popup.action = #selector(controlChanged(_:))
         }
 
-        let grid = NSGridView(views: [
-            [
-                label(String(localized: "Name contains:", comment: "Find Files: field label.")),
-                nameField
-            ],
-            [
-                label(String(localized: "Content contains:", comment: "Find Files: field label.")),
-                contentField
-            ],
-            [label(String(localized: "Tags:", comment: "Find Files: field label.")), tagField],
-            [label(String(localized: "Kind:", comment: "Find Files: field label.")), kindPopup],
-            [label(String(localized: "Size:", comment: "Find Files: field label.")), sizePopup],
-            [label(String(localized: "Modified:", comment: "Find Files: field label.")), datePopup],
-            [label(String(localized: "Search in:", comment: "Find Files: field label.")), scopePopup]
-        ])
+        // Each row carries the field it asks about, so hiding one is a fact about the *scope* rather
+        // than a row index somebody has to keep in step with the layout.
+        let rows = [
+            Row(.name, nameLabel, nameField),
+            Row(.content, contentLabel, contentField),
+            Row(.tags, tagsLabel, tagField),
+            Row(.kind, kindLabel, kindPopup),
+            Row(.size, sizeLabel, sizePopup),
+            Row(.modified, dateLabel, datePopup),
+            Row(nil, scopeLabel, scopePopup)
+        ]
+
+        let grid = NSGridView(views: rows.map { [$0.caption, $0.control] })
+        for (index, row) in rows.enumerated() {
+            guard let field = row.field, !fields.contains(field) else { continue }
+            grid.row(at: index).isHidden = true
+        }
         grid.rowSpacing = 8
         grid.columnSpacing = 10
         grid.column(at: 0).xPlacement = .trailing
         grid.translatesAutoresizingMaskIntoConstraints = false
         return grid
+    }
+
+    /// One line of the form: the field it asks about (`nil` for the scope row, which is not a
+    /// question about files), its caption, and its control.
+    private struct Row {
+        let field: SearchFields?
+        let caption: NSView
+        let control: NSView
+
+        init(_ field: SearchFields?, _ caption: NSView, _ control: NSView) {
+            self.field = field
+            self.caption = caption
+            self.control = control
+        }
+    }
+
+    // The captions, each wrapped where it is written: `String(localized:)` takes a `StaticString`
+    // comment, so a caption passed through a variable would be a bare literal the extractor never
+    // sees (docs/NOTES.md ▸ Localization).
+    private var nameLabel: NSTextField {
+        label(String(localized: "Name contains:", comment: "Find Files: field label."))
+    }
+
+    private var contentLabel: NSTextField {
+        label(String(localized: "Content contains:", comment: "Find Files: field label."))
+    }
+
+    private var tagsLabel: NSTextField {
+        label(String(localized: "Tags:", comment: "Find Files: field label."))
+    }
+
+    private var kindLabel: NSTextField {
+        label(String(localized: "Kind:", comment: "Find Files: field label."))
+    }
+
+    private var sizeLabel: NSTextField {
+        label(String(localized: "Size:", comment: "Find Files: field label."))
+    }
+
+    private var dateLabel: NSTextField {
+        label(String(localized: "Modified:", comment: "Find Files: field label."))
+    }
+
+    private var scopeLabel: NSTextField {
+        label(String(localized: "Search in:", comment: "Find Files: field label."))
+    }
+
+    /// The second scope option. "Everywhere" is honest only where there is an index that spans
+    /// volumes; on a server it would be a claim about the whole machine, when what is actually
+    /// searched is the connection this pane is standing in.
+    private var everythingScopeTitle: String {
+        guard let connectionRootTitle else {
+            return String(
+                localized: "Everywhere",
+                comment: "Find Files: the Search-in popup option searching the whole index."
+            )
+        }
+        return String(
+            localized: "All of “\(connectionRootTitle)”",
+            comment: """
+            Find Files: the Search-in popup option covering a whole connection or archive; \
+            %@ is its name, such as a bucket, a server or an archive file.
+            """
+        )
     }
 
     private func makeFooter() -> NSView {
@@ -223,21 +251,32 @@ final class SearchController: NSViewController {
     @objc private func find(_ sender: Any?) {
         let query = currentQuery()
         guard !query.isEmpty else { return }
-        onSearch?(query, scopePopup.indexOfSelectedItem == 0)
+        onSearch?(query, scopePopup.indexOfSelectedItem == 0 ? .currentFolder : .everything)
         dismiss(sender)
     }
 
     // MARK: - Query
 
-    private func currentQuery() -> SpotlightQuery {
-        let kind = kindOptions[max(0, kindPopup.indexOfSelectedItem)].kind
-        return SpotlightQuery(
-            nameContains: nameField.stringValue,
-            contentContains: contentField.stringValue,
-            kinds: kind.map { [$0] } ?? [],
-            minSizeBytes: sizeOptions[max(0, sizePopup.indexOfSelectedItem)].bytes,
-            modifiedWithin: dateOptions[max(0, datePopup.indexOfSelectedItem)].age,
-            tags: enteredTags
+    /// The query as the controls currently stand.
+    ///
+    /// A field the scope cannot answer contributes nothing, whatever it happens to hold. It is
+    /// hidden and therefore always empty in practice — but the whole design rests on a query never
+    /// carrying a term that will be silently ignored, and resting that on "the row isn't on screen"
+    /// makes it a fact about the *layout*. Reading it from `fields` makes it a fact about the place
+    /// being searched, which is what it is.
+    private func currentQuery() -> FileQuery {
+        let kind = SearchFilterOptions.kinds[max(0, kindPopup.indexOfSelectedItem)].kind
+        return FileQuery(
+            nameContains: fields.contains(.name) ? nameField.stringValue : "",
+            contentContains: fields.contains(.content) ? contentField.stringValue : "",
+            kinds: fields.contains(.kind) ? kind.map { [$0] } ?? [] : [],
+            minSizeBytes: fields.contains(.size)
+                ? SearchFilterOptions.sizes[max(0, sizePopup.indexOfSelectedItem)].bytes
+                : nil,
+            modifiedWithin: fields.contains(.modified)
+                ? SearchFilterOptions.ages[max(0, datePopup.indexOfSelectedItem)].age
+                : nil,
+            tags: fields.contains(.tags) ? enteredTags : []
         )
     }
 

@@ -1,16 +1,21 @@
 import Foundation
 
-// Spotlight-backed file search (PLAN.md §M4 "Search (Alt+F7 / palette): mdfind-backed
-// name+content search with filter chips (kind, size, date, tag)").
+// File search (PLAN.md §M4 "Search (Alt+F7 / palette): mdfind-backed name+content search with
+// filter chips (kind, size, date, tag)", widened to connected servers by §M22).
 //
-// This is the pure *query-building* half: a `SpotlightQuery` value describes what the user is
-// looking for and renders it into the raw `kMDItem…` metadata predicate `mdfind` understands,
-// plus the full argument vector for the `mdfind` CLI. It touches no disk and runs no process
-// (so it stays unit-testable without a Spotlight index or a subprocess); the app runs `mdfind`
-// with these arguments off the main thread and stats the resulting paths into a virtual panel.
+// This is the pure *query* half: a `FileQuery` value describes what the user is looking for and
+// touches no disk and runs no process, so it stays unit-testable without a Spotlight index or a
+// subprocess. Mirrors `MultiRename`: the tested planning logic lives here; the non-hermetic I/O
+// (spawning `mdfind`, statting results) lives in the app layer, like `DirectoryLoader`.
 //
-// Mirrors `MultiRename`: the tested planning logic lives here; the non-hermetic I/O (spawning
-// `mdfind`, statting results) lives in the app layer, like `DirectoryLoader`.
+// **One query, two readings**, which is what the M22 rename records. `metadataPredicate()` below
+// renders it into the raw `kMDItem…` predicate `mdfind` understands — the only reading that can
+// answer file *contents* or Finder tags, and available only where there is an index. `SearchPredicate`
+// compiles the same value into a test applied to one `FileEntry` at a time, which is how a bucket or
+// an FTP server is searched: by walking listings, since nothing over there has been indexed by
+// anybody. Both readings share this type's fields precisely so "Images larger than 1 MB" has one
+// definition and not two — and where the two must differ (a kind decided from the name rather than
+// from the bytes) the difference is stated at the rule, in `SearchPredicate`.
 
 // MARK: - Filter chips
 
@@ -85,7 +90,7 @@ public enum SearchAge: String, Sendable, Equatable, CaseIterable, Codable {
 /// A file search described as data. Any combination of the fields narrows the result set (they
 /// AND together); an all-empty query is `isEmpty` and produces no predicate, so the search UI
 /// disables "Find" until the user asks for something.
-public struct SpotlightQuery: Sendable, Equatable, Codable {
+public struct FileQuery: Sendable, Equatable, Codable {
     /// Substring matched (case- and diacritic-insensitively) against the file *name*.
     public var nameContains: String
     /// Substring matched against the indexed text *content* of the file.

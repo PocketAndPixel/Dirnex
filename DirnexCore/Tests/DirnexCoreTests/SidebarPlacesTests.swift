@@ -7,7 +7,7 @@ import Testing
 struct SidebarPlacesTests {
     // MARK: - Fixtures
 
-    private let search = SavedSearch(name: "All PDFs", query: SpotlightQuery(nameContains: "pdf"))
+    private let search = SavedSearch(name: "All PDFs", query: FileQuery(nameContains: "pdf"))
     private let favorite = FavoriteEntry(path: .local("/Users/oleg/Dev"))
     private let iCloud = SidebarPlace.iCloudDrive(
         .local("/Users/oleg/Library/Mobile Documents/com~apple~CloudDocs")

@@ -1,6 +1,6 @@
 import Foundation
 
-/// Which of a ``SpotlightQuery``'s clauses a given place can actually answer (PLAN.md §M22).
+/// Which of a ``FileQuery``'s clauses a given place can actually answer (PLAN.md §M22).
 ///
 /// ⌥F7 was Spotlight-only until M22, so every field was answerable everywhere by construction and
 /// nothing had to ask. A connected server has no index: what a listing hands over is a name, a size,

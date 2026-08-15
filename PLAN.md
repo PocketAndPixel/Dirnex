@@ -1780,14 +1780,15 @@ on S3, FTP/FTPS and SFTP.
 *container* path is synthetic while every entry in it carries its real `VFSPath`
 (`PanelViewController+Results`), and `CompositeBackend` routes per entry — so F5, ⌘Y, the path bar
 and Quick View reach an `s3://` hit exactly as they reach a local one, with no work. What is
-Spotlight-bound is two links of the chain: `SpotlightQuery.metadataPredicate()` and
+Spotlight-bound is two links of the chain: `FileQuery.metadataPredicate()` (the type was
+called `SpotlightQuery` until this milestone) and
 `SpotlightSearchRunner`. One consequence worth having early: a remote search needs **no per-hit
 `stat`**. That call exists because `mdfind` hands back bare strings; a walk gets whole `FileEntry`s
 out of the listing it has already paid for.
 
 #### The query and the index are two things wearing one name
 
-`SpotlightQuery` describes what the user wants *and* renders it into `kMDItem…`. The milestone
+`FileQuery` describes what the user wants *and* renders it into `kMDItem…`. The milestone
 splits those: the same value gains a pure `matches(_ entry:)`, so one query drives both routes and
 there is one definition of what "Images larger than 1 MB" means. The route is picked by the scope's
 backend — `.local` keeps Spotlight, anything re-listable and not on this disk takes a walk.
@@ -1865,7 +1866,7 @@ scope.
 breadth-first bounded walk), and one optional seam on `VFSBackend` — `subtreeListing(at:isCancelled:)`,
 defaulting to `nil`, so a backend whose keyspace is flat can answer a whole subtree in one call. +29
 core tests (2427 core / 508 app green, both linters clean); the only edit to existing code is three
-`private` computed properties on `SpotlightQuery` widened to internal, since Swift's `private` does
+`private` computed properties on `FileQuery` widened to internal, since Swift's `private` does
 not cross files.
 
 Two negative controls, both of which fired and one of which measured the design rather than merely
@@ -1880,6 +1881,42 @@ guarding it:
   *every field nil* — one that matches every row it is shown. So the hazard the type exists to
   prevent is not theoretical: without it, a saved search re-run on a server lists the entire subtree
   under the name of a search that means something much narrower.
+
+**Slice 2 landed 2026-08-16** — the app: ⌥F7 routes by the scope's backend, and the dialog hides
+what the scope cannot answer. `SubtreeSearchRunner` (the walk off the main thread, with a
+latest-value `SearchControl` rather than a progress callback, because a coalescer that drops what it
+withholds latches — docs/NOTES.md), `SearchProgressSheet` (late by 400 ms, live counts, Stop),
+`PanelViewController+SearchWalk` (the three completions, two surfaces: an alert for a limit the user
+ran into, the status line for a stop they chose), and `SearchFilterOptions` split out of a
+`SearchController` that had gone past `type_body_length`. `canFindFiles` gates both the key and the
+menu item, so an **S3 account pane** offers no search rather than quietly searching this Mac's home
+folder. 11 new strings, translated into all 13 languages — two of them reworded to labelled counts
+(`Folders searched: %lld · Found: %lld`) so nothing needs plural agreement on two numbers in
+fourteen languages for a line that is on screen for seconds. +9 app tests (2429 core / 517 app
+green, both linters and all three scripts clean).
+
+`SubtreeSearch` gained a fourth completion in the same pass, and it is a correction to Slice 1 rather
+than an addition: a stopped walk **returns its hits** instead of throwing `CancellationError`. Stop
+here means "that's enough, show me what you have" — a person is standing at the button — where a
+cancelled *size* walk has nothing honest to report. The flat shortcut cannot return partway through,
+so it says the same thing by throwing, which `find` converts, and the two routes are
+indistinguishable to the caller.
+
+**Verified live against an archive**, which is the one walking backend reachable with no server: a
+zip four levels deep, searched from its root (4 hits at every depth) and from `docs/` (3, the root's
+own hit correctly excluded), with "All of “pkg.zip”" from inside `docs/` finding all 4 again. The
+dialog drew **Name / Kind / Size / Modified / Search in** and no Content or Tags row.
+
+That run found the one thing nothing else could have: **F5 on a hit failed inside the queue** —
+"This location doesn't support copying files". `copyToOtherPane` asked the *pane* whether it was an
+archive, and a results tab's container is the synthetic `search:` path, so the extraction route never
+ran and the byte copy reached `ArchiveBackend`, which has no `copyFile`. The question has to be asked
+of the **rows** (`extractionArchivePath(for:)`), which is this project's most-repeated finding
+arriving through a new door: a second source of entries reached a site that decides by backend. F6 is
+gated the same way, in the flow *and* in its validator. Re-verified live: `report-top.txt` extracted
+out of the archive and landed in the destination pane. Fixed rather than deferred because the slice
+is what made it reachable; four tests pin it, including the narrowness control that an ordinary local
+results tab still takes the copy path.
 
 ## 5. Cross-cutting: testing strategy
 

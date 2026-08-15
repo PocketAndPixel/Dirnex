@@ -38,7 +38,7 @@ extension PanelViewController {
         /// The listing order — the pane's own sort for a search or the Trash, recency for Recents.
         let sort: FileSort
         /// What "Save Search…" persists; `nil` for Recents and the Trash, which aren't queries.
-        let query: SpotlightQuery?
+        let query: FileQuery?
         let scope: VFSPath?
         /// The chip label; `nil` on an ad-hoc search leaves the query-summary crumb.
         let title: String?

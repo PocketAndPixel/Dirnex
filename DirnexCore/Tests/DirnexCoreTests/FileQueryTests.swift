@@ -3,11 +3,11 @@ import Testing
 
 @testable import DirnexCore
 
-@Suite("SpotlightQuery")
-struct SpotlightQueryTests {
+@Suite("FileQuery")
+struct FileQueryTests {
     @Test("an all-default query is empty and yields no predicate")
     func emptyQuery() {
-        let query = SpotlightQuery()
+        let query = FileQuery()
         #expect(query.isEmpty)
         #expect(query.metadataPredicate() == nil)
         #expect(query.mdfindArguments(scopePath: "/tmp").isEmpty)
@@ -15,33 +15,33 @@ struct SpotlightQueryTests {
 
     @Test("whitespace-only name/content still counts as empty")
     func whitespaceIsEmpty() {
-        let query = SpotlightQuery(nameContains: "   ", contentContains: "\n\t")
+        let query = FileQuery(nameContains: "   ", contentContains: "\n\t")
         #expect(query.isEmpty)
         #expect(query.metadataPredicate() == nil)
     }
 
     @Test("a name term builds a case/diacritic-insensitive substring clause")
     func namePredicate() {
-        let query = SpotlightQuery(nameContains: "report")
+        let query = FileQuery(nameContains: "report")
         #expect(!query.isEmpty)
         #expect(query.metadataPredicate() == #"kMDItemFSName == "*report*"cd"#)
     }
 
     @Test("a name term is trimmed before it is embedded")
     func nameTrimmed() {
-        let query = SpotlightQuery(nameContains: "  budget  ")
+        let query = FileQuery(nameContains: "  budget  ")
         #expect(query.metadataPredicate() == #"kMDItemFSName == "*budget*"cd"#)
     }
 
     @Test("a content term builds a text-content substring clause")
     func contentPredicate() {
-        let query = SpotlightQuery(contentContains: "quarterly")
+        let query = FileQuery(contentContains: "quarterly")
         #expect(query.metadataPredicate() == #"kMDItemTextContent == "*quarterly*"cd"#)
     }
 
     @Test("name and content clauses AND together in order")
     func nameAndContent() {
-        let query = SpotlightQuery(nameContains: "memo", contentContains: "urgent")
+        let query = FileQuery(nameContains: "memo", contentContains: "urgent")
         #expect(
             query.metadataPredicate()
                 == #"kMDItemFSName == "*memo*"cd && kMDItemTextContent == "*urgent*"cd"#
@@ -50,13 +50,13 @@ struct SpotlightQueryTests {
 
     @Test("a single kind becomes a parenthesized content-type-tree clause")
     func singleKind() {
-        let query = SpotlightQuery(kinds: [.image])
+        let query = FileQuery(kinds: [.image])
         #expect(query.metadataPredicate() == #"(kMDItemContentTypeTree == "public.image"c)"#)
     }
 
     @Test("multiple kinds OR together in CaseIterable order regardless of set order")
     func multipleKindsAreOrdered() {
-        let query = SpotlightQuery(kinds: [.archive, .folder, .image])
+        let query = FileQuery(kinds: [.archive, .folder, .image])
         // Declaration order is folder, image, …, archive — so folder comes first, archive last.
         #expect(
             query.metadataPredicate()
@@ -68,13 +68,13 @@ struct SpotlightQueryTests {
 
     @Test("a minimum size becomes a byte comparison")
     func minimumSize() {
-        let query = SpotlightQuery(minSizeBytes: 1_048_576)
+        let query = FileQuery(minSizeBytes: 1_048_576)
         #expect(query.metadataPredicate() == "kMDItemFSSize >= 1048576")
     }
 
     @Test("a modified-within window becomes a relative $time.now offset")
     func modifiedWithin() {
-        let query = SpotlightQuery(modifiedWithin: .week)
+        let query = FileQuery(modifiedWithin: .week)
         #expect(
             query.metadataPredicate()
                 == "kMDItemFSContentChangeDate >= $time.now(-604800)"
@@ -83,7 +83,7 @@ struct SpotlightQueryTests {
 
     @Test("every clause ANDs together in the fixed name→content→kind→size→date order")
     func allClausesCombine() {
-        let query = SpotlightQuery(
+        let query = FileQuery(
             nameContains: "photo",
             contentContains: "beach",
             kinds: [.image],
@@ -107,7 +107,7 @@ struct SpotlightQueryTests {
     /// diacritic-insensitive: `Café` and `Cafe` are two different tags to the system.
     @Test("a tag chip matches the multi-valued user-tags attribute by name")
     func singleTagClause() {
-        let query = SpotlightQuery(tags: ["Work"])
+        let query = FileQuery(tags: ["Work"])
         #expect(query.metadataPredicate() == #"kMDItemUserTags == "Work"c"#)
         #expect(!query.isEmpty)
     }
@@ -116,19 +116,19 @@ struct SpotlightQueryTests {
     /// chip narrows. Someone adding "Urgent" to "Work" is asking for the overlap.
     @Test("tag chips AND together, sorted so a Set yields a deterministic predicate")
     func tagChipsAnd() {
-        let query = SpotlightQuery(tags: ["Work", "Urgent"])
+        let query = FileQuery(tags: ["Work", "Urgent"])
         #expect(
             query.metadataPredicate() == #"kMDItemUserTags == "Urgent"c && kMDItemUserTags == "Work"c"#
         )
         // Same set, built the other way round — the predicate must not depend on Set iteration order.
         #expect(
-            SpotlightQuery(tags: ["Urgent", "Work"]).metadataPredicate() == query.metadataPredicate()
+            FileQuery(tags: ["Urgent", "Work"]).metadataPredicate() == query.metadataPredicate()
         )
     }
 
     @Test("tag chips join the other clauses at the end of the fixed order")
     func tagClausesComeLast() {
-        let query = SpotlightQuery(nameContains: "photo", kinds: [.image], tags: ["Trip"])
+        let query = FileQuery(nameContains: "photo", kinds: [.image], tags: ["Trip"])
         #expect(
             query.metadataPredicate()
                 == #"kMDItemFSName == "*photo*"cd"#
@@ -139,10 +139,10 @@ struct SpotlightQueryTests {
 
     @Test("blank and whitespace-only tags are dropped rather than matching everything")
     func blankTagsDropped() {
-        #expect(SpotlightQuery(tags: ["", "   "]).isEmpty)
-        #expect(SpotlightQuery(tags: ["", "   "]).metadataPredicate() == nil)
+        #expect(FileQuery(tags: ["", "   "]).isEmpty)
+        #expect(FileQuery(tags: ["", "   "]).metadataPredicate() == nil)
         #expect(
-            SpotlightQuery(tags: [" Work "]).metadataPredicate() == #"kMDItemUserTags == "Work"c"#
+            FileQuery(tags: [" Work "]).metadataPredicate() == #"kMDItemUserTags == "Work"c"#
         )
     }
 
@@ -150,20 +150,20 @@ struct SpotlightQueryTests {
     @Test("a tag name's quotes are escaped like any other term")
     func tagNameEscaped() {
         #expect(
-            SpotlightQuery(tags: [#"a"b"#]).metadataPredicate() == #"kMDItemUserTags == "a\"b"c"#
+            FileQuery(tags: [#"a"b"#]).metadataPredicate() == #"kMDItemUserTags == "a\"b"c"#
         )
     }
 
     @Test("a lone tag chip names the results panel")
     func tagSummary() {
-        #expect(SpotlightQuery(tags: ["Work"]).plainNameTerm == .tag("Work"))
-        #expect(SpotlightQuery(tags: ["Work", "Urgent"]).plainNameTerm == .generic)
+        #expect(FileQuery(tags: ["Work"]).plainNameTerm == .tag("Work"))
+        #expect(FileQuery(tags: ["Work", "Urgent"]).plainNameTerm == .generic)
         // A name still outranks it — the more specific term wins.
         #expect(
-            SpotlightQuery(nameContains: "photo", tags: ["Work"]).plainNameTerm == .name("photo")
+            FileQuery(nameContains: "photo", tags: ["Work"]).plainNameTerm == .name("photo")
         )
         // The crumb never takes a tag, however lone it is — only the "Save Search…" prefill does.
-        #expect(SpotlightQuery(tags: ["Work"]).summaryTerm == .generic)
+        #expect(FileQuery(tags: ["Work"]).summaryTerm == .generic)
     }
 
     /// Saved searches persisted before tags existed have no `tags` key, and the synthesized decoder
@@ -172,7 +172,7 @@ struct SpotlightQueryTests {
     @Test("a query saved before tags existed still decodes")
     func decodesLegacyPayloadWithoutTags() throws {
         let legacy = #"{"nameContains":"photo","contentContains":"","kinds":["image"],"minSizeBytes":500}"#
-        let decoded = try JSONDecoder().decode(SpotlightQuery.self, from: Data(legacy.utf8))
+        let decoded = try JSONDecoder().decode(FileQuery.self, from: Data(legacy.utf8))
         #expect(decoded.tags.isEmpty)
         #expect(decoded.nameContains == "photo")
         #expect(decoded.kinds == [.image])
@@ -182,20 +182,20 @@ struct SpotlightQueryTests {
 
     @Test("a term's quotes and backslashes are escaped so they can't break the literal")
     func escapesQuotesAndBackslashes() {
-        let query = SpotlightQuery(nameContains: #"a"b\c"#)
+        let query = FileQuery(nameContains: #"a"b\c"#)
         #expect(query.metadataPredicate() == #"kMDItemFSName == "*a\"b\\c*"cd"#)
     }
 
     @Test("mdfind arguments prepend -onlyin for a scope and end with the predicate")
     func scopedArguments() {
-        let query = SpotlightQuery(nameContains: "todo")
+        let query = FileQuery(nameContains: "todo")
         let arguments = query.mdfindArguments(scopePath: "/Users/me/Docs")
         #expect(arguments == ["-onlyin", "/Users/me/Docs", #"kMDItemFSName == "*todo*"cd"#])
     }
 
     @Test("mdfind arguments omit -onlyin when the scope is nil or empty")
     func unscopedArguments() {
-        let query = SpotlightQuery(nameContains: "todo")
+        let query = FileQuery(nameContains: "todo")
         #expect(query.mdfindArguments(scopePath: nil) == [#"kMDItemFSName == "*todo*"cd"#])
         #expect(query.mdfindArguments(scopePath: "") == [#"kMDItemFSName == "*todo*"cd"#])
     }
@@ -204,24 +204,24 @@ struct SpotlightQueryTests {
     /// a sentence authored here could never be translated. Trimming still belongs to the term.
     @Test("the summary term prefers the name, then content, then a lone kind, then a fallback")
     func summaryPrecedence() {
-        #expect(SpotlightQuery(nameContains: "  taxes ").summaryTerm == .name("taxes"))
-        #expect(SpotlightQuery(contentContains: "invoice").summaryTerm == .content("invoice"))
-        #expect(SpotlightQuery(kinds: [.movie]).summaryTerm == .kind(.movie))
-        #expect(SpotlightQuery(kinds: [.movie, .image]).summaryTerm == .generic)
-        #expect(SpotlightQuery(minSizeBytes: 10).summaryTerm == .generic)
+        #expect(FileQuery(nameContains: "  taxes ").summaryTerm == .name("taxes"))
+        #expect(FileQuery(contentContains: "invoice").summaryTerm == .content("invoice"))
+        #expect(FileQuery(kinds: [.movie]).summaryTerm == .kind(.movie))
+        #expect(FileQuery(kinds: [.movie, .image]).summaryTerm == .generic)
+        #expect(FileQuery(minSizeBytes: 10).summaryTerm == .generic)
     }
 
     @Test("the plain-name term follows the same precedence, so one prefill matches the crumb")
     func summaryPlainName() {
-        #expect(SpotlightQuery(nameContains: "  taxes ").plainNameTerm == .name("taxes"))
-        #expect(SpotlightQuery(contentContains: "invoice").plainNameTerm == .content("invoice"))
-        #expect(SpotlightQuery(kinds: [.movie]).plainNameTerm == .kind(.movie))
-        #expect(SpotlightQuery(minSizeBytes: 10).plainNameTerm == .generic)
+        #expect(FileQuery(nameContains: "  taxes ").plainNameTerm == .name("taxes"))
+        #expect(FileQuery(contentContains: "invoice").plainNameTerm == .content("invoice"))
+        #expect(FileQuery(kinds: [.movie]).plainNameTerm == .kind(.movie))
+        #expect(FileQuery(minSizeBytes: 10).plainNameTerm == .generic)
     }
 
     @Test("a fully-populated query round-trips through Codable so it can be saved")
     func codableRoundTrip() throws {
-        let query = SpotlightQuery(
+        let query = FileQuery(
             nameContains: "report",
             contentContains: "quarterly",
             kinds: [.document, .archive],
@@ -230,7 +230,7 @@ struct SpotlightQueryTests {
             tags: ["Work", "Urgent"]
         )
         let decoded = try JSONDecoder().decode(
-            SpotlightQuery.self,
+            FileQuery.self,
             from: try JSONEncoder().encode(query)
         )
         #expect(decoded == query)

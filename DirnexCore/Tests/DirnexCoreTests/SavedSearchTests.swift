@@ -6,7 +6,7 @@ import Testing
 @Suite("SavedSearch")
 struct SavedSearchTests {
     private func search(_ name: String, nameContains: String = "term") -> SavedSearch {
-        SavedSearch(name: name, query: SpotlightQuery(nameContains: nameContains))
+        SavedSearch(name: name, query: FileQuery(nameContains: nameContains))
     }
 
     // MARK: - SavedSearch value
@@ -20,7 +20,7 @@ struct SavedSearchTests {
     func codableRoundTrip() throws {
         let original = SavedSearch(
             name: "Recent Images",
-            query: SpotlightQuery(
+            query: FileQuery(
                 nameContains: "photo",
                 kinds: [.image],
                 minSizeBytes: 1_048_576,
@@ -37,7 +37,7 @@ struct SavedSearchTests {
 
     @Test("an everywhere search encodes a nil scope")
     func everywhereScopeIsNil() throws {
-        let original = SavedSearch(name: "All PDFs", query: SpotlightQuery(nameContains: "pdf"))
+        let original = SavedSearch(name: "All PDFs", query: FileQuery(nameContains: "pdf"))
         let decoded = try JSONDecoder().decode(
             SavedSearch.self,
             from: try JSONEncoder().encode(original)

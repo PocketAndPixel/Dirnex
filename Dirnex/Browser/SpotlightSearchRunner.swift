@@ -1,11 +1,11 @@
 import DirnexCore
 import Foundation
 
-/// Runs a `SpotlightQuery` by shelling out to `mdfind` off the main thread, then stats the
+/// Runs a `FileQuery` by shelling out to `mdfind` off the main thread, then stats the
 /// resulting paths into `FileEntry`s a virtual panel can render (PLAN.md §M4 "mdfind-backed …
 /// streamed results"). The non-hermetic I/O — spawning the subprocess, statting files — lives
 /// here in the app layer, mirroring `DirectoryLoader`; all the tested query logic stays in
-/// `DirnexCore.SpotlightQuery`.
+/// `DirnexCore.FileQuery`.
 enum SpotlightSearchRunner {
     /// The most results materialized into a panel. A broad query ("every image on disk") can
     /// return hundreds of thousands of paths; statting and rendering all of them would wedge the
@@ -22,7 +22,7 @@ enum SpotlightSearchRunner {
     /// `nil`. Stats each hit with `backend` — anything that vanished between the index and now is
     /// silently skipped. Runs entirely off the main thread.
     static func run(
-        _ query: SpotlightQuery,
+        _ query: FileQuery,
         scope: VFSPath?,
         backend: any VFSBackend
     ) async -> Results {
@@ -30,7 +30,7 @@ enum SpotlightSearchRunner {
     }
 
     /// Run Finder's **Recents** (PLAN.md §M8) — recently-used files everywhere — the same way a
-    /// search runs, but from `RecentsQuery`'s own predicate rather than a user's `SpotlightQuery`.
+    /// search runs, but from `RecentsQuery`'s own predicate rather than a user's `FileQuery`.
     /// The hits are all `.local`, so the caller's backend stats them exactly as it does search hits.
     static func runRecents(
         _ query: RecentsQuery,
@@ -72,12 +72,12 @@ enum SpotlightSearchRunner {
     /// Empty for an empty query, and empty on any `mdfind` failure — callers cannot distinguish
     /// "no matches" from "the search didn't run", so this must not be the last word before something
     /// destructive. It isn't: nothing is deleted from a file that doesn't come back as a match.
-    static func paths(_ query: SpotlightQuery, scope: VFSPath? = nil) async -> [String] {
+    static func paths(_ query: FileQuery, scope: VFSPath? = nil) async -> [String] {
         await paths(arguments: query.mdfindArguments(scopePath: scope?.path))
     }
 
     /// The paths `mdfind` reports for a ready-made argument vector — the seam Recents runs through,
-    /// where a `SpotlightQuery` isn't the source. Empty for an empty vector or any `mdfind` failure.
+    /// where a `FileQuery` isn't the source. Empty for an empty vector or any `mdfind` failure.
     private static func paths(arguments: [String]) async -> [String] {
         guard !arguments.isEmpty else { return [] }
         return await Task.detached(priority: .userInitiated) {

@@ -2,7 +2,7 @@ import Foundation
 
 /// A named, re-runnable Spotlight search — the model behind the sidebar's **Searches** section
 /// (PLAN.md §M4 "Saved searches as virtual folders in the places strip"). It pairs the tested
-/// `SpotlightQuery` with a display name and the folder scope it runs against, so picking it from
+/// `FileQuery` with a display name and the folder scope it runs against, so picking it from
 /// the places strip re-runs the query and lands the hits in a fresh virtual results panel — the
 /// macOS answer to Finder's Smart Folders.
 ///
@@ -13,13 +13,13 @@ public struct SavedSearch: Sendable, Equatable, Identifiable, Codable {
     /// identity: at most one saved search per name.
     public var name: String
     /// What to look for. The pure, tested query the app renders into `mdfind` arguments.
-    public var query: SpotlightQuery
+    public var query: FileQuery
     /// The folder whose subtree the search is limited to, or `nil` to search everywhere indexed
     /// (mirrors the Find sheet's "This Folder" vs "Everywhere"). A scoped search re-runs against
     /// this absolute path regardless of where the active pane currently is.
     public var scope: VFSPath?
 
-    public init(name: String, query: SpotlightQuery, scope: VFSPath? = nil) {
+    public init(name: String, query: FileQuery, scope: VFSPath? = nil) {
         self.name = name
         self.query = query
         self.scope = scope

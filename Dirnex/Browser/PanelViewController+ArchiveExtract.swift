@@ -15,12 +15,33 @@ import DirnexCore
 /// wanted only at the moment bytes are — which is also the only moment the user has any context for
 /// the question.
 extension PanelViewController {
+    /// The on-disk archive `sources` have to be extracted from, or `nil` when they are not archive
+    /// members at all.
+    ///
+    /// Two panes can hold them, and only one of them *is* an archive. The pane's own path answers
+    /// for the browse case; a **results tab** does not, because its container is the synthetic
+    /// `search:` path while every row carries its real `archive:` one — which is the shape M22 made
+    /// reachable by letting ⌥F7 walk an archive. Without this the hits looked ordinary and F5 on one
+    /// failed inside the queue with "This location doesn't support copying files", the archive
+    /// backend having no `copyFile` (found live, 2026-08-16).
+    ///
+    /// Every source must come from the *same* archive, which a single search always satisfies and a
+    /// hand-assembled selection need not; extracting from two archives is a second job, not a
+    /// second path through this one.
+    func extractionArchivePath(for sources: [FileEntry]) -> String? {
+        if let own = panel.path.backend.archivePath { return own }
+        guard let backend = sources.first?.path.backend, backend.isArchive,
+              sources.allSatisfy({ $0.path.backend == backend })
+        else { return nil }
+        return backend.archivePath
+    }
+
     /// Extract the marked/cursor members of this archive pane to disk, then copy them into the
     /// other pane's directory. Runs the extraction off-main and, for whatever landed, stats the
     /// files back into local `FileEntry` sources the copy queue understands.
     func beginArchiveExtraction() {
-        guard let archivePath = panel.path.backend.archivePath else { return }
         let sources = selectionTargets()
+        guard let archivePath = extractionArchivePath(for: sources) else { return }
         guard !sources.isEmpty, let destPane = host?.panelCounterpart(of: self) else { return }
 
         let destination = destPane.panel.path

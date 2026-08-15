@@ -15,10 +15,15 @@ extension PanelViewController {
     // MARK: - Menu actions (dispatched to the focused pane via the responder chain)
 
     @objc func copyToOtherPane(_ sender: Any?) {
-        // F5 inside an archive is copy-*out*: extract the marked members to disk and copy them
+        // F5 on an archive member is copy-*out*: extract the marked members to disk and copy them
         // into the other pane (PLAN.md §M4). A move-out doesn't exist — the archive is read-only,
         // so there's nothing to remove — hence only Copy routes here; `moveToOtherPane` stays gated.
-        if isArchive {
+        //
+        // Asked of the *rows*, not of the pane, since M22: a search inside an archive lands its hits
+        // in a results tab whose container is `search:` while every row is an archive member, and
+        // routing on the pane sent those to the byte-copy queue, where the archive backend has no
+        // `copyFile` to answer with.
+        if isArchive || extractionArchivePath(for: selectionTargets()) != nil {
             beginArchiveExtraction()
         } else if let destPane = archiveDestinationPane() {
             // F5 into an archive is add-into: copy the marked local items into the archive pane.
@@ -30,7 +35,9 @@ extension PanelViewController {
 
     @objc func moveToOtherPane(_ sender: Any?) {
         // F6 into an archive is add-into with move semantics: copy the items in, then trash the
-        // originals. Move-*out* of an archive stays gated (`moveToOtherPane` requires `!isArchive`).
+        // originals. Move-*out* of an archive stays gated — including from a results tab holding
+        // archive members, which `isArchive` alone does not cover (the pane is a `search:` one).
+        guard extractionArchivePath(for: selectionTargets()) == nil else { return }
         if let destPane = archiveDestinationPane() {
             addSelectionToArchive(destPane, kind: .move)
         } else {

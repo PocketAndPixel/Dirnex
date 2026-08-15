@@ -14,11 +14,14 @@ import Foundation
 /// top — which is where a person's file usually is, and which is also the part of the tree they can
 /// still recognize in a result list.
 ///
-/// **A truncated run returns its hits instead of throwing**, which is the exact opposite of what
+/// **A run that did not finish still returns its hits**, which is the exact opposite of what
 /// ``DirectorySizer`` does with a partial total, on the exact opposite reasoning. A partial total is
 /// a claim about the folder when the truth is a claim about the question. Partial *hits* are not:
 /// every row returned really does match, and "there may be more" is a fact about the search that the
 /// caller can simply say — which is what the Spotlight route's own 5000-row cap has always done.
+/// That covers being stopped by the user as well as running out of limit or budget; the three are
+/// three ``Completion`` values because they need three different sentences, not because they are
+/// handled differently.
 public enum SubtreeSearch {
     /// How far a walk had got, reported as each directory is listed so a pane can show a count that
     /// moves. A remote walk runs for minutes, so a search with no visible progress is
@@ -44,6 +47,15 @@ public enum SubtreeSearch {
         /// about how many matches there are — it says the *search* was abandoned, and narrowing the
         /// scope is the remedy rather than narrowing the query.
         case budgetExceeded
+        /// `isCancelled` answered `true`.
+        ///
+        /// It **returns** rather than throwing, which is the one place this deliberately parts
+        /// company with ``DirectorySizer`` — and the reason is who is asking. A cancelled *size*
+        /// walk has no answer at all, because a partial total is a lie. A stopped *search* has
+        /// forty real matches and a person standing at a Stop button who pressed it meaning
+        /// "that's enough, show me". Throwing them away would be discarding exactly what they
+        /// asked for, and it would also discard everything already spent finding it.
+        case stopped
     }
 
     public struct Results: Sendable, Equatable {
@@ -59,6 +71,11 @@ public enum SubtreeSearch {
             self.hits = hits
             self.directoriesListed = directoriesListed
             self.completion = completion
+        }
+
+        /// A run that ended before it listed anything.
+        static func nothing(_ completion: Completion) -> Results {
+            Results(hits: [], directoriesListed: 0, completion: completion)
         }
     }
 
@@ -76,8 +93,12 @@ public enum SubtreeSearch {
     ///     rather than a number at this call site.
     ///   - limit: the most hits to gather. Defaults to no limit; the app passes its rendering cap.
     ///   - isCancelled: polled before every listing, at the same one-listing granularity the sizer
-    ///     cancels at. Throws `CancellationError`, since a cancelled search has no answer at all —
-    ///     unlike a truncated one, which has a partial answer worth showing.
+    ///     cancels at. Answering `true` ends the walk with ``Completion/stopped`` and the hits found
+    ///     so far — see that case for why it returns where the sizer throws.
+    ///
+    /// - Throws: whatever a backend's ``VFSBackend/subtreeListing(at:isCancelled:)`` throws, since a
+    ///   flat enumeration that failed has nothing partial to offer. A failing `listDirectory` in the
+    ///   walk is not fatal and is skipped.
     public static func find(
         under root: VFSPath,
         using backend: some VFSBackend,
@@ -87,17 +108,24 @@ public enum SubtreeSearch {
         isCancelled: () -> Bool = { false },
         onProgress: (Progress) -> Void = { _ in }
     ) throws -> Results {
-        guard limit > 0 else { return Results(hits: [], directoriesListed: 0, completion: .truncated) }
-        if isCancelled() { throw CancellationError() }
+        guard limit > 0 else { return Results.nothing(.truncated) }
+        guard !isCancelled() else { return Results.nothing(.stopped) }
 
-        if let flat = try backend.subtreeListing(at: root, isCancelled: isCancelled) {
-            let hits = Array(flat.lazy.filter(predicate.matches).prefix(limit))
-            onProgress(Progress(directoriesListed: 1, hits: hits.count))
-            return Results(
-                hits: hits,
-                directoriesListed: 1,
-                completion: hits.count == limit ? .truncated : .complete
-            )
+        do {
+            if let flat = try backend.subtreeListing(at: root, isCancelled: isCancelled) {
+                let hits = Array(flat.lazy.filter(predicate.matches).prefix(limit))
+                onProgress(Progress(directoriesListed: 1, hits: hits.count))
+                return Results(
+                    hits: hits,
+                    directoriesListed: 1,
+                    completion: hits.count == limit ? .truncated : .complete
+                )
+            }
+        } catch is CancellationError {
+            // The shortcut's own way of saying the same thing, since it cannot return partway
+            // through. Reported as a stop rather than raised, so the two routes agree about what
+            // pressing Stop means.
+            return Results.nothing(.stopped)
         }
 
         var hits: [FileEntry] = []
@@ -108,7 +136,9 @@ public enum SubtreeSearch {
         var listed = 0
 
         while head < queue.count {
-            if isCancelled() { throw CancellationError() }
+            if isCancelled() {
+                return Results(hits: hits, directoriesListed: listed, completion: .stopped)
+            }
             // Asked before the request, not after, so the limit counts listings *made* rather than
             // one made and thrown away — on a billed backend those are different numbers.
             guard budget.allows(directoriesListed: listed) else {

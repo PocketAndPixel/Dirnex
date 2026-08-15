@@ -8,7 +8,7 @@ import DirnexCore
 /// dispatch here.
 ///
 /// **A tag row is a search, not a place.** There is no directory of tagged files to navigate to, so
-/// a click runs the `SpotlightQuery` that finds them and lands the hits in a virtual results tab —
+/// a click runs the `FileQuery` that finds them and lands the hits in a virtual results tab —
 /// the same machinery a saved search uses, which is why this needed no new panel code at all.
 ///
 /// **Why the section is gated on View ▸ Show Tags.** The preference already means "tags are part of
@@ -175,7 +175,7 @@ extension SidebarViewController {
     /// That hole is real, and it is the one Finder's own tag deletion has; closing it would mean
     /// walking every mounted filesystem on the off chance, which is not a trade worth making here.
     private func deleteTag(_ tag: FinderTag) async {
-        let carriers = await SpotlightSearchRunner.paths(SpotlightQuery(tags: [tag.name]))
+        let carriers = await SpotlightSearchRunner.paths(FileQuery(tags: [tag.name]))
         // Nothing to rewrite, so nothing to confirm — the only effect is a name leaving a list, and
         // a sheet asking permission for that is asking about nothing. This is the *common* case, not
         // an edge: the tag list never forgets within a session (`FinderTagProvider.record`), so a
