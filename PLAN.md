@@ -1770,6 +1770,117 @@ the shipped behaviour: with the wait removed, the two tests about waiting fail a
 controls — slides at once when nothing is loading, and a flip cancelled with the surface is not
 revived by a late load — keep passing, which is what says they are measuring different things.
 
+### M22 — Find Files on a connected server (M, opened 2026-08-16)
+
+⌥F7 has been Spotlight since M4, so it answers for this Mac and for nothing else: connect a bucket
+or a server and the one gesture for "where is that file" stops existing. The ask is to make it work
+on S3, FTP/FTPS and SFTP.
+
+**Most of the feature is already there, and it is the half that looks hardest.** A results tab's
+*container* path is synthetic while every entry in it carries its real `VFSPath`
+(`PanelViewController+Results`), and `CompositeBackend` routes per entry — so F5, ⌘Y, the path bar
+and Quick View reach an `s3://` hit exactly as they reach a local one, with no work. What is
+Spotlight-bound is two links of the chain: `SpotlightQuery.metadataPredicate()` and
+`SpotlightSearchRunner`. One consequence worth having early: a remote search needs **no per-hit
+`stat`**. That call exists because `mdfind` hands back bare strings; a walk gets whole `FileEntry`s
+out of the listing it has already paid for.
+
+#### The query and the index are two things wearing one name
+
+`SpotlightQuery` describes what the user wants *and* renders it into `kMDItem…`. The milestone
+splits those: the same value gains a pure `matches(_ entry:)`, so one query drives both routes and
+there is one definition of what "Images larger than 1 MB" means. The route is picked by the scope's
+backend — `.local` keeps Spotlight, anything re-listable and not on this disk takes a walk.
+
+**Which fields a backend can answer is one named thing, not a check per site**
+(`SearchFields.answerable(by:)`). The dialog hides what is not in the set; the matcher applies only
+what is in it. That is what makes the hazard catchable: a saved search made locally carries
+`contentContains`, and a matcher that quietly skips a clause it cannot answer returns **more**
+results under the same name — the quiet direction, and the reason this is a capability set rather
+than four `if` statements.
+
+Content and tags are gone remotely, as asked. Two more needed deciding and are *kept*:
+
+- **Kind stays, and changes meaning.** Remotely it can only be derived from the **name**
+  (`UTType(filenameExtension:)`), not from content — but it asks the identical conformance question
+  against the identical `SearchKind.contentType`, so the two routes share one definition and diverge
+  only in what they look at. "Every image under this prefix" is most of what anyone wants from a
+  bucket, and it costs no request.
+- **Modified and Size stay, and never match a row that cannot answer.** An S3 folder is a common
+  prefix with **no date at all** (`FileEntry.unknownDate`), and a directory's size is not measured
+  on any of the three. So a size or date filter is a question about *files*: a row with no such
+  attribute does not match, rather than matching vacuously. It diverges from Spotlight, which does
+  answer for folders, and that is stated rather than discovered.
+
+#### Three backends, three different costs
+
+- **S3 is nearly free and needs no walk.** `ListObjectsV2` with **no delimiter** returns every key
+  at every depth — the enumeration `S3Backend.removeItem` already uses for a recursive delete — so a
+  whole-bucket name search is one request per **1000 keys**, not one per directory. A backend that
+  can answer a subtree in fewer requests than a walk would take says so through one optional seam
+  (`subtreeListing(at:)`, defaulting to `nil`); everything else walks.
+- **FTP/FTPS is a client walk**, one round trip per directory, and its cost model is already
+  measured and written down: `DirectorySizeBudget` — 0.62 s per listing, a 1000-directory remote
+  ceiling, `abandonsWhenUnwatched`. Search reuses that type rather than minting a second policy.
+  Note FTP's stamps are year-less, zone-less and on the server's clock (`hasCoarseModificationTimes`)
+  — fine for a "past week" filter, which is all this asks of them.
+- **SFTP goes server-side**, decided at open: `ssh <host> find <path> …` answers the whole tree in
+  one round trip where the walk pays one per directory. It is the one part of this milestone that
+  needs a probe before any Swift, and it has two failure modes that must degrade rather than
+  surface — an account restricted to the `sftp` subsystem (no exec channel at all) and a server
+  whose `find` is not GNU's. The walk is the fallback, so the feature never depends on the probe's
+  answer, only its speed does.
+
+A **search over an S3 account pane is refused**: its rows are buckets, and "search every bucket" is
+a different and much more expensive question than the one ⌥F7 asks. Scope must be a bucket or a
+folder in one.
+
+Something the walk gets for free and Spotlight does not: an **archive** is re-listable out of a
+cached `bsdtar -tvf` on this disk, so "find in this zip" is the same code with an unbounded budget.
+In scope for the capability table from Slice 1; wired last.
+
+**The walk is breadth-first, unlike `DirectorySizer`'s stack**, and it matters at exactly the moment
+it is bounded: a depth-first search that runs out of budget returns a deep sliver of one branch,
+where breadth-first returns everything near the top — which is where a person's file usually is. It
+also returns its partial hits instead of throwing, which is the opposite of what the sizer does with
+a partial total, and for a stated reason: a partial *total* is a claim about the folder, while
+partial *hits* really do match and the truncation is a fact about the question. That is what
+`SpotlightSearchRunner`'s existing 5000-row cap already reports.
+
+**Verification is the constraint.** There is no live FTP, FTPS, SFTP or S3 account available for
+this milestone, so "probe the real thing" cannot be satisfied the way M21's was. The honest
+substitute is the instrument M13 and M21 already used and NOTES already documents — `pyftpdlib` with
+two self-signed certificates for FTP/FTPS, a SigV4-verifying local endpoint for S3, and this Mac's
+own Remote Login for SFTP (which needs the user to switch it on). Anything that cannot be measured
+that way is stated as unmeasured rather than assumed.
+
+Slices, core first: **(1)** `SearchFields`, `SearchPredicate`, `SubtreeSearch` — pure, tested, app
+untouched. **(2)** the app routes ⌥F7 by backend and the dialog hides the fields the scope cannot
+answer. **(3)** S3's flat enumeration behind `subtreeListing`. **(4)** SFTP's server-side `find`,
+after its probe, with the walk as fallback. **(5)** archives, and saved searches carrying a remote
+scope.
+
+**Slice 1 landed 2026-08-16**, core-only and additive: `SearchFields` (what a place can answer, plus
+`SearchRoute`), `SearchPredicate` (the query compiled to a per-entry test), `SubtreeSearch` (the
+breadth-first bounded walk), and one optional seam on `VFSBackend` — `subtreeListing(at:isCancelled:)`,
+defaulting to `nil`, so a backend whose keyspace is flat can answer a whole subtree in one call. +29
+core tests (2427 core / 508 app green, both linters clean); the only edit to existing code is three
+`private` computed properties on `SpotlightQuery` widened to internal, since Swift's `private` does
+not cross files.
+
+Two negative controls, both of which fired and one of which measured the design rather than merely
+guarding it:
+
+- **Depth-first instead of breadth-first** failed exactly the two order-dependent tests and left the
+  other eleven green — which is what says they measure different things. It also put a number on the
+  argument: over the same fixture with a 2-directory budget, the depth-first version dived into
+  `/root/b` and returned **one** hit where breadth-first returned two, having covered the shallow
+  tree. That is the "deep sliver of one branch" claim, reproduced.
+- **Dropping the unanswerable-clause refusal** compiled a tags-only query into a predicate with
+  *every field nil* — one that matches every row it is shown. So the hazard the type exists to
+  prevent is not theoretical: without it, a saved search re-run on a server lists the entire subtree
+  under the name of a search that means something much narrower.
+
 ## 5. Cross-cutting: testing strategy
 
 | Layer | Approach |

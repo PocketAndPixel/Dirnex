@@ -130,20 +130,24 @@ public struct SpotlightQuery: Sendable, Equatable, Codable {
             && kinds.isEmpty && minSizeBytes == nil && modifiedWithin == nil && trimmedTags.isEmpty
     }
 
+    // Internal rather than private since M22: `SearchPredicate` matches an entry against the same
+    // trimmed terms this renders into a predicate, and Swift's `private` does not cross files. They
+    // stay out of the public surface — what a caller outside the module composes is the query.
+
     /// Tag names with the empties and stray whitespace dropped, in a stable order so a predicate
     /// built from a `Set` is deterministic and testable.
-    private var trimmedTags: [String] {
+    var trimmedTags: [String] {
         tags
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
             .sorted()
     }
 
-    private var trimmedName: String {
+    var trimmedName: String {
         nameContains.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private var trimmedContent: String {
+    var trimmedContent: String {
         contentContains.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 

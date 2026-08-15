@@ -102,6 +102,24 @@ public protocol VFSBackend: Sendable {
     /// Stat a single entry (does not follow the entry itself if it is a symlink).
     func stat(at path: VFSPath) throws -> FileEntry
 
+    /// Every entry beneath `path` at every depth, for a backend that can answer that in **fewer
+    /// requests than a walk would take** — or `nil`, the default, meaning there is no such shortcut
+    /// and the caller should walk with `listDirectory` (PLAN.md §M22).
+    ///
+    /// It exists for one backend and states the reason it is not general: S3 is not a tree, it is a
+    /// flat keyspace that *renders* as one, so `ListObjectsV2` with no delimiter returns the whole
+    /// subtree at 1000 keys a request — where SFTP and FTP pay a round trip per directory and can
+    /// only walk. So this is a genuine asymmetry between backends rather than an optimization
+    /// anyone could implement, which is why it is an opt-in seam and not a required verb.
+    ///
+    /// `isCancelled` is polled between pages: the whole point is that the call may be long, and a
+    /// shortcut that could not be abandoned would be worse than the walk it replaces. Implementers
+    /// throw `CancellationError` when it answers `true`.
+    ///
+    /// The entries must be indistinguishable from what a walk would have produced — real paths,
+    /// leaf names — since the caller renders them beside hits from backends that did walk.
+    func subtreeListing(at path: VFSPath, isCancelled: () -> Bool) throws -> [FileEntry]?
+
     /// Create a single directory at `path`. Throws `.alreadyExists` if something is
     /// already there and `.notFound` if the parent does not exist (no intermediate
     /// directories are created — mirrors `mkdir(2)`).
@@ -183,6 +201,10 @@ public protocol VFSBackend: Sendable {
 public extension VFSBackend {
     func capabilities(for path: VFSPath) -> VFSCapabilities {
         capabilities // a single-backend implementation is uniform across all its paths
+    }
+
+    func subtreeListing(at path: VFSPath, isCancelled: () -> Bool) throws -> [FileEntry]? {
+        nil // no shortcut here — the caller walks
     }
 
     func createDirectory(at path: VFSPath) throws {
