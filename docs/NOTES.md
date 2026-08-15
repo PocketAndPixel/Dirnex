@@ -3335,6 +3335,30 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
 
 ## Design lessons that generalize
 
+- **An opt-in seam whose default is "can't help, do it the slow way" fails with no symptom at all,
+  which makes it the one kind of missing wiring nothing on screen can report.** `VFSBackend
+  .subtreeListing` defaults to `nil` meaning "walk instead", and M22 Slice 3's whole point is that
+  S3 need not walk — but the app holds a `CompositeBackend`, so until it *forwarded* the call every
+  search inherited the default: same rows, same order, correct in every particular, at one billed
+  request per folder instead of one per 1000 keys. Contrast the usual shape of this family (naming a
+  new backend at every site that lists the old ones, ▸ AppKit), where the omission produces a
+  *wrong* answer somebody eventually reports. Here the only evidence is the bill and the wait. So a
+  seam like this needs its forward asserted, and the assertion has to separate "routed" from
+  "answered" — pointing it at an **unconnected** backend does that with no network, since routing
+  raises "not connected" where the inherited default quietly answers `nil`.
+  - **The narrowness control is the other half and is not optional**: a forward that answered for
+    *everything* passes the routing test and breaks every other search. Assert that the local disk
+    still reports `nil`.
+- **A shortcut that replaces a walk has to reproduce what the walk *inferred*, not just what the
+  source hands back.** A delimiter-less `ListObjectsV2` returns no `CommonPrefixes` whatsoever — S3
+  is a flat keyspace, and the folder rows a directory listing shows are the *server* grouping keys
+  on request. So the flat route must synthesize a folder for every component on the way down to a
+  key, and for every trailing-slash marker (the only trace an empty folder leaves). Skip that and a
+  search for `docs` finds nothing called `docs` while a Kind filter of Folders returns nothing over
+  a bucket full of them — an empty result, which reads as "there is none" rather than "this route
+  cannot see them". The general form: when two routes answer one question, list what the slower one
+  *derives* rather than diffing what the two are given.
+
 - **A cost rule enforced at the gesture that opens a *mode* is not the rule it claims to be, and the
   rule it actually enforces is one nobody can discover.** Quick View's remote fetch was allowed only
   on the keystroke that switched the mode on, in the name of "an arrow key never spends a billed

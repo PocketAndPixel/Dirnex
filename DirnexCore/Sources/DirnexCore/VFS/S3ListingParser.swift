@@ -146,7 +146,12 @@ public enum S3ListingParser {
     /// How a key or prefix from `page` is read back, given whether the server honored
     /// `encoding-type=url`. `nil` for input that does not decode, which is a name nothing can be
     /// made from.
-    private static func decoder(for page: S3ListingPage) -> (String) -> String? {
+    ///
+    /// Internal rather than file-private: ``S3SubtreeListing`` reads the same pages with the same
+    /// rule, and Swift's `private` does not cross files (docs/NOTES.md ▸ file splitting). Sharing it
+    /// is the point rather than a convenience — a second decoder is how the flat route ends up
+    /// disagreeing with the directory route about what a key is called.
+    static func decoder(for page: S3ListingPage) -> (String) -> String? {
         page.isURLEncoded ? { S3Key.decodingURLEncoding($0) } : { Optional($0) }
     }
 
@@ -170,7 +175,13 @@ public enum S3ListingParser {
         )
     }
 
-    private static func entry(
+    /// One row, however it was found — a directory listing's or a flat subtree enumeration's.
+    ///
+    /// Internal for ``S3SubtreeListing``'s sake, and deliberately so: everything below decides what
+    /// an S3 row *is* (which dates it carries, what a folder's permissions are, that a leading dot
+    /// hides it), and a second copy of that is how two routes over one bucket start rendering the
+    /// same object differently.
+    static func entry(
         at path: VFSPath,
         name: String,
         kind: FileEntry.Kind,

@@ -206,6 +206,20 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         try backend(for: path).stat(at: path)
     }
 
+    /// Routed like every other read, and it has to be: this is what a pane actually holds, so a
+    /// `subtreeListing` left unforwarded here inherits the protocol's `nil` default and every search
+    /// walks — including the one backend that need not (PLAN.md §M22, `S3Backend+Subtree.swift`).
+    ///
+    /// That failure has no symptom. A walk of a bucket returns the *same rows*, correctly, at one
+    /// billed request per folder instead of one per 1000 keys — so nothing is wrong on screen and
+    /// the only evidence is the bill and the wait. It is this project's most-repeated shape
+    /// (docs/NOTES.md: name the new backend at every site that lists the old ones) arriving as an
+    /// omission rather than a wrong branch, which is why the forward is spelled out with a reason
+    /// instead of sitting silently among its neighbours.
+    func subtreeListing(at path: VFSPath, isCancelled: () -> Bool) throws -> [FileEntry]? {
+        try backend(for: path).subtreeListing(at: path, isCancelled: isCancelled)
+    }
+
     func createDirectory(at path: VFSPath) throws {
         try backend(for: path).createDirectory(at: path)
     }

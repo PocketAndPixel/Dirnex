@@ -1918,6 +1918,52 @@ out of the archive and landed in the destination pane. Fixed rather than deferre
 is what made it reachable; four tests pin it, including the narrowness control that an ordinary local
 results tab still takes the copy path.
 
+**Slice 3 landed 2026-08-16** — S3 answers a whole subtree in one enumeration.
+`S3Backend.subtreeListing` (`S3Backend+Subtree.swift`) fills the Slice 1 seam with a
+delimiter-less `ListObjectsV2`, and `S3SubtreeListing` turns those flat keys into the rows a walk
+would have produced. Two things in that conversion are decisions rather than plumbing, and both are
+what the tests are really about:
+
+- **Folders are synthesized, because with no delimiter the server sends none.** The pages carry
+  `docs/`, `docs/report.pdf` and `docs/sub/notes.txt` and not one `<CommonPrefixes>` — the same
+  measured fact the recursive delete already rests on — so rendering only the objects would mean a
+  search for `docs` finds nothing called `docs`, and a Kind filter of *Folders* returns an empty
+  result over a bucket full of them. An empty result reads as "there is none", which is the quiet
+  direction. Every component on the way down to a key therefore names a folder, emitted once; a
+  trailing-slash marker names one too, which is the only trace an **empty** folder leaves in a flat
+  store.
+- **Rows come out shallowest-first.** S3 returns keys lexicographically, so truncating that order
+  keeps a deep branch under `a/` ahead of everything under `z/` — the "deep sliver" this milestone
+  argued against when it chose breadth-first for the walk. Ordering by depth is what makes the two
+  routes agree at the moment the 5000-row cap bites, rather than differing on a property of the
+  *store* that nobody chose.
+
+The app's `CompositeBackend` had to **forward** the seam, and that is the finding worth keeping: the
+protocol's default is `nil` — "no shortcut, walk instead" — so a composite that never mentions it
+compiles, returns the same rows, and quietly bills one request per folder. There is no symptom on
+screen. Two other one-rule-two-spellings cleanups came with it: the pagination loop and its two
+guards now live once (`S3Backend+Pages.swift`) rather than in three copies whose comments said "the
+same reason `listDirectory` does", and `S3ListingParser`'s row builder is shared, so the flat route
+cannot render an object differently from the listing route.
+
++15 core, +2 app (2444 core / 519 app green, both linters and all three scripts clean). Three
+negative controls, each firing on a different set: dropping folder synthesis failed 9 tests and left
+the file-only ones green; returning arrival order instead of depth order failed exactly the 4
+order-dependent ones; and removing the composite's forward failed the routing test while its
+narrowness control (a local path still reports `nil`) kept passing.
+
+**Verified live against a local endpoint**, since there is still no account to probe: a Python
+`ListObjectsV2` server on `127.0.0.1`, plus a throwaway SwiftPM harness compiling the app's *real*
+`S3CurlTransport` against the real core, so every byte came off a socket through real `curl`. Six
+searches, six single-request enumerations, with the server's own log as the witness — and re-run
+with the page size forced to **two keys** it produced byte-identical output across four pages, which
+is the cross-page folder dedupe and the continuation-token round trip measured rather than argued.
+Then the app itself, connected to that endpoint: the Find Files dialog drew Name / Kind / Size /
+Modified and no Content or Tags row, ⌥F7 for `o` returned six hits spanning three depths —
+`notes.txt` three levels down, and the folders `docs` and `photos` that exist in that bucket only as
+prefixes — and the log shows the search spending **delimiter-less pages only**, with no per-folder
+listing of the four folders a walk would have had to visit.
+
 ## 5. Cross-cutting: testing strategy
 
 | Layer | Approach |

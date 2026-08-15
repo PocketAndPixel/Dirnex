@@ -144,31 +144,16 @@ public extension S3Backend {
     ///
     /// `delimiter: nil` is what makes it recursive: with no delimiter the server groups nothing into
     /// `CommonPrefixes` and returns each key at every depth, which is exactly the flat list a batch
-    /// delete wants. The page ceiling and the repeated-token guard are ``S3Backend/listDirectory(at:)``'s,
-    /// for the same reason — a partial enumeration here would report a folder as deleted while
-    /// leaving most of it in place.
+    /// delete wants. The page ceiling and the repeated-token guard come from
+    /// ``S3Backend/enumeratePages(prefix:delimiter:at:isCancelled:body:)`` — literally, since a
+    /// partial enumeration here would report a folder as deleted while leaving most of it in place,
+    /// and a rule that important is not one to keep a second copy of.
     private func allKeys(under prefix: String, at path: VFSPath) throws -> [String] {
         var keys: [String] = []
-        var token: String?
-        var pages = 0
-        while true {
-            let response = try write(at: path) {
-                try transport.listObjects(
-                    prefix: prefix,
-                    delimiter: nil,
-                    continuationToken: token
-                )
-            }
-            guard let page = try? S3ListingParser.parse(response.body) else {
-                throw VFSError.io(path: path, code: EIO)
-            }
+        try enumeratePages(prefix: prefix, delimiter: nil, at: path) { page in
             keys += page.objects.map(\.key)
-            pages += 1
-            guard page.isTruncated, let next = page.nextContinuationToken else { return keys }
-            guard next != token else { throw VFSError.io(path: path, code: EIO) }
-            guard pages < pageLimit else { throw VFSError.io(path: path, code: EFBIG) }
-            token = next
         }
+        return keys
     }
 
     /// One write request: issue it, map a transport throw onto the shared vocabulary, and turn the

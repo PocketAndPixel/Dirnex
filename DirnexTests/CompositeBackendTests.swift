@@ -116,6 +116,35 @@ struct CompositeBackendTests {
         }
     }
 
+    /// The search shortcut has to be **routed**, not inherited (PLAN.md §M22 Slice 3).
+    ///
+    /// `VFSBackend.subtreeListing` defaults to `nil`, meaning "no shortcut, walk instead" — so a
+    /// composite that forgot to forward it would compile, behave correctly, return the same rows,
+    /// and quietly cost one billed request per folder over a bucket that can answer the whole
+    /// subtree in one. There is no symptom on screen, which is why the routing is asserted rather
+    /// than assumed.
+    ///
+    /// Asserted through an **unconnected** bucket precisely because it touches no network: the
+    /// forward reaches the routing lookup, which says "not connected", where the inherited default
+    /// answers `nil` without asking anybody. Those are the two behaviours to tell apart.
+    @Test(
+        "a subtree listing routes to the path's own backend instead of the walk-everything default"
+    )
+    func subtreeListingIsRouted() {
+        let path = VFSPath(backend: .s3(Self.bucket), path: "/docs")
+        #expect(throws: (any Error).self) {
+            _ = try backend.subtreeListing(at: path, isCancelled: { false })
+        }
+    }
+
+    /// The narrowness control: routing it does not mean answering it. The local disk has no
+    /// shortcut, so it must still say `nil` and be walked — a forward that invented a subtree
+    /// listing for everything would pass the test above and break every other search.
+    @Test("a local path still reports no shortcut, so it is walked")
+    func localPathHasNoSubtreeShortcut() throws {
+        #expect(try backend.subtreeListing(at: .local("/tmp"), isCancelled: { false }) == nil)
+    }
+
     /// A connection is keyed by the bucket descriptor rather than by the endpoint, so connecting
     /// one bucket does not silently make its neighbours routable — the ordinary case, since one key
     /// commonly reaches several buckets on the same host. Keyed by host, the second listing would

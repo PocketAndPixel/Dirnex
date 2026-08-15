@@ -63,28 +63,16 @@ public struct S3Backend: ConnectionScopedBackend {
     /// List one "directory" — a `ListObjectsV2` query with `delimiter=/`, looped until the server
     /// stops handing back a continuation token.
     ///
-    /// A listing is a **loop**, not a call, which no other backend in this project is. Two things
-    /// bound it, and both are loud rather than quiet on purpose: a server that repeats a token it
-    /// already gave is disagreeing with itself and would spin forever, and a folder past
-    /// ``pageLimit`` is refused rather than silently truncated. A partial listing that looks
-    /// complete is the failure that matters here — every write and every count downstream would be
-    /// computed over rows that are not all the rows.
+    /// A listing is a **loop**, not a call, which no other backend in this project is. What bounds
+    /// it lives in ``enumeratePages(prefix:delimiter:at:isCancelled:body:)``, which every
+    /// enumeration this backend makes goes through.
     public func listDirectory(at path: VFSPath) throws -> [FileEntry] {
         try requireOwnBackend(path)
-        let prefix = S3Key.listingPrefix(for: path)
         var entries: [FileEntry] = []
-        var token: String?
-        var pages = 0
-
-        while true {
-            let page = try listPage(prefix: prefix, continuationToken: token, at: path)
+        try enumeratePages(prefix: S3Key.listingPrefix(for: path), delimiter: "/", at: path) { page in
             entries += S3ListingParser.entries(from: page, in: path)
-            pages += 1
-            guard page.isTruncated, let next = page.nextContinuationToken else { return entries }
-            guard next != token else { throw VFSError.io(path: path, code: EIO) }
-            guard pages < pageLimit else { throw VFSError.io(path: path, code: EFBIG) }
-            token = next
         }
+        return entries
     }
 
     /// Stat one path in a **single** request, by listing with `prefix=` its own key.
@@ -101,7 +89,7 @@ public struct S3Backend: ConnectionScopedBackend {
         let key = S3Key.key(for: path)
         guard !key.isEmpty else { return rootEntry(at: path) }
 
-        let page = try listPage(prefix: key, continuationToken: nil, at: path)
+        let page = try listPage(prefix: key, delimiter: "/", continuationToken: nil, at: path)
         if let entry = S3ListingParser.entry(forKey: key, in: page, at: path) { return entry }
         guard page.isTruncated, try isFolder(key: key, at: path) else {
             throw VFSError.notFound(path)
@@ -120,7 +108,12 @@ public struct S3Backend: ConnectionScopedBackend {
     /// fill the page before the prefix appears. Vanishingly unlikely, and one extra request settles
     /// it exactly rather than leaving a folder that reports "not found".
     private func isFolder(key: String, at path: VFSPath) throws -> Bool {
-        let page = try listPage(prefix: "\(key)/", continuationToken: nil, at: path)
+        let page = try listPage(
+            prefix: "\(key)/",
+            delimiter: "/",
+            continuationToken: nil,
+            at: path
+        )
         return !page.objects.isEmpty || !page.commonPrefixes.isEmpty
     }
 
@@ -156,27 +149,6 @@ public struct S3Backend: ConnectionScopedBackend {
             symlinkDestination: nil,
             symlinkTargetKind: nil
         )
-    }
-
-    private func listPage(
-        prefix: String,
-        continuationToken: String?,
-        at path: VFSPath
-    ) throws -> S3ListingPage {
-        let response = try mapping(path) {
-            try transport.listObjects(
-                prefix: prefix,
-                delimiter: "/",
-                continuationToken: continuationToken
-            )
-        }
-        let body = try succeed(response, at: path)
-        guard let page = try? S3ListingParser.parse(body) else {
-            // A 2xx whose body is not a `ListBucketResult` — a captive portal, or a proxy that
-            // answered for the endpoint. There is nothing to classify, so it is plain I/O.
-            throw VFSError.io(path: path, code: EIO)
-        }
-        return page
     }
 
     // MARK: - Transfer
@@ -417,7 +389,10 @@ public struct S3Backend: ConnectionScopedBackend {
     }
 
     /// The body of a successful response, or the mapped failure of an unsuccessful one.
-    private func succeed(_ response: S3Response, at path: VFSPath) throws -> Data {
+    ///
+    /// Internal rather than file-private because the pagination loop reads its pages through it
+    /// (`S3Backend+Pages.swift`), and Swift's `private` does not cross files.
+    func succeed(_ response: S3Response, at path: VFSPath) throws -> Data {
         guard let service = Self.serviceError(from: response) else { return response.body }
         throw service.vfsError(for: path)
     }
