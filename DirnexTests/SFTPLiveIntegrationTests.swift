@@ -177,6 +177,99 @@ struct SFTPLiveIntegrationTests {
             try backend.listDirectory(at: missing)
         }
     }
+
+    // MARK: - The subtree shortcut (M22 Slice 4)
+
+    /// The whole slice, end to end against a real server: one SSH exec channel, one `find`, and
+    /// every depth of the tree comes back — where the walk beside it opens a connection per
+    /// directory.
+    ///
+    /// It builds its own three-level scratch tree rather than searching whatever the account
+    /// happens to hold, so the assertion is about rows this test put there.
+    @Test("one exec channel answers a whole subtree that a walk would pay per directory for")
+    func subtreeShortcutAnswersEveryDepth() throws {
+        let (backend, config) = try makeBackend()
+        let base = VFSPath(backend: .sftp(config.location), path: config.remotePath)
+        let root = base.appending("dirnex_m22_\(UUID().uuidString.prefix(8))")
+        let docs = root.appending("docs")
+        let sub = docs.appending("sub")
+        try backend.createDirectory(at: root)
+        defer { try? backend.removeItem(at: root) }
+        try backend.createDirectory(at: docs)
+        try backend.createDirectory(at: sub)
+
+        let local = FileManager.default.temporaryDirectory
+            .appendingPathComponent("dirnex_m22_notes.txt")
+        try Data("note".utf8).write(to: local)
+        defer { try? FileManager.default.removeItem(at: local) }
+        try backend.copyFile(
+            at: .local(local.path),
+            to: sub.appending("notes.txt"),
+            progress: { _ in },
+            isCancelled: { false }
+        )
+
+        let listing = try #require(
+            try backend.subtreeListing(at: root, isCancelled: { false })
+        )
+
+        // Shallowest first — `find` itself prints depth-first, so this is the ordering the backend
+        // applies rather than the server's own.
+        #expect(listing.entries.map(\.name) == ["docs", "sub", "notes.txt"])
+        #expect(listing.entries.map(\.isDirectory) == [true, true, false])
+        #expect(listing.isComplete)
+        #expect(listing.entries.last?.byteSize == 4)
+        #expect(listing.entries.last?.path == sub.appending("notes.txt"))
+    }
+
+    /// The two routes have to agree, or the shortcut is a second definition of what is in a folder.
+    /// Compared as *sets* of paths, since the walk's order is breadth-first by construction and the
+    /// shortcut's is a sort — the claim is that they see the same tree, not that they say it the
+    /// same way.
+    @Test("the shortcut and the walk see the same tree")
+    func shortcutAgreesWithTheWalk() throws {
+        let (backend, config) = try makeBackend()
+        let base = VFSPath(backend: .sftp(config.location), path: config.remotePath)
+        let root = base.appending("dirnex_m22cmp_\(UUID().uuidString.prefix(8))")
+        try backend.createDirectory(at: root)
+        defer { try? backend.removeItem(at: root) }
+        try backend.createDirectory(at: root.appending("a"))
+        try backend.createDirectory(at: root.appending("a/b"))
+        try backend.createDirectory(at: root.appending("c"))
+
+        let shortcut = try #require(try backend.subtreeListing(at: root, isCancelled: { false }))
+        // `WalkOnlyBackend` withholds the shortcut so the same backend answers the same question the
+        // long way — a negative control that needs no second account.
+        let walked = try SubtreeSearch.find(
+            under: root,
+            using: WalkOnlySFTPBackend(backend),
+            matching: try SearchPredicate(FileQuery(), answering: .listed)
+        )
+
+        #expect(Set(shortcut.entries.map(\.path.path)) == Set(walked.hits.map(\.path.path)))
+        #expect(walked.directoriesListed == 4) // root, a, a/b, c — the requests the shortcut saved
+    }
+}
+
+/// An `SFTPBackend` with its subtree shortcut withheld, so a live test can ask the same server the
+/// same question the slow way and compare. Everything else is forwarded untouched.
+private struct WalkOnlySFTPBackend: VFSBackend {
+    private let wrapped: SFTPBackend
+
+    init(_ wrapped: SFTPBackend) { self.wrapped = wrapped }
+
+    var id: VFSBackendID { wrapped.id }
+    var capabilities: VFSCapabilities { wrapped.capabilities }
+
+    func listDirectory(at path: VFSPath) throws -> [FileEntry] {
+        try wrapped.listDirectory(at: path)
+    }
+
+    func stat(at path: VFSPath) throws -> FileEntry { try wrapped.stat(at: path) }
+
+    func subtreeListing(at path: VFSPath, isCancelled: () -> Bool) throws -> VFSSubtreeListing? {
+        nil
+    }
 }
 
 /// Exercises the real `SFTPProcessTransport` password path against the machine's own sshd, needing

@@ -163,6 +163,44 @@ struct SubtreeSearchTests {
         #expect(results.hits.isEmpty)
     }
 
+    /// SFTP's shortcut caps how many rows the server may print, so a shortcut can now come back
+    /// holding real hits and *less than the whole subtree*. Saying `.complete` there would be a
+    /// claim about the folder made from a slice of it — the quiet direction, and worse than the
+    /// walk, which at least admits when it gives up.
+    @Test("a shortcut that stopped short reports the search abandoned, keeping its hits")
+    func incompleteShortcutIsBudgetExceeded() throws {
+        let backend = FlatBackend(entries: [
+            .file("/root/report.txt", size: 1), .file("/root/other.txt", size: 1)
+        ])
+        backend.subtreeListingIsComplete = false
+        let results = try SubtreeSearch.find(
+            under: .local("/root"),
+            using: backend,
+            matching: predicate(FileQuery(nameContains: "report"))
+        )
+        #expect(results.completion == .budgetExceeded)
+        #expect(results.hits.map(\.name) == ["report.txt"])
+    }
+
+    /// Both can be true at once, and the two sentences are about different things: "there are more
+    /// matches" is about the answer the user is looking at, where `.budgetExceeded` sends them to
+    /// narrow a scope that is already producing a full pane of hits.
+    @Test("a full page of hits is reported as truncated even when the shortcut also stopped short")
+    func truncationWinsTheTie() throws {
+        let backend = FlatBackend(entries: [
+            .file("/root/report-a.txt", size: 1), .file("/root/report-b.txt", size: 1)
+        ])
+        backend.subtreeListingIsComplete = false
+        let results = try SubtreeSearch.find(
+            under: .local("/root"),
+            using: backend,
+            matching: predicate(FileQuery(nameContains: "report")),
+            limit: 1
+        )
+        #expect(results.completion == .truncated)
+        #expect(results.hits.count == 1)
+    }
+
     @Test("an unreadable subdirectory is skipped, not fatal")
     func unreadableIsSkipped() throws {
         let backend = tree()
@@ -325,6 +363,9 @@ private final class FlatBackend: VFSBackend, @unchecked Sendable {
     /// Makes the shortcut throw `CancellationError`, which is how a paged enumeration says it was
     /// stopped partway through.
     var cancelDuringSubtreeListing = false
+    /// Whether the shortcut claims to have returned the whole subtree — the SFTP route's row cap
+    /// is what makes `false` reachable.
+    var subtreeListingIsComplete = true
 
     init(entries: [Object]) {
         self.entries = entries
@@ -339,16 +380,19 @@ private final class FlatBackend: VFSBackend, @unchecked Sendable {
     var id: VFSBackendID { .local }
     var capabilities: VFSCapabilities { [.read] }
 
-    func subtreeListing(at path: VFSPath, isCancelled: () -> Bool) throws -> [FileEntry]? {
+    func subtreeListing(at path: VFSPath, isCancelled: () -> Bool) throws -> VFSSubtreeListing? {
         if cancelDuringSubtreeListing { throw CancellationError() }
-        return entries.map {
-            fakeEntry(
-                at: $0.path,
-                name: ($0.path as NSString).lastPathComponent,
-                isDirectory: false,
-                size: $0.size
-            )
-        }
+        return VFSSubtreeListing(
+            entries: entries.map {
+                fakeEntry(
+                    at: $0.path,
+                    name: ($0.path as NSString).lastPathComponent,
+                    isDirectory: false,
+                    size: $0.size
+                )
+            },
+            isComplete: subtreeListingIsComplete
+        )
     }
 
     func listDirectory(at path: VFSPath) throws -> [FileEntry] {

@@ -65,6 +65,37 @@ public protocol SFTPTransport: RemoteWriteTransport {
         resume: Bool,
         isCancelled: () -> Bool
     ) throws -> Int64
+
+    /// Run `command` on the server through an SSH **exec** channel and hand back its standard
+    /// output — or `nil` when this connection has no exec channel to run it on (PLAN.md §M22
+    /// Slice 4).
+    ///
+    /// This is the one verb that is not SFTP at all: it is the *other* thing an SSH connection can
+    /// do, and it exists so a search can have the server walk its own tree with `find` rather than
+    /// paying a connection per directory. It is therefore allowed to be unavailable in a way no
+    /// other verb is — an account confined to the `sftp` subsystem (`ForceCommand internal-sftp`)
+    /// refuses exec requests while browsing and transferring perfectly.
+    ///
+    /// **Neither `nil` nor the exit status detects that**, and the difference matters because the
+    /// natural design gets it backwards. Probed 2026-08-16 against a real `sshd`: an `sftp`-only
+    /// account answers an exec request with prose on **stdout**, exit 1 and an empty stderr, which
+    /// from a transport's side is indistinguishable from a shell that ran something — while `find`
+    /// answers exit 1 *with correct rows* whenever one subdirectory was unreadable. So the status
+    /// is not returned at all, `nil` means only "could not ask" (nothing launched, or the server
+    /// never replied), and deciding whether an answer is an answer is ``SSHFindListingParser``'s
+    /// job, since it is the only thing here that knows what one looks like.
+    ///
+    /// `isCancelled` is polled while the command runs, for the same reason the two byte-moving verbs
+    /// take it: a `find` over a large tree is a single long-running child, and a Stop that could
+    /// only be noticed once it finished would not be a Stop.
+    ///
+    /// The default answers `nil`, so a transport that has no use for this — and every existing test
+    /// double — inherits "there is no shortcut here" and the caller walks.
+    func runCommand(_ command: String, isCancelled: () -> Bool) throws -> String?
+}
+
+public extension SFTPTransport {
+    func runCommand(_ command: String, isCancelled: () -> Bool) throws -> String? { nil }
 }
 
 /// A remote operation's failure, in the few shapes the backend needs to distinguish so it can map
@@ -343,16 +374,61 @@ public enum SFTPProcessArguments {
         authentication: SFTPAuthentication,
         connectTimeout: Int
     ) -> [String] {
+        arguments(
+            location: location,
+            authentication: authentication,
+            connectTimeout: connectTimeout,
+            portFlag: "-P",
+            batchFile: true
+        )
+    }
+
+    /// The `ssh` arguments for one **exec** channel — the search shortcut's route (PLAN.md §M22
+    /// Slice 4) — with `command` as the trailing operand the server's shell will run.
+    ///
+    /// Two things differ from ``batch(location:authentication:connectTimeout:)`` and nothing else
+    /// does, which is the point: the same host key policy, the same timeout, the same offered
+    /// authentication methods, so the exec channel cannot become a second security posture that
+    /// drifts from the browsing one.
+    ///
+    /// - `ssh` spells the port **`-p`** where `sftp` spells it `-P`. Getting that backwards is a
+    ///   *usage* error, which exits 1 having printed help — it cost this milestone's own benchmark
+    ///   a wrong answer before the assertion that now guards it (docs/NOTES.md ▸ sftp / ssh).
+    /// - There is no `-b -`, because there is no batch file: the command *is* an argument. Key auth
+    ///   therefore has to ask for `BatchMode=yes` explicitly, which `-b` used to imply for it.
+    public static func exec(
+        location: SFTPLocation,
+        authentication: SFTPAuthentication,
+        connectTimeout: Int,
+        command: String
+    ) -> [String] {
+        arguments(
+            location: location,
+            authentication: authentication,
+            connectTimeout: connectTimeout,
+            portFlag: "-p",
+            batchFile: false
+        ) + [command]
+    }
+
+    private static func arguments(
+        location: SFTPLocation,
+        authentication: SFTPAuthentication,
+        connectTimeout: Int,
+        portFlag: String,
+        batchFile: Bool
+    ) -> [String] {
         let common = [
             "-o", "ConnectTimeout=\(connectTimeout)",
             // Trust-on-first-use: a fresh host is added to known_hosts, a *changed* key still fails.
             "-o", "StrictHostKeyChecking=accept-new",
-            "-P", String(location.port)
+            portFlag, String(location.port)
         ]
         let target = "\(location.username)@\(location.host)"
         switch authentication {
         case let .key(identityFile):
-            return ["-i", identityFile, "-o", "BatchMode=yes"] + common + ["-b", "-", target]
+            return ["-i", identityFile, "-o", "BatchMode=yes"] + common
+                + (batchFile ? ["-b", "-"] : []) + [target]
         case .password:
             // No `-b`: it would disable the prompt. Interactive over piped stdin; `SSH_ASKPASS`
             // answers the prompt (wired by the transport's environment).

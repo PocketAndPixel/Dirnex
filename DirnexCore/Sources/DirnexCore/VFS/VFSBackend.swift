@@ -106,19 +106,27 @@ public protocol VFSBackend: Sendable {
     /// requests than a walk would take** — or `nil`, the default, meaning there is no such shortcut
     /// and the caller should walk with `listDirectory` (PLAN.md §M22).
     ///
-    /// It exists for one backend and states the reason it is not general: S3 is not a tree, it is a
-    /// flat keyspace that *renders* as one, so `ListObjectsV2` with no delimiter returns the whole
-    /// subtree at 1000 keys a request — where SFTP and FTP pay a round trip per directory and can
-    /// only walk. So this is a genuine asymmetry between backends rather than an optimization
-    /// anyone could implement, which is why it is an opt-in seam and not a required verb.
+    /// Two backends fill it, for two unrelated reasons, and between them they say what the seam is
+    /// for. S3 is not a tree at all — it is a flat keyspace that *renders* as one, so `ListObjectsV2`
+    /// with no delimiter answers the whole subtree at 1000 keys a request. SFTP browses a real
+    /// filesystem where a listing genuinely is one round trip per directory, but it can borrow the
+    /// server's own `find` over an SSH exec channel and have the tree walked *there*, at 501
+    /// directories in 98 ms against 34.3 s of per-directory connections (measured 2026-08-16).
+    ///
+    /// `nil` is therefore not "this backend is slow"; it is "asking cannot beat walking, or the one
+    /// way of asking is unavailable on this server". FTP is the first, an `sftp`-only account the
+    /// second — and the second is decided per connection, at run time, which is why the answer is a
+    /// return value rather than a capability flag.
     ///
     /// `isCancelled` is polled between pages: the whole point is that the call may be long, and a
     /// shortcut that could not be abandoned would be worse than the walk it replaces. Implementers
     /// throw `CancellationError` when it answers `true`.
     ///
     /// The entries must be indistinguishable from what a walk would have produced — real paths,
-    /// leaf names — since the caller renders them beside hits from backends that did walk.
-    func subtreeListing(at path: VFSPath, isCancelled: () -> Bool) throws -> [FileEntry]?
+    /// leaf names — since the caller renders them beside hits from backends that did walk. An
+    /// implementation that stopped short of the whole subtree says so through
+    /// ``VFSSubtreeListing/isComplete`` rather than by returning what it has and staying quiet.
+    func subtreeListing(at path: VFSPath, isCancelled: () -> Bool) throws -> VFSSubtreeListing?
 
     /// Create a single directory at `path`. Throws `.alreadyExists` if something is
     /// already there and `.notFound` if the parent does not exist (no intermediate
@@ -203,7 +211,7 @@ public extension VFSBackend {
         capabilities // a single-backend implementation is uniform across all its paths
     }
 
-    func subtreeListing(at path: VFSPath, isCancelled: () -> Bool) throws -> [FileEntry]? {
+    func subtreeListing(at path: VFSPath, isCancelled: () -> Bool) throws -> VFSSubtreeListing? {
         nil // no shortcut here — the caller walks
     }
 

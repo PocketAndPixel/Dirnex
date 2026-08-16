@@ -216,7 +216,7 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
     /// (docs/NOTES.md: name the new backend at every site that lists the old ones) arriving as an
     /// omission rather than a wrong branch, which is why the forward is spelled out with a reason
     /// instead of sitting silently among its neighbours.
-    func subtreeListing(at path: VFSPath, isCancelled: () -> Bool) throws -> [FileEntry]? {
+    func subtreeListing(at path: VFSPath, isCancelled: () -> Bool) throws -> VFSSubtreeListing? {
         try backend(for: path).subtreeListing(at: path, isCancelled: isCancelled)
     }
 

@@ -19,7 +19,16 @@ import Foundation
 public struct SFTPBackend: RemoteTransportBackend {
     /// The remote account this backend is connected to — its identity.
     public let location: SFTPLocation
-    private let transport: any SFTPTransport
+    /// Internal rather than private so `SFTPBackend+Subtree` can reach it — Swift's `private` does
+    /// not cross files (docs/NOTES.md ▸ Lint ceilings and file splitting).
+    let transport: any SFTPTransport
+    /// How many rows the server-side subtree `find` may print before it is cut off — see
+    /// ``SSHFindCommand/defaultRowLimit``, which is where the number and its reasoning live.
+    ///
+    /// Settable so the cap is *reachable*: it is the one branch of the shortcut that cannot be
+    /// exercised at 50 000 rows, and a rule with no test is a rule nobody has watched fail. Left at
+    /// its default everywhere in the app.
+    public var subtreeRowLimit = SSHFindCommand.defaultRowLimit
 
     public init(location: SFTPLocation, transport: any SFTPTransport) {
         self.location = location

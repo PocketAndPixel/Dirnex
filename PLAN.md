@@ -1831,6 +1831,13 @@ Content and tags are gone remotely, as asked. Two more needed deciding and are *
   surface — an account restricted to the `sftp` subsystem (no exec channel at all) and a server
   whose `find` is not GNU's. The walk is the fallback, so the feature never depends on the probe's
   answer, only its speed does.
+  - **The probe retired the second failure mode rather than handling it** (2026-08-16, taken by the
+    user on a recommendation). `find -printf` is GNU-only, and there is no Linux host and no GNU
+    coreutils on this Mac, so choosing it would have shipped the *common* case unverified while the
+    only server available exercised the fallback. `find <root> -exec ls -ldn {} +` is POSIX on both
+    halves, prints the `ls -l` row `ColumnarListing.unixRow` already reads for `sftp` and FTP, and
+    was measured end to end here. What it costs is the date column — year-less, zone-less, on the
+    server's clock — which is the compromise this milestone had already accepted for FTP.
 
 A **search over an S3 account pane is refused**: its rows are buckets, and "search every bucket" is
 a different and much more expensive question than the one ⌥F7 asks. Scope must be a bucket or a
@@ -1963,6 +1970,69 @@ Modified and no Content or Tags row, ⌥F7 for `o` returned six hits spanning th
 `notes.txt` three levels down, and the folders `docs` and `photos` that exist in that bucket only as
 prefixes — and the log shows the search spending **delimiter-less pages only**, with no per-folder
 listing of the four folders a walk would have had to visit.
+
+**Slice 4 landed 2026-08-16** — SFTP borrows the server's own `find` over an SSH exec channel.
+`SSHFindCommand` builds the one remote command, `SSHFindListingParser` reads it back, and
+`SFTPBackend+Subtree` fills the Slice 1 seam with them; `SFTPTransport` gains `runCommand`, whose
+default answers `nil` so every existing transport and test double inherits "no shortcut, walk". The
+seam's return type changed from `[FileEntry]?` to `VFSSubtreeListing`, carrying `isComplete` —
+S3 pages until the bucket is exhausted and is always complete, while this command's output is capped
+on the server, and a shortcut that could not report being cut off would answer "here is everything"
+about a slice of a tree.
+
+**The probe came first and decided four things, none of them guessable.** Measured against a real
+`sshd` (Remote Login is off on this Mac, so the instrument is a non-root `sshd` on port 2222, with a
+second on 2223 carrying `ForceCommand internal-sftp`):
+
+- **The saving is the connection, not the walk.** Over 501 directories on *loopback*, where there is
+  no latency to blame: one exec **98 ms**, against **34.3 s** as separate `sftp` connections
+  (68.5 ms each) — the shipped walk opens a full TCP connect, SSH handshake and authentication per
+  directory. On any real network the gap only widens, since a handshake is several round trips.
+- **Neither the exit status nor the stream tells you whether the command ran**, which inverts the
+  natural design. An `sftp`-only account answers an exec request with prose on **stdout**, exit 1,
+  empty stderr; `find` answers exit 1 **with correct rows** when one subdirectory is unreadable. So
+  the transport classifies nothing, and the *parser* decides — `find` echoes the operand it was
+  given, so the root's own row is the sentinel, and its absence is what means "walk instead". An
+  empty folder still prints that row, which is precisely the case the two answers must be told apart
+  on.
+- **An exec channel runs the user's login shell and sources their rc**, so a `find` shell *function*
+  shadows the binary — probed, one printed `SHADOWED` where the real `find` would have listed.
+  `/usr/bin/env` bypasses it. Only the words the shell resolves need that; the `ls` inside `-exec` is
+  spawned by `find` itself and is out of reach.
+- **A remote path reaches a shell, so quoting is a security boundary rather than formatting.** POSIX
+  single-quoting held against a crafted `…/tree'; touch CANARY; echo '` (no canary; `find` reported
+  the whole string as one missing path), and a directory genuinely named ``it's $a `b` ;x.txt`` came
+  back byte-for-byte.
+
+Rows come out **shallowest-first**, as S3's do and for the same reason: `find` walks depth-first, so
+its own order would put a whole deep branch ahead of a file at the top when the result cap bites.
+
++27 core (2471) and +2 app (523) tests, both linters and all three scripts clean. **Seven negative
+controls, and the seventh is the one worth recording**: dropping depth ordering, the root sentinel,
+the path anchor, `env`, `ssh`'s `-p`, and the truncated-beats-budgetExceeded tie each failed exactly
+the tests naming them — while *claiming a capped run was complete* failed **nothing**, because the
+row cap was unreachable at 50 000 rows. That is a rule nobody had watched fail; `subtreeRowLimit`
+became settable so a test can reach it, and the control then fired on one test alone.
+
+**Verified live, twice, with the server's own log as the witness.** The real app connected to the
+exec-capable account, ⌥F7 over a four-level tree returned 5 hits spanning three depths and the log
+shows **one** `Starting session: command`. The same search against the `sftp`-only account returned
+**the identical 5 hits** and the log shows **six** `forced-command 'internal-sftp'` sessions — one
+refused exec attempt, then five directory listings. The degrade is invisible to the user, which is
+what it was designed to be.
+
+Two things the slice deliberately did **not** ship, both recorded because they are the next thing
+someone will reach for:
+
+- **A memo of accounts that refused exec.** Written, then removed on the measurement: it cannot fire
+  for the case it exists for (the refusal *looks* like an answer from the transport's side, so only
+  the core could feed it), and it would save exactly one handshake in front of a walk about to spend
+  one per directory.
+- **Batching the walk itself.** The same benchmark measured **one** `sftp` session carrying all 501
+  `ls` commands at **239 ms** — 140× faster than the shipped walk, on every account including
+  locked-down ones, with no exec channel needed. It is a change to `SFTPTransport.listDirectory`,
+  which every browse and every file operation goes through, so it is a milestone of its own rather
+  than a passenger in a search slice.
 
 ## 5. Cross-cutting: testing strategy
 

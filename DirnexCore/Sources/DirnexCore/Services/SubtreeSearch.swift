@@ -113,12 +113,12 @@ public enum SubtreeSearch {
 
         do {
             if let flat = try backend.subtreeListing(at: root, isCancelled: isCancelled) {
-                let hits = Array(flat.lazy.filter(predicate.matches).prefix(limit))
+                let hits = Array(flat.entries.lazy.filter(predicate.matches).prefix(limit))
                 onProgress(Progress(directoriesListed: 1, hits: hits.count))
                 return Results(
                     hits: hits,
                     directoriesListed: 1,
-                    completion: hits.count == limit ? .truncated : .complete
+                    completion: completion(forFlat: flat, hits: hits.count, limit: limit)
                 )
             }
         } catch is CancellationError {
@@ -165,5 +165,22 @@ public enum SubtreeSearch {
         }
 
         return Results(hits: hits, directoriesListed: listed, completion: .complete)
+    }
+
+    /// How a shortcut's run ended, from the two things that can each cut it short.
+    ///
+    /// ``Completion/truncated`` wins a tie deliberately. Both can be true at once — a capped listing
+    /// that nevertheless yielded a full page of hits — and the two sentences say different things:
+    /// "there are more matches" is about the *answer*, which is what the user is looking at, while
+    /// ``Completion/budgetExceeded`` is about the *search*. Only the second sends them to narrow the
+    /// scope, and telling them to do that while the pane is already full of matches would be advice
+    /// about the wrong problem.
+    private static func completion(
+        forFlat listing: VFSSubtreeListing,
+        hits: Int,
+        limit: Int
+    ) -> Completion {
+        if hits == limit { return .truncated }
+        return listing.isComplete ? .complete : .budgetExceeded
     }
 }

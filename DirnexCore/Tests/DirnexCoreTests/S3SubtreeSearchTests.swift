@@ -174,7 +174,16 @@ struct S3SubtreeBackendTests {
         // `docs` was synthesized on page one and its own marker arrived on page two, which adds no
         // second row — and the deep key from page one still lands last, after the shallow rows that
         // reached the accumulator after it.
-        #expect(rows.map(\.name) == ["docs", "CHANGELOG", "empty", "sub", "report.pdf", "notes.txt"])
+        #expect(
+            rows.entries.map(\.name) == [
+                "docs",
+                "CHANGELOG",
+                "empty",
+                "sub",
+                "report.pdf",
+                "notes.txt"
+            ]
+        )
     }
 
     /// Asked *before* the request, so a stop costs nothing further rather than one more billed page.

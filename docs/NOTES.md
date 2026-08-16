@@ -1838,6 +1838,83 @@ against a fake.
   `keyboard-interactive` hangs ~60 s on a wrong password under askpass (macOS PAM).
 - **Drain both pipes concurrently** or a two-pipe deadlock wedges the process, and bound the wait
   — some appliances hold the SSH channel open after every command and never return.
+- **`sftp` spells the port `-P` and `ssh` spells it `-p`, and getting it wrong is a *usage* error
+  that reads as a very fast success.** It exits 1 having printed six lines of help to stderr, so a
+  benchmark timing `sftp -p 2222 …` measured **5 ms** "listings" and a sanity check counting output
+  lines counted the help text. Two rounds of reasoning were built on that number before the shape of
+  the output gave it away. Any harness driving these two tools wants an assertion on
+  `usage: sftp` / `usage: ssh` in stderr, not just a nonzero-exit check — the exit code is 1, which
+  is also what a real failed command gives.
+
+#### The SSH exec channel (M22's server-side search)
+
+`ssh <host> <command>` is the *other* thing an SSH connection can do, and Dirnex uses it for exactly
+one thing: having the server walk its own tree with `find` instead of paying a connection per
+directory. All measured 2026-08-16 against a real `sshd` (a non-root one on a high port — Remote
+Login need not be switched on, and `/usr/sbin/sshd -f <config>` with a generated host key just
+works, which makes this whole family probeable on any Mac).
+
+- **The saving is the *connection*, not the walk, and it is enormous even at zero latency.** Over
+  501 directories on loopback: **98 ms** for one exec against **34.3 s** as separate `sftp`
+  connections (68.5 ms each). A per-directory transport pays a full TCP connect, SSH handshake and
+  authentication every time, and on a real network each of those is several round trips. The
+  corollary is that a *local* benchmark cannot be used to argue the other way: it flatters the walk
+  by removing the only cost the exec route was replacing.
+  - The same run measured the option nobody had costed: **one `sftp` session carrying all 501 `ls`
+    commands is 239 ms** — `sftp -b` takes many commands, so a breadth-first walk could batch a
+    whole level per session and be 140× faster than the shipped one, on every account, with no exec
+    channel at all.
+- **Neither the exit status nor the choice of stream can classify the result**, which is the finding
+  that decides the design. An account confined to the `sftp` subsystem (`ForceCommand
+  internal-sftp`) answers an exec request with the sentence "This service allows sftp connections
+  only." on **stdout**, exit **1**, stderr **empty** — while `find` answers exit **1 with correct
+  rows** whenever one subdirectory was unreadable, and a missing binary answers 127. So a reader
+  keyed on the exit code treats a good run as a failure, and one keyed on stdout parses an English
+  sentence as its listing. The only usable evidence is what the output *looks like*: `find` echoes
+  the operand it was given, so the root's own row is a sentinel that costs nothing to arrange, and
+  its absence means "this is not a listing". An empty folder still prints that row, which is exactly
+  the case "empty" and "no exec channel" have to be told apart on.
+- **An exec channel runs the user's login shell and sources their rc, so a shell *function* shadows
+  the command.** Probed: `find() { echo SHADOWED; }; find /tmp` printed `SHADOWED`, and bash reads
+  `~/.bashrc` when it detects it was run by sshd — this Mac's own rc ran (errors and all) on every
+  `ssh host <command>`. `/usr/bin/env find` execs the binary from `PATH` with no shell lookup and is
+  immune; if `env` is somehow absent the command exits 127 and the caller degrades, which is the safe
+  direction. Only the words the *shell* resolves need it — a `-exec ls …` inside `find` is spawned by
+  `find` itself and cannot be shadowed. The rc is also on the stream: it wrote to stderr here, but
+  nothing guarantees that, which is the second reason the parser must be anchored rather than
+  trusting.
+- **A remote path reaches a shell, so quoting it is a security boundary and not formatting.** POSIX
+  single-quoting (`'` → `'\''`) held against a crafted `…/tree'; touch CANARY; echo '` — no canary,
+  and `find` reported the whole string as one missing path — while a directory genuinely named
+  ``it's $a `b` ;x.txt`` round-tripped byte-for-byte. Inside single quotes `$`, backtick, `;`,
+  newline and `*` are all literal, so the quote character is the only thing to escape. Note the path
+  can arrive from a listing the *server* produced, so the name being quoted may be a stranger's
+  choice — the same reasoning that makes FTP refuse a name carrying CR or LF.
+- **`find … -exec ls -ldn {} +` is the portable metadata printer, and GNU `-printf` is the trap that
+  looks like the right answer.** `-printf '%y\t%s\t%T@\t%p'` is exact, NUL-framable and locale-free —
+  and GNU-only, so it needs a capability probe, a second parser and a fallback, and on a Mac with no
+  Linux host and no GNU coreutils **none of it can be measured**: the only server available exercises
+  the fallback while the common case ships unverified. The POSIX form prints the same nine-column
+  `ls -l` row `ColumnarListing.unixRow` already reads for `sftp` and FTP, needs no probe, and has no
+  "the server's find is not GNU's" failure mode at all. What it costs is the date column — year-less
+  for recent files, zone-less, on the server's clock — which is the coarse-stamp compromise FTP had
+  already accepted. Three details of the invocation: `-d` stops `ls` listing each directory it is
+  handed (which would duplicate every row `find` already produced), `-n` avoids a passwd lookup per
+  row, and `| head -n N` caps the response **on the server** (probed: exit 0, exactly N rows — `find`
+  takes its `SIGPIPE` quietly), which matters because the whole output is read into memory.
+- **`find`'s row order is its own traversal — depth-first — so it is not safe to truncate.** Probed,
+  the depths are visibly non-monotonic. Sort shallowest-first before applying any result cap, the
+  same rule S3's flat listing needs and for the same reason: otherwise the cap keeps one deep branch
+  and drops everything at the top, which is where the file usually is.
+- **A capped shortcut must be able to say so.** The cap is applied by the server, so a truncated run
+  is indistinguishable from a complete one — every row is real and nothing failed. Counting rows
+  against the cap that was asked for is the only evidence there is, and reporting "complete" is a
+  claim about a folder made from a slice of it.
+  - **That rule is unreachable at its shipped value, and a negative control is what showed it.** Six
+    of seven controls fired; the seventh — always claiming completeness — broke **nothing**, because
+    no fixture has 50 000 rows. The cap had to become settable before the branch could be tested at
+    all. Worth generalizing: a constant chosen to be *never hit in practice* makes its own rule
+    untestable, so either the constant is injectable or the rule is unwatched.
 
 ### curl (FTP and FTPS)
 

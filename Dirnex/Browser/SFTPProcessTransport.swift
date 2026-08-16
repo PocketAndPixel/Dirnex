@@ -100,6 +100,35 @@ struct SFTPProcessTransport: SFTPTransport {
         return localFileSize(localPath)
     }
 
+    /// Run one command on the server's own shell over an SSH **exec** channel — the search
+    /// shortcut's route (PLAN.md §M22 Slice 4), and the one verb here that does not speak SFTP.
+    ///
+    /// `nil` means *the command could not be asked at all* — `ssh` would not launch, or the server
+    /// held the channel past the timeout. It does **not** mean "this account has no exec channel",
+    /// and that distinction is the probe's finding rather than a preference: an account confined to
+    /// the `sftp` subsystem answers an exec request with an ordinary-looking reply — the sentence
+    /// "This service allows sftp connections only." on *stdout*, exit 1, empty stderr — so from here
+    /// it is indistinguishable from a shell that ran something. Only the core's
+    /// `SSHFindListingParser` can tell, because only it knows what a good answer looks like, and it
+    /// falls back to the walk when it does not see one.
+    ///
+    /// That is also why there is no memo of accounts that refused. It would have to be fed by the
+    /// core rather than learned here, and it would save exactly **one** handshake in front of a walk
+    /// that is about to spend one per directory — a saving too small to be worth a second place for
+    /// this decision to live.
+    ///
+    /// Cancellation travels rather than degrading to `nil`: it is the caller's own instruction, not
+    /// a property of the server.
+    func runCommand(_ command: String, isCancelled: () -> Bool) throws -> String? {
+        do {
+            return try run(exec: command, isCancelled: isCancelled)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            return nil
+        }
+    }
+
     private func localFileSize(_ path: String) -> Int64 {
         guard let attributes = try? FileManager.default.attributesOfItem(atPath: path),
               let size = attributes[.size] as? Int64 else { return 0 }
@@ -136,9 +165,6 @@ struct SFTPProcessTransport: SFTPTransport {
         tolerateChannelHold: Bool = false,
         isCancelled: () -> Bool = { false }
     ) throws -> String {
-        let isPassword: Bool
-        if case .password = authentication { isPassword = true } else { isPassword = false }
-
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/sftp")
         process.arguments = SFTPProcessArguments.batch(
@@ -146,7 +172,105 @@ struct SFTPProcessTransport: SFTPTransport {
             authentication: authentication,
             connectTimeout: connectTimeout
         )
-        if isPassword {
+
+        let captured = try capture(
+            process,
+            // Feed the single batch command, then EOF so sftp runs it and exits.
+            stdin: Data((command + "\n").utf8),
+            launchFailure: String(
+                localized: "Couldn’t launch sftp.",
+                comment: "SFTP failure: the sftp binary could not be spawned."
+            ),
+            isCancelled: isCancelled
+        )
+
+        if captured.timedOut {
+            if tolerateChannelHold {
+                // The server replied but never closed the channel; the reply is complete, so hand it
+                // back (only the single-line connect probe opts in — a multi-row listing must not be
+                // read partially, hence the throw below).
+                return captured.standardOutput
+            }
+            throw SFTPTransportError.failure(String(
+                localized: "The SFTP server stopped responding.",
+                comment: "SFTP failure: the server held the channel open past the timeout."
+            ))
+        }
+        if captured.terminationStatus != 0 {
+            throw SFTPTransportError.classify(stderr: captured.standardError)
+        }
+        // An interactive (password) session exits zero even on a failed command, so its errors live
+        // only in stderr — scan for them; key auth's `-b -` already fails non-zero above.
+        if isPasswordAuthentication, let error = SFTPTransportError.detect(
+            stderr: captured.standardError
+        ) {
+            throw error
+        }
+        return captured.standardOutput
+    }
+
+    /// Run one `ssh` exec channel and return its stdout, whatever the server made of the command.
+    ///
+    /// **Nothing here classifies the result, and that is measured rather than lazy.** Probed
+    /// 2026-08-16 against a real `sshd`: an `sftp`-only account answers exit 1 with prose on
+    /// *stdout* and an empty stderr, while `find` answers exit **1 with correct rows** whenever one
+    /// subdirectory was unreadable. So neither stream nor status separates "this worked" from "this
+    /// account has no shell" — only the shape of the output does, which is
+    /// `SSHFindListingParser`'s job in the core. What this owes the caller is the bytes and a throw
+    /// when there are none to be had.
+    private func run(exec command: String, isCancelled: () -> Bool) throws -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
+        process.arguments = SFTPProcessArguments.exec(
+            location: location,
+            authentication: authentication,
+            connectTimeout: connectTimeout,
+            command: command
+        )
+        let captured = try capture(
+            process,
+            // Closed immediately: `find` reads nothing, and an open stdin would leave a server that
+            // ignores the command waiting on a channel nobody is going to write to.
+            stdin: Data(),
+            launchFailure: String(
+                localized: "Couldn’t launch ssh.",
+                comment: "SFTP failure: the ssh binary could not be spawned."
+            ),
+            isCancelled: isCancelled
+        )
+        guard !captured.timedOut else {
+            throw SFTPTransportError.failure(String(
+                localized: "The SFTP server stopped responding.",
+                comment: "SFTP failure: the server held the channel open past the timeout."
+            ))
+        }
+        return captured.standardOutput
+    }
+
+    private var isPasswordAuthentication: Bool {
+        if case .password = authentication { return true }
+        return false
+    }
+
+    /// What a finished child left behind. `timedOut` is a *state*, not an error, because one caller
+    /// (the connect probe) accepts the output anyway.
+    private struct Captured {
+        let standardOutput: String
+        let standardError: String
+        let terminationStatus: Int32
+        let timedOut: Bool
+    }
+
+    /// Spawn `process`, write `stdin`, drain both pipes and wait — the plumbing `sftp` and `ssh`
+    /// share, kept in one place so a fix to the deadlock or the cancellation reaches both. Blocks;
+    /// call it off the main thread.
+    private func capture(
+        _ process: Process,
+        stdin: Data,
+        launchFailure: String,
+        isCancelled: () -> Bool
+    ) throws -> Captured {
+        if isPasswordAuthentication {
             process.environment = try passwordEnvironment()
         }
 
@@ -160,14 +284,10 @@ struct SFTPProcessTransport: SFTPTransport {
         do {
             try process.run()
         } catch {
-            throw SFTPTransportError.failure(String(
-                localized: "Couldn’t launch sftp.",
-                comment: "SFTP failure: the sftp binary could not be spawned."
-            ))
+            throw SFTPTransportError.failure(launchFailure)
         }
 
-        // Feed the single batch command, then EOF so sftp runs it and exits.
-        input.fileHandleForWriting.write(Data((command + "\n").utf8))
+        input.fileHandleForWriting.write(stdin)
         try? input.fileHandleForWriting.close()
 
         // Drain both pipes on background queues — so neither can fill and deadlock the other on a
@@ -193,9 +313,10 @@ struct SFTPProcessTransport: SFTPTransport {
         // in here rather than ride on a deadline: without it, Stop on a large `get` was noticed only
         // once the whole file had arrived (docs/NOTES.md ▸ curl for S3, measured on the sibling
         // transport).
-        let deadline: DispatchTime = isPassword
+        let deadline: DispatchTime = isPasswordAuthentication
             ? .now() + .seconds(passwordTimeout)
             : .distantFuture
+        var timedOut = false
         switch ProcessWaiting.wait(for: group, deadline: deadline, isCancelled: isCancelled) {
         case .finished:
             break
@@ -205,31 +326,17 @@ struct SFTPProcessTransport: SFTPTransport {
             throw CancellationError()
         case .timedOut:
             process.terminate() // SIGTERM closes the pipes so the drains unblock
-            group.wait() // terminate closed the pipes, so the readers finish promptly
-            if tolerateChannelHold {
-                // The server replied but never closed the channel; the reply is complete, so hand it
-                // back (only the single-line connect probe opts in — a multi-row listing must not be
-                // read partially, hence the default-throw below).
-                return String(bytes: outputData, encoding: .utf8) ?? ""
-            }
-            throw SFTPTransportError.failure(String(
-                localized: "The SFTP server stopped responding.",
-                comment: "SFTP failure: the server held the channel open past the timeout."
-            ))
+            timedOut = true
         }
-        group.wait()
+        group.wait() // terminate closed the pipes, so the readers finish promptly
         process.waitUntilExit()
 
-        let stderrText = String(bytes: errorData, encoding: .utf8) ?? ""
-        if process.terminationStatus != 0 {
-            throw SFTPTransportError.classify(stderr: stderrText)
-        }
-        // An interactive (password) session exits zero even on a failed command, so its errors live
-        // only in stderr — scan for them; key auth's `-b -` already fails non-zero above.
-        if isPassword, let error = SFTPTransportError.detect(stderr: stderrText) {
-            throw error
-        }
-        return String(bytes: outputData, encoding: .utf8) ?? ""
+        return Captured(
+            standardOutput: String(bytes: outputData, encoding: .utf8) ?? "",
+            standardError: String(bytes: errorData, encoding: .utf8) ?? "",
+            terminationStatus: process.terminationStatus,
+            timedOut: timedOut
+        )
     }
 
     /// The `sftp` child's environment for password auth: the parent environment (so `HOME`, `PATH`,
