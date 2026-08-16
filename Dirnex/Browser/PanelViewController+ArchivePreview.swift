@@ -17,11 +17,18 @@ import DirnexCore
 /// remembered passphrase and the distinction stops mattering.
 extension PanelViewController {
     /// The archive member under this pane's cursor that a preview can show by extracting it:
-    /// `nil` unless the pane is browsing an archive and the cursor sits on a *file* member
-    /// (not the `..` row, not a directory). Its `innerPath` is what gets extracted.
+    /// `nil` unless the cursor sits on a *file* member of some archive (not the `..` row, not a
+    /// directory). Its `innerPath` is what gets extracted.
+    ///
+    /// **Asked of the row, not of the pane** — the finding `extractionArchivePath(for:)` records for
+    /// F5, one door over. A results tab's container is the synthetic `search:` path while its rows
+    /// carry real `archive:` ones, so a pane-keyed question answers `nil` for a hit that is plainly
+    /// an archive member, and ⌃Q / ⌘Y on it draw nothing at all. Which was the state M22 shipped
+    /// Slice 2 in: the copy half was fixed live and the preview half, reached through a different
+    /// property in a different file, was not.
     var previewableArchiveMember: ArchiveMember? {
-        guard !cursorOnParentRow, let archivePath = panel.path.backend.archivePath,
-              let entry = panel.currentEntry, !entry.isDirectoryLike else { return nil }
+        guard !cursorOnParentRow, let entry = panel.currentEntry, !entry.isDirectoryLike,
+              let archivePath = entry.path.backend.archivePath else { return nil }
         return ArchiveMember(archivePath: archivePath, innerPath: entry.path.path)
     }
 

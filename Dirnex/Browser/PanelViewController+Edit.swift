@@ -71,7 +71,9 @@ extension PanelViewController {
         if entry.path.backend.isArchive {
             // A member of a *writable* archive edits its extracted copy and offers to write the save
             // back; a nested archive's own bytes are already a temp copy, so it cannot.
-            return isWritableArchive && !entry.isDirectoryLike ? .archiveMember : .unavailable
+            return isWritableArchiveMember(entry) && !entry.isDirectoryLike
+                ? .archiveMember
+                : .unavailable
         }
         // A file on a server downloads to a temp copy and offers to upload the save — the same
         // extract → watch → write-back shape (PLAN.md §M21 Slice 10).

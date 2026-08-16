@@ -3435,6 +3435,16 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   a bucket full of them — an empty result, which reads as "there is none" rather than "this route
   cannot see them". The general form: when two routes answer one question, list what the slower one
   *derives* rather than diffing what the two are given.
+- **"An unreadable subdirectory is skipped, never fatal" is a good rule that must not cover the
+  *root*, and the two are one line apart.** A walk skips what it cannot list, because permission gaps
+  are ordinary and the matches found elsewhere are still real answers — true of everything the walk
+  *found*, and not of the folder it was pointed at, where the same skip returns zero hits and
+  `complete`: indistinguishable from "nothing matched", which is how an empty pane reads. It stayed
+  unreachable while every scope was a directory the user was standing in, and arrived with **saved**
+  searches, which carry an absolute path from an earlier session — so the scope may since have been
+  renamed, deleted, or be on a server nobody reconnected to, and all three would have read as "no
+  such files". The shape to watch for: a tolerant rule written for the *interior* of a traversal,
+  applied at its entry point because the loop treats them identically.
 
 - **A cost rule enforced at the gesture that opens a *mode* is not the rule it claims to be, and the
   rule it actually enforces is one nobody can discover.** Quick View's remote fetch was allowed only
@@ -3804,6 +3814,46 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
       all** — it answers its own capabilities for every path, so both spellings agree and any test
       built on one passes however far they have drifted. Build the pane on a real `CompositeBackend`
       and register the connection; that touches no network.
+  - **The sixth is the whole family at once, and it says what the tell really is: a *results tab* is
+    a pane whose rows live on a different backend than it does, so every property that resolves "the
+    row under the cursor" has to ask the row.** M22 opened on the premise that a search hit is
+    reached "exactly as a local one is, with no work", because a results tab's container is the
+    synthetic `search:` path while every entry carries its real `VFSPath`. That is true of the paths
+    and false of the four properties that resolve them, each of which asked `panel.path.backend`: ⌃Q
+    drew **nothing** on an archive or server hit, ⌘Y reported **“No items selected”**, ⏎ inside a zip
+    did nothing whatsoever, and F4 said the file could not be edited — all four about rows the
+    *browse* route handles perfectly, and none of them reachable until a search could walk something
+    other than this Mac. The fix is four one-line changes (`previewableArchiveMember`,
+    `remoteFileUnderCursor`, `previewsCursorFileOnly`, `isWritableArchiveMember`); the finding is
+    that it was **four**, having been found and fixed at a fifth site (`extractionArchivePath`, F5)
+    one slice earlier without anyone asking what else shared its shape.
+    - **A route decided in one file and undone in the file it calls is the sub-shape to watch.** ⏎
+      and F4 both route by `entry.path.backend` — correctly, and had done for milestones — and then
+      handed the entry to `openArchiveMember`, whose *own* guard read the pane. So the routing was
+      right, the callee was wrong, and grepping the router finds nothing.
+    - **Each fix's narrowness control is the one that matters more**, because the failure it could
+      introduce is the opposite one: answering for an ordinary *local* results tab would send every
+      Spotlight hit down the extraction or download path. All four are unit-testable with no window
+      — build a pane on the `search:` path holding one hit and read the property.
+- **A *saved* search is the one place where the scope, not the pane, decides where a search runs, and
+  an `mdfind` scope is a bare path with the backend thrown away — so what it silently did depended on
+  how deep the scope was.** `FileQuery.mdfindArguments` takes `scope.path`. A saved search rooted at
+  a **backend root** — every archive root, every bucket root, every server home — spells that `"/"`,
+  so it ran `mdfind -onlyin /`: measured in the built app, "Zip reports" (saved inside a four-file
+  zip) came back with **1275 hits** from `/System`, `/Library` and the crash logs, in a tab wearing
+  the name the user gave it; `mdfind -onlyin / 'kMDItemFSName == "*report*"cd'` at a shell reproduces
+  the number exactly. One level down (`/2026`, `/docs`) the same call answers **zero**. Both are the
+  quiet direction and the **root case is the worse one**, which inverts the natural expectation: an
+  empty pane at least reads as an answer about nothing, where a full one reads as an answer about the
+  thing you asked for.
+  - **It is invisible to every headless signal and to any test of the routing function**, because the
+    bug is the app *not calling* it. The instrument is the built app with the fix reverted, clicking
+    the same sidebar row — 4 hits against 1275 — which is also the only way to learn that the failure
+    is a false *superset* rather than an empty set.
+  - The general form, and the reason it belongs beside the entries above rather than under
+    localization or search: **a persisted `VFSPath` is a path *and* a backend, and every consumer that
+    reduces it to `.path` has silently re-pointed it at the local disk.** Grep for `\.path` on a value
+    whose type is `VFSPath` — that is the whole audit, and the compiler sees a `String` on both sides.
 - **Tree size bars are one directory per *level*, so the sizes have to live where the rows do.** The
   flat `SizeVisualization(model:)` reads one directory's siblings; a tree's rows span many, and its
   totals cannot sit in `DirectoryModel.directorySizes` — that map is pruned to the *root* listing on

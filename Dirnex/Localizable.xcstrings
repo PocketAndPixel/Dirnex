@@ -78891,6 +78891,95 @@
         }
       }
     },
+    "This saved search points at a place that can’t be searched. Open the folder or server you want to search and start a new search there.": {
+      "comment": "Body shown when a saved search's stored scope has nothing to search — a results listing, or an S3 account whose rows are buckets rather than files.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese gesicherte Suche verweist auf einen Ort, der nicht durchsucht werden kann. Öffne den Ordner oder Server, den du durchsuchen möchtest, und starte dort eine neue Suche."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This saved search points at a place that can’t be searched. Open the folder or server you want to search and start a new search there."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta búsqueda guardada apunta a un lugar en el que no se puede buscar. Abre la carpeta o el servidor donde quieras buscar e inicia allí una búsqueda nueva."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette recherche enregistrée pointe vers un emplacement qui ne peut pas être exploré. Ouvrez le dossier ou le serveur voulu et lancez-y une nouvelle recherche."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa ricerca salvata punta a una posizione in cui non è possibile cercare. Apri la cartella o il server in cui vuoi cercare e avvia lì una nuova ricerca."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この保存済みの検索は、検索できない場所を指しています。検索したいフォルダまたはサーバを開き、そこで新しい検索を実行してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 저장된 검색은 검색할 수 없는 위치를 가리킵니다. 검색하려는 폴더나 서버를 열고 거기에서 새로 검색하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze bewaarde zoekopdracht wijst naar een locatie waarin niet gezocht kan worden. Open de map of server waarin je wilt zoeken en start daar een nieuwe zoekopdracht."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To zachowane wyszukiwanie wskazuje miejsce, którego nie można przeszukać. Otwórz folder lub serwer, który chcesz przeszukać, i rozpocznij tam nowe wyszukiwanie."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta busca salva aponta para um local que não pode ser pesquisado. Abra a pasta ou o servidor em que deseja buscar e inicie uma nova busca ali."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот сохранённый поиск указывает на место, в котором нельзя искать. Откройте нужную папку или сервер и начните новый поиск там."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цей збережений пошук вказує на місце, у якому не можна шукати. Відкрийте потрібну теку або сервер і почніть новий пошук там."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此存储的搜索指向一个无法搜索的位置。请打开要搜索的文件夹或服务器，并在那里重新搜索。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此儲存的搜尋指向一個無法搜尋的位置。請開啟要搜尋的檔案夾或伺服器，並在那裡重新搜尋。"
+          }
+        }
+      }
+    },
     "This search looks inside files and matches tags, and neither is available here — only what a folder listing carries can be searched.": {
       "comment": "Unanswerable-search body: both content and tags are out of reach.",
       "localizations": {

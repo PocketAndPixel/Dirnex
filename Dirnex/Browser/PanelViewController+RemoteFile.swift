@@ -24,12 +24,20 @@ import DirnexCore
 /// the rule it was actually enforcing was "one file per time you switch the mode on", which is not a
 /// rule anybody could have discovered. Reported by a user 2026-08-14.
 extension PanelViewController {
-    /// The remote file under this pane's cursor that a fetch could bring down: `nil` unless the pane
-    /// is browsing a server and the cursor sits on a *file* (not the `..` row, not a directory, and
-    /// so never a bucket row in an S3 account pane).
+    /// The remote file under this pane's cursor that a fetch could bring down: `nil` unless the
+    /// cursor sits on a *file* that lives on a server (not the `..` row, not a directory, and so
+    /// never a bucket row in an S3 account pane).
+    ///
+    /// **Asked of the row, not of the pane**, which is what a *search* made matter: a results tab's
+    /// container is the synthetic `search:` path while every hit carries its real `s3://` or
+    /// `sftp://` one. Keyed on the pane, this answered `nil` for every remote hit — so ⌃Q drew
+    /// neither a preview nor the placeholder card that explains why there isn't one, and ⌘Y said
+    /// "No items selected". The milestone opened on the premise that a hit is reached "exactly as a
+    /// local one is, with no work"; that is true of the paths and false of the four properties that
+    /// resolve them (PLAN.md §M22 Slice 5).
     var remoteFileUnderCursor: FileEntry? {
-        guard !cursorOnParentRow, panel.path.backend.isRemoteConnection,
-              let entry = panel.currentEntry, entry.kind == .file else { return nil }
+        guard !cursorOnParentRow, let entry = panel.currentEntry, entry.kind == .file,
+              entry.path.backend.isRemoteConnection else { return nil }
         return entry
     }
 

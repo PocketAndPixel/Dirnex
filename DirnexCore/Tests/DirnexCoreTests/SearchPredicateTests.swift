@@ -57,6 +57,54 @@ struct SearchFieldsTests {
             #expect(SearchRoute.forBackend(backend) == .unavailable, "\(backend)")
         }
     }
+
+    // MARK: - A saved search's own route (Slice 5)
+
+    /// The scope is the *only* thing that says where a saved search runs — it does not follow the
+    /// pane — so it needs the same routing decision the pane gets. Without it a saved bucket search
+    /// went to `mdfind -onlyin <bucket path>`, which is not an error: it is **zero hits**, under the
+    /// name the user gave the search.
+    @Test("a saved search routes on the scope it carries, not on where it is run from")
+    func savedSearchRoutes() {
+        let bucket = VFSBackendID.s3(S3Location(
+            host: "s3.example.com",
+            bucket: "photos",
+            region: "us-east-1",
+            accessKeyID: "AKIAEXAMPLE"
+        ))
+        let query = FileQuery(nameContains: "invoice")
+        let remote = SavedSearch(
+            name: "Invoices",
+            query: query,
+            scope: VFSPath(backend: bucket, path: "/2026")
+        )
+        #expect(SearchRoute.forSavedSearch(remote) == .walk)
+
+        let inArchive = SavedSearch(
+            name: "Reports",
+            query: query,
+            scope: VFSPath(backend: .archive(forArchiveAt: "/tmp/pkg.zip"), path: "/docs")
+        )
+        #expect(SearchRoute.forSavedSearch(inArchive) == .walk)
+
+        // The narrowness control: an ordinary local saved search, which is every one that exists
+        // today, must keep going to Spotlight.
+        let local = SavedSearch(
+            name: "Pictures",
+            query: query,
+            scope: .local("/Users/tester/Pictures")
+        )
+        #expect(SearchRoute.forSavedSearch(local) == .spotlight)
+    }
+
+    /// "Everywhere" is the absence of a place, and only Spotlight has one — a walk needs a root to
+    /// start at. So an unscoped saved search routes to Spotlight whatever the pane it is run from.
+    @Test("an unscoped saved search is Spotlight's everywhere")
+    func unscopedSavedSearchIsSpotlight() {
+        let anywhere = SavedSearch(name: "Everything", query: FileQuery(nameContains: "x"))
+        #expect(anywhere.scope == nil)
+        #expect(SearchRoute.forSavedSearch(anywhere) == .spotlight)
+    }
 }
 
 /// The compiled query. Every rule that differs from the Spotlight route has its own test, since a

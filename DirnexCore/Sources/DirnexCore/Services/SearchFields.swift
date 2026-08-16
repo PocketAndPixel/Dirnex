@@ -74,6 +74,22 @@ public enum SearchRoute: Sendable, Equatable {
     /// "search every bucket" is a different and far more expensive question than the one ⌥F7 asks.
     case unavailable
 
+    /// The route **re-running a saved search** takes (PLAN.md §M22 Slice 5).
+    ///
+    /// A saved search is the one place where the scope, rather than the pane, is the only thing that
+    /// says where a search runs — it carries an absolute path from whenever it was saved and does
+    /// not follow the pane. So it needs the same routing decision, and inheriting Spotlight's by
+    /// default is what went wrong: an `mdfind` scope is a bare *path*, with no backend in it, so a
+    /// search saved at a bucket or archive **root** re-ran as `-onlyin /` over the whole local disk
+    /// (measured — see `PanelViewController.runSavedSearch`).
+    ///
+    /// No scope means Spotlight's "everywhere", which is the *absence* of a place rather than a
+    /// place. Nothing else has an everywhere: a walk needs a root to start at.
+    public static func forSavedSearch(_ savedSearch: SavedSearch) -> SearchRoute {
+        guard let scope = savedSearch.scope else { return .spotlight }
+        return forBackend(scope.backend)
+    }
+
     /// The route a search scoped inside `backend` takes.
     public static func forBackend(_ backend: VFSBackendID) -> SearchRoute {
         if backend == .local { return .spotlight }

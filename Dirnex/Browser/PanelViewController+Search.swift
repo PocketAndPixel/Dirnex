@@ -80,9 +80,35 @@ extension PanelViewController {
     /// strip"). Unlike ⌥F7, its scope is the absolute path stored with the search — it doesn't
     /// follow the pane's current directory — so a "Pictures" saved search always searches
     /// Pictures wherever you invoke it.
+    ///
+    /// **Routed by the stored scope's backend, exactly as ⌥F7 routes by the pane's** (PLAN.md §M22
+    /// Slice 5) — and it has to be, because the scope is the *only* thing that says where this
+    /// search runs.
+    ///
+    /// Handing a bucket or an archive to the Spotlight route is not an error, and what it *is* was
+    /// measured rather than guessed, because `FileQuery.mdfindArguments` takes `scope.path` and
+    /// discards the backend. A scope at a **backend root** — every archive root, every bucket root,
+    /// every server home — spells `path` as `"/"`, so it ran `mdfind -onlyin /`: the whole of this
+    /// Mac. Verified live 2026-08-16 by reverting this function, where "Zip reports" — a search
+    /// saved inside a four-file zip — came back with **1275 hits** from `/System`, `/Library` and
+    /// the crash logs, in a tab wearing the name the user gave it. A scope one level down
+    /// (`/2026`, `/docs`) answers **zero** instead. Both are the quiet direction and the first is
+    /// the worse one: an empty pane at least looks like an answer about nothing, where a full one
+    /// looks like an answer about the thing you asked for.
     func runSavedSearch(_ savedSearch: SavedSearch) {
-        // A saved search carries a friendly name — label its results tab with it, not the raw query.
-        performSearch(savedSearch.query, scope: savedSearch.scope, title: savedSearch.name)
+        switch SearchRoute.forSavedSearch(savedSearch) {
+        case .spotlight:
+            // A saved search carries a friendly name — label its results tab with it, not the query.
+            // A `nil` scope routes here and stays `nil`: that is Spotlight's "everywhere".
+            performSearch(savedSearch.query, scope: savedSearch.scope, title: savedSearch.name)
+        case .walk:
+            // Non-`nil` by construction — only a scope can route here, since a walk needs a root.
+            guard let scope = savedSearch.scope else { return }
+            performWalkSearch(savedSearch.query, under: scope, title: savedSearch.name)
+        case .unavailable:
+            guard let scope = savedSearch.scope else { return }
+            presentUnsearchableScope(at: scope)
+        }
     }
 
     /// Find every file carrying `tag`, from the sidebar's Tags section (PLAN.md §M6 "Finder tags:

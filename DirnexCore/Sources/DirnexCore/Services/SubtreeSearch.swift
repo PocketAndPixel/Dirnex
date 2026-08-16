@@ -97,8 +97,9 @@ public enum SubtreeSearch {
     ///     so far — see that case for why it returns where the sizer throws.
     ///
     /// - Throws: whatever a backend's ``VFSBackend/subtreeListing(at:isCancelled:)`` throws, since a
-    ///   flat enumeration that failed has nothing partial to offer. A failing `listDirectory` in the
-    ///   walk is not fatal and is skipped.
+    ///   flat enumeration that failed has nothing partial to offer — and whatever listing `root`
+    ///   itself throws, for the reason spelled out at that line. A failing `listDirectory` **below**
+    ///   the root is not fatal and is skipped.
     public static func find(
         under root: VFSPath,
         using backend: some VFSBackend,
@@ -147,9 +148,22 @@ public enum SubtreeSearch {
 
             let directory = queue[head]
             head += 1
-            // An unreadable subdirectory is skipped, never fatal: permission gaps are ordinary, and
-            // the matches found elsewhere are still real answers.
-            guard let entries = try? backend.listDirectory(at: directory) else { continue }
+            let entries: [FileEntry]
+            if directory == root {
+                // The root is not a subdirectory: it is the folder being searched, so a listing that
+                // fails here means there is no search rather than a gap in one. Reported instead of
+                // skipped because the two are indistinguishable from the result — an empty pane —
+                // and the honest reading of an empty pane is "nothing matched". A saved search is
+                // what makes this reachable: it carries an absolute path from an earlier session, so
+                // its scope may since have been renamed, deleted, or be on a server nobody has
+                // reconnected to, and every one of those would otherwise read as "no such files".
+                entries = try backend.listDirectory(at: directory)
+            } else {
+                // An unreadable subdirectory *is* skipped, never fatal: permission gaps are
+                // ordinary, and the matches found elsewhere are still real answers.
+                guard let listing = try? backend.listDirectory(at: directory) else { continue }
+                entries = listing
+            }
             listed += 1
 
             for entry in entries {

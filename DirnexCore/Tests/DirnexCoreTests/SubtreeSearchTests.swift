@@ -215,6 +215,37 @@ struct SubtreeSearchTests {
         #expect(Set(results.hits.map(\.name)) == ["report-top.txt", "report-a.txt"])
     }
 
+    /// The other half of the same rule, and the half a *saved* search made reachable (PLAN.md §M22
+    /// Slice 5): a scope stored in an earlier session can since have been renamed, deleted, or be on
+    /// a server nobody reconnected to. Skipping the root the way a subdirectory is skipped gives back
+    /// zero hits and `complete` — indistinguishable from "nothing matched", which is how an empty
+    /// pane reads.
+    @Test("a root that cannot be listed is an error, not an empty result")
+    func unreadableRootIsFatal() throws {
+        let backend = tree()
+        backend.unreadable = ["/root"]
+        #expect(throws: VFSError.self) {
+            try SubtreeSearch.find(
+                under: .local("/root"),
+                using: backend,
+                matching: predicate(FileQuery(nameContains: "report"))
+            )
+        }
+    }
+
+    /// A scope that is simply not there any more — the rename case, which arrives as `notFound`
+    /// rather than `permissionDenied` and must reach the caller just the same.
+    @Test("a scope that no longer exists reports itself rather than finding nothing")
+    func missingRootIsFatal() throws {
+        #expect(throws: VFSError.self) {
+            try SubtreeSearch.find(
+                under: .local("/root/gone"),
+                using: tree(),
+                matching: predicate(FileQuery(nameContains: "report"))
+            )
+        }
+    }
+
     // MARK: - Progress
 
     @Test("progress is reported per directory, and its counts move")

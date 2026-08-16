@@ -173,6 +173,138 @@ struct ArchiveResultRoutingTests {
     }
 }
 
+/// What the cursor's row is, in a results tab whose rows are **not files on this Mac** (PLAN.md §M22
+/// Slice 5).
+///
+/// The milestone opened on the premise that a hit is reached "exactly as a local one is, with no
+/// work", because a results tab's container is synthetic while every entry carries its real
+/// `VFSPath`. That is true of the *paths* and false of the four properties that resolve them: each
+/// asked `panel.path.backend`, which in a results tab says `search:`. So ⌃Q drew nothing, ⌘Y said
+/// "No items selected", ⏎ inside a zip did nothing, and F4 said the file could not be edited — for
+/// rows the browse route handles perfectly. Slice 2 found the same shape at F5 and fixed that one
+/// site; Slices 3 and 4 then made remote hits real, which is what made the rest reachable.
+///
+/// Every assertion here has its narrowness control beside it, because the failure the fix could
+/// introduce is the opposite one: answering for an ordinary *local* results tab would send every
+/// Spotlight hit down the extraction or download path.
+@MainActor
+@Suite("Previewing a search hit")
+struct SearchHitReachTests {
+    private static let archive = VFSBackendID.archive(forArchiveAt: "/tmp/pkg.zip")
+    private static let bucket = VFSBackendID.s3(S3Location(
+        host: "s3.example.com",
+        bucket: "photos",
+        region: "us-east-1",
+        accessKeyID: "AKIAEXAMPLE"
+    ))
+
+    private static func entry(_ name: String, on backend: VFSBackendID) -> FileEntry {
+        FileEntry(
+            path: VFSPath(backend: backend, path: "/docs/\(name)"),
+            name: name,
+            kind: .file,
+            byteSize: 3,
+            modificationDate: Date(timeIntervalSince1970: 0),
+            creationDate: Date(timeIntervalSince1970: 0),
+            isHidden: false,
+            permissions: 0o644,
+            inode: 1
+        )
+    }
+
+    /// A pane on the synthetic results path holding one hit — the shape `openResults` installs after
+    /// a walk, with the cursor on row 0.
+    private static func resultsPane(showing entry: FileEntry) -> PanelViewController {
+        let path = VFSPath(backend: .search, path: "/“report”")
+        let pane = PanelViewController(
+            backend: CompositeBackend(local: LocalBackend()),
+            restoration: nil,
+            defaultPath: path,
+            restorationKey: nil
+        )
+        pane.panel = Panel(model: DirectoryModel(
+            listing: DirectoryListing(path: path, entries: [entry])
+        ))
+        return pane
+    }
+
+    @Test("a hit inside an archive is a previewable member")
+    func archiveHitIsPreviewable() throws {
+        let pane = Self.resultsPane(showing: Self.entry("report.txt", on: Self.archive))
+        let member = try #require(pane.previewableArchiveMember)
+        #expect(member.archivePath == "/tmp/pkg.zip")
+        #expect(member.innerPath == "/docs/report.txt")
+    }
+
+    @Test("an ordinary local hit is not an archive member")
+    func localHitIsNotAMember() {
+        let pane = Self.resultsPane(showing: Self.entry("report.txt", on: .local))
+        #expect(pane.previewableArchiveMember == nil)
+    }
+
+    /// The remote twin. `remoteFileUnderCursor` is what both preview surfaces read to decide whether
+    /// there is anything to fetch *and* what the placeholder card describes — so keyed on the pane it
+    /// took away not just the preview but the card explaining its absence.
+    @Test("a hit on a server is a fetchable remote file")
+    func remoteHitIsFetchable() throws {
+        let pane = Self.resultsPane(showing: Self.entry("DSC_0002.NEF", on: Self.bucket))
+        let entry = try #require(pane.remoteFileUnderCursor)
+        #expect(entry.name == "DSC_0002.NEF")
+    }
+
+    @Test("an ordinary local hit is not a remote file")
+    func localHitIsNotRemote() {
+        let pane = Self.resultsPane(showing: Self.entry("report.txt", on: .local))
+        #expect(pane.remoteFileUnderCursor == nil)
+    }
+
+    /// ⌘Y's target list. `false` here sends the panel down the branch that keeps only `.local` rows,
+    /// which is an empty list for every hit of a walking search — and an empty list is what Quick
+    /// Look draws as "No items selected".
+    @Test("a hit that is not on this Mac is previewed one file at a time")
+    func nonLocalHitsAreCursorOnly() {
+        for backend in [Self.archive, Self.bucket] {
+            let pane = Self.resultsPane(showing: Self.entry("report.txt", on: backend))
+            #expect(pane.previewsCursorFileOnly, "\(backend)")
+        }
+    }
+
+    @Test("a local results tab keeps previewing whatever is marked")
+    func localHitsKeepTheMarkedSet() {
+        let pane = Self.resultsPane(showing: Self.entry("report.txt", on: .local))
+        #expect(!pane.previewsCursorFileOnly)
+    }
+
+    /// F4 routes by the row already — and then died in the callee, which read the pane. The route is
+    /// the half a test can see without launching an editor.
+    @Test("F4 on a hit inside an archive edits the member rather than refusing")
+    func archiveHitIsEditable() {
+        let entry = Self.entry("report.txt", on: Self.archive)
+        let pane = Self.resultsPane(showing: entry)
+        #expect(pane.editRoute(for: entry) == .archiveMember)
+    }
+
+    /// A folder row is still not a thing to preview or edit, whichever backend it is on — the
+    /// control that keeps "ask the row" from becoming "answer for every row".
+    @Test("a folder hit is neither previewable nor editable")
+    func folderHitsAreNeither() {
+        let folder = FileEntry(
+            path: VFSPath(backend: Self.archive, path: "/docs/sub"),
+            name: "sub",
+            kind: .directory,
+            byteSize: 0,
+            modificationDate: Date(timeIntervalSince1970: 0),
+            creationDate: Date(timeIntervalSince1970: 0),
+            isHidden: false,
+            permissions: 0o755,
+            inode: 2
+        )
+        let pane = Self.resultsPane(showing: folder)
+        #expect(pane.previewableArchiveMember == nil)
+        #expect(pane.editRoute(for: folder) == .unavailable)
+    }
+}
+
 /// What the dialog draws for a given scope.
 ///
 /// The rows a place cannot answer are **hidden**, and that is the surface the milestone is really

@@ -40,14 +40,19 @@ extension PanelViewController {
 
     /// Extract the member (asking for a passphrase if the archive is encrypted), register it for
     /// write-back, and hand the on-disk copy to `launch`.
+    ///
+    /// The archive comes from the **entry**, not from the pane: `openCurrentEntry` and `editRoute`
+    /// both already route by the row's own backend, so a hit in a search results tab reaches here
+    /// correctly and then died on a pane-keyed guard — a route decided in one file and undone in the
+    /// one it calls (PLAN.md §M22 Slice 5).
     private func openArchiveMember(_ entry: FileEntry, launch: @escaping @MainActor (URL) -> Void) {
-        guard let archivePath = panel.path.backend.archivePath, !entry.isDirectoryLike,
+        guard let archivePath = entry.path.backend.archivePath, !entry.isDirectoryLike,
               let cache = host?.archivePreviewCache else { return }
         let member = ArchiveMember(archivePath: archivePath, innerPath: entry.path.path)
         // The member's own directory inside the archive — where a write-back puts it back. Taken
         // from the entry rather than from the pane, since the pane can navigate away mid-edit.
         let innerDirectory = entry.path.parent?.path ?? "/"
-        let writable = isWritableArchive
+        let writable = isWritableArchiveMember(entry)
 
         withArchivePassphrase(forArchiveAt: archivePath) { passphrase in
             try await cache.extractedURL(for: member, passphrase: passphrase)

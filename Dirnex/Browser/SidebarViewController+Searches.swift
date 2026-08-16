@@ -41,8 +41,13 @@ extension SidebarViewController {
                 comment: "Tooltip on a saved search with no scope folder — it searches the whole Mac."
             )
         }
+        // `displayName`, not `lastComponent`: a saved search can now be scoped to a *backend root*
+        // (a bucket, a server's home, an archive — PLAN.md §M22 Slice 5), whose `lastComponent` is
+        // the bare "/" that names nothing. The same trap the tab chip and the New Folder sheet each
+        // hit once (docs/NOTES.md ▸ AppKit), arriving at the one surface that says where a saved
+        // search runs.
         return String(
-            localized: "Search in “\(scope.lastComponent)”",
+            localized: "Search in “\(scope.displayName)”",
             comment: "Tooltip on a scoped saved search; %@ is the scope folder's name."
         )
     }

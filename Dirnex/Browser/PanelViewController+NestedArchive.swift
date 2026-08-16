@@ -29,6 +29,19 @@ extension PanelViewController {
         isArchive && !isNestedArchive
     }
 
+    /// The same question asked of one **row**: whether an edit to `entry`'s extracted copy could be
+    /// written back into the archive it came from.
+    ///
+    /// The pane-keyed ``isWritableArchive`` is right for a browse and blind in a results tab, whose
+    /// container is the synthetic `search:` path — so F4 on a hit inside a zip reported "Only files
+    /// on this Mac can be edited", about a file the browse route edits perfectly well (PLAN.md §M22
+    /// Slice 5). Same answer as `isWritableArchive` whenever the pane *is* the archive, since then
+    /// the row's backend is the pane's.
+    func isWritableArchiveMember(_ entry: FileEntry) -> Bool {
+        guard let archivePath = entry.path.backend.archivePath else { return false }
+        return !(host?.nestedArchiveRegistry.isNestedMount(archivePath) ?? false)
+    }
+
     /// The enclosing-archive chain of the current pane, outermost-first, for the path-bar
     /// breadcrumb — empty unless the pane is browsing a nested archive.
     func archiveBreadcrumbAncestry() -> [VFSPath] {

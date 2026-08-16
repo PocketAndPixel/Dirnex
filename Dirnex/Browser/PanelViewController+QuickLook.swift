@@ -121,8 +121,16 @@ extension PanelViewController: @preconcurrency QLPreviewPanelDataSource, @precon
     /// remote object downloaded before anything can preview it, and only the cursor's own is ever
     /// brought down: a marked set would cost a subprocess per row inside an archive and, on a
     /// server, a billed request and somebody's bandwidth per row (PLAN.md §M21 Slice 10).
+    /// Asked of the **row** rather than of the pane, for the reason `remoteFileUnderCursor` is: a
+    /// results tab's container reads `search:` while its rows are archive members or objects on a
+    /// server, so the pane-keyed spelling answered `false` there — and the branch it then took keeps
+    /// only `.local` rows, so ⌘Y on any hit of an M22 search reported **“No items selected”**. With
+    /// nothing under the cursor there is no row to ask, and the pane's own kind is what is left.
     var previewsCursorFileOnly: Bool {
-        isArchive || panel.path.backend.isRemoteConnection
+        guard !cursorOnParentRow, let entry = panel.currentEntry else {
+            return isArchive || panel.path.backend.isRemoteConnection
+        }
+        return entry.path.backend != .local
     }
 
     /// The on-disk URL Quick Look previews for `entry`: its real URL for a file on this Mac, and for

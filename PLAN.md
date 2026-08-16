@@ -2034,6 +2034,48 @@ someone will reach for:
   which every browse and every file operation goes through, so it is a milestone of its own rather
   than a passenger in a search slice.
 
+**Slice 5 landed 2026-08-16** — saved searches, and the archive half, which turned out to be
+mostly *undoing this milestone's own opening premise*.
+
+Archives needed no wiring at all: Slice 2 keyed the route on `isArchive` rather than enumerating
+backends, so the walk, the unbounded budget and the dialog's hidden rows all arrived with it and
+were verified live that day. What was left was the **saved search**, and one whole class of bug
+underneath it.
+
+**A saved search is the only place where the scope, not the pane, says where a search runs** — it
+carries an absolute path from whenever it was saved and deliberately does not follow the pane. It
+inherited Spotlight by default, and `FileQuery.mdfindArguments` takes `scope.path` and drops the
+backend, so what a saved bucket or archive search actually ran was decided by how deep its scope
+was. Measured, not guessed, by reverting `runSavedSearch` in the built app and clicking the same
+row: a scope at a **backend root** — every archive root, every bucket root, every server home —
+spells `path` as `"/"`, so **"Zip reports", a search saved inside a four-file zip, came back with
+1275 hits** from `/System`, `/Library` and the crash logs, in a tab wearing the name the user gave
+it. One level down (`/2026`, `/docs`) it answers zero. Both are the quiet direction and the first
+is worse: an empty pane at least looks like an answer about nothing. `SearchRoute.forSavedSearch`
+is the fix, `mdfind -onlyin /` reproducing 1275 at a shell is the corroboration, and the restored
+build gives the 4 archive hits back.
+
+**The bigger finding is that this milestone's opening premise is false, and it was false in four
+places.** §M22 opened saying a hit is reached "exactly as a local one is, with no work", because a
+results tab's container is synthetic while every entry carries its real `VFSPath`. True of the
+*paths*; false of the four properties that resolve them, each of which asked `panel.path.backend`
+— which in a results tab says `search:`. So ⌃Q drew nothing on an archive or server hit,
+⌘Y reported **“No items selected”**, ⏎ inside a zip did nothing at all, and F4 said the file could
+not be edited — all four about rows the browse route handles perfectly. Slice 2 met this shape at
+F5 and fixed that one site; Slices 3 and 4 then made remote hits real, which is what made the rest
+reachable. `previewableArchiveMember`, `remoteFileUnderCursor`, `previewsCursorFileOnly` and
+`isWritableArchiveMember` now ask the row.
+
+One more thing the slice made reachable and closed in the core: **a walk's root must be listable.**
+A stored scope can since have been renamed, deleted, or be on a server nobody reconnected to, and
+skipping the root the way an unreadable *subdirectory* is skipped returns zero hits and `complete`
+— indistinguishable from "nothing matched". The root now throws; below it nothing changed.
+
++6 core (2475) and +8 app (531) tests, both linters and all three scripts clean; one new string in
+all 14 languages. Six negative controls, each firing on exactly the tests naming it with every
+narrowness control still green — and a seventh run in the built app, which is the only instrument
+that could see the saved-search bug at all.
+
 ## 5. Cross-cutting: testing strategy
 
 | Layer | Approach |

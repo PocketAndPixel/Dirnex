@@ -10,7 +10,10 @@ import DirnexCore
 extension PanelViewController {
     /// Walk `root`'s subtree for `query`, with a sheet showing progress and offering Stop, then
     /// install the hits as a results tab.
-    func performWalkSearch(_ query: FileQuery, under root: VFSPath) {
+    ///
+    /// `title` is the results tab's chip label — a saved search's name, exactly as the Spotlight
+    /// route takes one. A fresh ⌥F7 leaves it `nil` and the chip shows the query summary.
+    func performWalkSearch(_ query: FileQuery, under root: VFSPath, title: String? = nil) {
         let predicate: SearchPredicate
         let fields = SearchFields.answerable(by: root.backend)
         do {
@@ -41,7 +44,7 @@ extension PanelViewController {
                     control: control
                 )
                 sheet.finish()
-                install(results, query: query, scope: root)
+                install(results, query: query, scope: root, title: title)
             } catch {
                 sheet.finish()
                 presentOperationFailure(
@@ -56,7 +59,12 @@ extension PanelViewController {
     }
 
     /// Install the hits, then say how the search ended if it did not simply finish.
-    private func install(_ results: SubtreeSearch.Results, query: FileQuery, scope: VFSPath) {
+    private func install(
+        _ results: SubtreeSearch.Results,
+        query: FileQuery,
+        scope: VFSPath,
+        title: String?
+    ) {
         openResults(
             results.hits,
             // The shared truncation alert is the right words for exactly one of the three
@@ -67,7 +75,7 @@ extension PanelViewController {
                 sort: panel.model.sort,
                 query: query,
                 scope: scope,
-                title: nil
+                title: title
             )
         )
         report(results.completion, hits: results.hits.count, listed: results.directoriesListed)
@@ -107,6 +115,36 @@ extension PanelViewController {
                 )
             )
         }
+    }
+
+    /// A saved search whose stored scope is somewhere with nothing to search — a results listing, or
+    /// an S3 account pane whose rows are buckets (PLAN.md §M22 Slice 5).
+    ///
+    /// Not reachable from anything the app itself saves today: ⌥F7 resolves such a pane to a real
+    /// directory before it offers the dialog, so what gets stored is that directory. It exists
+    /// because the alternatives at an exhaustive `switch` are both worse — running Spotlight
+    /// *everywhere* silently widens a search the user named, and returning in silence is a keystroke
+    /// that does nothing, which this project has twice found to be the expensive kind of wrong.
+    ///
+    /// The title is keyed identically to ``presentUnanswerable(_:at:)``'s, comment included, so the
+    /// two share one catalog entry rather than handing a translator whichever `xcstringstool` kept.
+    func presentUnsearchableScope(at scope: VFSPath) {
+        presentOperationFailure(
+            message: String(
+                localized: "Can’t run this search on “\(scope.displayName)”",
+                comment: "Unanswerable-search title; %@ is the server or folder."
+            ),
+            detail: String(
+                localized: """
+                This saved search points at a place that can’t be searched. Open the folder or \
+                server you want to search and start a new search there.
+                """,
+                comment: """
+                Body shown when a saved search's stored scope has nothing to search — a results \
+                listing, or an S3 account whose rows are buckets rather than files.
+                """
+            )
+        )
     }
 
     /// A query asking for something this place cannot answer.
