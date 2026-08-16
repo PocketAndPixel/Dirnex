@@ -1964,6 +1964,86 @@ whether a real provider's 412 arrives in the shape `S3WriteCondition.refusal(for
 everything before it (the header travelling, signed, with its quotes intact) was measured in Slice
 17 against an endpoint that recomputes SigV4 by hand.
 
+#### Slice 19 — 2026-08-16: the large upload carries the precondition too
+
+The last thing this milestone had **parked rather than rejected**, taken up. Slice 17 shipped
+`If-Match` on the single `PUT` and wrote down why the multipart half was not in it: "a completion
+can already fail *inside a 200*, so a refusal there has two shapes to read rather than one, and none
+of it is measurable against an endpoint that is ours." The first clause is exactly right and is what
+this slice turns on; the second was not — the *client* half is measurable, and it is the same half
+Slice 17 measured for the `PUT`. What no endpoint of ours can settle is whether a real provider
+honours the header, which is equally true of the small-file path that already shipped and is why
+both are built strictly additive.
+
+`S3WriteCondition.preconditionFailedCode`, the conditional completion on `S3ProcessArguments`,
+`S3Transport` and `S3CurlTransport`, `S3Backend.refusalError(_:or:at:)` as the one definition of what
+a refusal means, and the condition threaded through `uploadObject` → `uploadInParts` → `closeUpload`.
++7 core tests (2518 core / 544 app green, both linters clean, all three check scripts passing). No
+new strings: the two sentences are Slice 17's, now reachable at every file size.
+
+**Five things were probed first, against the SigV4-verifying endpoint grown a multipart
+conversation, with a wrong-secret control refused in the same run.** Two of them decided code that
+was about to be written differently:
+
+- **`curl` signs the header on the completion too**, arriving as
+  `content-type;host;if-match;x-amz-content-sha256;x-amz-date`. Worth measuring rather than
+  inheriting from the `PUT`: this canonical request differs in every field — `POST`, a query string,
+  and a **real** payload digest of the manifest where a `-T` stream signs `UNSIGNED-PAYLOAD` — and it
+  verified anyway. `If-None-Match: *` behaves identically.
+- **A refusal can arrive under a status the server has already committed to.** Driven into AWS's
+  documented late-failure shape, the identical refusal came back **`HTTP=200` carrying
+  `<Code>PreconditionFailed</Code>`**. So `refusal(for:)`, which keyed on the *status*, answers `nil`
+  there — i.e. reports a save as having succeeded while the object silently does not exist. The code
+  is now read as an alternative to the status, and `closeUpload` reads a refusal **twice**: once
+  through `conditionallyWrite` (the 412 shape) and once out of the body (the 200 shape), which is
+  the only thing that can see it.
+- **A refusal here cannot save the transfer, and the asymmetry is worth stating** because the
+  opposite is true one verb over. A conditional `PUT` is ended by the answer to `Expect:
+  100-continue` before the body moves (64 MiB refused in 0.0009 s, Slice 17); every part of a
+  multipart upload has already been sent by the time the completion is made. Conditioning a large
+  upload is protection, never an economy — so "Upload Anyway" re-sends the file, which is the price
+  of the alternative not being available: holding the upload open across a modal sheet is a bill the
+  user cannot see in any listing.
+- **A refused completion leaves the upload open**, its parts stored and billed. `uploadInParts` has
+  aborted on every failing exit since Slice 5, so a refusal being a throw is what makes that cover
+  this too — the whole structural cost of the feature.
+- **The quotes are load-bearing here as well**: an unquoted but otherwise *correct* tag was refused
+  with the identical 412 a genuinely stale one gets. Slice 17's finding, on a new verb, and the
+  reason nothing between `S3ListingParser` and the wire may tidy them.
+
+The size fork moved rather than being copied. `S3Backend+Conditional.upload` used to re-test the
+multipart threshold and hand the large case to an *unconditional* `uploadObject`; both branches now
+live in `uploadObject`, which takes the condition and attaches it to whichever request the object's
+existence hangs on. A caller choosing where to attach one would have been a second copy of the
+threshold — which is how the small and large paths would come to disagree about whether a save is
+guarded, on a question whose whole point is that the user is told.
+
+**Four negative controls, each firing on exactly its own assertions**: the completion sending
+`.unconditional` (the header test alone), the body-side reading removed (the 200-shape test alone,
+throwing the raw `code: 5` this milestone has now had to name three times), the code-based reading
+removed (that one plus the pure refusal test), and the seam forwarding instead of throwing
+(`unconditionalCalls → 3`, the same shape Slice 17 recorded).
+
+**Verified live** through the real `S3Backend` driving the app's own `S3CurlTransport`, compiled in
+Swift 6 mode, with the server's log as the witness: a 64 MiB file went out as five parts and a
+guarded completion, the stale-tag run was refused with the named sentence, and the object was
+untouched afterwards. All 26 requests signature-verified; the header appears on the **completion
+only** — never on a part, never on the create — and the refused completion is followed by an
+`ABORT` that took the open-upload count back to zero. Both refusal shapes were run end to end, and
+the live negative control is the sharpest one available: the *same* reverted binary passes against a
+412-refusing server and fails against a 200-committed one, which is what says the second reading is
+reachable only in the shape it was written for.
+
+What is still unverified is unchanged from Slice 18 and is the same one step: no real provider's
+refusal has been seen, because the live config file this milestone's suites are gated on is not on
+this Mac. Everything before it — the header travelling, signed, with its quotes intact, on both
+verbs — is measured.
+
+**With this, M21's own list is empty.** The two remaining items are not code: Slice 18's and this
+slice's one unmeasured step needs an account, and the milestone's opening half — whether Dropbox's
+and OneDrive's sync badges light up, and whether each client's `.Trash` has the shape `Places`
+assumes — needs those clients installed.
+
 ### M22 — Find Files on a connected server (M, opened 2026-08-16)
 
 ⌥F7 has been Spotlight since M4, so it answers for this Mac and for nothing else: connect a bucket

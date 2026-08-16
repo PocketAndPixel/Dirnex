@@ -202,15 +202,32 @@ public extension S3Backend {
     ) throws -> S3Response {
         let response = try mapping(path, body)
         guard let service = Self.serviceError(from: response) else { return response }
-        switch condition.refusal(for: service) {
+        throw Self.refusalError(condition.refusal(for: service), or: service, at: path)
+    }
+
+    /// The `VFSError` a refused precondition becomes — or the server's own failure when the
+    /// precondition was not what refused it.
+    ///
+    /// Its own function rather than a `switch` inside ``conditionallyWrite(at:condition:_:)``
+    /// because a second caller reads a refusal that funnel structurally cannot see: a
+    /// `CompleteMultipartUpload` may refuse **inside a 200**, where there is no service error to
+    /// hand this at all until the body has been parsed (PLAN.md §M21 Slice 19). Two sites deciding
+    /// what a refusal *means* is how the two would come to disagree about the sentence, which is
+    /// this project's most repeated finding.
+    static func refusalError(
+        _ refusal: S3WriteConditionRefusal?,
+        or service: S3ServiceError,
+        at path: VFSPath
+    ) -> VFSError {
+        switch refusal {
         case .alreadyThere:
-            throw VFSError.alreadyExists(path)
+            return VFSError.alreadyExists(path)
         case .changedSince:
-            throw VFSError.unsupported(.remoteFileChangedSinceFetch(name: path.lastComponent))
+            return VFSError.unsupported(.remoteFileChangedSinceFetch(name: path.lastComponent))
         case .goneSince:
-            throw VFSError.unsupported(.remoteFileGoneSinceFetch(name: path.lastComponent))
+            return VFSError.unsupported(.remoteFileGoneSinceFetch(name: path.lastComponent))
         case .none:
-            throw service.vfsError(for: path)
+            return service.vfsError(for: path)
         }
     }
 

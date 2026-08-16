@@ -262,6 +262,19 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
         return completeMultipartResponse
     }
 
+    /// The completion is where a *large* upload's precondition rides, so the condition it was given
+    /// is recorded on the same list the two small-file verbs use — a large save-back that quietly
+    /// dropped its header would otherwise leave `writes` looking perfectly correct.
+    func completeMultipartUpload(
+        key: String,
+        uploadID: String,
+        parts: [S3UploadedPart],
+        condition: S3WriteCondition
+    ) throws -> S3Response {
+        conditions.append(condition)
+        return try completeMultipartUpload(key: key, uploadID: uploadID, parts: parts)
+    }
+
     func abortMultipartUpload(key: String, uploadID: String) throws -> S3Response {
         writes.append(.abortMultipart(key: key, uploadID: uploadID))
         if abortThrows { throw S3ResponseError.transport(.other) }

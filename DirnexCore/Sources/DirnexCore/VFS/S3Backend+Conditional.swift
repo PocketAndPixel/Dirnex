@@ -16,18 +16,21 @@ import Foundation
 public extension S3Backend {
     /// Upload `localPath` over `destination`, only if the precondition still holds.
     ///
-    /// **The single-`PUT` path carries the condition and the multipart path does not**, and the
-    /// return value is what says which happened rather than a comment nobody reads at the call
-    /// site. A silently-unconditional write is exactly the failure this slice exists to remove, so
-    /// it is not available: the caller is told, and can word what it shows accordingly.
+    /// **Both sizes carry the condition, since Slice 19.** It used to be the single-`PUT` path
+    /// alone, with the multipart half named as parked rather than guessed at — a completion can
+    /// fail *inside a 200* (``S3MultipartDocument/completionFailure(from:status:)``), so a refusal
+    /// there has two shapes to read rather than one. Both shapes have now been measured against the
+    /// endpoint that recomputes SigV4 by hand, and `curl` was measured signing the header on the
+    /// completion's own canonical request, so the branch is no longer unmeasured.
     ///
-    /// The multipart half is left for its own pass rather than guessed at. `If-Match` on
-    /// `CompleteMultipartUpload` is what AWS documents, and `curl` would sign it as readily as it
-    /// signs this one — but a completion can already fail *inside a 200*
-    /// (``S3MultipartDocument/completionFailure(from:status:)``), so a refusal there has two
-    /// shapes to read rather than one, and none of it is measurable against an endpoint that is
-    /// ours. Naming it beats shipping an unmeasured branch on the path where a wrong answer costs
-    /// somebody a large upload.
+    /// What the return value still says is worth keeping: `conditionWasSent` is a claim about this
+    /// **client**, never about the server. It is `false` for an unconditional caller and for a
+    /// transport that cannot carry one, and no server anywhere can be asked whether it honoured
+    /// what it was sent (``S3WriteConditionUnsupported``).
+    ///
+    /// The size fork itself lives in ``S3Backend/uploadObject(localPath:key:at:condition:progress:isCancelled:)``
+    /// and deliberately not here: the precondition rides on a different request either side of it,
+    /// so choosing where to attach one is the same decision as choosing the path.
     @discardableResult
     func upload(
         localPath: String,
@@ -41,33 +44,15 @@ public extension S3Backend {
         guard !key.isEmpty else { throw VFSError.unsupported(.copyFile) }
         if isCancelled() { throw CancellationError() }
 
-        let size = localFileSize(localPath)
-        guard !S3MultipartPlan.isWorthwhile(totalSize: size) else {
-            try uploadObject(
-                localPath: localPath,
-                key: key,
-                at: destination,
-                progress: progress,
-                isCancelled: isCancelled
-            )
-            return S3ConditionalWrite(conditionWasSent: false)
-        }
-
-        var streamed: Int64 = 0
-        let response = try conditionallyWrite(at: destination, condition: condition) {
-            try transport.upload(
-                localPath: localPath,
-                to: key,
-                condition: condition,
-                progress: { delta in
-                    streamed += delta
-                    progress(delta)
-                },
-                isCancelled: isCancelled
-            )
-        }
+        try uploadObject(
+            localPath: localPath,
+            key: key,
+            at: destination,
+            condition: condition,
+            progress: progress,
+            isCancelled: isCancelled
+        )
         if isCancelled() { throw CancellationError() }
-        reportRemainder(of: response.bytesTransferred, streamed: streamed, to: progress)
         return S3ConditionalWrite(conditionWasSent: condition.isConditional)
     }
 }
@@ -83,10 +68,16 @@ public extension S3Backend {
 /// only that it was *asked* to be. The protection the app shows a sentence for goes on resting on
 /// ``RemoteFileRevision``'s re-`stat`, which works everywhere.
 public struct S3ConditionalWrite: Sendable, Equatable {
-    /// Whether a precondition was attached to the request that moved the bytes.
+    /// Whether a precondition was attached to the request the object's existence hangs on.
     ///
-    /// `false` for an unconditional caller, and `false` for a multipart upload, which cannot carry
-    /// one yet. The second is the reason this exists.
+    /// `false` for an unconditional caller, and `false` for a transport that cannot carry one at
+    /// all — which is what the type exists to report, and it is now the *only* thing that makes it
+    /// `false` for a caller who asked. It used to be `false` for every large file too, before the
+    /// multipart completion learned to carry one (PLAN.md §M21 Slice 19).
+    ///
+    /// Note "the request the object's existence hangs on" rather than "the request that moved the
+    /// bytes": a multipart upload's bytes are sent by requests that carry no condition, and the
+    /// completion that publishes them is the one that does.
     public let conditionWasSent: Bool
 
     public init(conditionWasSent: Bool) {

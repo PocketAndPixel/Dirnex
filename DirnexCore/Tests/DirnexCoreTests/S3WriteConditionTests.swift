@@ -158,6 +158,25 @@ struct S3WriteConditionTests {
         #expect(S3WriteCondition.ifMatches(entityTag: "\"t\"").refusal(for: denied) == nil)
         let serverError = failure(status: 500, code: "InternalError")
         #expect(S3WriteCondition.ifMatches(entityTag: "\"t\"").refusal(for: serverError) == nil)
+        // A *successful* status with an unremarkable code stays unremarkable, which is what keeps
+        // the code-based reading below from answering for everything.
+        #expect(S3WriteCondition.ifMatches(entityTag: "\"t\"")
+            .refusal(for: failure(status: 200, code: "SlowDown")) == nil)
+    }
+
+    /// The status is not the only signal, because on one verb it is not a signal at all: a
+    /// `CompleteMultipartUpload` may refuse under a status it has already committed to, measured as
+    /// `HTTP=200` carrying `<Code>PreconditionFailed</Code>` (PLAN.md §M21 Slice 19). A reading
+    /// keyed on the status alone answers `nil` there — i.e. reports the write as having succeeded.
+    @Test("a refusal is readable from the code when the status has already said 200")
+    func refusalReadableFromTheCodeAlone() {
+        let committed = failure(status: 200, code: "PreconditionFailed")
+        #expect(
+            S3WriteCondition.ifMatches(entityTag: "\"t\"").refusal(for: committed) == .changedSince
+        )
+        #expect(S3WriteCondition.ifAbsent.refusal(for: committed) == .alreadyThere)
+        // Still nothing to interpret when nothing was asked.
+        #expect(S3WriteCondition.unconditional.refusal(for: committed) == nil)
     }
 
     @Test("both refusals reach the user as a named sentence, never a raw errno")
@@ -251,30 +270,6 @@ struct S3WriteConditionTests {
         #expect(transport.conditions == [.ifMatches(entityTag: "\"abc\"")])
     }
 
-    /// The honest half, and the reason ``S3ConditionalWrite`` exists rather than a `Void` return:
-    /// a multipart upload cannot carry the precondition yet, and the caller has to be *told* that
-    /// rather than left believing the write was guarded. A silent `false` here — or no return
-    /// value at all — is the failure this whole slice is about, one layer up.
-    @Test("a multipart upload reports that it carried no condition")
-    func multipartSaysItIsUnguarded() throws {
-        let transport = FakeS3Transport()
-        let big = try temporaryFile(bytes: Int(S3MultipartLimits.multipartThreshold) + 1024)
-        defer { try? FileManager.default.removeItem(atPath: big) }
-
-        let result = try backend(transport).upload(
-            localPath: big,
-            over: path("/big.bin"),
-            condition: .ifMatches(entityTag: "\"abc\""),
-            progress: { _ in },
-            isCancelled: { false }
-        )
-        #expect(!result.conditionWasSent)
-        // And it really did go the multipart way rather than quietly becoming a single PUT that
-        // dropped the header — which would pass the assertion above for the wrong reason.
-        #expect(transport.writes.contains { if case .createMultipart = $0 { true } else { false } })
-        #expect(transport.conditions.isEmpty)
-    }
-
     /// The seam's own safety property. A transport written before conditional writes existed — or
     /// one somebody adds later — must fail loudly rather than write without the precondition it
     /// was handed, because a caller that believes it is protected and is not is strictly worse
@@ -294,10 +289,28 @@ struct S3WriteConditionTests {
                 isCancelled: { false }
             )
         }
+        // The completion joined them at Slice 19, and it is the one where dropping a precondition
+        // costs the most: the parts are already uploaded, so a silent unconditional completion
+        // publishes an object over somebody's edit at the end of a transfer that may have run for
+        // an hour.
+        #expect(throws: S3WriteConditionUnsupported(key: "a.txt")) {
+            try transport.completeMultipartUpload(
+                key: "a.txt",
+                uploadID: "upload-1",
+                parts: [S3UploadedPart(number: 1, etag: "\"e\"")],
+                condition: .ifMatches(entityTag: "\"t\"")
+            )
+        }
         // The other half of additive: asking for nothing still works, and reaches the verb that
         // was already there.
         _ = try transport.putEmptyObject(key: "a.txt", condition: .unconditional)
-        #expect(transport.unconditionalCalls == 1)
+        _ = try transport.completeMultipartUpload(
+            key: "a.txt",
+            uploadID: "upload-1",
+            parts: [],
+            condition: .unconditional
+        )
+        #expect(transport.unconditionalCalls == 2)
     }
 
     private func temporaryFile(bytes: Int) throws -> String {
@@ -374,7 +387,8 @@ private final class UnconditionalTransport: S3Transport, @unchecked Sendable {
         uploadID: String,
         parts: [S3UploadedPart]
     ) throws -> S3Response {
-        S3Response(status: 200)
+        unconditionalCalls += 1
+        return S3Response(status: 200)
     }
 
     func abortMultipartUpload(key: String, uploadID: String) throws -> S3Response {

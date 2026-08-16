@@ -174,6 +174,21 @@ public protocol S3Transport: Sendable {
         parts: [S3UploadedPart]
     ) throws -> S3Response
 
+    /// The same completion, with a precondition the server evaluates (``S3WriteCondition``).
+    ///
+    /// This is the multipart half of the conditional write, and the request it hangs on is the one
+    /// that *publishes* the object — so a large save-back gets the protection a small one has had
+    /// since Slice 17. A separate requirement with a throwing default, for the same reason
+    /// ``upload(localPath:to:condition:progress:isCancelled:)`` is: a protocol requirement cannot
+    /// carry a default parameter, and a transport that has not been taught this must refuse rather
+    /// than publish an object the caller believes was guarded.
+    func completeMultipartUpload(
+        key: String,
+        uploadID: String,
+        parts: [S3UploadedPart],
+        condition: S3WriteCondition
+    ) throws -> S3Response
+
     /// Abandon a multipart upload and release its stored parts — which S3 bills for until something
     /// removes them.
     func abortMultipartUpload(key: String, uploadID: String) throws -> S3Response
@@ -209,5 +224,15 @@ public extension S3Transport {
     func putEmptyObject(key: String, condition: S3WriteCondition) throws -> S3Response {
         guard !condition.isConditional else { throw S3WriteConditionUnsupported(key: key) }
         return try putEmptyObject(key: key)
+    }
+
+    func completeMultipartUpload(
+        key: String,
+        uploadID: String,
+        parts: [S3UploadedPart],
+        condition: S3WriteCondition
+    ) throws -> S3Response {
+        guard !condition.isConditional else { throw S3WriteConditionUnsupported(key: key) }
+        return try completeMultipartUpload(key: key, uploadID: uploadID, parts: parts)
     }
 }

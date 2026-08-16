@@ -47,8 +47,17 @@ extension S3Backend {
     /// byte twice over. Each part reports as it goes and is then topped up to its exact length once
     /// it lands, so what the caller adds up is the plan's own arithmetic however coarse the
     /// in-flight estimate was (``S3Transport/uploadPart(localPath:to:uploadID:partNumber:progress:isCancelled:)``).
+    ///
+    /// `condition` is evaluated by the server at the **completion**, which is the request that
+    /// publishes the object (PLAN.md §M21 Slice 19). It therefore protects the object without
+    /// protecting the transfer: measured, every part is already sent and paid for by the time the
+    /// refusal arrives, where a conditional single `PUT` is ended before its body moves. A refused
+    /// completion leaves the upload open — the probe endpoint still held it — so the abort below is
+    /// what stops the parts being billed, and that it already runs on every failing exit is the
+    /// reason this cost nothing structurally.
     func uploadInParts(
         _ request: S3MultipartRequest,
+        condition: S3WriteCondition = .unconditional,
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> Int64 {
@@ -81,7 +90,13 @@ extension S3Backend {
                 reportRemainder(of: length, streamed: streamed, to: progress)
             }
             if isCancelled() { throw CancellationError() }
-            try closeUpload(key: request.key, uploadID: uploadID, parts: parts, at: destination)
+            try closeUpload(
+                key: request.key,
+                uploadID: uploadID,
+                parts: parts,
+                at: destination,
+                condition: condition
+            )
         } catch {
             // Best effort by construction: the upload has already failed, and a failing abort must
             // not replace the reason it failed with a second, less useful one.
@@ -158,20 +173,33 @@ extension S3Backend {
     /// report an object that does not exist as uploaded — the quiet direction, on the one request
     /// whose entire job is to say the file arrived
     /// (``S3MultipartDocument/completionFailure(from:status:)``).
+    ///
+    /// **That is also why a refusal is read twice here**, and the two readings are not redundant
+    /// (PLAN.md §M21 Slice 19). `conditionallyWrite` classifies a refusal that arrives as a
+    /// *status* — measured, `HTTP=412` — and cannot see one that arrives under a status the server
+    /// already committed to; the body reading below is the only thing that can, and it was measured
+    /// in the same shape (`HTTP=200` carrying `<Code>PreconditionFailed</Code>`). Both end at
+    /// ``S3Backend/refusalError(_:or:at:)`` so the sentence has one definition.
     private func closeUpload(
         key: String,
         uploadID: String,
         parts: [S3UploadedPart],
-        at destination: VFSPath
+        at destination: VFSPath,
+        condition: S3WriteCondition
     ) throws {
-        let response = try write(at: destination) {
-            try transport.completeMultipartUpload(key: key, uploadID: uploadID, parts: parts)
+        let response = try conditionallyWrite(at: destination, condition: condition) {
+            try transport.completeMultipartUpload(
+                key: key,
+                uploadID: uploadID,
+                parts: parts,
+                condition: condition
+            )
         }
         if let failure = S3MultipartDocument.completionFailure(
             from: response.body,
             status: response.status
         ) {
-            throw failure.vfsError(for: destination)
+            throw Self.refusalError(condition.refusal(for: failure), or: failure, at: destination)
         }
     }
 

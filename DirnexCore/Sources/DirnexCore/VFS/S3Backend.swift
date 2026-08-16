@@ -231,11 +231,18 @@ public struct S3Backend: ConnectionScopedBackend {
     /// from the local file's size, so a short write is visible as a short write instead of being
     /// reported as whatever size the file happened to have on disk.
     /// Internal rather than file-private: the conditional upload in `S3Backend+Conditional.swift`
-    /// hands the multipart case straight back to it, and Swift's `private` does not cross files.
+    /// goes through it, and Swift's `private` does not cross files.
+    ///
+    /// **Both branches carry `condition`, and that they share this one fork is the point**
+    /// (PLAN.md §M21 Slice 19). The precondition rides on a different request in each — the `PUT`
+    /// itself when the file fits, the completion that publishes the object when it does not — so a
+    /// caller deciding *where* to attach one would be a second copy of the size threshold, which is
+    /// how the small and large paths would come to disagree about whether a save is guarded.
     func uploadObject(
         localPath: String,
         key: String,
         at destination: VFSPath,
+        condition: S3WriteCondition = .unconditional,
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws {
@@ -258,6 +265,7 @@ public struct S3Backend: ConnectionScopedBackend {
                     destination: destination,
                     plan: plan
                 ),
+                condition: condition,
                 progress: progress,
                 isCancelled: isCancelled
             )
@@ -265,10 +273,11 @@ public struct S3Backend: ConnectionScopedBackend {
         }
 
         var streamed: Int64 = 0
-        let response = try write(at: destination) {
+        let response = try conditionallyWrite(at: destination, condition: condition) {
             try transport.upload(
                 localPath: localPath,
                 to: key,
+                condition: condition,
                 progress: { delta in
                     streamed += delta
                     progress(delta)

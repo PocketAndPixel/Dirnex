@@ -103,11 +103,30 @@ public extension S3WriteCondition {
     /// errno shape this milestone has already had to name once, for `EXDEV` on a folder rename.
     static let preconditionFailedStatus = 412
 
+    /// The `<Code>` a refused precondition carries, which on one verb is the **only** readable
+    /// signal there is (PLAN.md §M21 Slice 19).
+    ///
+    /// A `CompleteMultipartUpload` may answer **200 with an `<Error>` document**: AWS begins the
+    /// response before it has finished assembling, so a late failure arrives under a status the
+    /// service already committed to. Measured on the probe endpoint driven into that shape — the
+    /// identical refusal came back `HTTP=200` carrying `<Code>PreconditionFailed</Code>` — which is
+    /// exactly the "two shapes rather than one" Slice 17 named as the reason to park the multipart
+    /// half. A status-only reading answers `nil` there, so the write reports as *successful* and
+    /// the object silently does not exist: the quiet direction, on the one request whose entire job
+    /// is to say the file arrived.
+    static let preconditionFailedCode = "PreconditionFailed"
+
     /// Read a failed request against what this condition asked for.
     ///
     /// Answers `nil` when the failure has nothing to do with the precondition, which is the common
     /// case and must stay distinguishable: a 403 on a conditional upload is still a permissions
     /// problem, and reporting it as a conflict would send the user to look for an edit nobody made.
+    ///
+    /// **The status and the code are both read, and neither is redundant.** Every verb but one
+    /// refuses with a status; the completion above may refuse with only a code. The two are read as
+    /// alternatives rather than as a pair for that reason — requiring both would make a refusal
+    /// unreadable on whichever half a given server omits, and requiring the status alone is what
+    /// this slice's probe measured as unreadable.
     func refusal(for error: S3ServiceError) -> S3WriteConditionRefusal? {
         switch self {
         case .unconditional:
@@ -117,15 +136,22 @@ public extension S3WriteCondition {
             // 412, and 409 is S3's own "this already exists" elsewhere in the vocabulary. Both mean
             // the same thing here, and the reason `.ifAbsent` exists is to make that mean something
             // rather than to distinguish two spellings of it.
-            guard error.status == Self.preconditionFailedStatus || error.status == 409 else {
+            guard error.status == Self.preconditionFailedStatus
+                || error.status == 409
+                || error.code == Self.preconditionFailedCode else {
                 return nil
             }
             return .alreadyThere
         case .ifMatches:
             if error.status == Self.preconditionFailedStatus { return .changedSince }
+            if error.code == Self.preconditionFailedCode { return .changedSince }
             // A 404 is only ever *this* on a conditional write: an unconditional PUT to a key that
-            // does not exist creates it, so the status cannot arrive for any other reason.
-            if error.status == 404 { return .goneSince }
+            // does not exist creates it, so the status cannot arrive for any other reason. The
+            // code-only twin is the inferred half rather than the measured one — a refusal
+            // committed to a 200 was measured only for `PreconditionFailed`, and nothing names what
+            // a deleted key answers there — but it is the same reading applied to the same shape,
+            // and its cost when wrong is a sentence rather than a lost write.
+            if error.status == 404 || error.code == "NoSuchKey" { return .goneSince }
             return nil
         }
     }

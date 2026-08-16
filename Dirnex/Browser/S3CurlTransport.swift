@@ -232,6 +232,23 @@ struct S3CurlTransport: S3Transport {
         uploadID: String,
         parts: [S3UploadedPart]
     ) throws -> S3Response {
+        try completeMultipartUpload(
+            key: key,
+            uploadID: uploadID,
+            parts: parts,
+            condition: .unconditional
+        )
+    }
+
+    /// The conditional form is the real one and the plain one forwards to it, as it does for
+    /// `upload` and for the same reason: one place where these arguments are assembled, so a
+    /// precondition cannot be lost by a caller reaching the older spelling.
+    func completeMultipartUpload(
+        key: String,
+        uploadID: String,
+        parts: [S3UploadedPart],
+        condition: S3WriteCondition
+    ) throws -> S3Response {
         let body = S3MultipartDocument.manifest(parts: parts)
         let bodyPath = FileManager.default.temporaryDirectory
             .appendingPathComponent("dirnex-s3-complete-\(UUID().uuidString).xml")
@@ -247,7 +264,8 @@ struct S3CurlTransport: S3Transport {
                 session: session(maxTime: transferTimeout),
                 key: key,
                 uploadID: uploadID,
-                bodyPath: bodyPath.path
+                bodyPath: bodyPath.path,
+                condition: condition
             ),
             measuring: .download
         )

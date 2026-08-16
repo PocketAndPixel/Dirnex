@@ -53,15 +53,37 @@ public extension S3ProcessArguments {
     ///
     /// No `Content-MD5` here, unlike the batch delete: S3 requires that header on `DeleteObjects`
     /// and does not on this verb.
+    ///
+    /// **This is where a large upload's precondition rides** (PLAN.md §M21 Slice 19). The object
+    /// appears only when this request is accepted, so a condition evaluated here decides whether a
+    /// multipart upload is *published* — which is the same protection
+    /// ``S3ProcessArguments/upload(session:key:localPath:condition:)`` gives a small one, and the
+    /// reason ``S3ConditionalWrite/conditionWasSent`` is no longer `false` for every large file.
+    ///
+    /// Two measurements behind it, both against the endpoint that recomputes SigV4 by hand (a
+    /// wrong-secret control refused in the same run):
+    ///
+    /// - **`curl` signs the header here too**, arriving as
+    ///   `content-type;host;if-match;x-amz-content-sha256;x-amz-date`. That was worth measuring
+    ///   rather than inheriting from the `PUT`: this canonical request differs in every field —
+    ///   `POST`, a query string, and a **real** payload digest of the manifest rather than the
+    ///   `UNSIGNED-PAYLOAD` a `-T` stream signs with — and it verified anyway.
+    /// - **A refusal here cannot save the transfer, and that asymmetry is worth stating** because
+    ///   the opposite is true one verb over. A conditional `PUT` is ended by the server's answer to
+    ///   `Expect: 100-continue` before the body moves (64 MiB refused in 0.0009 s, Slice 17); every
+    ///   part of a multipart upload has already been sent and paid for by the time this request is
+    ///   made. So conditioning a large upload is protection, never an economy.
     static func completeMultipartUpload(
         session: S3Session,
         key: String,
         uploadID: String,
-        bodyPath: String
+        bodyPath: String,
+        condition: S3WriteCondition = .unconditional
     ) -> [String] {
         common(session: session) + configFromStandardInput
             + ["-X", "POST", "--data-binary", "@\(bodyPath)"]
             + ["-H", "Content-Type: application/xml"]
+            + condition.headerArguments
             + ["\(session.location.url(forKey: key))?uploadId=\(S3Key.encodedForQuery(uploadID))"]
     }
 

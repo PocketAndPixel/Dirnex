@@ -2482,6 +2482,33 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     (412 / 404 / 204) are *its own code*, so what the run settles is the **client** half — signed,
     sent verbatim, canonicalized the way the documented algorithm says. Only AWS or a real account
     can answer the rest.
+- **A `CompleteMultipartUpload` can refuse a precondition under a status it has already committed
+  to, so on that one verb the `<Code>` is the only readable signal there is.** Probed 2026-08-16 by
+  driving the same endpoint into AWS's documented late-failure shape — the response begins before
+  the object has finished assembling, so an `<Error>` document arrives under the 200 already sent —
+  and the identical refusal came back **`HTTP=200` carrying `<Code>PreconditionFailed</Code>`** where
+  the ordinary run answers 412. A reader keyed on the status therefore answers *nothing is wrong*, on
+  the one request whose entire job is to say the file arrived: the object silently does not exist and
+  the save reports success. Read the status **or** the code, never the status alone, and read the
+  body on this verb whatever the status says.
+  - **The negative control is unusually sharp here and is worth reproducing rather than reasoning
+    about:** the *same* binary with the body-side reading removed passes against a 412-refusing
+    server and fails against a 200-committed one. Nothing about the client changed between the two
+    runs, which is what says the second reading is reachable only in the shape it exists for — and
+    why it would ship untested against any single endpoint.
+  - **`curl` signs the header on this request too, and that is not inherited from the `PUT`.** The
+    canonical request differs in every field — `POST`, a query string, and a **real** payload digest
+    of the manifest where a `-T` stream signs `UNSIGNED-PAYLOAD` — and it verified anyway
+    (`content-type;host;if-match;x-amz-content-sha256;x-amz-date`), `If-None-Match: *` alike.
+  - **A conditional multipart upload cannot save the transfer, which inverts the `PUT`'s economics.**
+    A doomed conditional `PUT` ends at `Expect: 100-continue` before the body moves (64 MiB in
+    0.0009 s, above); every part is already sent and paid for by the time the completion is made. So
+    the same header is a bargain on a small file and pure protection on a large one — and a retry
+    after a refusal re-sends the whole file, since the alternative (holding the upload open across
+    the user's answer) is a bill that is invisible to every listing.
+  - **A refused completion leaves the upload open**, parts stored and billable — measured, the
+    endpoint still held it — so the refusal has to reach whatever aborts. If the abort already runs
+    on every failing exit, making the refusal a *throw* is the whole cost of the feature.
 - **The bucket verbs invert two of this backend's own rules, and both inversions are measured.**
   `CreateBucket`, `DeleteBucket` and `HeadBucket` were probed 2026-08-13 against a SigV4-verifying
   local endpoint and then a real third-party account. They need **no new signing machinery** — all
