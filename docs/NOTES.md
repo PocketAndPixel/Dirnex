@@ -3571,6 +3571,32 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     A user reporting a documented behavior as a bug is evidence about the behavior, not about the
     user.
 
+- **A precondition names the state the user agreed to overwrite, never the state you started
+  from — and the natural way round refuses exactly the write the dialog exists to authorize.** A
+  remote save-back downloads a file, re-`stat`s before uploading, and shows what that found; S3's
+  `If-Match` then closes the window between the answer and the `PUT`. The tag to send is therefore
+  the **check's**, not the download's, and reaching for the download's is the reading everything
+  about the feature invites — it is the revision the cache holds, the one the type is named after,
+  and the one the sentence "has anyone written this since we fetched it" is about. Conditioning on
+  it makes the *conflict* branch permanently dead: a user told «someone else has edited it» who
+  presses Upload has said they mean to replace that version, and the older tag answers 412 to their
+  own decision, which the app then words as somebody having changed the file. Nothing catches it —
+  it compiles, it reads correctly at the call site, and only a test that constructs *two* revisions
+  and asserts which one reached the header can see the difference.
+  - **The refusal deserves a decision rather than an error.** A 412 means the object moved in a
+    window measured in milliseconds; nothing is broken, and the user has already answered one
+    question about overwriting. An OK button leaves them with "save again in the editor" as the only
+    route, which is not guaranteed to exist — an editor asked to save a file it has not changed may
+    write nothing for a size-and-mtime watcher to notice. Offer the unconditional retry, once:
+    re-`stat`-and-re-condition can be refused again by a third writer, which is a loop with a round
+    trip in it (▸ curl, the FTPS trust retry).
+  - **Whether the server honours any of it is unmeasurable from the client**, so this kind of
+    protection is only ever worth building as *strictly additive* — the check the user reads stays
+    the one that works everywhere, and nothing on screen may claim the write was guarded. The
+    corollary that decides the code: a large upload that cannot carry the condition (multipart) says
+    so in a return value and shows the user nothing, because announcing the absence of a protection
+    nothing promised is worse than silence.
+
 - **A guard whose comment explains why it can never fire is the one to re-read when a backend widens
   a signal — and the *reason* it fires is exactly the operation it was reached for.**
   `UndoJournal.crossVolumeRestore` required both ends of a restore to share a name, saying so out

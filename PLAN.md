@@ -1908,10 +1908,61 @@ both linters clean, all three check scripts passing).
 `If-Match` on `CompleteMultipartUpload` is what AWS documents and `curl` would sign it as readily,
 but a completion can already fail *inside a 200*, so a refusal there has two shapes to read rather
 than one, and none of it is measurable against an endpoint that is ours. The **save-back** is the
-other half: `RemoteFileRevision` already carries the ETag that `.ifMatches` wants, so wiring F4's
-write-back to pass it is the next pass, together with the two new sentences reaching the screen.
-Neither is verified against a real endpoint yet — the live config file this milestone's suites are
-gated on is not on this Mac, so `S3AccountLiveIntegrationTests` skipped throughout.
+other half — `RemoteFileRevision` already carries the ETag that `.ifMatches` wants — and is Slice 18
+below. Neither is verified against a real endpoint yet — the live config file this milestone's suites
+are gated on is not on this Mac, so `S3AccountLiveIntegrationTests` skipped throughout.
+
+#### Slice 18 — 2026-08-16: the save-back sends the precondition
+
+Slice 17's other half, and it is app-only: `BrowserWindowController.writeCondition(checked:)`,
+`conditionalWriter(for:)` on `CompositeBackend`, the refusal's own prompt, and three keys translated
+in all fourteen (+9 app tests; 2511 core / 544 app green, both linters clean, all three check
+scripts passing). F4 on a bucket object now uploads under `If-Match`, and the two sentences Slice 17
+minted reach the screen.
+
+- **The whole wiring has one decision in it, and the natural way round breaks the feature outright:
+  which revision's tag travels.** The obvious reading is "the file we downloaded" — and conditioning
+  on that refuses precisely the write the prompt exists to authorize. Someone told «the file on the
+  server has changed — someone else has edited it» who then presses Upload has said they mean to
+  replace *that* version; an `If-Match` naming the older tag answers 412 to their own decision, in a
+  sentence claiming somebody changed the file. So the **check's** tag is what is sent: it pins what
+  they agreed to overwrite, which is exactly the window `RemoteFileRevision` cannot cover — between
+  the answer and the `PUT`. It compiles, it reads correctly at the call site, and nothing else in
+  either suite can see it, which is what the named function and its negative control are for.
+- **A refusal is a decision, not an error with an OK button.** A 412 here means the object moved in
+  that window — nothing is broken — so it gets its own prompt naming what happened and offering
+  Upload Anyway. The retry is deliberately **unconditional** rather than re-`stat`-and-re-condition:
+  the second form can be refused again by a third writer, which is a loop with a round trip in it
+  (the shape the FTPS trust retry had to guard against), and the user has now been told twice.
+  Without the offer the only route out is saving again in the editor — and an editor asked to save a
+  file it has not changed may write nothing for the watcher to notice, so "just save again" is an
+  escape that is not guaranteed to exist.
+- **The two refusals get two sentences**, because what uploading anyway *does* differs: a changed
+  object has a newer version to destroy, a deleted one has nothing to destroy and nothing to compare
+  with — "replaces their version" and "puts it back as a new file" are each false in the other's
+  case.
+- **`conditionalWriter(for:)` is a lookup rather than a test on the path**, and its narrowness is
+  the half worth asserting: `path.backend.isS3` is `true` for a bucket nobody has connected, while
+  an account root, an archive member, an SFTP path and the local disk must all answer `nil`. A
+  lookup that answered for everything would send an `If-Match` down a seam that (correctly) throws
+  rather than dropping it — so the failure would be a save-back that stops working over SFTP, FTP
+  and the local disk alike.
+- **`conditionWasSent` is deliberately shown nowhere.** A file over the multipart threshold reports
+  `false`, and the prompt the user agreed to never claimed the write was guarded — it rests on the
+  re-`stat`, which works at every size and on every server. Saying "this large save was not
+  protected" would announce the absence of a protection nothing had promised, which is the
+  strictly-additive rule read from the other end.
+- **Three negative controls, each firing on its own assertions**: the condition flattened to
+  `.unconditional` (both tag tests fail, both "writes unconditionally" tests keep passing), the
+  refusal reader widened to answer for every error (the narrowness test fails on all four of its
+  errors, plus the `.gone` half of its neighbour), and the writer lookup made to ignore the path
+  (the narrowness test fails on all four backends while "needs a connection" passes).
+
+Unverified against a real endpoint, and named rather than skipped: the live config file this
+milestone's suites are gated on is still not on this Mac. What that leaves unmeasured is one step —
+whether a real provider's 412 arrives in the shape `S3WriteCondition.refusal(for:)` reads — since
+everything before it (the header travelling, signed, with its quotes intact) was measured in Slice
+17 against an endpoint that recomputes SigV4 by hand.
 
 ### M22 — Find Files on a connected server (M, opened 2026-08-16)
 

@@ -313,6 +313,23 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         return s3AccountConnections[backendID.rawValue]
     }
 
+    /// The connected backend that can attach a **precondition** to a write at `path`, or `nil` when
+    /// nothing here can (PLAN.md §M21 Slice 18).
+    ///
+    /// Named for the question rather than for the type, because the answer is *not* "is this S3":
+    /// an unconnected bucket, an account root, an archive member and a local file all answer `nil`,
+    /// and a caller spelling `path.backend.isS3` would get `true` for two of those. One funnel is
+    /// what keeps that rule from being written a second way — this milestone has re-derived the
+    /// one-rule-several-spellings finding often enough to stop restating it (docs/NOTES.md ▸ AppKit).
+    ///
+    /// Deliberately concrete rather than a protocol: S3 is the only backend with a conditional
+    /// write, and a protocol over one conformer would hide which backend a call site is really
+    /// talking to while offering nothing a second implementation could use.
+    func conditionalWriter(for path: VFSPath) -> S3Backend? {
+        guard path.backend.isS3 else { return nil }
+        return s3Backend(for: path.backend)
+    }
+
     private func connectedS3(for backendID: VFSBackendID) throws -> S3Backend {
         guard let backend = s3Backend(for: backendID) else {
             throw VFSError.unsupported(.serverNotConnected(server: "\(backendID)"))

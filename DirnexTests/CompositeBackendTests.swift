@@ -163,6 +163,41 @@ struct CompositeBackendTests {
         }
     }
 
+    // MARK: - Who can carry a precondition
+
+    /// The lookup a guarded save-back routes through (PLAN.md §M21 Slice 18), and the reason it is
+    /// a lookup rather than a test on the path: `path.backend.isS3` is `true` for a bucket nobody
+    /// has connected, where there is no credential to sign with and nothing to write through.
+    @Test("a connected bucket can carry a precondition, and an unconnected one cannot")
+    func conditionalWriterNeedsAConnection() {
+        let path = VFSPath(backend: .s3(Self.bucket), path: "/docs/notes.txt")
+        #expect(backend.conditionalWriter(for: path) == nil)
+
+        backend.connectS3(location: Self.bucket, secretAccessKey: "secret")
+        #expect(backend.conditionalWriter(for: path) != nil)
+    }
+
+    /// The narrowness controls, and they are the half that matters: a lookup that answered for
+    /// everything would send an `If-Match` down a path that cannot carry one, and the seam beneath
+    /// it throws rather than dropping the header — so the failure would be a save-back that stops
+    /// working over SFTP, FTP and the local disk alike.
+    @Test("nothing but a bucket answers, connected or not")
+    func conditionalWriterIsNarrow() {
+        backend.connectS3(location: Self.bucket, secretAccessKey: "secret")
+        backend.connectS3Account(account: Self.bucket.account, secretAccessKey: "secret")
+
+        #expect(backend.conditionalWriter(for: .local("/Users/me/notes.txt")) == nil)
+        #expect(backend.conditionalWriter(
+            for: VFSPath(backend: .s3Account(Self.bucket.account), path: "/photos")
+        ) == nil)
+        #expect(backend.conditionalWriter(
+            for: VFSPath(backend: .sftp(SFTPLocation(host: "h", username: "u")), path: "/home/u/a")
+        ) == nil)
+        #expect(backend.conditionalWriter(
+            for: VFSPath(backend: .archive(forArchiveAt: "/Users/me/pkg.zip"), path: "/a/b.txt")
+        ) == nil)
+    }
+
     // MARK: - Accounts
 
     /// An account pane is writable in a narrower sense than a bucket's — its writes create and

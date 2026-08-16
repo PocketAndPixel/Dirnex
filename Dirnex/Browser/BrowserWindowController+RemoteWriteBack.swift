@@ -64,7 +64,7 @@ extension BrowserWindowController {
 
         let handler: (NSApplication.ModalResponse) -> Void = { [weak self] response in
             guard response == .alertFirstButtonReturn else { return }
-            self?.uploadEditedFile(edit, to: path)
+            self?.uploadEditedFile(edit, to: path, condition: Self.writeCondition(checked: current))
         }
         // The watcher raised this, not the user — see `beginSheetIfVisible`.
         alert.beginSheetIfVisible(over: window, completionHandler: handler)
@@ -178,34 +178,79 @@ extension BrowserWindowController {
         }
     }
 
+    // MARK: - The precondition
+
+    /// The precondition a save-back attaches, read off **the revision the user was shown** rather
+    /// than off the one that was downloaded (PLAN.md §M21 Slice 18).
+    ///
+    /// This is the load-bearing line of the whole wiring, and the natural way round breaks the
+    /// feature outright: conditioning on the *download's* tag would refuse exactly the write this
+    /// dialog exists to authorize. Someone told "the file on the server has changed — someone else
+    /// has edited it" who then presses Upload has said they mean to replace *that* version, and an
+    /// `If-Match` naming the older tag answers 412 to their own decision, in a sentence claiming
+    /// somebody changed the file. So the check's tag is what travels: it pins what they agreed to
+    /// overwrite, which is precisely the window `RemoteFileRevision` cannot cover — between the
+    /// answer and the `PUT` (`S3WriteCondition`).
+    ///
+    /// `.unconditional` for everything else, and that is the additive design rather than a gap.
+    /// SFTP and FTP have no entity tag, a check that could not reach the server has nothing to pin,
+    /// and an S3 row whose listing carried no `<ETag>` is the same case — each goes on resting on
+    /// the re-`stat` this prompt is worded from, which is where they were before this slice. Never
+    /// worse, and never claiming more.
+    static func writeCondition(checked current: RemoteFileRevision?) -> S3WriteCondition {
+        guard let entityTag = current?.entityTag else { return .unconditional }
+        // Verbatim, quotes included: an unquoted digest is a different byte string to S3 and
+        // matches nothing, so tidying them away would turn every conditional save into a 412
+        // reading "somebody else changed this file" (docs/NOTES.md ▸ curl for S3).
+        return .ifMatches(entityTag: entityTag)
+    }
+
     // MARK: - The upload
 
     /// Send the edited copy back up, then re-baseline what a *second* save will compare against.
-    private func uploadEditedFile(_ edit: EditedFile, to path: VFSPath) {
+    ///
+    /// The write is routed to the backend that can carry `condition` when there is one, and to the
+    /// ordinary `copyFile` when there is not — never the other way about. A conditional call that
+    /// quietly lost its precondition is the one outcome worse than not having the feature, which is
+    /// why the seam beneath this throws rather than dropping it (`S3WriteConditionUnsupported`).
+    private func uploadEditedFile(
+        _ edit: EditedFile,
+        to path: VFSPath,
+        condition: S3WriteCondition
+    ) {
         let backend = focusedPanel.backend
+        let writer = condition.isConditional
+            ? (backend as? CompositeBackend)?.conditionalWriter(for: path)
+            : nil
         let source = VFSPath.local(edit.temporaryURL.path)
         let url = edit.temporaryURL
         Task {
             let outcome = await BlockingWork.run { () -> Result<Void, any Error> in
                 Result {
-                    try backend.copyFile(
-                        at: source, to: path, progress: { _ in }, isCancelled: { false }
+                    guard let writer else {
+                        return try backend.copyFile(
+                            at: source, to: path, progress: { _ in }, isCancelled: { false }
+                        )
+                    }
+                    // The answer — whether the precondition actually travelled — is deliberately
+                    // not shown anywhere: a file over the multipart threshold reports `false`, and
+                    // the prompt the user already agreed to never claimed the write was guarded.
+                    // It rests on the re-`stat`, which works on every server and in every size.
+                    // Saying "this large save was not protected" would be announcing the absence
+                    // of a protection nothing had promised (`S3ConditionalWrite`).
+                    try writer.upload(
+                        localPath: url.path,
+                        over: path,
+                        condition: condition,
+                        progress: { _ in },
+                        isCancelled: { false }
                     )
                 }
             }
             do {
                 try outcome.get()
             } catch {
-                focusedPanel.presentOperationFailure(
-                    message: String(
-                        localized: "Couldn’t upload “\(edit.name)”",
-                        comment: """
-                        Alert title when uploading an edited file back to its server fails; %@ is \
-                        the file's name.
-                        """
-                    ),
-                    detail: focusedPanel.describe(error)
-                )
+                presentWriteBackFailure(error, edit: edit, to: path)
                 return
             }
             // The watch deliberately stays: unlike a repack, an upload changes nothing on this Mac,
@@ -215,6 +260,136 @@ extension BrowserWindowController {
             // "someone else has edited it", which is the one sentence that must never be wrong.
             await rebaseline(path, to: url, using: backend)
             refreshPanesShowing(path.parent)
+        }
+    }
+
+    // MARK: - When the server says no
+
+    /// Report a failed upload — or, when the *precondition* is what refused it, offer the way
+    /// through rather than a dead end.
+    ///
+    /// A refused precondition is not a malfunction: it means the object moved under us in the
+    /// window between the check and the `PUT`, which is the exact race this slice added the header
+    /// for. The user has already answered one question about overwriting and is entitled to answer
+    /// this one, so the sentence arrives as a *decision* rather than as an error with an OK button
+    /// — otherwise the only route left is saving again in the editor, and an editor asked to save a
+    /// file it has not changed may write nothing for the watcher to notice.
+    private func presentWriteBackFailure(_ error: any Error, edit: EditedFile, to path: VFSPath) {
+        guard let conflict = Self.writeBackConflict(from: error) else {
+            focusedPanel.presentOperationFailure(
+                message: String(
+                    localized: "Couldn’t upload “\(edit.name)”",
+                    comment: """
+                    Alert title when uploading an edited file back to its server fails; %@ is the \
+                    file's name.
+                    """
+                ),
+                detail: focusedPanel.describe(error)
+            )
+            return
+        }
+        presentUploadAnywayOffer(conflict, edit: edit, to: path)
+    }
+
+    /// Whether `error` is the server refusing the precondition, as opposed to anything else that
+    /// can go wrong on the way up.
+    ///
+    /// Narrow on purpose, and the narrowness is the point: a 403 on a conditional upload is still a
+    /// permissions problem, and offering to "upload anyway" over one would be an offer that cannot
+    /// work — it would fail identically, having asked the user to authorize an overwrite that never
+    /// happens. Only the two refusals the condition itself produces get the second question.
+    ///
+    /// `static` and pure so both the classification and its wording are testable without a window.
+    static func writeBackConflict(from error: any Error) -> RemoteWriteBackConflict? {
+        guard case let VFSError.unsupported(reason) = error else { return nil }
+        switch reason {
+        case .remoteFileChangedSinceFetch: return .changed
+        case .remoteFileGoneSinceFetch: return .gone
+        default: return nil
+        }
+    }
+
+    /// The second question, asked once and never in a loop: the retry is **unconditional**, so it
+    /// cannot come back here.
+    ///
+    /// That is a decision rather than a shortcut. Re-reading the object and conditioning on the new
+    /// tag would be more precise and could be refused again by a third writer, which is a loop with
+    /// a round trip in it (the same shape the FTPS trust retry had to guard against); and the user
+    /// has now been told twice, so a third round trip has nothing left to tell them. An
+    /// unconditional write is exactly what this save would have done before this slice existed.
+    private func presentUploadAnywayOffer(
+        _ conflict: RemoteWriteBackConflict,
+        edit: EditedFile,
+        to path: VFSPath
+    ) {
+        let alert = NSAlert()
+        alert.messageText = String(
+            localized: "Upload “\(edit.name)” anyway?",
+            comment: """
+            Title of the prompt shown when the server refused a conditional save-back; %@ is the \
+            file's name.
+            """
+        )
+        alert.informativeText = Self.uploadAnywayBody(conflict)
+        alert.addButton(withTitle: String(
+            localized: "Upload Anyway",
+            comment: """
+            Button that uploads an edited file over the server's copy after the server refused the \
+            guarded upload.
+            """
+        ))
+        alert.addButton(withTitle: String(
+            localized: "Keep Editing",
+            comment: """
+            Button that declines uploading an edited file, leaving the editor open so the user can \
+            save again later.
+            """
+        ))
+        alert.enableEscapeToCancel(safe: .alertSecondButtonReturn)
+
+        let handler: (NSApplication.ModalResponse) -> Void = { [weak self] response in
+            guard response == .alertFirstButtonReturn else { return }
+            self?.uploadEditedFile(edit, to: path, condition: .unconditional)
+        }
+        // The chain this continues was raised by the edit watcher, not by a key anybody pressed, so
+        // a window that has gone away in the meantime has nobody to ask (`beginSheetIfVisible`).
+        alert.beginSheetIfVisible(over: window, completionHandler: handler)
+    }
+
+    /// What the server refused, and what uploading anyway would do about it.
+    ///
+    /// Two sentences rather than one, because the user's situation genuinely differs: a *changed*
+    /// object has a newer version that uploading destroys, while a *gone* one has nothing to
+    /// destroy and nothing to compare with — so "replaces their version" would be false there, and
+    /// "puts it back" would be false in the other direction.
+    ///
+    /// `static` and pure so the wording is testable without a window, exactly like
+    /// ``writeBackBody(recorded:current:)``.
+    static func uploadAnywayBody(_ conflict: RemoteWriteBackConflict) -> String {
+        switch conflict {
+        case .changed:
+            String(
+                localized: """
+                The server refused the upload: somebody wrote to this file between Dirnex checking \
+                it and the upload starting. Uploading anyway replaces their version and can’t be \
+                undone.
+                """,
+                comment: """
+                Body of the upload-anyway prompt when the server refused the guarded upload because \
+                the file changed in the meantime.
+                """
+            )
+        case .gone:
+            String(
+                localized: """
+                The server refused the upload: this file isn’t there any more — somebody has \
+                deleted or moved it. Uploading anyway puts it back as a new file.
+                """,
+                comment: """
+                Body of the upload-anyway prompt when the server refused the guarded upload because \
+                the file no longer exists.
+                """
+            )
         }
     }
 
@@ -244,4 +419,19 @@ extension BrowserWindowController {
             pane.refreshCurrentDirectory()
         }
     }
+}
+
+/// Why a guarded save-back was refused, in the two shapes the user's next step differs between
+/// (PLAN.md §M21 Slice 18).
+///
+/// A translation of the core's `S3WriteConditionRefusal` rather than a re-export of it, and
+/// deliberately one case narrower: `.alreadyThere` answers an `.ifAbsent` write, which a save-back
+/// never sends. Carrying it here would put an unreachable arm in front of every reader of this type
+/// and invite a sentence nobody can ever see.
+enum RemoteWriteBackConflict: Equatable {
+    /// The object changed between the check and the upload — there is a newer version, and
+    /// uploading destroys it.
+    case changed
+    /// The object is gone — nothing to overwrite, and nothing to compare against.
+    case gone
 }

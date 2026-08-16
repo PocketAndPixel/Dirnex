@@ -75420,6 +75420,184 @@
         }
       }
     },
+    "The server refused the upload: somebody wrote to this file between Dirnex checking it and the upload starting. Uploading anyway replaces their version and can’t be undone.": {
+      "comment": "Body of the upload-anyway prompt when the server refused the guarded upload because the file changed in the meantime.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server hat das Hochladen abgelehnt: Zwischen der Prüfung durch Dirnex und dem Beginn des Hochladens hat jemand diese Datei geschrieben. Trotzdem hochzuladen ersetzt deren Fassung und lässt sich nicht rückgängig machen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server refused the upload: somebody wrote to this file between Dirnex checking it and the upload starting. Uploading anyway replaces their version and can’t be undone."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El servidor rechazó la subida: alguien escribió en este archivo entre la comprobación de Dirnex y el inicio de la subida. Subirlo de todos modos reemplaza su versión y no se puede deshacer."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le serveur a refusé l’envoi : quelqu’un a écrit dans ce fichier entre la vérification de Dirnex et le début de l’envoi. L’envoyer quand même remplace sa version, de façon irréversible."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il server ha rifiutato il caricamento: qualcuno ha scritto su questo file tra il controllo di Dirnex e l’inizio del caricamento. Caricarlo lo stesso sostituisce la loro versione e non può essere annullato."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバーがアップロードを拒否しました。Dirnex が確認してからアップロードが始まるまでの間に、誰かがこのファイルを書き換えました。それでもアップロードすると相手の版が置き換わり、取り消せません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버가 업로드를 거부했습니다. Dirnex가 확인한 뒤 업로드가 시작되기 전에 다른 사람이 이 파일을 수정했습니다. 그래도 업로드하면 그 버전이 대체되며 되돌릴 수 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De server heeft het uploaden geweigerd: iemand heeft naar dit bestand geschreven tussen de controle door Dirnex en het begin van de upload. Toch uploaden vervangt hun versie en kan niet ongedaan worden gemaakt."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serwer odrzucił wysyłanie: ktoś zapisał ten plik między sprawdzeniem przez Dirnex a rozpoczęciem wysyłania. Wysłanie mimo to zastąpi jego wersję i nie można tego cofnąć."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O servidor recusou o envio: alguém gravou neste arquivo entre a verificação do Dirnex e o início do envio. Enviar mesmo assim substitui a versão dessa pessoa e não pode ser desfeito."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер отклонил выгрузку: между проверкой Dirnex и началом выгрузки этот файл записал кто-то ещё. Выгрузка всё равно заменит его версию, и отменить это будет нельзя."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер відхилив вивантаження: між перевіркою Dirnex і початком вивантаження цей файл записав хтось інший. Вивантаження все одно замінить його версію, і скасувати це буде неможливо."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器拒绝了此次上传：在 Dirnex 检查之后、上传开始之前，有人写入了这个文件。仍要上传会替换对方的版本，且无法撤销。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伺服器拒絕了這次上傳：在 Dirnex 檢查之後、上傳開始之前，有人寫入了這個檔案。仍要上傳會取代對方的版本，且無法復原。"
+          }
+        }
+      }
+    },
+    "The server refused the upload: this file isn’t there any more — somebody has deleted or moved it. Uploading anyway puts it back as a new file.": {
+      "comment": "Body of the upload-anyway prompt when the server refused the guarded upload because the file no longer exists.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server hat das Hochladen abgelehnt: Diese Datei ist nicht mehr vorhanden – jemand hat sie gelöscht oder verschoben. Trotzdem hochzuladen legt sie als neue Datei wieder an."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server refused the upload: this file isn’t there any more — somebody has deleted or moved it. Uploading anyway puts it back as a new file."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El servidor rechazó la subida: este archivo ya no está — alguien lo ha eliminado o movido. Subirlo de todos modos lo vuelve a crear como un archivo nuevo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le serveur a refusé l’envoi : ce fichier n’est plus là — quelqu’un l’a supprimé ou déplacé. L’envoyer quand même le recrée comme un nouveau fichier."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il server ha rifiutato il caricamento: questo file non c’è più — qualcuno l’ha eliminato o spostato. Caricarlo lo stesso lo ricrea come file nuovo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバーがアップロードを拒否しました。このファイルはもうありません — 誰かが削除するか移動しました。それでもアップロードすると、新しいファイルとして作り直されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버가 업로드를 거부했습니다. 이 파일은 더 이상 없습니다 — 누군가 삭제했거나 옮겼습니다. 그래도 업로드하면 새 파일로 다시 만들어집니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De server heeft het uploaden geweigerd: dit bestand is er niet meer — iemand heeft het verwijderd of verplaatst. Toch uploaden zet het terug als een nieuw bestand."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serwer odrzucił wysyłanie: tego pliku już nie ma — ktoś go usunął lub przeniósł. Wysłanie mimo to utworzy go ponownie jako nowy plik."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O servidor recusou o envio: este arquivo não está mais lá — alguém o excluiu ou moveu. Enviar mesmo assim o recria como um arquivo novo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер отклонил выгрузку: этого файла больше нет — кто-то удалил или переместил его. Выгрузка всё равно создаст его заново как новый файл."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер відхилив вивантаження: цього файлу більше немає — хтось видалив або перемістив його. Вивантаження все одно створить його заново як новий файл."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器拒绝了此次上传：这个文件已经不在了 — 有人把它删除或移走了。仍要上传会把它作为新文件重新放回去。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伺服器拒絕了這次上傳：這個檔案已經不在了 — 有人把它刪除或移走了。仍要上傳會把它當作新檔案重新放回去。"
+          }
+        }
+      }
+    },
     "The server reports no modification date for this file, so only its size could be checked — a change that kept the same length wouldn’t show up here. %@": {
       "comment": "Remote write-back body when the server gave no timestamp at all; %@ is the shared “uploading replaces…” sentence.",
       "localizations": {
@@ -81824,6 +82002,184 @@
           "stringUnit": {
             "state": "translated",
             "value": "上傳"
+          }
+        }
+      }
+    },
+    "Upload Anyway": {
+      "comment": "Button that uploads an edited file over the server's copy after the server refused the guarded upload.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trotzdem hochladen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upload Anyway"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subir de todos modos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Envoyer quand même"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carica lo stesso"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "それでもアップロード"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그래도 업로드"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toch uploaden"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyślij mimo to"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviar mesmo assim"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Всё равно выгрузить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Усе одно вивантажити"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仍要上传"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仍要上傳"
+          }
+        }
+      }
+    },
+    "Upload “%@” anyway?": {
+      "comment": "Title of the prompt shown when the server refused a conditional save-back; %@ is the file's name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ trotzdem hochladen?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upload “%@” anyway?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Subir “%@” de todos modos?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Envoyer «%@» quand même ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caricare “%@” lo stesso?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "それでも“%@”をアップロードしますか？"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그래도 “%@”을(를) 업로드하시겠습니까?"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” toch uploaden?"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wysłać „%@” mimo to?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviar “%@” mesmo assim?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Всё равно выгрузить «%@»?"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Усе одно вивантажити «%@»?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仍要上传“%@”吗？"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仍要上傳「%@」嗎？"
           }
         }
       }
