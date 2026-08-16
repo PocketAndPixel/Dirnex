@@ -103,6 +103,23 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
     /// nothing to say which rule broke. This sentence at least names the shape of a legal name;
     /// ``S3BucketNameProblem`` carries the specific rule for a form that can show it inline.
     case bucketNameNotValid(name: String)
+    /// A conditional save was refused because the object no longer carries the entity tag it had
+    /// when its bytes were fetched — somebody else has written it in between
+    /// (``S3WriteCondition/ifMatches(entityTag:)``).
+    ///
+    /// Named rather than mapped, because the generic mapping is `.io(code: EIO)` — "The system
+    /// reported an error (code 5)" — which is the raw-errno shape this milestone already had to
+    /// name once, for `EXDEV` on a folder rename. It is also the one refusal here that is not a
+    /// fault: nothing is broken, two people edited one file, and the sentence has to say that
+    /// rather than describe a malfunction.
+    case remoteFileChangedSinceFetch(name: String)
+    /// A conditional save was refused because the object is not there any more — the `If-Match`
+    /// had nothing to compare against.
+    ///
+    /// Separate from ``remoteFileChangedSinceFetch(name:)`` because the user's options differ:
+    /// there is no newer version to look at and nothing to merge with, so the honest offer is to
+    /// upload it as a new object rather than to compare.
+    case remoteFileGoneSinceFetch(name: String)
 
     // MARK: Routing and archives — authored in the app, named here
 
@@ -145,6 +162,8 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
         case .objectTooLargeForStore: return "objectTooLargeForStore"
         case .bucketNotEmpty: return "bucketNotEmpty"
         case .bucketNameNotValid: return "bucketNameNotValid"
+        case .remoteFileChangedSinceFetch: return "remoteFileChangedSinceFetch"
+        case .remoteFileGoneSinceFetch: return "remoteFileGoneSinceFetch"
         case .noBackendForPath: return "noBackendForPath"
         case .serverNotConnected: return "serverNotConnected"
         case .archiveToolUnavailableForRead: return "archiveToolUnavailableForRead"
@@ -239,6 +258,16 @@ public extension VFSUnsupportedReason {
                 """,
                 [name]
             )
+        case let .remoteFileChangedSinceFetch(name):
+            return (
+                """
+                “%@” has been changed on the server since you opened it. \
+                Saving now would overwrite that newer version.
+                """,
+                [name]
+            )
+        case let .remoteFileGoneSinceFetch(name):
+            return ("“%@” is no longer on the server. It was deleted after you opened it.", [name])
         case let .noBackendForPath(path):
             return ("No backend can handle %@.", [path])
         case let .serverNotConnected(server):
@@ -292,6 +321,8 @@ public extension VFSUnsupportedReason {
             .objectTooLargeForStore(name: ""),
             .bucketNotEmpty(name: ""),
             .bucketNameNotValid(name: ""),
+            .remoteFileChangedSinceFetch(name: ""),
+            .remoteFileGoneSinceFetch(name: ""),
             .noBackendForPath(path: ""),
             .serverNotConnected(server: ""),
             .archiveToolUnavailableForRead,

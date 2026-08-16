@@ -65,6 +65,15 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
     /// Thrown by every verb when set — the "the request never reached a server" half.
     var thrownError: S3ResponseError?
 
+    /// Every precondition that reached the transport, in call order.
+    ///
+    /// Recorded beside ``writes`` rather than inside it so no existing assertion has to change —
+    /// and because the two answer different questions: `writes` is *what was asked for*, this is
+    /// *what it was guarded with*. A verb that quietly dropped its condition would leave `writes`
+    /// looking perfectly correct, which is exactly the failure ``S3WriteCondition`` exists to
+    /// prevent, so it needs a record of its own to be visible at all.
+    var conditions: [S3WriteCondition] = []
+
     /// Deltas each byte-moving verb reports before it answers — what a real transport streams off
     /// `curl`'s meter or the destination file's growth while the transfer runs.
     ///
@@ -150,6 +159,29 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
         if let thrownError { throw thrownError }
         writes.append(.putEmpty(key))
         return writeResponse
+    }
+
+    // MARK: - Conditional writes
+
+    func upload(
+        localPath: String,
+        to key: String,
+        condition: S3WriteCondition,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> S3Response {
+        conditions.append(condition)
+        return try upload(
+            localPath: localPath,
+            to: key,
+            progress: progress,
+            isCancelled: isCancelled
+        )
+    }
+
+    func putEmptyObject(key: String, condition: S3WriteCondition) throws -> S3Response {
+        conditions.append(condition)
+        return try putEmptyObject(key: key)
     }
 
     func copyObject(from sourceKey: String, to destinationKey: String) throws -> S3Response {

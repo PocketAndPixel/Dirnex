@@ -114,8 +114,25 @@ public protocol S3Transport: Sendable {
         isCancelled: () -> Bool
     ) throws -> S3Response
 
+    /// The same upload, with a precondition the *server* evaluates (``S3WriteCondition``).
+    ///
+    /// A separate requirement rather than a defaulted parameter on the one above, because a
+    /// protocol requirement cannot carry a default and the alternative — widening the existing
+    /// verb — would break every conformance in one edit for a capability most callers never ask
+    /// for. The default implementation below is what keeps this additive.
+    func upload(
+        localPath: String,
+        to key: String,
+        condition: S3WriteCondition,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> S3Response
+
     /// Write a zero-byte object at `key` — the folder marker, and an empty file.
     func putEmptyObject(key: String) throws -> S3Response
+
+    /// The same zero-byte write, with a precondition the server evaluates.
+    func putEmptyObject(key: String, condition: S3WriteCondition) throws -> S3Response
 
     /// Copy one object to another key inside this bucket, server-side. The bytes never travel.
     func copyObject(from sourceKey: String, to destinationKey: String) throws -> S3Response
@@ -160,4 +177,37 @@ public protocol S3Transport: Sendable {
     /// Abandon a multipart upload and release its stored parts — which S3 bills for until something
     /// removes them.
     func abortMultipartUpload(key: String, uploadID: String) throws -> S3Response
+}
+
+/// The additive half of ``S3WriteCondition``: a transport that predates conditional writes keeps
+/// compiling and keeps working, and can never silently write *without* the precondition it was
+/// handed.
+///
+/// The forwarding is the whole design. An unconditional request is passed straight through to the
+/// verb that already exists, so nothing changes for the callers that ask for nothing; a real
+/// condition **throws**, because dropping it is the one outcome that would be worse than not
+/// having the feature — the caller would believe the server had guarded a write it never saw a
+/// precondition for. That is the same reasoning ``S3WriteConditionUnsupported`` carries and the
+/// same failure direction this project keeps naming: quiet, plausible, and wrong.
+public extension S3Transport {
+    func upload(
+        localPath: String,
+        to key: String,
+        condition: S3WriteCondition,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> S3Response {
+        guard !condition.isConditional else { throw S3WriteConditionUnsupported(key: key) }
+        return try upload(
+            localPath: localPath,
+            to: key,
+            progress: progress,
+            isCancelled: isCancelled
+        )
+    }
+
+    func putEmptyObject(key: String, condition: S3WriteCondition) throws -> S3Response {
+        guard !condition.isConditional else { throw S3WriteConditionUnsupported(key: key) }
+        return try putEmptyObject(key: key)
+    }
 }

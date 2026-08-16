@@ -30,7 +30,7 @@ public extension S3Backend {
     /// The trailing slash is the whole content of the operation, and it is why this cannot go
     /// through the upload path: `curl -T` against a URL ending in `/` appends the local file's
     /// basename (measured), so a marker written that way lands under a name nobody chose.
-    /// ``S3ProcessArguments/putEmptyObject(session:key:)`` has no such behavior.
+    /// ``S3ProcessArguments/putEmptyObject(session:key:condition:)`` has no such behavior.
     ///
     /// Nothing checks whether the folder is already there first. A marker is idempotent by
     /// construction — writing the same zero bytes to the same key twice leaves one object — and a
@@ -47,16 +47,27 @@ public extension S3Backend {
     ///
     /// Unlike ``createDirectory(at:)`` this **does** check first, and the asymmetry is the point: a
     /// marker cannot destroy anything, where an empty PUT over an existing key replaces a real file
-    /// with nothing. S3 has no create-if-absent — no `O_EXCL`, no conditional PUT in the base API —
-    /// so the check is a stat and the race between it and the write is unavoidable and accepted.
-    /// It is the difference between "two people creating a file at once" and "F7 silently truncated
-    /// a file that was already there".
+    /// with nothing. It is the difference between "two people creating a file at once" and "F7
+    /// silently truncated a file that was already there".
+    ///
+    /// **The stat is no longer the only guard, 2026-08-16.** It used to be, and this comment used
+    /// to say the race between it and the write was "unavoidable and accepted" because S3 had no
+    /// create-if-absent — which stopped being true when conditional writes arrived, and a
+    /// limitation stated in prose is a feature request with a date on it. `If-None-Match: *` now
+    /// rides along, so on a server that honours it the check and the write are one atomic act.
+    ///
+    /// The stat **stays**, and that is not belt-and-braces: a server that ignores the header
+    /// answers 200 and overwrites, indistinguishably from having honoured it, so the local check
+    /// is what keeps the behaviour identical everywhere (``S3WriteConditionUnsupported``). What the
+    /// header adds is the window between them, on the servers that can close it.
     func createFile(at path: VFSPath) throws {
         try requireOwnBackend(path)
         let key = S3Key.key(for: path)
         guard !key.isEmpty else { throw VFSError.alreadyExists(path) }
         if (try? stat(at: path)) != nil { throw VFSError.alreadyExists(path) }
-        _ = try write(at: path) { try transport.putEmptyObject(key: key) }
+        _ = try conditionallyWrite(at: path, condition: .ifAbsent) {
+            try transport.putEmptyObject(key: key, condition: .ifAbsent)
+        }
     }
 
     // MARK: - Moving
@@ -168,6 +179,39 @@ public extension S3Backend {
             throw service.vfsError(for: path)
         }
         return response
+    }
+
+    /// The same write, with the server's refusal read against the precondition that was sent
+    /// (PLAN.md §M21 Slice 17).
+    ///
+    /// It exists because ``write(at:_:)`` cannot answer this: `vfsError(for:)` maps a status with
+    /// no idea what was asked, and here one status means opposite things — a 412 against
+    /// `.ifAbsent` is "there is already a file here", against `.ifMatches` it is "somebody else has
+    /// written this since you downloaded it". Nothing in the response separates them, so the
+    /// condition has to be in hand at the moment the status is read, which is what makes this a
+    /// funnel rather than a wider `switch` inside the existing one.
+    ///
+    /// Everything the precondition did *not* cause travels on untouched. A 403 on a conditional
+    /// upload is still a permissions problem, and reporting it as a conflict would send the user
+    /// looking for an edit nobody made.
+    @discardableResult
+    func conditionallyWrite(
+        at path: VFSPath,
+        condition: S3WriteCondition,
+        _ body: () throws -> S3Response
+    ) throws -> S3Response {
+        let response = try mapping(path, body)
+        guard let service = Self.serviceError(from: response) else { return response }
+        switch condition.refusal(for: service) {
+        case .alreadyThere:
+            throw VFSError.alreadyExists(path)
+        case .changedSince:
+            throw VFSError.unsupported(.remoteFileChangedSinceFetch(name: path.lastComponent))
+        case .goneSince:
+            throw VFSError.unsupported(.remoteFileGoneSinceFetch(name: path.lastComponent))
+        case .none:
+            throw service.vfsError(for: path)
+        }
     }
 
     /// The `VFSError` for one key a batch delete refused.

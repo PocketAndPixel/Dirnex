@@ -87,11 +87,36 @@ struct S3CurlTransport: S3Transport {
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> S3Response {
+        try upload(
+            localPath: localPath,
+            to: key,
+            condition: .unconditional,
+            progress: progress,
+            isCancelled: isCancelled
+        )
+    }
+
+    /// The conditional form is the real one and the plain one forwards to it, rather than the
+    /// other way round.
+    ///
+    /// That direction is deliberate: it leaves exactly **one** place where the upload arguments are
+    /// assembled, so a precondition cannot be lost by a caller reaching the older spelling. The
+    /// protocol's default implementation exists to protect a transport that has *not* been taught
+    /// this (it throws rather than writing unguarded); a transport that has must not carry a second
+    /// argument builder for the same request, which is how the two would drift.
+    func upload(
+        localPath: String,
+        to key: String,
+        condition: S3WriteCondition,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> S3Response {
         try perform(
             S3ProcessArguments.upload(
                 session: session(maxTime: transferTimeout),
                 key: key,
-                localPath: localPath
+                localPath: localPath,
+                condition: condition
             ),
             measuring: .upload,
             watching: .uploadMeter(totalBytes: Self.fileSize(localPath)),
@@ -101,10 +126,15 @@ struct S3CurlTransport: S3Transport {
     }
 
     func putEmptyObject(key: String) throws -> S3Response {
+        try putEmptyObject(key: key, condition: .unconditional)
+    }
+
+    func putEmptyObject(key: String, condition: S3WriteCondition) throws -> S3Response {
         try perform(
             S3ProcessArguments.putEmptyObject(
                 session: session(maxTime: metadataTimeout),
-                key: key
+                key: key,
+                condition: condition
             ),
             measuring: .upload
         )

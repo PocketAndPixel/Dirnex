@@ -230,7 +230,9 @@ public struct S3Backend: ConnectionScopedBackend {
     /// On the single-`PUT` path the byte count comes from the write-out's upload counter rather than
     /// from the local file's size, so a short write is visible as a short write instead of being
     /// reported as whatever size the file happened to have on disk.
-    private func uploadObject(
+    /// Internal rather than file-private: the conditional upload in `S3Backend+Conditional.swift`
+    /// hands the multipart case straight back to it, and Swift's `private` does not cross files.
+    func uploadObject(
         localPath: String,
         key: String,
         at destination: VFSPath,
@@ -345,7 +347,7 @@ public struct S3Backend: ConnectionScopedBackend {
 
     /// The size of a local regular file, or 0 when it is absent or unreadable — which reads as "no
     /// partial", i.e. a full transfer.
-    private func localFileSize(_ path: String) -> Int64 {
+    func localFileSize(_ path: String) -> Int64 {
         guard let attributes = try? FileManager.default.attributesOfItem(atPath: path),
               let size = attributes[.size] as? Int64 else { return 0 }
         return size

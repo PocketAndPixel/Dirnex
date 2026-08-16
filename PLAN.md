@@ -1828,6 +1828,91 @@ one layer apart.
 `FTPCurlTransport` hit SwiftLint's `type_body_length` on the way and was split by concept rather than
 shaved: `FTPCurlTransport+Process.swift` now holds the spawn, the drains, the wait and the TLS retry.
 
+#### Slice 17 — 2026-08-16: the write the server decides
+
+The one item this milestone **parked rather than rejected**, taken up: Slice 10 wrote down that a
+conditional `If-Match` PUT "is stronger and needs its own probe first (whether `curl` signs it under
+SigV4, and whether anything but AWS honours it)". The second half of the answer had also gone stale
+in the source — `S3Backend.createFile`'s doc comment said the race between its `stat` and its write
+was "unavoidable and accepted" because "S3 has no create-if-absent — no `O_EXCL`, no conditional PUT
+in the base API", which stopped being true when the service shipped conditional writes. A limitation
+stated in prose is a feature request with a date on it, and this one had two.
+
+**The probes settled the client half completely and named the half nobody can settle.** Against a
+fresh ~200-line endpoint that recomputes SigV4 by hand — a wrong-secret control refused in the same
+run, which is what makes a pass evidence rather than a permissive server agreeing (the `moto`
+lesson, now applied four times in this milestone):
+
+- **`curl` signs both headers and needs nothing new to do it.** They arrive in `SignedHeaders` as
+  `host;if-match;x-amz-content-sha256;x-amz-date` and the signature verified every time. The same
+  finding as `x-amz-copy-source` and `Content-MD5` from Slice 4: the header is ours to spell, the
+  signing is not ours to write.
+- **The ETag's quotes are part of the value**, and this is the finding that would have shipped as a
+  bug. An unquoted digest is a different byte string and does not match, so tidying the quotes away
+  turns *every* conditional write into a 412 — which reads as "somebody else changed this file". The
+  app would then report a conflict that never happened, confidently, on every save. `S3ListingParser`
+  has kept the quotes since Slice 10's ETag pass; what was missing was a test saying nothing between
+  it and the wire may take them off.
+- **A doomed conditional PUT costs a round trip rather than the file.** `curl` sends
+  `Expect: 100-continue` above ~1 KiB, and a server answering the precondition there ends it before
+  the body moves: a **64 MiB** upload against a stale tag reported `size_upload=0` in **0.0009 s**.
+  So conditioning a *large* save-back is free, which is the case that would otherwise have been the
+  argument against conditioning at all — and it is a second reason for a header this backend already
+  keeps for the 403 case.
+- **Whether a given server honours any of it is unmeasurable from here, and that decided the
+  design.** A store that ignores `If-Match` answers 200 and overwrites, indistinguishably from having
+  honoured it. So the protection is built **strictly additive**: `createFile` keeps its local `stat`,
+  a save-back keeps resting on `RemoteFileRevision`'s re-`stat`, and the header closes the window
+  after those on the servers that can — never claiming more. `S3ConditionalWrite` is a named box
+  around one `Bool` for the same reason: `conditionWasSent` is a claim about this client and never
+  about the server, and the multipart path reports **`false`** rather than letting a caller believe
+  a large upload was guarded.
+
+`S3WriteCondition` (with `S3WriteConditionRefusal` and `S3WriteConditionUnsupported`),
+`S3Backend+Conditional`, the two conditional verbs on `S3Transport` and `S3CurlTransport`, and two
+`VFSUnsupportedReason` cases translated in all fourteen. +17 core tests (2511 core / 535 app green,
+both linters clean, all three check scripts passing).
+
+- **A 412 means opposite things depending on what was asked, so it cannot be a status map.** Against
+  `.ifAbsent` it is "there is already a file here"; against `.ifMatches` it is "somebody else has
+  written this since you downloaded it" — one is `alreadyExists`, the other is a sentence about a
+  conflict, and nothing in the response separates them. Hence a second write funnel that has the
+  condition in hand at the moment the status is read, rather than a wider `switch` inside the one
+  that maps a status with no idea what produced it. A 404 joins it for one condition only: an
+  unconditional PUT to a missing key *creates* it, so on an `If-Match` that status can only mean the
+  object was deleted, which is a different sentence again (there is nothing to compare with).
+- **Both refusals are named reasons, not a raw errno.** The generic mapping is `.io(code: EIO)` —
+  "The system reported an error (code 5)" — which is the shape this milestone already had to name
+  once, for `EXDEV` on a folder rename. The control run makes that concrete: with `createFile`'s
+  condition neutered, the refusal test fails showing exactly that `code: 5`.
+- **The transport seam refuses rather than dropping.** A protocol requirement cannot carry a default
+  parameter, so the conditional verbs are separate requirements with a default implementation that
+  **throws** when handed a real condition and forwards an unconditional one. Silently writing without
+  the precondition is the one outcome worse than not having the feature, and it is what a transport
+  added later would otherwise do by inheritance. `S3CurlTransport` implements both, with the
+  *conditional* form as the real one and the plain one forwarding to it — one argument builder, so
+  a precondition cannot be lost by a caller reaching the older spelling.
+- **The folder marker deliberately stays unconditional**, and it is a decision rather than an
+  omission: a marker is idempotent by construction, so `.ifAbsent` there would turn the second F7 in
+  the same place into an error about nothing. Pinned by a narrowness test.
+- **Five negative controls, each firing on exactly its own assertions**: `createFile` dropping the
+  condition (2 failures, one of them the raw errno above), the refusal reader losing its narrowness
+  (a 403 then reads as a conflict), the entity tag's quotes stripped, the seam forwarding instead of
+  throwing (`unconditionalCalls → 3` — the dropped precondition reaching the unguarded verb three
+  times), and multipart claiming it carried a condition it cannot.
+- `S3ProcessArguments.swift` was **one line** under SwiftLint's 500-line ceiling, so this feature was
+  the moment to split it by concept rather than shave it: `S3ProcessArguments+Multipart.swift` now
+  holds the four multipart builders, the seam `S3Backend+Multipart.swift` already uses.
+
+**What is left, named rather than quietly skipped.** The multipart path carries no condition —
+`If-Match` on `CompleteMultipartUpload` is what AWS documents and `curl` would sign it as readily,
+but a completion can already fail *inside a 200*, so a refusal there has two shapes to read rather
+than one, and none of it is measurable against an endpoint that is ours. The **save-back** is the
+other half: `RemoteFileRevision` already carries the ETag that `.ifMatches` wants, so wiring F4's
+write-back to pass it is the next pass, together with the two new sentences reaching the screen.
+Neither is verified against a real endpoint yet — the live config file this milestone's suites are
+gated on is not on this Mac, so `S3AccountLiveIntegrationTests` skipped throughout.
+
 ### M22 — Find Files on a connected server (M, opened 2026-08-16)
 
 ⌥F7 has been Spotlight since M4, so it answers for this Mac and for nothing else: connect a bucket

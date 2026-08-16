@@ -189,8 +189,22 @@ public enum S3ProcessArguments {
     ///   kept because the alternative is worse in the direction that matters: without it, an upload
     ///   to a bucket the key cannot write to sends the whole file before learning about the 403 —
     ///   and `curl`'s threshold already restricts the cost to files big enough for that to matter.
-    public static func upload(session: S3Session, key: String, localPath: String) -> [String] {
+    ///
+    /// **`condition` gained that header a second reason, 2026-08-16, and it is the one that makes
+    /// conditioning a large save-back free.** A precondition can be answered at the `Expect` just
+    /// as a 403 can: measured against the SigV4-verifying endpoint, a 64 MiB upload carrying a
+    /// stale `If-Match` reported `size_upload=0` and returned in **0.0009 s**. So a refused
+    /// conditional write costs a round trip rather than the file, wherever the server answers the
+    /// continue — which is exactly the case (a big file) where paying it would have been the
+    /// argument against conditioning at all.
+    public static func upload(
+        session: S3Session,
+        key: String,
+        localPath: String,
+        condition: S3WriteCondition = .unconditional
+    ) -> [String] {
         common(session: session, showingProgress: true) + configFromStandardInput
+            + condition.headerArguments
             + ["--upload-file", localPath, session.location.url(forKey: key)]
     }
 
@@ -210,100 +224,21 @@ public enum S3ProcessArguments {
     /// `--data-binary ""` sends an explicit `Content-Length: 0` and the real SHA-256 of the empty
     /// string, so the request is fully signed and states its own emptiness. The URL here *may* end
     /// in `/` — that is what makes it a folder marker — and does so safely because `-T` is not
-    /// involved (see ``upload(session:key:localPath:)``).
-    public static func putEmptyObject(session: S3Session, key: String) -> [String] {
-        common(session: session) + configFromStandardInput
+    /// involved (see ``upload(session:key:localPath:condition:)``).
+    ///
+    /// `condition` is what lets ``S3Backend/createFile(at:)`` stop racing its own `stat`. It is
+    /// deliberately *not* used for the folder marker: writing the same zero bytes to the same key
+    /// twice leaves one object, so a marker has nothing to protect and `.ifAbsent` there would
+    /// turn an idempotent write into an error on the second F7 in the same place.
+    public static func putEmptyObject(
+        session: S3Session,
+        key: String,
+        condition: S3WriteCondition = .unconditional
+    ) -> [String] {
+        common(session: session) + configFromStandardInput + condition.headerArguments
             + ["-X", "PUT", "--data-binary", "", session.location.url(forKey: key)]
     }
 
-    // MARK: - Multipart
-
-    /// Open a multipart upload, whose answer carries the id every later request quotes.
-    ///
-    /// `--data-binary ""` for the same reason ``putEmptyObject(session:key:)`` uses it: this POST
-    /// has no body, and it is the one spelling that states its own emptiness with a real
-    /// `Content-Length: 0` and a real payload digest rather than falling back to chunked framing.
-    public static func createMultipartUpload(session: S3Session, key: String) -> [String] {
-        common(session: session) + configFromStandardInput
-            + ["-X", "POST", "--data-binary", ""]
-            + ["\(session.location.url(forKey: key))?uploads"]
-    }
-
-    /// Upload one part from a local slice file.
-    ///
-    /// `-T` again, so a part streams and memory stays flat whatever the part size — which is what
-    /// lets the part size be chosen for request efficiency instead of being capped by RAM
-    /// (``S3PartSlice`` argues why the slice is a file at all).
-    ///
-    /// **The upload id is percent-encoded**, and that is the continuation-token lesson applied
-    /// before it can bite: an upload id is an opaque server-chosen token, so it is exactly the kind
-    /// of value that round-trips raw right up until the day a server issues one containing a
-    /// character that means something in a query string. The failure would be intermittent and
-    /// per-server, which is the worst shape available.
-    public static func uploadPart(
-        session: S3Session,
-        key: String,
-        uploadID: String,
-        partNumber: Int,
-        localPath: String
-    ) -> [String] {
-        let query = "partNumber=\(partNumber)&uploadId=\(S3Key.encodedForQuery(uploadID))"
-        return common(session: session, showingProgress: true) + configFromStandardInput
-            + ["--upload-file", localPath]
-            + ["\(session.location.url(forKey: key))?\(query)"]
-    }
-
-    /// Close a multipart upload, handing the server the manifest of parts to assemble.
-    ///
-    /// The manifest travels as a **file** for the reason
-    /// ``deleteObjects(session:bodyPath:contentMD5:)`` does: 10 000 parts of `<Part>` markup runs to
-    /// hundreds of kilobytes, which is past `ARG_MAX`, so an inline body would work until somebody
-    /// uploaded something large enough to need the parts. It carries no secret — part numbers and
-    /// ETags — and stdin is holding the credential regardless.
-    ///
-    /// No `Content-MD5` here, unlike the batch delete: S3 requires that header on `DeleteObjects`
-    /// and does not on this verb.
-    public static func completeMultipartUpload(
-        session: S3Session,
-        key: String,
-        uploadID: String,
-        bodyPath: String
-    ) -> [String] {
-        common(session: session) + configFromStandardInput
-            + ["-X", "POST", "--data-binary", "@\(bodyPath)"]
-            + ["-H", "Content-Type: application/xml"]
-            + ["\(session.location.url(forKey: key))?uploadId=\(S3Key.encodedForQuery(uploadID))"]
-    }
-
-    /// Abandon a multipart upload and release the parts already stored.
-    ///
-    /// **This is a bill, not tidiness.** S3 keeps the parts of an unfinished upload indefinitely and
-    /// charges storage for them, and they are invisible to an ordinary listing — so an upload that
-    /// dies without aborting leaves the user paying for bytes they cannot see and did not keep. It
-    /// is the one request in this backend whose whole purpose is to run after something went wrong.
-    public static func abortMultipartUpload(
-        session: S3Session,
-        key: String,
-        uploadID: String
-    ) -> [String] {
-        common(session: session) + configFromStandardInput
-            + ["-X", "DELETE"]
-            + ["\(session.location.url(forKey: key))?uploadId=\(S3Key.encodedForQuery(uploadID))"]
-    }
-
-    /// Copy one object to another key **inside the same bucket**, server-side.
-    ///
-    /// This is the rename primitive, and the reason a rename costs no local bandwidth: the bytes
-    /// never leave S3. `curl` signs the `x-amz-copy-source` header itself — measured on the wire,
-    /// it arrives in `SignedHeaders` as `host;x-amz-content-sha256;x-amz-copy-source;x-amz-date` —
-    /// which matters because S3 requires every `x-amz-*` header to be signed and would otherwise
-    /// refuse the request.
-    ///
-    /// What `curl` does **not** do is encode the value: the header is passed through byte for byte
-    /// (probed with spaces and `+` in the source key, both of which arrived exactly as written). So
-    /// the encoding is this builder's, and it uses the same path rule the URL does — S3 reads
-    /// `x-amz-copy-source` as an encoded path, so a raw `+` or `#` in a key would name a different
-    /// object than the one being renamed.
     public static func copyObject(
         session: S3Session,
         sourceKey: String,

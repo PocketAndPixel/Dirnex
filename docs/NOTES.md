@@ -2453,6 +2453,35 @@ what made the milestone affordable and the rest inverted rules borrowed from the
   leaves the user paying for bytes they cannot see and did not keep. Abort on every failing exit
   including cancellation, and let the abort swallow its own failure: it runs where something has
   already gone wrong, and the caller's error is the one worth reporting.
+- **`curl` signs `If-Match` and `If-None-Match` too, so a conditional write needs no new machinery —
+  and the ETag's *quotes* are part of the value.** Probed 2026-08-16 against an endpoint that
+  recomputes SigV4 by hand, driven the way the app drives it (`-K -`, `--aws-sigv4`, `-T`): both
+  headers arrive in `SignedHeaders` (`host;if-match;x-amz-content-sha256;x-amz-date`) and the
+  signature verified every time, with a wrong-secret control refused in the same run. Same shape as
+  `x-amz-copy-source` and `Content-MD5` above — the header is ours to spell, the signing is not. The
+  sharp edge is the value: an **unquoted** digest is a different byte string and does not match, so
+  tidying the quotes off a tag turns every conditional write into a 412. That fails in the quiet
+  direction twice over, because a 412 reads as *"somebody else changed this file"* — so the app
+  would report a conflict that never happened, confidently, on every save. `S3ListingParser` keeps
+  the quotes; nothing between it and the wire may take them off.
+  - **A doomed conditional PUT costs a round trip rather than the file**, which is what makes
+    conditioning a *large* save-back free — and it is the second reason for a header this backend
+    already keeps for the 403 case. `curl` sends `Expect: 100-continue` above ~1 KiB, and a server
+    answering the precondition there ends it before the body moves: measured, a **64 MiB** upload
+    against a stale `If-Match` reported `size_upload=0` and returned in **0.0009 s**.
+  - **What no client can measure is whether a given server honours any of it.** A store that ignores
+    `If-Match` answers 200 and overwrites, which is indistinguishable from having honoured it. So a
+    conditional write is only ever worth building as **strictly additive** protection: keep whatever
+    check already worked everywhere (here the re-`stat` of `RemoteFileRevision`), let the header
+    close the window after it on the servers that can, and never let anything the user reads claim
+    the write was guarded. The corollary is that a transport which cannot carry a condition must
+    **throw** rather than write without it — a caller believing it is protected and not being so is
+    strictly worse than one that knows.
+  - The probe endpoint is the same ~200-line SigV4-verifying handler this milestone has now used
+    four times, and it is worth keeping the negative control habit with it: the semantics it answers
+    (412 / 404 / 204) are *its own code*, so what the run settles is the **client** half — signed,
+    sent verbatim, canonicalized the way the documented algorithm says. Only AWS or a real account
+    can answer the rest.
 - **The bucket verbs invert two of this backend's own rules, and both inversions are measured.**
   `CreateBucket`, `DeleteBucket` and `HeadBucket` were probed 2026-08-13 against a SigV4-verifying
   local endpoint and then a real third-party account. They need **no new signing machinery** — all

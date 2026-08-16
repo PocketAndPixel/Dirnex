@@ -114745,6 +114745,184 @@
         }
       }
     },
+    "vfs.unsupported.remoteFileChangedSinceFetch": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. %@ is the file name. Raised when a save-back finds the object has a different entity tag than the one downloaded — somebody else edited it in between. Not a malfunction: word it as a choice the reader has to make, not as an error.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ wurde auf dem Server geändert, seit Sie die Datei geöffnet haben. Beim Sichern würde diese neuere Version überschrieben."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” has been changed on the server since you opened it. Saving now would overwrite that newer version."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» ha cambiado en el servidor desde que lo abriste. Guardar ahora sobrescribiría esa versión más reciente."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« %@ » a été modifié sur le serveur depuis que vous l’avez ouvert. L’enregistrer maintenant écraserait cette version plus récente."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” è stato modificato sul server da quando l’hai aperto. Salvando ora sovrascriveresti quella versione più recente."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」は開いたあとにサーバー上で変更されています。ここで保存すると、その新しいバージョンが上書きされます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‘%@’은(는) 열어 둔 사이에 서버에서 변경되었습니다. 지금 저장하면 그 최신 버전을 덮어씁니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is op de server gewijzigd sinds u het hebt geopend. Nu bewaren zou die nieuwere versie overschrijven."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plik „%@” został zmieniony na serwerze od czasu jego otwarcia. Zapisanie teraz zastąpiłoby tę nowszą wersję."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” foi alterado no servidor desde que você o abriu. Salvar agora sobrescreveria essa versão mais recente."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файл «%@» был изменён на сервере после того, как вы его открыли. Сохранение перезапишет эту более новую версию."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файл «%@» було змінено на сервері після того, як ви його відкрили. Збереження перезапише цю новішу версію."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”在您打开后已在服务器上被更改。现在存储会覆盖那个更新的版本。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」在您打開後已在伺服器上被更動。現在儲存會覆蓋那個較新的版本。"
+          }
+        }
+      }
+    },
+    "vfs.unsupported.remoteFileGoneSinceFetch": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. %@ is the file name. Raised when a save-back finds the object has been deleted since it was downloaded.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ ist nicht mehr auf dem Server. Die Datei wurde gelöscht, nachdem Sie sie geöffnet haben."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is no longer on the server. It was deleted after you opened it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» ya no está en el servidor. Se eliminó después de que lo abrieras."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« %@ » ne se trouve plus sur le serveur. Le fichier a été supprimé après que vous l’avez ouvert."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” non è più sul server. È stato eliminato dopo che l’hai aperto."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」はサーバー上にありません。開いたあとに削除されました。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‘%@’이(가) 서버에 더 이상 없습니다. 열어 둔 뒤에 삭제되었습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” staat niet meer op de server. Het is verwijderd nadat u het hebt geopend."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pliku „%@” nie ma już na serwerze. Został usunięty po jego otwarciu."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” não está mais no servidor. Ele foi apagado depois que você o abriu."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файла «%@» больше нет на сервере. Он был удалён после того, как вы его открыли."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файла «%@» більше немає на сервері. Його було вилучено після того, як ви його відкрили."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”已不在服务器上。它在您打开后被删除了。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」已不在伺服器上。它在您打開後被刪除了。"
+          }
+        }
+      }
+    },
     "vfs.unsupported.remoteToRemoteCopy": {
       "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure.",
       "localizations": {
