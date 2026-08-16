@@ -280,15 +280,13 @@ public struct S3Backend: ConnectionScopedBackend {
 
     /// Close the gap between what was streamed while a transfer ran and what it really moved.
     ///
-    /// Only ever forward, and only when there is something to say. A caller's byte tally adds, so a
-    /// negative delta would walk its bar backwards — and an estimate that overshot (a short write,
-    /// against a percentage of the size the file had when it started) is left standing rather than
-    /// corrected downward. What this guarantees is the direction that matters: a finished transfer
-    /// is never reported as *less* than the bytes `curl` measured.
+    /// Only ever forward, and only when there is something to say — the rule lives in
+    /// ``TransferProgressTally``, which FTP and SFTP reconcile through as well, since three backends
+    /// spelling out one arithmetic is how one of them ends up spelling it differently.
     func reportRemainder(of exact: Int64, streamed: Int64, to progress: (Int64) -> Void) {
-        let remainder = exact - streamed
-        guard remainder > 0 else { return }
-        progress(remainder)
+        var tally = TransferProgressTally()
+        tally.add(streamed)
+        if let remainder = tally.remainder(against: exact) { progress(remainder) }
     }
 
     /// Duplicate one object inside this bucket without the bytes leaving S3.

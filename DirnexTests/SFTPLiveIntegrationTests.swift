@@ -151,19 +151,27 @@ struct SFTPLiveIntegrationTests {
 
         // Upload the prefix, then resume with the full file: `put -a` sends only bytes 120…300.
         try transport.upload(
-            localPrefix.path, to: remote, resume: false, isCancelled: { false }
+            localPrefix.path, to: remote, resume: false, progress: { _ in }, isCancelled: { false }
         )
         try transport.upload(
-            localFull.path, to: remote, resume: true, isCancelled: { false }
+            localFull.path, to: remote, resume: true, progress: { _ in }, isCancelled: { false }
         )
 
-        // Download resume: a local 120-byte partial is filled to 300 by `get -a`.
+        // Download resume: a local 120-byte partial is filled to 300 by `get -a`, and the progress
+        // it reports is the remainder rather than the whole file — the watch's baseline is the
+        // partial that was already there.
         let localDownload = scratch.appendingPathComponent("download.bin")
         try Data(prefix).write(to: localDownload)
+        var streamed: Int64 = 0
         try transport.download(
-            remote, to: localDownload.path, resume: true, isCancelled: { false }
+            remote,
+            to: localDownload.path,
+            resume: true,
+            progress: { streamed += $0 },
+            isCancelled: { false }
         )
         #expect(try Data(contentsOf: localDownload) == full)
+        #expect(streamed <= 180, "a resume reports the 180 bytes it moved, never the whole 300")
     }
 
     @Test("maps a missing remote path to VFSError.notFound")

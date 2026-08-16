@@ -38,12 +38,15 @@ public protocol SFTPTransport: RemoteWriteTransport {
     /// pre-existing size (see `SFTPBackend.copyFile`).
     ///
     /// `isCancelled` is polled **while the bytes move**, and only the two byte-moving verbs take it
-    /// — see ``upload(_:to:resume:isCancelled:)``.
+    /// — see ``upload(_:to:resume:progress:isCancelled:)``. `progress` rides the same poll and
+    /// reports **deltas** as they land, read from the destination file on this machine growing:
+    /// exact, free, and available whatever `sftp` chooses to print.
     @discardableResult
     func download(
         _ remotePath: String,
         to localPath: String,
         resume: Bool,
+        progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> Int64
 
@@ -58,11 +61,24 @@ public protocol SFTPTransport: RemoteWriteTransport {
     /// 2026-08-14 on the S3 transport, whose shape this one shares exactly: without it, Stop on a
     /// 16-second download returned after the full 16 seconds having downloaded the whole file and
     /// then discarded it (docs/NOTES.md ▸ curl for S3).
+    ///
+    /// **`progress` is here for symmetry with ``download(_:to:resume:progress:isCancelled:)`` and
+    /// the shipped transport does not call it, because `sftp` gives an upload no observable at
+    /// all.** Nothing local changes while bytes go out, and — unlike `curl` — `sftp` prints no
+    /// meter a spawned process can read. Probed 2026-08-16 against a real `sshd` over a 1 GiB
+    /// transfer, six ways: `-b -` and interactive, stdout on a pipe and on a PTY, and with the
+    /// `progress` batch command explicitly enabling it (`Progress meter enabled`, then silence).
+    /// Every one of them printed the echoed command and nothing else for the whole three seconds.
+    /// OpenSSH draws the meter only for a foreground process group on a controlling terminal, which
+    /// a spawned child is not. The remaining route — polling the *remote* size — is a fresh
+    /// connection and handshake per tick on a transport with no session, so an upload reports once,
+    /// at the end, and says so rather than inventing a number.
     @discardableResult
     func upload(
         _ localPath: String,
         to remotePath: String,
         resume: Bool,
+        progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> Int64
 

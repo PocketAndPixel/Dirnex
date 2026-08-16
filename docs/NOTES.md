@@ -1864,6 +1864,20 @@ against a fake.
 - **`sftp -b -` forces `BatchMode=yes`, which kills the password prompt** — password auth cannot
   use `-b` and must run interactively over piped stdin. Interactive mode exits 0 on a failed
   command, so scan stderr rather than trusting the exit code.
+- **`sftp` prints no progress meter to a spawned process, and there is no flag that changes that.**
+  Measured 2026-08-16 over a 1 GiB transfer against a real local `sshd`, in six configurations:
+  `-b -` and interactive, stdout on a **pipe** and on a **PTY**, and with the `progress` batch
+  command explicitly enabling it — which replies `Progress meter enabled` and then prints nothing
+  for the whole three seconds. Every run's entire output was the echoed command. OpenSSH draws the
+  meter only for a *foreground process group on a controlling terminal*, which a child spawned by an
+  app is not, so neither `-q`'s absence nor a PTY is the lever it looks like. What follows for a file
+  manager: an SFTP **download** reports progress by watching its own destination file grow (exact
+  and free), and an SFTP **upload** has no observable at all — the only remaining route is polling
+  the remote size, which on a transport with no session is a fresh connection and handshake per
+  tick. Report the exact count once, at the end, and say why; do not reach for a PTY.
+  - The `progress` reply is the trap worth naming on its own: it is an affirmative answer from the
+    tool that changes nothing observable, so a probe that stops at "the command was accepted" reports
+    a working meter.
 - **`SSH_ASKPASS_REQUIRE=force`** (OpenSSH ≥ 8.4) makes ssh call the askpass program with no TTY,
   which is why password auth needs no PTY. Pass the secret only in the child's environment —
   never argv, never disk. Offer **only** `PreferredAuthentications=password`:
@@ -1994,6 +2008,32 @@ off a man page.
   listing path.
 - **`curl`'s progress meter is a bar, not an accountant**: measured at ~1 update/second, rounded to
   `k`/`M` (`339k`). Exact counts come from `-w` at the end.
+  - **It is also the only observable an upload has, so `-sS` silences the one verb that needs it.**
+    The S3 finding applies unchanged over FTP (measured 2026-08-16 against a throttled local server:
+    an 8 MB upload silent for 8.02 s with `-sS`, five reports with `-S`), and the write-out still
+    arrives on **stdout** afterwards, so nothing that reads it changes. A **download** must keep
+    `-sS`: its destination is a local file that grows, which is exact where the meter is a rounded
+    percentage.
+  - **Letting the meter through means it shares stderr with `curl`'s error prose, and over FTP that
+    stream is the *classification*.** `FTPTransportError.classify` reads the **last** three-digit
+    4xx/5xx token for two exit codes, and a meter's speed column is three digits and a unit — so a
+    transfer moving at `553k` when the server refuses it reads as FTP reply 553 ("file name not
+    allowed") and turns a missing path into a permission failure. Keep the table out of the string
+    that gets classified (`CurlProgressMeter.prose`).
+    - **The live control for that is inert, and knowing why saves a hunt**: every failure provoked
+      against a real server classified identically with and without the meter, because a transfer
+      that fails has usually not moved enough for its meter to print anything but zeros. It is
+      reachable by arithmetic rather than by luck, so pin it headlessly with a hand-built row.
+    - **Identify the meter's two header lines structurally, never by their wording.** They are
+      whatever precedes the first meter row — nothing else can be, since `curl` prints them when a
+      transfer starts and an error arriving first is terminal. Matching `% Total` or `Dload` is a
+      rule about this version's phrasing, and "drop the first two lines" eats the whole message on
+      the invocations that carry no meter at all (every listing, every `-Q`), which is the common
+      case.
+  - **The table is printed for every `-S` transfer, including one that never connects** (probed: an
+    unreachable host still yields the header and two zero rows before `curl: (7) …`). So on a
+    transfer invocation there is always a row after the header, and the structural rule above always
+    has something to key on.
 - **An FTPS data connection can return zero bytes and exit 18 on this `curl`** when TLS 1.3 is
   negotiated; `--tlsv1.2 --tls-max 1.2` fixes it, on both SSL backends. Apply it as a **retry after
   exit 18**, not up front — forcing every server to 1.2 is a real downgrade for the ones that do 1.3

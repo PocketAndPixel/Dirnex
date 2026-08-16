@@ -1656,7 +1656,7 @@ first report at 1.1 s of a 12.4-second upload and 1.2 s of a 20.4-second downloa
 
 **Left undone, and named rather than quietly skipped:** FTP and SFTP have the identical silence —
 the same `ProcessWaiting` hook and the same meter are already in place for them to use, since
-`FTPCurlTransport` drives the same `curl`.
+`FTPCurlTransport` drives the same `curl`. **Closed 2026-08-16** (below).
 
 #### Slice 13 — 2026-08-14: the Download button the mouse could not reach
 
@@ -1769,6 +1769,64 @@ slide installs, so "has the page turned" needs no window, screenshot or wait. Th
 the shipped behaviour: with the wait removed, the two tests about waiting fail and the two narrowness
 controls — slides at once when nothing is loading, and a flip cancelled with the surface is not
 revived by a late load — keep passing, which is what says they are measuring different things.
+
+#### Slice 16 — 2026-08-16: FTP and SFTP say where they have got to
+
+Slice 12 fixed S3's motionless queue bar and wrote its own leftover down: the other two remote
+backends had the identical silence, with the meter and the `ProcessWaiting` hook already sitting
+there for them to use. Reproduced before touching anything, against a **throttled** local server
+(1 MB/s — a rate is what this class of bug needs, not an input): an 8 MB FTP upload reported its
+bytes **once, 8.02 seconds after it started**.
+
+**The probes decided the shape, and one of them decided a limitation.**
+
+- **`sftp` prints no progress meter to a spawned process, in any configuration.** Probed six ways
+  over a 1 GiB transfer against a real local `sshd`: `-b -` and interactive, stdout on a pipe and on
+  a PTY, and with the `progress` batch command explicitly turning it on — which answers
+  `Progress meter enabled` and then prints nothing. OpenSSH draws it only for a foreground process
+  group on a controlling terminal, which a spawned child is not. So an SFTP **upload** has no
+  observable at all, and the honest answer is the one it already gave: report the exact count once,
+  at the end. The remaining route — polling the remote size — is a fresh connection and handshake
+  per tick on a transport with no session.
+- **`curl` behaves over FTP exactly as it does over S3**, which is what makes three quarters of this
+  free: `-S` in place of `-sS` puts the meter on stderr at ~1 Hz, the leading integer is the
+  percentage, and the `%{size_upload}` write-out still lands on stdout untouched. A **download**
+  needs no flag change at all — its destination is a local file that grows, so the transport reports
+  exact bytes by watching it, where the meter could only offer a rounded percentage.
+
+So: FTP gets both directions, SFTP gets its download, and the one silent verb is silent because
+`sftp` is. The asymmetry is pinned by a test of its own, or the next reader files it as missing
+wiring and "fixes" it by inventing a number.
+
+`TransferProgressTally` (core, +7 tests) is the arithmetic all three backends now reconcile through
+— forward-only deltas, a resume's existing bytes excluded, a truncated destination read as a fresh
+transfer — and `TransferProgressWatch` (app) is the part that cannot be pure, shared by the three
+transports; `S3CurlRunner`'s two private copies of both are gone. +14 core tests in all (2494 core /
+535 app green, both linters clean).
+
+**The one thing that was not simply S3's fix applied twice**: with the meter let through, it shares
+stderr with `curl`'s own error text, and FTP — unlike S3 — *classifies from that text*.
+`CurlProgressMeter` therefore gained a `prose` side, keeping the table out of what the classifier
+reads, with the header identified **structurally** (whatever precedes the first meter row) rather
+than by matching `% Total`, so the invocations that carry no meter keep every word they printed.
+The live control for it came out **inert** — every failure provoked against the real server
+classified identically either way — and the reason is worth recording: a transfer that fails has
+usually not moved enough for its meter to print anything but zeros. The case that does bite is
+arithmetic rather than luck, and is pinned headlessly: `classify` takes the *last* three-digit
+4xx/5xx token, so a transfer moving at **553k** when the server refuses it reads as FTP's "file name
+not allowed" and turns a missing path into a permission failure.
+
+**Verified live** through the real backends and the app's own transports, compiled in Swift 6 mode:
+FTP download **4 reports over 8.02 s**, FTP upload **5 over 6.04 s**, SFTP download **31 over
+3.12 s** for 1 GiB, each summing *exactly* to what the tool reported moving; SFTP upload one report,
+as documented; and a resumed FTP download reporting **only its 4 MiB remainder** onto a file that
+came out byte-identical. Three live negative controls, each firing on exactly its own half: reverting
+the upload's `-S` and unchunking the stderr drain both took the FTP upload from 5 reports to **1**
+while leaving the download and SFTP untouched — the user's symptom, twice, from two different causes
+one layer apart.
+
+`FTPCurlTransport` hit SwiftLint's `type_body_length` on the way and was split by concept rather than
+shaved: `FTPCurlTransport+Process.swift` now holds the spawn, the drains, the wait and the TLS retry.
 
 ### M22 — Find Files on a connected server (M, opened 2026-08-16)
 

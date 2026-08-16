@@ -34,6 +34,21 @@ import Foundation
 ///
 /// The percentage never goes backwards. `curl` does not print a decreasing one, and a caller
 /// converting it to a delta would otherwise have to defend against a negative.
+///
+/// ``prose`` is the other half, and it is what lets a transport read this stream at all: `curl`
+/// writes its *errors* here too. Measured 2026-08-16 against a local server, letting the meter
+/// through takes a refused upload's stderr from **61 bytes** —
+/// `curl: (9) Server denied you to change to the given directory` — to **378**, the rest of it a
+/// table. So the same filter that finds the rows has to hand back what is left.
+///
+/// What that is worth is narrower than it looks, and is worth stating precisely rather than
+/// generously. `FTPTransportError.classify` reads the *last* three-digit 4xx/5xx token in the
+/// stream for two exit codes, so with the table in scope a **speed column of `553k`** on a failed
+/// transfer would be read as FTP reply 553 and classified as a permission failure instead of a
+/// missing path. That is reachable rather than observed — every failure provoked in the same run
+/// classified identically either way, because a transfer that fails has usually not moved enough
+/// for its meter to print anything but zeros. The other half is plainer: `.failure` carries this
+/// text as *the server's own words*, so it should not contain a table whatever eventually reads it.
 public struct CurlProgressMeter: Sendable, Equatable {
     /// The most recent percentage `curl` has printed, or `nil` before the first complete row.
     public private(set) var percentComplete: Int?
@@ -42,6 +57,14 @@ public struct CurlProgressMeter: Sendable, Equatable {
     /// wherever the pipe happens to fill, so a half-written row is held rather than parsed — a
     /// truncated `1 27.6M …` would otherwise read as a plausible percentage of its own.
     private var pending = ""
+
+    /// Rows that were not the meter's, from the first meter row onwards.
+    private var proseRows: [String] = []
+
+    /// Rows that were not the meter's and arrived *before* any meter row — the table's own two
+    /// header lines, or genuine prose from a run that never started a transfer. Which of the two it
+    /// is cannot be known until a meter row does or does not follow, so it is held until then.
+    private var preambleRows: [String] = []
 
     public init() {}
 
@@ -53,9 +76,58 @@ public struct CurlProgressMeter: Sendable, Equatable {
         while let index = pending.firstIndex(where: { $0 == "\r" || $0 == "\n" }) {
             let row = String(pending[..<index])
             pending = String(pending[pending.index(after: index)...])
-            guard let percent = Self.percentage(inRow: row) else { continue }
-            percentComplete = max(percentComplete ?? 0, percent)
+            absorb(row)
         }
+    }
+
+    /// Everything on this stream that the meter did not write — `curl`'s own error prose, and
+    /// whatever else shares stderr — with the table dropped.
+    ///
+    /// **The two header lines are defined structurally rather than by their wording**: they are the
+    /// rows that precede the first meter row, and nothing else can be, because `curl` prints them
+    /// when a transfer starts and an error that arrives first is terminal. So a run that never
+    /// reaches a transfer (an unreachable host, a refused login before the meter opens) keeps every
+    /// word it printed, while a run that does drops exactly the table. Matching `% Total` or `Dload`
+    /// instead would have been a rule about this version's phrasing.
+    ///
+    /// The unterminated tail counts, since `curl`'s last line need not end in a newline and it is
+    /// the one carrying the diagnosis. A *partial meter row* is excluded by the same test that
+    /// excludes a complete one.
+    public var prose: String {
+        // `preambleRows` is emptied by the first meter row, so prepending it unconditionally is the
+        // "no transfer ever started" case and nothing else.
+        var rows = preambleRows + proseRows
+        if !Self.isBlank(pending), !Self.isMeterRow(pending) { rows.append(pending) }
+        return rows.joined(separator: "\n")
+    }
+
+    /// The prose in a complete stderr capture — the one-shot form, for a caller that has the whole
+    /// stream in hand rather than a chunk at a time.
+    ///
+    /// It is a *second* pass over bytes the live meter has already seen, deliberately: a chunked
+    /// reader has to skip a chunk whose UTF-8 decode fails at a read boundary, which costs an
+    /// estimate nothing and would cost an error message a fragment of itself. Progress comes from
+    /// the reader that runs during the transfer; the words come from the complete capture.
+    public static func prose(in stderr: String) -> String {
+        var meter = CurlProgressMeter()
+        meter.consume(stderr)
+        return meter.prose
+    }
+
+    /// File one row under the meter, the preamble, or the prose.
+    private mutating func absorb(_ row: String) {
+        guard !Self.isBlank(row) else { return }
+        guard let percent = Self.percentage(inRow: row) else {
+            if percentComplete == nil {
+                preambleRows.append(row)
+            } else {
+                proseRows.append(row)
+            }
+            return
+        }
+        percentComplete = max(percentComplete ?? 0, percent)
+        // Whatever preceded the first row is now known to have been the table's header.
+        preambleRows.removeAll()
     }
 
     /// How many of `totalBytes` the meter says have moved, or `nil` before the first row.
@@ -71,10 +143,22 @@ public struct CurlProgressMeter: Sendable, Equatable {
         return min(totalBytes, totalBytes * Int64(percentComplete) / 100)
     }
 
-    /// The percentage a meter row leads with, or `nil` when the row is not one.
+    /// Whether a row is the meter's — the one filter, so "which rows are the table" and "which rows
+    /// are left over" can never answer differently.
+    private static func isMeterRow(_ row: String) -> Bool {
+        percentage(inRow: row) != nil
+    }
+
+    /// The percentage a meter row leads with, or `nil` when the row is not one. The range is what
+    /// makes it a *percentage* rather than merely a number, and it is what keeps a line like
+    /// `29000000 bytes written` on the prose side rather than silently swallowed as a row.
     private static func percentage(inRow row: String) -> Int? {
         guard let token = row.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
             .first, let percent = Int(token), (0...100).contains(percent) else { return nil }
         return percent
+    }
+
+    private static func isBlank(_ row: String) -> Bool {
+        row.allSatisfy(\.isWhitespace)
     }
 }

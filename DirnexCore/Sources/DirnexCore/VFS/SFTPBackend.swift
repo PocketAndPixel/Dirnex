@@ -89,11 +89,18 @@ public struct SFTPBackend: RemoteTransportBackend {
 
     /// Copy one file's bytes between this remote account and the local disk — a **download**
     /// (remote source → local destination, via `get`) or an **upload** (local source → remote
-    /// destination, via `put`). The whole file transfers as one `sftp` command, so `progress` is
-    /// reported once with the transferred byte count and `isCancelled` is honored at the file
-    /// boundary (the queue's pause/cancel still acts between files). A copy that is neither
-    /// direction — remote-to-remote, or between two different accounts — has no `sftp` expression
-    /// yet and is refused.
+    /// destination, via `put`). The whole file transfers as one `sftp` command, and `isCancelled` is
+    /// honored inside it as well as at the file boundary (the queue's pause/cancel still acts
+    /// between files). A copy that is neither direction — remote-to-remote, or between two different
+    /// accounts — has no `sftp` expression yet and is refused.
+    ///
+    /// **`progress` reports as a download runs and only at the end of an upload, and the asymmetry
+    /// is `sftp`'s rather than a decision.** A download's destination is a file on this machine, so
+    /// watching it grow is exact and free; an upload changes nothing here, and `sftp` — unlike
+    /// `curl` — prints no meter a spawned process can read, probed six ways over a 1 GiB transfer
+    /// (``SFTPTransport/upload(_:to:resume:progress:isCancelled:)``). Either way the tail below
+    /// reports the *remainder* against the measured count, so an upload behaves exactly as it always
+    /// did and a download's estimates never decide the total.
     ///
     /// **Resume**: when the destination already holds a nonzero *proper prefix* of the source
     /// (a partial from an interrupted transfer), the copy picks up where it left off via
@@ -110,20 +117,31 @@ public struct SFTPBackend: RemoteTransportBackend {
         isCancelled: () -> Bool
     ) throws {
         if isCancelled() { throw CancellationError() }
+        var tally = TransferProgressTally()
+        let streamed = { (delta: Int64) in
+            tally.add(delta)
+            progress(delta)
+        }
         let transferred: Int64
         if source.backend == id, destination.backend == .local {
             transferred = try downloadFile(
-                remote: source, toLocal: destination.path, isCancelled: isCancelled
+                remote: source,
+                toLocal: destination.path,
+                progress: streamed,
+                isCancelled: isCancelled
             )
         } else if source.backend == .local, destination.backend == id {
             transferred = try uploadFile(
-                fromLocal: source.path, remote: destination, isCancelled: isCancelled
+                fromLocal: source.path,
+                remote: destination,
+                progress: streamed,
+                isCancelled: isCancelled
             )
         } else {
             throw VFSError.unsupported(.remoteToRemoteCopy)
         }
         if isCancelled() { throw CancellationError() }
-        progress(transferred)
+        if let remainder = tally.remainder(against: transferred) { progress(remainder) }
     }
 
     /// Uploads at or below this size skip resume detection: re-sending a small file is cheaper than
@@ -136,6 +154,7 @@ public struct SFTPBackend: RemoteTransportBackend {
     private func downloadFile(
         remote source: VFSPath,
         toLocal localPath: String,
+        progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> Int64 {
         let existingLocal = localFileSize(localPath)
@@ -144,7 +163,11 @@ public struct SFTPBackend: RemoteTransportBackend {
         let resume = existingLocal > 0 && remoteFileSize(source) > existingLocal
         let finalSize = try mapErrors(source) {
             try transport.download(
-                source.path, to: localPath, resume: resume, isCancelled: isCancelled
+                source.path,
+                to: localPath,
+                resume: resume,
+                progress: progress,
+                isCancelled: isCancelled
             )
         }
         return resume ? max(0, finalSize - existingLocal) : finalSize
@@ -155,6 +178,7 @@ public struct SFTPBackend: RemoteTransportBackend {
     private func uploadFile(
         fromLocal localPath: String,
         remote destination: VFSPath,
+        progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> Int64 {
         let sourceSize = localFileSize(localPath)
@@ -163,7 +187,11 @@ public struct SFTPBackend: RemoteTransportBackend {
         let resume = existingRemote > 0 && existingRemote < sourceSize
         let finalSize = try mapErrors(destination) {
             try transport.upload(
-                localPath, to: destination.path, resume: resume, isCancelled: isCancelled
+                localPath,
+                to: destination.path,
+                resume: resume,
+                progress: progress,
+                isCancelled: isCancelled
             )
         }
         return resume ? max(0, finalSize - existingRemote) : finalSize

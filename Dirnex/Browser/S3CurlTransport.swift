@@ -263,7 +263,7 @@ struct S3CurlTransport: S3Transport {
     private func perform(
         _ arguments: [String],
         measuring direction: S3CurlRunner.Direction = .download,
-        watching source: S3CurlRunner.ProgressSource = .none,
+        watching source: TransferProgressWatch.Source = .none,
         progress: (Int64) -> Void = { _ in },
         isCancelled: () -> Bool = { false }
     ) throws -> S3Response {

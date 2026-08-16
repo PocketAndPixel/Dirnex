@@ -92,10 +92,23 @@ public enum FTPProcessArguments {
 
     /// Flags every invocation carries: silence, fail-on-error, the security mode, the trust
     /// decision, the TLS policy and the time budget.
-    public static func common(session: FTPSession) -> [String] {
+    ///
+    /// `showingProgress` is the one an **upload** has to turn on, and only an upload. `-s` suppresses
+    /// the progress meter, which for a `--upload-file` is the only observable there is: nothing
+    /// local changes as the bytes go out, so with the meter silenced the transfer reports once, when
+    /// it is over — measured 2026-08-16 against a throttled local server as 8 seconds of silence for
+    /// 8 MB, the same shape a user reported on S3 at 29 MB and 99 seconds. `-S` alone keeps the
+    /// error text `-sS` was chosen for while letting the meter through.
+    ///
+    /// A **download** deliberately keeps `-sS`: its destination is a local file that grows, so the
+    /// transport reports exact bytes by watching it, where the meter could only offer a rounded
+    /// percentage.
+    public static func common(session: FTPSession, showingProgress: Bool = false) -> [String] {
         var arguments = [
-            // `-sS`: no progress meter, but keep error text on stderr for classification.
-            "-sS",
+            // `-sS`: no progress meter, but keep error text on stderr for classification. `-S` alone
+            // is the same minus the silencing, for the one verb that needs the meter to report at
+            // all.
+            showingProgress ? "-S" : "-sS",
             "--connect-timeout", String(session.connectTimeout),
             "--max-time", String(session.maxTime)
         ]
@@ -156,7 +169,7 @@ public enum FTPProcessArguments {
         remotePath: String,
         resume: Bool
     ) -> [String] {
-        var arguments = common(session: session) + configFromStandardInput
+        var arguments = common(session: session, showingProgress: true) + configFromStandardInput
         arguments += ["--upload-file", localPath, "--write-out", "%{size_upload}"]
         if resume { arguments += ["--continue-at", "-"] }
         return arguments + [url(session, remotePath)]

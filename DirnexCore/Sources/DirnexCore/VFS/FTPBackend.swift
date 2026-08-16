@@ -93,13 +93,22 @@ public struct FTPBackend: RemoteTransportBackend {
     // walk. Only the byte transfer below is protocol-specific.
 
     /// Copy one file's bytes between this account and the local disk — a **download** (remote source
-    /// → local destination) or an **upload**. The whole file transfers as one `curl` invocation, so
-    /// `progress` is reported once with the byte count and `isCancelled` is honored at the file
-    /// boundary, matching `SFTPBackend`; the queue's pause/cancel still acts between files.
+    /// → local destination) or an **upload**. The whole file transfers as one `curl` invocation, and
+    /// `isCancelled` is honored at the file boundary as well as inside the transfer; the queue's
+    /// pause/cancel still acts between files.
     ///
-    /// (Measured 2026-07-25: `curl`'s own progress meter updates about once a second and rounds to
-    /// `k`/`M`, so it could drive a bar but not the accounting. Reporting the exact count once per
-    /// file keeps FTP and SFTP identical and byte-honest — PLAN.md §7, resolved.)
+    /// **`progress` reports as the bytes move, and still settles on the exact count.** The two are
+    /// separate claims because what arrives mid-transfer is an estimate: a download watches its own
+    /// destination file grow (exact, and free), while an upload has only `curl`'s percentage meter
+    /// at one-per-cent resolution. Either way the tail below reports the *remainder* against the
+    /// figure `curl` measured, so the number the job ends on is never a sum of estimates.
+    ///
+    /// (PLAN.md §7 settled this the other way in 2026-07-25 — one exact count per file, on the
+    /// ground that the meter is too coarse to account with. That was right about the accounting and
+    /// wrong about the silence: a *slow* transfer then reports nothing at all until it is over,
+    /// measured 2026-08-16 as 8 seconds of a motionless bar for an 8 MB upload, and 99 seconds on
+    /// the S3 twin that reported it as the copy not working. The estimate drives the bar; the exact
+    /// figure still decides the total.)
     ///
     /// **Resume**: when the destination already holds a nonzero *proper prefix* of the source, the
     /// transfer picks up where it left off rather than re-sending — proven live in both directions,
@@ -112,20 +121,31 @@ public struct FTPBackend: RemoteTransportBackend {
         isCancelled: () -> Bool
     ) throws {
         if isCancelled() { throw CancellationError() }
+        var tally = TransferProgressTally()
+        let streamed = { (delta: Int64) in
+            tally.add(delta)
+            progress(delta)
+        }
         let transferred: Int64
         if source.backend == id, destination.backend == .local {
             transferred = try downloadFile(
-                remote: source, toLocal: destination.path, isCancelled: isCancelled
+                remote: source,
+                toLocal: destination.path,
+                progress: streamed,
+                isCancelled: isCancelled
             )
         } else if source.backend == .local, destination.backend == id {
             transferred = try uploadFile(
-                fromLocal: source.path, remote: destination, isCancelled: isCancelled
+                fromLocal: source.path,
+                remote: destination,
+                progress: streamed,
+                isCancelled: isCancelled
             )
         } else {
             throw VFSError.unsupported(.remoteToRemoteCopy)
         }
         if isCancelled() { throw CancellationError() }
-        progress(transferred)
+        if let remainder = tally.remainder(against: transferred) { progress(remainder) }
     }
 
     /// Uploads at or below this size skip resume detection: re-sending a small file is cheaper than
@@ -137,6 +157,7 @@ public struct FTPBackend: RemoteTransportBackend {
     private func downloadFile(
         remote source: VFSPath,
         toLocal localPath: String,
+        progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> Int64 {
         let existingLocal = localFileSize(localPath)
@@ -145,7 +166,11 @@ public struct FTPBackend: RemoteTransportBackend {
         let resume = existingLocal > 0 && remoteFileSize(source) > existingLocal
         return try mapErrors(source) {
             try transport.download(
-                source.path, to: localPath, resume: resume, isCancelled: isCancelled
+                source.path,
+                to: localPath,
+                resume: resume,
+                progress: progress,
+                isCancelled: isCancelled
             )
         }
     }
@@ -158,6 +183,7 @@ public struct FTPBackend: RemoteTransportBackend {
     private func uploadFile(
         fromLocal localPath: String,
         remote destination: VFSPath,
+        progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> Int64 {
         let sourceSize = localFileSize(localPath)
@@ -165,7 +191,11 @@ public struct FTPBackend: RemoteTransportBackend {
         let resume = existingRemote > 0 && existingRemote < sourceSize
         return try mapErrors(destination) {
             try transport.upload(
-                localPath, to: destination.path, resume: resume, isCancelled: isCancelled
+                localPath,
+                to: destination.path,
+                resume: resume,
+                progress: progress,
+                isCancelled: isCancelled
             )
         }
     }

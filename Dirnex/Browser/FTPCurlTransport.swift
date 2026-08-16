@@ -111,15 +111,21 @@ struct FTPCurlTransport: FTPTransport {
 
     /// `%{size_download}` is the bytes moved *by this run* — the remainder when resuming — so the
     /// backend gets its progress delta with no arithmetic. Verified live against a real server.
+    ///
+    /// Progress comes from the **destination file**, not from `curl`: it is a local file that grows,
+    /// so its size is exact and free, and this invocation's flags are left exactly as they were.
     @discardableResult
     func download(
         _ remotePath: String,
         to localPath: String,
         resume: Bool,
+        progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> Int64 {
         let result = try runWithTLSRetry(
             timeout: transferTimeout,
+            watching: .destinationFile(path: localPath),
+            progress: progress,
             isCancelled: isCancelled
         ) { session in
             FTPProcessArguments.download(
@@ -132,15 +138,23 @@ struct FTPCurlTransport: FTPTransport {
         return transferredBytes(from: result.standardOutput)
     }
 
+    /// Progress comes from `curl`'s percentage meter, which the upload arguments stop suppressing
+    /// (`-S` rather than `-sS`) precisely so it can be read: an upload changes nothing on this
+    /// machine, so there is no local observable to watch instead.
     @discardableResult
     func upload(
         _ localPath: String,
         to remotePath: String,
         resume: Bool,
+        progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> Int64 {
+        // The total the meter's percentage is applied to is the *source's* size, which is exact
+        // here; the meter's own `Total` column is rounded for display.
         let result = try runWithTLSRetry(
             timeout: transferTimeout,
+            watching: .uploadMeter(totalBytes: localFileSize(localPath)),
+            progress: progress,
             isCancelled: isCancelled
         ) { session in
             FTPProcessArguments.upload(
@@ -151,6 +165,12 @@ struct FTPCurlTransport: FTPTransport {
             )
         }
         return transferredBytes(from: result.standardOutput)
+    }
+
+    private func localFileSize(_ path: String) -> Int64 {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: path),
+              let size = attributes[.size] as? Int64 else { return 0 }
+        return size
     }
 
     /// The `-w` byte count, which is the whole of stdout for a transfer (the payload went to a file).
@@ -180,156 +200,5 @@ struct FTPCurlTransport: FTPTransport {
     /// runs before saving anything. Any auth, host, TLS or trust failure surfaces here, classified.
     func probeConnection() throws {
         _ = try listDirectory("/")
-    }
-
-    // MARK: - Process
-
-    private var session: FTPSession {
-        FTPSession(
-            location: location,
-            trust: trustedPublicKey.map { .pinned(publicKey: $0) } ?? .systemDefault,
-            tls: .negotiate,
-            connectTimeout: connectTimeout,
-            maxTime: metadataTimeout
-        )
-    }
-
-    private struct RunResult {
-        let standardOutput: String
-        let standardError: String
-    }
-
-    /// Run `curl`, and on the one documented FTPS symptom — exit 18, a data connection that returned
-    /// nothing — retry once pinned to TLS 1.2.
-    ///
-    /// The retry is what keeps the workaround from being a blanket downgrade. It fails in the quiet
-    /// direction otherwise: an empty listing reads as an empty remote directory, so a user would see
-    /// a folder they know has files in it appear empty, with no error anywhere.
-    private func runWithTLSRetry(
-        timeout: Int? = nil,
-        isCancelled: () -> Bool = { false },
-        arguments: (FTPSession) -> [String]
-    ) throws -> RunResult {
-        var base = session
-        if let timeout {
-            base = FTPSession(
-                location: location,
-                trust: base.trust,
-                tls: .negotiate,
-                connectTimeout: connectTimeout,
-                maxTime: timeout
-            )
-        }
-        do {
-            return try run(arguments(base), isCancelled: isCancelled)
-        } catch let error as CurlExit where error.code == 18 && location.security.usesTLS {
-            let retry = base.with(tls: .forceTLS12)
-            do {
-                return try run(arguments(retry), isCancelled: isCancelled)
-            } catch let retryError as CurlExit {
-                throw FTPTransportError.classify(
-                    exitCode: retryError.code,
-                    stderr: retryError.standardError
-                )
-            }
-        } catch let error as CurlExit {
-            throw FTPTransportError.classify(exitCode: error.code, stderr: error.standardError)
-        }
-    }
-
-    /// A nonzero `curl` exit, carried untranslated so the retry decision can be made on the code
-    /// before it is classified into the shared vocabulary.
-    private struct CurlExit: Error {
-        let code: Int32
-        let standardError: String
-    }
-
-    /// Spawn `curl` with the credential on stdin, drain both pipes concurrently, and bound the wait.
-    /// Blocks; call it off the main thread — the backend is only ever driven by the operation engine
-    /// or the panel's background list.
-    private func run(_ arguments: [String], isCancelled: () -> Bool = { false }) throws
-        -> RunResult {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/curl")
-        process.arguments = arguments
-
-        let input = Pipe()
-        let output = Pipe()
-        let errorPipe = Pipe()
-        process.standardInput = input
-        process.standardOutput = output
-        process.standardError = errorPipe
-
-        // Joined before `run()`, and waited on below beside the two drains — never
-        // `waitUntilExit()`, which is a ≈71 ms poll paid once per listing (`ProcessWaiting`).
-        let group = DispatchGroup()
-        ProcessWaiting.joinTermination(of: process, into: group)
-
-        do {
-            try process.run()
-        } catch {
-            throw FTPTransportError.failure(String(
-                localized: "Couldn’t launch curl.",
-                comment: "FTP failure: the curl binary could not be spawned."
-            ))
-        }
-
-        // The credential goes in here and nowhere else — not in `arguments`, not on disk.
-        let config = FTPConfigFile.credentials(for: location, password: password)
-        input.fileHandleForWriting.write(Data(config.utf8))
-        try? input.fileHandleForWriting.close()
-
-        // Drain both pipes on background queues so neither can fill and deadlock the other, and
-        // join them through a group so the wait can be bounded.
-        var outputData = Data()
-        var errorData = Data()
-        let ioQueue = DispatchQueue(label: "com.dirnex.ftp.io", attributes: .concurrent)
-        group.enter()
-        ioQueue.async {
-            outputData = output.fileHandleForReading.readDataToEndOfFile()
-            group.leave()
-        }
-        group.enter()
-        ioQueue.async {
-            errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-            group.leave()
-        }
-
-        // `curl`'s own `--max-time` should fire first; this is the backstop for a process that is
-        // wedged rather than merely slow, so it is deliberately looser than the flag.
-        let budget = curlMaxTime(in: arguments) + 30
-        switch ProcessWaiting.wait(
-            for: group, deadline: .now() + .seconds(budget), isCancelled: isCancelled
-        ) {
-        case .finished:
-            break
-        case .timedOut:
-            process.terminate() // SIGTERM closes the pipes so the drains unblock
-            group.wait()
-            throw FTPTransportError.timedOut
-        case .cancelled:
-            process.terminate()
-            group.wait()
-            throw CancellationError()
-        }
-        group.wait()
-
-        let standardError = String(bytes: errorData, encoding: .utf8) ?? ""
-        guard process.terminationStatus == 0 else {
-            throw CurlExit(code: process.terminationStatus, standardError: standardError)
-        }
-        return RunResult(
-            standardOutput: String(bytes: outputData, encoding: .utf8) ?? "",
-            standardError: standardError
-        )
-    }
-
-    /// The `--max-time` value already in the arguments, so the backstop is always derived from what
-    /// `curl` was actually told rather than from a second, drifting constant.
-    private func curlMaxTime(in arguments: [String]) -> Int {
-        guard let index = arguments.firstIndex(of: "--max-time"),
-              index + 1 < arguments.count,
-              let value = Int(arguments[index + 1]) else { return metadataTimeout }
-        return value
     }
 }

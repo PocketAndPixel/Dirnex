@@ -68,15 +68,21 @@ struct SFTPProcessTransport: SFTPTransport {
         _ = try run(batch: SFTPBatchCommand.createSymbolicLink(remotePath, target: target))
     }
 
+    /// Progress is the destination file's own growth, which is exact and costs nothing — and is the
+    /// only thing available, since `sftp` prints no meter a spawned process can read
+    /// (`SFTPTransport.upload`).
     @discardableResult
     func download(
         _ remotePath: String,
         to localPath: String,
         resume: Bool,
+        progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> Int64 {
         _ = try run(
             batch: SFTPBatchCommand.download(remotePath, to: localPath, resume: resume),
+            watching: .destinationFile(path: localPath),
+            progress: progress,
             isCancelled: isCancelled
         )
         // `sftp get`/`get -a` leaves the whole file on disk, so its final size is the total
@@ -84,11 +90,19 @@ struct SFTPProcessTransport: SFTPTransport {
         return localFileSize(localPath)
     }
 
+    /// **`progress` is never called here**, and that is `sftp`'s doing rather than an omission: an
+    /// upload changes nothing on this machine to watch, and OpenSSH draws its progress meter only
+    /// for a foreground process group on a controlling terminal — probed six ways over a 1 GiB
+    /// transfer, including with the `progress` batch command explicitly enabling it, and it printed
+    /// nothing every time. The backend reports the whole count when this returns. The alternative,
+    /// polling the *remote* size, is a fresh connection and handshake per tick on a transport with
+    /// no session (`SFTPTransport.upload` carries the measurement).
     @discardableResult
     func upload(
         _ localPath: String,
         to remotePath: String,
         resume: Bool,
+        progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> Int64 {
         _ = try run(
@@ -163,6 +177,8 @@ struct SFTPProcessTransport: SFTPTransport {
     private func run(
         batch command: String,
         tolerateChannelHold: Bool = false,
+        watching source: TransferProgressWatch.Source = .none,
+        progress: (Int64) -> Void = { _ in },
         isCancelled: () -> Bool = { false }
     ) throws -> String {
         let process = Process()
@@ -181,6 +197,8 @@ struct SFTPProcessTransport: SFTPTransport {
                 localized: "Couldn’t launch sftp.",
                 comment: "SFTP failure: the sftp binary could not be spawned."
             ),
+            watching: source,
+            progress: progress,
             isCancelled: isCancelled
         )
 
@@ -268,11 +286,18 @@ struct SFTPProcessTransport: SFTPTransport {
         _ process: Process,
         stdin: Data,
         launchFailure: String,
+        watching source: TransferProgressWatch.Source = .none,
+        progress: (Int64) -> Void = { _ in },
         isCancelled: () -> Bool
     ) throws -> Captured {
         if isPasswordAuthentication {
             process.environment = try passwordEnvironment()
         }
+
+        // Built **before** the child is spawned: a resumed `get -a` continues into a file that
+        // already holds bytes, and the watch's baseline has to be read while it is still standing
+        // still, or part of what is already on disk is counted as this transfer's.
+        let watch = TransferProgressWatch(source)
 
         let input = Pipe()
         let output = Pipe()
@@ -321,7 +346,12 @@ struct SFTPProcessTransport: SFTPTransport {
             ? .now() + .seconds(passwordTimeout)
             : .distantFuture
         var timedOut = false
-        switch ProcessWaiting.wait(for: group, deadline: deadline, isCancelled: isCancelled) {
+        switch ProcessWaiting.wait(
+            for: group,
+            deadline: deadline,
+            isCancelled: isCancelled,
+            onPoll: { watch.report(to: progress) }
+        ) {
         case .finished:
             break
         case .cancelled:

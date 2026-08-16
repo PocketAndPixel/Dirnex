@@ -29,6 +29,11 @@ final class FakeFTPTransport: FTPTransport, @unchecked Sendable {
     /// What a transfer reports as the bytes it moved — for a resumed transfer, the remainder.
     var transferBytes: Int64 = 0
 
+    /// Deltas a transfer reports *while it runs*, standing in for `curl`'s meter and for a
+    /// destination file growing. Empty is the honest default: it is what a transfer that reported
+    /// nothing until it exited looks like, which is what this backend did until 2026-08-16.
+    var streamedProgress: [Int64] = []
+
     private(set) var listedPaths: [String] = []
     private(set) var madeDirectories: [String] = []
     private(set) var renames: [(String, String)] = []
@@ -82,10 +87,12 @@ final class FakeFTPTransport: FTPTransport, @unchecked Sendable {
         _ remotePath: String,
         to localPath: String,
         resume: Bool,
+        progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> Int64 {
         if isCancelled() { cancelledTransfers.append(remotePath); throw CancellationError() }
         if let error { throw error }
+        for delta in streamedProgress { progress(delta) }
         downloads.append(RecordedTransfer(local: localPath, remote: remotePath, resume: resume))
         return transferBytes
     }
@@ -94,10 +101,12 @@ final class FakeFTPTransport: FTPTransport, @unchecked Sendable {
         _ localPath: String,
         to remotePath: String,
         resume: Bool,
+        progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> Int64 {
         if isCancelled() { cancelledTransfers.append(remotePath); throw CancellationError() }
         if let error { throw error }
+        for delta in streamedProgress { progress(delta) }
         uploads.append(RecordedTransfer(local: localPath, remote: remotePath, resume: resume))
         return transferBytes
     }

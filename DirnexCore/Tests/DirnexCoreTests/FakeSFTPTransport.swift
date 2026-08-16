@@ -36,6 +36,11 @@ final class FakeSFTPTransport: SFTPTransport, @unchecked Sendable {
     var downloadBytes: Int64 = 0
     var uploadBytes: Int64 = 0
 
+    /// Deltas a transfer reports *while it runs*, standing in for the destination file growing.
+    /// Empty is what an upload really does here — `sftp` gives one no observable at all — and is
+    /// therefore the default rather than a convenience.
+    var streamedProgress: [Int64] = []
+
     func listDirectory(_ remotePath: String) throws -> String {
         if let error { throw error }
         return listings[remotePath] ?? ""
@@ -84,10 +89,12 @@ final class FakeSFTPTransport: SFTPTransport, @unchecked Sendable {
         _ remotePath: String,
         to localPath: String,
         resume: Bool,
+        progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> Int64 {
         if isCancelled() { cancelledTransfers.append(remotePath); throw CancellationError() }
         if let error { throw error }
+        for delta in streamedProgress { progress(delta) }
         downloads.append(RecordedTransfer(local: localPath, remote: remotePath, resume: resume))
         return downloadBytes
     }
@@ -96,10 +103,12 @@ final class FakeSFTPTransport: SFTPTransport, @unchecked Sendable {
         _ localPath: String,
         to remotePath: String,
         resume: Bool,
+        progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> Int64 {
         if isCancelled() { cancelledTransfers.append(remotePath); throw CancellationError() }
         if let error { throw error }
+        for delta in streamedProgress { progress(delta) }
         uploads.append(RecordedTransfer(local: localPath, remote: remotePath, resume: resume))
         return uploadBytes
     }

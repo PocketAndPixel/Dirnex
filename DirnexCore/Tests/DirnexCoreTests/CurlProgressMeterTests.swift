@@ -117,4 +117,125 @@ struct CurlProgressMeterTests {
         meter.consume("29000000 bytes written\r")
         #expect(meter.percentComplete == nil)
     }
+
+    // MARK: - The prose that shares this stream
+
+    /// Real captures from a throttled local FTP server, 2026-08-16 — the run that measured what
+    /// letting the meter through costs the *error* text, since `curl` writes both here.
+    ///
+    /// Worth noting what these show about `curl` itself: the table is printed for **every** `-S`
+    /// transfer, even one that never connects, so on a transfer invocation there is always a meter
+    /// row and the header is always identifiable as the thing before it.
+    private enum Capture {
+        /// An 8 MB upload that succeeded: nothing but the table.
+        static let success = """
+          % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                         Dload  Upload   Total   Spent    Left  Speed
+        \r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\r\
+        100 8192k    0     0  100 8192k      0  1362k  0:00:06  0:00:06 --:--:--  682k
+
+        """
+
+        /// An upload into a directory that is not there: `curl` exit 9.
+        static let refused = """
+          % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                         Dload  Upload   Total   Spent    Left  Speed
+        \r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\r\
+          0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+        curl: (9) Server denied you to change to the given directory
+
+        """
+
+        /// A wrong password: `curl` exit 67, and the reply code the classifier reads.
+        static let loginDenied = """
+          % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                         Dload  Upload   Total   Spent    Left  Speed
+        \r  0     0    0     0    0     0      0      0 --:--:--  0:00:03 --:--:--     0
+        curl: (67) Access denied: 530
+
+        """
+    }
+
+    @Test("a transfer that only ran leaves no prose behind")
+    func successHasNoProse() {
+        #expect(CurlProgressMeter.prose(in: Capture.success).isEmpty)
+    }
+
+    @Test("the table is dropped and curl's own sentence is kept, whole")
+    func keepsTheDiagnosisAndDropsTheTable() {
+        #expect(
+            CurlProgressMeter.prose(in: Capture.refused)
+                == "curl: (9) Server denied you to change to the given directory"
+        )
+        // 61 bytes rather than the 378 the raw stream carries — and `.failure` hands this on as the
+        // server's own words, so it should not be a table whatever eventually reads it.
+        #expect(CurlProgressMeter.prose(in: Capture.refused).count < 70)
+    }
+
+    @Test("the reply code the classifier reads survives the meter sharing its stream")
+    func replyCodeSurvives() {
+        let prose = CurlProgressMeter.prose(in: Capture.loginDenied)
+        #expect(prose == "curl: (67) Access denied: 530")
+        #expect(FTPTransportError.ftpReplyCode(in: prose) == 530)
+        #expect(FTPTransportError.classify(exitCode: 67, stderr: prose) == .loginDenied)
+    }
+
+    /// The narrow case where letting the table reach the classifier would actually change an answer,
+    /// pinned because the live control for it came out **inert**: every failure provoked against a
+    /// real server classified identically either way, since a transfer that fails has usually not
+    /// moved enough for its meter to print anything but zeros.
+    ///
+    /// The mechanism is arithmetic rather than luck. `classify` reads the *last* three-digit
+    /// 4xx/5xx token, and a meter's speed column is three digits and a unit — so a transfer moving
+    /// at **553k** when the server refuses it puts `553` after `curl`'s own reply-code-less message,
+    /// where it reads as FTP's "file name not allowed" and turns a missing path into a permission
+    /// failure. Nothing in the shipped code notices; the user is simply sent to check the wrong
+    /// thing.
+    @Test("a transfer speed cannot be read as an FTP reply code")
+    func aSpeedIsNotAReplyCode() {
+        let midTransferFailure = """
+          % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                         Dload  Upload   Total   Spent    Left  Speed
+        \r  6 8192k    0     0    6  553k      0   553k  0:00:14  0:00:01  0:00:13  553k
+        curl: (9) Server denied you to change to the given directory
+
+        """
+        #expect(FTPTransportError.ftpReplyCode(in: midTransferFailure) == 553, "the raw stream")
+        #expect(
+            FTPTransportError.classify(exitCode: 9, stderr: midTransferFailure) == .permissionDenied,
+            "which is the wrong answer, from a number that is a transfer speed"
+        )
+
+        let prose = CurlProgressMeter.prose(in: midTransferFailure)
+        #expect(FTPTransportError.ftpReplyCode(in: prose) == nil)
+        #expect(FTPTransportError.classify(exitCode: 9, stderr: prose) == .notFound)
+    }
+
+    /// The case the header rule exists for, and the common one: every FTP invocation that is *not* a
+    /// transfer runs with `-sS`, so its stderr is prose with no meter row anywhere. A rule that
+    /// dropped "the first two lines", or everything before the first row unconditionally, would eat
+    /// the whole message here.
+    @Test("a stream with no meter in it is prose from beginning to end")
+    func keepsEverythingWhenNothingMetered() {
+        #expect(
+            CurlProgressMeter.prose(in: "curl: (78) The file does not exist\n")
+                == "curl: (78) The file does not exist"
+        )
+        let multiline = "Warning: something happened\ncurl: (9) Server denied you\n"
+        let expected = "Warning: something happened\ncurl: (9) Server denied you"
+        #expect(CurlProgressMeter.prose(in: multiline) == expected)
+    }
+
+    @Test("an unterminated last line is still part of the diagnosis")
+    func keepsTheUnterminatedTail() {
+        // `curl`'s final line need not end in a newline, and it is the one that says what went wrong.
+        #expect(
+            CurlProgressMeter.prose(in: "curl: (7) Couldn't connect") == "curl: (7) Couldn't connect"
+        )
+        // A *partial meter row* is excluded by the same test that excludes a complete one, so a
+        // prose read mid-transfer does not pick up half a table row.
+        var meter = CurlProgressMeter()
+        meter.consume(Self.header + "\r 42 27.6M    0     0   42 11.6M\r  4")
+        #expect(meter.prose.isEmpty)
+    }
 }

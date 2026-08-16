@@ -35,12 +35,15 @@ public protocol FTPTransport: RemoteWriteTransport {
     /// download of a 3 MiB file from a 1 MiB partial reported exactly 2 097 152.
     ///
     /// `isCancelled` is polled **while the bytes move**, and only the two byte-moving verbs take it
-    /// — see ``upload(_:to:resume:isCancelled:)``.
+    /// — see ``upload(_:to:resume:progress:isCancelled:)``. `progress` rides the same poll and
+    /// reports **deltas** as they land: a download's are exact, because the observable is the
+    /// destination file on this machine growing, which costs nothing and needs no flag.
     @discardableResult
     func download(
         _ remotePath: String,
         to localPath: String,
         resume: Bool,
+        progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> Int64
 
@@ -49,17 +52,26 @@ public protocol FTPTransport: RemoteWriteTransport {
     /// and sends only the remainder — so, unlike the SFTP path, the backend needs no size probe of
     /// its own to resume an upload.
     ///
-    /// **`isCancelled` is polled while the transfer runs, and a metadata verb deliberately has no
-    /// such parameter.** A transfer is one `curl` that may run for an hour, so a caller's Stop has
-    /// to reach inside it; a `LIST` or a `SIZE` is over before anyone could press anything.
-    /// Measured 2026-08-14 on the S3 transport, whose shape this one shares exactly: without it,
-    /// Stop on a 16-second download returned after the full 16 seconds having downloaded the whole
-    /// file and then discarded it (docs/NOTES.md ▸ curl for S3).
+    /// **`isCancelled` and `progress` are polled while the transfer runs, and a metadata verb
+    /// deliberately has neither.** A transfer is one `curl` that may run for an hour, so a caller's
+    /// Stop and its progress bar both have to reach inside it; a `LIST` or a `SIZE` is over before
+    /// anyone could press anything, and giving those either parameter would promise a
+    /// responsiveness they cannot use. Both halves were measured on this backend's own tools rather
+    /// than assumed: without `isCancelled`, Stop on a 16-second download returned after the full 16
+    /// seconds having downloaded the whole file and then discarded it; and without `progress`, an
+    /// 8 MB upload to a local server reported its bytes once, **8 seconds** after it started
+    /// (docs/NOTES.md ▸ curl).
+    ///
+    /// An upload's `progress` is an **estimate** — nothing local changes as it runs, so the only
+    /// observable is `curl`'s own percentage meter, at one-per-cent resolution
+    /// (``CurlProgressMeter``). The exact figure is this method's return value, so a caller wanting
+    /// a byte-honest total reconciles against it at the end rather than summing the deltas.
     @discardableResult
     func upload(
         _ localPath: String,
         to remotePath: String,
         resume: Bool,
+        progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> Int64
 
