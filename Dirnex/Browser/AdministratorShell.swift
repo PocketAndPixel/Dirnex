@@ -52,13 +52,14 @@ enum AdministratorShell {
         process.standardError = errorPipe
         process.standardOutput = Pipe()
 
+        let awaitExit = ProcessWaiting.exitWaiter(for: process)
         do {
             try process.run()
         } catch {
             throw Failure.failed(error.localizedDescription)
         }
         let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
+        awaitExit()
         guard process.terminationStatus != 0 else { return }
 
         let message = String(data: errorData, encoding: .utf8)?

@@ -96,6 +96,7 @@ enum SpotlightSearchRunner {
         process.standardOutput = pipe
         process.standardError = FileHandle.nullDevice
 
+        let awaitExit = ProcessWaiting.exitWaiter(for: process)
         do {
             try process.run()
         } catch {
@@ -103,7 +104,7 @@ enum SpotlightSearchRunner {
         }
         // Read to EOF before waiting so a large result set can't deadlock on a full pipe buffer.
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
+        awaitExit()
 
         guard let output = String(data: data, encoding: .utf8) else { return [] }
         return output.split(separator: "\n", omittingEmptySubsequences: true).map(String.init)

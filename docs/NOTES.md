@@ -1785,6 +1785,38 @@ The project deliberately shells out to system tools instead of taking library de
 in the **app**; pure parsing lives in the **core**, behind an injected transport so it tests
 against a fake.
 
+- **`Process.waitUntilExit()` is a poll, not a wait, and it taxes every one of them a flat ≈71 ms.**
+  Measured 2026-08-16 while verifying M22's FTP walk: `/usr/bin/true` costs the same as a full FTP
+  listing, and a child that has been **dead for 300 ms** still costs **71.3 ms** (8 runs,
+  70.1–72.5). That tightness is the tell — a timer does not vary with the work, and it does not go
+  faster on a faster Mac. The same reap through `terminationHandler` + a semaphore is **2.1 ms** and
+  a bare `posix_spawn` + `waitpid` **1.0 ms**, so what is being paid for is the polling and nothing
+  else. `ProcessWaiting.joinTermination(of:into:)` is the one home; `exitWaiter(for:)` is the same
+  mechanism for a site with no group of its own. Both must be installed **before** `run()`, and
+  neither may be waited on after a `run()` that threw.
+  - **Its relative size is inversely proportional to how fast the child is, which is exactly why it
+    hid for the life of the app.** On `git status` (≈320 ms, measured on this repo) it is a quarter
+    of the cost and reads as git being slow; on a listing it is nearly all of it. Nothing surfaces
+    it until something spends *one invocation per directory* — M22's walk did, and a whole-tree FTP
+    search over 12 directories went **1.04 s → 0.09 s** on the same server with byte-identical hits,
+    confirmed afterwards in the built app against the server's own log.
+  - **It is not what "one curl per directory" costs**, which is the natural first reading and would
+    have sent the fix somewhere much larger. The same argv from Python's `subprocess` was 6.7 ms
+    against Swift's `Process` at 68 ms, which is what isolates it to the *wait* rather than to the
+    spawn, the flags or the network. Worth reaching for that control whenever a subprocess looks
+    expensive: run the identical argv from something that is not Foundation.
+  - **The batching idea it makes look attractive is mostly subsumed.** `curl` reuses one connection
+    across many `ftp://` URLs — 11 LISTs on **1** connect, measured — which was **15×** against the
+    shipped path and is only **1.4×** against the fixed one. So the FTP twin of the SFTP
+    `sftp -b` batching note below is real, and is now worth far less than the arithmetic before the
+    fix suggested. Re-measure before spending it.
+  - The timing property is testable without a stopwatch reading anyone has to trust, because what it
+    asserts is the *absence of a timer*: reap a process that has been dead for 300 ms and bound it
+    well under the poll interval. The shipped path takes microseconds and the reverted one cannot
+    beat its own interval however fast the host, so there is nothing for CI to drift past
+    (`ProcessWaitingReapTests`, whose negative control fails that one test at 63 ms and leaves its
+    three narrowness controls green).
+
 ### bsdtar
 
 - **Each extract member is a shell-glob pattern, not a literal** — a name containing `* ? [`

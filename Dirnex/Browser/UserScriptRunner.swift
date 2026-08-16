@@ -65,6 +65,7 @@ enum UserScriptRunner {
         process.standardOutput = FileHandle.nullDevice
         process.standardError = errorPipe
 
+        let awaitExit = ProcessWaiting.exitWaiter(for: process)
         do {
             try process.run()
         } catch {
@@ -72,7 +73,7 @@ enum UserScriptRunner {
         }
         // Read stderr to end *before* waiting so the child can't block on a full pipe.
         let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
+        awaitExit()
         guard process.terminationStatus != 0 else { return nil }
         let stderr = (String(bytes: errorData, encoding: .utf8) ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)

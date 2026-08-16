@@ -115,6 +115,11 @@ struct S3CurlRunner: Sendable {
         process.standardOutput = output
         process.standardError = errorPipe
 
+        // Joined before `run()`, and waited on below beside the two drains — never
+        // `waitUntilExit()`, which is a ≈71 ms poll paid once per request (`ProcessWaiting`).
+        let group = DispatchGroup()
+        ProcessWaiting.joinTermination(of: process, into: group)
+
         do {
             try process.run()
         } catch {
@@ -133,7 +138,6 @@ struct S3CurlRunner: Sendable {
         // join them through a group so the wait can be bounded.
         let drained = Drained()
         let meter = LiveMeter()
-        let group = DispatchGroup()
         let ioQueue = DispatchQueue(label: "com.dirnex.s3.io", attributes: .concurrent)
         group.enter()
         ioQueue.async {
@@ -187,7 +191,6 @@ struct S3CurlRunner: Sendable {
             group.wait()
             throw CancellationError()
         }
-        process.waitUntilExit()
 
         return RunResult(
             standardOutput: drained.standardOutput,

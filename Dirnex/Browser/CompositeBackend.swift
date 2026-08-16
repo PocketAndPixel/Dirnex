@@ -402,6 +402,7 @@ enum ArchiveMounter {
         // second-pipe deadlock; a real failure shows up as a non-zero exit below.
         process.standardError = FileHandle.nullDevice
 
+        let awaitExit = ProcessWaiting.exitWaiter(for: process)
         do {
             try process.run()
         } catch {
@@ -409,7 +410,7 @@ enum ArchiveMounter {
         }
         // Read to EOF before waiting so a large table of contents can't deadlock a full pipe.
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
+        awaitExit()
 
         guard process.terminationStatus == 0, let text = String(data: data, encoding: .utf8) else {
             let name = (archivePath as NSString).lastPathComponent

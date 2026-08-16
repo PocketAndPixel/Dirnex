@@ -64,4 +64,41 @@ enum ProcessWaiting {
     }
 
     private static let pollInterval: DispatchTimeInterval = .milliseconds(100)
+
+    /// Have `process`'s own termination join `group`, so waiting on the group ends when the process
+    /// has been reaped. **Call it before `run()`** — a handler installed afterwards can miss a
+    /// process that has already exited, and one installed on a `run()` that *threw* never fires at
+    /// all, so a caller whose launch failed must not go on to wait.
+    ///
+    /// This exists because **`Process.waitUntilExit()` is a poll, not a wait** — measured
+    /// 2026-08-16, while verifying M22's FTP walk. It costs a flat **≈71 ms** whatever the child
+    /// did: `/usr/bin/true` pays the same as a full FTP listing, and a child that has been *dead
+    /// for 300 ms* still costs 71.3 ms (8 runs, 70.1–72.5 — the tightness is the tell, since a
+    /// timer does not vary with the work). The same reap through `terminationHandler` is 2.1 ms,
+    /// and a bare `posix_spawn` + `waitpid` 1.0 ms.
+    ///
+    /// So the tax is fixed and its *relative* size is inversely proportional to how fast the child
+    /// is, which is why it hid for so long: on `git status` (≈320 ms) it is a quarter of the cost
+    /// and looks like git being slow, while on a listing it is nearly all of it. M22's walk is what
+    /// made it visible, by spending one invocation **per directory** — a whole-tree FTP search over
+    /// 12 directories went **1.04 s → 0.09 s** on the same server, with byte-identical hits.
+    ///
+    /// It is safe on the two branches that matter and both were probed rather than assumed: after
+    /// `terminate()` the group still completes promptly (measured 0.51 s on a deadline of 0.5, and
+    /// 0.41 s on a Stop at 0.4), and `terminationStatus` is readable in every case — it is the
+    /// handler firing that says the process was reaped, which is the whole of what
+    /// `waitUntilExit()` was being asked for.
+    static func joinTermination(of process: Process, into group: DispatchGroup) {
+        group.enter()
+        process.terminationHandler = { _ in group.leave() }
+    }
+
+    /// ``joinTermination(of:into:)`` for a caller with nothing else to join — the sites that read
+    /// one pipe to EOF and then reap. Set it up before `run()`, and call the returned closure where
+    /// `waitUntilExit()` used to be; skip it on the path where `run()` threw.
+    static func exitWaiter(for process: Process) -> () -> Void {
+        let group = DispatchGroup()
+        joinTermination(of: process, into: group)
+        return { group.wait() }
+    }
 }

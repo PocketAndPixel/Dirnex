@@ -22,9 +22,10 @@ enum SFTPKnownHostsRepair {
         // pipe buffer, and only the exit status matters.
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
+        let awaitExit = ProcessWaiting.exitWaiter(for: process)
         do {
             try process.run()
-            process.waitUntilExit()
+            awaitExit()
             return process.terminationStatus == 0
         } catch {
             return false

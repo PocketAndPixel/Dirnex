@@ -117,6 +117,7 @@ private enum GitStatusReader {
         // A `detected dubious ownership` warning or similar must never reach the parser.
         process.standardError = FileHandle.nullDevice
 
+        let awaitExit = ProcessWaiting.exitWaiter(for: process)
         do {
             try process.run()
         } catch {
@@ -125,7 +126,7 @@ private enum GitStatusReader {
         // Read to EOF before waiting: a dirty repository's status easily outgrows the pipe buffer,
         // and waiting first would deadlock against a `git` blocked on writing it.
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
+        awaitExit()
         guard process.terminationStatus == 0 else { return nil }
 
         // Lossy on purpose, which is why the failable initializer SwiftLint prefers here is wrong:

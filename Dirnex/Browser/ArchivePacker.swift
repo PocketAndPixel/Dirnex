@@ -35,12 +35,13 @@ enum ArchivePacker {
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
 
+        let awaitExit = ProcessWaiting.exitWaiter(for: process)
         do {
             try process.run()
         } catch {
             throw VFSError.unsupported(.archiveToolUnavailableForCreate)
         }
-        process.waitUntilExit()
+        awaitExit()
 
         // A non-zero exit or a missing output file means nothing usable landed; clean up a partial
         // archive so the destination folder isn't left with a broken file.

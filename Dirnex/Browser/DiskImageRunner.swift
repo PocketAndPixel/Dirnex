@@ -261,6 +261,9 @@ enum DiskImageRunner {
         private let output = Pipe()
         private let errorPipe = Pipe()
         private let collectedError = Collector()
+        /// Installed before `run()` and waited on in `finish` — never `waitUntilExit()`, which is a
+        /// ≈71 ms poll rather than a wait (`ProcessWaiting`).
+        private let awaitExit: () -> Void
 
         init(
             executable: URL = DiskImageRunner.executable,
@@ -272,6 +275,7 @@ enum DiskImageRunner {
             process.arguments = arguments
             process.standardOutput = output
             process.standardError = errorPipe
+            awaitExit = ProcessWaiting.exitWaiter(for: process)
 
             let input = Pipe()
             process.standardInput = input
@@ -326,7 +330,7 @@ enum DiskImageRunner {
 
         /// Wait for the process, having already consumed whatever standard output the caller wanted.
         func finish(output data: Data = Data()) -> ProcessResult {
-            process.waitUntilExit()
+            awaitExit()
             errorPipe.fileHandleForReading.readabilityHandler = nil
             // Whatever landed between the last handler call and the exit.
             let remainder = errorPipe.fileHandleForReading.readDataToEndOfFile()

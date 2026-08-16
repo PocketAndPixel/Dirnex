@@ -2076,6 +2076,57 @@ all 14 languages. Six negative controls, each firing on exactly the tests naming
 narrowness control still green — and a seventh run in the built app, which is the only instrument
 that could see the saved-search bug at all.
 
+**The FTP/FTPS verification pass landed 2026-08-16**, and it is the one backend of the four the
+milestone was asked for that no slice had ever exercised live. FTP takes the generic walk through
+`isRemoteConnection`, so it needed no code of its own and nothing could be said about it beyond
+"it compiles". The instrument is the one this milestone named at open: `pyftpdlib` on
+`127.0.0.1:2121` plain and `:2122` explicit FTPS with a self-signed certificate, logging every
+command it is asked to run, plus a throwaway SwiftPM harness compiling the app's **real**
+`FTPCurlTransport` against the real core so every byte came off a socket through real `curl`.
+
+**Nothing in the FTP half was wrong.** Over a 12-directory tree four levels deep: 7 hits at five
+depths, and the server's own log shows the LISTs arriving root → all four depth-1 → all four
+depth-2 → depth-3 → depth-4, which is the breadth-first claim measured at the wire rather than
+argued. Scope narrowing (4 hits from `/docs`), a directory named `odd 'name` walked and its hit
+returned, kind decided from the name, a size filter excluding folders, `contentContains` and
+`tags` **refused** rather than skipped, `budgetExceeded` / `truncated` / `stopped` each reported
+with the hits already found, and a scope that is not there throwing rather than answering "complete,
+nothing found". FTPS behaved identically once its key was pinned.
+
+**What the pass found is bigger than FTP, and it is in `Foundation`.** Every listing was paying a
+flat ≈71 ms in **`Process.waitUntilExit()`, which is a poll and not a wait** — `/usr/bin/true` costs
+the same as a full FTP listing, and a child dead for 300 ms still costs 71.3 ms (8 runs, 70.1–72.5;
+the tightness is the tell). On loopback that was **84 %** of the per-listing cost. It hid for the
+life of the app because its *relative* size is inversely proportional to how fast the child is: on
+`git status` it is a quarter and reads as git being slow, and only something spending one invocation
+**per directory** makes it the whole cost. The fix is one primitive in `ProcessWaiting` — the funnel
+whose own doc comment already argued "one home rather than three copies" — applied to all **14**
+spawn sites, since a half-applied rule is this project's most repeated failure. The whole-tree FTP
+search went **1.04 s → 0.09 s** with byte-identical hits, and the same 0.09 s was then measured in
+the built app against the server's log.
+
+Two things worth keeping beyond the fix. It is **not** what "one `curl` per directory" costs, which
+is the natural first reading: the identical argv from Python's `subprocess` is 6.7 ms against
+Swift's `Process` at 68 ms, and that control is what isolates the wait from the spawn, the flags and
+the network. And it mostly retires the optimisation it makes look attractive — `curl` does reuse one
+connection across many `ftp://` URLs (11 LISTs on 1 connect, the FTP twin of Slice 4's `sftp -b`
+note), but that is **15×** against the shipped path and only **1.4×** against the fixed one.
+
++4 app tests (2475 core / 535 app green, both linters and all three scripts clean). The timing
+property is pinned without a stopwatch reading anyone has to trust, because what it asserts is the
+absence of a *timer*: reaping a process dead for 300 ms, bounded well under the poll interval, which
+no faster machine can drift past. The negative control fails that one test at 63 ms and leaves its
+three narrowness controls green.
+
+**Verified live in the built app**, with the new symbols confirmed present in `Dirnex.debug.dylib`
+first: plain FTP 7 hits and FTPS 7 hits (12 breadth-first LISTs each, 0.091 s and 0.154 s, the
+difference being TLS per connection), the Find Files dialog drawing **Name / Kind / Size / Modified**
+on the FTP scope and **Content contains / Tags** as well on a local one *in the same session*, and
+the trust dialog's fingerprint matching `openssl`'s byte for byte. The three other routes the
+14-site change touched were checked in the same run and all behave: Spotlight (⌥F7 locally),
+the git badge (`M` on a modified folder, plus the branch chip), and `bsdtar` archive browsing and
+searching (3 hits at three depths inside a zip).
+
 ## 5. Cross-cutting: testing strategy
 
 | Layer | Approach |

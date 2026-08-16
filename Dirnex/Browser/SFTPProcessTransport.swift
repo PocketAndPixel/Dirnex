@@ -281,6 +281,11 @@ struct SFTPProcessTransport: SFTPTransport {
         process.standardOutput = output
         process.standardError = errorPipe
 
+        // Joined before `run()`, and waited on below beside the two drains — never
+        // `waitUntilExit()`, which is a ≈71 ms poll paid once per invocation (`ProcessWaiting`).
+        let group = DispatchGroup()
+        ProcessWaiting.joinTermination(of: process, into: group)
+
         do {
             try process.run()
         } catch {
@@ -295,7 +300,6 @@ struct SFTPProcessTransport: SFTPTransport {
         // wait (an unresponsive server must not hang the pane).
         var outputData = Data()
         var errorData = Data()
-        let group = DispatchGroup()
         let ioQueue = DispatchQueue(label: "com.dirnex.sftp.io", attributes: .concurrent)
         group.enter()
         ioQueue.async {
@@ -329,7 +333,6 @@ struct SFTPProcessTransport: SFTPTransport {
             timedOut = true
         }
         group.wait() // terminate closed the pipes, so the readers finish promptly
-        process.waitUntilExit()
 
         return Captured(
             standardOutput: String(bytes: outputData, encoding: .utf8) ?? "",

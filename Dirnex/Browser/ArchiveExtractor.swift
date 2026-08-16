@@ -131,12 +131,13 @@ enum ArchiveExtractor {
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
 
+        let awaitExit = ProcessWaiting.exitWaiter(for: process)
         do {
             try process.run()
         } catch {
             throw VFSError.unsupported(.archiveToolUnavailableForExtract)
         }
-        process.waitUntilExit()
+        awaitExit()
         return false
     }
 

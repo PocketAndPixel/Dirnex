@@ -260,6 +260,11 @@ struct FTPCurlTransport: FTPTransport {
         process.standardOutput = output
         process.standardError = errorPipe
 
+        // Joined before `run()`, and waited on below beside the two drains — never
+        // `waitUntilExit()`, which is a ≈71 ms poll paid once per listing (`ProcessWaiting`).
+        let group = DispatchGroup()
+        ProcessWaiting.joinTermination(of: process, into: group)
+
         do {
             try process.run()
         } catch {
@@ -278,7 +283,6 @@ struct FTPCurlTransport: FTPTransport {
         // join them through a group so the wait can be bounded.
         var outputData = Data()
         var errorData = Data()
-        let group = DispatchGroup()
         let ioQueue = DispatchQueue(label: "com.dirnex.ftp.io", attributes: .concurrent)
         group.enter()
         ioQueue.async {
@@ -309,7 +313,6 @@ struct FTPCurlTransport: FTPTransport {
             throw CancellationError()
         }
         group.wait()
-        process.waitUntilExit()
 
         let standardError = String(bytes: errorData, encoding: .utf8) ?? ""
         guard process.terminationStatus == 0 else {
