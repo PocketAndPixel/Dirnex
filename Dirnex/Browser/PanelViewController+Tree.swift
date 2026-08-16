@@ -22,12 +22,24 @@ extension PanelViewController {
         set { tabs[activeTabIndex].viewMode = newValue }
     }
 
-    /// Whether a tree can apply to what is on screen: a real, local, on-disk directory. A results
-    /// listing, an archive, or a remote volume stays a flat list — a per-level lazy listing needs a
-    /// real directory to read, the same gate the size bars use.
-    var canUseTreeMode: Bool {
-        panel.path.backend == .local
-    }
+    /// Whether a tree can apply to what is on screen — **everywhere**, which is a decision rather
+    /// than the absence of one.
+    ///
+    /// This read `panel.path.backend == .local` until 2026-08-17, on the stated reasoning that a
+    /// per-level lazy listing "needs a real directory to read". That is true of each *row*, and was
+    /// never true of the pane's own path — which is what the gate was testing. The rows are what get
+    /// expanded; `DirectoryLoader.list` goes through `CompositeBackend`, which routes per path; and
+    /// `TreeProjection` recurses into each entry's **own** path, never assuming it descends from the
+    /// root (its root level is just `listings[rootPath]`). So a merged iCloud row, a bucket, an SFTP
+    /// directory and a folder inside an archive all expand through machinery that was already there,
+    /// and the core needed no change to allow it.
+    ///
+    /// Kept as a named property with both of its readers — the toggle and the menu validator — rather
+    /// than deleted along with the restriction: the day something genuinely cannot be a tree, the
+    /// exclusion has to land in one place. One rule spelled twice is this codebase's most repeated
+    /// bug (docs/NOTES.md ▸ Design lessons), and the checkmark-and-gray dead end this replaces was
+    /// exactly that shape.
+    var canUseTreeMode: Bool { true }
 
     // MARK: - Command (dispatched to the focused pane via the responder chain)
 
@@ -287,23 +299,46 @@ extension PanelViewController {
     /// NOTES.md). Rebuilt only when the *set* changes, or when `force`d — a mode switch keeps the
     /// same single path but must swap the callback from the list refresh to the tree one.
     func startWatchingTree(force: Bool = false) {
-        guard panel.isTree, backend.capabilities.contains(.watch) else { return }
+        guard panel.isTree else { return }
         let sources = treeWatchSources
         guard force || sources != watchedSources else { return }
+        // A tree whose listed directories are all remote, inside an archive, or synthetic has nothing
+        // FSEvents can watch. Tear the stream down rather than leave the previous location's running
+        // under a listing it no longer describes.
+        guard !sources.isEmpty else {
+            watcher = nil
+            watchedSources = []
+            return
+        }
         let root = panel.path
         watcher = DirectoryWatcher(paths: sources) { [weak self] in
             Task { @MainActor in
                 guard let self, self.panel.isTree, self.panel.path == root else { return }
-                self.refreshTree()
+                // Not `refreshTree` directly: a merged root's rows come from a gather rather than
+                // from a listing of the path on screen, so the funnel that knows which is which owns
+                // the decision (it routes back here for a tree over a real directory).
+                self.refreshCurrentDirectory()
             }
         }
         watchedSources = sources
     }
 
-    /// The directories a tree watches, sorted so the equality check against `watchedSources` is
-    /// stable (the core's set is unordered).
-    private var treeWatchSources: [VFSPath] {
-        (panel.tree?.listedDirectories ?? [panel.path]).sorted { $0.path < $1.path }
+    /// The directories a tree watches: every listed one FSEvents can actually watch, plus the real
+    /// directories behind a merged root — which is synthetic and cannot be watched itself, while what
+    /// it was gathered from can (the same set list mode watches). Sorted so the equality check against
+    /// `watchedSources` is stable (the core's set is unordered).
+    ///
+    /// The filter tests the path for **`.local`**, not its capabilities for `.watch`, and that is
+    /// load-bearing rather than belt-and-braces: `CompositeBackend.capabilities(for:)` answers the
+    /// *local* backend's full set for the merged iCloud container — deliberately, since its entries
+    /// are ordinary local files — so a capability-only test would hand the synthetic `icloud:` path
+    /// to FSEvents. Nothing would log; the stream would simply watch nothing.
+    var treeWatchSources: [VFSPath] {
+        let listed = panel.tree?.listedDirectories ?? [panel.path]
+        let watchable = (listed + mergedSources).filter {
+            $0.backend == .local && backend.capabilities(for: $0).contains(.watch)
+        }
+        return Array(Set(watchable)).sorted { $0.path < $1.path }
     }
 
     /// Re-list every directory the tree holds and update it in place, keeping the cursor and marks by
@@ -321,7 +356,11 @@ extension PanelViewController {
         guard let tree = panel.tree else { return }
         let token = loadToken
         let root = panel.path
-        let directories = tree.listedDirectories
+        // A merged or results root is not a directory, so it cannot be re-listed by path: its rows
+        // came from a gather, which owns re-producing them (`reloadICloudDrive` / `reloadTrash`) and
+        // updates the tree's root level in place through `installSortedModel`. A search snapshot has
+        // no re-gather at all and must keep the hits it was given. Only the children are ours here.
+        let directories = tree.listedDirectories.filter { !(isResultsListing && $0 == root) }
         Task {
             var listings: [(VFSPath, [FileEntry])] = []
             for directory in directories {

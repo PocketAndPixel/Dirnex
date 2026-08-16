@@ -56,6 +56,9 @@ extension PanelViewController {
             _ = reconcileCursorFromTable()
             installSortedModel(resultsModel(entries, as: trashPresentation()))
             reloadEverything()
+            // As in `reloadICloudDrive`: the gather re-produces the root level, and a tree over it
+            // also holds child listings (a trashed folder someone opened) that nothing here touched.
+            if panel.isTree { refreshTree() }
         }
     }
 

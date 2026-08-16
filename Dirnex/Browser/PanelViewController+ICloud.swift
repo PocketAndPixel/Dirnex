@@ -77,6 +77,10 @@ extension PanelViewController {
                 panel.moveCursor(to: index)
             }
             reloadEverything()
+            // The gather re-produces the *root* level only. A tree over the merge also holds child
+            // listings — real directories inside a container — which nothing here has touched, so
+            // they would keep drawing what they had until something else re-listed them.
+            if panel.isTree { refreshTree() }
         }
     }
 

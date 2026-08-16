@@ -3989,6 +3989,47 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
       introduce is the opposite one: answering for an ordinary *local* results tab would send every
       Spotlight hit down the extraction or download path. All four are unit-testable with no window
       — build a pane on the `search:` path holding one hit and read the property.
+- **A "can this apply here" gate can be testing the wrong *subject* entirely, and it then reads as a
+  considered restriction rather than as a bug.** `canUseTreeMode` was `panel.path.backend == .local`,
+  under a doc comment explaining that a per-level lazy listing "needs a real directory to read" —
+  true of each **row**, which is what gets expanded, and never true of the pane's own path, which is
+  what it tested. Nothing in the machinery agreed with the restriction: `DirectoryLoader.list` goes
+  through `CompositeBackend`, which routes per path, and `TreeProjection` recurses into each entry's
+  *own* path (`listings[entry.path]`) without ever assuming a row descends from the root. So a merged
+  iCloud row, a bucket, an SFTP directory and a folder inside an archive were all expandable the
+  whole time, and widening the gate needed **no core change at all**. The tell is a gate whose stated
+  justification describes the rows while its expression reads the container.
+  - **It failed as a *dead end* rather than as an absence, because the shape outlives the gate.**
+    `Panel.setModel` re-roots a tree across a navigation instead of dropping one, and
+    `installResults` — the in-place install a merged listing uses — never called `applyViewMode`, the
+    one funnel that reconciles the two, while its own doc comment claimed "everything a `navigate`
+    does for the pane's chrome happens here too". So clicking the sidebar's iCloud row while in tree
+    mode left `panel.isTree == true` where `canUseTreeMode == false`, and the validator draws its
+    **checkmark from the pane's real shape and its enablement from the gate**: ticked *and* gray,
+    rows still drawing disclosure triangles, with no way to answer it — the command ships unbound, so
+    the menu is the only route, and a bound shortcut would have been dead too (a disabled
+    `NSMenuItem` swallows its own key equivalent, above). Reported by a user 2026-08-17. "Checked and
+    disabled" is worth its own assertion: it is a setting nobody can switch off, and no test of
+    either half alone can see it.
+  - **Widening a gate makes reachable every hazard it was masking, and none of them are in the
+    diff.** Tree watching had two, both harmless while trees were local-only. `startWatchingTree`
+    asked `backend.capabilities` — the composite's *backend-wide* set, i.e. the local backend's,
+    which is the `capabilities` vs `capabilities(for:)` trap above — and `treeWatchSources` handed
+    `listedDirectories` to FSEvents **including the tree's root**, which for a merged listing is
+    `icloud:/iCloud Drive` and on a server is an `sftp://` path. Neither logs: the stream simply
+    watches nothing.
+    - **The filter has to test the path for `.local`, not its capabilities for `.watch`.**
+      `CompositeBackend.capabilities(for:)` answers the local backend's *full* set for the merged
+      iCloud container — deliberately, since its entries are ordinary local files — so the
+      principled-looking capability test is precisely the one that lets the synthetic path through.
+    - What a merged root *can* watch is what the **gather** read (`mergedSources`), which is what
+      list mode already watched. A tree over one watches those plus its expanded children, and the
+      gather has to re-list those children when it re-produces the root: it only ever owned the top
+      level, so without that the deeper rows keep drawing what they had.
+  - Both halves have sharp negative controls, which is what makes the suite evidence rather than
+    decoration: restoring the old gate fails only the reach tests, and restoring the unfiltered watch
+    sources fails only the watch tests — printing `icloud:/iCloud Drive` and the `sftp://` path as
+    the values it would have watched.
 - **A *saved* search is the one place where the scope, not the pane, decides where a search runs, and
   an `mdfind` scope is a bare path with the backend thrown away — so what it silently did depended on
   how deep the scope was.** `FileQuery.mdfindArguments` takes `scope.path`. A saved search rooted at

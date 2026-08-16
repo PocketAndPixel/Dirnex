@@ -102,6 +102,14 @@ extension PanelViewController {
         loadToken += 1
         let departed = panel.path
         panel.setModel(resultsModel(entries, as: presentation))
+        // The same line `navigate` runs here, and for the same reason: `setModel` *keeps* a tree
+        // across a navigation (re-rooted, all collapsed), so a pane that was a tree when the user
+        // clicked would go on drawing disclosure triangles over a listing where a tree cannot apply.
+        // The menu item reads its checkmark from the pane's real shape and its enablement from
+        // `canUseTreeMode`, so without this it renders ticked *and* gray — the menu is the only way
+        // to answer it, and a shortcut bound to the command is dead too, since a disabled item
+        // swallows its own key equivalent (docs/NOTES.md ▸ AppKit).
+        applyViewMode()
         resetMouseSelectionAnchor()
         // A results listing has no `..` row to park on, however empty it is.
         cursorOnParentRow = false
@@ -112,9 +120,12 @@ extension PanelViewController {
         tab.searchScope = presentation.scope
         tab.customTitle = presentation.title
 
-        // Drops the FSEvents watcher: the synthetic path is not a directory, and a watcher left on
-        // the folder we came from would re-list *that* into this pane.
-        startWatching(panel.path)
+        // Re-points the FSEvents watcher: the synthetic path is not a directory, so in list mode this
+        // watches whatever the merge was gathered from (or nothing, for a search snapshot) rather than
+        // leaving the watcher on the folder we came from, which would re-list *that* into this pane.
+        // Through `startPaneWatcher` rather than `startWatching` because the tab may be a tree by the
+        // time it gets here, and a tree watches its expanded children as well as those sources.
+        startPaneWatcher(panel.path)
         DirectorySizeProvider.shared.cancelScan(for: departed)
         reloadEverything()
         refreshTabBar()
