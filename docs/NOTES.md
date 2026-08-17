@@ -2681,6 +2681,22 @@ what made the milestone affordable and the rest inverted rules borrowed from the
   - The `.Trash` must sit **exactly one level below** the CloudStorage root. A `.Trash` deeper inside
     someone's Drive is ordinary content, and reading it as a trash turns F8 there into a permanent
     delete — wrong in the expensive direction.
+  - **"Every mount" is Google's habit, not a rule — OneDrive keeps no `.Trash` at all.** Probed
+    2026-08-17, the first non-Google provider installed here: `OneDrive-Personal` has no `.Trash` and
+    never grows one, and a `FileManager.trashItem` on a file inside it (the F8 path, run through the
+    app's own `LocalBackend`) succeeds and answers **`~/.Trash`** — the file leaves the provider
+    domain entirely and lands in the boot volume's trash like any ordinary file. So the existence
+    filter in `SidebarLocations.trashDirectories` is doing real work rather than being a formality:
+    it contributes a row for the Drive mounts, nothing for OneDrive, and the OneDrive delete is
+    already visible through `~/.Trash`. Nothing to add for it, and adding a constructed
+    `<mount>/.Trash` row would be a dead one.
+  - The tell in advance is `fileproviderctl dump <provider>`: OneDrive's domain reports its own
+    `.trash` node failing `fetch-children-metadata` with **Cocoa 3328** (*"the feature is not
+    supported"*) — the same code `FileManager.url(for: .trashDirectory)` throws — while declaring
+    `AllowsTrashing` in its item capabilities (`0x2000003F`, bits 0–5). **A provider can therefore
+    claim the trashing capability and still have no local trash to enumerate**; the capability says
+    the *item* may be trashed, not that the provider hosts a trash directory. Where a trashed item
+    ends up is a question only a real delete answers.
 - **`<volume>/.Trashes` is mode `d-wx--x--t` — unlistable even by its owner** — while
   `<container>/<uid>` inside it is a normal `drwx------`. A volume's trash must be *constructed* and
   opened directly; enumerating the parent to discover it always fails. (Same leaf-not-parent shape as
@@ -2848,6 +2864,40 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     `proto` blob. Finder still badges those files — through Google's own
     `com.google.drivefs.finderhelper.findersync` extension, which only Finder hosts and no
     third-party file manager can consume. Showing nothing is the honest answer.
+- **OneDrive needs no OneDrive-specific code either, and this is now measured rather than predicted**
+  (2026-08-17, `OneDrive-Personal`, the second provider installed here). The mount root, every folder
+  and every file answer `isUbiquitousItem == true`, so `isCloudDirectory`'s *attribute* check opens
+  the gate on its own and the `~/Library/CloudStorage` prefix clause stays what it was for Drive:
+  insurance, not load-bearing. Reads cost **774 µs median** (n=40, warm, fresh `URL` each time),
+  inside the 650–1000 µs band below — so the budget written for iCloud and Drive holds for a third
+  provider, and the first read after a cold domain is ~13 ms, which is the number a first paint pays.
+  - **The naming forms all resolve correctly**, run through `CloudStorageMounts.mounts()` itself
+    rather than its tests: `OneDrive-Personal` alone draws **"OneDrive"** (the account `Personal`
+    is withheld, because with one OneDrive-family mount it disambiguates nothing), and
+    `OneDrive-SharedLibraries-<tenant>` draws **"SharePoint"**. Add a second account of either family
+    and the label moves to the front where truncation cannot eat it — "Personal — OneDrive" beside
+    "Contoso — OneDrive", "Contoso — SharePoint" beside "Fabrikam — SharePoint". The two-identical-
+    rows collision that motivated the table does not occur in any combination.
+  - **`.DS_Store` inside OneDrive badges as a permanent upload, and iCloud's `.DS_Store` does not.**
+    Under iCloud it reports `isUbiquitous == false` (the discovery `CloudItemAttributes.status` is
+    built on); under OneDrive it reports `isUbiquitous == true` with `isUploaded == false` and stays
+    there — sampled repeatedly over minutes — because the client excludes `.DS_Store` from sync while
+    the domain still lists it as an item. So the row is a blue "uploading" arrow forever. Note
+    `isExcludedFromSync` is **`false`** on it, so `.excluded` — the state that would describe it —
+    is not reachable from what the system reports, and the reader is right to say what it is told.
+    Only visible with hidden files shown, which is why it is a note and not a bug.
+  - **Files On-Demand has to be *unpinned* before `NotDownloaded` can be observed at all.** This
+    mount's root carries content policy `keepDownloaded` and OneDrive's own `Pinned` decoration
+    ("Always Available on This Device") with children `lazy`; all 186 files were materialized,
+    `st_flags 0x40` (`UF_TRACKED`), not one `SF_DATALESS`. A fully pinned account is therefore a
+    legitimate state in which the placeholder badge never appears.
+  - **Eviction is not scriptable from outside the provider.**
+    `NSFileProviderManager.getIdentifierForUserVisibleFile(at:)` happily answers for someone else's
+    domain (`item=226 domain=OneDrive`), but `evictItem` on the manager built from it fails
+    `NSFileProviderErrorDomain -2001` *"The application cannot be used right now"* (underlying
+    `-2014`) from an ad-hoc-signed binary, and `fileproviderctl` (macOS 26) has no `evict` verb —
+    only OneDrive's own `FileProviderActions.Debug.Evict`, gated behind `showDebugActions`. Producing
+    a placeholder for testing is a Finder or OneDrive-UI gesture, not something a probe can arrange.
 - **A resource-value read inside a File Provider domain costs ~650–1000 µs, not ~24 µs.** It is a
   round trip to the provider, not a `stat`, and it holds for iCloud Drive and Google Drive alike
   (measured warm, fresh `URL` each time). The original ~24 µs figure in the M6 comments was taken on

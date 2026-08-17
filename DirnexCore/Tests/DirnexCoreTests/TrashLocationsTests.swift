@@ -182,9 +182,12 @@ struct TrashLocationsTests {
         let cloud = "Library/CloudStorage"
         try temp.makeDir("\(cloud)/GoogleDrive-a@gmail.com/.Trash")
         try temp.makeDir("\(cloud)/GoogleDrive-b@gmail.com/.Trash")
-        // A mount that has had nothing deleted on it yet has no `.Trash` and contributes nothing —
-        // the same "only what exists" rule the volumes follow. Probed: a freshly connected Drive
-        // account mounts without one.
+        // A mount with no `.Trash` contributes nothing — the same "only what exists" rule the
+        // volumes follow. Probed: a freshly connected Drive account mounts without one. And it is
+        // not merely "not yet": measured 2026-08-17 against a live `OneDrive-Personal`, that
+        // provider **never** grows one — a delete inside its mount lands in `~/.Trash` instead — so
+        // this branch is a permanent state for a whole provider, not a window before the first
+        // delete. See NOTES.md ▸ Trash.
         try temp.makeDir("\(cloud)/Dropbox")
 
         let directories = SidebarLocations.trashDirectories(

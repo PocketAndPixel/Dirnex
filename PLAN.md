@@ -469,10 +469,37 @@ languages. Landed 2026-08-12: a known provider id now wins over the hyphen, long
 `OneDrive-SharedLibraries` → "SharePoint" beside Google's existing entry. Brand names, so the table
 is the right home and not the string catalog.
 
-The half that is **not** done is verification, and it needs the clients installed: whether the sync
-badges light up (the ubiquity keys were measured for Drive's streaming mode only — Dropbox
-online-only and OneDrive Files On-Demand should be the same File Provider mechanism, but that is a
-prediction, not a measurement), and whether each client's `.Trash` has the shape `Places` assumes.
+The half that was **not** done is verification, and it needed the clients installed. **OneDrive was
+verified 2026-08-17**, against a real `OneDrive-Personal` mount; Dropbox and Box are still nobody's
+installed client here, so for them the prediction below stands unmeasured.
+
+The prediction was right about the badges and wrong about the trash, which is the half worth having
+run. Every OneDrive item — mount root, folders, files — answers `isUbiquitousItem == true`, so
+`isCloudDirectory` opens the gate on the attribute alone and the reads cost 774 µs median, inside
+the 650–1000 µs band iCloud and Drive were budgeted on. No OneDrive-specific code, exactly as
+claimed. The naming was checked through `CloudStorageMounts.mounts()` rather than its tests, in every
+combination: "OneDrive" alone, "SharePoint" alone, and the account moving to the front —
+"Personal — OneDrive", "Contoso — SharePoint" — as soon as a second mount of that family makes it
+load-bearing. The collision that opened this milestone cannot be reproduced.
+
+**The trash is where the assumption broke: OneDrive has no `<mount>/.Trash` and never grows one.**
+Its domain reports its own `.trash` node failing with Cocoa 3328 (*"the feature is not supported"*)
+while still declaring `AllowsTrashing` on every item — so the capability says an item may be trashed,
+not that the provider hosts a trash. A real delete settled it: `LocalBackend.trashItem` on a file
+inside the mount succeeds and answers **`~/.Trash`**, the boot volume's own. The item leaves the
+provider domain entirely. Nothing to fix — `SidebarLocations.trashDirectories` only ever adds a
+mount's `.Trash` *if it exists*, so OneDrive contributes no row and the delete is already visible
+through the `~/.Trash` row — but "every mount has a trash" was Google's habit rather than the rule
+the code was written against, and one constructed row per mount would have been a dead one.
+
+One state is still unmeasured, and this Mac cannot produce it: `NotDownloaded`. The account is pinned
+*Always Available on This Device* (content policy `keepDownloaded` at the root, `lazy` below), so all
+186 files are materialized and no placeholder exists. Eviction cannot be arranged from outside the
+provider either — `evictItem` refuses an ad-hoc binary with `NSFileProviderErrorDomain -2001` and
+macOS 26's `fileproviderctl` has no evict verb — so it waits on someone unpinning a file in Finder.
+Given `isDownloading` and the status keys already read correctly in every other state, the risk it
+carries is small. Details of all of it: NOTES.md ▸ Google Drive (and every other `CloudStorage`
+provider).
 
 **Amazon Drive is not a thing to support.** It shut down 2023-12-31, and WorkDocs was EOL'd in 2025;
 there is no File Provider mount to find. So "Amazon" means **S3**, which is a real backend and the
@@ -2040,9 +2067,12 @@ this Mac. Everything before it — the header travelling, signed, with its quote
 verbs — is measured.
 
 **With this, M21's own list is empty.** The two remaining items are not code: Slice 18's and this
-slice's one unmeasured step needs an account, and the milestone's opening half — whether Dropbox's
-and OneDrive's sync badges light up, and whether each client's `.Trash` has the shape `Places`
-assumes — needs those clients installed.
+slice's one unmeasured step needs an account, and the milestone's opening half — whether the other
+providers' sync badges light up, and whether each client's `.Trash` has the shape `Places` assumes —
+needs those clients installed. **OneDrive was the half of that done on 2026-08-17**: badges and
+naming verified live, the `.Trash` assumption found not to hold for it and found not to matter
+(the delete lands in `~/.Trash`, see the milestone's opening). What is left there is one state,
+`NotDownloaded`, which a fully pinned account cannot produce — and Dropbox and Box, still uninstalled.
 
 ### M22 — Find Files on a connected server (M, opened 2026-08-16)
 

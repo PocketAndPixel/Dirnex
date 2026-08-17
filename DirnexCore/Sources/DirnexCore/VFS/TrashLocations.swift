@@ -56,12 +56,19 @@ public enum TrashLocations {
     ///
     /// **A fourth place, and the same shape as iCloud's** (probed 2026-07-22, after a file deleted
     /// from Google Drive showed up in Finder's Trash and not in Dirnex's — the identical report that
-    /// found the iCloud trash a day earlier). Deleting inside a File Provider mount does not land in
-    /// `~/.Trash`: every mount keeps a `.Trash` of its own at its root, with no `<uid>` level, since
+    /// found the iCloud trash a day earlier). Deleting inside such a mount does not land in
+    /// `~/.Trash`: the mount keeps a `.Trash` of its own at its root, with no `<uid>` level, since
     /// a mount is already per-account. Finder merges them all into the one Trash it shows.
     ///
     /// There is **one per account, not one per provider** — two Google Drive accounts are two mounts
     /// and two trashes — which is why this takes a mount rather than computing a single path.
+    ///
+    /// **Not every provider does this, so the caller must filter on existence rather than trust the
+    /// path.** Measured 2026-08-17 against a live OneDrive mount: it has no `.Trash` and never grows
+    /// one (its domain answers Cocoa 3328, *"the feature is not supported"*, for its own trash
+    /// enumeration), and a `trashItem` there succeeds by moving the file out of the provider domain
+    /// into `~/.Trash` — which the merged listing already covers. `SidebarLocations.trashDirectories`
+    /// is where that filter lives; this function stays a pure path computation.
     ///
     /// That these are the same species as iCloud's is not inference: all three carry the marker
     /// xattr `com.apple.fileprovider.trash`, and `~/.Trash` does not. They are constructed rather
