@@ -470,8 +470,9 @@ languages. Landed 2026-08-12: a known provider id now wins over the hyphen, long
 is the right home and not the string catalog.
 
 The half that was **not** done is verification, and it needed the clients installed. **OneDrive was
-verified 2026-08-17**, against a real `OneDrive-Personal` mount; Dropbox and Box are still nobody's
-installed client here, so for them the prediction below stands unmeasured.
+verified 2026-08-17** against a real `OneDrive-Personal` mount and **Dropbox 2026-08-18** against a
+real `Dropbox-Home` one; Box is still nobody's installed client here, so for it the prediction below
+stands unmeasured.
 
 The prediction was right about the badges and wrong about the trash, which is the half worth having
 run. Every OneDrive item — mount root, folders, files — answers `isUbiquitousItem == true`, so
@@ -500,6 +501,48 @@ macOS 26's `fileproviderctl` has no evict verb — so it waits on someone unpinn
 Given `isDownloading` and the status keys already read correctly in every other state, the risk it
 carries is small. Details of all of it: NOTES.md ▸ Google Drive (and every other `CloudStorage`
 provider).
+
+**Dropbox repeated the badge result and inverted the trash finding a second time — in the other
+direction.** Verified 2026-08-18 against a team account whose mount root holds a Team Folder and the
+user's own Team Member Folder. Every level answers `isUbiquitousItem == true`, so the gate opens on
+the attribute alone; reads cost 903 µs at the root and 762 µs on a file against 32 µs for an ordinary
+local file measured beside them, inside the same band; and an ordinary file created in a team folder
+was watched going uploading → uploaded in ~4 s, drawn live in the app as the uploading badge — the
+first *transient* this milestone has seen on a third-party provider rather than a settled state. The
+naming needed no table entry and was checked through `CloudStorageMounts.mounts()` in every
+combination: "Dropbox" alone, "Home — Dropbox" beside "Personal — Dropbox" once a second account
+makes the label load-bearing, and — the case that broke OneDrive — a hyphenated *team* name
+(`Dropbox-Acme-Corp`) resolving correctly, because Dropbox's own id carries no hyphen and so the
+first-hyphen fallback is right for it.
+
+The trash is where it inverts. OneDrive taught that a mount may have **no** `.Trash`; Dropbox has
+one — with the `com.apple.fileprovider.trash` marker and a live, reconciled `.trash` node in its own
+domain — and **sends every delete to `~/.Trash` regardless**, Finder's included. The control ran in
+the same binary on the same afternoon: a streaming-mode Google Drive mount answers `<mount>/.Trash`
+for both callers, so it is the provider that differs and not the caller or the OS. Nothing to fix
+again, and for a different reason than last time: the merged Trash is one row over many sources, so
+an unused source is invisible rather than dead. Two things fell out of measuring it. A Dropbox delete
+is **put-back-able** precisely because it lands in the boot trash, which keeps `ptbL`/`ptbN` — and
+A/B'ing that turned up a standing error in NOTES: a *Finder* delete into a Drive mount trash does
+write those records, where `FileManager.trashItem` into the same directory writes none, so Dirnex's
+own Drive deletes are the ones that cannot be put back. And the Dropbox mount **root** is a namespace
+container rather than a folder: a create there never uploads (one was relocated by Dropbox into the
+member folder as `… (view-only conflicts …)`), and an `rm` there is reverted within five seconds,
+while the same operations one level down behave normally. `entryDirectory` lands a click at that root
+whenever a mount has more than one visible child, which a team account always does — so F7, F5 and F8
+there are gestures the provider quietly undoes, with the syscall having succeeded and nothing to
+report. No ubiquity key exposes "view-only", so there is no honest gate to write for it.
+
+**And `NotDownloaded` — open since OneDrive — is now measured.** It could not be reached from a probe
+here either (the same `evictItem` refusal, and `fileproviderctl` still has no evict verb), but unlike
+OneDrive's pinned account the state exists on Dropbox: made online-only in Finder, the file reads
+`st_flags 0x40000060` with `st_blocks` 0 and its real size under its real name, `CloudSyncStorage`
+answers `notDownloaded`, `FileEntry.isDataless` agrees off the listing's own `stat`, and the pane
+draws the download badge beside a row still reporting 3.1 MB. The control worth having is the one no
+screenshot shows: 40 resource-value reads, a real `listDirectory` and the app's per-row scan later,
+it is **still** a placeholder — which is the whole point of the `SF_DATALESS` guard, since one byte
+read would have downloaded it. So every state `CloudItemAttributes` can report has now been seen on a
+third-party provider.
 
 **Amazon Drive is not a thing to support.** It shut down 2023-12-31, and WorkDocs was EOL'd in 2025;
 there is no File Provider mount to find. So "Amazon" means **S3**, which is a real backend and the
@@ -2069,10 +2112,13 @@ verbs — is measured.
 **With this, M21's own list is empty.** The two remaining items are not code: Slice 18's and this
 slice's one unmeasured step needs an account, and the milestone's opening half — whether the other
 providers' sync badges light up, and whether each client's `.Trash` has the shape `Places` assumes —
-needs those clients installed. **OneDrive was the half of that done on 2026-08-17**: badges and
-naming verified live, the `.Trash` assumption found not to hold for it and found not to matter
-(the delete lands in `~/.Trash`, see the milestone's opening). What is left there is one state,
-`NotDownloaded`, which a fully pinned account cannot produce — and Dropbox and Box, still uninstalled.
+needs those clients installed. **OneDrive was the half of that done on 2026-08-17 and Dropbox on
+2026-08-18**: badges, costs and naming verified live for both, and the `.Trash` assumption found not
+to hold for either — OneDrive keeps none, Dropbox keeps one and never uses it, and both send their
+deletes to `~/.Trash` (see the milestone's opening). Neither needed code, and `NotDownloaded` — the
+state OneDrive's pinned account could not produce — was closed on Dropbox the same day, so every
+state `CloudItemAttributes` reports has now been seen live on a third-party provider. What is left
+there is Box, still uninstalled.
 
 ### M22 — Find Files on a connected server (M, opened 2026-08-16)
 

@@ -2675,9 +2675,19 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     since the mounts are already enumerated for the sidebar and a path costs nothing.
   - Unlike the iCloud trash this needs **no Full Disk Access** — `~/Library/CloudStorage` is not
     TCC-gated — so a Drive delete shows up even on a Mac that never saw the onboarding sheet.
-  - **Put Back cannot work here either**, and for the same reason as iCloud: no `.DS_Store`, and the
-    origin rides on the item as `com.apple.fileprovider.trash-put-back#PN`, whose whole value is an
-    opaque `__fp/fs/fileID(<n>)` with no path in it.
+  - **Put Back works here only for the deletes *Finder* made, and that asymmetry is measured rather
+    than inferred.** The origin the provider itself keeps is useless — it rides on the item as
+    `com.apple.fileprovider.trash-put-back#PN`, whose whole value is an opaque `__fp/fs/fileID(<n>)`
+    with no path in it — but Finder does not rely on it: A/B'd 2026-08-18 in one run against a
+    streaming Google Drive mount, a Finder delete **creates** `<mount>/.Trash/.DS_Store` carrying the
+    ordinary `ptbL`/`ptbN` pair (read back through `TrashPutBack.origins`, resolving to `My Drive`),
+    while `FileManager.trashItem` into the *same* directory writes no record at all — the count
+    before and after is the whole measurement, since records outlive their files. So a file Dirnex
+    deleted from Drive cannot be put back and one Finder deleted from the same folder can, which is
+    the opposite of the shape "the trash has no `.DS_Store`" predicts. Note the corollary for a
+    provider whose deletes land in `~/.Trash` (OneDrive, Dropbox — below): there `trashItem` writes
+    the pair like any local delete, so Dirnex's own delete **is** put-back-able, and the mount trash
+    being unused is what buys it.
   - The `.Trash` must sit **exactly one level below** the CloudStorage root. A `.Trash` deeper inside
     someone's Drive is ordinary content, and reading it as a trash turns F8 there into a permanent
     delete — wrong in the expensive direction.
@@ -2697,6 +2707,20 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     claim the trashing capability and still have no local trash to enumerate**; the capability says
     the *item* may be trashed, not that the provider hosts a trash directory. Where a trashed item
     ends up is a question only a real delete answers.
+  - **Dropbox is the third shape, and it is the one that says the last sentence above is the whole
+    rule: it *has* the trash and does not use it.** Probed 2026-08-18 against a live `Dropbox-Home`
+    mount, where every signal this code keys on says yes — `<mount>/.Trash` exists, carries
+    `com.apple.fileprovider.trash` (plus a `com.apple.fileprovider.unsynced-trash` no other provider
+    here has), and the domain's own dump shows a reconciled `.trash` node with `cap:rwdpfTe--`. A
+    real delete answers `~/.Trash` anyway, and so does **Finder's**, which names that destination
+    itself (`item .Trash of folder oleg`). The control is what makes it a fact about Dropbox rather
+    than about macOS 26 or about the caller: the same binary in the same run trashed a file inside a
+    **streaming** Google Drive mount and got `<mount>/.Trash`, and Finder did too. So existence is
+    necessary and not sufficient, `SidebarLocations.trashDirectories` contributes a Dropbox row that
+    is a permanently empty directory, and that costs one `readdir` and shows nothing — the merged
+    Trash is one row over many sources, which is why an unused source is invisible rather than dead.
+    Worth stating in that order: the *reason* nothing needs fixing is the merge's shape, not the
+    filter.
 - **`<volume>/.Trashes` is mode `d-wx--x--t` — unlistable even by its owner** — while
   `<container>/<uid>` inside it is a normal `drwx------`. A volume's trash must be *constructed* and
   opened directly; enumerating the parent to discover it always fails. (Same leaf-not-parent shape as
@@ -2898,6 +2922,73 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     `-2014`) from an ad-hoc-signed binary, and `fileproviderctl` (macOS 26) has no `evict` verb —
     only OneDrive's own `FileProviderActions.Debug.Evict`, gated behind `showDebugActions`. Producing
     a placeholder for testing is a Finder or OneDrive-UI gesture, not something a probe can arrange.
+- **Dropbox needs no Dropbox-specific code either — a fourth provider, the same answer, and the same
+  measurement is what says so** (2026-08-18, `Dropbox-Home`, a team account whose root holds a Team
+  Folder and the user's own Team Member Folder). Mount root, folders and files all answer
+  `isUbiquitousItem == true`, so the attribute check opens `isCloudDirectory` on its own and the
+  `~/Library/CloudStorage` prefix clause is insurance for the fourth time running. Reads cost **903 µs
+  median at the root and 762 µs on a file** (n=40, warm, fresh `URL`), against **32 µs** for an
+  ordinary local file measured beside them — inside the 650–1000 µs band, so the budget holds.
+  - **The naming needs no new table entry, and the reason is worth keeping**: Dropbox's own id
+    carries no hyphen, so the fallback split at the *first* hyphen is exactly right for it. Run
+    through `CloudStorageMounts.mounts()` itself: `Dropbox-Home` alone draws **"Dropbox"** (the
+    account is withheld — with one Dropbox-family mount it disambiguates nothing), a second account
+    moves it to the front as **"Home — Dropbox"** beside "Personal — Dropbox", and a *hyphenated team
+    name* — the case that broke OneDrive — resolves correctly as `Dropbox-Acme-Corp` →
+    account "Acme-Corp", because the hyphen falls inside the **account** rather than inside the
+    provider's name. A bare `Dropbox` directory beside `Dropbox-Home` is collision-free too
+    ("Dropbox" and "Home — Dropbox").
+  - **The mount root is a namespace container, not a folder, and it undoes what you do there.**
+    Dropbox's dump gives the root `cap:r-----e--` while its children are `cap:rwdpfTe--`, and the
+    filesystem does *not* enforce that — it enforces it afterwards. Measured: a file created at the
+    root is accepted and kept, and never uploads (permanently "uploading", where an ordinary file in
+    a team folder goes uploading → uploaded in ~4 s); one such file was silently **relocated by
+    Dropbox into the member folder** as `… (view-only conflicts 2026-08-18).txt`; and `rm` at the
+    root reports success and the file is **back within 5 s**, re-materialized at mode 600. A `mv` out
+    of the root is honoured where the plain unlink is not, which is what let the probe clean up after
+    itself. This matters because `entryDirectory` deliberately lands a click at the mount root
+    whenever it has more than one visible child, which a team account always does — so F7, F5 and F8
+    at the Dropbox row are gestures the provider will quietly revert, with the syscall having
+    succeeded and nothing to report. Nothing in the ubiquity keys exposes "view-only", so there is no
+    honest gate to write; this is a fact about the provider, recorded rather than papered over.
+  - **`.DS_Store` badges as a permanent upload here too, and Dropbox is where the two explanations
+    separate.** OneDrive's entry above reads it as the client excluding `.DS_Store` from sync; the
+    root's own never-uploads behaviour is an equally good fit and a different cause. The control:
+    inside a **writable team folder**, a `.DS_Store` is stuck at `isUploaded == false` while an
+    ordinary file created beside it reaches `uploaded` in ~4 s. So it is the file name, not the
+    folder, and the OneDrive reading holds for a second provider — `isExcludedFromSync` staying
+    `false` included, which is why `.excluded` remains unreachable from what the system reports.
+  - **`NotDownloaded` is finally measured, and it took a human's right-click.** Dropbox's content
+    policy is `lazy` (its dump) and its own `make_online_only` action evaluates **YES** on a
+    materialized file — unlike OneDrive's fully pinned account, where the state cannot exist at all —
+    but the route to it from a probe is the same dead end as OneDrive's: `evictItem` on a hand-built
+    manager for someone else's domain fails `NSFileProviderErrorDomain -2001` (underlying `-2014`)
+    from an ad-hoc-signed binary, and `fileproviderctl` still has no evict verb. Made online-only in
+    Finder instead (2026-08-18), the file reads exactly as the iCloud shape this file has recorded
+    since M6: `st_flags` **`0x40000060`** — `SF_DATALESS` plus `UF_COMPRESSED|UF_TRACKED`, which is
+    why the test is a mask and never an equality — `st_blocks` 0, and the **real** `st_size` under
+    the real name, no `.icloud` stub. `CloudSyncStorage` answers `notDownloaded` with
+    `isDownloading == false`, `FileEntry.isDataless` is `true` off the same `stat` the listing
+    already does, and the pane draws the download badge beside a row still reporting 3.1 MB.
+    - **The control that matters is that nothing materialized it**: 40 resource-value reads, a real
+      `LocalBackend.listDirectory`, and the app's own per-row cloud scan all ran against it and it
+      is still `0x40000060` with `st_blocks` 0 afterwards. That is the property the whole
+      `SF_DATALESS` guard exists for — one byte read would have downloaded it — so it is worth
+      asserting rather than assuming, and it is the half a badge screenshot cannot show. Measured
+      twice, on two independent evictions, to the same numbers.
+    - **A file some process has *mapped* cannot be evicted, and the provider says so in a way that
+      names nothing.** Dropbox refuses with a bare **"Unable to Remove Download"** — no file, no
+      reason — and the culprit here was `QuickLookUIService`, holding the JPEG `txt` (mapped) since
+      Finder had previewed that folder. `lsof <file>` is the whole diagnosis and it takes one run;
+      killing that XPC service (it relaunches on demand) and moving Finder off the folder made the
+      same gesture succeed immediately. Worth knowing because the natural readings are all wrong —
+      a Dropbox bug, a permissions problem, an unsynced file — and because a *file manager showing
+      previews is itself the thing most likely to be holding the mapping*, so anyone reproducing
+      this state has probably created the obstacle by looking at the file.
+    - The state is not stable on its own: Dropbox's dump carries `speculative disk management:
+      <inGreedyState:true>` with a background download pacer, and the first eviction was silently
+      re-hydrated within about five minutes with nothing of ours touching the file. So a placeholder
+      is something to measure promptly rather than to set up and come back to.
 - **A resource-value read inside a File Provider domain costs ~650–1000 µs, not ~24 µs.** It is a
   round trip to the provider, not a `stat`, and it holds for iCloud Drive and Google Drive alike
   (measured warm, fresh `URL` each time). The original ~24 µs figure in the M6 comments was taken on

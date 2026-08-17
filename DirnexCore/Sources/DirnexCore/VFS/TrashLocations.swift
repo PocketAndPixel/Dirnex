@@ -70,6 +70,18 @@ public enum TrashLocations {
     /// into `~/.Trash` — which the merged listing already covers. `SidebarLocations.trashDirectories`
     /// is where that filter lives; this function stays a pure path computation.
     ///
+    /// **And existence is not sufficient either: Dropbox has the directory and does not use it.**
+    /// Measured 2026-08-18 — `Dropbox-Home` carries a `.Trash` at its root with the marker xattr
+    /// below *and* a live `.trash` node in its domain, so every signal this code keys on says the
+    /// provider keeps a trash; a `trashItem` on a file inside the mount nonetheless answers
+    /// `~/.Trash`, and so does Finder's own delete, which names that destination itself. The control
+    /// that makes it a claim about the provider rather than about the caller ran in the same binary
+    /// on the same afternoon: a streaming-mode Google Drive mount answers `<mount>/.Trash` for both.
+    /// So the row Dropbox contributes here is a directory that stays empty — one `readdir` on the
+    /// merged listing and nothing on screen, since the Trash is one row over many sources rather
+    /// than one row each. Nothing to fix; worth knowing before reading an empty Dropbox trash as a
+    /// bug in the merge.
+    ///
     /// That these are the same species as iCloud's is not inference: all three carry the marker
     /// xattr `com.apple.fileprovider.trash`, and `~/.Trash` does not. They are constructed rather
     /// than discovered by that xattr because the mounts are already enumerated for the sidebar and a
