@@ -186,10 +186,22 @@ final class FileCellView: NSTableCellView {
         super.init(frame: .zero)
         self.identifier = identifier
 
-        let text = NSTextField(labelWithString: "")
+        let text = ExpandingLabel(labelWithString: "")
         text.translatesAutoresizingMaskIntoConstraints = false
         text.lineBreakMode = .byTruncatingTail
         text.cell?.usesSingleLineMode = true
+        // Hovering a truncated cell floats the whole value in place — AppKit's own expansion
+        // tooltip, which is what Finder and every stock list does for a name too long for its
+        // column. Preferred over setting `toolTip` to the name because it **self-gates exactly**:
+        // measured on a label of this shape in a 200 pt text area, `expansionFrame(withFrame:in:)`
+        // answers 335.4 pt for a truncated name and `.zero` for one that fits — so the rows that
+        // fit cost nothing and never show a tooltip. It is also stateless, which matters more here
+        // than it looks: a `toolTip` string would have to be re-assigned on *every* render,
+        // `nil` included, or it rides a recycled cell onto an unrelated row (the hazard the Size
+        // column's own tooltip is commented for). Set for every column, not only the name: a Date
+        // narrowed past its content has the same problem and the same answer. `ExpandingLabel` owns
+        // how the floated panel is *drawn* — the stock one is illegible on a custom cursor color.
+        text.allowsExpansionToolTips = true
         addSubview(text)
         textField = text
 
@@ -365,18 +377,27 @@ final class FileCellView: NSTableCellView {
         gitBadge?.isEmphasized = backgroundStyle == .emphasized
         gitBadge?.emphasizedInk = palette.cursorForeground
 
-        if backgroundStyle == .emphasized {
-            // Derived from the cursor color, never picked: a user who could choose both would
-            // reach a white-on-pale-yellow row on their first try. Untouched, this *is*
-            // `.alternateSelectedControlTextColor` — see `PanelPalette.cursorForeground`.
-            textField.textColor = palette.cursorForeground
-        } else if marked {
-            textField.textColor = palette.resolvedMark
+        // What this row's text draws in when it is *not* the cursor — the mark, then a file-type
+        // rule, then the ordinary label color. Named rather than inlined into the chain below
+        // because the expansion tooltip needs exactly this value: its floated panel is filled with
+        // `.textBackgroundColor` and knows nothing of the cursor's fill, so the cursor-derived ink
+        // is illegible there (`ExpandingLabel` carries the measurement).
+        let resting: NSColor
+        if marked {
+            resting = palette.resolvedMark
         } else if let typeColor {
-            textField.textColor = typeColor
+            resting = typeColor
         } else {
-            textField.textColor = .labelColor
+            resting = .labelColor
         }
+        // Pushed down every time the style is applied, not once at build time: this cell comes out
+        // of a reuse pool, so a stale ink would float the *previous* row's color over this name.
+        (textField.cell as? ExpandingLabelCell)?.expansionInk = resting
+
+        // Derived from the cursor color, never picked: a user who could choose both would
+        // reach a white-on-pale-yellow row on their first try. Untouched, this *is*
+        // `.alternateSelectedControlTextColor` — see `PanelPalette.cursorForeground`.
+        textField.textColor = backgroundStyle == .emphasized ? palette.cursorForeground : resting
     }
 
     /// Only the name cell carries a disclosure triangle (and thus an icon); the size/date cells do
