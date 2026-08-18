@@ -3077,15 +3077,28 @@ what made the milestone affordable and the rest inverted rules borrowed from the
   - The upload transient is real and visible: `uploading` at 0.54 s → `uploaded` at 6.94 s on a 72 KB
     file, and drawn live in the app as the uploading badge on a 12 MB one while the materialized JPG
     beside it carried none.
-  - **`NotDownloaded` on a Box *file* is unmeasured, and unlike Dropbox no Finder gesture reaches it.**
-    `fileproviderctl evaluate` shows Box offering `MarkForOffline` and **no** unpin or eviction for a
-    file that was never pinned (`UnmarkForOffline = 0`), and `evictItem` still refuses an ad-hoc
-    binary with `NSFileProviderErrorDomain -2001`. The state exists in principle — the root is
-    `cp:lazy` and evicting is allowed — and needs a file that arrives from Box's web account rather
-    than one created on this Mac. The adjacent reading that *was* taken: the dataless `.Trash`
-    placeholder, while it existed, came back through `CloudSyncStorage` as `notDownloaded` with
-    `SF_DATALESS` set, so the reader answers correctly for a Box dataless item — on a directory rather
-    than on a row anyone would download.
+  - **The cheapest route to `NotDownloaded` is a file that has never been on this Mac, not an eviction
+    of one that has.** Two milestones were spent trying to *evict* — OneDrive's account was pinned so
+    the state could not exist, Dropbox needed a human's right-click in Finder, and both hit the same
+    `evictItem` refusal (`NSFileProviderErrorDomain -2001`) with no `fileproviderctl` verb to stand in.
+    Box offers no way out of the downloaded state either (`fileproviderctl evaluate` shows
+    `MarkForOffline` and **no** unpin for a file that was never pinned), and it did not matter: Box
+    streams by default, so a file uploaded from the **web** and never opened here arrives as a
+    placeholder on its own. Ask whoever owns the account to upload one; it takes a minute and needs no
+    gesture on this Mac at all.
+    - Measured on a 13.8 MB one: `st_flags` **`0x40000060`** (`SF_DATALESS|UF_COMPRESSED|UF_TRACKED` —
+      the same word iCloud and Dropbox give, which is why the test is a mask and never an equality),
+      `st_blocks` 0, the real size under its real name, no stub. `CloudSyncStorage` answers
+      `notDownloaded` with `isDownloading == false`, `FileEntry.isDataless` agrees off the listing's
+      own `stat`, and the pane draws the download badge beside a row still reporting 14,5 MB. The
+      narrowness control rides in the same listing: the materialized JPG next to it reads
+      `0x00000040` and `isDataless == false`.
+    - **The control worth keeping is that nothing materialized it**: 40 resource-value reads, a real
+      `listDirectory`, and then the running app having listed, scanned and badged the row, it is
+      *still* `0x40000060` with `st_blocks` 0. That is the whole point of the `SF_DATALESS` guard —
+      one byte read would have downloaded 13.8 MB — and it is the half a badge screenshot cannot show.
+    - The file's name was Cyrillic, so the non-ASCII path travelled the listing, the resource-value
+      read and the badge unchanged. Incidental, and free.
 
 ### shasum, md5sum and the checksum-file formats
 

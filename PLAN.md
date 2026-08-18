@@ -590,14 +590,21 @@ where an item goes, and a real delete is the only thing that answers.** The prac
 Dirnex's delete is the *more* recoverable of the two on Box, which is the opposite of the asymmetry
 Drive taught.
 
-`NotDownloaded` on a Box **file** is the one thing still open, and unlike Dropbox there is no gesture
-that reaches it: `fileproviderctl evaluate` shows Box offering `MarkForOffline` and no unpin or
-eviction for a file that was never pinned, while `evictItem` refuses an ad-hoc binary as before. The
-adjacent reading is that the dataless `.Trash` placeholder, while it existed, came back through
-`CloudSyncStorage` as `notDownloaded` with `SF_DATALESS` set — so the reader answered correctly for a
-Box dataless item, on a directory rather than on a row anyone would download. The state is reachable in
-principle (`cp:lazy`, evicting allowed) and needs a file that arrives from Box's web account rather
-than from this Mac.
+**`NotDownloaded` was reached without an eviction at all, which is the cheapest route this milestone
+has found to it.** Box offers no way *out* of the downloaded state — `fileproviderctl evaluate` shows
+`MarkForOffline` and no unpin for a file that was never pinned, and `evictItem` still refuses an
+ad-hoc binary — but Box streams by default, so a file uploaded from the **web** and never opened here
+simply arrives as a placeholder. Measured on a 13.8 MB one: `st_flags` **`0x40000060`** —
+`SF_DATALESS|UF_COMPRESSED|UF_TRACKED`, the same word iCloud and Dropbox give, which is why the test
+is a mask and never an equality — `st_blocks` 0, the real size under its real (Cyrillic) name,
+`CloudSyncStorage` answering `notDownloaded` with `isDownloading == false`, `FileEntry.isDataless`
+agreeing off the listing's own `stat`, and the materialized JPG beside it reading `0x00000040` and
+`false` in the same listing as the narrowness control. The pane draws the download badge next to a row
+still reporting 14,5 MB. And the control no screenshot shows: 40 resource-value reads, a real
+`listDirectory`, and then the app's own per-row scan having listed and badged it, it is **still**
+`0x40000060` with `st_blocks` 0 — one byte read would have downloaded it. Worth remembering for the
+next provider: **the way to a placeholder is a file that has never been here, not an eviction of one
+that has.**
 
 **Amazon Drive is not a thing to support.** It shut down 2023-12-31, and WorkDocs was EOL'd in 2025;
 there is no File Provider mount to find. So "Amazon" means **S3**, which is a real backend and the
