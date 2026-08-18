@@ -103,15 +103,40 @@ public enum S3Key {
         return out
     }
 
-    /// Undo the percent-encoding AWS applies to keys when a listing was asked for with
-    /// `encoding-type=url`.
+    /// Undo the encoding AWS applies to keys when a listing was asked for with `encoding-type=url`.
     ///
     /// Worth asking for on every listing rather than never: a key may legally contain characters
     /// that cannot appear in XML at all (a control character), and an unencoded listing carrying
     /// one is malformed XML — so the alternative to decoding here is a whole page that fails to
     /// parse because of one object somebody uploaded years ago. Returns `nil` for input that is not
     /// valid UTF-8 once decoded, which is a key no name can be made from.
+    ///
+    /// **What `encoding-type=url` produces is `application/x-www-form-urlencoded`, not the
+    /// percent-encoding the parameter's name suggests — so a space arrives as `+`.** Measured
+    /// 2026-08-18 against a real bucket, listing the same three keys with the parameter and without
+    /// it:
+    ///
+    /// | stored key   | `encoding-type=url` | no parameter |
+    /// |--------------|---------------------|--------------|
+    /// | `trailing␣`  | `trailing+`         | `trailing␣`  |
+    /// | `c␣d.txt`    | `c+d.txt`           | `c␣d.txt`    |
+    /// | `a+b.txt`    | `a%2Bb.txt`         | `a+b.txt`    |
+    ///
+    /// `removingPercentEncoding` alone leaves the `+` standing, so **every key containing a space
+    /// was misnamed** — and since every byte-moving verb re-encodes that name into a URL, where a
+    /// literal `+` becomes `%2B`, each one then addressed an object that does not exist: `stat` and
+    /// F5 answered `notFound` for a row visible in the pane, and F8 reported success having deleted
+    /// nothing. That is the Slice 8 trim bug one layer over, and it hid for the mirror-image reason
+    /// — the S3-compatible endpoint those fixtures came from ignores the parameter and never echoes
+    /// it, so its bytes cannot carry this, and the public AWS buckets the other fixtures came from
+    /// have no spaces in any key.
+    ///
+    /// The two cases stay distinguishable because a *literal* plus is always sent as `%2B`, so a
+    /// bare `+` in this input can only ever have been a space: substituting before the percent
+    /// decode is unambiguous, and the reverse order would turn `%2B` into a space and lose the
+    /// distinction. `%20` keeps decoding to a space as it always did, which is what a server
+    /// spelling it that way still needs.
     public static func decodingURLEncoding(_ value: String) -> String? {
-        value.removingPercentEncoding
+        value.replacingOccurrences(of: "+", with: " ").removingPercentEncoding
     }
 }

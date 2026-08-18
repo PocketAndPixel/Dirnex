@@ -246,6 +246,30 @@ at build time.
   reason it proved nothing one pass earlier (a post-transfer boundary check throws either way, ▸ curl
   for S3). The general form: when the subject is "does stopping reach the work", the fake has to be
   slow enough to stop, and only the *work's own* record is evidence.
+- **A live test's probe size is a *duration* wearing a byte count, and it expires silently the day
+  the suite meets a faster endpoint.** `S3TransferProgressLiveIntegrationTests` proves an upload
+  reports its bytes *while it runs*, which needs a transfer long enough to carry several of `curl`'s
+  once-a-second meter rows. Its 4 MiB was chosen against an S3-compatible server at ~285 KB/s — about
+  fifteen seconds, a dozen rows. Against real AWS the same 4 MiB took **2.76 s**, the first row landed
+  at 1.82 s, and `firstSighting < finished / 2` failed on a transport that was reporting perfectly.
+  Nothing about the product had changed and nothing in the failure points at the constant.
+  - **Sizing it from a measured rate is the natural fix and it is worse, because it fails
+    *intermittently*.** One 1 MiB calibration upload is mostly connect, TLS and `Expect:
+    100-continue`, so it read **2.57 MB/s** for a link doing nearer 9 and sized the probe about 3×
+    too small — the direction that fails rather than merely slows. A two-point slope removes the
+    fixed cost in principle and is dominated by variance in practice: green on three runs alone, then
+    **1 sighting** inside the full suite, where every other test is competing for the same machine.
+  - **What works is a ladder rather than a model**: try 4, then 16, then 48 MiB, stopping at the
+    first transfer that lasted long enough for the claim, and *failing loudly* if even the top rung
+    is too fast. The criterion is then the transfer's own measured duration — the quantity actually
+    in question — and no arithmetic about the link survives to be wrong. Measured across three full
+    suite runs the test's duration varies 3.3–9.2 s while the verdict does not, which is the ladder
+    absorbing exactly the variance that broke the calculated version.
+  - **The two tests in that suite read as twins and have clocks an order of magnitude apart**, which
+    is why only one of them ever broke: a *download*'s progress is the destination file's size, asked
+    at `ProcessWaiting`'s 100 ms poll, so even a two-second transfer reports twenty times, while an
+    *upload* has no local observable and can only learn something when `curl` next prints. An
+    assertion shape that is safe for one is not evidence for the other.
 
 ## AppKit
 
@@ -2174,6 +2198,27 @@ what made the milestone affordable and the rest inverted rules borrowed from the
   that ignores the parameter would otherwise have every key decoded anyway, turning a literal `100%`
   in a legal key into a decode failure — and `%20` into a space that was never there. AWS echoes
   `<EncodingType>url</EncodingType>`; key the decode on that.
+- **And what that parameter produces is `application/x-www-form-urlencoded`, not the
+  percent-encoding its name implies — so a space comes back as `+`.** Measured 2026-08-18 against a
+  real bucket, the same three keys listed with the parameter and without it: a key stored `c d.txt`
+  arrives as `c+d.txt`, `trailing␣` as `trailing+`, and a literal `a+b.txt` as `a%2Bb.txt`.
+  `removingPercentEncoding` reads straight past the `+`, so **every key holding a space was
+  misnamed** — and since every byte-moving verb re-encodes that name into a URL, where a literal `+`
+  becomes `%2B`, each one then addressed an object that is not there: `stat` and F5 answered
+  `notFound` for a row visible in the pane, and F8 reported success having deleted nothing. Substitute
+  before percent-decoding, never after: a real plus always arrives as `%2B`, so a bare `+` in that
+  input can only have been a space, while decoding first collapses both onto a space and loses the
+  distinction for good.
+  - **It is the whitespace-trim bug below with its two hiding places exchanged**, which is why one
+    corpus could not find it after the other had already been burned by the same class. That one was
+    unreachable against AWS (which honors the parameter, so the space arrives as `%20` and there is
+    nothing to trim) and reachable on an S3-compatible endpoint; this one is the reverse — the
+    endpoint **ignores** the parameter and never echoes it, so `isURLEncoded` is false there and no
+    decoding happens at all, while the public AWS buckets the other fixtures came from have no
+    spaces in any key. Neither corpus can carry it. It took a bucket somebody had written a file
+    name with a space into, and the general form is worth carrying past S3: **when a rule is keyed
+    on a flag the server sets, the fixtures that exercise the flag and the fixtures that exercise
+    the rule may be disjoint sets** — having one of each is not coverage.
 - **`ISO8601DateFormatter` cannot read both stamp shapes with one option set.** AWS sends
   `…:15.000Z` and several S3-compatible servers send `…:15Z`, and `.withFractionalSeconds` makes the
   fraction **required** rather than optional — so one formatter returns `nil` for half the servers the

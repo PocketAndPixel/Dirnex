@@ -123,6 +123,26 @@ struct S3KeyTests {
         #expect(S3Key.decodingURLEncoding("my%20file%20%2B%20one.txt") == "my file + one.txt")
     }
 
+    @Test("a space arrives as a plus, which is what `encoding-type=url` actually means")
+    func decodesFormEncodedSpace() {
+        // Real bytes: keys stored as `c d.txt` and `trailing ` came back this way from a live
+        // bucket 2026-08-18, and came back with their spaces intact when the same three keys were
+        // listed again with no `encoding-type` at all. `removingPercentEncoding` alone leaves the
+        // plus standing, and the URL built back from that name asks for `%2B` — a key that is not
+        // there, which is what made `stat` answer `notFound` for a row visible in the pane.
+        #expect(S3Key.decodingURLEncoding("c+d.txt") == "c d.txt")
+        #expect(S3Key.decodingURLEncoding("trailing+") == "trailing ")
+    }
+
+    @Test("a literal plus survives, because that one arrives as %2B")
+    func keepsLiteralPlus() {
+        // The narrowness control, and the reason the substitution runs *before* the percent decode
+        // rather than after: `a+b.txt` was in the same response, spelled `a%2Bb.txt`. Decoding
+        // first would collapse both spellings onto a space and lose the distinction entirely.
+        #expect(S3Key.decodingURLEncoding("a%2Bb.txt") == "a+b.txt")
+        #expect(S3Key.decodingURLEncoding("both+%2B.txt") == "both +.txt")
+    }
+
     @Test("a key that is not valid escaping decodes to nothing rather than to garbage")
     func rejectsBadEscaping() {
         #expect(S3Key.decodingURLEncoding("100%.txt") == nil)

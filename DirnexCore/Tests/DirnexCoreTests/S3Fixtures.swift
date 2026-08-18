@@ -270,4 +270,32 @@ enum S3Fixtures {
     s3-up=3145728
 
     """
+
+    /// `amzn-s3-df` in `eu-north-1`, `prefix=dirnex-live-probe/slice10/&encoding-type=url`,
+    /// captured 2026-08-18 — three keys written for this fixture and deleted after it.
+    ///
+    /// The whole point of it is what `encoding-type=url` does to a **space**. The same three keys
+    /// listed again with the parameter left off came back as `a+b.txt`, `c d.txt` and `trailing `,
+    /// so the encoding here is `application/x-www-form-urlencoded`: a space is `+` and a literal
+    /// plus is `%2B`. No public bucket can stand in — the ones the fixtures above came from have no
+    /// spaces in any key, and the S3-compatible endpoint the whitespace suite uses ignores the
+    /// parameter and never echoes it.
+    static let formEncodedPage = """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Name>amzn-s3-df</Name>\
+    <Prefix>dirnex-live-probe/slice10/</Prefix><KeyCount>3</KeyCount><MaxKeys>1000</MaxKeys>\
+    <EncodingType>url</EncodingType><IsTruncated>false</IsTruncated>\
+    <Contents><Key>dirnex-live-probe/slice10/a%2Bb.txt</Key>\
+    <LastModified>2026-08-18T14:12:40.000Z</LastModified>\
+    <ETag>&quot;9dd4e461268c8034f5c8564e155c67a6&quot;</ETag><Size>1</Size>\
+    <StorageClass>STANDARD</StorageClass></Contents>\
+    <Contents><Key>dirnex-live-probe/slice10/c+d.txt</Key>\
+    <LastModified>2026-08-18T14:12:40.000Z</LastModified>\
+    <ETag>&quot;9dd4e461268c8034f5c8564e155c67a6&quot;</ETag><Size>1</Size>\
+    <StorageClass>STANDARD</StorageClass></Contents>\
+    <Contents><Key>dirnex-live-probe/slice10/trailing+</Key>\
+    <LastModified>2026-08-18T14:12:40.000Z</LastModified>\
+    <ETag>&quot;9dd4e461268c8034f5c8564e155c67a6&quot;</ETag><Size>1</Size>\
+    <StorageClass>STANDARD</StorageClass></Contents></ListBucketResult>
+    """
 }

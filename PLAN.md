@@ -2167,9 +2167,10 @@ the live negative control is the sharpest one available: the *same* reverted bin
 reachable only in the shape it was written for.
 
 What is still unverified is unchanged from Slice 18 and is the same one step: no real provider's
-refusal has been seen, because the live config file this milestone's suites are gated on is not on
-this Mac. Everything before it — the header travelling, signed, with its quotes intact, on both
-verbs — is measured.
+refusal has been seen. The live config file the suites are gated on **now exists** (the follow-up
+below), so that is no longer what blocks it — what is left is arranging the race itself against a
+service that honors the precondition. Everything before it — the header travelling, signed, with its
+quotes intact, on both verbs — is measured.
 
 **With this, M21's own list is empty.** The two remaining items are not code: Slice 18's and this
 slice's one unmeasured step needs an account, and the milestone's opening half — whether the other
@@ -2179,8 +2180,62 @@ needs those clients installed. **OneDrive was the half of that done on 2026-08-1
 to hold for either — OneDrive keeps none, Dropbox keeps one and never uses it, and both send their
 deletes to `~/.Trash` (see the milestone's opening). Neither needed code, and `NotDownloaded` — the
 state OneDrive's pinned account could not produce — was closed on Dropbox the same day, so every
-state `CloudItemAttributes` reports has now been seen live on a third-party provider. What is left
-there is Box, still uninstalled.
+state `CloudItemAttributes` reports has now been seen live on a third-party provider. **Box followed on
+2026-08-18** and is written up in the opening above, which leaves that half of the milestone closed:
+five providers measured, and the two signals — "declares trashing" and "has a `.Trash`" — exhausted
+without either predicting where a delete lands.
+
+**Follow-up, 2026-08-18 — the first run against real Amazon S3, which found one bug and one bad
+test.** Every earlier slice was verified against a local SigV4-verifying endpoint, anonymous reads of
+public AWS buckets, and one paid S3-compatible account; what none of them could do was be *Amazon,
+writable*. A bucket in `eu-north-1` behind an IAM user's key closes that, and the live suites' config
+file now exists on this Mac. Nine of the eleven live tests passed on the first run, the account suite
+entire — connect with no bucket, enter a bucket, walk back out, and create-and-delete a real one.
+
+- **`encoding-type=url` is `application/x-www-form-urlencoded`, so a space comes back as `+`** — and
+  `S3Key.decodingURLEncoding` was `removingPercentEncoding`, which reads straight past it. Measured
+  by listing the same three keys with the parameter and without: `c d.txt` → `c+d.txt`,
+  `trailing␣` → `trailing+`, and a literal `a+b.txt` → `a%2Bb.txt`. So **every key holding a space
+  was misnamed in the pane**, and since each byte-moving verb re-encodes that name into a URL, where
+  a literal `+` becomes `%2B`, each one addressed an object that is not there: `stat` and F5
+  answering `notFound` for a visible row, F8 reporting success having deleted nothing. A space in a
+  file name is not an edge case. Fixed by substituting before the percent decode, which is
+  unambiguous precisely because a real plus always arrives as `%2B`; +4 tests in a suite of their own
+  over the captured bytes, and the negative control fails exactly those four — the stat one by
+  answering `nil`, which is the user-visible `notFound` verbatim.
+  - **It is Slice 8's trim with the hiding places exchanged**, which is the part worth keeping: that
+    bug was unreachable on AWS (which honors the parameter, so the space arrives as `%20` and there
+    is nothing to trim) and lived on the S3-compatible endpoint; this one is the reverse, since that
+    endpoint **ignores** the parameter and never echoes it, so nothing is decoded there at all, while
+    the public AWS buckets the other fixtures came from have no spaces in any key. Two corpora, one
+    class of bug, and neither corpus can carry both halves — the isolation was worth doing before the
+    fix, and it is one line: the *request* side was fine, `prefix=…%20` matching with `KeyCount 1`.
+- **The other failure was the test, and its constant was a duration written as a byte count.**
+  `S3TransferProgressLiveIntegrationTests` needs a transfer long enough to carry several of `curl`'s
+  once-a-second meter rows; its 4 MiB was fifteen seconds against the ~285 KB/s endpoint it was
+  written for and **2.76 s** against AWS, so the first row landed at 1.82 s and
+  `firstSighting < finished / 2` failed on a transport reporting perfectly. Sizing the probe from a
+  measured rate was tried and is worse — a 1 MiB calibration is mostly handshake and read 2.57 MB/s
+  for a link doing nearer 9, and the two-point slope that removes the fixed cost is dominated by
+  variance: green three runs alone, then one sighting inside the full suite. It now climbs a ladder
+  (4 → 16 → 48 MiB, the top rung deliberately under the 64 MiB multipart threshold, since over it the
+  bytes leave by a different verb), stopping at the first transfer long enough to carry the claim and
+  failing loudly if even the top one is too fast. The assertions moved off fractions and onto the
+  meter's own cadence. Three full-suite runs green with the test's duration varying 3.3–9.2 s and the
+  verdict not; the control — re-silencing the meter with `-sS`, the bug it exists to catch — fails it
+  while the download half keeps passing, which is the narrowness.
+- **What real AWS newly exercised**, beyond finding the above: virtual-host addressing end to end
+  (the S3-compatible endpoint's one-label wildcard certificate had forced path-style on every earlier
+  run, so the default path had never been used against a real service), and the wrong-region `301`
+  carrying `x-amz-bucket-region: eu-north-1` — the header Slice 2 designed the correction around and
+  no endpoint since had sent. Worth noting the `<Endpoint>` element came back **dot**-spelled
+  (`amzn-s3-df.s3.eu-north-1.amazonaws.com`), not the legacy dash form NOTES records; the extractor
+  reads both, so nothing breaks, but the recorded claim was narrower than what AWS sends today.
+- **Still not exercised, and now only for want of arranging it**: a real provider refusing a
+  conditional write (Slice 18/19, above); AWS's `InvalidArgument` on a raw continuation token, which
+  needs more than 1000 keys under one prefix; `BucketAlreadyOwnedByYou`, where the S3-compatible
+  server answered a silent 200; and `InvalidObjectState`, which needs an object in an archive storage
+  class — the one thing on this list that cannot be reached at all on a non-AWS endpoint.
 
 ### M22 — Find Files on a connected server (M, opened 2026-08-16)
 
