@@ -2166,11 +2166,11 @@ the live negative control is the sharpest one available: the *same* reverted bin
 412-refusing server and fails against a 200-committed one, which is what says the second reading is
 reachable only in the shape it was written for.
 
-What is still unverified is unchanged from Slice 18 and is the same one step: no real provider's
-refusal has been seen. The live config file the suites are gated on **now exists** (the follow-up
-below), so that is no longer what blocks it — what is left is arranging the race itself against a
-service that honors the precondition. Everything before it — the header travelling, signed, with its
-quotes intact, on both verbs — is measured.
+What was still unverified here — no real provider's refusal having been seen — was closed by the
+**third follow-up pass below**, which also retires the framing this paragraph used to carry: it read
+as needing "the race", and a 412 rests on a stale *tag* rather than on a timing, so it was reachable
+in a straight line all along. Everything before it — the header travelling, signed, with its quotes
+intact, on both verbs — was already measured.
 
 **With this, M21's own list is empty.** The two remaining items are not code: Slice 18's and this
 slice's one unmeasured step needs an account, and the milestone's opening half — whether the other
@@ -2235,7 +2235,9 @@ entire — connect with no bucket, enter a bucket, walk back out, and create-and
   conditional write (Slice 18/19, above); AWS's `InvalidArgument` on a raw continuation token, which
   needs more than 1000 keys under one prefix; `BucketAlreadyOwnedByYou`, where the S3-compatible
   server answered a silent 200; and `InvalidObjectState`, which needs an object in an archive storage
-  class — the one thing on this list that cannot be reached at all on a non-AWS endpoint.
+  class — the one thing on this list that cannot be reached at all on a non-AWS endpoint. *(The last
+  of those closed in the second pass below, and the conditional write in the third; the two token and
+  bucket-naming items are what remain.)*
 
 **Follow-up, 2026-08-18 (second pass) — the four things the first AWS run left open, run and
 fixed.** Two were real bugs, one was a test pinning the wrong thing, and one turned out to be the app
@@ -2275,6 +2277,54 @@ mappings verbatim. **Multipart also ran against real AWS for the first time**, i
 own (`S3MultipartLiveIntegrationTests`): 70 MiB through the real backend, byte-identical by SHA-256,
 ~20 s, and no multipart upload left open afterwards. 2526 core tests, 555 app tests, both linters and
 all three CI scripts green.
+
+**Follow-up, 2026-08-18 (third pass) — the conditional write, refused by Amazon. The last item on
+M21's list, and the framing was what had been blocking it.** Slices 17–19 measured everything a
+client can measure alone and parked the rest as "arranging the race against a service that honors the
+precondition"; a race is not what a 412 rests on. The precondition is a **stale tag — a value** — and
+staleness is arrangeable in a straight line: the window in production sits between
+`RemoteFileRevision`'s re-`stat` and the PUT, what it *produces* is an object whose tag is no longer
+the one we hold, and a second sequential write produces exactly that state. The other writer
+collapses into the test. `S3ConditionalWriteLiveIntegrationTests` is the kept suite, four tests, all
+green against the `eu-north-1` bucket, and **AWS honours all of it**:
+
+- **`.changedSince`** — a stale `If-Match` is refused **412 `PreconditionFailed`** with
+  `<Condition>If-Match</Condition>`, and the object is byte-for-byte what it was.
+- **`.goneSince`** — the half `S3WriteCondition.refusal(for:)` called *inferred rather than measured*
+  is now measured: a tag for a key that has since been deleted answers **404**, and the separate
+  sentence is right.
+- **`.alreadyThere`** — an occupied key refuses `If-None-Match: *`. **This one can only be reached
+  one level down, and that is the finding rather than a shortcut**: `createFile` does its own `stat`
+  and throws `alreadyExists` *before* the conditional PUT is ever sent, so the app's own path can
+  never exercise the server's half at all.
+- **The multipart completion** refuses too, publishes nothing, and the abort ran — `?uploads`
+  reported **zero** open uploads afterwards, so the bill this milestone kept naming is closed by
+  measurement rather than by reading the code.
+
+**AWS refuses a completion with the status *and* the code** — probed directly, `HTTP 412` carrying
+`<Code>PreconditionFailed</Code>`. So the 200-committed shape Slice 19 built the body-side reading
+for is still unseen from Amazon: it stays justified (AWS documents the late failure, and the probe
+endpoint reproduces it) and it is honest to record that a status-only reader would have sufficed on
+every real response so far.
+
+**One written claim came back wrong, and it is a correction to NOTES rather than to the code.**
+docs/NOTES.md recorded that stripping an ETag's quotes "turns every conditional write into a 412".
+Measured against Amazon in one run — quoted current tag **200**, *unquoted* current tag **200**,
+unquoted wrong tag **412** — that is true of the probe endpoint, whose 412 semantics are its own
+code, and false of AWS. The rule to keep the quotes stands (a stricter server exists; ours was one),
+but the consequence was over-generalized from the only server that had been asked.
+
+**Two negative controls, each firing on exactly its own half**, which is what makes the pairing more
+than a courtesy: an **unmatchable** tag (a character appended) fails the *control* write with
+`.remoteFileChangedSinceFetch` — i.e. without the pairing, a build whose tags AWS can never match
+reports "somebody else changed this file" on every save while the refusal test stays green, the quiet
+direction — and `.unconditional` in place of the stale condition fails the three refusal assertions
+(the write lands, the tag moves) while the control half keeps passing. 2526 core tests, **559** app
+tests, both linters green.
+
+**With this, M21 has one item left and it is not about S3's writes**: AWS's `InvalidArgument` on a raw
+continuation token, which needs more than 1000 keys under one prefix, and
+`BucketAlreadyOwnedByYou`, where the S3-compatible server answered a silent 200.
 
 ### M22 — Find Files on a connected server (M, opened 2026-08-16)
 

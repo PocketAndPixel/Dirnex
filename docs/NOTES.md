@@ -2552,16 +2552,57 @@ what made the milestone affordable and the rest inverted rules borrowed from the
   headers arrive in `SignedHeaders` (`host;if-match;x-amz-content-sha256;x-amz-date`) and the
   signature verified every time, with a wrong-secret control refused in the same run. Same shape as
   `x-amz-copy-source` and `Content-MD5` above — the header is ours to spell, the signing is not. The
-  sharp edge is the value: an **unquoted** digest is a different byte string and does not match, so
-  tidying the quotes off a tag turns every conditional write into a 412. That fails in the quiet
-  direction twice over, because a 412 reads as *"somebody else changed this file"* — so the app
-  would report a conflict that never happened, confidently, on every save. `S3ListingParser` keeps
-  the quotes; nothing between it and the wire may take them off.
+  sharp edge is the value: an **unquoted** digest is a different byte string, so on a server that
+  compares strictly, tidying the quotes off a tag turns every conditional write into a 412. That
+  fails in the quiet direction twice over, because a 412 reads as *"somebody else changed this
+  file"* — so the app would report a conflict that never happened, confidently, on every save.
+  `S3ListingParser` keeps the quotes; nothing between it and the wire may take them off.
+  - **"Every conditional write becomes a 412" was over-generalized from the only server that had
+    been asked, and Amazon is lenient.** This entry used to state it flatly; re-measured 2026-08-18
+    against real AWS in one run, a *quoted* current tag answers **200**, an **unquoted** current tag
+    also answers **200**, and only a genuinely wrong tag answers 412. The strict comparison was the
+    probe endpoint's, whose 412 semantics are its own code — the same caveat this file already
+    attaches to that instrument's *other* answers, arriving on a claim that reads like a fact about
+    HTTP. Keep the quotes anyway: a strict server demonstrably exists, and RFC 9110 is on its side.
+    The general form is worth more than the S3 case — **when the only server that can answer is one
+    you wrote, its strictness is a property of your code, not of the protocol**, so a consequence
+    derived from it needs the qualifier until a real service has been asked.
   - **A doomed conditional PUT costs a round trip rather than the file**, which is what makes
     conditioning a *large* save-back free — and it is the second reason for a header this backend
     already keeps for the 403 case. `curl` sends `Expect: 100-continue` above ~1 KiB, and a server
     answering the precondition there ends it before the body moves: measured, a **64 MiB** upload
     against a stale `If-Match` reported `size_upload=0` and returned in **0.0009 s**.
+  - **A live test for a refused precondition needs no race, and the word "race" is what kept one
+    unwritten for two slices.** PLAN.md carried "arranging the race against a service that honors the
+    precondition" as the last unmeasured step of M21; a 412 rests on a **stale tag — a value** — and
+    staleness is arrangeable sequentially. The window in production sits between the re-`stat` and
+    the PUT; what it *produces* is an object whose tag is no longer the one held, and a second
+    ordinary write produces that state exactly. Measured 2026-08-18 against real AWS, all four
+    refusals fell out of straight-line programs: `.changedSince` (412 with
+    `<Condition>If-Match</Condition>`), `.goneSince` (404 — the half `refusal(for:)` called inferred
+    rather than measured), `.alreadyThere` on `If-None-Match: *`, and a refused multipart completion
+    that published nothing. The general form: **when a test seems to need concurrency, ask whether it
+    needs the timing or only the state the timing produces** — a precondition, a cache invalidation
+    and a conflict dialog are all the second kind, and the second kind is deterministic.
+    - **The `.ifAbsent` case can only be reached one level below the app, and that is a finding
+      rather than a shortcut.** `S3Backend.createFile` does its own `stat` and throws
+      `alreadyExists` *before* the conditional PUT is ever sent, so the app's own path never
+      exercises the server's `If-None-Match: *` at all — the live test has to call
+      `transport.putEmptyObject(key:condition:)`. Worth checking for the shape wherever a
+      client-side guard sits in front of a server-side one: the belt makes the braces untested.
+    - **Pair every refusal with the write that must succeed, or the suite cannot tell "the server
+      honours this" from "we send something it can never match".** Both are green on a refusal-only
+      test. The control's own negative control is what shows the teeth: appending one character to
+      the tag fails the *control* write with `.remoteFileChangedSinceFetch`, which is a build
+      reporting "somebody else changed this file" on **every** save — confident, wrong, and with the
+      refusal test still passing.
+  - **AWS refuses a `CompleteMultipartUpload` with the status *and* the code** — probed 2026-08-18,
+    `HTTP 412` carrying `<Code>PreconditionFailed</Code>`, so a status-only reader would have
+    sufficed on every real response seen so far. The body-side reading is still right to keep (AWS
+    documents beginning the response before assembly finishes, and the probe endpoint reproduces it),
+    but record it as *unseen from Amazon* rather than as measured there. Same run: `?uploads`
+    reported **zero** open uploads after the refusal, so the abort-on-every-failing-exit rule is
+    confirmed by the bill rather than by reading the code.
   - **What no client can measure is whether a given server honours any of it.** A store that ignores
     `If-Match` answers 200 and overwrites, which is indistinguishable from having honoured it. So a
     conditional write is only ever worth building as **strictly additive** protection: keep whatever
