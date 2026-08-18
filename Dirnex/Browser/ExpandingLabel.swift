@@ -45,14 +45,7 @@ final class ExpandingLabelCell: NSTextFieldCell {
     /// every label that is not a file row.
     var expansionInk: NSColor?
 
-    override func expansionFrame(withFrame cellFrame: NSRect, in view: NSView) -> NSRect {
-        let result = super.expansionFrame(withFrame: cellFrame, in: view)
-        NSLog("PROBE asked: \"\(stringValue.prefix(28))\" cell=\(cellFrame.width) → \(result.width)")
-        return result
-    }
-
     override func draw(withExpansionFrame cellFrame: NSRect, in view: NSView) {
-        NSLog("PROBE drew: \"\(stringValue.prefix(28))\"")
         // Paint the backing before anything else. The stock drawing is *glyphs only* — probed, the
         // default `draw(withExpansionFrame:in:)` leaves the panel fully transparent (corner alpha 0)
         // and lets the window behind supply the fill — so filling here is what takes the color out
