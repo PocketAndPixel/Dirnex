@@ -121,6 +121,25 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
     /// upload it as a new object rather than to compare.
     case remoteFileGoneSinceFetch(name: String)
 
+    /// A read was refused because the object sits in an archival storage class and has not been
+    /// restored — S3 answers `403 InvalidObjectState` (measured against real AWS 2026-08-18).
+    ///
+    /// Named rather than mapped, because the generic mapping is the worst answer available: a 403
+    /// becomes `permissionDenied`, whose sentence recommends **Full Disk Access** — a macOS grant,
+    /// for an object on somebody else's servers, when nothing is wrong with the credentials and the
+    /// real remedy is a restore request on the service. It is also invisible until the bytes are
+    /// wanted: `HEAD` answers 200 and the listing draws an ordinary row with a real size and date,
+    /// so the file looks perfectly normal right up until F5 or a preview.
+    case objectNotRestored(name: String)
+    /// A bucket write was refused because another conditional operation on that name is still
+    /// settling — S3 answers `409 OperationAborted` (measured 2026-08-18, creating a bucket moments
+    /// after deleting one of the same name).
+    ///
+    /// Named for the same reason ``bucketNotEmpty(name:)`` is: the shared 409 mapping is
+    /// `alreadyExists`, which sends the user off to choose a different name when the service has
+    /// said the opposite — the name is fine, and the answer is to try it again shortly.
+    case bucketOperationInProgress(name: String)
+
     // MARK: Routing and archives — authored in the app, named here
 
     case noBackendForPath(path: String)
@@ -164,6 +183,8 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
         case .bucketNameNotValid: return "bucketNameNotValid"
         case .remoteFileChangedSinceFetch: return "remoteFileChangedSinceFetch"
         case .remoteFileGoneSinceFetch: return "remoteFileGoneSinceFetch"
+        case .objectNotRestored: return "objectNotRestored"
+        case .bucketOperationInProgress: return "bucketOperationInProgress"
         case .noBackendForPath: return "noBackendForPath"
         case .serverNotConnected: return "serverNotConnected"
         case .archiveToolUnavailableForRead: return "archiveToolUnavailableForRead"
@@ -268,6 +289,16 @@ public extension VFSUnsupportedReason {
             )
         case let .remoteFileGoneSinceFetch(name):
             return ("“%@” is no longer on the server. It was deleted after you opened it.", [name])
+        case let .objectNotRestored(name):
+            return (
+                """
+                “%@” is archived on the service and has to be restored there \
+                before it can be read.
+                """,
+                [name]
+            )
+        case let .bucketOperationInProgress(name):
+            return ("Another operation on “%@” is still finishing. Try again in a moment.", [name])
         case let .noBackendForPath(path):
             return ("No backend can handle %@.", [path])
         case let .serverNotConnected(server):
@@ -323,6 +354,8 @@ public extension VFSUnsupportedReason {
             .bucketNameNotValid(name: ""),
             .remoteFileChangedSinceFetch(name: ""),
             .remoteFileGoneSinceFetch(name: ""),
+            .objectNotRestored(name: ""),
+            .bucketOperationInProgress(name: ""),
             .noBackendForPath(path: ""),
             .serverNotConnected(server: ""),
             .archiveToolUnavailableForRead,

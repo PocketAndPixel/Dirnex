@@ -271,6 +271,22 @@ at build time.
     *upload* has no local observable and can only learn something when `curl` next prints. An
     assertion shape that is safe for one is not evidence for the other.
 
+- **A live test that pins a value the flow under test exists to *correct* is asserting that the
+  correction never happens.** `S3AccountLiveIntegrationTests` walked into a bucket and back out and
+  checked the pane had returned to `config.accountRoot` — the account as **typed**. That reads as the
+  obvious claim and holds only while nothing corrects anything, which was true of every endpoint the
+  suite had met: the local probe endpoint and the S3-compatible account do not validate regions at
+  all. Against real AWS with the region deliberately wrong it fails, because entering the bucket
+  takes the 301, re-aims at the region the service named, and walking up quite correctly lands on
+  **that** account — a different `VFSBackendID`, listing perfectly. The pane was right and the test
+  was wrong, and it failed as a 30 s timeout inside a shared helper, which reads as a broken connect.
+  - The fix is to assert the **relationship** instead: you land on the account that holds the bucket
+    you were in, whichever region that turned out to be. Falsifiable in both directions, and
+    independent of whether a correction fired.
+  - Same family as the probe-size lesson above and worth stating as one rule: **a live test's
+    constants are claims about the endpoint**, and the ones that expire are the ones nobody wrote
+    down as claims — a bandwidth hidden in a byte count, a region hidden in an expected path.
+
 ## AppKit
 
 - **`applicationShouldTerminateAfterLastWindowClosed` is asked from a run-loop *timer*, not at the
@@ -2289,6 +2305,38 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     classifier that only answers the first leaves plausible garbage on disk. It cannot be caught by
     any test over the argument builder, and the file is the *right size for a document*, so nothing
     downstream complains either.
+- **An archived object is a normal-looking row that refuses only when its bytes are wanted, and the
+  generic 403 mapping tells the user the worst possible thing.** Measured 2026-08-18 against real
+  AWS: `PUT` with `x-amz-storage-class: GLACIER` answers 200, `HEAD` answers **200** carrying
+  `x-amz-storage-class`, the listing draws an ordinary row with a real size and date — and a plain
+  `GET` answers **403 `InvalidObjectState`** ("the operation is not valid for the object's storage
+  class") with `<StorageClass>GLACIER</StorageClass>` in the body. So `stat` succeeds, the pane looks
+  perfect, and only F5 or a preview fails. Since every non-credential 403 mapped to
+  `permissionDenied`, the sentence offered was **"Dirnex may need Full Disk Access in System
+  Settings"** — a macOS TCC grant, for an object on Amazon's servers, when nothing is wrong with the
+  credentials and the remedy is a restore request on the service.
+  - **The wider half is that the sentence never knew which backend it was describing.**
+    `VFSErrorText.sentence(for:)` takes only the error, so *every* remote permission failure said
+    that — an S3 bucket policy, an SFTP mode, an FTP account — and had done since those backends
+    shipped. `VFSError.permissionDenied` carries a `VFSPath` and a path carries its backend, so the
+    split needed no change to the error type; it had simply never been asked for. The general form
+    is worth more than the S3 case: **a sentence naming a remedy on *this machine* is making a claim
+    about where the failure happened**, and any such string needs to know that before it can be
+    right. Grep for user-facing text naming System Settings, a disk or a permission dialog and ask
+    what it says on a server.
+  - **Only AWS can produce it**, which is why it went unmeasured for a milestone: an S3-compatible
+    endpoint refuses every storage class but `STANDARD` outright (`400 InvalidStorageClass`), so
+    there is no archived object there to fail on.
+- **`409 OperationAborted` is not a name collision, and the generic 409 mapping says it is.** S3
+  answers it while another conditional operation on a bucket name is still settling — "a conflicting
+  conditional operation is currently in progress against this resource. Please try again." Mapped to
+  `alreadyExists` it reads as *"pick another name"* for a name that is available and merely busy.
+  Two measurements bound it: create/delete/create of one name **inside a single region** succeeds
+  every time (so a deleted name is *not* held — the folklore worth discarding), while changing the
+  region between attempts reproduces the refusal on demand, and it does **not** clear quickly —
+  three retries over 15 s failed on a name a `HEAD` reported as 404. So the sentence must say "try
+  again" without promising when, and anything re-creating a fixed bucket name across regions wants a
+  fresh name instead.
 - **A remote request's floor is a *round trip*, so a delay threshold tuned against a local wait is
   below it and the sheet always appears.** Measured 2026-08-14 against the real third-party
   endpoint: time to first byte for a small object is **0.512–0.519 s** over five runs, decomposing

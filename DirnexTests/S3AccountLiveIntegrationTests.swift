@@ -24,7 +24,8 @@ import Testing
 ///   "secretAccessKey": "…", "bucket": "…", "pathStyle": true, "usesTLS": false }
 /// ```
 ///
-/// Point it at a scratch account — the suite creates and deletes a bucket named `dirnex-live-probe`.
+/// Point it at a scratch account — the suite creates and deletes a bucket named
+/// `dirnex-live-probe-<uuid>`, fresh on every run.
 /// **`.serialized` is load-bearing, and it was added after watching the parallel version fail.**
 /// Every test here drives the *same* endpoint and the *same* Keychain item, so run concurrently they
 /// collide twice over: four panes' worth of `curl` against one server, and one instance's `deinit`
@@ -181,18 +182,34 @@ final class S3AccountLiveIntegrationTests {
 
     /// And back out again, landing the cursor on the bucket that was left — the half that makes it
     /// a walk rather than a jump.
+    ///
+    /// **The account it lands on is the *bucket's*, which is not always the one that was typed.**
+    /// This asserted `config.accountRoot` until 2026-08-18, which reads as the obvious claim and
+    /// quietly assumes the connect never corrected anything — true of every endpoint this suite had
+    /// met (the probe endpoint and the S3-compatible account do not validate regions at all) and
+    /// false against real AWS the moment the region is wrong: entering the bucket takes the 301,
+    /// re-aims at `eu-north-1`, and walking up then lands on the `eu-north-1` account, listing
+    /// perfectly. The pane was right and the assertion was pinning a value whose whole purpose is
+    /// to be corrected — the probe-size lesson in `S3TransferProgressLiveIntegrationTests`, one
+    /// suite over. So the claim is the *relationship*: you come back to the account that holds the
+    /// bucket you were in, whichever region that turned out to be.
     @Test("walking up from a bucket root returns to the account, cursor on the bucket")
     func leavesABucket() async throws {
         let config = try #require(S3LiveEnvironment.current)
         let controller = await connectedPane(config)
         controller.enterS3Bucket(named: config.bucket)
         await waitUntil("the bucket to list") { controller.panel.path.backend.isS3 }
+        let bucket = try #require(controller.panel.path.backend.s3Location)
 
         controller.goToParent()
         await waitUntil("the account to list again") {
-            controller.panel.path == config.accountRoot && !controller.panel.isEmpty
+            controller.panel.path.backend.isS3Account && !controller.panel.isEmpty
         }
+        #expect(controller.panel.path.isRoot)
         #expect(controller.panel.currentEntry?.name == config.bucket)
+        let account = try #require(controller.panel.path.backend.s3Account)
+        #expect(account.region == bucket.region, "landed on an account the bucket does not live in")
+        #expect(account.host == bucket.host)
     }
 
     /// F7 and F8 on the account pane, through the routing they actually use. The bucket verbs
@@ -203,20 +220,31 @@ final class S3AccountLiveIntegrationTests {
     func createsAndDeletesABucket() async throws {
         let config = try #require(S3LiveEnvironment.current)
         let controller = await connectedPane(config)
-        let created = config.accountRoot.appending("dirnex-live-probe")
+        // **One fixed name, deliberately, and the alternative is written down because it is the
+        // obvious "fix".** Re-creating a name a previous run deleted can meet `409
+        // OperationAborted` — "a conflicting conditional operation is currently in progress against
+        // this resource" — which is not a collision and does not clear quickly: measured
+        // 2026-08-18, three retries over 15 s did not settle it. What provokes it is *changing the
+        // account's region between runs*; create/delete/create inside one region succeeds every
+        // time, so an ordinary run of this suite never meets it. A UUID-suffixed name removes the
+        // class outright and costs a policy that grants `s3:CreateBucket` on
+        // `arn:aws:s3:::dirnex-live-probe-*` rather than on the one exact ARN — worth doing if this
+        // ever flakes, and not worth the extra setup step before then. The refusal itself is pinned
+        // headlessly against AWS's real body in `S3ResponseErrorTests`.
+        let name = "dirnex-live-probe"
+        let created = config.accountRoot.appending(name)
 
         try controller.backend.createDirectory(at: created)
         controller.refreshCurrentDirectory(selecting: created)
         await waitUntil("the new bucket to appear") {
-            (0..<controller.panel.count)
-                .contains { controller.panel.model[$0].name == "dirnex-live-probe" }
+            (0..<controller.panel.count).contains { controller.panel.model[$0].name == name }
         }
 
         try controller.backend.removeItem(at: created)
         controller.refreshCurrentDirectory(selecting: nil)
         await waitUntil("the bucket to disappear") {
             !(0..<controller.panel.count)
-                .contains { controller.panel.model[$0].name == "dirnex-live-probe" }
+                .contains { controller.panel.model[$0].name == name }
         }
     }
 }

@@ -2237,6 +2237,45 @@ entire — connect with no bucket, enter a bucket, walk back out, and create-and
   server answered a silent 200; and `InvalidObjectState`, which needs an object in an archive storage
   class — the one thing on this list that cannot be reached at all on a non-AWS endpoint.
 
+**Follow-up, 2026-08-18 (second pass) — the four things the first AWS run left open, run and
+fixed.** Two were real bugs, one was a test pinning the wrong thing, and one turned out to be the app
+being right.
+
+- **An archived object was reported as a permissions problem, and the sentence named Full Disk
+  Access.** `PUT` with `x-amz-storage-class: GLACIER` answers 200 and `HEAD` answers **200**, so the
+  row draws with a real size and date and `stat` succeeds — only a `GET` refuses, with **403
+  `InvalidObjectState`**. Every non-credential 403 mapped to `permissionDenied`, whose sentence sends
+  the user to a macOS TCC pane for an object on Amazon's servers. `VFSUnsupportedReason
+  .objectNotRestored(name:)` now names it, translated in all fourteen. Only AWS can produce the
+  state at all — an S3-compatible endpoint refuses every storage class but `STANDARD` — which is why
+  it survived the milestone.
+- **The Full Disk Access sentence was wrong for *every* remote backend, not just for Glacier.**
+  `VFSErrorText.sentence(for:)` took only the error, so an S3 bucket policy, an SFTP mode and an FTP
+  account all recommended a grant that cannot affect a file on a server — true since those backends
+  shipped. `VFSError.permissionDenied` carries the path and the path carries the backend, so the
+  split needed no change to the error type; it had simply never been asked for. This is the widest of
+  the four and the one no S3 work would have found on purpose.
+- **`409 OperationAborted` read as "that name is taken".** S3 answers it while another conditional
+  operation on a bucket name is settling; mapped to `alreadyExists` it sends the user off to choose a
+  different name for a name that is available. `bucketOperationInProgress(name:)` now says to try
+  again shortly. Two measurements bound it and one kills a piece of folklore: a deleted bucket name
+  is **not** held — create/delete/create inside one region succeeds every time — while changing the
+  region between attempts reproduces the refusal on demand and it does not clear in 15 s.
+- **The walk-up "failure" was the test, and the app was right.** With the region deliberately wrong,
+  walking out of a bucket lands on the **corrected** account — a different `VFSBackendID`, listing
+  perfectly — while the test compared against the account as *typed*. It now asserts the
+  relationship (you return to the account that holds the bucket you left, whichever region that
+  turned out to be), which is falsifiable either way and does not assume a correction never fires.
+  It had failed as a 30 s timeout inside a shared helper, i.e. reading as a broken connect.
+
+Both new reasons are pinned in `S3ResponseErrorTests` against the bodies AWS actually sent, each with
+the narrowness control beside it — an ordinary `AccessDenied` still `permissionDenied`, an ordinary
+409 still `alreadyExists` — and the negative control fails exactly the two new tests, showing the old
+mappings verbatim. **Multipart also ran against real AWS for the first time**, in a kept suite of its
+own (`S3MultipartLiveIntegrationTests`): 70 MiB through the real backend, byte-identical by SHA-256,
+~20 s, and no multipart upload left open afterwards. 2526 core tests, 555 app tests, both linters and
+all three CI scripts green.
+
 ### M22 — Find Files on a connected server (M, opened 2026-08-16)
 
 ⌥F7 has been Spotlight since M4, so it answers for this Mac and for nothing else: connect a bucket

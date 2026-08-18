@@ -122,12 +122,27 @@ public extension S3ServiceError {
 
     /// The closest `VFSError`, for the paths that must answer in the shared vocabulary.
     ///
-    /// Deliberately maps onto the cases that already exist rather than growing
-    /// `VFSUnsupportedReason`: a new reason needs a translated sentence in the app's catalog, and
-    /// this slice is core-only. The named sentences land with the app wiring, where the catalog
-    /// entries can land in the same commit — a reason without one compiles to its own key and
-    /// renders as `vfs.unsupported.…` on screen (NOTES.md ▸ Localization).
+    /// Mostly maps onto cases that already exist, since a named reason costs a translated sentence
+    /// in the app's catalog and a reason without one renders as `vfs.unsupported.…` on screen
+    /// (NOTES.md ▸ Localization). Two refusals earn one anyway, because for them the generic
+    /// mapping is not merely vague but **wrong about what happened** — see the cases below.
+    ///
+    /// **The `<Code>` is read before the status, deliberately.** The status is what this backend
+    /// classifies on everywhere else, and this milestone has already measured one verb where it
+    /// lies — a `CompleteMultipartUpload` can refuse under a 200 it had already committed to
+    /// (``S3WriteCondition``). A code is the server naming its own answer; asking it first costs
+    /// nothing and cannot be wrong-footed by a status that was chosen before the outcome was known.
     func vfsError(for path: VFSPath) -> VFSError {
+        // 403 otherwise, and its sentence recommends Full Disk Access for an object on somebody
+        // else's servers. Nothing is wrong with the credentials: it needs restoring on the service.
+        if code == "InvalidObjectState" {
+            return .unsupported(.objectNotRestored(name: path.lastComponent))
+        }
+        // 409 otherwise, i.e. `alreadyExists` — "pick another name" for a name that is available
+        // and simply busy for a moment.
+        if code == "OperationAborted" {
+            return .unsupported(.bucketOperationInProgress(name: path.lastComponent))
+        }
         switch status {
         case 404: return .notFound(path)
         case 403, 401: return .permissionDenied(path)

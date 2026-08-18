@@ -39,7 +39,18 @@ enum VFSErrorText {
         }
         guard let vfsError = error as? VFSError else { return error.localizedDescription }
         switch vfsError {
-        case .permissionDenied:
+        case let .permissionDenied(path):
+            // **Full Disk Access is a macOS grant, and on a server it is advice about the wrong
+            // machine.** This sentence had no idea which backend it was describing, so every remote
+            // refusal — an S3 bucket policy, an SFTP mode, an FTP account — sent the user to a
+            // System Settings pane that cannot affect the file, and had done since those backends
+            // shipped. The path carries its backend, so the split costs nothing and needs no change
+            // to `VFSError` (found 2026-08-18 by an archived S3 object, PLAN.md §M21).
+            if path.backend.isRemoteConnection {
+                return String(localized: """
+                The server refused that. This account may not have permission for it.
+                """)
+            }
             return String(localized: """
             You don’t have permission. Dirnex may need Full Disk Access in System Settings.
             """)

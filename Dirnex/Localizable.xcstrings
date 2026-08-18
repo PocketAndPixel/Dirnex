@@ -75331,6 +75331,95 @@
         }
       }
     },
+    "The server refused that. This account may not have permission for it.": {
+      "comment": "Error sentence: permission denied on a remote backend (SFTP, FTP, S3). Deliberately says nothing about Full Disk Access, which is a macOS grant and cannot affect a file that lives on a server.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server hat das abgelehnt. Möglicherweise fehlt diesem Konto die Berechtigung dafür."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server refused that. This account may not have permission for it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El servidor lo rechazó. Es posible que esta cuenta no tenga permiso para hacerlo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le serveur a refusé. Ce compte n’a peut-être pas l’autorisation nécessaire."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il server ha rifiutato. Questo account potrebbe non avere il permesso necessario."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバーによって拒否されました。このアカウントに権限がない可能性があります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버가 거부했습니다. 이 계정에 해당 권한이 없을 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De server heeft dit geweigerd. Deze account heeft er mogelijk geen toestemming voor."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serwer odrzucił tę operację. To konto może nie mieć do niej uprawnień."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O servidor recusou. Esta conta pode não ter permissão para isso."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер отклонил операцию. Возможно, у этой учётной записи нет прав на неё."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер відхилив операцію. Можливо, цей обліковий запис не має на неї прав."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器拒绝了该操作。此账户可能没有相应权限。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伺服器拒絕了該操作。此帳戶可能沒有相應權限。"
+          }
+        }
+      }
+    },
     "The server refused the request.": {
       "comment": "S3 connect failure detail: a 401/403 with no S3 error code to explain it.",
       "localizations": {
@@ -113944,6 +114033,95 @@
         }
       }
     },
+    "vfs.unsupported.bucketOperationInProgress": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. %@ is the bucket name. S3 answers 409 OperationAborted while another operation on that name is still settling — the name is available, it is simply busy, so this must not read as a name collision.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein anderer Vorgang für „%@“ wird noch abgeschlossen. Versuchen Sie es gleich noch einmal."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Another operation on “%@” is still finishing. Try again in a moment."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todavía se está completando otra operación sobre «%@». Inténtalo de nuevo en un momento."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une autre opération sur « %@ » est encore en cours. Réessayez dans un instant."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un’altra operazione su “%@” è ancora in corso. Riprova tra un momento."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」に対する別の操作がまだ完了していません。少し待ってからもう一度お試しください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‘%@’에 대한 다른 작업이 아직 끝나지 않았습니다. 잠시 후 다시 시도하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Een andere bewerking voor ‘%@’ wordt nog afgerond. Probeer het zo meteen opnieuw."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inna operacja na „%@” wciąż się kończy. Spróbuj ponownie za chwilę."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Outra operação em “%@” ainda está sendo concluída. Tente novamente em instantes."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Другая операция с «%@» ещё не завершена. Повторите попытку через мгновение."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Інша операція з «%@» ще не завершена. Повторіть спробу за мить."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "针对“%@”的另一项操作尚未完成。请稍后再试。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "針對「%@」的另一項操作尚未完成。請稍後再試。"
+          }
+        }
+      }
+    },
     "vfs.unsupported.cloudStatusNeedsLocalFile": {
       "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure.",
       "localizations": {
@@ -114830,6 +115008,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "沒有後端可以處理 %@。"
+          }
+        }
+      }
+    },
+    "vfs.unsupported.objectNotRestored": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. %@ is the object's name. The object is in an archival storage class (S3 Glacier and friends) and must be restored on the service before its bytes can be read; nothing is wrong with the account's permissions.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ ist auf dem Dienst archiviert und muss dort erst wiederhergestellt werden, bevor die Datei gelesen werden kann."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is archived on the service and has to be restored there before it can be read."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» está archivado en el servicio y hay que restaurarlo allí antes de poder leerlo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« %@ » est archivé sur le service et doit y être restauré avant de pouvoir être lu."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” è archiviato sul servizio e va prima ripristinato lì per poterlo leggere."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」はサービス上でアーカイブされています。読み込むには、まずサービス側で復元してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‘%@’은(는) 서비스에 아카이브되어 있습니다. 읽으려면 먼저 서비스에서 복원해야 합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is gearchiveerd op de dienst en moet daar eerst worden hersteld voordat het gelezen kan worden."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plik „%@” jest zarchiwizowany w usłudze i trzeba go tam najpierw przywrócić, aby go odczytać."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” está arquivado no serviço e precisa ser restaurado lá antes de poder ser lido."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файл «%@» помещён в архив на сервисе. Чтобы его прочитать, сначала восстановите его там."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файл «%@» заархівовано в сервісі. Щоб його прочитати, спершу відновіть його там."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”已在该服务中归档。需要先在服务端恢复，才能读取。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」已在該服務中封存。需要先在服務端還原，才能讀取。"
           }
         }
       }

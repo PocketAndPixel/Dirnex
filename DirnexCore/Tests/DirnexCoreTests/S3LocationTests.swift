@@ -341,4 +341,68 @@ struct S3ResponseErrorTests {
         // name, so it is refused where a "be liberal" reading would guess.
         #expect(S3Endpoint.parse(text) == nil)
     }
+
+    @Test("an archived object is named as archived, not as a permission problem")
+    func archivedObjectIsNotAPermissionProblem() {
+        // Real AWS body, 2026-08-18, from a plain GET of an object stored with
+        // `x-amz-storage-class: GLACIER`. The status is 403, so the shared mapping made it
+        // `permissionDenied` — whose sentence recommends Full Disk Access, a macOS grant, for an
+        // object on Amazon's servers. Nothing is wrong with the credentials.
+        let error = Self.parse(
+            """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <Error><Code>InvalidObjectState</Code><Message>The operation is not valid for the \
+            object's storage class</Message><StorageClass>GLACIER</StorageClass></Error>
+            """,
+            status: 403
+        )
+        let path = VFSPath(backend: VFSBackendID("s3://K@h:443/r/b"), path: "/cold/archived.bin")
+        #expect(error.vfsError(for: path) == .unsupported(.objectNotRestored(name: "archived.bin")))
+    }
+
+    @Test("an ordinary 403 is still a permission problem")
+    func accessDeniedStaysPermissionDenied() {
+        // The narrowness control for the case above: a bucket policy refusal shares the status and
+        // must keep the sentence it had.
+        let error = Self.parse(
+            """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <Error><Code>AccessDenied</Code><Message>Access Denied</Message></Error>
+            """,
+            status: 403
+        )
+        #expect(error.vfsError(for: .local("/x")) == .permissionDenied(.local("/x")))
+    }
+
+    @Test("a busy bucket name is named as busy, not as taken")
+    func operationAbortedIsNotACollision() {
+        // Real AWS body, 2026-08-18, creating a bucket moments after deleting one of that name.
+        // The status is 409, so the shared mapping made it `alreadyExists` — "pick another name"
+        // for a name that is available and merely settling. Measured in the same session that the
+        // name is *not* held: create, delete and create again in one region all succeed.
+        let error = Self.parse(
+            """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <Error><Code>OperationAborted</Code><Message>A conflicting conditional operation is \
+            currently in progress against this resource. Please try again.</Message></Error>
+            """,
+            status: 409
+        )
+        let path = VFSPath(backend: VFSBackendID("s3a://K@h:443/r"), path: "/dirnex-live-probe")
+        let expected = VFSError.unsupported(.bucketOperationInProgress(name: "dirnex-live-probe"))
+        #expect(error.vfsError(for: path) == expected)
+    }
+
+    @Test("an ordinary 409 still reads as a collision")
+    func otherConflictsStayAlreadyExists() {
+        let error = Self.parse(
+            """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <Error><Code>BucketAlreadyOwnedByYou</Code><Message>Your previous request to create \
+            the named bucket succeeded and you already own it.</Message></Error>
+            """,
+            status: 409
+        )
+        #expect(error.vfsError(for: .local("/x")) == .alreadyExists(.local("/x")))
+    }
 }
