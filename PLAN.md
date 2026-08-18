@@ -2177,9 +2177,58 @@ direction — and `.unconditional` in place of the stale condition fails the thr
 (the write lands, the tag moves) while the control half keeps passing. 2526 core tests, **559** app
 tests, both linters green.
 
-**With this, M21 has one item left and it is not about S3's writes**: AWS's `InvalidArgument` on a raw
-continuation token, which needs more than 1000 keys under one prefix, and
-`BucketAlreadyOwnedByYou`, where the S3-compatible server answered a silent 200.
+**Follow-up, 2026-08-18 (fourth pass) — the last two items, and the first of them was recorded
+wrongly.** Both were filed as "only AWS can say": the page loop's continuation token, and
+`BucketAlreadyOwnedByYou`, where the S3-compatible server answers a silent 200. Both are now
+measured against the `eu-north-1` bucket and kept as live tests — `S3PaginationLiveIntegrationTests`
+(new) and one more in `S3AccountLiveIntegrationTests`. 2526 core / **562** app tests, both linters
+and all three check scripts green.
+
+- **The raw token is refused as `403 SignatureDoesNotMatch`, not `400 InvalidArgument`**, and that
+  correction is the pass's main finding, because the two failures send the user to opposite places.
+  `InvalidArgument` ("The continuation token provided is incorrect") is real and is what a
+  *correctly encoded but corrupt* token earns; a **raw** one makes `curl`'s signature and the
+  service's re-derivation disagree, so a **pagination** bug arrives wearing the sentence for a bad
+  key. docs/NOTES.md carried the wrong half since Slice 1 and Slice 8 recorded it as a *difference*
+  between AWS and the S3-compatible endpoint — there is no difference; both answer the same 403.
+- **The character that matters is `+`, and a raw `/` is harmless** (isolated in one run, with `=`
+  refused too). So the intermittency this project kept calling "sometimes" has a rate: 40 tokens
+  sampled at the shipped page size were 65 characters with no padding and **22 carried `+`**, and
+  with the encoder deliberately reverted a 1005-object folder listed correctly in **3 of 6** runs
+  seconds apart, answering `VFSError.permissionDenied` — a *credentials* sentence — in the other
+  three. Every token is minted per request (40 requests at one page boundary, 40 distinct tokens),
+  so a retry genuinely re-rolls it and nothing can pin a token's value.
+- **The app's own listing pages correctly against Amazon**: 1005 objects created under one prefix,
+  listed through the real `S3Backend` and `S3CurlTransport` in **0.58 s** with no row lost or
+  repeated. That was the probe; the *kept* test is cheap instead, because
+  `S3CurlTransport.pageSize` makes the loop reachable over five objects — the "a constant nothing
+  hits makes its own rule untestable" fork docs/NOTES.md records for M22's result cap, settled the
+  same way. A small page also makes the control **deterministic**: at two keys AWS's tokens always
+  end `==`, where at a thousand it is a coin toss.
+- **`BucketAlreadyOwnedByYou` is a 409**, and its body matches the fixture `S3ResponseErrorTests`
+  had been using from the documentation, so the mapping needed nothing. What the pass changed is the
+  *test*: the obvious assertion — the second `createDirectory` throws `alreadyExists` — passes with
+  the local existence check **deleted**, since AWS's 409 maps to the same error. Only a count of
+  requests separates "the app refused without asking" from "the service refused", so the transport
+  counts its own calls. `throws` is not evidence, for the third time in this milestone.
+- **A real provider's `BucketAlreadyExists` stays unreachable**, and for a reason worth recording:
+  a properly scoped key is refused by its own IAM policy (`403 AccessDenied` on `s3:CreateBucket`)
+  before the service ever weighs the name. The same policy is why AWS's documented `us-east-1`
+  legacy quirk — a re-create answering 200 there — could not be exercised either.
+
+**And the pass found a live-suite hazard whose symptom is a ten-minute timeout.** Twice, a full
+`xcodebuild test` never finished; sampling the hung process named it exactly —
+`leavesABucket` → `enterS3Bucket` → `presentOperationFailure` → `-[NSAlert runModal]`, with thirteen
+unrelated tests pending behind it. That alert is one the M21 audit deliberately **kept** its
+`runModal` fallback on (a user pressed Enter on that row, so a detached alert beats no answer), so
+the app is right and the suite was wrong: every gesture there is a real network call that can fail,
+and a window-less pane turns any such failure into a parked test host. The panes now live in an
+(unordered, never-visible) `NSWindow`, which makes the same alert a sheet — measured both ways with
+a throwaway test that raises one directly: 0.3 s and the suite green with the window, wedged in
+`runModal` without it. Same class as the six dialogs `RenameReachTests` cost a session, arriving on
+the *other* kind of alert — the kind whose fallback is correct and must stay.
+
+**With this, M21's list is empty.**
 
 ## 5. Cross-cutting: testing strategy
 

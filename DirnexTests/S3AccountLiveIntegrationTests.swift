@@ -25,7 +25,7 @@ import Testing
 /// ```
 ///
 /// Point it at a scratch account — the suite creates and deletes a bucket named
-/// `dirnex-live-probe-<uuid>`, fresh on every run.
+/// `dirnex-live-probe`, one fixed name for the reason `createsAndDeletesABucket` sets out.
 /// **`.serialized` is load-bearing, and it was added after watching the parallel version fail.**
 /// Every test here drives the *same* endpoint and the *same* Keychain item, so run concurrently they
 /// collide twice over: four panes' worth of `curl` against one server, and one instance's `deinit`
@@ -49,8 +49,28 @@ final class S3AccountLiveIntegrationTests {
         SecretKeychain.removePassword(for: config.account.bucketLocation(named: config.bucket))
     }
 
+    /// The windows the panes live in, held so they outlive `pane(_:)` — see its comment for what
+    /// they are for. Never ordered front, so nothing appears on screen.
+    private var windows: [NSWindow] = []
+
     // MARK: - Fixtures
 
+    /// A pane **in a window**, and the window is what keeps a bad afternoon from costing ten
+    /// minutes of somebody's life.
+    ///
+    /// Every gesture here can fail — they are real network calls — and a failed
+    /// `enterS3Bucket` ends at `presentOperationFailure`, which is one of the alerts the M21 audit
+    /// deliberately left an `NSAlert.runModal()` fallback on: a *user* pressed Enter on that row, so
+    /// an alert detached from the app beats no answer at all. In a headless suite there is no user
+    /// and no window, so that fallback parks the **whole test host** on a dialog nobody is looking
+    /// at — measured 2026-08-18 by sampling the hung process: `leavesABucket` → `enterS3Bucket` →
+    /// `presentOperationFailure` → `-[NSAlert runModal]`, with thirteen unrelated tests sitting
+    /// pending behind it and the run reading as a ten-minute timeout. Exactly the shape
+    /// `RenameReachTests` cost a session, arriving on the *other* kind of alert — the kind whose
+    /// fallback is right and must stay.
+    ///
+    /// So the fix belongs here rather than in the app: with a window, the same failure draws a
+    /// sheet, which does not block, and the test fails in seconds saying what went wrong.
     private func pane(_ config: S3LiveEnvironment.Config) -> PanelViewController {
         let controller = PanelViewController(
             backend: CompositeBackend(local: LocalBackend()),
@@ -59,6 +79,15 @@ final class S3AccountLiveIntegrationTests {
             restorationKey: nil
         )
         controller.loadViewIfNeeded()
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentViewController = controller
+        // Never ordered front: it exists so `view.window` is non-nil, not to be looked at.
+        windows.append(window)
         return controller
     }
 
@@ -247,6 +276,84 @@ final class S3AccountLiveIntegrationTests {
                 .contains { controller.panel.model[$0].name == name }
         }
     }
+
+    /// What AWS says about a name this account already holds — and the reason the app never hears
+    /// it (PLAN.md §M21).
+    ///
+    /// `S3AccountBackend.createDirectory` `stat`s first and throws `alreadyExists` before the
+    /// request is built, because an **S3-compatible** endpoint answers a re-create with a silent
+    /// **200** that changes nothing: relying on the service there would report success and do
+    /// nothing. So the service's own refusal is unreachable from the pane and is measured one level
+    /// down — the same shape as the conditional suite's `.alreadyThere`, where `createFile`'s own
+    /// `stat` stands in front of `If-None-Match: *`.
+    ///
+    /// **The obvious assertion is worthless here, and only the control showed it.** Asserting that
+    /// the second `createDirectory` throws `alreadyExists` passes with the local check *deleted* —
+    /// AWS's 409 maps to the same error, so the test would be about the mapping while claiming to
+    /// be about the guard. What separates them is whether a request was **made**, so the transport
+    /// counts its own calls; the same lesson `RemoteTransferCancellationTests` records for
+    /// `throws CancellationError`.
+    @Test("a name this account already owns is refused without asking, and by AWS when asked")
+    func recreatingAnOwnedBucketIsRefused() throws {
+        let config = try #require(S3LiveEnvironment.current)
+        let name = "dirnex-live-probe"
+        let counting = CountingAccountTransport(S3AccountCurlTransport(
+            account: config.account,
+            secretAccessKey: config.secretAccessKey
+        ))
+        let backend = S3AccountBackend(account: config.account, transport: counting)
+        let bucket = config.accountRoot.appending(name)
+        _ = try? counting.inner.deleteBucket(name: name)
+        defer { _ = try? counting.inner.deleteBucket(name: name) }
+
+        // The pairing. A guard that refused everything would satisfy the claim below just as well.
+        try backend.createDirectory(at: bucket)
+        #expect(counting.creates == 1, "creating a free name did not reach the service")
+
+        // The claim: a name already in the pane costs no request at all.
+        #expect(throws: VFSError.alreadyExists(bucket)) {
+            try backend.createDirectory(at: bucket)
+        }
+        #expect(counting.creates == 1, "the app asked the service about a name it could already see")
+
+        // And what the service says when something does ask — measured 2026-08-18, 409 with this
+        // code. It is the body `S3ResponseErrorTests` pins the mapping against.
+        let refused = try counting.inner.createBucket(name: name)
+        #expect(refused.status == 409, "AWS did not refuse a name this account owns")
+        let error = S3ServiceError.parse(refused.body, status: refused.status)
+        #expect(error.code == "BucketAlreadyOwnedByYou")
+        #expect(error.vfsError(for: bucket) == .alreadyExists(bucket))
+        // Not the *other* 409 this backend has had to name: `OperationAborted` is a name that is
+        // free and merely settling, and it keeps its own sentence.
+        #expect(
+            error.vfsError(for: bucket) != .unsupported(.bucketOperationInProgress(name: name))
+        )
+    }
+}
+
+/// Wraps a real account transport and records how many times each verb was asked for — the only
+/// evidence available for a claim about a request that must *not* be made.
+final class CountingAccountTransport: S3AccountTransport, @unchecked Sendable {
+    let inner: any S3AccountTransport
+    private let lock = NSLock()
+    private var createCount = 0
+
+    init(_ inner: any S3AccountTransport) { self.inner = inner }
+
+    var creates: Int { lock.withLock { createCount } }
+
+    func listBuckets(continuationToken: String?) throws -> S3Response {
+        try inner.listBuckets(continuationToken: continuationToken)
+    }
+
+    func createBucket(name: String) throws -> S3Response {
+        lock.withLock { createCount += 1 }
+        return try inner.createBucket(name: name)
+    }
+
+    func deleteBucket(name: String) throws -> S3Response { try inner.deleteBucket(name: name) }
+
+    func headBucket(name: String) throws -> S3Response { try inner.headBucket(name: name) }
 }
 
 /// The opt-in configuration for the live S3 suite.

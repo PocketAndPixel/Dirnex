@@ -33,6 +33,17 @@ struct S3CurlTransport: S3Transport {
     var metadataTimeout: Int = 30
     /// Wall-clock bound for a byte transfer, which may legitimately run for a long time.
     var transferTimeout: Int = 3600
+    /// How many keys one `ListObjectsV2` asks for — S3's own maximum, and the only reason it is a
+    /// property rather than the constant it was is that the page *loop* is otherwise unwatchable.
+    ///
+    /// `S3Backend` pages until the service stops handing back a continuation token, and the token
+    /// it sends back has to be percent-encoded or AWS refuses the page (``S3ProcessArguments``).
+    /// At 1000 that rule needs a folder of more than a thousand objects to exercise at all, so a
+    /// live test either builds one every run or the rule goes unwatched — the same fork
+    /// docs/NOTES.md records for M22's result cap, settled the same way. A smaller page makes the
+    /// loop, the real tokens and their encoding reachable over a handful of objects; nothing in
+    /// the app sets it.
+    var pageSize: Int = 1000
 
     init(location: S3Location, secretAccessKey: String, connectTimeout: Int = 15) {
         self.location = location
@@ -51,7 +62,8 @@ struct S3CurlTransport: S3Transport {
             session: session(maxTime: metadataTimeout),
             prefix: prefix,
             delimiter: delimiter,
-            continuationToken: continuationToken
+            continuationToken: continuationToken,
+            maxKeys: pageSize
         ))
     }
 

@@ -395,6 +395,12 @@ struct S3ResponseErrorTests {
 
     @Test("an ordinary 409 still reads as a collision")
     func otherConflictsStayAlreadyExists() {
+        // The narrowness control for the case above, and the body is now AWS's own: measured
+        // 2026-08-18, creating a bucket this account already holds answers **409** with this code
+        // and this message verbatim. Unreachable from the pane — `S3AccountBackend.createDirectory`
+        // `stat`s first, because an S3-compatible endpoint answers the same request with a silent
+        // 200 — so the service's half is pinned live one level down
+        // (`S3AccountLiveIntegrationTests`).
         let error = Self.parse(
             """
             <?xml version="1.0" encoding="UTF-8"?>

@@ -2190,14 +2190,33 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     the fallback for S3-compatible servers that send no header, and parse it by finding the segment
     that *begins* `s3` rather than by counting from the left: a bucket name may contain dots, so the
     segment count is not fixed.
-- **A `NextContinuationToken` must be percent-encoded when it is sent back**, or AWS rejects the page
-  with `InvalidArgument` ("The continuation token provided is incorrect"). Measured A/B on the same
-  token in one run. It fails **intermittently**, which is what makes it expensive: a token is base64
-  and only *sometimes* carries `+`, `/` or `=`, so one that happens to be alphanumeric round-trips
-  raw perfectly — and a bucket small enough never to paginate hides it completely. Encode query
-  values to the unreserved set only (`/` included), and path segments to the same set plus `/`, which
-  is the stricter-than-`urlPathAllowed` rule the FTP backend already needed and for the same reason:
-  a `?` or `#` left literal in a key changes *which object* the request names.
+- **A `NextContinuationToken` must be percent-encoded when it is sent back**, or the page is refused.
+  Encode query values to the unreserved set only (`/` included), and path segments to the same set
+  plus `/`, which is the stricter-than-`urlPathAllowed` rule the FTP backend already needed and for
+  the same reason: a `?` or `#` left literal in a key changes *which object* the request names.
+  - **What the refusal *is* was recorded wrongly here for the life of the backend, and the wrong
+    version is the reassuring one.** This note used to say AWS answers `InvalidArgument` ("The
+    continuation token provided is incorrect"). Re-measured 2026-08-18 against a real bucket: a
+    **raw** token answers **403 `SignatureDoesNotMatch`**, and `400 InvalidArgument` is what a
+    *correctly encoded but corrupt* token gets — two different failures, and the earlier note had
+    the sentence of one attached to the cause of the other. It matters because of where each sends
+    the user: `SignatureDoesNotMatch` reads as a bad key, so a **pagination** bug arrives wearing
+    the sentence for a credential the user then retypes. PLAN.md §M21 Slice 8 recorded the same
+    thing as a *difference* between AWS and an S3-compatible endpoint; there is no difference —
+    both answer `SignatureDoesNotMatch`, because `curl` signs the query as written and the service
+    re-derives it.
+  - **It is `+` and `=` that break it; a raw `/` does not** (isolated in one run: a token carrying
+    `/` and no `+` listed the next page fine at 200, a token carrying `+` was refused, and so was
+    one carrying only `=`). So the intermittency is a *measurable rate*, not a hunch: at the page
+    size the app asks for, 40 sampled tokens were 65 characters with no padding and **22 carried
+    `+`**, so about one listing in two would fail — and with the encoder deliberately reverted, a
+    1005-object folder listed correctly in **3 of 6** runs seconds apart, throwing
+    `VFSError.permissionDenied` in the other three.
+  - **Every token is minted per request.** 40 requests at the *same* page boundary returned 40
+    distinct tokens, so nothing can pin a token's value, a retry genuinely re-rolls the dice, and a
+    small `max-keys` is a legitimate way to reach the loop — at 2 keys the tokens are 57 characters
+    and **always** end `==`, which is what makes a test of this deterministic where the shipped page
+    size makes it a coin toss.
 - **Keys and common prefixes arrive whole at every depth.** A listing of `prefix=tiles/1/` returns
   `CommonPrefixes` of `tiles/1/C/`, not `C/` — so a parser that renders what it is given draws the
   full path in every row, at every level. Take the last component, after dropping a folder's trailing
@@ -2717,13 +2736,14 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     run — so the signature *is* checked and the credential scope's region simply is not. No
     `x-amz-bucket-region` header on any response either, so the wrong-region 301 recovery path has
     nothing to recover from and cannot be exercised there at all.
-  - **A raw continuation token fails as `SignatureDoesNotMatch`, not AWS's `InvalidArgument`.**
-    Measured A/B on one token: `curl` canonicalizes the query it signs, so an unencoded `=` inside a
-    token's value makes client and server disagree about where the value ends. The practical half is
-    the diagnosis — on this family of server that latent bug reads as a **credentials** problem and
-    sends the user to retype a key that was never wrong. Their tokens are base64 that routinely
-    carries `==`, so an endpoint like this exposes it on the first page where a small AWS bucket
-    hides it entirely.
+  - **A raw continuation token fails as `SignatureDoesNotMatch`** — measured A/B on one token, since
+    `curl` signs the query as written and the server re-derives it, so an unencoded `+` or `=` makes
+    the two disagree. Listed here originally as a *difference* from AWS, and it is not one:
+    re-measured against real Amazon 2026-08-18, the same request gets the same 403 (the entry above
+    carries the correction, and what earns `InvalidArgument` is a well-encoded but corrupt token).
+    What is genuinely this endpoint's own is *how often*: its tokens routinely carry `==`, so it
+    exposes the bug on the first page, where AWS's shipped-page-size tokens carry `+` about half the
+    time and a bucket too small to paginate hides it entirely.
   - **A single-label wildcard certificate forces path-style addressing**, and it fails before any S3
     conversation happens. `*.lax.sharktech.net` covers the endpoint and not `<bucket>.s3.lax…`, so a
     virtual-host request dies at **curl exit 60**. Worth knowing that the addressing mode can be
