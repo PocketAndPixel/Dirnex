@@ -2679,13 +2679,33 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     this is safe *because* `-T` is not involved — the same flag whose basename-appending behavior
     makes a trailing slash forbidden on an upload URL.
 - **A real server can be the permissive one, and here it is: `CreateBucket` on a name the account
-  already holds answers 200 and changes nothing.** Measured on a live third-party endpoint. AWS
-  refuses the same request (`BucketAlreadyOwnedByYou`), so there is no server behavior to rely on and
-  the existence check has to be the client's — without it, "create a bucket" on a taken name reports
+  already holds answers 200 and changes nothing.** Measured on a live third-party endpoint. **AWS
+  does it too, in `us-east-1`** — re-measured 2026-08-19, a re-create there answers `200` with an
+  empty body (three times, stable) where the identical request in `eu-north-1` answers `409
+  BucketAlreadyOwnedByYou`, which is the documented legacy behaviour of the oldest region and not a
+  quirk of one vendor. So there is no server behavior to rely on and the existence check has to be
+  the client's — without it, "create a bucket" on a taken name reports
   success and does nothing, the quiet direction, on the one provider where it is easiest to test. The
   `moto` finding above says a mock will agree with a broken client; this is its twin, and the general
   form covers both: **when a probe's subject is "will this be refused", a single endpoint's yes is
   not evidence, whoever runs it.**
+- **A bucket name another account holds answers `409 BucketAlreadyExists`, and it is not the
+  collision the shared 409 mapping reads it as.** Measured 2026-08-19 against real AWS: *"The
+  requested bucket name is not available. The bucket namespace is shared by all users of the
+  system."* Mapped to `alreadyExists` it renders as "already exists **here**" in a pane listing the
+  account's own buckets — where the name is absent and cannot be put there, so the user looks, does
+  not find it, and retries. The namespace is S3-wide and that is the fact the pane cannot show.
+  Note the pattern on this one verb: **409 has now meant three different things** — taken by you
+  (`BucketAlreadyOwnedByYou`), merely settling (`OperationAborted`) and taken by a stranger — and
+  only the `<Code>` tells them apart.
+  - **A properly scoped key can never see it, because IAM is evaluated before the name registry.**
+    Probed on `images`, `test` and `backup`, and on the account's *own* data bucket: all four answer
+    `403 AccessDenied` ("no identity-based policy allows the s3:CreateBucket action") when the policy
+    does not grant `s3:CreateBucket` for that ARN. So the state is unreachable from the ordinary
+    credentials this backend is designed for, and reaching it in a test takes a grant on **one ARN
+    somebody else already owns** — which cannot create anything, which is exactly what makes the
+    grant safe. Worth generalizing: when a service refusal cannot be provoked, check whether the
+    *authorization* layer is answering first, and pick a target whose success is impossible.
 - **Every broken bucket-name rule comes back as one indistinguishable `400 InvalidBucketName`.**
   Probed with five deliberately different mistakes — an uppercase letter, a two-character name, an
   underscore, an IP-shaped name and a 64-character name — and the answer to all five is the same

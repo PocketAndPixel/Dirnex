@@ -139,6 +139,22 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
     /// `alreadyExists`, which sends the user off to choose a different name when the service has
     /// said the opposite — the name is fine, and the answer is to try it again shortly.
     case bucketOperationInProgress(name: String)
+    /// A bucket could not be created because **another account already holds that name** — S3
+    /// answers `409 BucketAlreadyExists` (measured against real AWS 2026-08-19: *"The requested
+    /// bucket name is not available. The bucket namespace is shared by all users of the system."*).
+    ///
+    /// The third refusal on this verb that the shared 409 mapping gets wrong, and the one whose
+    /// wrongness is hardest to see: `alreadyExists` renders as "an item with that name already
+    /// exists **here**", in a pane listing the account's own buckets, where the name is not present
+    /// and never will be. So the user looks, does not find it, and tries again. What the sentence
+    /// has to carry is the fact the pane cannot show — a bucket name is global to all of S3, not
+    /// scoped to this account.
+    ///
+    /// Unreachable with a key scoped to its own buckets, which is how these are ordinarily issued:
+    /// IAM is evaluated before the name registry, so such a key gets `403 AccessDenied` for a name
+    /// somebody else owns and never learns that it was taken (measured the same day, on three
+    /// well-known names).
+    case bucketNameTakenGlobally(name: String)
 
     // MARK: Routing and archives — authored in the app, named here
 
@@ -185,6 +201,7 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
         case .remoteFileGoneSinceFetch: return "remoteFileGoneSinceFetch"
         case .objectNotRestored: return "objectNotRestored"
         case .bucketOperationInProgress: return "bucketOperationInProgress"
+        case .bucketNameTakenGlobally: return "bucketNameTakenGlobally"
         case .noBackendForPath: return "noBackendForPath"
         case .serverNotConnected: return "serverNotConnected"
         case .archiveToolUnavailableForRead: return "archiveToolUnavailableForRead"
@@ -299,6 +316,14 @@ public extension VFSUnsupportedReason {
             )
         case let .bucketOperationInProgress(name):
             return ("Another operation on “%@” is still finishing. Try again in a moment.", [name])
+        case let .bucketNameTakenGlobally(name):
+            return (
+                """
+                The name “%@” is already taken. Bucket names are shared across the whole \
+                of S3, so it may belong to somebody else’s account.
+                """,
+                [name]
+            )
         case let .noBackendForPath(path):
             return ("No backend can handle %@.", [path])
         case let .serverNotConnected(server):
@@ -356,6 +381,7 @@ public extension VFSUnsupportedReason {
             .remoteFileGoneSinceFetch(name: ""),
             .objectNotRestored(name: ""),
             .bucketOperationInProgress(name: ""),
+            .bucketNameTakenGlobally(name: ""),
             .noBackendForPath(path: ""),
             .serverNotConnected(server: ""),
             .archiveToolUnavailableForRead,

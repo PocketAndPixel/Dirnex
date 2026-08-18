@@ -124,8 +124,10 @@ public extension S3ServiceError {
     ///
     /// Mostly maps onto cases that already exist, since a named reason costs a translated sentence
     /// in the app's catalog and a reason without one renders as `vfs.unsupported.…` on screen
-    /// (NOTES.md ▸ Localization). Two refusals earn one anyway, because for them the generic
-    /// mapping is not merely vague but **wrong about what happened** — see the cases below.
+    /// (NOTES.md ▸ Localization). Three refusals earn one anyway, because for them the generic
+    /// mapping is not merely vague but **wrong about what happened** — see the cases below. Two of
+    /// the three are 409s, which is worth noticing on its own: that status has meant "taken",
+    /// "settling" and "taken by a stranger" on this one verb, and only the `<Code>` separates them.
     ///
     /// **The `<Code>` is read before the status, deliberately.** The status is what this backend
     /// classifies on everywhere else, and this milestone has already measured one verb where it
@@ -142,6 +144,12 @@ public extension S3ServiceError {
         // and simply busy for a moment.
         if code == "OperationAborted" {
             return .unsupported(.bucketOperationInProgress(name: path.lastComponent))
+        }
+        // 409 as well, and `alreadyExists` is wrong in the direction that wastes the most time:
+        // it renders as "already exists **here**" for a name that is not in this account's pane at
+        // all and cannot be put there. The namespace is S3-wide (`bucketNameTakenGlobally`).
+        if code == "BucketAlreadyExists" {
+            return .unsupported(.bucketNameTakenGlobally(name: path.lastComponent))
         }
         switch status {
         case 404: return .notFound(path)

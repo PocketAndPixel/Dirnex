@@ -2228,6 +2228,37 @@ a throwaway test that raises one directly: 0.3 s and the suite green with the wi
 `runModal` without it. Same class as the six dialogs `RenameReachTests` cost a session, arriving on
 the *other* kind of alert — the kind whose fallback is correct and must stay.
 
+**Follow-up, 2026-08-19 — the two refusals a scoped key cannot reach, reached.** Both were left as
+stated limits the day before: IAM is evaluated *before* the name registry, so a key scoped to its own
+buckets is refused `403 AccessDenied` for a name somebody else owns and never learns it was taken
+(measured on `images`, `test` and `backup`, and on our own data bucket — the policy answers first
+even there). Two deliberately narrow grants make both reachable, and one of them turned out to be a
+wrong sentence rather than a missing measurement. 2527 core / **563** app tests, both linters and all
+three check scripts green; +1 string in all 14 catalogs.
+
+- **`BucketAlreadyExists` is a 409, and `alreadyExists` was the wrong answer to it.** AWS says *"The
+  requested bucket name is not available. The bucket namespace is shared by all users of the
+  system."* — and the shared 409 mapping rendered that as **"An item with that name already exists
+  here."**, in a pane listing the account's own buckets, where the name is absent and cannot be put
+  there. So the user looks, does not find it, and tries again. `VFSUnsupportedReason
+  .bucketNameTakenGlobally(name:)` now carries the fact the pane cannot show — the namespace is
+  S3-wide — translated in all fourteen. **Two of this verb's three named refusals are 409s**, which
+  is the shape worth remembering: one status has meant "taken", "settling" and "taken by a stranger",
+  and only the `<Code>` separates them.
+- **The `us-east-1` legacy 200 is real**, and it is what retires the last doubt about Slice 9's local
+  existence check. Creating a bucket this account already owns answers **`200` with an empty body**
+  there — three times, stable — where the same request in `eu-north-1` answers `409
+  BucketAlreadyOwnedByYou`. That is the S3-compatible endpoint's "silent 200" *on Amazon*, so the
+  check is not a workaround for one lenient server: without it, F7 on an existing bucket in the
+  most-used region would report success and do nothing. Deliberately **not** kept as a test — it
+  needs a second bucket name and a cross-region create/delete cycle, which is exactly what the second
+  pass measured as provoking `409 OperationAborted` that does not clear quickly. The check itself is
+  pinned by the request-count test instead.
+- The grant for the first is inert by construction (`s3:CreateBucket` on `arn:aws:s3:::images`, a
+  name nothing can ever create), so `globallyTakenBucketNameIsRefused` is kept live; its failure
+  message names the grant, because that constant is a claim about the **key** rather than about the
+  service.
+
 **With this, M21's list is empty.**
 
 ## 5. Cross-cutting: testing strategy

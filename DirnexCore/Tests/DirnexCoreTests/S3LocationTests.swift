@@ -393,6 +393,26 @@ struct S3ResponseErrorTests {
         #expect(error.vfsError(for: path) == expected)
     }
 
+    @Test("a name another account owns is named as globally taken, not as a local collision")
+    func globallyTakenBucketNameIsNotALocalCollision() {
+        // Real AWS body, 2026-08-19, creating a bucket whose name another account holds. The status
+        // is 409, so the shared mapping made it `alreadyExists` — which the app renders as "an item
+        // with that name already exists **here**", in a pane listing this account's own buckets,
+        // where the name is not present and cannot be put there. The namespace is S3-wide, and that
+        // is the fact the pane cannot show.
+        let error = Self.parse(
+            """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <Error><Code>BucketAlreadyExists</Code><Message>The requested bucket name is not \
+            available. The bucket namespace is shared by all users of the system. Please select a \
+            different name and try again.</Message><BucketName>images</BucketName></Error>
+            """,
+            status: 409
+        )
+        let path = VFSPath(backend: VFSBackendID("s3a://K@h:443/r"), path: "/images")
+        #expect(error.vfsError(for: path) == .unsupported(.bucketNameTakenGlobally(name: "images")))
+    }
+
     @Test("an ordinary 409 still reads as a collision")
     func otherConflictsStayAlreadyExists() {
         // The narrowness control for the case above, and the body is now AWS's own: measured

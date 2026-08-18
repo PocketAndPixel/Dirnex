@@ -113944,6 +113944,96 @@
         }
       }
     },
+    "vfs.unsupported.bucketNameTakenGlobally": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. %@ is the bucket name the user typed. S3 answers 409 BucketAlreadyExists when another AWS account already holds that name — bucket names are one global namespace, so the name is not in this account's list and cannot be. Do not translate this as “it already exists here”: the whole point is that it exists somewhere the user cannot see.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Name „%@“ ist bereits vergeben. Bucket-Namen gelten für ganz S3, er kann also zum Account einer anderen Person gehören."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The name “%@” is already taken. Bucket names are shared across the whole of S3, so it may belong to somebody else’s account."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El nombre «%@» ya está en uso. Los nombres de bucket son comunes a todo S3, así que puede pertenecer a la cuenta de otra persona."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le nom « %@ » est déjà pris. Les noms de compartiment sont communs à tout S3 : il peut appartenir au compte de quelqu’un d’autre."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il nome “%@” è già in uso. I nomi dei bucket valgono per tutto S3, quindi potrebbe appartenere all’account di qualcun altro."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名前「%@」はすでに使われています。バケット名は S3 全体で共通のため、他のアカウントのものである可能性があります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이름 ‘%@’은(는) 이미 사용 중입니다. 버킷 이름은 S3 전체에서 공유되므로 다른 계정의 것일 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De naam ‘%@’ is al in gebruik. Bucketnamen gelden voor heel S3, dus de naam kan van iemand anders zijn account zijn."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nazwa „%@” jest już zajęta. Nazwy zasobników są wspólne dla całego S3, więc może należeć do konta innej osoby."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O nome “%@” já está em uso. Os nomes de bucket valem para todo o S3, portanto ele pode pertencer à conta de outra pessoa."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Имя «%@» уже занято. Имена бакетов общие для всего S3, поэтому оно может принадлежать чужой учётной записи."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ім’я «%@» вже зайняте. Імена бакетів спільні для всього S3, тож воно може належати чужому обліковому запису."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名称“%@”已被占用。存储桶名称在整个 S3 中共享，因此它可能属于其他账户。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名稱「%@」已被使用。儲存體名稱在整個 S3 中共用，因此可能屬於其他帳戶。"
+          }
+        }
+      }
+    },
     "vfs.unsupported.bucketNotEmpty": {
       "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. %@ is the bucket name.",
       "localizations": {

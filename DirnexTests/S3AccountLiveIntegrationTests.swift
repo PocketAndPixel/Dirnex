@@ -329,6 +329,50 @@ final class S3AccountLiveIntegrationTests {
             error.vfsError(for: bucket) != .unsupported(.bucketOperationInProgress(name: name))
         )
     }
+
+    /// The refusal a scoped key can never see: a bucket name another AWS account already holds
+    /// (PLAN.md §M21).
+    ///
+    /// **It needs a grant that is deliberately inert.** IAM is evaluated before the name registry,
+    /// so a key scoped to its own buckets — how these are ordinarily issued — is refused with `403
+    /// AccessDenied` and never learns the name was taken (measured 2026-08-19 on three well-known
+    /// names). Reaching the state therefore takes `s3:CreateBucket` on one ARN that is **already
+    /// owned by somebody else**, which cannot create anything: that is the whole reason it is safe
+    /// to grant.
+    ///
+    /// ```json
+    /// { "Effect": "Allow", "Action": "s3:CreateBucket", "Resource": "arn:aws:s3:::images" }
+    /// ```
+    ///
+    /// Without it this test fails on the status, saying so — a live test's constants are claims
+    /// about the endpoint, and this one is a claim about the *key*.
+    @Test("a bucket name another account holds is refused as globally taken")
+    func globallyTakenBucketNameIsRefused() throws {
+        let config = try #require(S3LiveEnvironment.current)
+        let transport = S3AccountCurlTransport(
+            account: config.account,
+            secretAccessKey: config.secretAccessKey
+        )
+        // A name owned by another account since long before this test existed. Nothing here can
+        // create it, so the request has exactly one possible outcome.
+        let name = "images"
+        let bucket = config.accountRoot.appending(name)
+
+        let refused = try transport.createBucket(name: name)
+        #expect(
+            refused.status == 409,
+            """
+            expected 409 BucketAlreadyExists, got \(refused.status) — a 403 means this key lacks \
+            s3:CreateBucket on arn:aws:s3:::\(name); see the comment above
+            """
+        )
+        let error = S3ServiceError.parse(refused.body, status: refused.status)
+        #expect(error.code == "BucketAlreadyExists")
+        #expect(error.vfsError(for: bucket) == .unsupported(.bucketNameTakenGlobally(name: name)))
+        // The narrowness: the *other* 409 on this verb, a name this account owns, keeps reading as
+        // an ordinary collision — it really is in the pane, and "already exists" is true there.
+        #expect(error.vfsError(for: bucket) != .alreadyExists(bucket))
+    }
 }
 
 /// Wraps a real account transport and records how many times each verb was asked for — the only
