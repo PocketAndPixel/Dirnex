@@ -82,6 +82,17 @@ public enum TrashLocations {
     /// than one row each. Nothing to fix; worth knowing before reading an empty Dropbox trash as a
     /// bug in the merge.
     ///
+    /// **And Box says the filter's answer is not even stable.** Measured 2026-08-18, minutes after
+    /// the domain was created: `Box-Box/.Trash` was on disk with the marker xattr, `SF_DATALESS`,
+    /// 65535 links and a reconciled `.trash` node — then thirteen minutes later that node had failed
+    /// `fetch-children-metadata` twice with the same Cocoa 3328 OneDrive gives, and the directory was
+    /// gone from the filesystem for good. A `stat` reaching into it during the changeover returned
+    /// `ETIMEDOUT`. So the caller filters a property that *changes*, and the window where it answers
+    /// yes is the first quarter-hour after somebody installs the client. It degrades correctly rather
+    /// than by luck: `ETIMEDOUT` has no case in `VFSError.fromErrno` and so lands on `.io`, which
+    /// `gatherTrash` drops with `continue` — had it mapped to `.permissionDenied` instead, a Box
+    /// trash timing out would have raised the Full Disk Access sheet at a user whose grant is fine.
+    ///
     /// That these are the same species as iCloud's is not inference: all three carry the marker
     /// xattr `com.apple.fileprovider.trash`, and `~/.Trash` does not. They are constructed rather
     /// than discovered by that xattr because the mounts are already enumerated for the sidebar and a

@@ -3021,6 +3021,72 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     of the two accounts is signed into this Chrome profile. Nothing on the Dirnex side can do better:
     the handoff is a URL, and which session receives it is the browser's to decide.
 
+- **Box needs no Box-specific code either — a fifth provider, the same answer** (2026-08-18,
+  `Box-Box`, a personal account whose domain had been created that morning). Mount root, folders and
+  files all answer `isUbiquitousItem == true`, so the attribute check opens `isCloudDirectory` on its
+  own and the `~/Library/CloudStorage` prefix clause is insurance for the fifth time running. Reads
+  cost **821 µs at the root, 605 µs on a folder and 508–829 µs on a file** (n=40, warm, fresh `URL`),
+  against **27 µs** for `/etc/hosts` measured beside them — inside the 650–1000 µs band, so the budget
+  holds. The naming needs no table entry: Box's own id carries no hyphen, so the first-hyphen fallback
+  is right for it and `Box-Acme-Corp` resolves to the account `Acme-Corp`. Run through
+  `CloudStorageMounts.mounts()` itself, the one form worth knowing is that Box labels a personal
+  account `Box`, so a second account draws **"Box — Box"** beside "Enterprise — Box" — which looks odd
+  and is honest, and does disambiguate.
+  - **A `<mount>/.Trash` can be there and then not be there, and Box is where that shows up.** Every
+    other provider's answer to "is there a mount trash" has been constant; Box's changes within the
+    first quarter-hour of a domain's life. Measured minutes after domain creation: `.Trash` on disk
+    carrying `com.apple.fileprovider.trash` *and* `com.apple.fileprovider.unsynced-trash`,
+    `SF_DATALESS` (`0x40000020`), **65535** links and a 2 MB size, with a reconciled `.trash` node in
+    the domain — i.e. every signal `SidebarLocations.trashDirectories` reads. Thirteen minutes later
+    the node had failed `fetch-children-metadata` twice with **Cocoa 3328** (the OneDrive signature,
+    two entries below) and the directory was gone from the filesystem permanently. A `stat` reaching
+    into it during the changeover returned **`ETIMEDOUT`**. So an existence filter is not merely
+    necessary and insufficient (the Dropbox lesson) — its answer is not even *stable*, and the
+    unstable window is exactly the one a new user is in.
+    - **It degrades correctly and it is worth knowing why, because the near miss is a false Full Disk
+      Access sheet.** `LocalBackend.listDirectory` maps `ETIMEDOUT` through `VFSError.fromErrno`,
+      which has no case for it, so it lands on `.io` — and `gatherTrash` only treats
+      `.permissionDenied` as fatal, dropping everything else with `catch { continue }`. Had the errno
+      mapped to a permission error instead, a Box trash timing out would have told a user whose grant
+      is fine to go and grant Full Disk Access. Nothing to fix; the merge skips the source and
+      presents the rest.
+    - How *long* that timeout is stays unmeasured, and the state cannot be re-created to find out:
+      macOS 26's `fileproviderctl` has no verb that rebuilds a node (only `dump`, `diagnose`,
+      `evaluate`, `check`/`repair`, `obfuscate`), and re-adding the domain would resync the account.
+  - **Box is the first provider where the delete's destination depends on *who* deleted it.**
+    `FileManager.trashItem` — the F8 path, driven through the real `LocalBackend` — answers
+    `~/.Trash`, and the item is **put-back-able**: its `ptbL`/`ptbN` pair reads back through
+    `TrashPutBack.origins` naming `…/Box-Box/badge-probe.bin`. Finder's delete on the same mount, in
+    the same run, named no destination and left the file **nowhere on this Mac** — not `~/.Trash`, not
+    any mount trash, not any volume — so it went to Box's own server-side trash, which is not a
+    filesystem location anything can merge. The Google Drive control in that same run answered
+    `<mount>/.Trash` for both callers. Note this inverts Drive's asymmetry, where Finder's delete is
+    the recoverable one: on Box, *Dirnex's* delete is.
+  - **With five providers measured, the two signals are exhausted and neither predicts anything.**
+    Box declines trashing outright — `cap:rwdpf-e--` on root, item and trash alike, and
+    `capabilities = 0x2000006F` with bit 4 (`allowsTrashing`) clear — where Dropbox, OneDrive and
+    Drive all declare `rwdpfTe--`. So every combination of (declares trashing, has a `.Trash`) has now
+    been observed, and only Google Drive's delete stays in its mount. **A real delete is the only
+    thing that answers where an item goes**; the capability says an item may be trashed, not where to,
+    and the directory's existence says nothing at all.
+  - **`.DS_Store` badges as a permanent upload here too**, which makes three providers and settles the
+    reading. Still `isUploaded == false` nine minutes after it was written, while **two ordinary files
+    in the same folder** reached `uploaded` in ~7 s — the control that makes it the file name rather
+    than the folder. `isExcludedFromSync` stays `false`, so `.excluded` remains unreachable from what
+    the system reports.
+  - The upload transient is real and visible: `uploading` at 0.54 s → `uploaded` at 6.94 s on a 72 KB
+    file, and drawn live in the app as the uploading badge on a 12 MB one while the materialized JPG
+    beside it carried none.
+  - **`NotDownloaded` on a Box *file* is unmeasured, and unlike Dropbox no Finder gesture reaches it.**
+    `fileproviderctl evaluate` shows Box offering `MarkForOffline` and **no** unpin or eviction for a
+    file that was never pinned (`UnmarkForOffline = 0`), and `evictItem` still refuses an ad-hoc
+    binary with `NSFileProviderErrorDomain -2001`. The state exists in principle — the root is
+    `cp:lazy` and evicting is allowed — and needs a file that arrives from Box's web account rather
+    than one created on this Mac. The adjacent reading that *was* taken: the dataless `.Trash`
+    placeholder, while it existed, came back through `CloudSyncStorage` as `notDownloaded` with
+    `SF_DATALESS` set, so the reader answers correctly for a Box dataless item — on a directory rather
+    than on a row anyone would download.
+
 ### shasum, md5sum and the checksum-file formats
 
 macOS 26 ships more producers than expected — `/sbin/md5sum`, `/sbin/sha1sum` and `/sbin/sha256sum`

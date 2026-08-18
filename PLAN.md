@@ -471,8 +471,8 @@ is the right home and not the string catalog.
 
 The half that was **not** done is verification, and it needed the clients installed. **OneDrive was
 verified 2026-08-17** against a real `OneDrive-Personal` mount and **Dropbox 2026-08-18** against a
-real `Dropbox-Home` one; Box is still nobody's installed client here, so for it the prediction below
-stands unmeasured.
+real `Dropbox-Home` one; **Box was verified 2026-08-18** against a real `Box-Box` mount, on the same
+afternoon and against the same Google Drive control.
 
 The prediction was right about the badges and wrong about the trash, which is the half worth having
 run. Every OneDrive item — mount root, folders, files — answers `isUbiquitousItem == true`, so
@@ -543,6 +543,61 @@ screenshot shows: 40 resource-value reads, a real `listDirectory` and the app's 
 it is **still** a placeholder — which is the whole point of the `SF_DATALESS` guard, since one byte
 read would have downloaded it. So every state `CloudItemAttributes` can report has now been seen on a
 third-party provider.
+
+**Box repeated the badge result a third time and inverted the trash finding a third way — and its
+`.Trash` is the one that is not there when you look twice.** Verified 2026-08-18 against a personal
+`Box-Box` mount whose domain had been created that morning. Every level answers
+`isUbiquitousItem == true`, so the gate opens on the attribute alone; reads cost 821 µs at the mount
+root, 605 µs on a folder and 508–829 µs on a file against 27 µs for `/etc/hosts` measured beside
+them, inside the same 650–1000 µs band; and a 72 KB file was watched going `uploading` at 0.54 s →
+`uploaded` at 6.94 s, drawn live in the app as the uploading badge on a 12 MB file while the
+materialized JPG beside it carried none. `.DS_Store` badges as a permanent upload here too — still
+`isUploaded == false` nine minutes on, with two ordinary files in the *same folder* uploaded, which
+is the control that makes it the file name rather than the folder — and `isExcludedFromSync` stays
+`false`, so `.excluded` remains unreachable from what the system reports on a third provider. The
+naming needed no table entry for the same reason Dropbox's did not: Box's own id carries no hyphen,
+so the first-hyphen fallback is right for it, and `Box-Acme-Corp` resolves to the account `Acme-Corp`.
+Checked through `CloudStorageMounts.mounts()` in every combination — the one worth noting is that
+Box's personal account labels itself `Box`, so a second account draws **"Box — Box"** beside
+"Enterprise — Box". Odd-looking, honest, and it does disambiguate.
+
+The trash is a third shape, and it is the first that is not stable in time. OneDrive has no `.Trash`;
+Dropbox has one and never uses it; **Box has one for the first few minutes of a domain's life and then
+does not.** At 13:16, minutes after domain creation, `<mount>/.Trash` was on disk carrying
+`com.apple.fileprovider.trash`, `SF_DATALESS`, 65535 links and a 2 MB size, with a live reconciled
+`.trash` node in the domain — every signal `SidebarLocations.trashDirectories` keys on. By 13:29 the
+node had failed `fetch-children-metadata` twice with **Cocoa 3328**, the exact OneDrive signature, and
+the directory was gone from the filesystem for good; a `stat` reaching into it during the changeover
+returned `ETIMEDOUT`. So the existence filter is doing real work for a third distinct reason, and the
+one that matters is that its answer *changes*: a Box user who opens the Trash in the first minutes
+after installing has a source in the merge that Dirnex will list, pay a timeout on, and correctly skip
+— `ETIMEDOUT` maps to `.io`, not `.permissionDenied`, so `gatherTrash`'s `catch { continue }` drops it
+rather than raising the Full Disk Access sheet at somebody whose grant is fine. Nothing to fix. What is
+unmeasured is how long that timeout is, because the state cannot be re-created: `fileproviderctl` has
+no verb for it, and re-adding the domain would resync the account.
+
+Where a delete lands splits by *caller* here, which no other provider has done. Dirnex's F8 —
+`FileManager.trashItem` through the real `LocalBackend` — answers `~/.Trash`, and the item is
+**put-back-able**, its `ptbL`/`ptbN` pair read back through `TrashPutBack.origins` naming
+`…/Box-Box/badge-probe.bin`. Finder's delete on the same mount, in the same run, returned no
+destination at all and the file is **nowhere on this Mac** — not `~/.Trash`, not any mount trash, not
+any volume — while the Google Drive control in that same run named its own `<mount>/.Trash` for both
+callers. Box declines trashing outright where the others declare it: `cap:rwdpf-e--` on every node,
+`capabilities = 0x2000006F` with bit 4 clear, against Dropbox's and OneDrive's `rwdpfTe--`. With four
+providers now measured, both signals are exhausted — every combination of "declares trashing" and "has
+a `.Trash`" has been seen, and only Google Drive's delete stays in its mount — so **neither predicts
+where an item goes, and a real delete is the only thing that answers.** The practical half is that
+Dirnex's delete is the *more* recoverable of the two on Box, which is the opposite of the asymmetry
+Drive taught.
+
+`NotDownloaded` on a Box **file** is the one thing still open, and unlike Dropbox there is no gesture
+that reaches it: `fileproviderctl evaluate` shows Box offering `MarkForOffline` and no unpin or
+eviction for a file that was never pinned, while `evictItem` refuses an ad-hoc binary as before. The
+adjacent reading is that the dataless `.Trash` placeholder, while it existed, came back through
+`CloudSyncStorage` as `notDownloaded` with `SF_DATALESS` set — so the reader answered correctly for a
+Box dataless item, on a directory rather than on a row anyone would download. The state is reachable in
+principle (`cp:lazy`, evicting allowed) and needs a file that arrives from Box's web account rather
+than from this Mac.
 
 **Amazon Drive is not a thing to support.** It shut down 2023-12-31, and WorkDocs was EOL'd in 2025;
 there is no File Provider mount to find. So "Amazon" means **S3**, which is a real backend and the
