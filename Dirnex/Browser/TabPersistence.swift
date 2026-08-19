@@ -65,6 +65,19 @@ struct PersistedPane: Codable {
         guard tabs.indices.contains(activeIndex) else { return tabs.first?.columns }
         return tabs[activeIndex].columns
     }
+
+    /// The shape the tab that was active when this pane was saved drew in, clamped to the stored
+    /// tabs the same way ``activeTabColumns`` is — and used for the same reason, one field over.
+    ///
+    /// A pane whose every persisted tab was dropped falls back to a Home tab, and building that at
+    /// the plain default took the user's tree mode down with the dropped tab: set a pane to a tree,
+    /// connect to S3, quit, and the pane reopened a flat list, while a pane whose tab *was* restored
+    /// kept its shape. Reported 2026-08-20. `.list` when nothing was stored, which is what a fresh
+    /// tab is anyway.
+    var activeTabViewMode: PanelViewMode {
+        guard tabs.indices.contains(activeIndex) else { return tabs.first?.panelViewMode ?? .list }
+        return tabs[activeIndex].panelViewMode
+    }
 }
 
 /// Load/save per-pane tab state keyed by a stable pane identifier ("left"/"right").

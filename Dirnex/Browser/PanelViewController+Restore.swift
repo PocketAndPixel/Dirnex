@@ -139,12 +139,14 @@ extension PanelViewController {
 
     /// The tabs and active index a pane opens with, given its persisted state — what `init` installs.
     /// Wraps `restoredTabs` with the empty-fallback: when every persisted tab was dropped (a pane
-    /// whose only tab was a remote FTP/SFTP/SMB folder is the common case — those can't be listed at
-    /// launch without reconnecting), open a fresh tab at `defaultPath`, but carry the last-active
-    /// tab's column layout forward. A dropped remote tab is still where the user set those widths, and
-    /// a bare default layout snapped the Date column back to its default 150 on every relaunch of a
-    /// pane whose only tab was remote — while a plain local folder, whose tab *is* restored, kept its
-    /// widths, which is exactly the asymmetry that read as a bug.
+    /// whose only tab was a remote FTP/SFTP/SMB/S3 folder is the common case — those can't be listed
+    /// at launch without reconnecting), open a fresh tab at `defaultPath`, but carry the last-active
+    /// tab's column layout **and view mode** forward. A dropped remote tab is still where the user set
+    /// those widths, and a bare default layout snapped the Date column back to its default 150 on
+    /// every relaunch of a pane whose only tab was remote — while a plain local folder, whose tab *is*
+    /// restored, kept its widths, which is exactly the asymmetry that read as a bug. The tree/list
+    /// shape is the second half of that same asymmetry, reported 2026-08-20 against an S3 account
+    /// (`PersistedPane.activeTabViewMode`).
     static func restoredLayout(
         from restoration: PersistedPane?,
         defaultPath: VFSPath,
@@ -157,6 +159,11 @@ extension PanelViewController {
                 showHidden: showHidden,
                 columns: restoration?.activeTabColumns
             )
+            // …and the shape it was drawing in, for the same reason and with the same asymmetry
+            // behind it: a pane set to a tree and then pointed at S3 came back a flat list, while a
+            // pane whose tab *was* restored kept its tree. The mode is per tab, so the honest thing
+            // to carry onto a stand-in tab is what the tab it stands in for was last drawing.
+            fallback.viewMode = restoration?.activeTabViewMode ?? .list
             return ([fallback], 0)
         }
         return (restored, min(max(restoration?.activeIndex ?? 0, 0), restored.count - 1))
