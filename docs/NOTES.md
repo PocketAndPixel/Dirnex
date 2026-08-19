@@ -235,6 +235,68 @@ at build time.
         unprompted by this rule and were deliberately **left alone**: each is handed a window by
         construction, and each is marked as shown once presented — so dropping it would consume the
         one-shot in silence, which is a worse failure than the one being prevented.
+- **`HeadBucket` goes on answering 200 for a bucket AWS has deleted — intermittently, and for longer
+  than a test run — so any code that `stat`s before it creates can refuse a name that is not there.**
+  Measured 2026-08-20 on the live account, polling immediately after a `DELETE` returned 204:
+  `404 404 200 200 200 200 200 200 404 200 404 404`, while `ListAllMyBuckets` read the name as absent
+  **12 times out of 12** and `HeadBucket` on a *settled* bucket answered 200 all 30 times. So the
+  staleness belongs to a name that was just deleted, roughly one read in three disagrees with the
+  truth, and **the listing is exact where the head is not**.
+  - **It is a product behaviour before it is a test problem.** `S3AccountBackend.createDirectory`
+    guards on its own `stat`, which is that `HeadBucket` — so F7 with the name of a bucket just
+    deleted can answer "already exists" for a bucket that is gone, and answer it only sometimes.
+    Nothing logs and the pane is right (its listing does not show the name), which is the tell:
+    a refusal that contradicts what the pane is drawing.
+  - **What it did to the live suite was flake in *both* directions**, which is why it read as two
+    unrelated bugs: a lingering 200 from the previous run refused the setup create
+    (`.alreadyExists` on a free name), and an unlucky 404 after a create let a second one through
+    (`creates → 2` on the assertion that the guard costs no request). Both were in
+    `recreatingAnOwnedBucketIsRefused`, ~2 failures in 5 runs.
+  - **The predicted fix was unavailable, and one probe settled it.** That test's own comment named a
+    UUID-suffixed bucket name as the answer "if this ever flakes", at the cost of an IAM policy on
+    `arn:aws:s3:::dirnex-live-probe-*`. The live account grants `s3:CreateBucket` on the one exact
+    ARN, so a unique name comes back **403 AccessDenied** and creates nothing. Check what the policy
+    actually permits before designing around a name you cannot mint.
+  - **The fix is to ask `HeadBucket` only about names whose answer is stable**, which turned out to
+    cost nothing: the "guard let it through" control uses a name that has *never* existed (a stable
+    404 — and its 403 is as good as any answer, since what is counted is that a request was made),
+    the "guard refused without asking" claim uses the fixture's own settled bucket (a stable 200),
+    and the service's own `409 BucketAlreadyOwnedByYou` — which does need the one creatable name —
+    is asked **directly**, where no `HeadBucket` is involved (measured 3/3). The churned name is
+    then only ever touched by `CreateBucket`/`DeleteBucket`, both exact.
+  - **The control for the residual retry is a *leftover*, not a phantom.** Poisoning `HeadBucket`
+    deliberately (create, delete, confirm it answers 200) failed to break the plain create in 6 runs
+    — the flap decays faster than a suite restarts — so the phantom is not reproducible on demand.
+    Pre-creating the bucket **is**: with a real leftover, the plain create fails with `.alreadyExists`
+    and the retrying helper passes, which exercises the same branch. Reach for the reproducible
+    neighbour when the failure you are guarding against will not come when called.
+- **A live suite's cleanup is keyed on the *fixture's* identity, not on who filed the item — so
+  "delete what we leave behind" deletes the user's own credential the day the fixture names an
+  account they also use.** Both S3 live suites ended with `SecretKeychain.removePassword`, on the
+  stated assumption that the fixture points at a scratch endpoint and the items are therefore the
+  suite's own. The key is `accessKeyID@host:port/region[/bucket]`, which is a fact about the account
+  and says nothing about which process wrote it, so pointing `/tmp/dirnex_s3_live_test.json` at a
+  real AWS account addressed the very item the sidebar's saved row depends on. Reported 2026-08-20 as
+  *"doesn't the app save credentials to the Keychain?"* — clicking the saved row re-opened the
+  prefilled Connect sheet with the secret blank, on every build, because `xcodebuild test` had
+  removed it. It is the quietest failure available: nothing logs, both suites and both linters are
+  green, and the app's fallback is *correct* (a missing secret opens the sheet), so the bug wears the
+  costume of a feature that was never implemented.
+  - **Capture-and-restore is right whichever the fixture names**, which is why it replaces the delete
+    rather than sitting beside it: an item the suite created still goes away (there was nothing to put
+    back), and one it merely overwrote is returned to its value.
+  - **Once per *process*, not once per test — and the obvious per-instance shape fails on exactly the
+    collision `.serialized` does not cover.** That trait orders a suite's own tests and says nothing
+    about two suites, and these two run concurrently over the one item; an instance whose `init`
+    lands mid-flight captures the secret a neighbour has already written and dutifully "restores"
+    that at the end. A `static let`'s initializer runs once however many tests race into it, and the
+    put-back belongs in `atexit`, because any earlier point is inside somebody else's test.
+  - **The instrument is a sentinel, and it doubles as the positive control.** File a recognisable
+    value at the key, run the suites, and read it back: the per-instance version left the fixture's
+    real secret standing, the process-wide one gave the sentinel back. That the tests still *pass*
+    with a sentinel filed is the other half — `s3BucketConnectRequest` reads the account secret from
+    the Keychain, so a green run proves the item really was overwritten during the run and restored
+    afterwards, rather than never having been touched.
 - **A cancellation test whose fake finishes inside the same turn cannot see cancellation at all, and
   every assertion in it passes against a scheduler that never cancels anything.** Measured on the
   Quick View auto-fetch: with `cancelAutomaticFetch` neutered to a bare `pending = nil`, the whole

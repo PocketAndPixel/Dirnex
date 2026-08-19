@@ -35,18 +35,14 @@ import Testing
 @Suite("S3 account live integration", .serialized, .enabled(if: S3LiveEnvironment.current != nil))
 @MainActor
 final class S3AccountLiveIntegrationTests {
-    /// A class rather than a struct so `deinit` can take the Keychain items back out.
-    ///
     /// The flows under test file a secret on every successful connect — that is what makes walking
-    /// out of a bucket work at all — so running this suite leaves two live-looking credentials in
-    /// whoever's login Keychain ran it. They are for a scratch endpoint and they are still clutter
-    /// somebody would have to find and delete by hand. Removing them from **inside the test host**
-    /// is also the only way that costs nothing: the items belong to this process, so `security` at
-    /// a shell would raise an authorization prompt where this raises none.
-    deinit {
-        guard let config = S3LiveEnvironment.current else { return }
-        SecretKeychain.removePassword(for: config.account)
-        SecretKeychain.removePassword(for: config.account.bucketLocation(named: config.bucket))
+    /// out of a bucket work at all — so running this suite writes over whatever the person running
+    /// it had filed for that account. ``S3LiveKeychainSnapshot`` reads both items before the first
+    /// test and puts them back as the host exits; doing it from **inside the test host** is also the
+    /// only way that costs nothing, since the items belong to this process and `security` at a shell
+    /// would raise an authorization prompt where this raises none.
+    init() {
+        S3LiveKeychainSnapshot.arm()
     }
 
     /// The windows the panes live in, held so they outlive `pane(_:)` — see its comment for what
@@ -285,21 +281,15 @@ final class S3AccountLiveIntegrationTests {
     func createsAndDeletesABucket() async throws {
         let config = try #require(S3LiveEnvironment.current)
         let controller = await connectedPane(config)
-        // **One fixed name, deliberately, and the alternative is written down because it is the
-        // obvious "fix".** Re-creating a name a previous run deleted can meet `409
-        // OperationAborted` — "a conflicting conditional operation is currently in progress against
-        // this resource" — which is not a collision and does not clear quickly: measured
-        // 2026-08-18, three retries over 15 s did not settle it. What provokes it is *changing the
-        // account's region between runs*; create/delete/create inside one region succeeds every
-        // time, so an ordinary run of this suite never meets it. A UUID-suffixed name removes the
-        // class outright and costs a policy that grants `s3:CreateBucket` on
-        // `arn:aws:s3:::dirnex-live-probe-*` rather than on the one exact ARN — worth doing if this
-        // ever flakes, and not worth the extra setup step before then. The refusal itself is pinned
-        // headlessly against AWS's real body in `S3ResponseErrorTests`.
-        let name = "dirnex-live-probe"
+        // **One fixed name, because the account's policy grants `s3:CreateBucket` on that one ARN
+        // and a UUID-suffixed name is refused 403** (measured 2026-08-20 — the fix an earlier
+        // comment here predicted is not available without widening the policy). Reusing the name is
+        // what exposes the create to a stale `HeadBucket`, which ``S3LiveProbeBucket`` absorbs and
+        // documents; everything asserted below reads the *listing*, which does not go stale.
+        let name = S3LiveProbeBucket.name
         let created = config.accountRoot.appending(name)
 
-        try controller.backend.createDirectory(at: created)
+        try await S3LiveProbeBucket.create(at: created, through: controller.backend)
         controller.refreshCurrentDirectory(selecting: created)
         await waitUntil("the new bucket to appear") {
             (0..<controller.panel.count).contains { controller.panel.model[$0].name == name }
@@ -329,31 +319,46 @@ final class S3AccountLiveIntegrationTests {
     /// be about the guard. What separates them is whether a request was **made**, so the transport
     /// counts its own calls; the same lesson `RemoteTransferCancellationTests` records for
     /// `throws CancellationError`.
+    /// **Every `HeadBucket` here is asked about a name whose answer is stable, and that is the whole
+    /// design of the test** — see ``S3LiveProbeBucket`` for the measurement. The guard reads
+    /// `HeadBucket`, which lies intermittently about a *recently deleted* name, so this used to
+    /// flake in both directions on the churned probe bucket. The two counted claims now use a name
+    /// that has never existed (a stable 404) and the fixture's own settled bucket (a stable 200),
+    /// and the service's refusal — which needs a name the policy lets it create, so it has to be the
+    /// probe — is asked **directly**, where no `HeadBucket` is involved at all.
     @Test("a name this account already owns is refused without asking, and by AWS when asked")
     func recreatingAnOwnedBucketIsRefused() throws {
         let config = try #require(S3LiveEnvironment.current)
-        let name = "dirnex-live-probe"
         let counting = CountingAccountTransport(S3AccountCurlTransport(
             account: config.account,
             secretAccessKey: config.secretAccessKey
         ))
         let backend = S3AccountBackend(account: config.account, transport: counting)
-        let bucket = config.accountRoot.appending(name)
-        _ = try? counting.inner.deleteBucket(name: name)
-        defer { _ = try? counting.inner.deleteBucket(name: name) }
 
-        // The pairing. A guard that refused everything would satisfy the claim below just as well.
-        try backend.createDirectory(at: bucket)
-        #expect(counting.creates == 1, "creating a free name did not reach the service")
+        // The pairing. A guard that refused everything would satisfy the claim below just as well,
+        // so pin the other direction: a name the pane cannot see *does* reach the service. What the
+        // service answers is beside the point — it is a 403, since the policy grants
+        // `s3:CreateBucket` on the probe ARN alone — the evidence is that the request was made.
+        let unseen = config.accountRoot.appending(S3LiveProbeBucket.unownedName())
+        _ = try? backend.createDirectory(at: unseen)
+        #expect(counting.creates == 1, "a name the pane cannot see did not reach the service")
 
         // The claim: a name already in the pane costs no request at all.
-        #expect(throws: VFSError.alreadyExists(bucket)) {
-            try backend.createDirectory(at: bucket)
+        let owned = config.accountRoot.appending(config.bucket)
+        #expect(throws: VFSError.alreadyExists(owned)) {
+            try backend.createDirectory(at: owned)
         }
         #expect(counting.creates == 1, "the app asked the service about a name it could already see")
 
         // And what the service says when something does ask — measured 2026-08-18, 409 with this
-        // code. It is the body `S3ResponseErrorTests` pins the mapping against.
+        // code. It is the body `S3ResponseErrorTests` pins the mapping against. The setup call owns
+        // the name whether it was free (200) or already ours (409), and neither it nor the refusal
+        // goes near `HeadBucket`, so this half is exact: measured 3/3 on 2026-08-20.
+        let name = S3LiveProbeBucket.name
+        let bucket = config.accountRoot.appending(name)
+        _ = try counting.inner.createBucket(name: name)
+        defer { _ = try? counting.inner.deleteBucket(name: name) }
+
         let refused = try counting.inner.createBucket(name: name)
         #expect(refused.status == 409, "AWS did not refuse a name this account owns")
         let error = S3ServiceError.parse(refused.body, status: refused.status)

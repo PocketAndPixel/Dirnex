@@ -28,9 +28,11 @@ import Testing
 )
 @MainActor
 final class RemoteFileEditLiveIntegrationTests {
-    deinit {
-        guard let config = S3LiveEnvironment.current else { return }
-        SecretKeychain.removePassword(for: config.account.bucketLocation(named: config.bucket))
+    /// Leaves the fixture account's Keychain items as it found them — see
+    /// ``S3LiveKeychainSnapshot``, whose capture is process-wide precisely because this suite and
+    /// the account suite run concurrently over the same two items.
+    init() {
+        S3LiveKeychainSnapshot.arm()
     }
 
     // MARK: - Fixtures
