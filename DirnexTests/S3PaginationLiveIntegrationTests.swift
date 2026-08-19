@@ -80,84 +80,95 @@ struct S3PaginationLiveIntegrationTests {
     // MARK: - The loop
 
     @Test("a folder wider than one page lists whole, and a page holds what it was asked for")
-    func multiPageFolderListsWhole() throws {
-        let config = try #require(S3LiveEnvironment.current)
-        let paged = backend(config, pageSize: Self.pageSize)
-        let folder = VFSPath(backend: paged.id, path: probePrefix("whole"))
+    func multiPageFolderListsWhole() async throws {
+        // Off the cooperative pool: every verb below blocks on a subprocess for a real network
+        // round trip, which a test body may not do — see ``offCooperativePool``.
+        try await offCooperativePool {
+            let config = try #require(S3LiveEnvironment.current)
+            let paged = backend(config, pageSize: Self.pageSize)
+            let folder = VFSPath(backend: paged.id, path: probePrefix("whole"))
 
-        let seeded = try seed(folder, using: paged)
-        defer { for remote in seeded { try? paged.removeItem(at: remote) } }
+            let seeded = try seed(folder, using: paged)
+            defer { for remote in seeded { try? paged.removeItem(at: remote) } }
 
-        let entries = try paged.listDirectory(at: folder)
-        let listed = entries.map(\.name).sorted()
-        #expect(listed == names(Self.fixtureCount), "the paged listing lost or repeated a row")
-        #expect(Set(listed).count == listed.count, "a row arrived twice")
-        #expect(entries.allSatisfy { $0.byteSize == 3 })
+            let entries = try paged.listDirectory(at: folder)
+            let listed = entries.map(\.name).sorted()
+            #expect(listed == names(Self.fixtureCount), "the paged listing lost or repeated a row")
+            #expect(Set(listed).count == listed.count, "a row arrived twice")
+            #expect(entries.allSatisfy { $0.byteSize == 3 })
 
-        // The control that says the pages were real. A page size larger than the folder needs no
-        // continuation token at all, so if it agrees with the run above, the loop above genuinely
-        // walked three pages rather than one wide one — and if the token had been dropped, this is
-        // the reading that would still have been right.
-        let whole = backend(config, pageSize: 1000)
-        let inOneGo = try whole.listDirectory(at: folder).map(\.name).sorted()
-        #expect(inOneGo == listed, "one page and three pages disagree about the same folder")
+            // The control that says the pages were real. A page size larger than the folder needs no
+            // continuation token at all, so if it agrees with the run above, the loop above genuinely
+            // walked three pages rather than one wide one — and if the token had been dropped, this is
+            // the reading that would still have been right.
+            let whole = backend(config, pageSize: 1000)
+            let inOneGo = try whole.listDirectory(at: folder).map(\.name).sorted()
+            #expect(inOneGo == listed, "one page and three pages disagree about the same folder")
+        }
     }
 
     // MARK: - The encoding under it
 
     @Test("the continuation token is refused unless it is encoded going back")
-    func rawContinuationTokenIsRefused() throws {
-        let config = try #require(S3LiveEnvironment.current)
-        let location = config.account.bucketLocation(named: config.bucket)
-        let paged = backend(config, pageSize: Self.pageSize)
-        let folder = VFSPath(backend: paged.id, path: probePrefix("token"))
+    func rawContinuationTokenIsRefused() async throws {
+        // Off the cooperative pool: every verb below blocks on a subprocess for a real network
+        // round trip, which a test body may not do — see ``offCooperativePool``.
+        try await offCooperativePool {
+            let config = try #require(S3LiveEnvironment.current)
+            let location = config.account.bucketLocation(named: config.bucket)
+            let paged = backend(config, pageSize: Self.pageSize)
+            let folder = VFSPath(backend: paged.id, path: probePrefix("token"))
 
-        let seeded = try seed(folder, using: paged)
-        defer { for remote in seeded { try? paged.removeItem(at: remote) } }
+            let seeded = try seed(folder, using: paged)
+            defer { for remote in seeded { try? paged.removeItem(at: remote) } }
 
-        // Ask for the first page the way the app does, and take the token AWS hands back.
-        let session = S3Session(location: location, maxTime: 30)
-        let prefix = S3Key.listingPrefix(for: folder)
-        let runner = S3CurlRunner(
-            accessKeyID: location.accessKeyID,
-            secretAccessKey: config.secretAccessKey
-        )
-        let first = try runner.perform(S3ProcessArguments.list(
-            session: session,
-            prefix: prefix,
-            maxKeys: Self.pageSize
-        ))
-        #expect(first.status == 200)
-        let page = try S3ListingParser.parse(first.body)
-        #expect(page.isTruncated, "the fixture fits one page, so nothing here is about paging")
-        let token = try #require(page.nextContinuationToken, "AWS handed back no token to page with")
+            // Ask for the first page the way the app does, and take the token AWS hands back.
+            let session = S3Session(location: location, maxTime: 30)
+            let prefix = S3Key.listingPrefix(for: folder)
+            let runner = S3CurlRunner(
+                accessKeyID: location.accessKeyID,
+                secretAccessKey: config.secretAccessKey
+            )
+            let first = try runner.perform(S3ProcessArguments.list(
+                session: session,
+                prefix: prefix,
+                maxKeys: Self.pageSize
+            ))
+            #expect(first.status == 200)
+            let page = try S3ListingParser.parse(first.body)
+            #expect(page.isTruncated, "the fixture fits one page, so nothing here is about paging")
+            let token = try #require(
+                page.nextContinuationToken,
+                "AWS handed back no token to page with"
+            )
 
-        // The request the app makes, with its token encoded — the half that must succeed, or the
-        // refusal below would be evidence about our credentials rather than about the encoding.
-        let arguments = S3ProcessArguments.list(
-            session: session,
-            prefix: prefix,
-            continuationToken: token,
-            maxKeys: Self.pageSize
-        )
-        let encoded = try runner.perform(arguments)
-        #expect(encoded.status == 200, "AWS refused the token the app actually sends")
-        let secondPage = try S3ListingParser.parse(encoded.body)
-        #expect(!secondPage.objects.isEmpty, "the second page came back empty")
+            // The request the app makes, with its token encoded — the half that must succeed, or the
+            // refusal below would be evidence about our credentials rather than about the encoding.
+            let arguments = S3ProcessArguments.list(
+                session: session,
+                prefix: prefix,
+                continuationToken: token,
+                maxKeys: Self.pageSize
+            )
+            let encoded = try runner.perform(arguments)
+            #expect(encoded.status == 200, "AWS refused the token the app actually sends")
+            let secondPage = try S3ListingParser.parse(encoded.body)
+            #expect(!secondPage.objects.isEmpty, "the second page came back empty")
 
-        // The identical request with exactly one substitution: the token unencoded. Measured
-        // 2026-08-18, AWS answers 403 `SignatureDoesNotMatch` — `curl` signs the query as written
-        // and the service re-derives it, so a token carrying `+` or `=` makes the two disagree.
-        // Note what that does to the diagnosis: a *pagination* bug arrives wearing the sentence for
-        // a bad key, on a folder that lists fine on the next attempt.
-        let raw = arguments.map {
-            $0.replacingOccurrences(of: S3Key.encodedForQuery(token), with: token)
+            // The identical request with exactly one substitution: the token unencoded. Measured
+            // 2026-08-18, AWS answers 403 `SignatureDoesNotMatch` — `curl` signs the query as written
+            // and the service re-derives it, so a token carrying `+` or `=` makes the two disagree.
+            // Note what that does to the diagnosis: a *pagination* bug arrives wearing the sentence for
+            // a bad key, on a folder that lists fine on the next attempt.
+            let raw = arguments.map {
+                $0.replacingOccurrences(of: S3Key.encodedForQuery(token), with: token)
+            }
+            #expect(raw != arguments, "the token needed no encoding, so this run proves nothing")
+            let refused = try runner.perform(raw)
+            #expect(refused.status == 403, "AWS accepted a raw continuation token")
+            let error = S3ServiceError.parse(refused.body, status: refused.status)
+            #expect(error.code == "SignatureDoesNotMatch")
+            #expect(error.isCredentialFailure, "the refusal does not read as a credential failure")
         }
-        #expect(raw != arguments, "the token needed no encoding, so this run proves nothing")
-        let refused = try runner.perform(raw)
-        #expect(refused.status == 403, "AWS accepted a raw continuation token")
-        let error = S3ServiceError.parse(refused.body, status: refused.status)
-        #expect(error.code == "SignatureDoesNotMatch")
-        #expect(error.isCredentialFailure, "the refusal does not read as a credential failure")
     }
 }

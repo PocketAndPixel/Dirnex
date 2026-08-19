@@ -79,7 +79,7 @@ struct RemoteFetchPromptTests {
         await settle { window.attachedSheet != nil }
         let sheet = try #require(window.attachedSheet)
         window.endSheet(sheet, returnCode: .alertSecondButtonReturn)
-        await settle { false }
+        await hold()
 
         #expect(backend.copyCount == 0)
         #expect(cache.previewFetchState(for: entry) == nil)
@@ -139,7 +139,7 @@ struct RemoteFetchPromptTests {
         #expect(backend.wasCancelledMidTransfer)
         // And the fact survives the transfer's own unwinding, which arrives immediately after and
         // would otherwise erase the one thing the card is about to say.
-        await settle { false }
+        await hold()
         #expect(cache.previewFetchState(for: entry) == .stopped)
         #expect(cache.cachedURL(for: entry) == nil)
     }
@@ -162,7 +162,7 @@ struct RemoteFetchPromptTests {
             then: { _ in },
             onFailure: { _ in }
         )
-        await settle { window.attachedSheet != nil }
+        await hold { window.attachedSheet != nil }
 
         #expect(window.attachedSheet == nil)
         cache.stopPreviewFetch()
@@ -213,7 +213,7 @@ struct RemoteFetchPromptTests {
         for _ in 0..<3 {
             cache.scheduleAutomaticFetch(entry, using: backend, onSettled: {})
         }
-        await settle { backend.copyCount > 1 }
+        await hold { backend.copyCount > 1 }
 
         #expect(backend.copyCount == 1)
         cache.stopPreviewFetch()
@@ -256,14 +256,35 @@ struct RemoteFetchPromptTests {
         return nil
     }
 
-    /// Poll until `isDone`, or give up after a couple of seconds — comfortably past the sheet's
-    /// 1200 ms delay, which is what the two sheet tests are really waiting out. The `false`
-    /// predicate is the deliberate spelling of "wait, and prove nothing happened".
-    private func settle(until isDone: () -> Bool) async {
-        for _ in 0..<50 {
-            if isDone() { return }
-            try? await Task.sleep(for: .milliseconds(50))
+    /// Poll until `isDone` — `await`, never a run-loop spin, since what is being waited for is a
+    /// transfer's continuation and a spin never suspends the main actor (docs/NOTES.md ▸ Testing).
+    ///
+    /// **Generous on purpose, and that costs nothing.** A satisfied predicate returns on the next
+    /// poll, so the budget never lengthens a green run — it only decides how much scheduling delay
+    /// the test can absorb before reporting a failure that is really the machine's. The old budget
+    /// was 2.5 s against a 1200 ms sheet delay, about 2×, and it expired on a loaded Mac and read
+    /// as a dead button (2026-08-20).
+    ///
+    /// It is **not** how to wait a delay out — that is ``hold(until:)``, which is bounded because
+    /// the length is the whole point of it.
+    @discardableResult
+    private func settle(within seconds: Double = 10, until isDone: () -> Bool) async -> Bool {
+        let deadline = Date().addingTimeInterval(seconds)
+        while Date() < deadline {
+            if isDone() { return true }
+            try? await Task.sleep(for: .milliseconds(25))
         }
+        return isDone()
+    }
+
+    /// Wait long enough to show something does *not* happen, giving up early if it ever does so a
+    /// real failure is reported promptly rather than after the whole wait.
+    ///
+    /// Bounded, unlike ``settle(within:until:)``, and it has to be: here the length is the claim,
+    /// so it cannot be widened to suit a slow machine. 2.5 s is what these waits have always been
+    /// and clears the prompt's own 1200 ms sheet delay, which is what the sheet tests wait out.
+    private func hold(until isHappening: () -> Bool = { false }) async {
+        _ = await settle(within: 2.5, until: isHappening)
     }
 
     /// A main-actor tally, for counting calls a closure makes.

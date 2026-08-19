@@ -99,191 +99,210 @@ struct S3ConditionalWriteLiveIntegrationTests {
     // MARK: - .ifMatches
 
     @Test("a stale entity tag is refused, and the tag AWS currently holds is not")
-    func staleEntityTagIsRefused() throws {
-        let config = try #require(S3LiveEnvironment.current)
-        let backend = backend(config)
-        let remote = VFSPath(backend: backend.id, path: probeKey("stale"))
-        defer { try? backend.removeItem(at: remote) }
+    func staleEntityTagIsRefused() async throws {
+        // Off the cooperative pool: every verb below blocks on a subprocess for a real network
+        // round trip, which a test body may not do — see ``offCooperativePool``.
+        try await offCooperativePool {
+            let config = try #require(S3LiveEnvironment.current)
+            let backend = backend(config)
+            let remote = VFSPath(backend: backend.id, path: probeKey("stale"))
+            defer { try? backend.removeItem(at: remote) }
 
-        try put("one", at: remote, using: backend)
-        let first = try entityTag(of: remote, using: backend)
+            try put("one", at: remote, using: backend)
+            let first = try entityTag(of: remote, using: backend)
 
-        // The control. A guarded write with the *current* tag must land, or every assertion below
-        // is about our own quoting rather than about Amazon's answer.
-        let second = try localFile("two")
-        defer { try? FileManager.default.removeItem(at: second) }
-        let guarded = try backend.upload(
-            localPath: second.path,
-            over: remote,
-            condition: .ifMatches(entityTag: first),
-            progress: { _ in },
-            isCancelled: { false }
-        )
-        #expect(guarded.conditionWasSent)
-        let landed = try download(remote, using: backend)
-        #expect(landed == "two", "a guarded write with the current tag did not land")
-
-        let updated = try entityTag(of: remote, using: backend)
-        #expect(updated != first, "the second write left the tag unchanged, so nothing is stale yet")
-
-        // The refusal: `first` is now a version AWS no longer holds. This is the state the race
-        // produces, reached without one.
-        let third = try localFile("three")
-        defer { try? FileManager.default.removeItem(at: third) }
-        var refusal: VFSError?
-        do {
-            _ = try backend.upload(
-                localPath: third.path,
+            // The control. A guarded write with the *current* tag must land, or every assertion below
+            // is about our own quoting rather than about Amazon's answer.
+            let second = try localFile("two")
+            defer { try? FileManager.default.removeItem(at: second) }
+            let guarded = try backend.upload(
+                localPath: second.path,
                 over: remote,
                 condition: .ifMatches(entityTag: first),
                 progress: { _ in },
                 isCancelled: { false }
             )
-        } catch let error as VFSError {
-            refusal = error
-        }
-        #expect(
-            refusal == .unsupported(.remoteFileChangedSinceFetch(name: remote.lastComponent)),
-            "real AWS did not refuse a stale If-Match: \(String(describing: refusal))"
-        )
+            #expect(guarded.conditionWasSent)
+            let landed = try download(remote, using: backend)
+            #expect(landed == "two", "a guarded write with the current tag did not land")
 
-        // A refused write must not have written. The status says refused; the object says whether
-        // that was true.
-        let after = try download(remote, using: backend)
-        #expect(after == "two", "the refused write changed the object anyway")
-        let tagAfter = try entityTag(of: remote, using: backend)
-        #expect(tagAfter == updated)
+            let updated = try entityTag(of: remote, using: backend)
+            #expect(
+                updated != first,
+                "the second write left the tag unchanged, so nothing is stale yet"
+            )
+
+            // The refusal: `first` is now a version AWS no longer holds. This is the state the race
+            // produces, reached without one.
+            let third = try localFile("three")
+            defer { try? FileManager.default.removeItem(at: third) }
+            var refusal: VFSError?
+            do {
+                _ = try backend.upload(
+                    localPath: third.path,
+                    over: remote,
+                    condition: .ifMatches(entityTag: first),
+                    progress: { _ in },
+                    isCancelled: { false }
+                )
+            } catch let error as VFSError {
+                refusal = error
+            }
+            #expect(
+                refusal == .unsupported(.remoteFileChangedSinceFetch(name: remote.lastComponent)),
+                "real AWS did not refuse a stale If-Match: \(String(describing: refusal))"
+            )
+
+            // A refused write must not have written. The status says refused; the object says whether
+            // that was true.
+            let after = try download(remote, using: backend)
+            #expect(after == "two", "the refused write changed the object anyway")
+            let tagAfter = try entityTag(of: remote, using: backend)
+            #expect(tagAfter == updated)
+        }
     }
 
     @Test("a tag for an object that has since been deleted is refused as gone, not as changed")
-    func deletedObjectIsRefusedAsGone() throws {
-        let config = try #require(S3LiveEnvironment.current)
-        let backend = backend(config)
-        let remote = VFSPath(backend: backend.id, path: probeKey("gone"))
-        defer { try? backend.removeItem(at: remote) }
+    func deletedObjectIsRefusedAsGone() async throws {
+        // Off the cooperative pool: every verb below blocks on a subprocess for a real network
+        // round trip, which a test body may not do — see ``offCooperativePool``.
+        try await offCooperativePool {
+            let config = try #require(S3LiveEnvironment.current)
+            let backend = backend(config)
+            let remote = VFSPath(backend: backend.id, path: probeKey("gone"))
+            defer { try? backend.removeItem(at: remote) }
 
-        try put("one", at: remote, using: backend)
-        let tag = try entityTag(of: remote, using: backend)
-        try backend.removeItem(at: remote)
+            try put("one", at: remote, using: backend)
+            let tag = try entityTag(of: remote, using: backend)
+            try backend.removeItem(at: remote)
 
-        let replacement = try localFile("two")
-        defer { try? FileManager.default.removeItem(at: replacement) }
-        var refusal: VFSError?
-        do {
-            _ = try backend.upload(
-                localPath: replacement.path,
-                over: remote,
-                condition: .ifMatches(entityTag: tag),
-                progress: { _ in },
-                isCancelled: { false }
+            let replacement = try localFile("two")
+            defer { try? FileManager.default.removeItem(at: replacement) }
+            var refusal: VFSError?
+            do {
+                _ = try backend.upload(
+                    localPath: replacement.path,
+                    over: remote,
+                    condition: .ifMatches(entityTag: tag),
+                    progress: { _ in },
+                    isCancelled: { false }
+                )
+            } catch let error as VFSError {
+                refusal = error
+            }
+            // The half ``S3WriteCondition/refusal(for:)`` calls inferred rather than measured: a 404 on
+            // a conditional write can only be this, since an unconditional PUT to a missing key creates
+            // it. The two cases are separate because the user's options differ — there is nothing to
+            // merge with.
+            #expect(
+                refusal == .unsupported(.remoteFileGoneSinceFetch(name: remote.lastComponent)),
+                "real AWS did not refuse a tag for a deleted key as gone: \(String(describing: refusal))"
             )
-        } catch let error as VFSError {
-            refusal = error
-        }
-        // The half ``S3WriteCondition/refusal(for:)`` calls inferred rather than measured: a 404 on
-        // a conditional write can only be this, since an unconditional PUT to a missing key creates
-        // it. The two cases are separate because the user's options differ — there is nothing to
-        // merge with.
-        #expect(
-            refusal == .unsupported(.remoteFileGoneSinceFetch(name: remote.lastComponent)),
-            "real AWS did not refuse a tag for a deleted key as gone: \(String(describing: refusal))"
-        )
 
-        let stat = try? backend.stat(at: remote)
-        #expect(stat == nil, "the refused write re-created the object")
+            let stat = try? backend.stat(at: remote)
+            #expect(stat == nil, "the refused write re-created the object")
+        }
     }
 
     // MARK: - .ifAbsent
 
     @Test("an occupied key refuses If-None-Match, and a free one accepts it")
-    func occupiedKeyRefusesIfAbsent() throws {
-        let config = try #require(S3LiveEnvironment.current)
-        let backend = backend(config)
-        let transport = transport(config)
+    func occupiedKeyRefusesIfAbsent() async throws {
+        // Off the cooperative pool: every verb below blocks on a subprocess for a real network
+        // round trip, which a test body may not do — see ``offCooperativePool``.
+        try await offCooperativePool {
+            let config = try #require(S3LiveEnvironment.current)
+            let backend = backend(config)
+            let transport = transport(config)
 
-        // This one has to go one level down, and that is the finding rather than a shortcut:
-        // ``S3Backend/createFile(at:)`` does its own `stat` and throws `alreadyExists` *before* the
-        // conditional PUT is ever sent, so the app's own path can never exercise the server's
-        // `If-None-Match: *` at all.
-        let free = VFSPath(backend: backend.id, path: probeKey("absent"))
-        defer { try? backend.removeItem(at: free) }
-        let key = S3Key.key(for: free)
+            // This one has to go one level down, and that is the finding rather than a shortcut:
+            // ``S3Backend/createFile(at:)`` does its own `stat` and throws `alreadyExists` *before* the
+            // conditional PUT is ever sent, so the app's own path can never exercise the server's
+            // `If-None-Match: *` at all.
+            let free = VFSPath(backend: backend.id, path: probeKey("absent"))
+            defer { try? backend.removeItem(at: free) }
+            let key = S3Key.key(for: free)
 
-        let created = try transport.putEmptyObject(key: key, condition: .ifAbsent)
-        #expect(
-            (200..<300).contains(created.status),
-            "a guarded create on a free key was refused: \(created.status)"
-        )
+            let created = try transport.putEmptyObject(key: key, condition: .ifAbsent)
+            #expect(
+                (200..<300).contains(created.status),
+                "a guarded create on a free key was refused: \(created.status)"
+            )
 
-        let again = try transport.putEmptyObject(key: key, condition: .ifAbsent)
-        #expect(
-            !(200..<300).contains(again.status),
-            "real AWS accepted If-None-Match: * on a key it already holds (status \(again.status))"
-        )
-        let service = try #require(
-            S3Backend.serviceError(from: again),
-            "a refused conditional create carried no readable error"
-        )
-        #expect(
-            S3WriteCondition.ifAbsent.refusal(for: service) == .alreadyThere,
-            "AWS refused with a shape the reader does not classify: \(service)"
-        )
+            let again = try transport.putEmptyObject(key: key, condition: .ifAbsent)
+            #expect(
+                !(200..<300).contains(again.status),
+                "real AWS accepted If-None-Match: * on a key it already holds (status \(again.status))"
+            )
+            let service = try #require(
+                S3Backend.serviceError(from: again),
+                "a refused conditional create carried no readable error"
+            )
+            #expect(
+                S3WriteCondition.ifAbsent.refusal(for: service) == .alreadyThere,
+                "AWS refused with a shape the reader does not classify: \(service)"
+            )
+        }
     }
 
     // MARK: - The multipart completion
 
     @Test("a stale tag refuses the completion of a multipart upload, and publishes nothing")
-    func staleTagRefusesMultipartCompletion() throws {
-        let config = try #require(S3LiveEnvironment.current)
-        let backend = backend(config)
-        let remote = VFSPath(backend: backend.id, path: probeKey("multipart"))
-        defer { try? backend.removeItem(at: remote) }
+    func staleTagRefusesMultipartCompletion() async throws {
+        // Off the cooperative pool: every verb below blocks on a subprocess for a real network
+        // round trip, which a test body may not do — see ``offCooperativePool``.
+        try await offCooperativePool {
+            let config = try #require(S3LiveEnvironment.current)
+            let backend = backend(config)
+            let remote = VFSPath(backend: backend.id, path: probeKey("multipart"))
+            defer { try? backend.removeItem(at: remote) }
 
-        // Two cheap writes make the tag stale; only the *refused* upload needs to cross the
-        // threshold, so this costs one large transfer rather than two.
-        try put("one", at: remote, using: backend)
-        let first = try entityTag(of: remote, using: backend)
-        try put("two", at: remote, using: backend)
-        let current = try entityTag(of: remote, using: backend)
-        #expect(current != first)
+            // Two cheap writes make the tag stale; only the *refused* upload needs to cross the
+            // threshold, so this costs one large transfer rather than two.
+            try put("one", at: remote, using: backend)
+            let first = try entityTag(of: remote, using: backend)
+            try put("two", at: remote, using: backend)
+            let current = try entityTag(of: remote, using: backend)
+            #expect(current != first)
 
-        let size = 70 * 1024 * 1024
-        #expect(
-            Int64(size) > S3MultipartLimits.multipartThreshold,
-            "the probe must cross the threshold or it is not testing the completion"
-        )
-        let big = FileManager.default.temporaryDirectory
-            .appendingPathComponent("dirnex-conditional-multipart-\(UUID().uuidString).bin")
-        defer { try? FileManager.default.removeItem(at: big) }
-        var bytes = Data(count: size)
-        bytes.withUnsafeMutableBytes { buffer in
-            guard let base = buffer.baseAddress else { return }
-            arc4random_buf(base, buffer.count)
-        }
-        try bytes.write(to: big)
-
-        var refusal: VFSError?
-        do {
-            _ = try backend.upload(
-                localPath: big.path,
-                over: remote,
-                condition: .ifMatches(entityTag: first),
-                progress: { _ in },
-                isCancelled: { false }
+            let size = 70 * 1024 * 1024
+            #expect(
+                Int64(size) > S3MultipartLimits.multipartThreshold,
+                "the probe must cross the threshold or it is not testing the completion"
             )
-        } catch let error as VFSError {
-            refusal = error
-        }
-        // The shape AWS uses is the open question here, not whether it refuses: a completion may
-        // answer 412, or **200 carrying `<Code>PreconditionFailed</Code>`**, and the second reading
-        // exists only because the probe endpoint could be driven into it. Both land on this one
-        // error, which is what the two readings are for.
-        #expect(
-            refusal == .unsupported(.remoteFileChangedSinceFetch(name: remote.lastComponent)),
-            "real AWS did not refuse a guarded completion: \(String(describing: refusal))"
-        )
+            let big = FileManager.default.temporaryDirectory
+                .appendingPathComponent("dirnex-conditional-multipart-\(UUID().uuidString).bin")
+            defer { try? FileManager.default.removeItem(at: big) }
+            var bytes = Data(count: size)
+            bytes.withUnsafeMutableBytes { buffer in
+                guard let base = buffer.baseAddress else { return }
+                arc4random_buf(base, buffer.count)
+            }
+            try bytes.write(to: big)
 
-        let after = try download(remote, using: backend)
-        #expect(after == "two", "a refused completion published the object anyway")
+            var refusal: VFSError?
+            do {
+                _ = try backend.upload(
+                    localPath: big.path,
+                    over: remote,
+                    condition: .ifMatches(entityTag: first),
+                    progress: { _ in },
+                    isCancelled: { false }
+                )
+            } catch let error as VFSError {
+                refusal = error
+            }
+            // The shape AWS uses is the open question here, not whether it refuses: a completion may
+            // answer 412, or **200 carrying `<Code>PreconditionFailed</Code>`**, and the second reading
+            // exists only because the probe endpoint could be driven into it. Both land on this one
+            // error, which is what the two readings are for.
+            #expect(
+                refusal == .unsupported(.remoteFileChangedSinceFetch(name: remote.lastComponent)),
+                "real AWS did not refuse a guarded completion: \(String(describing: refusal))"
+            )
+
+            let after = try download(remote, using: backend)
+            #expect(after == "two", "a refused completion published the object anyway")
+        }
     }
 }

@@ -127,8 +127,14 @@ struct RemoteDirectorySizeTests {
     /// Polls rather than spinning the run loop: the walk lands through a detached task, and a
     /// run-loop spin drives layout without ever letting the main actor suspend, so the result
     /// simply never arrives (docs/NOTES.md ▸ Testing).
+    ///
+    /// The default budget is generous on purpose and costs nothing: a satisfied condition returns
+    /// on the next poll, so it only decides how much scheduling delay this can absorb before
+    /// reporting a failure that is really the machine's. At 5 s it expired on a loaded Mac and read
+    /// as "the pane never listed its own directory" (2026-08-20). Callers that are waiting a delay
+    /// *out* rather than waiting *for* something pass their own, shorter, bound.
     private static func wait(
-        upTo seconds: Double = 5,
+        upTo seconds: Double = 15,
         until condition: @MainActor () -> Bool
     ) async -> Bool {
         let deadline = Date().addingTimeInterval(seconds)

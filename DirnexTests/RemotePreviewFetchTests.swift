@@ -62,7 +62,7 @@ struct RemotePreviewFetchTests {
 
         cache.scheduleAutomaticFetch(entry, using: backend, onSettled: {})
         cache.cancelAutomaticFetch()
-        await settle { false }
+        await hold()
 
         #expect(backend.copyCount == 0)
         #expect(cache.previewFetchState(for: entry) == nil)
@@ -134,7 +134,7 @@ struct RemotePreviewFetchTests {
         for _ in 0..<3 {
             cache.scheduleAutomaticFetch(entry, using: backend) { settled.times += 1 }
         }
-        await settle { false }
+        await hold()
 
         #expect(backend.copyCount == 1)
         #expect(settled.times == 1)
@@ -153,7 +153,7 @@ struct RemotePreviewFetchTests {
         #expect(cache.previewFetchState(for: Fixture.entry("a.txt")) == .running)
         #expect(cache.previewFetchState(for: Fixture.entry("b.txt")) == nil)
         cache.cancelAutomaticFetch()
-        await settle { false }
+        await hold()
     }
 
     /// Stop has to be *remembered*, and this is the assertion that says the button works at all.
@@ -177,7 +177,7 @@ struct RemotePreviewFetchTests {
         for _ in 0..<3 {
             cache.scheduleAutomaticFetch(entry, using: backend, onSettled: {})
         }
-        await settle { false }
+        await hold()
 
         #expect(backend.copyCount == 1)
         #expect(backend.wasCancelledMidTransfer)
@@ -223,14 +223,26 @@ struct RemotePreviewFetchTests {
         #expect(cache.previewFetchProgress(for: entry) == nil)
     }
 
-    /// Poll until `isDone`, or until comfortably past the settle delay — `await`, never a run-loop
-    /// spin, since what is being waited for is a detached transfer's continuation and a spin never
-    /// suspends the main actor (docs/NOTES.md ▸ Testing). The `false` predicate is the deliberate
-    /// spelling of "wait out the delay and prove nothing happened".
-    private func settle(until isDone: () -> Bool) async {
-        for _ in 0..<40 {
-            if isDone() { return }
-            try? await Task.sleep(for: .milliseconds(50))
+    /// Poll until `isDone` — `await`, never a run-loop spin, since what is being waited for is a
+    /// transfer's continuation and a spin never suspends the main actor (docs/NOTES.md ▸ Testing).
+    ///
+    /// Generous on purpose, and it costs nothing: a satisfied predicate returns on the next poll,
+    /// so the budget only decides how much scheduling delay the test absorbs before reporting a
+    /// failure that is really the machine's. Waiting a delay *out* is ``hold(until:)`` instead.
+    @discardableResult
+    private func settle(within seconds: Double = 10, until isDone: () -> Bool) async -> Bool {
+        let deadline = Date().addingTimeInterval(seconds)
+        while Date() < deadline {
+            if isDone() { return true }
+            try? await Task.sleep(for: .milliseconds(25))
         }
+        return isDone()
+    }
+
+    /// Wait out the settle delay to show something does *not* happen, giving up early if it ever
+    /// does. Bounded, unlike ``settle(within:until:)``: here the length is the claim, so it cannot
+    /// be widened to suit a slow machine.
+    private func hold(until isHappening: () -> Bool = { false }) async {
+        _ = await settle(within: 2, until: isHappening)
     }
 }

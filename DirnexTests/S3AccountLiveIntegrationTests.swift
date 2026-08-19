@@ -317,48 +317,56 @@ final class S3AccountLiveIntegrationTests {
     /// and the service's refusal — which needs a name the policy lets it create, so it has to be the
     /// probe — is asked **directly**, where no `HeadBucket` is involved at all.
     @Test("a name this account already owns is refused without asking, and by AWS when asked")
-    func recreatingAnOwnedBucketIsRefused() throws {
-        let config = try #require(S3LiveEnvironment.current)
-        let counting = CountingAccountTransport(S3AccountCurlTransport(
-            account: config.account,
-            secretAccessKey: config.secretAccessKey
-        ))
-        let backend = S3AccountBackend(account: config.account, transport: counting)
+    func recreatingAnOwnedBucketIsRefused() async throws {
+        // Off the main actor: this suite is `@MainActor`, and every verb below blocks on a `curl`
+        // round trip. Run inline they hold the one main actor for seconds, and every other
+        // main-actor suite's timing wait is starved behind them (``offCooperativePool``).
+        try await offCooperativePool {
+            let config = try #require(S3LiveEnvironment.current)
+            let counting = CountingAccountTransport(S3AccountCurlTransport(
+                account: config.account,
+                secretAccessKey: config.secretAccessKey
+            ))
+            let backend = S3AccountBackend(account: config.account, transport: counting)
 
-        // The pairing. A guard that refused everything would satisfy the claim below just as well,
-        // so pin the other direction: a name the pane cannot see *does* reach the service. What the
-        // service answers is beside the point — it is a 403, since the policy grants
-        // `s3:CreateBucket` on the probe ARN alone — the evidence is that the request was made.
-        let unseen = config.accountRoot.appending(S3LiveProbeBucket.unownedName())
-        _ = try? backend.createDirectory(at: unseen)
-        #expect(counting.creates == 1, "a name the pane cannot see did not reach the service")
+            // The pairing. A guard that refused everything would satisfy the claim below just as well,
+            // so pin the other direction: a name the pane cannot see *does* reach the service. What the
+            // service answers is beside the point — it is a 403, since the policy grants
+            // `s3:CreateBucket` on the probe ARN alone — the evidence is that the request was made.
+            let unseen = config.accountRoot.appending(S3LiveProbeBucket.unownedName())
+            _ = try? backend.createDirectory(at: unseen)
+            #expect(counting.creates == 1, "a name the pane cannot see did not reach the service")
 
-        // The claim: a name already in the pane costs no request at all.
-        let owned = config.accountRoot.appending(config.bucket)
-        #expect(throws: VFSError.alreadyExists(owned)) {
-            try backend.createDirectory(at: owned)
+            // The claim: a name already in the pane costs no request at all.
+            let owned = config.accountRoot.appending(config.bucket)
+            #expect(throws: VFSError.alreadyExists(owned)) {
+                try backend.createDirectory(at: owned)
+            }
+            #expect(
+                counting.creates == 1,
+                "the app asked the service about a name it could already see"
+            )
+
+            // And what the service says when something does ask — measured 2026-08-18, 409 with this
+            // code. It is the body `S3ResponseErrorTests` pins the mapping against. The setup call owns
+            // the name whether it was free (200) or already ours (409), and neither it nor the refusal
+            // goes near `HeadBucket`, so this half is exact: measured 3/3 on 2026-08-20.
+            let name = S3LiveProbeBucket.name
+            let bucket = config.accountRoot.appending(name)
+            _ = try counting.inner.createBucket(name: name)
+            defer { _ = try? counting.inner.deleteBucket(name: name) }
+
+            let refused = try counting.inner.createBucket(name: name)
+            #expect(refused.status == 409, "AWS did not refuse a name this account owns")
+            let error = S3ServiceError.parse(refused.body, status: refused.status)
+            #expect(error.code == "BucketAlreadyOwnedByYou")
+            #expect(error.vfsError(for: bucket) == .alreadyExists(bucket))
+            // Not the *other* 409 this backend has had to name: `OperationAborted` is a name that is
+            // free and merely settling, and it keeps its own sentence.
+            #expect(
+                error.vfsError(for: bucket) != .unsupported(.bucketOperationInProgress(name: name))
+            )
         }
-        #expect(counting.creates == 1, "the app asked the service about a name it could already see")
-
-        // And what the service says when something does ask — measured 2026-08-18, 409 with this
-        // code. It is the body `S3ResponseErrorTests` pins the mapping against. The setup call owns
-        // the name whether it was free (200) or already ours (409), and neither it nor the refusal
-        // goes near `HeadBucket`, so this half is exact: measured 3/3 on 2026-08-20.
-        let name = S3LiveProbeBucket.name
-        let bucket = config.accountRoot.appending(name)
-        _ = try counting.inner.createBucket(name: name)
-        defer { _ = try? counting.inner.deleteBucket(name: name) }
-
-        let refused = try counting.inner.createBucket(name: name)
-        #expect(refused.status == 409, "AWS did not refuse a name this account owns")
-        let error = S3ServiceError.parse(refused.body, status: refused.status)
-        #expect(error.code == "BucketAlreadyOwnedByYou")
-        #expect(error.vfsError(for: bucket) == .alreadyExists(bucket))
-        // Not the *other* 409 this backend has had to name: `OperationAborted` is a name that is
-        // free and merely settling, and it keeps its own sentence.
-        #expect(
-            error.vfsError(for: bucket) != .unsupported(.bucketOperationInProgress(name: name))
-        )
     }
 
     /// The refusal a scoped key can never see: a bucket name another AWS account already holds
@@ -378,31 +386,36 @@ final class S3AccountLiveIntegrationTests {
     /// Without it this test fails on the status, saying so — a live test's constants are claims
     /// about the endpoint, and this one is a claim about the *key*.
     @Test("a bucket name another account holds is refused as globally taken")
-    func globallyTakenBucketNameIsRefused() throws {
-        let config = try #require(S3LiveEnvironment.current)
-        let transport = S3AccountCurlTransport(
-            account: config.account,
-            secretAccessKey: config.secretAccessKey
-        )
-        // A name owned by another account since long before this test existed. Nothing here can
-        // create it, so the request has exactly one possible outcome.
-        let name = "images"
-        let bucket = config.accountRoot.appending(name)
+    func globallyTakenBucketNameIsRefused() async throws {
+        // Off the main actor, for the reason ``offCooperativePool`` gives.
+        try await offCooperativePool {
+            let config = try #require(S3LiveEnvironment.current)
+            let transport = S3AccountCurlTransport(
+                account: config.account,
+                secretAccessKey: config.secretAccessKey
+            )
+            // A name owned by another account since long before this test existed. Nothing here can
+            // create it, so the request has exactly one possible outcome.
+            let name = "images"
+            let bucket = config.accountRoot.appending(name)
 
-        let refused = try transport.createBucket(name: name)
-        #expect(
-            refused.status == 409,
-            """
-            expected 409 BucketAlreadyExists, got \(refused.status) — a 403 means this key lacks \
-            s3:CreateBucket on arn:aws:s3:::\(name); see the comment above
-            """
-        )
-        let error = S3ServiceError.parse(refused.body, status: refused.status)
-        #expect(error.code == "BucketAlreadyExists")
-        #expect(error.vfsError(for: bucket) == .unsupported(.bucketNameTakenGlobally(name: name)))
-        // The narrowness: the *other* 409 on this verb, a name this account owns, keeps reading as
-        // an ordinary collision — it really is in the pane, and "already exists" is true there.
-        #expect(error.vfsError(for: bucket) != .alreadyExists(bucket))
+            let refused = try transport.createBucket(name: name)
+            #expect(
+                refused.status == 409,
+                """
+                expected 409 BucketAlreadyExists, got \(refused.status) — a 403 means this key lacks \
+                s3:CreateBucket on arn:aws:s3:::\(name); see the comment above
+                """
+            )
+            let error = S3ServiceError.parse(refused.body, status: refused.status)
+            #expect(error.code == "BucketAlreadyExists")
+            #expect(
+                error.vfsError(for: bucket) == .unsupported(.bucketNameTakenGlobally(name: name))
+            )
+            // The narrowness: the *other* 409 on this verb, a name this account owns, keeps reading as
+            // an ordinary collision — it really is in the pane, and "already exists" is true there.
+            #expect(error.vfsError(for: bucket) != .alreadyExists(bucket))
+        }
     }
 }
 

@@ -34,12 +34,8 @@ struct S3TransferProgressLiveIntegrationTests {
     /// upload test can observe (docs/NOTES.md ▸ curl for S3).
     private static let meterInterval: TimeInterval = 1
 
-    /// A transfer shorter than this cannot carry the claim at all: with rows a second apart there
-    /// is no room for the spread that separates "reported as it went" from "reported at the end".
-    private static let observableUpload: TimeInterval = 3 * meterInterval
-
-    /// Upload probes, smallest first — the test climbs this ladder until a transfer lasts
-    /// ``observableUpload`` and asserts on that one.
+    /// Upload probes, smallest first — the test climbs this ladder until an attempt is
+    /// ``Attempt/isObservable`` and asserts on that one.
     ///
     /// **Climbing beats calculating, and both cheaper designs were measured failing.** A fixed size
     /// is a duration expressed in bytes: 4 MiB was chosen against an S3-compatible server at
@@ -49,8 +45,11 @@ struct S3TransferProgressLiveIntegrationTests {
     /// interestingly: one 1 MiB sample is mostly handshake and read 2.57 MB/s for a link doing
     /// nearer 9, and the two-point slope that removes the fixed cost is dominated by variance —
     /// green three runs alone, then **1 sighting** inside the full suite, where everything else on
-    /// the machine is moving at once. A ladder needs no model of the link: the criterion is the
-    /// transfer's own measured duration, which is the quantity actually in question.
+    /// the machine is moving at once. A ladder needs no model of the link: the criterion is
+    /// measured off the attempt itself. It is measured off the *meter* rather than off the
+    /// transfer's total duration — see ``Attempt/reportingSpread``, which is the same lesson one
+    /// level in, since a rung long enough overall can still spend nearly all of itself in a
+    /// handshake that prints nothing.
     ///
     /// The top rung stops below `S3MultipartLimits.multipartThreshold` (64 MiB) on purpose — over
     /// it the bytes go out through a different verb, and this test is about the single `PUT`'s
@@ -66,7 +65,7 @@ struct S3TransferProgressLiveIntegrationTests {
 
     /// A file of random bytes, so nothing upstream can compress the transfer into fewer seconds
     /// than the meter needs to say anything.
-    private func probeFile(bytes count: Int) throws -> URL {
+    private static func probeFile(bytes count: Int) throws -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("dirnex-progress-probe-\(UUID().uuidString).bin")
         var bytes = Data(count: count)
@@ -78,40 +77,95 @@ struct S3TransferProgressLiveIntegrationTests {
         return url
     }
 
-    /// One upload, with every delta and the moment it arrived — the timing is half the claim, since
-    /// a transport that reports everything at the end also reports "some" bytes.
-    private struct Attempt {
-        let size: Int
-        let finished: TimeInterval
-        let sightings: [(elapsed: TimeInterval, delta: Int64)]
-        let response: S3Response
+    /// One meter row: how far in it arrived, and what it added.
+    ///
+    /// A named type rather than the tuple this was, because the whole attempt now comes back out of
+    /// a `BlockingWork.run` and therefore has to be `Sendable`.
+    private struct Sighting: Sendable {
+        let elapsed: TimeInterval
+        let delta: Int64
     }
 
-    private func attemptUpload(bytes count: Int, using wire: S3CurlTransport) throws -> Attempt {
-        let source = try probeFile(bytes: count)
-        defer { try? FileManager.default.removeItem(at: source) }
-        let key = "dirnex-progress-probe/\(UUID().uuidString).bin"
-        let start = Date()
-        var sightings: [(elapsed: TimeInterval, delta: Int64)] = []
-        let response = try wire.upload(
-            localPath: source.path,
-            to: key,
-            progress: { sightings.append((Date().timeIntervalSince(start), $0)) },
-            isCancelled: { false }
-        )
-        let finished = Date().timeIntervalSince(start)
-        _ = try? wire.deleteObject(key: key)
-        return Attempt(size: count, finished: finished, sightings: sightings, response: response)
+    /// One upload, with every delta and the moment it arrived — the timing is half the claim, since
+    /// a transport that reports everything at the end also reports "some" bytes.
+    private struct Attempt: Sendable {
+        let size: Int
+        let finished: TimeInterval
+        let sightings: [Sighting]
+        let response: S3Response
+
+        /// How long the transfer went on reporting *after* its first row.
+        ///
+        /// This, and not the total duration, is what every timing claim below is about — so it is
+        /// what the ladder climbs on. The total is a proxy for it, and the proxy expires under
+        /// load: a transfer's early seconds are DNS, connect, TLS and `Expect: 100-continue`, none
+        /// of which print anything, so on a busy machine a 3.2 s upload can spend 2.4 s before the
+        /// first meter row and leave 0.8 s of meter behind it. Measured that way 2026-08-20 under a
+        /// Spotlight-sized CPU load, failing an assertion the transport was satisfying perfectly —
+        /// the same shape as the fixed 4 MiB probe this ladder replaced, one level in.
+        var reportingSpread: TimeInterval {
+            guard let first = sightings.first else { return 0 }
+            return finished - first.elapsed
+        }
+
+        /// Whether this rung can carry the claims at all: two rows at least, a meter interval
+        /// apart at least. Both halves are asserted below, so both belong in the criterion — a
+        /// ladder that stops on one of them hands the assertions a transfer that fails the other.
+        var isObservable: Bool {
+            sightings.count >= 2 && reportingSpread >= meterInterval
+        }
+    }
+
+    /// Upload once, **off the cooperative pool**, and report what the meter said.
+    ///
+    /// `BlockingWork.run` for the reason its own doc comment gives, arriving here in test code
+    /// rather than in the product: a synchronous body that blocks on `curl` holds a cooperative
+    /// worker for the whole transfer, and the pool is only as wide as the machine's core count. A
+    /// 48 MiB rung is a minute of one of those, and this suite is one of six live ones running at
+    /// once — so the pool empties and every *other* suite's `await` is starved, which is the shape
+    /// docs/NOTES.md records for `FileOperationQueue`. Measured here: the whole app suite under
+    /// `LIBDISPATCH_COOPERATIVE_POOL_STRICT=1` went 16 s and green without these suites and 86 s
+    /// with 5 failures with them, none of the failures in the live tests themselves.
+    ///
+    /// Everything the timing claims rest on stays inside the one closure, so the clock, the meter
+    /// rows and the transfer are still measured on the thread that ran it.
+    private static func attemptUpload(
+        bytes count: Int, using wire: S3CurlTransport
+    ) async throws -> Attempt {
+        try await BlockingWork.run { () -> Result<Attempt, any Error> in
+            Result {
+                let source = try probeFile(bytes: count)
+                defer { try? FileManager.default.removeItem(at: source) }
+                let key = "dirnex-progress-probe/\(UUID().uuidString).bin"
+                let start = Date()
+                var sightings: [Sighting] = []
+                let response = try wire.upload(
+                    localPath: source.path,
+                    to: key,
+                    progress: {
+                        sightings.append(
+                            Sighting(elapsed: Date().timeIntervalSince(start), delta: $0)
+                        )
+                    },
+                    isCancelled: { false }
+                )
+                let finished = Date().timeIntervalSince(start)
+                _ = try? wire.deleteObject(key: key)
+                return Attempt(
+                    size: count, finished: finished, sightings: sightings, response: response
+                )
+            }
+        }.get()
     }
 
     @Test("an upload reports its bytes while it is still running, not only when it ends")
-    func uploadStreamsProgress() throws {
+    func uploadStreamsProgress() async throws {
         let config = try #require(S3LiveEnvironment.current)
         let wire = transport(config)
 
-        var attempt = try attemptUpload(bytes: Self.uploadProbes[0], using: wire)
-        for size in Self.uploadProbes.dropFirst() where attempt.finished < Self.observableUpload {
-            attempt = try attemptUpload(bytes: size, using: wire)
+        var attempt = try await Self.attemptUpload(bytes: Self.uploadProbes[0], using: wire)
+        for size in Self.uploadProbes.dropFirst() where !attempt.isObservable {
+            attempt = try await Self.attemptUpload(bytes: size, using: wire)
         }
 
         #expect(attempt.response.isSuccess, "status \(attempt.response.status)")
@@ -120,8 +174,12 @@ struct S3TransferProgressLiveIntegrationTests {
         // transfer left to grow, so a link this fast makes the rest of this test unanswerable —
         // which has to fail loudly rather than pass over one row that proves nothing.
         #expect(
-            attempt.finished >= Self.observableUpload,
-            "\(attempt.size) B went out in \(attempt.finished)s — too fast for a once-a-second meter"
+            attempt.isObservable,
+            """
+            \(attempt.size) B gave \(attempt.sightings.count) row(s) over \
+            \(attempt.reportingSpread)s of meter in a \(attempt.finished)s upload — \
+            too fast for a once-a-second meter, so nothing below is answerable
+            """
         )
 
         #expect(!attempt.sightings.isEmpty, "the upload reported nothing at all while it ran")
@@ -133,7 +191,7 @@ struct S3TransferProgressLiveIntegrationTests {
         // delivers every row within milliseconds of the process exiting. The fraction form said the
         // same thing only for a transfer of one particular length, which is how it broke.
         #expect(
-            attempt.finished - firstSighting >= Self.meterInterval,
+            attempt.reportingSpread >= Self.meterInterval,
             "first report at \(firstSighting)s of a \(attempt.finished)s upload — the end, not the middle"
         )
         #expect(
@@ -145,37 +203,70 @@ struct S3TransferProgressLiveIntegrationTests {
         #expect(total <= Int64(attempt.size), "never more than the file")
     }
 
+    /// What a download probe measured. Same `Sendable` reason as ``Attempt``: the transfer runs on
+    /// `BlockingWork`'s queue, so everything the assertions read has to come back out of it.
+    private struct Download: Sendable {
+        let finished: TimeInterval
+        let sightings: [Sighting]
+        let response: S3Response
+        let landed: Int
+    }
+
+    /// The upload this probe needs never arrived where the test could see it fail, so it says so.
+    private enum ProbeFailure: Error { case uploadFailed(status: Int) }
+
+    /// Seed an object and download it, **off the cooperative pool** — see ``attemptUpload`` for why
+    /// that matters here and not merely for tidiness.
+    private static func attemptDownload(using wire: S3CurlTransport) async throws -> Download {
+        try await BlockingWork.run { () -> Result<Download, any Error> in
+            Result {
+                let source = try probeFile(bytes: downloadProbeSize)
+                defer { try? FileManager.default.removeItem(at: source) }
+                let key = "dirnex-progress-probe/\(UUID().uuidString).bin"
+
+                let uploaded = try wire.upload(
+                    localPath: source.path, to: key, progress: { _ in }, isCancelled: { false }
+                )
+                defer { _ = try? wire.deleteObject(key: key) }
+                guard uploaded.isSuccess else {
+                    throw ProbeFailure.uploadFailed(status: uploaded.status)
+                }
+
+                let destination = FileManager.default.temporaryDirectory
+                    .appendingPathComponent("dirnex-progress-down-\(UUID().uuidString).bin")
+                defer { try? FileManager.default.removeItem(at: destination) }
+
+                let start = Date()
+                var sightings: [Sighting] = []
+                let response = try wire.download(
+                    key: key,
+                    to: destination.path,
+                    resume: false,
+                    progress: {
+                        sightings.append(
+                            Sighting(elapsed: Date().timeIntervalSince(start), delta: $0)
+                        )
+                    },
+                    isCancelled: { false }
+                )
+                let finished = Date().timeIntervalSince(start)
+                return Download(
+                    finished: finished,
+                    sightings: sightings,
+                    response: response,
+                    landed: try Data(contentsOf: destination).count
+                )
+            }
+        }.get()
+    }
+
     @Test("a download reports its bytes while it is still running")
-    func downloadStreamsProgress() throws {
+    func downloadStreamsProgress() async throws {
         let config = try #require(S3LiveEnvironment.current)
-        let source = try probeFile(bytes: Self.downloadProbeSize)
-        defer { try? FileManager.default.removeItem(at: source) }
-        let key = "dirnex-progress-probe/\(UUID().uuidString).bin"
-        let wire = transport(config)
-
-        let uploaded = try wire.upload(
-            localPath: source.path,
-            to: key,
-            progress: { _ in },
-            isCancelled: { false }
-        )
-        try #require(uploaded.isSuccess)
-        defer { _ = try? wire.deleteObject(key: key) }
-
-        let destination = FileManager.default.temporaryDirectory
-            .appendingPathComponent("dirnex-progress-down-\(UUID().uuidString).bin")
-        defer { try? FileManager.default.removeItem(at: destination) }
-
-        let start = Date()
-        var sightings: [(elapsed: TimeInterval, delta: Int64)] = []
-        let response = try wire.download(
-            key: key,
-            to: destination.path,
-            resume: false,
-            progress: { sightings.append((Date().timeIntervalSince(start), $0)) },
-            isCancelled: { false }
-        )
-        let finished = Date().timeIntervalSince(start)
+        let probe = try await Self.attemptDownload(using: transport(config))
+        let response = probe.response
+        let sightings = probe.sightings
+        let finished = probe.finished
 
         #expect(response.isSuccess, "status \(response.status)")
         #expect(!sightings.isEmpty, "the download reported nothing at all while it ran")
@@ -190,10 +281,12 @@ struct S3TransferProgressLiveIntegrationTests {
         // and must never claim more than what landed.
         let downloaded = Int64(Self.downloadProbeSize)
         #expect(sightings.reduce(0) { $0 + $1.delta } <= downloaded)
-        let landed = try Data(contentsOf: destination).count
         #expect(
-            landed == Self.downloadProbeSize,
-            "landed \(landed) of \(Self.downloadProbeSize), curl reported \(response.bytesTransferred)"
+            probe.landed == Self.downloadProbeSize,
+            """
+            landed \(probe.landed) of \(Self.downloadProbeSize), \
+            curl reported \(response.bytesTransferred)
+            """
         )
     }
 }

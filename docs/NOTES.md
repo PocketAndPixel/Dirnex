@@ -176,6 +176,45 @@ at build time.
   feature rather than a broken wait. Use `await Task.sleep` in a poll loop for anything asserting
   what an async load put on screen, and treat "the existing helper works" as evidence about the
   existing assertions only.
+- **A *synchronous* test body that blocks is on the cooperative pool — or, for a `@MainActor` suite,
+  on the main actor — and it starves every other suite's `await`.** This is `BlockingWork`'s own
+  subject (▸ Swift 6 and concurrency) arriving one layer out, in test code, where the compiler is
+  just as blind to it: Swift 6 refuses `Thread.sleep` *directly* inside an `async` function and a
+  synchronous function that blocks compiles in silence. Six live suites each drove the real
+  transports from plain `func … throws` bodies, so between them they held most of the pool for the
+  length of real network round trips — the multipart round trip alone is **34 s** — and the two
+  bucket tests in the `@MainActor` `S3AccountLiveIntegrationTests` held the *one* main actor, which
+  is what nearly every headless suite here needs to be resumed on.
+  - **What it looks like is somebody else's flake.** Reported 2026-08-20 as `RemoteFetchPrompt`,
+    `RemoteDirectorySize` and `S3TransferProgress` failing about one run in three, all passing
+    alone, on a Mac with Spotlight reindexing at 143 % CPU. Not one failure was in a live test:
+    they were bounded waits in *other* suites expiring while the pool was full, so every failure
+    named a feature that was working.
+  - **`LIBDISPATCH_COOPERATIVE_POOL_STRICT=1` turns it into a measurement, and it is worth proving
+    the instrument first.** A 20-line probe counting how many blocked `Task.detached` bodies can be
+    inside at once read **16 → 1** with the variable set, and `ps eww` on the test host confirmed it
+    arrives (`xcodebuild` strips shell env, so inject it into the `EnvironmentVariables` dict of a
+    copy of the `.xctestrun` and run that with `-destination`). The controls then separate the cause
+    from the machine outright: strict pool with the live suites **skipped** was 16 s and green 3/3,
+    and with them in was **86–97 s with 1–5 failures**, same pool either way.
+  - Fixed by wrapping each blocking body in `offCooperativePool`, which is `BlockingWork.run`
+    plus a `Result` — `RemoteFileEditLiveIntegrationTests` had been doing it by hand at every call
+    site since it shipped, so the rule already existed and had simply never been named. Re-measured:
+    strict pool **6/6 green at ~30 s**, ten CPU spinners **5/5 green**, unloaded 3/3. The wall time
+    falling from 86 s to 30 s is the same finding from the other side — the live transfers now
+    overlap instead of queueing behind a pool they had filled themselves.
+  - **Wrap the whole body, not each call, wherever a test measures durations**, so the clock, the
+    subprocess and its progress callbacks stay on the one thread that ran it. Wrapping each call
+    leaves the timing assertions measuring the scheduler.
+- **A bounded wait that gives up *silently* reports the wrong thing when it expires, and "it passes
+  alone" is the tell.** These suites polled a fixed count of 50 × 50 ms and then simply fell through
+  to the assertion, so a starved run failed as `attachedSheet → nil → nil` — a dead button, not a
+  late one. Two different budgets are hiding under one helper and they scale in opposite directions:
+  waiting **for** something is free to be generous (a satisfied predicate returns on the next poll,
+  so the budget only sets how much scheduling delay is absorbed before blaming the code), while
+  waiting a delay **out** to prove nothing happens has its length *as* the claim and cannot be
+  widened for a slow machine. Split them — `settle(within:until:)` at 10 s against a 1200 ms sheet
+  delay, `hold(until:)` fixed at 2–2.5 s — rather than scaling one number for both.
 - **A live suite that drives one server, or writes one shared credential, has to be `.serialized` —
   and the collision fails in the *setup*, so it reads as the feature being broken.** Swift Testing
   runs a suite's tests in parallel by default, which for `S3AccountLiveIntegrationTests` meant four
