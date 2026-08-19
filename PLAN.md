@@ -175,6 +175,27 @@ seven tests driving a real `NSAlert` sheet on a real window, each fix's negative
 the reported shape: reverting the capture leaves `copyCount == 0` after a genuine click on the
 dialog's own default button. docs/NOTES.md ▸ AppKit, ▸ Design lessons.
 
+**2026-08-19 — a progress bar no longer opens on the last run's fill.** Both places a bar is hidden
+between runs kept the value they were last drawn with, so the *next* run revealed the previous one's
+fill before its own first number arrived: the queue bar (the window controller's idle branch hid it
+without drawing anything) and Quick View's placeholder card (its bar is hidden except while
+downloading). Reported by a user as a bar that "starts at 100 %, drops to zero, and only then runs",
+on a copy and on ⌃Q alike. The obvious cause is the wrong one and the queue's own doc comment
+predicts it — the aggregate rolls up finished jobs, and `clearFinished` is dispatched in a `Task` —
+but instrumenting `update(with:)` in the running app showed every fraction correct, the new batch's
+first included, with the only wrong number the one already on the bar. So the fix is to reset when
+the work *ends*, while the bar is off screen: an idle snapshot now goes through `update(with:)` like
+any other and empties it (`QueueBarView.reset`), which also clears the coalescer's memo — otherwise a
+copy started within a second of the last one opens on the previous batch's byte count and holds it.
+Measured before and after by sampling the indicator's **presentation** layer at 4 ms inside the app
+(its model snaps, so a `cacheDisplay` bitmap would have cleared the code): the second copy read
+`1.00` at the first sample and now reads empty from the first. Four tests, with each half reverted as
+its own negative control — the queue bar's reproduces the report verbatim, `progressFraction → 1.0`
+over a stale `"400 bytes of 400 bytes"` — and the three coalescing tests green throughout as the
+narrowness control. `QueueBarView` crossed the 500-line ceiling doing it, so the readout and its
+coalescing rule moved into `QueueBarView+Detail` beside the wording split that was already there.
+docs/NOTES.md ▸ AppKit.
+
 **2026-08-19 — a bucket row expands in a tree.** Tree mode stopped being local-only on 08-17, which
 gave every bucket row in an S3 account pane a disclosure triangle — opening into nothing.
 `S3AccountBackend` answers for its root and nothing deeper by design (everything below a bucket is

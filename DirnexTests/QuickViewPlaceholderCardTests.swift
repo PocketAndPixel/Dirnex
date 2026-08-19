@@ -89,6 +89,39 @@ struct QuickViewPlaceholderCardTests {
         #expect(preview.hitTest(corner) === preview)
     }
 
+    /// The card's bar carries the same staleness the queue bar's does, and for the same reason: it
+    /// is hidden between downloads rather than emptied, so whatever the last transfer left on it is
+    /// what the next one reveals before its first poll lands. Reported together with the queue bar's
+    /// 2026-08-19 — "starts at 100 %, drops to zero, and only then runs".
+    @Test("a finished download leaves the card's bar empty for the next one")
+    func aFinishedDownloadEmptiesTheBar() async throws {
+        let preview = Self.surface()
+        let moved = ByteCounter()
+        moved.value = 29_000_000
+        preview.placeholderActions = RemotePreviewActions(
+            download: {}, stop: {}, progress: { moved.value }
+        )
+        preview.show(nil, style: .default, placeholder: Self.placeholder(.downloading))
+        let card = try #require(preview.placeholderCard)
+
+        // The poll is a task, so wait for it rather than spinning the run loop (docs/NOTES.md ▸
+        // Testing) — a run-loop spin drives layout but never lands an awaited result.
+        let deadline = Date().addingTimeInterval(2)
+        while card.progressFraction == 0, Date() < deadline {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(card.progressFraction == 1, "the download filled the bar: \(card.progressFraction)")
+
+        // The download ends and the card goes back to standing by — with the bar hidden, which is
+        // exactly where the old fill used to survive.
+        preview.show(
+            nil,
+            style: .default,
+            placeholder: Self.placeholder(.awaitingRequest(.tooLarge))
+        )
+        #expect(card.progressFraction == 0, "the next download would open on the last one's fill")
+    }
+
     // MARK: - Helpers
 
     /// A surface in a window with a real frame, and — deliberately — nothing shown in it yet.

@@ -528,6 +528,38 @@ at build time.
     run-loop spin) for the label to change on its own. Put the dropping version back as the negative
     control — it reproduces the user's screenshot verbatim, which is what proves the test and the
     report are about the same thing.
+- **A view hidden when its work ends keeps the last value it was drawn with, and that value is what
+  the user sees first the next time it appears.** Nothing on the queue bar is a live reading — the
+  fraction, the byte readout and the status line all come from a `QueueSnapshot` and stay until the
+  next one replaces them — and the window controller's idle branch hid the bar without drawing
+  anything, so a drained queue left the previous batch's numbers standing on a bar that was merely
+  off screen. Measured in the running app with the presentation layer sampled at 4 ms: the second
+  copy of a file unhid the bar reading **1.00** and only then set it to 0. Reported 2026-08-19 as a
+  bar that "starts at 100 %, drops to zero, and only then runs" — on the queue bar *and* on Quick
+  View's placeholder card, which is hidden between downloads for the same reason and had the same
+  bug. Reset when the work ends rather than when it starts: an idle snapshot now empties the bar, so
+  the reset happens while it is off screen and there is no frame to catch.
+  - **The inherited value is whatever was last *drawn*, which is why the report said "50–100 %"
+    rather than "100 %".** A transfer that reports its final bytes together with its completion —
+    an S3 upload does, the exact remainder arriving with the terminal snapshot nobody draws — hands
+    the next batch something nearer half. A range in a bug report is a fact about the mechanism, not
+    vagueness on the reporter's part.
+  - **Two probes were needed because the model and the screen disagree, and only one of them is the
+    bug.** `NSProgressIndicator` snaps its *model* — `cacheDisplay` into a bitmap showed the value
+    change instantly and would have cleared the code — while its **presentation** layer carries an
+    `overallDeterminateAnimation` whose width is what is actually on screen (a rise animates over
+    ~500 ms, a fall settles within one frame). Read the presentation layer for anything about what a
+    progress bar *shows*; the same rule this file already states for `layer.presentation()`.
+  - **`AsyncStream` and an actor hop made the obvious cause the wrong one.** The natural reading is
+    that the aggregate is stale — the queue keeps finished jobs, and `clearFinished` is dispatched
+    in a `Task` — and `FileOperationQueue.clearFinished`'s own doc comment predicts exactly this
+    symptom. Instrumenting `update(with:)` in the running app settled it in one run: every fraction
+    was correct, including the new batch's first, and the only wrong number was the one already on
+    the bar. When a value is right in the data and wrong on screen, instrument the *drawing*.
+  - The app is drivable for this headlessly: seed `Dirnex.tabs.left`/`.right` in the defaults domain
+    (back it up with `defaults export` first), run the binary from a shell to capture stderr, and
+    drive two real copies with the `reveal` and `copy selection` AppleScript verbs. No screenshot,
+    no accessibility grant, and the second copy is the one that matters.
 - **An `@objc` *optional* delegate requirement implemented on a `@MainActor` class in Swift 6 can
   compile, conform, and never be emitted as an Objective-C method at all — so the framework never
   calls it.** `QuickViewWebView` implemented `webView(_:decidePolicyFor:preferences:decisionHandler:)`

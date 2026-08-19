@@ -47,18 +47,18 @@ extension BrowserWindowController {
         // the final completion still refreshes the panes even as the bar collapses.
         finalizeCompletedJobs(in: snapshot)
 
-        if snapshot.isIdle {
-            setQueueBar(visible: false)
-            // Batch drained: forget it so the next batch's bar starts from zero rather than
-            // inheriting the finished jobs' bytes.
-            if !snapshot.jobs.isEmpty {
-                finalizedJobs.removeAll()
-                let queue = queue
-                Task { await queue.clearFinished() }
-            }
-        } else {
-            setQueueBar(visible: true)
-            queueBar.update(with: snapshot)
+        // Visibility first, then the render — because an idle snapshot *resets* the bar, and the
+        // reset has to happen while it is off screen. Every snapshot goes through `update`,
+        // idle included, so there is one call site and nothing to remember to do on the way out.
+        setQueueBar(visible: !snapshot.isIdle)
+        queueBar.update(with: snapshot)
+
+        // Batch drained: forget it so the next batch's bar starts from zero rather than
+        // inheriting the finished jobs' bytes.
+        if snapshot.isIdle, !snapshot.jobs.isEmpty {
+            finalizedJobs.removeAll()
+            let queue = queue
+            Task { await queue.clearFinished() }
         }
     }
 

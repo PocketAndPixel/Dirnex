@@ -83,6 +83,11 @@ final class QuickViewPlaceholderCard: NSView {
     let downloadButton = NSButton()
     let stopButton = NSButton()
 
+    /// How full the download bar is drawn, in `0...1`. The assertion surface for the reset in
+    /// ``apply(_:)`` — otherwise only observable by watching the card at the moment a second
+    /// download starts.
+    var progressFraction: Double { bar.maxValue > 0 ? bar.doubleValue / bar.maxValue : 0 }
+
     /// The file's total, so the bar and its readout have something to divide by. `nil` for a server
     /// that reported no size, which is what makes the bar indeterminate.
     private var expectedBytes: Int64?
@@ -140,6 +145,11 @@ final class QuickViewPlaceholderCard: NSView {
         pollGeneration += 1
         guard isDownloading else {
             bar.stopAnimation(nil)
+            // Emptied on the way *out*, not merely on the way in. A hidden bar keeps whatever it was
+            // last drawn with, so leaving the last download's fill on it means the next one reveals
+            // that fill for a frame before `startPolling` zeroes it — the same bug the queue bar had
+            // (`QueueBarView.reset`), and reported in the same breath 2026-08-19.
+            bar.doubleValue = 0
             return
         }
         startPolling(generation: pollGeneration)
