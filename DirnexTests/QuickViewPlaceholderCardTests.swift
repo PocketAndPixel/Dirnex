@@ -91,10 +91,24 @@ struct QuickViewPlaceholderCardTests {
 
     /// The card's bar carries the same staleness the queue bar's does, and for the same reason: it
     /// is hidden between downloads rather than emptied, so whatever the last transfer left on it is
-    /// what the next one reveals before its first poll lands. Reported together with the queue bar's
-    /// 2026-08-19 — "starts at 100 %, drops to zero, and only then runs".
-    @Test("a finished download leaves the card's bar empty for the next one")
-    func aFinishedDownloadEmptiesTheBar() async throws {
+    /// what the next one reveals. Reported together with the queue bar's on 2026-08-19 — "started
+    /// from 100 % before loading the image".
+    ///
+    /// **The model is the only thing a headless test can see, and it is enough — but only if it is
+    /// read at the right moment.** Zeroing the value on the way *in* (which `startPolling` has
+    /// always done) leaves the model reading 0 the whole time the next download runs, while the
+    /// *presentation* layer goes on showing the old fill for a frame; sampling it in the running app
+    /// caught 0.96 at the reveal, empty 11 ms later. So the claim to pin is the one about the
+    /// **exit**: when the card stops drawing a download, the bar is already empty.
+    ///
+    /// Both exits are covered because the ordinary one is not the obvious one: the bytes landing
+    /// hides the card outright (no state is re-applied), which is exactly why the first version of
+    /// this fix — keyed on a non-downloading state — never ran.
+    @Test(
+        "a finished download leaves the card's bar empty, however the card leaves",
+        arguments: [true, false]
+    )
+    func aFinishedDownloadEmptiesTheBar(showingAFile: Bool) async throws {
         let preview = Self.surface()
         let moved = ByteCounter()
         moved.value = 29_000_000
@@ -112,13 +126,14 @@ struct QuickViewPlaceholderCardTests {
         }
         #expect(card.progressFraction == 1, "the download filled the bar: \(card.progressFraction)")
 
-        // The download ends and the card goes back to standing by — with the bar hidden, which is
-        // exactly where the old fill used to survive.
-        preview.show(
-            nil,
-            style: .default,
-            placeholder: Self.placeholder(.awaitingRequest(.tooLarge))
-        )
+        if showingAFile {
+            // What actually happens: the bytes arrive and the preview shows the file, which stands
+            // the card down without applying any state to it.
+            preview.show(Self.imageFile, style: .default, placeholder: nil)
+        } else {
+            // The other exit: the transfer stopped or failed, so the card stays up saying so.
+            preview.show(nil, style: .default, placeholder: Self.placeholder(.stopped))
+        }
         #expect(card.progressFraction == 0, "the next download would open on the last one's fill")
     }
 
@@ -151,6 +166,11 @@ struct QuickViewPlaceholderCardTests {
             name: "DSC_0002.NEF", size: "29 MB", byteSize: 29_000_000, state: state
         )
     }
+
+    /// Any real file the image backend will take, so the card is stood down the way the bytes
+    /// landing stands it down. Its content is irrelevant — what is under test is the card.
+    private static let imageFile = Bundle(for: QuickViewPreviewView.self).bundleURL
+        .appendingPathComponent("Contents/Resources/AppIcon.icns")
 
     /// `hitTest` takes a point in the *superview's* space, which is where a real click arrives.
     private static func center(of view: NSView, in preview: QuickViewPreviewView) -> NSPoint {

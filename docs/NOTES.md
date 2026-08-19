@@ -560,6 +560,24 @@ at build time.
     (back it up with `defaults export` first), run the binary from a shell to capture stderr, and
     drive two real copies with the `reveal` and `copy selection` AppleScript verbs. No screenshot,
     no accessibility grant, and the second copy is the one that matters.
+  - **Zeroing the value on the way *in* looks like the same fix and is not one, because the model is
+    not what the user sees.** Quick View's placeholder card already set `doubleValue = 0` in the
+    same turn it unhid its bar (`startPolling` always had), so the *model* reads 0 for the whole of
+    the next download — and the fill layer goes on showing the previous transfer's presentation
+    until Core Animation catches up. Measured in the running app by sampling the fill layer's
+    `presentation()` at 10 ms: a second download opened at **0.96** and reached empty 11 ms later,
+    while the model read `0.00` at every sample. The queue bar's own fix worked only because it
+    happened to reset the value while the bar was off screen. Reset on the way **out**, and verify
+    against the presentation layer or the probe agrees with the bug.
+  - **A reset keyed on a state change never runs on the exit that matters, because the ordinary exit
+    is not a state change.** The card's first fix sat in `apply(_:)`'s non-downloading branch, which
+    covers a transfer that *stopped* or *failed* — while the ordinary end of one hides the card
+    outright (the bytes landed, so the surface shows the file) and applies nothing. It shipped inert
+    on the only path most users take, and the user re-reported the identical symptom. The tell is a
+    view whose disappearance goes through a `standDown`-shaped funnel rather than through its own
+    state machine: put the reset in the funnel, and make the test's argument the *exit*, since a
+    single-exit test passes against the half-fix (measured — the `.stopped` case passed while the
+    show-a-file case failed at 1.0).
 - **An `@objc` *optional* delegate requirement implemented on a `@MainActor` class in Swift 6 can
   compile, conform, and never be emitted as an Objective-C method at all — so the framework never
   calls it.** `QuickViewWebView` implemented `webView(_:decidePolicyFor:preferences:decisionHandler:)`

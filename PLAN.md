@@ -175,6 +175,21 @@ seven tests driving a real `NSAlert` sheet on a real window, each fix's negative
 the reported shape: reverting the capture leaves `copyCount == 0` after a genuine click on the
 dialog's own default button. docs/NOTES.md ▸ AppKit, ▸ Design lessons.
 
+**2026-08-20 — the same fix, on the exit that actually happens.** The queue-bar half of the
+2026-08-19 fix worked; the Quick View card's half was inert, and the user re-reported the identical
+symptom on a preview download. Two things were wrong with it, and each is invisible on its own. The
+reset was keyed on `apply(_:)`'s non-downloading branch — which covers a transfer that stopped or
+failed, while the **ordinary** end of one hides the card outright (the bytes landed, so the surface
+shows the file) and applies no state at all. And the claim it was tested against was about the model
+rather than the screen: `startPolling` has always zeroed `doubleValue` in the same turn it unhides
+the bar, so the model reads 0 throughout while the fill *layer* still carries the last download's
+presentation. Sampling that layer at 10 ms in the running app against the real bucket, driving the
+user's own sequence: **0.96 at the reveal, empty 11 ms later**, with the model reading `0.00` at
+every sample. Emptying the bar in the stand-down funnel (`QuickViewPlaceholderCard.standDown`) plus
+the state branch covers both exits; re-measured live it opens at 0.02. The test now takes the exit as
+its argument, because a single-exit test passes against the half-fix — reverted to it, the `.stopped`
+case is green and the show-a-file case fails at 1.0. docs/NOTES.md ▸ AppKit.
+
 **2026-08-19 — a progress bar no longer opens on the last run's fill.** Both places a bar is hidden
 between runs kept the value they were last drawn with, so the *next* run revealed the previous one's
 fill before its own first number arrived: the queue bar (the window controller's idle branch hid it

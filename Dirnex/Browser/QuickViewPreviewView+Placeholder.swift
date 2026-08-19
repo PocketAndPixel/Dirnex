@@ -42,7 +42,7 @@ extension QuickViewPreviewView {
     /// Take the card down. Called by the one funnel every render goes through (`show(_:style:_:)`),
     /// so no individual backend has to know it exists.
     func standDownPlaceholder() {
-        placeholderCard?.isHidden = true
+        placeholderCard?.standDown()
     }
 
     private func ensurePlaceholderCard() -> QuickViewPlaceholderCard {
@@ -144,12 +144,7 @@ final class QuickViewPlaceholderCard: NSView {
         // Always bumped, so a poll left over from the previous row stops whatever this state is.
         pollGeneration += 1
         guard isDownloading else {
-            bar.stopAnimation(nil)
-            // Emptied on the way *out*, not merely on the way in. A hidden bar keeps whatever it was
-            // last drawn with, so leaving the last download's fill on it means the next one reveals
-            // that fill for a frame before `startPolling` zeroes it — the same bug the queue bar had
-            // (`QueueBarView.reset`), and reported in the same breath 2026-08-19.
-            bar.doubleValue = 0
+            emptyBar()
             return
         }
         startPolling(generation: pollGeneration)
@@ -182,6 +177,38 @@ final class QuickViewPlaceholderCard: NSView {
                 try? await Task.sleep(for: Self.pollInterval)
             }
         }
+    }
+
+    /// Take the card off screen, emptying its bar on the way out.
+    ///
+    /// The *ordinary* end of a download comes through here rather than through ``apply(_:)``: the
+    /// bytes land, the preview shows the file, and the surface simply hides the card — no state is
+    /// re-applied, so anything keyed on a state change never runs. That is what made the first
+    /// version of this fix inert (2026-08-19).
+    func standDown() {
+        isHidden = true
+        emptyBar()
+    }
+
+    /// Put the download bar back to empty, and do it while it is off screen.
+    ///
+    /// **A hidden `NSProgressIndicator` keeps the fill it was last drawn with, and its *presentation*
+    /// layer is what reveals it.** Setting the value on the way *in* is not enough and reads as
+    /// though it should be: `startPolling` already zeroes the model in the same turn the bar is
+    /// unhidden, and the model duly reads 0 — while the layer goes on showing the previous
+    /// download's fill until Core Animation catches up. Measured in the running app, sampling the
+    /// fill layer's presentation at 10 ms: a second download opened at **0.96** and reached empty
+    /// only 11 ms later. Reported by a user 2026-08-19 as a bar that "started from 100 % before
+    /// loading the image", alongside the same bug on the queue bar (`QueueBarView.reset`).
+    ///
+    /// `maxValue` goes back with it. It is the previous file's byte count, and a value of 0 under it
+    /// is empty either way — but leaving a stale denominator behind means the one poll that lands
+    /// before ``startPolling`` re-sets it would draw this file's bytes as a fraction of the last
+    /// file's size.
+    private func emptyBar() {
+        bar.stopAnimation(nil)
+        bar.doubleValue = 0
+        bar.maxValue = 1
     }
 
     private static func hint(for state: RemotePreviewPlaceholder.State) -> String {
