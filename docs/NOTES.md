@@ -4424,6 +4424,29 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     decoration: restoring the old gate fails only the reach tests, and restoring the unfiltered watch
     sources fails only the watch tests — printing `icloud:/iCloud Drive` and the `sftp://` path as
     the values it would have watched.
+  - **The third hazard arrived a user later, and it is a row the tree can *draw* but not *open*.** A
+    disclosure triangle is `entry.isDirectoryLike`, which a **bucket row** in an S3 account pane
+    satisfies — while `S3AccountBackend` answers for its root and nothing deeper, by design, since
+    everything below a bucket is the `S3Backend` that already ships. So `DirectoryLoader.list` on
+    `s3account:/<bucket>` throws `notFound` straight into `loadTreeChild`'s `try?`, and the row opens,
+    stays empty and says nothing: no log, no failed test, and a triangle promising children that
+    cannot come. The thing missing is not a listing but a **connect** — a bucket's contents are
+    reached by connecting to it, a gesture the tree had no way to make. Generalizes past S3: when a
+    gate widens to *everywhere*, the rows to check are the ones opened by some verb **other than**
+    `listDirectory`, because those are exactly the ones that draw perfectly and answer nothing.
+    - **The fix is to split the connect from the navigation welded to it** (`establishS3Connection`),
+      never to teach the tree a second way to open a bucket: the region-301 correction and the
+      path-style retry apply to `→` for the same reasons they apply to Enter, and a second spelling of
+      them is this file's most repeated bug.
+    - **A child on another backend then retires the path arithmetic above it.** `←` climbed by
+      `entry.path.parent`, which is the same answer everywhere a child descends from its parent and no
+      answer at all where it does not — the parent of `s3://…/docs` is `s3://…/`, while the row above
+      it is `s3account:/…`. Walk the rows by **depth** instead: it is what the tree actually draws, so
+      it cannot disagree with what ← looks like it should do.
+    - Live-verifiable headlessly, which is worth reaching for before a screenshot: driving the real
+      controller against the real account inside the app's own test target reproduces the reverted
+      version's failure in the reported shape — the expanded set holding the bucket and the listings
+      holding only the root.
 - **A *saved* search is the one place where the scope, not the pane, decides where a search runs, and
   an `mdfind` scope is a bare path with the backend thrown away — so what it silently did depended on
   how deep the scope was.** `FileQuery.mdfindArguments` takes `scope.path`. A saved search rooted at

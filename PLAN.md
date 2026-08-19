@@ -150,7 +150,29 @@ non-empty folder, which hid three folders Finder shows.
 ### After M19
 
 M19 closed on 2026-08-09; M20 opened and closed 2026-08-12 (HISTORY.md). Three things landed
-between M19 and M18, which closed on 2026-08-07, and four after it.
+between M19 and M18, which closed on 2026-08-07, and five after it.
+
+**2026-08-19 — a bucket row expands in a tree.** Tree mode stopped being local-only on 08-17, which
+gave every bucket row in an S3 account pane a disclosure triangle — opening into nothing.
+`S3AccountBackend` answers for its root and nothing deeper by design (everything below a bucket is
+the `S3Backend` that shipped five slices earlier), so the tree's lazy load threw `notFound` into its
+own `try?`: expanded, childless, silent, with nothing logged and both suites green. Reported from a
+screenshot the day M21 closed. A bucket's contents are a **connect**, not a listing, so `→` now goes
+through the funnel Enter uses — `connectS3` split into `establishS3Connection` (probe, self-correct,
+register) and the navigation that had been welded to it, so the region-301 correction and the
+path-style retry reach an expansion for exactly the reasons they reach Enter, rather than in a second
+spelling. The rows it installs keep their own `s3://` paths, which is what makes everything below
+them free: `TreeProjection` recurses into each entry's *own* path and never assumes a row descends
+from the tree's root, so deeper expansion, F5, ⌃Q and F8 route to the backend that owns the bytes
+with no new code, and the core needed no change at all. Two things the crossing changed underneath —
+`←` climbed by `entry.path.parent`, which is no answer where the child is on another backend, so it
+now walks the rows by depth; and a failed expansion names the row on the status line rather than
+raising an alert on a key that comes in runs, leaving the sentence to Enter, which is the gesture
+that asked for that bucket outright. What it deliberately does not buy is expansion surviving a
+relaunch: a persisted expansion is anchored under the tab's root and a restored account pane has no
+live connection to list its own root with. Verified live against the real AWS account through the
+app's own controller, with the reverted version failing that same test in the reported shape —
+expanded set holding the bucket, listings holding only the root. docs/NOTES.md ▸ Design lessons.
 
 **2026-08-11 — a vault can be shown in Finder, per vault.** Dirnex attaches `-nobrowse`, so an
 unlocked vault is invisible to the rest of the Mac — right as a default, and wrong as a rule for

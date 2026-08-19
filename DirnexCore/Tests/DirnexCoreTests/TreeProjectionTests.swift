@@ -279,4 +279,64 @@ struct TreeProjectionTests {
         tree.setListing(docs, entries: [entry("a.txt", in: docs)])
         #expect(Set(tree.listedDirectories) == [root, docs])
     }
+
+    // MARK: - A row whose children live on another backend
+
+    /// The property the S3-account tree rests on, pinned here because nothing else states it:
+    /// `appendLevel` recurses into each entry's **own** path, so a row's children need not descend
+    /// from the tree's root — or even live on the same backend.
+    ///
+    /// A bucket row is `s3account:/photos` while its contents are objects on `s3://…/photos`, which
+    /// the app reaches by *connecting* rather than by walking a path. None of that is visible from
+    /// here, and that is exactly what makes the crossing free: the projection keys a level on the
+    /// path of the row that opened it, whatever backend that path names.
+    @Test("a row's children may live on a different backend entirely")
+    func childrenMayCrossBackends() {
+        let account = VFSBackendID.s3Account(
+            S3Location(
+                host: "s3.eu-north-1.amazonaws.com",
+                bucket: "photos",
+                region: "eu-north-1",
+                accessKeyID: "AKIAEXAMPLEEXAMPLE00",
+                addressing: .virtualHost,
+                usesTLS: true
+            ).account
+        )
+        let bucketBackend = VFSBackendID.s3(
+            S3Location(
+                host: "s3.eu-north-1.amazonaws.com",
+                bucket: "photos",
+                region: "eu-north-1",
+                accessKeyID: "AKIAEXAMPLEEXAMPLE00",
+                addressing: .virtualHost,
+                usesTLS: true
+            )
+        )
+        let accountRoot = VFSPath(backend: account, path: "/")
+        // The row the pane draws for the bucket, and the two paths its contents really have.
+        let bucketRow = accountRoot.appending("photos")
+        let objects = VFSPath(backend: bucketBackend, path: "/")
+
+        var tree = TreeProjection(rootPath: accountRoot, sort: FileSort(key: .name))
+        tree.setListing(accountRoot, entries: [dir("photos", in: accountRoot)])
+        tree.expand(bucketRow)
+        // Keyed on the *row's* path, while the entries carry the bucket backend's — the shape the
+        // app installs after a connect.
+        tree.setListing(bucketRow, entries: [
+            dir("2026", in: objects),
+            entry("cover.jpg", in: objects)
+        ])
+
+        #expect(shape(tree).map(\.0) == ["photos", "2026", "cover.jpg"])
+        #expect(shape(tree).map(\.1) == [0, 1, 1])
+        #expect(tree.rows[1].entry.path.backend == bucketBackend)
+
+        // And a level below that: the child's own path is what its listing is keyed on, so the
+        // crossing happens once and everything under it is ordinary.
+        let year = objects.appending("2026")
+        tree.expand(year)
+        tree.setListing(year, entries: [entry("dsc_0001.raw", in: year)])
+        #expect(shape(tree).map(\.1) == [0, 1, 2, 1])
+        #expect(tree.index(ofID: year.appending("dsc_0001.raw")) == 2)
+    }
 }

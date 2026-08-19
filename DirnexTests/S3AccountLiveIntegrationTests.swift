@@ -241,6 +241,42 @@ final class S3AccountLiveIntegrationTests {
         #expect(account.host == bucket.host)
     }
 
+    /// The fourth crossing, and the one that reads least like one: `→` on a bucket row in a tree.
+    ///
+    /// It cannot be a listing — `S3AccountBackend` answers for its root and nothing deeper — so until
+    /// 2026-08-19 the row opened into nothing at all: a disclosure triangle promising children, and a
+    /// `notFound` disappearing into the tree loader's `try?`. Nothing logged and nothing failed, which
+    /// is why it needed a pair of eyes rather than a suite.
+    ///
+    /// What this pins is the crossing itself — that the expansion goes through the same connect Enter
+    /// does, and installs rows belonging to the **bucket's** backend underneath a row belonging to the
+    /// account's. Everything below them (deeper expansion, F5, ⌃Q, F8) rests on that one property, and
+    /// no headless test can see it: `hasListing` never becomes true without a real connection.
+    @Test("a bucket row in a tree expands into the bucket's own objects")
+    func expandsABucketInATree() async throws {
+        let config = try #require(S3LiveEnvironment.current)
+        let controller = await connectedPane(config)
+        controller.viewMode = .tree
+        controller.applyViewMode()
+
+        // The row the pane actually draws, not the account as typed: the connect may have corrected
+        // the region, and the row belongs to whichever account it settled on.
+        let bucketRow = controller.panel.path.appending(config.bucket)
+        #expect(controller.panel.tree?.index(ofID: bucketRow) != nil, "the bucket has a row to open")
+
+        controller.toggleTreeExpansion(for: bucketRow)
+        await waitUntil("the bucket's contents to arrive under its row") {
+            controller.panel.tree?.hasListing(for: bucketRow) == true
+        }
+
+        // The pane never went anywhere — this is a row opening in place, not a navigation — and the
+        // rows beneath it are addressed on the bucket's own backend.
+        #expect(controller.panel.path.backend.isS3Account)
+        let children = try #require(controller.panel.tree?.entries(in: bucketRow))
+        #expect(children.allSatisfy { $0.path.backend.s3Location?.bucket == config.bucket })
+        #expect(!children.isEmpty, "an empty live bucket proves only that the listing arrived")
+    }
+
     /// F7 and F8 on the account pane, through the routing they actually use. The bucket verbs
     /// themselves are covered against the endpoint elsewhere; what this adds is that a *pane's*
     /// backend reaches them at all — the composite has to route an `s3a://` path, and nothing but

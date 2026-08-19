@@ -183,7 +183,7 @@ extension PanelViewController {
         if entry.isDirectoryLike, tree.isExpanded(entry.path) {
             collapseFolder(entry.path)
         } else {
-            stepOutToParent(of: entry)
+            stepOutToParent()
         }
         return true
     }
@@ -229,9 +229,19 @@ extension PanelViewController {
 
     /// Climb from a row to its parent folder's row, the way ← walks up an outline view. A no-op at
     /// depth 0, whose parent is the tree root and has no row.
-    private func stepOutToParent(of entry: FileEntry) {
-        guard let parent = entry.path.parent, parent != panel.path,
-              let parentRow = panel.tree?.index(ofID: parent) else { return }
+    ///
+    /// Answered from the **rows** — the nearest shallower one above the cursor — rather than by
+    /// looking up `entry.path.parent`, which is the same answer everywhere a child's path descends
+    /// from its parent's and no answer at all where it does not: a bucket's contents are on the
+    /// bucket's own backend, so the parent of `s3://bucket/docs` is `s3://bucket/`, and the row above
+    /// it is `s3account:/bucket`. Depth is what the tree actually draws, so it cannot disagree with
+    /// what ← looks like it should do.
+    private func stepOutToParent() {
+        guard let tree = panel.tree, tree.rows.indices.contains(panel.cursor) else { return }
+        let depth = tree[panel.cursor].depth
+        guard depth > 0,
+              let parentRow = tree.rows[..<panel.cursor].lastIndex(where: { $0.depth < depth })
+        else { return }
         moveTreeCursor(toEntryIndex: parentRow)
     }
 
@@ -266,11 +276,11 @@ extension PanelViewController {
         let tabIndex = activeTabIndex
         Task {
             defer { if duringRestore { finishRestoreTreeLoad(inTab: tabIndex) } }
-            guard let listing = try? await DirectoryLoader.list(backend, at: path) else { return }
+            guard let entries = await treeChildEntries(at: path) else { return }
             guard token == loadToken, panel.isTree, panel.path == root else { return }
             if deferRefreshIfRenaming() { return }
             reconcileCursorFromTable()
-            panel.setTreeChildListing(path, entries: listing.entries)
+            panel.setTreeChildListing(path, entries: entries)
             var anchoredCursor = false
             if duringRestore { anchoredCursor = applyPendingRestore(toTab: tabIndex) }
             renderTreeChange()
@@ -279,6 +289,20 @@ extension PanelViewController {
             if anchoredCursor { syncCursorToTable(scroll: true) }
             persistState()
         }
+    }
+
+    /// What to draw beneath an expanded row: ordinarily one listing, and for a **bucket row in an
+    /// S3 account pane** a connection, since `S3AccountBackend` answers for its root and nothing
+    /// deeper. See `s3BucketChildren(at:)` for why that is a crossing rather than a walk, and why
+    /// the rows it hands back keep their own `s3://` paths.
+    ///
+    /// `nil` for anything that failed to list — the folder stays childless, as an unreadable or
+    /// deleted one does.
+    private func treeChildEntries(at path: VFSPath) async -> [FileEntry]? {
+        if path.backend.isS3Account, !path.isRoot {
+            return await s3BucketChildren(at: path)
+        }
+        return try? await DirectoryLoader.list(backend, at: path).entries
     }
 
     // MARK: - The watcher over the expanded set

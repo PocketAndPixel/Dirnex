@@ -109,31 +109,100 @@ extension PanelViewController {
     /// account does, and the 301 that says so is already handled one file over.
     func enterS3Bucket(named name: String) {
         guard let account = panel.path.backend.s3Account else { return }
-        guard let secret = SecretKeychain.password(for: account) else {
+        guard let request = s3BucketConnectRequest(for: account, bucket: name) else {
             presentOperationFailure(
                 message: connectFailureTitle(account.host),
                 detail: Self.genericS3ConnectError
             )
             return
         }
-        let location = account.bucketLocation(named: name)
+        runConnect(host: account.host) { [self] in await connectS3(request) }
+    }
+
+    /// The connect attempt one bucket row stands for — built once and shared, because Enter and a
+    /// tree expansion are the same question ("open this bucket") answered in two places, and this
+    /// codebase's most repeated bug is one rule with two spellings (docs/NOTES.md ▸ AppKit).
+    ///
+    /// `nil` means the account's secret is not in the Keychain, which is the one failure the two
+    /// callers report differently: an alert for the gesture that navigates, a status line for the
+    /// one that expands.
+    func s3BucketConnectRequest(for account: S3Account, bucket: String) -> S3ConnectRequest? {
+        guard let secret = SecretKeychain.password(for: account) else { return nil }
         // An addressing correction discovered here belongs to the **account**, not to this bucket:
         // nothing asked for this bucket to be saved, while the account may well be a sidebar row —
         // and it is that row which would otherwise re-discover the same failure on every bucket
-        // anyone enters from it. The live account is deliberately left alone: correcting it would
+        // anyone opens from it. The live account is deliberately left alone: correcting it would
         // change its descriptor, hence its backend id, and pull this pane out from under the listing
-        // the user is standing in. Each entry re-pays one failed handshake, which happens below HTTP
-        // and is quick.
-        let savedAccountName = ServerConnectionStore.load().name(of: .s3Account(account))
-        runConnect(host: account.host) { [self] in
-            await connectS3(S3ConnectRequest(
-                location: location,
-                secretAccessKey: secret,
-                saveName: nil,
-                activityName: nil,
-                savedServerName: savedAccountName
-            ))
+        // the user is standing in. Each attempt re-pays one failed handshake, which happens below
+        // HTTP and is quick.
+        return S3ConnectRequest(
+            location: account.bucketLocation(named: bucket),
+            secretAccessKey: secret,
+            saveName: nil,
+            activityName: nil,
+            savedServerName: ServerConnectionStore.load().name(of: .s3Account(account))
+        )
+    }
+
+    // MARK: - Expanding a bucket in a tree
+
+    /// The rows beneath an expanded **bucket row** in a tree — the bucket's own root listing.
+    ///
+    /// A backend crossing rather than a path walk, exactly as Enter is. `S3AccountBackend` answers
+    /// for its root and nothing deeper, by design: everything below a bucket is the `S3Backend` that
+    /// already ships, so a bucket's children can only come from a *connection* to it. Both gestures
+    /// therefore go through `establishS3Connection` — which is what carries the region correction and
+    /// the path-style retry into a tree — and diverge only in what they do with the result: Enter
+    /// navigates the pane onto the bucket, `→` hands its entries back to the tree.
+    ///
+    /// **The children keep their real `s3://` paths**, and that is what makes everything below them
+    /// work with no further code. `TreeProjection` recurses into each entry's *own* path and never
+    /// assumes a row descends from the tree's root, so deeper expansion, F5, ⌃Q and F8 all route
+    /// through `CompositeBackend` to the backend that owns the bytes — the same property that let
+    /// tree mode widen past the local disk in the first place.
+    ///
+    /// It costs exactly what Enter costs — one probe and one listing — and is reached only by a
+    /// deliberate gesture (`→`, or the disclosure triangle), never by cursor movement, so no billed
+    /// request is spent on a key that was only passing through.
+    ///
+    /// One thing it does *not* buy, stated rather than left to be discovered: a bucket expansion is
+    /// not restored across a relaunch. `rootRelativePath` anchors a persisted expansion under the
+    /// tab's root and answers `nil` across a backend boundary — and the point is moot either way,
+    /// since a restored account pane has no live connection to list its own root with.
+    func s3BucketChildren(at path: VFSPath) async -> [FileEntry]? {
+        guard let account = path.backend.s3Account, !path.isRoot else { return nil }
+        let bucket = path.lastComponent
+        guard let request = s3BucketConnectRequest(for: account, bucket: bucket) else {
+            reportBucketExpansionFailure(bucket)
+            return nil
         }
+        switch await establishS3Connection(request) {
+        case .abandoned:
+            return nil
+        case .failed:
+            // The explanation belongs to the gesture that asked for this bucket outright: Enter
+            // reports it in an alert, where there is room for a sentence and somebody is waiting for
+            // it. An expansion is one key in a run of them, so it names the row that could not be
+            // opened and leaves the diagnosis to the deliberate route.
+            reportBucketExpansionFailure(bucket)
+            return nil
+        case let .connected(location):
+            let root = VFSPath(backend: .s3(location), path: "/")
+            guard let listing = try? await DirectoryLoader.list(backend, at: root) else {
+                reportBucketExpansionFailure(bucket)
+                return nil
+            }
+            return listing.entries
+        }
+    }
+
+    /// Say which bucket would not open, and nothing more — the status line truncates its tail, so
+    /// the name goes at the front where it survives (docs/NOTES.md ▸ Localization).
+    private func reportBucketExpansionFailure(_ bucket: String) {
+        showTransientStatus(String(
+            localized: "Couldn’t open “\(bucket)”",
+            comment: "Failure title; %@ is the name of the item that couldn’t be opened."
+        ))
     }
 
     // MARK: - Leaving a bucket

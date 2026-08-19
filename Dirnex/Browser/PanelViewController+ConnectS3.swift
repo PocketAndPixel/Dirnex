@@ -50,7 +50,43 @@ extension PanelViewController {
         var hasCorrectedAddressing = false
     }
 
+    /// What establishing an S3 connection settled on, before anything is done with it.
+    ///
+    /// Three cases rather than two, because "the pane moved on while we probed" is neither a success
+    /// the caller should act on nor a failure worth a sentence: the answer arrived for a question
+    /// nobody is still asking.
+    enum S3ConnectOutcome {
+        /// Connected and registered on the pane's `CompositeBackend`, carrying the location it
+        /// **settled on** — which is not always the one asked for, since a region redirect or a
+        /// path-style retry re-aims the connection, and the corrected location is the one the caller
+        /// has to address it by.
+        case connected(S3Location)
+        case failed(String)
+        case abandoned
+    }
+
     func connectS3(_ request: S3ConnectRequest) async -> ConnectServerPrompt.Attempt {
+        switch await establishS3Connection(request) {
+        case let .connected(location):
+            navigate(to: VFSPath(backend: .s3(location), path: "/"))
+            return .succeeded
+        case .abandoned:
+            return .succeeded
+        case let .failed(detail):
+            return .failed(detail)
+        }
+    }
+
+    /// Probe, self-correct, register — everything a connect does **except decide what to do with
+    /// it**.
+    ///
+    /// Split out of `connectS3` so that entering a bucket and *expanding* one in a tree share one
+    /// definition of what connecting to a bucket means. The two corrections documented at the top of
+    /// this file are exactly the shape that ends up with a second spelling (docs/NOTES.md ▸ Design
+    /// lessons), and a tree expansion needs every one of them for the same reasons Enter does: the
+    /// row it opens may be in another region, and its name may be one label too deep for the
+    /// endpoint's certificate.
+    func establishS3Connection(_ request: S3ConnectRequest) async -> S3ConnectOutcome {
         guard let composite = backend as? CompositeBackend else {
             return .failed(Self.genericS3ConnectError)
         }
@@ -72,7 +108,7 @@ extension PanelViewController {
         let result = await Task.detached(priority: .userInitiated) { () -> Result<S3Response, Error> in
             do { return .success(try transport.probeConnection()) } catch { return .failure(error) }
         }.value
-        guard token == loadToken else { return .succeeded } // the pane moved on while we probed
+        guard token == loadToken else { return .abandoned } // the pane moved on while we probed
 
         switch result {
         case let .success(response):
@@ -91,8 +127,7 @@ extension PanelViewController {
             } else if let savedName = request.savedServerName {
                 readdressSavedS3Server(name: savedName, to: location.addressing)
             }
-            navigate(to: VFSPath(backend: .s3(location), path: "/"))
-            return .succeeded
+            return .connected(location)
         case let .failure(error):
             return await handleS3TransportFailure(error, request: request)
         }
@@ -103,7 +138,7 @@ extension PanelViewController {
     private func handleS3Refusal(
         _ service: S3ServiceError,
         request: S3ConnectRequest
-    ) async -> ConnectServerPrompt.Attempt {
+    ) async -> S3ConnectOutcome {
         guard service.isRegionRedirect,
               !request.hasCorrectedRegion,
               let region = service.correctedRegion,
@@ -113,7 +148,7 @@ extension PanelViewController {
         var retry = request
         retry.location = Self.movingRegion(of: request.location, to: region)
         retry.hasCorrectedRegion = true
-        return await connectS3(retry)
+        return await establishS3Connection(retry)
     }
 
     /// A failure that happened below HTTP. One of them is recoverable without asking the user
@@ -141,11 +176,11 @@ extension PanelViewController {
     private func handleS3TransportFailure(
         _ error: Error,
         request: S3ConnectRequest
-    ) async -> ConnectServerPrompt.Attempt {
+    ) async -> S3ConnectOutcome {
         guard let retry = Self.addressingCorrection(for: error, request: request) else {
             return .failed(Self.s3ConnectFailureDetail(error, location: request.location))
         }
-        return await connectS3(retry)
+        return await establishS3Connection(retry)
     }
 
     /// The attempt to retry path-style, or `nil` when this failure is not one re-addressing can fix.

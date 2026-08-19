@@ -203,7 +203,7 @@ extension PanelViewController {
             presentOperationFailure(
                 message: String(
                     localized: "Couldn’t open “\(path.lastComponent)”",
-                    comment: "F4 failure title; %@ is the file name."
+                    comment: "Failure title; %@ is the name of the item that couldn’t be opened."
                 ),
                 detail: describe(error)
             )
