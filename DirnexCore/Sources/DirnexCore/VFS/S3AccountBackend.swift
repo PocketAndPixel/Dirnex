@@ -52,7 +52,8 @@ public protocol S3AccountTransport: Sendable {
 /// - **Creating one that already exists does not fail.** Measured 2026-08-13 against a real
 ///   S3-compatible endpoint: a second `CreateBucket` on a name it already holds answers **200**,
 ///   silently, changing nothing. So the check has to be ours (``createDirectory(at:)``) — without
-///   it, F7 on a taken name reports success and does nothing, which is the quiet direction.
+///   it, F7 on a taken name reports success and does nothing, which is the quiet direction. What
+///   that check may *rest* on is its own finding, and `HeadBucket` alone is not it.
 public struct S3AccountBackend: ConnectionScopedBackend {
     /// The account this backend lists — its identity.
     public let account: S3Account
@@ -159,6 +160,22 @@ public struct S3AccountBackend: ConnectionScopedBackend {
     ///   success — and on AWS, which *does* refuse, the same code path still works, so the check is
     ///   the only behaviour that is correct on both.
     ///
+    /// **What the existence check may rest on is a third measurement, and it cost a user a bug
+    /// report before it was taken.** The check was one `HeadBucket`, which is stale: it goes on
+    /// answering **200 for a bucket this account has deleted**, intermittently and for longer than
+    /// a session — measured 2026-08-20 on real AWS, polling straight after a `DELETE` returned 204,
+    /// `404 404 200 200 200 200 200 200 404 200 404 404`, against `ListAllMyBuckets` reading the
+    /// same name as absent 12 times out of 12 and a *settled* bucket's head answering 200 all 30
+    /// times. So F7 refused a name that was not there, sometimes, while the pane's own listing
+    /// quite correctly did not show it — a refusal contradicting the thing the user is looking at,
+    /// which is the shape that reads as the app being confused rather than the service.
+    ///
+    /// So a refusal now needs both: the cheap head to raise the question, and the **listing** — the
+    /// half that does not go stale, and the one the pane is drawing — to answer it. A free name
+    /// still costs one `HeadBucket` and nothing more; only a name about to be refused pays for the
+    /// listing. The opposite flap (a 404 for a bucket that is there) needs nothing: the create goes
+    /// out and AWS refuses it with the 409 this code already maps.
+    ///
     /// The race between the check and the create is real and accepted, exactly as
     /// ``S3Backend/createFile(at:)`` accepts it: S3 offers no create-if-absent, and the choice is
     /// between this window and silently reporting success over somebody else's bucket.
@@ -169,13 +186,30 @@ public struct S3AccountBackend: ConnectionScopedBackend {
         guard S3BucketName.isValid(name) else {
             throw VFSError.unsupported(.bucketNameNotValid(name: name))
         }
-        if (try? stat(at: path)) != nil { throw VFSError.alreadyExists(path) }
+        if (try? stat(at: path)) != nil, listingHolds(name, under: path) ?? true {
+            throw VFSError.alreadyExists(path)
+        }
 
         let response = try mapping(path) { try transport.createBucket(name: name) }
         guard response.isSuccess else {
             throw S3Backend.serviceError(from: response)?.vfsError(for: path)
                 ?? VFSError.io(path: path, code: EIO)
         }
+    }
+
+    /// Whether the account's **listing** shows `name` — `nil` when it could not be asked.
+    ///
+    /// `ListAllMyBuckets` is the half of S3 that does not go stale about a bucket's existence, and
+    /// it is what the pane is drawing, so a refusal resting on it can never contradict what the
+    /// user is looking at. Measured against the flapping head in the same run: absent 12 times out
+    /// of 12 for a name that had just been deleted.
+    ///
+    /// `nil` rather than `false` when the listing throws, because the two mean opposite things to
+    /// the caller: "the name is free" would send a create at a service that may answer 200 and do
+    /// nothing, while "cannot tell" keeps the old, cautious behaviour.
+    private func listingHolds(_ name: String, under path: VFSPath) -> Bool? {
+        guard let root = path.parent, let entries = try? listDirectory(at: root) else { return nil }
+        return entries.contains { $0.name == name }
     }
 
     /// Delete an empty bucket.

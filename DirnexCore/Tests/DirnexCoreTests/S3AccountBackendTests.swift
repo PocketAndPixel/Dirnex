@@ -157,13 +157,54 @@ struct S3AccountBackendTests {
     func refusesToCreateAnExistingBucket() {
         let transport = FakeS3AccountTransport()
         transport.headResponse = S3Response(status: 200)
+        transport.listPages = [S3Response(status: 200, body: Self.realBucketList)]
         transport.createResponse = S3Response(status: 200) // what the real server answers
 
         #expect(throws: VFSError.alreadyExists(path("dirnex-test"))) {
             try backend(transport).createDirectory(at: path("dirnex-test"))
         }
-        // And it never asked the server to create anything.
-        #expect(transport.calls == [.head("dirnex-test")])
+        // And it never asked the server to create anything. The listing is the second half of the
+        // refusal, not a third opinion: the head raises the question and it answers it.
+        #expect(transport.calls == [.head("dirnex-test"), .list(continuationToken: nil)])
+    }
+
+    /// **`HeadBucket` lies about a bucket this account has just deleted, so it cannot be the whole
+    /// of the guard above.** Measured 2026-08-20 on real AWS, polling straight after a `DELETE`
+    /// returned 204: `404 404 200 200 200 200 200 200 404 200 404 404`, while `ListAllMyBuckets`
+    /// read the name as absent 12 times out of 12. Reported by a user as F7 answering "already
+    /// exists" for a bucket the pane was quite correctly not drawing — and only sometimes, which is
+    /// what kept it from looking like a rule.
+    ///
+    /// The listing is what the pane draws, so resting the refusal on it is also what stops the two
+    /// from ever contradicting each other.
+    @Test("a stale head does not refuse a name the listing does not have")
+    func createsWhenOnlyTheHeadThinksItExists() throws {
+        let transport = FakeS3AccountTransport()
+        transport.headResponse = S3Response(status: 200) // the phantom
+        transport.listPages = [S3Response(status: 200, body: Self.realBucketList)]
+
+        try backend(transport).createDirectory(at: path("dirnex-probe-a-gone"))
+
+        #expect(transport.calls == [
+            .head("dirnex-probe-a-gone"),
+            .list(continuationToken: nil),
+            .create("dirnex-probe-a-gone")
+        ])
+    }
+
+    /// A listing that cannot be had is not evidence the name is free, and the two failure
+    /// directions are not equal: refusing wrongly is recoverable, while sending a create at a
+    /// service that answers 200 and does nothing reports work that never happened.
+    @Test("a listing that fails leaves the head its old authority")
+    func refusesWhenTheListingCannotBeAsked() {
+        let transport = FakeS3AccountTransport()
+        transport.headResponse = S3Response(status: 200)
+        transport.listPages = [S3Response(status: 403, body: Self.errorBody("AccessDenied"))]
+
+        #expect(throws: VFSError.alreadyExists(path("dirnex-test"))) {
+            try backend(transport).createDirectory(at: path("dirnex-test"))
+        }
+        #expect(!transport.calls.contains(.create("dirnex-test")))
     }
 
     @Test("creates a bucket that is not there")

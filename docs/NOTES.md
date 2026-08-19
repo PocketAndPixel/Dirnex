@@ -242,11 +242,28 @@ at build time.
   **12 times out of 12** and `HeadBucket` on a *settled* bucket answered 200 all 30 times. So the
   staleness belongs to a name that was just deleted, roughly one read in three disagrees with the
   truth, and **the listing is exact where the head is not**.
-  - **It is a product behaviour before it is a test problem.** `S3AccountBackend.createDirectory`
-    guards on its own `stat`, which is that `HeadBucket` — so F7 with the name of a bucket just
-    deleted can answer "already exists" for a bucket that is gone, and answer it only sometimes.
-    Nothing logs and the pane is right (its listing does not show the name), which is the tell:
-    a refusal that contradicts what the pane is drawing.
+  - **It is a product behaviour before it is a test problem, and the fix is to pick a better
+    witness rather than to drop the guard.** `S3AccountBackend.createDirectory` guarded on its own
+    `stat`, which is that `HeadBucket` — so F7 with the name of a bucket just deleted answered
+    "already exists" for a bucket that is gone, and only sometimes. Nothing logs, and the pane is
+    *right*: its listing does not show the name. That contradiction is the tell, and it is the shape
+    that reads as the app being confused rather than the service. The guard itself has to stay —
+    a permissive endpoint, and AWS's own `us-east-1`, answer a re-create with a silent 200 — so what
+    changed is what it rests on: the cheap head raises the question and the **listing** answers it,
+    which also makes a refusal incapable of disagreeing with what the user is looking at. A free
+    name still costs one `HeadBucket` and nothing more, since only a name about to be refused pays
+    for the listing, and the opposite flap needs nothing at all: a 404 for a bucket that is there
+    sends the create, and AWS's 409 is already mapped.
+  - **A listing that cannot be had must not read as "the name is free."** The two failure directions
+    are not equal — refusing wrongly is recoverable, while creating over a permissive endpoint
+    reports work that never happened — so the helper answers `Bool?` and a `nil` leaves the head its
+    old authority. That is the narrowness control the fix needs, and it is the one that keeps
+    passing when the fix is reverted, which is worth knowing before reading a green run as evidence.
+  - **The phantom branch is headless-only, and saying so is part of the fix.** Both other branches
+    are covered live against AWS (a settled name refuses; a free name creates), but "the head says
+    200 and the listing says no" cannot be arranged on demand — deliberate poisoning failed to
+    reproduce it in six runs. It is pinned in `S3AccountBackendTests` with a fake, against the
+    reverted version as the control.
   - **What it did to the live suite was flake in *both* directions**, which is why it read as two
     unrelated bugs: a lingering 200 from the previous run refused the setup create
     (`.alreadyExists` on a free name), and an unlucky 404 after a create let a second one through
