@@ -20,6 +20,9 @@ import DirnexCore
 ///   there can only be a spinner.
 /// - **It may ask before it starts.** A remote fetch spends a billed request and somebody's
 ///   bandwidth, so `RemoteFetchPolicy` decides whether the size is small enough to just happen.
+/// - **And it may not report at all.** Where the preview mode's own placeholder card is standing in
+///   for the row, that card draws this transfer — so the sheet would be a modal dialog over a
+///   progress bar reporting the same bytes (`Context.hasProgressSurface`).
 @MainActor
 final class RemoteFetchPrompt {
     /// How long a fetch may run before it is worth interrupting the user with a sheet. See the type
@@ -39,6 +42,7 @@ final class RemoteFetchPrompt {
         _ entry: FileEntry,
         for purpose: RemoteFetchPurpose,
         in context: Context,
+        onStart: @escaping () -> Void = {},
         then proceed: @escaping (URL) -> Void,
         onFailure: @escaping (any Error) -> Void
     ) {
@@ -49,6 +53,7 @@ final class RemoteFetchPrompt {
         let prompt = RemoteFetchPrompt(
             entry: entry,
             context: context,
+            onStart: onStart,
             proceed: proceed,
             onFailure: onFailure
         )
@@ -77,14 +82,15 @@ final class RemoteFetchPrompt {
     /// The Quick View placeholder card is the only one: it draws the file's name and size directly
     /// above its Download button, so `RemoteFetchPolicy`'s confirmation would be asking a question
     /// the click has already answered. Everything downstream of the decision is unchanged — the
-    /// deferred progress sheet, Stop, the cache and the failure report — so this skips the
-    /// *question* and nothing else.
+    /// cache, Stop, the failure report, and the deferred sheet wherever `Context.hasProgressSurface`
+    /// says nothing else is drawing this — so this skips the *question* and nothing else.
     ///
     /// A second entry point rather than a `Bool` on the one above, because the two differ in who
     /// decides, not in a setting: here the caller is asserting that the decision has been made.
     static func fetchConfirmed(
         _ entry: FileEntry,
         in context: Context,
+        onStart: @escaping () -> Void = {},
         then proceed: @escaping (URL) -> Void,
         onFailure: @escaping (any Error) -> Void
     ) {
@@ -95,6 +101,7 @@ final class RemoteFetchPrompt {
         RemoteFetchPrompt(
             entry: entry,
             context: context,
+            onStart: onStart,
             proceed: proceed,
             onFailure: onFailure
         ).start()
@@ -114,15 +121,34 @@ final class RemoteFetchPrompt {
         let cache: RemoteFileCache
         /// The sheet's host. `nil` falls back to a modal alert, as everywhere else in the app.
         weak var window: NSWindow?
+        /// Whether something on screen is already drawing this transfer and offering to call it off
+        /// — the Quick View placeholder card, which names the file, carries a determinate bar of its
+        /// own and a Stop button, in the very place the preview is about to appear.
+        ///
+        /// The deferred sheet then stands down. Not because two bars are untidy: the sheet is
+        /// *modal*, so it takes the keyboard away from the file list and covers the card that is
+        /// reporting the same download — a dialog over a progress bar, both about the same bytes.
+        /// Where there is no such surface (⌘Y with Quick View off, ⏎, F4) the sheet is still the
+        /// only thing that can say anything, and it appears exactly as it did.
+        var hasProgressSurface = false
     }
 
     private let entry: FileEntry
     private let context: Context
+    /// Called the moment the transfer actually begins — which for a confirmed fetch is when the user
+    /// answers, not when this object was made. What it is *for* is the placeholder card: the card is
+    /// drawn from a snapshot the pane took before the question was asked, so without this it goes on
+    /// offering a Download button for a download already under way.
+    private let onStart: () -> Void
     private let proceed: (URL) -> Void
     private let onFailure: (any Error) -> Void
 
-    /// Read from the transfer's own thread, so it cannot be main-actor state.
-    private let control = Control()
+    /// How far the transfer has got and whether it has been told to stop. Both are read and written
+    /// from the transfer's own thread, so neither can be main-actor state — and both are handed to
+    /// the cache, which is what lets the placeholder card draw this transfer and its Stop button end
+    /// it, rather than the sheet being the only thing that can.
+    private let moved = ByteCounter()
+    private let cancellation = CancellationFlag()
     /// The sheet, once it has been shown. `nil` while the wait is still silent.
     private var alert: NSAlert?
     private var bar: NSProgressIndicator?
@@ -133,11 +159,13 @@ final class RemoteFetchPrompt {
     private init(
         entry: FileEntry,
         context: Context,
+        onStart: @escaping () -> Void,
         proceed: @escaping (URL) -> Void,
         onFailure: @escaping (any Error) -> Void
     ) {
         self.entry = entry
         self.context = context
+        self.onStart = onStart
         self.proceed = proceed
         self.onFailure = onFailure
     }
@@ -179,9 +207,19 @@ final class RemoteFetchPrompt {
         // not — so the response says which button ⎋ means (docs/NOTES.md ▸ Localization).
         alert.enableEscapeToCancel(safe: .alertSecondButtonReturn)
 
-        let apply: (NSApplication.ModalResponse) -> Void = { [weak self] response in
+        // Captured **strongly**, and that is the whole of the fix rather than a style choice.
+        // Nothing else holds this object across the sheet: `fetch` makes it in a local, `confirm`
+        // returns the moment `beginSheetModal` has been asked (it is asynchronous), and the alert
+        // retains the *closure*, not us. With `[weak self]` the prompt was therefore gone by the
+        // time anybody could answer — so pressing Download sent `start()` to `nil` and the dialog
+        // simply closed, with no transfer, nothing logged, and the placeholder card still offering
+        // the button. Reported by a user 2026-08-19. The `start()` path never had it, because the
+        // `Task` it launches captures `self` strongly, which is exactly why the two behaved
+        // differently for the same click. No cycle: the closure is AppKit's, released with the
+        // sheet.
+        let apply: (NSApplication.ModalResponse) -> Void = { response in
             guard response == .alertFirstButtonReturn else { return }
-            self?.start()
+            self.start()
         }
         if let window = context.window {
             alert.beginSheetModal(for: window, completionHandler: apply)
@@ -193,35 +231,56 @@ final class RemoteFetchPrompt {
     // MARK: - The transfer
 
     private func start() {
-        let control = control
+        // Both **before** the transfer's task gets a chance to run, and in this order. The record is
+        // what the placeholder card reads to draw a bar instead of a button, and `onStart` is what
+        // asks for that card to be re-drawn — so a redraw arriving first would find nothing running
+        // and put the Download button back under a download already on its way.
+        context.cache.beginExplicitFetch(entry.path, moved: moved, cancellation: cancellation)
+        onStart()
+        let moved = moved
+        let cancellation = cancellation
         Task {
             scheduleSheet()
             do {
                 let url = try await context.cache.fetch(
                     entry,
                     using: context.backend,
-                    progress: { control.moved = $0 },
-                    isCancelled: { control.isCancelled }
+                    progress: { moved.value = $0 },
+                    isCancelled: { cancellation.isCancelled }
                 )
-                dismissSheet()
+                finish()
                 proceed(url)
             } catch is CancellationError {
                 // The user's own answer, already on screen. Nothing to report, and nothing left on
                 // disk — the cache removed the partial.
-                dismissSheet()
+                finish()
             } catch {
-                dismissSheet()
+                finish()
                 onFailure(error)
             }
         }
     }
 
+    /// Take down whatever was reporting this transfer, however it ended: the sheet if one went up,
+    /// and the cache's record of it — which the card reads, and which a *stopped* transfer keeps
+    /// (see `RemoteFileCache.endExplicitFetch`) so the card can say so.
+    private func finish() {
+        dismissSheet()
+        context.cache.endExplicitFetch(entry.path)
+    }
+
     /// Show the sheet if the transfer is still running once `sheetDelay` has passed, and keep its
     /// bar following the byte counter until it is taken down.
     private func scheduleSheet() {
+        // The placeholder card is already naming this file, drawing its bar and offering Stop, in
+        // the surface the preview itself is about to appear in. A modal sheet on top of it reports
+        // the same bytes twice and takes the keyboard away from the list to do it.
+        guard !context.hasProgressSurface else { return }
         Task {
             try? await Task.sleep(for: Self.sheetDelay)
-            guard !isFinished, !control.isCancelled, let window = context.window else { return }
+            guard !isFinished, !cancellation.isCancelled, let window = context.window else {
+                return
+            }
             let alert = NSAlert()
             alert.messageText = String(
                 localized: "Downloading “\(entry.name)”…",
@@ -253,7 +312,7 @@ final class RemoteFetchPrompt {
             alert.beginSheetModal(for: window) { [weak self] _ in
                 // The only button is Stop, so any response that isn't our own dismissal is one.
                 guard let self, !isFinished else { return }
-                control.isCancelled = true
+                cancellation.isCancelled = true
             }
             await followProgress()
         }
@@ -265,9 +324,9 @@ final class RemoteFetchPrompt {
     /// enough that a hop each time is churn nobody sees, and the sheet only exists for transfers
     /// long enough that a tenth of a second of lag in the bar is invisible.
     private func followProgress() async {
-        while !isFinished, !control.isCancelled, bar != nil {
+        while !isFinished, !cancellation.isCancelled, bar != nil {
             try? await Task.sleep(for: Self.pollInterval)
-            bar?.doubleValue = Double(control.moved)
+            bar?.doubleValue = Double(moved.value)
         }
     }
 
@@ -279,23 +338,5 @@ final class RemoteFetchPrompt {
         guard let alert else { return }
         alert.window.sheetParent?.endSheet(alert.window)
         self.alert = nil
-    }
-
-    /// The two values the transfer's thread and the main actor share: how far it has got, and
-    /// whether it has been told to stop.
-    private final class Control: @unchecked Sendable {
-        private let lock = NSLock()
-        private var _moved: Int64 = 0
-        private var _isCancelled = false
-
-        var moved: Int64 {
-            get { lock.withLock { _moved } }
-            set { lock.withLock { _moved = newValue } }
-        }
-
-        var isCancelled: Bool {
-            get { lock.withLock { _isCancelled } }
-            set { lock.withLock { _isCancelled = newValue } }
-        }
     }
 }

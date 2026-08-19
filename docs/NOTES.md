@@ -1702,6 +1702,30 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
     button and is not one. Verify Escape on such a sheet with
     `NSWindow.performKeyEquivalent(with:)`; Return is not reachable that way at all, since it is no
     longer a key equivalent.
+- **A dialog's answer arrives at *nothing* if the object that asked the question is not retained
+  across the sheet — and `[weak self]` in the completion handler is how that is written.**
+  `RemoteFetchPrompt.confirm` did: `fetch` builds the prompt in a local, `beginSheetModal` returns
+  immediately, and the alert retains the **closure**, not the object it captured weakly — so by the
+  time anyone could press **Download** the prompt was gone and `self?.start()` was a no-op. What the
+  user sees is a dialog that closes and does nothing at all: no transfer, no error, nothing logged,
+  and the placeholder card behind it still offering the same button. Reported 2026-08-19 on a 14,5 MB
+  S3 object under ⌃Q. The tell that makes it findable is a *sibling path that works* — the
+  no-question path called `start()` directly, which launches a `Task` that captures `self` strongly,
+  so the identical click downloaded the file whenever nothing had been asked. Capture strongly: the
+  closure is AppKit's and dies with the sheet, so there is no cycle, and a `[weak self]` reflex is
+  exactly wrong wherever the closure is the only thing holding the object alive.
+  - **It is testable, and the test is what settles that the diagnosis is right rather than
+    plausible.** A real `NSAlert` on a real `NSWindow` (never ordered front — a sheet attaches and
+    answers without it), `performClick(nil)` on its default button, and the assertion is the
+    *backend's* copy count: every decision in the broken version was correct, so only "was the
+    transfer asked for" can separate the two. Reverted, it reads `copyCount → 0`.
+  - **On macOS 26 a modern alert's confirming button carries no `keyEquivalent` at all** — dumped
+    from a live sheet, the two buttons read `Cancel ke="\u{1B}"` and `Download ke=""`, with Return on
+    the window's **`defaultButtonCell`**. This file already recorded that shape for a sheet holding a
+    text-field accessory; it is true of a plain one too, so a scan for `"\r"` finds nothing and reads
+    as the dialog having no default button. `window.defaultButtonCell?.controlView as? NSButton` is
+    the way in — and never a title match, which passes in English and fails in thirteen languages.
+
 - **An `NSAlert` reserves vertical space for its `accessoryView` from that view's *frame*, so a
   pure-Auto-Layout accessory (only `translatesAutoresizingMaskIntoConstraints = false` + internal
   constraints) reports a **zero frame** and the alert draws it *overlapping* the informative text.**
@@ -3933,6 +3957,27 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   pipelines satisfy both gates automatically, so this is a local-verification problem only.
 
 ## Design lessons that generalize
+
+- **One transfer with two things reporting it is one reporter too many, and the modal one is the one
+  to withdraw.** A remote preview download had a placeholder card standing exactly where the preview
+  will appear — naming the file, its size, a determinate bar and Stop — *and* a deferred progress
+  **sheet** that went up over it after 1200 ms. Not merely untidy: the sheet is modal, so it covered
+  the card that was already answering the question and took the keyboard off the file list to do it.
+  What makes the choice easy is asking who is standing where the user is looking; what makes the fix
+  small is that the two were already computing the same two values, so the explicit transfer now
+  registers its byte counter and its cancel flag with the same cache the cursor-following one uses,
+  and one card draws either. The sheet stays for the callers that genuinely have no surface
+  (⌘Y with the preview mode off, ⏎, F4) — "get rid of the redundant dialog" is a rule about
+  redundancy, and deleting it outright would leave those with nothing at all.
+  - **A progress surface drawn from a snapshot needs telling when the transfer *starts*, and that is
+    not the same moment as the call.** A confirmed fetch begins when the user answers the dialog,
+    long after the caller returned and the card was drawn — so without an `onStart` hook the card
+    goes on offering a Download button over a download already running, which is the bug the fix was
+    for, wearing different clothes.
+  - **Widening who may report also widens who may *start*.** With the explicit fetch visible, the
+    cursor-following one had to stand aside for a row already spoken for, or the redraw the Download
+    button itself causes issues a second transfer of the same object — measured, the control fails at
+    two copies where the rule allows one.
 
 - **An opt-in seam whose default is "can't help, do it the slow way" fails with no symptom at all,
   which makes it the one kind of missing wiring nothing on screen can report.** `VFSBackend

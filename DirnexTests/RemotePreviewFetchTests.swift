@@ -65,7 +65,7 @@ struct RemotePreviewFetchTests {
         await settle { false }
 
         #expect(backend.copyCount == 0)
-        #expect(cache.automaticState(for: entry) == nil)
+        #expect(cache.previewFetchState(for: entry) == nil)
         #expect(cache.cachedURL(for: entry) == nil)
     }
 
@@ -101,17 +101,17 @@ struct RemotePreviewFetchTests {
         let entry = Fixture.entry("a.txt")
         let settled = Landing()
 
-        #expect(cache.automaticState(for: entry) == nil)
+        #expect(cache.previewFetchState(for: entry) == nil)
         cache.scheduleAutomaticFetch(entry, using: backend) { settled.times += 1 }
         // Immediately, not once the bytes arrive: the placeholder card drawn on this very delivery
         // has to say a download is on its way rather than that none is.
-        #expect(cache.automaticState(for: entry) == .running)
+        #expect(cache.previewFetchState(for: entry) == .running)
         await settle { settled.times > 0 }
 
         #expect(settled.times == 1)
         #expect(cache.cachedURL(for: entry) != nil)
         // Cleared on success, so the next delivery reads "nothing pending" and finds the bytes.
-        #expect(cache.automaticState(for: entry) == nil)
+        #expect(cache.previewFetchState(for: entry) == nil)
     }
 
     /// A failure is reported to the caller once and then *remembered*, and both halves matter. The
@@ -127,7 +127,7 @@ struct RemotePreviewFetchTests {
 
         cache.scheduleAutomaticFetch(entry, using: backend) { settled.times += 1 }
         await settle { settled.times > 0 }
-        #expect(cache.automaticState(for: entry) == .failed)
+        #expect(cache.previewFetchState(for: entry) == .failed)
 
         // What every later preview delivery for this row does — including the one the report above
         // triggered.
@@ -150,8 +150,8 @@ struct RemotePreviewFetchTests {
 
         cache.scheduleAutomaticFetch(Fixture.entry("a.txt"), using: backend, onSettled: {})
 
-        #expect(cache.automaticState(for: Fixture.entry("a.txt")) == .running)
-        #expect(cache.automaticState(for: Fixture.entry("b.txt")) == nil)
+        #expect(cache.previewFetchState(for: Fixture.entry("a.txt")) == .running)
+        #expect(cache.previewFetchState(for: Fixture.entry("b.txt")) == nil)
         cache.cancelAutomaticFetch()
         await settle { false }
     }
@@ -170,9 +170,9 @@ struct RemotePreviewFetchTests {
 
         cache.scheduleAutomaticFetch(entry, using: backend, onSettled: {})
         await settle { backend.copyCount == 1 }
-        cache.stopAutomaticFetch()
+        cache.stopPreviewFetch()
 
-        #expect(cache.automaticState(for: entry) == .stopped)
+        #expect(cache.previewFetchState(for: entry) == .stopped)
         // What the redraw does, and what every later cursor step on this row would do.
         for _ in 0..<3 {
             cache.scheduleAutomaticFetch(entry, using: backend, onSettled: {})
@@ -194,10 +194,10 @@ struct RemotePreviewFetchTests {
 
         cache.scheduleAutomaticFetch(entry, using: backend, onSettled: {})
         await settle { backend.copyCount == 1 }
-        cache.stopAutomaticFetch()
+        cache.stopPreviewFetch()
         cache.cancelAutomaticFetch()
 
-        #expect(cache.automaticState(for: entry) == nil)
+        #expect(cache.previewFetchState(for: entry) == nil)
     }
 
     /// What the card's progress bar reads while a download runs. The transfer reports from its own
@@ -211,16 +211,16 @@ struct RemotePreviewFetchTests {
         let entry = Fixture.entry("a.txt")
 
         // Nothing running: no number, rather than a zero that would draw as a stalled bar.
-        #expect(cache.automaticProgress(for: entry) == nil)
+        #expect(cache.previewFetchProgress(for: entry) == nil)
         cache.scheduleAutomaticFetch(entry, using: backend, onSettled: {})
-        await settle { cache.automaticProgress(for: entry) == CountingBackend.blockedChunk }
+        await settle { cache.previewFetchProgress(for: entry) == CountingBackend.blockedChunk }
 
-        #expect(cache.automaticProgress(for: entry) == CountingBackend.blockedChunk)
-        #expect(cache.automaticProgress(for: Fixture.entry("b.txt")) == nil)
+        #expect(cache.previewFetchProgress(for: entry) == CountingBackend.blockedChunk)
+        #expect(cache.previewFetchProgress(for: Fixture.entry("b.txt")) == nil)
 
         cache.cancelAutomaticFetch()
         await settle { backend.wasCancelledMidTransfer }
-        #expect(cache.automaticProgress(for: entry) == nil)
+        #expect(cache.previewFetchProgress(for: entry) == nil)
     }
 
     /// Poll until `isDone`, or until comfortably past the settle delay — `await`, never a run-loop

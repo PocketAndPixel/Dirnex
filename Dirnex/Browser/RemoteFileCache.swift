@@ -146,14 +146,22 @@ final class RemoteFileCache {
 
     // MARK: - The fetch nobody pressed a key for
 
-    /// What the cursor-following fetch is doing for the row a preview placeholder stands in for.
-    enum AutomaticState: Equatable {
+    /// What the fetch standing behind the row a preview placeholder draws is doing — whichever
+    /// gesture started it.
+    ///
+    /// One vocabulary for both kinds, because the card that reads it draws one thing: a download of
+    /// this file, its bar, and the button that calls it off. Which gesture asked for it decides
+    /// where the bytes are *reported* (▸ the two sections below), never what the user is told.
+    enum PreviewFetchState: Equatable {
         /// Scheduled — still inside the settle delay — or transferring.
         case running
         /// The last automatic attempt for this row failed. Held until the cursor moves off it, and
         /// held for two reasons: the card has to say so rather than sitting on "hasn't been
         /// downloaded" while nothing is happening, and it is what stops the next delivery starting
         /// the same doomed transfer again.
+        ///
+        /// Reachable from the automatic path only: an explicit gesture reports its failure in an
+        /// alert naming the real error, and the card then goes back to offering its button.
         case failed
         /// The user pressed Stop on this row.
         ///
@@ -180,20 +188,29 @@ final class RemoteFileCache {
     /// arrowing across a folder of large objects.
     private var automatic: AutomaticFetch?
 
-    /// The state of the automatic fetch standing behind `entry`, or `nil` when none is.
-    func automaticState(for entry: FileEntry) -> AutomaticState? {
+    /// The state of the fetch standing behind `entry`, or `nil` when none is.
+    ///
+    /// The explicit record is asked first, and the order is what makes the card honest rather than
+    /// arbitrary: an explicit gesture calls the automatic one off before it starts, so the only way
+    /// both can name this row at once is a leftover the cursor has not cleared yet — and of the two,
+    /// the one somebody pressed a key for is the transfer actually running.
+    func previewFetchState(for entry: FileEntry) -> PreviewFetchState? {
+        if let explicit, explicit.path == entry.path { return explicit.state }
         guard let automatic, automatic.path == entry.path else { return nil }
         return automatic.state
     }
 
-    /// How many bytes the automatic fetch of `entry` has moved so far, or `nil` when none is
-    /// running for that row.
+    /// How many bytes the fetch of `entry` has moved so far, or `nil` when none is running for that
+    /// row.
     ///
     /// A **pull**, deliberately: a fetch reports every chunk, and turning each into a re-delivery of
     /// the whole preview would repaint the surface hundreds of times for a number in one label. The
     /// card polls this instead, which is the shape `RemoteFetchPrompt`'s sheet already uses and for
     /// the same reason.
-    func automaticProgress(for entry: FileEntry) -> Int64? {
+    func previewFetchProgress(for entry: FileEntry) -> Int64? {
+        if let explicit, explicit.path == entry.path {
+            return explicit.state == .running ? explicit.moved.value : nil
+        }
         guard let automatic, automatic.path == entry.path, automatic.state == .running else {
             return nil
         }
@@ -217,6 +234,11 @@ final class RemoteFileCache {
         using backend: any VFSBackend,
         onSettled: @escaping @MainActor () -> Void
     ) {
+        // A row somebody has already pressed a key for is spoken for, whichever way that turned
+        // out: running, it would be a second transfer of the same object beside the one on screen;
+        // stopped, it would start again what the user has just called off — the same argument
+        // ``PreviewFetchState/stopped`` makes for the automatic one, arriving from the other side.
+        if let explicit, explicit.path == entry.path { return }
         if let automatic, automatic.path == entry.path { return }
         cancelAutomaticFetch()
         let pending = AutomaticFetch(path: entry.path)
@@ -258,26 +280,91 @@ final class RemoteFileCache {
         self.automatic = nil
     }
 
-    /// The same, except that the row is **remembered** as stopped — the Stop button rather than the
-    /// cursor moving away. See ``AutomaticState/stopped`` for why the distinction is load-bearing:
-    /// without it a file under the limit cannot be stopped at all, because the delivery that Stop
-    /// itself causes would start it again.
-    func stopAutomaticFetch() {
+    /// Call off whatever the placeholder card is drawing — its Stop button, which since the card
+    /// draws an explicit transfer too has to reach either kind.
+    ///
+    /// The row is **remembered** as stopped rather than forgotten. See ``PreviewFetchState/stopped``
+    /// for why that is load-bearing for the automatic fetch: without it a file under the limit
+    /// cannot be stopped at all, because the delivery that Stop itself causes would start it again.
+    /// It matters for an explicit one for a quieter reason — the card then says the download was
+    /// stopped instead of going back to a sentence about the size, which is a fact about the file
+    /// and not about what just happened.
+    func stopPreviewFetch() {
+        if let explicit, explicit.state == .running {
+            explicit.cancellation.isCancelled = true
+            explicit.state = .stopped
+            return
+        }
         guard let automatic else { return }
         automatic.cancellation.isCancelled = true
         automatic.task?.cancel()
         automatic.state = .stopped
     }
 
+    // MARK: - The fetch somebody did press a key for
+
+    /// The transfer an explicit gesture (⌃Q, ⌘Y, ⏎, F4, or the placeholder card's own Download
+    /// button) is running, so the card can draw *that* download rather than only the one nobody
+    /// asked for.
+    ///
+    /// The transfer itself belongs to `RemoteFetchPrompt`, which owns the question, the failure
+    /// report and the copy — this is only the record of it, so that one preview surface reports one
+    /// download whichever gesture started it. Before it existed the card sat on "files this large
+    /// aren't downloaded automatically", still offering its button, while the bytes it was asking
+    /// for were already on their way, and the only thing drawing them was a second progress dialog
+    /// over the top of it.
+    private var explicit: ExplicitFetch?
+
+    /// Record the transfer `path` is about to run, handing the cache the two boxes the transfer's
+    /// own thread will use: the counter it reports into and the flag it watches.
+    ///
+    /// The boxes are the *caller's*, not copies — the card reads and the Stop button writes the same
+    /// values the transfer is looking at, which is what makes the bar live and Stop actually stop.
+    func beginExplicitFetch(
+        _ path: VFSPath,
+        moved: ByteCounter,
+        cancellation: CancellationFlag
+    ) {
+        explicit = ExplicitFetch(path: path, moved: moved, cancellation: cancellation)
+    }
+
+    /// Forget the record of `path`'s explicit transfer, now that it has finished, failed or
+    /// unwound.
+    ///
+    /// **A stopped one is kept**, and that is the whole subtlety: a stopped transfer ends by
+    /// throwing `CancellationError`, so the unwinding arrives here immediately afterwards and would
+    /// erase the one fact the card is about to state. Nothing is stranded — the next explicit fetch
+    /// of that row replaces it, and no other row can see it.
+    func endExplicitFetch(_ path: VFSPath) {
+        guard let explicit, explicit.path == path, explicit.state == .running else { return }
+        self.explicit = nil
+    }
+
+    /// One row's explicit attempt. No `Task`: the transfer is the prompt's, and what is held here is
+    /// the record of it — which is why cancellation travels through the flag rather than through a
+    /// handle on the work.
+    private final class ExplicitFetch {
+        let path: VFSPath
+        var state: PreviewFetchState = .running
+        let moved: ByteCounter
+        let cancellation: CancellationFlag
+
+        init(path: VFSPath, moved: ByteCounter, cancellation: CancellationFlag) {
+            self.path = path
+            self.moved = moved
+            self.cancellation = cancellation
+        }
+    }
+
     /// One row's automatic attempt: which object, how it is going, and the flag the transfer's own
     /// thread reads to find out it has been abandoned.
     private final class AutomaticFetch {
         let path: VFSPath
-        var state: AutomaticState = .running
+        var state: PreviewFetchState = .running
         var task: Task<Void, Never>?
         /// Both read from the transfer's thread, so neither can be main-actor state — the same shape
-        /// `RemoteFetchPrompt.Control` uses, split into two boxes because they travel separately:
-        /// the flag goes *into* the transfer and the counter comes back out of it.
+        /// `RemoteFetchPrompt` holds for an explicit transfer, split into two boxes because they
+        /// travel separately: the flag goes *into* the transfer and the counter comes back out.
         let cancellation = CancellationFlag()
         let moved = ByteCounter()
 

@@ -13,7 +13,7 @@ import DirnexCore
 /// member costs nothing to look at; a remote one costs a billed request and somebody's bandwidth. So
 /// the passive path — the preview following the cursor — is bounded three ways it cannot exceed
 /// (``prepareRemotePreview()``: a settle delay, a size cap, and abandonment the moment the cursor
-/// leaves), while ``openRemotePreview(alreadyConfirmed:onReady:)``, ⏎ and F4 are keys somebody
+/// leaves), while ``openRemotePreview(alreadyConfirmed:onStarted:onReady:)``, ⏎ and F4 are keys somebody
 /// pressed and may spend whatever the user agrees to. Same fork as Quick View's JavaScript switch
 /// and Enter-vs-Unlock: "is this safe" and "should this happen unasked" are different questions.
 ///
@@ -58,7 +58,7 @@ extension PanelViewController {
     var remotePreviewPlaceholder: RemotePreviewPlaceholder? {
         guard let entry = remoteFileUnderCursor, cachedRemoteFileURL == nil else { return nil }
         let state: RemotePreviewPlaceholder.State = switch host?.remoteFileCache
-            .automaticState(for: entry) {
+            .previewFetchState(for: entry) {
         case .running?: .downloading
         case .failed?: .failed
         case .stopped?: .stopped
@@ -86,24 +86,30 @@ extension PanelViewController {
         return entry.byteSize >= 0 ? .tooLarge : .sizeUnknown
     }
 
-    /// How far the cursor-following fetch has got, for the card's bar to draw — `nil` when nothing is
-    /// running for the row under the cursor. Read on a poll, not pushed, so a chunk-by-chunk report
-    /// cannot turn into a repaint of the whole surface.
+    /// How far the fetch of the row under the cursor has got, for the card's bar to draw — `nil`
+    /// when nothing is running for it. Read on a poll, not pushed, so a chunk-by-chunk report cannot
+    /// turn into a repaint of the whole surface.
+    ///
+    /// Either kind of fetch, and that is what makes the card's bar the *only* progress this mode
+    /// needs: the one the cursor started, and the one a key press did, are one download of one file
+    /// as far as the person watching is concerned.
     var remotePreviewProgress: Int64? {
         guard let entry = remoteFileUnderCursor else { return nil }
-        return host?.remoteFileCache.automaticProgress(for: entry)
+        return host?.remoteFileCache.previewFetchProgress(for: entry)
     }
 
-    /// Stop the cursor-following fetch — the card's Stop button, which is the only way to call off a
-    /// download the app started by itself without moving the cursor off the file you want to look at.
+    /// Stop the fetch the card is drawing — its Stop button, which is the only way to call off a
+    /// download the app started by itself without moving the cursor off the file you want to look
+    /// at, and the only way at all to stop an explicit one now that the modal sheet stands down
+    /// while the card is up.
     ///
-    /// `stopAutomaticFetch`, not `cancelAutomaticFetch`, and the difference is the whole reason the
+    /// `stopPreviewFetch`, not `cancelAutomaticFetch`, and the difference is the whole reason the
     /// button works: the plain cancel *forgets* the row, so the delivery this very press causes would
     /// schedule the download again for anything under the limit. The partial goes either way —
     /// `RemoteFileCache` drops what a cancelled fetch left, since a truncated file renders as damage
     /// rather than as an error.
     func stopRemotePreviewFetch() {
-        host?.remoteFileCache.stopAutomaticFetch()
+        host?.remoteFileCache.stopPreviewFetch()
     }
 
     // MARK: - Following the cursor
@@ -166,10 +172,18 @@ extension PanelViewController {
     /// `alreadyConfirmed` says the gesture has itself put the file's size in front of the user and
     /// been told to go ahead, which is true of exactly one caller: the card draws the name and the
     /// size directly above its Download button, so `RemoteFetchPolicy`'s confirmation would be
-    /// asking a question the click has already answered. It skips the *question* only — the deferred
-    /// progress sheet, Stop, and the failure report all still happen.
+    /// asking a question the click has already answered. It skips the *question* only — Stop and the
+    /// failure report still happen, and so does the deferred progress sheet wherever no placeholder
+    /// card is on screen to draw the transfer itself.
+    ///
+    /// `onStarted` is the other half of that, and it is needed because the two events are genuinely
+    /// apart in time: a confirmed fetch begins when the user answers the dialog, long after this
+    /// returned. The card standing where the preview will be was drawn before the question was
+    /// asked, so unless somebody re-draws it on the answer it goes on offering a Download button for
+    /// a download that is already running.
     func openRemotePreview(
         alreadyConfirmed: Bool = false,
+        onStarted: @escaping @MainActor () -> Void = {},
         onReady: @escaping @MainActor () -> Void
     ) {
         guard let entry = remoteFileUnderCursor, cachedRemoteFileURL == nil else { return }
@@ -177,7 +191,12 @@ extension PanelViewController {
         // and this is also the path that clears a failed attempt, so pressing the button after one
         // tries again instead of finding the row already spoken for.
         host?.remoteFileCache.cancelAutomaticFetch()
-        fetchRemoteFile(entry, for: .preview, alreadyConfirmed: alreadyConfirmed) { [weak self] _ in
+        fetchRemoteFile(
+            entry,
+            for: .preview,
+            alreadyConfirmed: alreadyConfirmed,
+            onStart: onStarted
+        ) { [weak self] _ in
             // The cursor may have moved on during the transfer; showing what it has left behind
             // would put a stranger's file on screen under the current row's name.
             guard self?.remoteFileUnderCursor == entry else { return }
@@ -239,12 +258,16 @@ extension PanelViewController {
         _ entry: FileEntry,
         for purpose: RemoteFetchPurpose,
         alreadyConfirmed: Bool = false,
+        onStart: @escaping @MainActor () -> Void = {},
         then proceed: @escaping @MainActor (URL) -> Void,
         failureMessage: @escaping () -> String
     ) {
         guard let cache = host?.remoteFileCache else { return }
         let context = RemoteFetchPrompt.Context(
-            backend: backend, cache: cache, window: view.window
+            backend: backend,
+            cache: cache,
+            window: view.window,
+            hasProgressSurface: showsRemoteFetchOnPreviewSurface
         )
         let onFailure: (any Error) -> Void = { [weak self] error in
             self?.presentOperationFailure(
@@ -254,13 +277,33 @@ extension PanelViewController {
         }
         if alreadyConfirmed {
             RemoteFetchPrompt.fetchConfirmed(
-                entry, in: context, then: proceed, onFailure: onFailure
+                entry, in: context, onStart: onStart, then: proceed, onFailure: onFailure
             )
         } else {
             RemoteFetchPrompt.fetch(
-                entry, for: purpose, in: context, then: proceed, onFailure: onFailure
+                entry,
+                for: purpose,
+                in: context,
+                onStart: onStart,
+                then: proceed,
+                onFailure: onFailure
             )
         }
+    }
+
+    /// Whether a Quick View placeholder card is standing where this pane's cursor row would be
+    /// previewed, and will therefore draw the transfer itself.
+    ///
+    /// Quick View follows the focused pane's cursor whatever size it is showing at, so a card stands
+    /// for this pane's row exactly when the mode is on and this is that pane. `isActivePanel` is the
+    /// window's own answer to the second half — it is assigned by the same funnel that sets the pane
+    /// `focusedPanel` returns, and once at window load, so it is never the stale `nil` a fallback
+    /// would paper over.
+    ///
+    /// The ⌘Y panel is deliberately not counted: it is Apple's window and cannot be handed a card,
+    /// so with Quick View off the sheet is still the only thing that can report anything at all.
+    private var showsRemoteFetchOnPreviewSurface: Bool {
+        host?.isQuickViewEnabled == true && isActivePanel
     }
 
     /// Watch the downloaded copy so a save is offered back up to the server it came from.

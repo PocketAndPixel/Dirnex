@@ -118,15 +118,16 @@ extension PanelViewController: FileTableViewInput {
             // The same, one kind of elsewhere further out (PLAN.md §M21 Slice 10) — and this is the
             // key that resolves a Quick View placeholder, so the landing fetch re-drives that
             // surface too rather than leaving the card up until the cursor next moves.
-            openRemotePreview { [weak self] in
+            let redrawPreviews: @MainActor () -> Void = { [weak self] in
                 guard let self else { return }
                 refreshQuickLookIfVisible()
-                // The bytes the Quick View placeholder was standing in for have arrived, so the
-                // surface showing that card has to be re-driven — this is the same funnel a cursor
-                // step uses (`updateChrome`), which is where "re-deliver the preview for this pane"
-                // already lives.
+                // The bytes the Quick View placeholder was standing in for have arrived — or have
+                // started arriving — so the surface showing that card has to be re-driven. This is
+                // the same funnel a cursor step uses (`updateChrome`), which is where "re-deliver
+                // the preview for this pane" already lives.
                 host?.panelCursorDidChange(self)
             }
+            openRemotePreview(onStarted: redrawPreviews, onReady: redrawPreviews)
         }
     }
 

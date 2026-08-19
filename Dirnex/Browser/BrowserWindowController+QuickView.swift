@@ -252,7 +252,10 @@ extension BrowserWindowController {
             // The explicit spelling, for the same reason the archive one above is: an arriving key
             // press may spend whatever the user agrees to, where the passive path is capped and
             // silent (PLAN.md §M21 Slice 10).
-            active.openRemotePreview(onReady: onReady)
+            // One closure for both events: a confirmed fetch begins when the user answers the
+            // dialog, i.e. after this delivery drew the card, so without `onStarted` the card goes
+            // on offering a Download button while the download runs behind it.
+            active.openRemotePreview(onStarted: onReady, onReady: onReady)
         } else {
             active.prepareArchivePreview(onReady: onReady)
         }
@@ -298,9 +301,11 @@ extension BrowserWindowController {
     ///
     /// Download goes through `alreadyConfirmed`, because the card the button sits on has already
     /// named the file and its size — `RemoteFetchPolicy`'s own confirmation would be putting the
-    /// same question a second time to somebody who has just answered it by clicking. Stop calls off
-    /// the fetch the app started by itself, which is otherwise only reachable by moving the cursor
-    /// away from the file you are waiting for.
+    /// same question a second time to somebody who has just answered it by clicking. It redraws on
+    /// the transfer *starting* as well as on it landing, which is what turns the card from a button
+    /// into the bar that reports the download — the reason no progress sheet goes up over it. Stop
+    /// calls off whichever fetch that bar is drawing, which is otherwise only reachable by moving
+    /// the cursor away from the file you are waiting for.
     private func previewActions(for active: PanelViewController) -> RemotePreviewActions {
         let redraw: @MainActor () -> Void = { [weak self, weak active] in
             guard let self, let active, isQuickViewEnabled, active === focusedPanel else { return }
@@ -308,7 +313,9 @@ extension BrowserWindowController {
         }
         return RemotePreviewActions(
             download: { [weak active] in
-                active?.openRemotePreview(alreadyConfirmed: true, onReady: redraw)
+                active?.openRemotePreview(
+                    alreadyConfirmed: true, onStarted: redraw, onReady: redraw
+                )
             },
             stop: { [weak active] in
                 active?.stopRemotePreviewFetch()

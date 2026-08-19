@@ -152,6 +152,29 @@ non-empty folder, which hid three folders Finder shows.
 M19 closed on 2026-08-09; M20 opened and closed 2026-08-12 (HISTORY.md). Three things landed
 between M19 and M18, which closed on 2026-08-07, and five after it.
 
+**2026-08-19 — the download dialog's Download button, and the dialog on top of the card.** ⌃Q on a
+14,5 MB object raised the size confirmation, and pressing **Download** closed it and did nothing:
+`RemoteFetchPrompt.confirm` handed its completion `[weak self]` on an object nobody else retained —
+`fetch` builds it in a local, `beginSheetModal` returns at once, and the alert retains the *closure*
+— so the answer arrived at a deallocated prompt. Nothing logged, and the sibling path was fine for
+the reason that hid it: `start()` launches a `Task`, which captures `self` strongly, so the same
+click worked wherever no question was asked. The second half is what the fix made possible. A remote
+transfer had two reporters — the placeholder card that is already standing where the preview will
+be, naming the file and carrying a determinate bar and Stop, and `RemoteFetchPrompt`'s deferred
+*modal* sheet, which went up over it after 1200 ms and took the keyboard off the file list to say the
+same thing. The card now draws every preview download: an explicit fetch registers its counter and
+its cancel flag with `RemoteFileCache` (`beginExplicitFetch`) exactly as the cursor-following one
+does, `previewFetchState`/`previewFetchProgress` answer for either kind, Stop reaches either, and the
+sheet stands down wherever a card is on screen — ⌘Y with Quick View off, ⏎ and F4 keep it, since
+there the sheet is the only thing that can report anything. Two smaller pieces fell out: an explicit
+fetch needed an `onStart` hook, because a confirmed one begins when the user answers rather than when
+the caller returned, and the card was drawn before the question was asked; and `scheduleAutomaticFetch`
+now stands aside for a row an explicit fetch holds, or the redraw the Download button causes issues a
+second transfer of the same object (measured — the control fails at `copyCount == 2`). Pinned by
+seven tests driving a real `NSAlert` sheet on a real window, each fix's negative control failing in
+the reported shape: reverting the capture leaves `copyCount == 0` after a genuine click on the
+dialog's own default button. docs/NOTES.md ▸ AppKit, ▸ Design lessons.
+
 **2026-08-19 — a bucket row expands in a tree.** Tree mode stopped being local-only on 08-17, which
 gave every bucket row in an S3 account pane a disclosure triangle — opening into nothing.
 `S3AccountBackend` answers for its root and nothing deeper by design (everything below a bucket is
