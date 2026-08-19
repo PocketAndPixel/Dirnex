@@ -35,16 +35,6 @@ import Testing
 @Suite("S3 account live integration", .serialized, .enabled(if: S3LiveEnvironment.current != nil))
 @MainActor
 final class S3AccountLiveIntegrationTests {
-    /// The flows under test file a secret on every successful connect — that is what makes walking
-    /// out of a bucket work at all — so running this suite writes over whatever the person running
-    /// it had filed for that account. ``S3LiveKeychainSnapshot`` reads both items before the first
-    /// test and puts them back as the host exits; doing it from **inside the test host** is also the
-    /// only way that costs nothing, since the items belong to this process and `security` at a shell
-    /// would raise an authorization prompt where this raises none.
-    init() {
-        S3LiveKeychainSnapshot.arm()
-    }
-
     /// The windows the panes live in, held so they outlive `pane(_:)` — see its comment for what
     /// they are for. Never ordered front, so nothing appears on screen.
     private var windows: [NSWindow] = []

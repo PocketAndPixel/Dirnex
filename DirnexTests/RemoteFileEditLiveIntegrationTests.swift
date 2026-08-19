@@ -28,13 +28,6 @@ import Testing
 )
 @MainActor
 final class RemoteFileEditLiveIntegrationTests {
-    /// Leaves the fixture account's Keychain items as it found them — see
-    /// ``S3LiveKeychainSnapshot``, whose capture is process-wide precisely because this suite and
-    /// the account suite run concurrently over the same two items.
-    init() {
-        S3LiveKeychainSnapshot.arm()
-    }
-
     // MARK: - Fixtures
 
     private func backend(_ config: S3LiveEnvironment.Config) -> S3Backend {

@@ -141,12 +141,14 @@ extension PanelViewController {
     /// Wraps `restoredTabs` with the empty-fallback: when every persisted tab was dropped (a pane
     /// whose only tab was a remote FTP/SFTP/SMB/S3 folder is the common case — those can't be listed
     /// at launch without reconnecting), open a fresh tab at `defaultPath`, but carry the last-active
-    /// tab's column layout **and view mode** forward. A dropped remote tab is still where the user set
-    /// those widths, and a bare default layout snapped the Date column back to its default 150 on
-    /// every relaunch of a pane whose only tab was remote — while a plain local folder, whose tab *is*
+    /// tab's **column layout, view mode and sort** forward. A dropped remote tab is still where the
+    /// user set those, and a bare default snapped the Date column back to its default 150 on every
+    /// relaunch of a pane whose only tab was remote — while a plain local folder, whose tab *is*
     /// restored, kept its widths, which is exactly the asymmetry that read as a bug. The tree/list
-    /// shape is the second half of that same asymmetry, reported 2026-08-20 against an S3 account
-    /// (`PersistedPane.activeTabViewMode`).
+    /// shape and the sort are the same asymmetry in the two other fields a dropped tab carries, both
+    /// reported 2026-08-20 against an S3 account: a pane set to a tree came back a flat list, and one
+    /// set to newest-first came back sorted by name. See `PersistedPane`'s three `activeTab…`
+    /// properties; anything a fourth field ever adds belongs beside them.
     static func restoredLayout(
         from restoration: PersistedPane?,
         defaultPath: VFSPath,
@@ -156,6 +158,7 @@ extension PanelViewController {
         guard !restored.isEmpty else {
             let fallback = PanelTab(
                 path: defaultPath,
+                sort: restoration?.activeTabSort ?? .default,
                 showHidden: showHidden,
                 columns: restoration?.activeTabColumns
             )

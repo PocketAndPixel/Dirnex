@@ -1,6 +1,5 @@
 import DirnexCore
 import Foundation
-import Security
 
 /// Stores a secret in the login Keychain for anything that has a stable address — every server
 /// protocol Dirnex connects with (PLAN.md §M5 "keychain-stored password auth", extended to FTP and
@@ -17,6 +16,10 @@ import Security
 /// the same call whatever is being filed; what differs per kind is the *key*, which is why that half
 /// lives on the location in the core and this half is generic over it. The type was named
 /// `ServerKeychain` until a vault — which is not a server — needed the identical call.
+///
+/// The Security-framework calls themselves sit one layer down, behind ``SecretStoring``, so a test
+/// host can run on a dictionary instead of the user's login Keychain — see ``InMemorySecretStore``
+/// for what that is worth beyond skipping a dialog.
 enum SecretKeychain {
     /// Save (replacing any existing) the password for `location`. Failures are swallowed — a
     /// Keychain that won't persist shouldn't block an otherwise-good connection, since the live
@@ -25,21 +28,12 @@ enum SecretKeychain {
     @discardableResult
     static func store(password: String, for location: some KeychainAddressable) -> Bool {
         guard !location.hasNoStoredSecret else { return true }
-        removePassword(for: location)
-        var attributes = baseQuery(for: location)
-        attributes[kSecValueData as String] = Data(password.utf8)
-        return SecItemAdd(attributes as CFDictionary, nil) == errSecSuccess
+        return set(Data(password.utf8), for: location)
     }
 
     /// The stored password for `location`, or `nil` if none is filed (or the item can't be read).
     static func password(for location: some KeychainAddressable) -> String? {
-        guard !location.hasNoStoredSecret else { return nil }
-        var query = baseQuery(for: location)
-        query[kSecReturnData as String] = true
-        query[kSecMatchLimit as String] = kSecMatchLimitOne
-        var item: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
-              let data = item as? Data else { return nil }
+        guard !location.hasNoStoredSecret, let data = secret(for: location) else { return nil }
         return String(data: data, encoding: .utf8)
     }
 
@@ -55,33 +49,64 @@ enum SecretKeychain {
         passphrase: ArchivePassphrase,
         for location: some KeychainAddressable
     ) -> Bool {
-        removePassword(for: location)
-        var attributes = baseQuery(for: location)
-        attributes[kSecValueData as String] = passphrase.withUnsafeBytes { Data($0) }
-        return SecItemAdd(attributes as CFDictionary, nil) == errSecSuccess
+        set(passphrase.withUnsafeBytes { Data($0) }, for: location)
     }
 
     /// The stored passphrase for `location`, or `nil` if none is filed.
     static func passphrase(for location: some KeychainAddressable) -> ArchivePassphrase? {
-        var query = baseQuery(for: location)
-        query[kSecReturnData as String] = true
-        query[kSecMatchLimit as String] = kSecMatchLimitOne
-        var item: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
-              let data = item as? Data, !data.isEmpty else { return nil }
+        guard let data = secret(for: location), !data.isEmpty else { return nil }
         return ArchivePassphrase(bytes: data)
     }
 
     /// Remove any stored password for `location` (a no-op if none exists).
     static func removePassword(for location: some KeychainAddressable) {
-        SecItemDelete(baseQuery(for: location) as CFDictionary)
+        set(nil, for: location)
     }
 
-    private static func baseQuery(for location: some KeychainAddressable) -> [String: Any] {
-        [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: type(of: location).keychainService,
-            kSecAttrAccount as String: location.keychainAccount
-        ]
+    // MARK: - The store underneath
+
+    /// Where the bytes go. Resolved **once**, as a `static let`, which is what makes it both
+    /// race-free and impossible for a test to forget to arrange.
+    ///
+    /// A test host gets ``InMemorySecretStore`` — see that type for why reading the real Keychain
+    /// from a rebuilt binary stops a run dead, and for the user's own credential it used to
+    /// overwrite. Everything else gets the login Keychain.
+    static let backing: any SecretStoring =
+        usesInMemoryStore(ProcessInfo.processInfo.environment)
+            ? InMemorySecretStore()
+            : KeychainSecretStore()
+
+    /// Whether this process is a test host: XCTest sets that key in the runner it injects, **and**
+    /// its framework is loaded.
+    ///
+    /// Two signals rather than one because the two ways of being wrong cost wildly different things.
+    /// A false *negative* brings the dialog back — loud, and `SecretStoreTests` fails on it the same
+    /// run. A false *positive* would put the shipping app on a dictionary, so a user's passwords
+    /// would stop being saved with nothing on screen to say so; requiring the framework to actually
+    /// be present rules that out even for someone who happens to have the variable exported in the
+    /// shell they launch from.
+    ///
+    /// Both inputs are parameters so both directions are assertable without arranging a process.
+    static func usesInMemoryStore(
+        _ environment: [String: String],
+        xctestLoaded: Bool = NSClassFromString("XCTestCase") != nil
+    ) -> Bool {
+        environment["XCTestConfigurationFilePath"] != nil && xctestLoaded
+    }
+
+    private static func secret(for location: some KeychainAddressable) -> Data? {
+        backing.secret(
+            service: type(of: location).keychainService,
+            account: location.keychainAccount
+        )
+    }
+
+    @discardableResult
+    private static func set(_ data: Data?, for location: some KeychainAddressable) -> Bool {
+        backing.setSecret(
+            data,
+            service: type(of: location).keychainService,
+            account: location.keychainAccount
+        )
     }
 }

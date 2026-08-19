@@ -78,6 +78,16 @@ struct PersistedPane: Codable {
         guard tabs.indices.contains(activeIndex) else { return tabs.first?.panelViewMode ?? .list }
         return tabs[activeIndex].panelViewMode
     }
+
+    /// The sort the tab that was active when this pane was saved was ordered by — the third and last
+    /// field a dropped tab was carrying, clamped like the two above and added for the same reason.
+    /// A pane whose only tab was remote came back sorted by name ascending however the user had left
+    /// it, so a pane set to newest-first reverted on every relaunch while a pane on a local folder
+    /// kept its order. `.default` when nothing was stored, which is what a fresh tab uses.
+    var activeTabSort: FileSort {
+        guard tabs.indices.contains(activeIndex) else { return tabs.first?.fileSort ?? .default }
+        return tabs[activeIndex].fileSort
+    }
 }
 
 /// Load/save per-pane tab state keyed by a stable pane identifier ("left"/"right").
