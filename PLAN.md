@@ -413,6 +413,80 @@ temp copy. (Its other loose end, §6's derived-data clause,
 closed on 08-09 too — measuring the three leaks it named found none of them real and found a fourth
 that was ours, so it was fixed rather than documented: HISTORY.md §M19 ▸ Follow-up.)
 
+### Planned: segmented S3 downloads
+
+**Not built. Designed and probed 2026-08-20**, after a user reported a 28,5 MB object taking most
+of a minute to preview.
+
+**Nothing is throttled, and the measurement is what says so.** The app's exact download argv from
+`S3ProcessArguments.download` measures **identical to a plain `curl`** on the same object (1.10 /
+0.76 MB/s against 1.08 / 0.86, alternated) — no `--limit-rate` anywhere, no sleep in the transfer
+path, no `~/.curlrc`. A download is **one `curl` and therefore one TCP connection**, and this link
+gives ~1 MB/s on one while carrying far more across several: 1 connection 0.98 MB/s, 4 → 3.13
+aggregate, 8 → 4.49. Whole object, interleaved rounds: **1 segment ~36 s** (26.6, 35.2, 36.0,
+46.7), 2 → median 7.8 s, 4 → 7.0 s, **8 → 5.4 s** (5.7, 3.3, 5.4), 8 winning every round. About
+6,7×. Worth alternating rather than measuring in blocks — variance is large enough that one pair
+of runs proves either direction (2 segments read 6.0 s and 15.4 s in the same set).
+
+**The shape is one `curl -Z --parallel-max N` with an N-section config on stdin**, sections
+separated by `next`, each carrying its own `range`, `output`, credential and `--fail`. Probed on
+the live fixture bucket: 4 sections in 7.9 s with the reassembled bytes **SHA-256 identical** to a
+single-stream reference; all-good runs exit 0 with one `s3-status=206` per section and part files
+of exactly the planned lengths; and a section aimed at a missing key exits **22** with
+`s3-status=404` among the lines, the other parts complete and the failing section's file **not
+created** — so `--fail` holds per section and no `<Error>` document lands under a part's name. It
+was chosen over the alternatives because it needs **no new concurrency anywhere**: `S3CurlRunner`
+already spawns one process, drains both pipes, bounds the wait and terminates on cancel, so one
+`terminate()` still stops every segment. (N processes each writing into one destination at its own
+offset through a seeked `FileHandle` as stdout was probed too and *does* produce a byte-identical
+file — not taken, because it needs concurrent orchestration, N stderr drains and per-segment meters,
+a sparse destination's size having stopped being the byte count.)
+
+Core, pure and tested, mirroring the multipart upload it is the twin of: **`S3DownloadPlan`** (an
+8 MiB threshold, a 4 MiB floor per segment, 8 maximum — the arithmetic modelled on
+`S3MultipartPlan`); **`S3ProcessArguments+Segmented`**, which builds the config text through
+`S3ConfigFile.quote` so the security-sensitive half stays testable without spawning anything, and
+gives each section a **segment-indexed** write-out (`s3-seg3-status=…`) so the parse cannot be
+broken by sections interleaving on stderr — designed out rather than probed, since it would be
+intermittent; **`S3SegmentAssembly`**, appending each part into the destination and **deleting it as
+soon as it is appended**, which is what keeps peak disk at ~1× the object rather than 2× and is the
+only reason a temp-file shape is affordable for a large file; and **`S3Backend+Segmented`** for the
+orchestration. The transport gains one requirement whose default **forwards** to the plain
+`download` — safe here where `S3WriteCondition`'s default has to throw, because a segmented and a
+single-stream download produce the identical file and no caller is believing in a protection that
+went missing. The app gets a `configuration:` parameter on `S3CurlRunner.run` and a
+`.destinationFiles([String])` progress source, which keeps progress **exact and free** (the parts
+are local files that grow) instead of parsing a meter.
+
+**The size the plan needs rides in, rather than being asked for.** `VFSBackend` gains an additive
+`copyFile` spelling carrying an optional `expectedSize`, defaulted to forward to today's — the
+pattern `S3Transport` already uses for `condition`. Both real callers already hold the number
+(`CopyEngine.copyManual`'s `entry.byteSize`, `RemoteFileCache.fetch`'s entry), so it costs **no
+extra request anywhere** and, with no hint, behaviour is exactly today's — single stream, no size
+probe, and the *"a fresh download never pays for a size probe"* test standing unchanged. The
+alternative was a HEAD per download, which is a full handshake (~0.5 s TTFB measured for a small
+object, since every `curl` re-signs and re-connects) and would roughly double the latency of the
+small files Quick View fetches constantly.
+
+**`CompositeBackend` must forward the new spelling, and that is the one failure with no symptom.**
+The app holds a composite, so an unforwarded hint means every download quietly inherits the
+single-stream default — same rows, same bytes, same correctness, just slow. It is the
+`subtreeListing` shape NOTES.md already records, so the test has to separate *routed* from
+*answered*, with the narrowness control that a local-disk copy still takes the plain path.
+
+Three things are given up on purpose. **Resume after cancel** goes on the segmented path — today a
+cancelled download leaves a partial the next `-C -` continues from, and a cancelled segmented one
+deletes its parts; the arithmetic settles it rather than excusing it, since restarting at 6,7×
+costs less wall clock than resuming the remainder at 1×, and anything below the threshold or with a
+partial already on disk still takes the resuming path untouched. **N requests instead of 1** above
+the threshold, on a verb billed per thousand. And the segment count stays a **policy constant
+measured on one link** — re-measure with interleaved rounds before tuning it.
+
+Scope is **S3 downloads only**. Multipart *upload* is still sequential (`S3Backend+Multipart`
+loops parts one at a time) and has the same headroom; FTP could take the same shape, since `--range`
+works there too, but each segment is a fresh login and many servers cap concurrent ones. Both are
+separate decisions, neither taken.
+
 ## 5. Cross-cutting: testing strategy
 
 | Layer | Approach |
