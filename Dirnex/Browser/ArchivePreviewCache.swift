@@ -77,14 +77,15 @@ final class ArchivePreviewCache {
             extracted[member] = url
             return url
         }
-        let extraction = try await Task.detached(priority: .userInitiated) {
-            () throws -> ArchiveExtractor.Extraction in
-            try ArchiveExtractor.extract(
-                innerPaths: [member.innerPath],
-                fromArchiveAt: member.archivePath,
-                passphrase: passphrase
-            )
-        }.value
+        let extraction = try await BlockingWork.run {
+            Result {
+                try ArchiveExtractor.extract(
+                    innerPaths: [member.innerPath],
+                    fromArchiveAt: member.archivePath,
+                    passphrase: passphrase
+                )
+            }
+        }.get()
         if extraction.isWholeArchive {
             wholeArchiveExtractions[member.archivePath] = extraction.directory
         }

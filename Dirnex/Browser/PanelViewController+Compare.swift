@@ -125,13 +125,13 @@ extension PanelViewController {
             )
         )
         Task { [weak self] in
-            let outcome = await Task.detached(priority: .userInitiated) {
+            let outcome = await BlockingWork.run {
                 Result { try ByteComparator.prescan(
                     left,
                     right,
                     allowDataless: downloadingPlaceholders
                 ) }
-            }.value
+            }
             guard let self else { return }
             switch outcome {
             case .success(.identical):

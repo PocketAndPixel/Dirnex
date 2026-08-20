@@ -25,17 +25,19 @@ enum SubtreeSearchRunner {
         limit: Int = SpotlightSearchRunner.resultLimit,
         control: SearchControl
     ) async throws -> SubtreeSearch.Results {
-        try await Task.detached(priority: .userInitiated) {
-            try SubtreeSearch.find(
-                under: scope,
-                using: backend,
-                matching: predicate,
-                budget: .forBackend(scope.backend),
-                limit: limit,
-                isCancelled: { control.isStopped },
-                onProgress: { control.report($0) }
-            )
-        }.value
+        try await BlockingWork.run {
+            Result {
+                try SubtreeSearch.find(
+                    under: scope,
+                    using: backend,
+                    matching: predicate,
+                    budget: .forBackend(scope.backend),
+                    limit: limit,
+                    isCancelled: { control.isStopped },
+                    onProgress: { control.report($0) }
+                )
+            }
+        }.get()
     }
 }
 

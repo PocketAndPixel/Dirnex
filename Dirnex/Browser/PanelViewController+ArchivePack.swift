@@ -294,15 +294,17 @@ extension PanelViewController {
         let archivePath = target.path
         Task {
             do {
-                try await Task.detached(priority: .userInitiated) {
-                    try ArchivePacker.pack(
-                        sourceNames: sourceNames,
-                        inDirectory: sourceDirectory,
-                        toArchiveAt: archivePath,
-                        format: format,
-                        level: level
-                    )
-                }.value
+                try await BlockingWork.run {
+                    Result {
+                        try ArchivePacker.pack(
+                            sourceNames: sourceNames,
+                            inDirectory: sourceDirectory,
+                            toArchiveAt: archivePath,
+                            format: format,
+                            level: level
+                        )
+                    }
+                }.get()
                 destinationPane.refreshCurrentDirectory(selecting: target)
             } catch {
                 presentOperationFailure(

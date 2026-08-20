@@ -48,11 +48,13 @@ extension PanelViewController {
         // An encrypted archive is rewritten through libarchive and needs the passphrase — asked for
         // once per archive per session by the shared funnel, which also owns the retry on a typo.
         withArchivePassphrase(forArchiveAt: archivePath) { passphrase in
-            try await Task.detached(priority: .userInitiated) {
-                try ArchiveWriter.delete(
-                    innerPaths: innerPaths, fromArchiveAt: archivePath, passphrase: passphrase
-                )
-            }.value
+            try await BlockingWork.run {
+                Result {
+                    try ArchiveWriter.delete(
+                        innerPaths: innerPaths, fromArchiveAt: archivePath, passphrase: passphrase
+                    )
+                }
+            }.get()
         } onSuccess: { [weak self] in
             guard let self else { return }
             // The mounted TOC is now stale — drop it so the re-list re-reads the rewritten archive.

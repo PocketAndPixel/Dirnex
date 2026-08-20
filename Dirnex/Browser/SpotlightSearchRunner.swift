@@ -49,7 +49,7 @@ enum SpotlightSearchRunner {
         let kept = paths.prefix(resultLimit)
         guard !kept.isEmpty else { return Results(entries: [], truncated: false) }
 
-        return await Task.detached(priority: .userInitiated) {
+        return await BlockingWork.run {
             var entries: [FileEntry] = []
             entries.reserveCapacity(kept.count)
             for path in kept {
@@ -58,7 +58,7 @@ enum SpotlightSearchRunner {
                 }
             }
             return Results(entries: entries, truncated: paths.count > kept.count)
-        }.value
+        }
     }
 
     /// The paths matching `query`, as `mdfind` reports them — unstatted and **uncapped**.
@@ -80,9 +80,9 @@ enum SpotlightSearchRunner {
     /// where a `FileQuery` isn't the source. Empty for an empty vector or any `mdfind` failure.
     private static func paths(arguments: [String]) async -> [String] {
         guard !arguments.isEmpty else { return [] }
-        return await Task.detached(priority: .userInitiated) {
+        return await BlockingWork.run {
             runMdfind(arguments: arguments)
-        }.value
+        }
     }
 
     /// Spawn `mdfind` and collect its newline-delimited absolute paths. Returns an empty list on

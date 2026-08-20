@@ -122,7 +122,7 @@ extension PanelViewController {
         let backend = backend
         let container = SidebarLocations.iCloudDrive()
         Task {
-            let gathered = await Task.detached(priority: .userInitiated) { () -> ICloudGather in
+            let gathered = await BlockingWork.run { () -> ICloudGather in
                 let loose = container.flatMap { try? backend.listDirectory(at: $0) } ?? []
                 let scan = ICloudDrive.appLibraries()
                 let rows = scan.libraries.compactMap { library -> FileEntry? in
@@ -137,7 +137,7 @@ extension PanelViewController {
                     sources: [container].compactMap { $0 } + rows.map(\.path),
                     isRestricted: scan.isRestricted
                 )
-            }.value
+            }
 
             // The icons are decoded on the main actor, from the cache the scan just named, so the
             // rows can render an app's own icon rather than a generic folder.

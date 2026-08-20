@@ -37,9 +37,9 @@ final class SMBMounter {
         }
 
         let alreadyMounted = Self.mountedVolumePaths()
-        let outcome = await Task.detached(priority: .userInitiated) {
+        let outcome = await BlockingWork.run {
             Self.netfsMount(location, username: username, password: password)
-        }.value
+        }
 
         guard outcome.status == 0, let mountPoint = outcome.mountPoint else {
             throw SMBMountError(status: outcome.status, host: location.host)

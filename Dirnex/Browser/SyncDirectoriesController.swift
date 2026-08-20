@@ -101,7 +101,7 @@ final class SyncDirectoriesController: NSViewController {
         let right = rightDir
         let comparison = comparison
         Task {
-            let outcome = await Task.detached(priority: .userInitiated) { () -> Result<
+            let outcome = await BlockingWork.run { () -> Result<
                 [SyncEntry],
                 any Error
             > in
@@ -114,7 +114,7 @@ final class SyncDirectoriesController: NSViewController {
                 } catch {
                     return .failure(error)
                 }
-            }.value
+            }
             finishScan(outcome)
         }
     }

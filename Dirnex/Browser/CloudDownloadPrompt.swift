@@ -64,9 +64,9 @@ final class CloudDownloadPrompt {
         then proceed: @escaping () -> Void
     ) {
         Task {
-            let evicted = await Task.detached(priority: .userInitiated) {
+            let evicted = await BlockingWork.run {
                 paths.compactMap { try? backend.stat(at: $0) }.filter(\.isDataless)
-            }.value
+            }
             materialize(evicted[...], using: backend, over: window, then: proceed)
         }
     }
@@ -117,9 +117,11 @@ final class CloudDownloadPrompt {
             do {
                 // The syscall only *asks*; it returns long before any byte arrives, which is why the
                 // waiting below reads the item's own attributes rather than trusting this call.
-                try await Task.detached(priority: .userInitiated) {
-                    try FileManager.default.startDownloadingUbiquitousItem(at: url)
-                }.value
+                try await BlockingWork.run {
+                    Result {
+                        try FileManager.default.startDownloadingUbiquitousItem(at: url)
+                    }
+                }.get()
             } catch {
                 report(detail: (error as NSError).localizedDescription)
                 return
@@ -163,7 +165,7 @@ final class CloudDownloadPrompt {
     /// rides along with perfectly healthy transfers, and reading it as a failure would abandon a
     /// download that was about to arrive.
     private static func read(_ path: VFSPath, using backend: any VFSBackend) async -> CloudItemReading {
-        await Task.detached(priority: .userInitiated) {
+        await BlockingWork.run {
             let isDataless = (try? backend.stat(at: path))?.isDataless ?? false
             let attributes = (try? CloudSyncStorage.attributes(at: path)) ?? CloudItemAttributes()
             return CloudItemReading(
@@ -174,7 +176,7 @@ final class CloudDownloadPrompt {
                 isDownloading: attributes.isDownloading,
                 downloadingError: attributes.downloadingError.flatMap(verdict)
             )
-        }.value
+        }
     }
 
     // MARK: - The sheet

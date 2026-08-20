@@ -144,9 +144,11 @@ extension PanelViewController {
         let backend = backend
         Task {
             do {
-                try await Task.detached(priority: .userInitiated) {
-                    try backend.createDirectory(at: target)
-                }.value
+                try await BlockingWork.run {
+                    Result {
+                        try backend.createDirectory(at: target)
+                    }
+                }.get()
                 refreshCurrentDirectory(selecting: target)
                 focusTable()
                 host?.recordUndoableAction(.newFolder(at: target))
@@ -300,7 +302,7 @@ extension PanelViewController {
         let paths = targets.map(\.path)
         let backend = backend
         Task {
-            let result = await Task.detached(priority: .userInitiated) { () -> DeleteResult in
+            let result = await BlockingWork.run { () -> DeleteResult in
                 var failures: [OperationFailure] = []
                 var restorations: [TrashRestoration] = []
                 for path in paths {
@@ -320,7 +322,7 @@ extension PanelViewController {
                     }
                 }
                 return DeleteResult(failures: failures, restorations: restorations)
-            }.value
+            }
 
             panel.clearSelection()
             refreshCurrentDirectory()

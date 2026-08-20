@@ -1,5 +1,6 @@
 import AppKit
 import CoreImage
+import DirnexCore
 import UniformTypeIdentifiers
 
 /// Core Image's RAW pipeline, which is how a camera RAW file reaches the image backend.
@@ -117,17 +118,15 @@ extension QuickViewPreviewView {
     /// whose camera model Core Image does not know falls back rather than showing nothing: the
     /// embedded preview is small, but it is the picture.
     private static func loadImage(at url: URL, isRAW: Bool) async -> NSImage? {
-        if isRAW, let decoded = await Task.detached(priority: .userInitiated, operation: {
-            RAWImageDecoder.decode(url)
-        }).value {
+        if isRAW, let decoded = await BlockingWork.run({ RAWImageDecoder.decode(url) }) {
             return NSImage(
                 cgImage: decoded,
                 size: NSSize(width: decoded.width, height: decoded.height)
             )
         }
-        let data = await Task.detached(priority: .userInitiated) {
+        let data = await BlockingWork.run {
             try? Data(contentsOf: url, options: .mappedIfSafe)
-        }.value
+        }
         return data.flatMap(NSImage.init(data:))
     }
 

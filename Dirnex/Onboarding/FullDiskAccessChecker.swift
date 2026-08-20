@@ -13,9 +13,9 @@ enum FullDiskAccessChecker {
     /// Probe the real home directory and return the verdict, off the main thread.
     static func currentStatus() async -> FullDiskAccessStatus {
         let home = FileManager.default.homeDirectoryForCurrentUser
-        return await Task.detached(priority: .utility) {
+        return await BlockingWork.run(qos: .utility) {
             status(inHomeDirectory: home)
-        }.value
+        }
     }
 
     /// The synchronous probe against a given home directory — the seam the async entry point fills

@@ -30,9 +30,9 @@ enum RecursiveApplyConfirmation {
     ) {
         let target = job.target
         Task { @MainActor in
-            let count = await Task.detached(priority: .userInitiated) {
+            let count = await BlockingWork.run {
                 AttributeApplyRunner.count(sources: sources, target: target, using: backend)
-            }.value
+            }
             present(count: count, job: job, in: window, proceed: proceed)
         }
     }

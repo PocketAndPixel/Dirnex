@@ -44,9 +44,9 @@ enum UserScriptRunner {
     ) {
         let invocations = script.invocations(in: context, shell: shell)
         Task {
-            let failures = await Task.detached(priority: .userInitiated) { () -> [InvocationFailure] in
+            let failures = await BlockingWork.run { () -> [InvocationFailure] in
                 invocations.compactMap(runOne)
-            }.value
+            }
             completion(RunOutcome(script: script, total: invocations.count, failures: failures))
         }
     }

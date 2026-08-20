@@ -225,11 +225,11 @@ extension PanelViewController {
             activityName
         ) } }
 
-        let result = await Task.detached(priority: .userInitiated) { () -> Result<String, Error> in
+        let result = await BlockingWork.run { () -> Result<String, Error> in
             do { return .success(try transport.resolveHomeDirectory()) } catch { return .failure(
                 error
             ) }
-        }.value
+        }
         guard token == loadToken else { return .succeeded } // the pane moved on while we probed
 
         switch result {
@@ -379,9 +379,9 @@ extension PanelViewController {
     private func repairKnownHosts(location: SFTPLocation, change: SFTPHostKeyChange) async -> Bool {
         let target = SFTPKnownHosts.removalTarget(host: location.host, port: location.port)
         let file = change.knownHostsFile
-        return await Task.detached(priority: .userInitiated) {
+        return await BlockingWork.run {
             SFTPKnownHostsRepair.removeKey(target: target, knownHostsFile: file)
-        }.value
+        }
     }
 
     private static func knownHostsRepairFailed(file: String) -> String {

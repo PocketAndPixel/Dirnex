@@ -136,7 +136,7 @@ extension PanelViewController {
         let paths = entries.map(\.path)
         let backend = backend
         Task {
-            let outcome = await Task.detached(priority: .userInitiated) { () -> EmptyTrashOutcome in
+            let outcome = await BlockingWork.run { () -> EmptyTrashOutcome in
                 var outcome = EmptyTrashOutcome()
                 for path in paths {
                     do {
@@ -149,7 +149,7 @@ extension PanelViewController {
                     }
                 }
                 return outcome
-            }.value
+            }
 
             refreshTrashPanes()
             if let error = outcome.firstError {
@@ -224,7 +224,7 @@ extension PanelViewController {
         let backend = backend
         let directories = SidebarLocations.trashDirectories(volumes: SidebarLocations.volumes())
         Task {
-            let outcome = await Task.detached(priority: .userInitiated) { () -> TrashGather in
+            let outcome = await BlockingWork.run { () -> TrashGather in
                 var entries: [FileEntry] = []
                 for directory in directories {
                     do {
@@ -239,7 +239,7 @@ extension PanelViewController {
                     }
                 }
                 return .listed(entries)
-            }.value
+            }
 
             switch outcome {
             case let .listed(entries): present(entries, directories)

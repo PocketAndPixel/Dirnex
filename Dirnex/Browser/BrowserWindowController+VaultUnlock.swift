@@ -175,13 +175,15 @@ extension BrowserWindowController {
         Task { [weak self] in
             defer { SidebarRowActivity.shared.end(vault.resolvedImagePath) }
             do {
-                let mounted = try await Task.detached(priority: .userInitiated) {
-                    try DiskImageRunner.attach(
-                        atPath: imagePath,
-                        passphrase: passphrase,
-                        showingInFinder: showsInFinder
-                    )
-                }.value
+                let mounted = try await BlockingWork.run {
+                    Result {
+                        try DiskImageRunner.attach(
+                            atPath: imagePath,
+                            passphrase: passphrase,
+                            showingInFinder: showsInFinder
+                        )
+                    }
+                }.get()
                 guard let self else { return }
                 // The volume's real name is only knowable once it is mounted, so this is where a
                 // vault opened from the pane (named after its file) gets the name it will keep.
@@ -230,9 +232,11 @@ extension BrowserWindowController {
         Task { [weak self] in
             defer { SidebarRowActivity.shared.end(vault.resolvedImagePath) }
             do {
-                try await Task.detached(priority: .userInitiated) {
-                    try DiskImageRunner.detach(mountPoint: point, name: name)
-                }.value
+                try await BlockingWork.run {
+                    Result {
+                        try DiskImageRunner.detach(mountPoint: point, name: name)
+                    }
+                }.get()
                 self?.forgetVaultContents(under: point)
                 self?.sidebar.rebuild()
             } catch {

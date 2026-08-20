@@ -105,9 +105,9 @@ extension PanelViewController {
             }
         }
 
-        let result = await Task.detached(priority: .userInitiated) { () -> Result<S3Response, Error> in
+        let result = await BlockingWork.run { () -> Result<S3Response, Error> in
             do { return .success(try transport.probeConnection()) } catch { return .failure(error) }
-        }.value
+        }
         guard token == loadToken else { return .abandoned } // the pane moved on while we probed
 
         switch result {

@@ -85,7 +85,7 @@ extension PanelViewController {
         )
         let backend = backend
         Task {
-            let result = await Task.detached(priority: .userInitiated) { () -> MultiRenameResult in
+            let result = await BlockingWork.run { () -> MultiRenameResult in
                 var renamed: [(original: VFSPath, renamed: VFSPath)] = []
                 var deferred: [(from: VFSPath, to: VFSPath)] = []
                 var failures: [VFSPath] = []
@@ -105,7 +105,7 @@ extension PanelViewController {
                     }
                 }
                 return MultiRenameResult(renamed: renamed, deferred: deferred, failures: failures)
-            }.value
+            }
 
             panel.clearSelection()
             // Land the cursor on the first renamed item's new location.

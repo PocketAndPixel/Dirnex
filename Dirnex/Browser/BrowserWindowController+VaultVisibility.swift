@@ -42,9 +42,9 @@ extension BrowserWindowController {
         SidebarRowActivity.shared.begin(vault.resolvedImagePath)
         Task { [weak self] in
             defer { SidebarRowActivity.shared.end(vault.resolvedImagePath) }
-            let change = await Task.detached(priority: .userInitiated) {
+            let change = await BlockingWork.run {
                 DiskImageRunner.setVisibility(mountPoint: point, showingInFinder: showsInFinder)
-            }.value
+            }
             guard change == .takesEffectOnNextUnlock else { return }
             self?.presentDeferredVisibility(showsInFinder, name: vault.volumeName)
         }

@@ -157,15 +157,17 @@ extension PanelViewController {
         let directories = intermediateDirectories(for: groups, under: destination)
         Task {
             do {
-                try await Task.detached(priority: .userInitiated) {
-                    for directory in directories {
-                        do {
-                            try backend.createDirectory(at: directory)
-                        } catch VFSError.alreadyExists {
-                            continue
+                try await BlockingWork.run {
+                    Result {
+                        for directory in directories {
+                            do {
+                                try backend.createDirectory(at: directory)
+                            } catch VFSError.alreadyExists {
+                                continue
+                            }
                         }
                     }
-                }.value
+                }.get()
             } catch {
                 presentOperationFailure(
                     message: transferFailureTitle(kind),

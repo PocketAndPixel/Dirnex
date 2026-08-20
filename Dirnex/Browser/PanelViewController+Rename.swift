@@ -121,12 +121,14 @@ extension PanelViewController {
         let backend = backend
         Task {
             do {
-                try await Task.detached(priority: .userInitiated) {
-                    if !caseOnlyChange, (try? backend.stat(at: destination)) != nil {
-                        throw VFSError.alreadyExists(destination)
+                try await BlockingWork.run {
+                    Result {
+                        if !caseOnlyChange, (try? backend.stat(at: destination)) != nil {
+                            throw VFSError.alreadyExists(destination)
+                        }
+                        try backend.moveItem(at: source, to: destination)
                     }
-                    try backend.moveItem(at: source, to: destination)
-                }.value
+                }.get()
                 refreshCurrentDirectory(selecting: destination)
                 focusTable()
                 host?.recordUndoableAction(.rename(from: source, to: destination))

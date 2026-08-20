@@ -75,16 +75,18 @@ extension PanelViewController {
         // Enter is an explicit request for the member's bytes, so an encrypted outer archive asks
         // for its passphrase here — once per archive per session (PLAN.md §M19).
         withArchivePassphrase(forArchiveAt: outerArchivePath) { passphrase in
-            try await Task.detached(priority: .userInitiated) { () throws -> String in
-                let extraction = try ArchiveExtractor.extract(
-                    innerPaths: [innerPath],
-                    fromArchiveAt: outerArchivePath,
-                    passphrase: passphrase
-                )
-                // A single member extracts to exactly one location; `ArchiveExtractor` already
-                // threw if nothing landed, so this file exists.
-                return extraction.extractedPaths[0]
-            }.value
+            try await BlockingWork.run { () -> Result<String, any Error> in
+                Result {
+                    let extraction = try ArchiveExtractor.extract(
+                        innerPaths: [innerPath],
+                        fromArchiveAt: outerArchivePath,
+                        passphrase: passphrase
+                    )
+                    // A single member extracts to exactly one location; `ArchiveExtractor` already
+                    // threw if nothing landed, so this file exists.
+                    return extraction.extractedPaths[0]
+                }
+            }.get()
         } onSuccess: { [weak self] mountPath in
             guard let self else { return }
             host?.nestedArchiveRegistry.record(mountOnDiskPath: mountPath, origin: origin)

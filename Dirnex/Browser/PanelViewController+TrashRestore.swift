@@ -98,7 +98,7 @@ extension PanelViewController {
         let paths = entries.map(\.path)
         let backend = backend
         Task {
-            let outcome = await Task.detached(priority: .userInitiated) { () -> PutBackOutcome in
+            let outcome = await BlockingWork.run { () -> PutBackOutcome in
                 var origins = TrashOriginIndex(backend: backend)
                 var outcome = PutBackOutcome()
                 for path in paths {
@@ -109,7 +109,7 @@ extension PanelViewController {
                     outcome.record(origins.putBack(path, to: origin), for: path)
                 }
                 return outcome
-            }.value
+            }
 
             panel.clearSelection()
             refreshTrashPanes()

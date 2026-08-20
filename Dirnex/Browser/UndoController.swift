@@ -82,9 +82,9 @@ final class UndoController {
         switch entry {
         case let .fileOperation(record):
             let backend = backend
-            let report = await Task.detached(priority: .userInitiated) {
+            let report = await BlockingWork.run {
                 UndoJournal.revert(record, using: backend)
-            }.value
+            }
             return .fileOperation(record: record, report: report)
         case let .selection(change):
             return .selection(change)

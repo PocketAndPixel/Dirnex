@@ -5,15 +5,29 @@ import Foundation
 /// the UI without ever blocking the main thread (PLAN.md §1 "listing must never
 /// block the UI").
 ///
-/// The backend's read methods are documented as safe off the main thread, so the
-/// blocking `readdir` walk runs on a detached task; only the resulting `Sendable`
-/// `DirectoryListing` crosses back to the caller's actor.
+/// The backend's read methods are documented as safe off the main thread, so the blocking walk
+/// runs through `BlockingWork` — a thread it is *allowed* to block — and only the resulting
+/// `Sendable` value crosses back to the caller's actor.
+///
+/// **Not `Task.detached`, which is the cooperative pool.** A listing is a blocking call whatever
+/// the backend: `readdir` on this disk, and a real network round trip on a remote one (0.601–0.699 s
+/// per `ListObjectsV2`, measured — docs/NOTES.md ▸ curl for S3). A detached task that blocks parks
+/// one of the pool's workers, and the pool's width is the machine's core count and does not
+/// over-commit — measured here at 16 blocked bodies on a 16-core Mac and **1** under
+/// `LIBDISPATCH_COOPERATIVE_POOL_STRICT=1`. That is the shape `BlockingWork`'s own doc comment was
+/// written for, and the one that failed a CI release build once already.
+///
+/// `sorted` is the deliberate exception: it reads nothing, so the pool is exactly where it belongs.
 enum DirectoryLoader {
     static func list(_ backend: any VFSBackend, at path: VFSPath) async throws -> DirectoryListing {
-        try await Task.detached(priority: .userInitiated) {
-            let entries = try backend.listDirectory(at: path)
-            return DirectoryListing(path: path, entries: entries)
-        }.value
+        // `BlockingWork.run` is deliberately non-throwing, so the backend's error rides back as a
+        // `Result` — the shape `RemoteFileCache.fetch` already uses.
+        try await BlockingWork.run { () -> Result<DirectoryListing, any Error> in
+            Result {
+                let entries = try backend.listDirectory(at: path)
+                return DirectoryListing(path: path, entries: entries)
+            }
+        }.get()
     }
 
     /// List `path` **and** sort it into a ready-to-render `DirectoryModel`, both off the main
@@ -31,21 +45,28 @@ enum DirectoryLoader {
         showHidden: Bool,
         directorySizes: [VFSPath: Int64] = [:]
     ) async throws -> DirectoryModel {
-        try await Task.detached(priority: .userInitiated) {
-            let entries = try backend.listDirectory(at: path)
-            let listing = DirectoryListing(path: path, entries: entries)
-            return DirectoryModel(
-                listing: listing,
-                sort: sort,
-                showHidden: showHidden,
-                directorySizes: directorySizes
-            )
-        }.value
+        try await BlockingWork.run { () -> Result<DirectoryModel, any Error> in
+            Result {
+                let entries = try backend.listDirectory(at: path)
+                let listing = DirectoryListing(path: path, entries: entries)
+                return DirectoryModel(
+                    listing: listing,
+                    sort: sort,
+                    showHidden: showHidden,
+                    directorySizes: directorySizes
+                )
+            }
+        }.get()
     }
 
     /// Re-project an **already-loaded** listing under a new sort/hidden setting off the main
     /// thread — the column-header re-sort and the show-hidden toggle, which change the row order
     /// without re-reading the directory. Same filter/sizes contract as `model`.
+    ///
+    /// **Stays on `Task.detached`, deliberately.** This reads nothing: it is ~350 ms of
+    /// `localizedStandardCompare` on a 100k directory and never blocks on I/O, which is precisely
+    /// the work the cooperative pool exists to run. Sending it to `BlockingWork` would buy nothing
+    /// and give up the pool's core-count parallelism.
     static func sorted(
         _ listing: DirectoryListing,
         sort: FileSort,
@@ -67,9 +88,7 @@ enum DirectoryLoader {
     /// on any failure (not found, permission, …), so the caller treats a missing path the
     /// same as an un-stattable one.
     static func stat(_ backend: any VFSBackend, at path: VFSPath) async -> FileEntry? {
-        await Task.detached(priority: .userInitiated) {
-            try? backend.stat(at: path)
-        }.value
+        await BlockingWork.run { try? backend.stat(at: path) }
     }
 
     /// Recursively total a directory's size off the main thread (Space-on-dir sizing).
@@ -77,17 +96,22 @@ enum DirectoryLoader {
     /// skipped inside `DirectorySizer`, not fatal. Runs at `.utility` — sizing is a
     /// background nicety and must never contend with an interactive listing.
     ///
-    /// **Detached, so it outlives its caller's cancellation** — deliberate for Space-on-dir, where
-    /// the walk the user explicitly asked for should finish and land in the cache even if they
-    /// arrow onward. Size-visualization mode wants the opposite and uses `cancellableSize`.
+    /// **It outlives its caller's cancellation** — deliberate for Space-on-dir, where the walk the
+    /// user explicitly asked for should finish and land in the cache even if they arrow onward.
+    /// Size-visualization mode wants the opposite and uses `cancellableSize`.
+    ///
+    /// `BlockingWork` keeps that property and strengthens it: `withCheckedContinuation` does not
+    /// carry cancellation, so the walk is uncancellable *by construction* rather than by relying on
+    /// a detached task not inheriting it. Nothing here reads a cancellation flag — `DirectorySizer`
+    /// is called with its default `isCancelled`, which is why this one converts with no bridge.
     static func size(
         _ backend: any VFSBackend,
         of path: VFSPath,
         excluding isExcluded: @escaping @Sendable (VFSPath) -> Bool = { _ in false }
     ) async -> Int64? {
-        await Task.detached(priority: .utility) {
+        await BlockingWork.run(qos: .utility) {
             try? DirectorySizer.size(of: path, using: backend, excluding: isExcluded)
-        }.value
+        }
     }
 
     /// The same walk, but abandonable **mid-walk** rather than merely discarded on completion.

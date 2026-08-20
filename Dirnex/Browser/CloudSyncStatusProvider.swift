@@ -151,7 +151,7 @@ private enum CloudSyncScanner {
     /// like any other, and doing it on the main thread to "save a hop" would put a provider round
     /// trip in the way of every folder that opens.
     static func scan(directory: VFSPath, entries: [VFSPath]) async -> CloudSyncSnapshot {
-        await Task.detached(priority: .userInitiated) {
+        await BlockingWork.run {
             guard CloudSyncStorage.isCloudDirectory(directory) else {
                 return CloudSyncSnapshot(statusByPath: [:])
             }
@@ -164,6 +164,6 @@ private enum CloudSyncScanner {
                 statusByPath[path] = status
             }
             return CloudSyncSnapshot(statusByPath: statusByPath)
-        }.value
+        }
     }
 }

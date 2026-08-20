@@ -44,9 +44,9 @@ extension PanelViewController {
             // Stat the dropped items off-main into the entries the engine copies. A URL
             // that can no longer be stat'd (deleted between drag start and drop) is
             // dropped silently rather than failing the whole operation.
-            let sources = await Task.detached(priority: .userInitiated) { () -> [FileEntry] in
+            let sources = await BlockingWork.run { () -> [FileEntry] in
                 urls.compactMap { try? backend.stat(at: VFSPath.local($0.path)) }
-            }.value
+            }
             guard !sources.isEmpty else { return }
             submitTransfer(kind: kind, sources: sources, destination: destination)
             // A drop makes this pane the active one, matching Finder's focus-follows-drop.

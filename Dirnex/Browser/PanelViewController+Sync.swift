@@ -190,7 +190,7 @@ extension PanelViewController {
     private func runSyncDeletes(_ paths: [VFSPath]) {
         let backend = backend
         Task {
-            let restorations = await Task.detached(priority: .userInitiated) { () -> [
+            let restorations = await BlockingWork.run { () -> [
                 (VFSPath, VFSPath)
             ] in
                 var out: [(VFSPath, VFSPath)] = []
@@ -200,7 +200,7 @@ extension PanelViewController {
                     }
                 }
                 return out
-            }.value
+            }
             if let record = UndoRecord.trash(restorations) {
                 host?.recordUndoableAction(record)
             }

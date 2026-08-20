@@ -39,9 +39,9 @@ extension QuickViewPreviewView {
         loadToken += 1
         let token = loadToken
         Task { [weak self] in
-            let scan = await Task.detached(priority: .userInitiated) {
+            let scan = await BlockingWork.run {
                 MarkdownScan.read(url)
-            }.value
+            }
             guard let self, token == loadToken else { return }
             guard let scan else {
                 showText(url)

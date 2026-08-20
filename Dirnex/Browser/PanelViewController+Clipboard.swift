@@ -93,14 +93,14 @@ extension PanelViewController {
         Task {
             // Stat the pasted items off-main into the entries the engine copies, dropping any
             // that have vanished or that would be a no-op / recursion into the destination.
-            let sources = await Task.detached(priority: .userInitiated) { () -> [FileEntry] in
+            let sources = await BlockingWork.run { () -> [FileEntry] in
                 urls.compactMap { url -> FileEntry? in
                     let source = VFSPath.local(url.path)
                     if kind == .move, source.parent == destination { return nil }
                     if pasteRecurses(source: source, into: destination) { return nil }
                     return try? backend.stat(at: source)
                 }
-            }.value
+            }
             guard !sources.isEmpty else { return }
             submitTransfer(kind: kind, sources: sources, destination: destination)
             // The paste makes this the active pane; the window controller re-lists both panes

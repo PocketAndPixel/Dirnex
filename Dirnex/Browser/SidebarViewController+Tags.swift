@@ -212,7 +212,7 @@ extension SidebarViewController {
     /// so stopping would abandon the deletion partway for the sake of the one file that was never
     /// going to work, and leave the tag alive on files that would have let it go.
     private func strip(_ tag: FinderTag, from carriers: [String]) async -> TagStripOutcome {
-        await Task.detached(priority: .userInitiated) {
+        await BlockingWork.run {
             var outcome = TagStripOutcome()
             for path in carriers {
                 do {
@@ -223,7 +223,7 @@ extension SidebarViewController {
                 }
             }
             return outcome
-        }.value
+        }
     }
 
     /// Confirm before rewriting files, naming how many — so that deleting a tag can't quietly turn

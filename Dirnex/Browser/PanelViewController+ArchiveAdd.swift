@@ -29,9 +29,9 @@ extension PanelViewController {
         Task {
             // Gather the destination's real member names (unfiltered — a hidden member still
             // collides on disk) to warn before overwriting anything.
-            let existingNames = await Task.detached(priority: .userInitiated) { () -> [String] in
+            let existingNames = await BlockingWork.run { () -> [String] in
                 ((try? backend.listDirectory(at: destination)) ?? []).map(\.name)
-            }.value
+            }
             let collisions = ArchiveMutation.collidingNames(
                 addingNames: localSources.map(\.name),
                 existingNames: existingNames
@@ -70,9 +70,9 @@ extension PanelViewController {
 
         let backend = backend
         Task {
-            let sources = await Task.detached(priority: .userInitiated) { () -> [FileEntry] in
+            let sources = await BlockingWork.run { () -> [FileEntry] in
                 urls.compactMap { try? backend.stat(at: VFSPath.local($0.path)) }
-            }.value
+            }
             guard !sources.isEmpty else { return }
             beginArchiveAdd(localSources: sources, kind: .copy, from: nil)
             // The paste makes this the active pane, matching the local paste/drop flows.
@@ -128,14 +128,16 @@ extension PanelViewController {
         // As with delete: an encrypted archive rewrites through libarchive, and the passphrase comes
         // from the one funnel that asks once per archive and retries on a typo.
         withArchivePassphrase(forArchiveAt: archivePath) { passphrase in
-            try await Task.detached(priority: .userInitiated) {
-                try ArchiveWriter.add(
-                    localPaths: localPaths,
-                    toInnerDirectory: innerDirectory,
-                    ofArchiveAt: archivePath,
-                    passphrase: passphrase
-                )
-            }.value
+            try await BlockingWork.run {
+                Result {
+                    try ArchiveWriter.add(
+                        localPaths: localPaths,
+                        toInnerDirectory: innerDirectory,
+                        ofArchiveAt: archivePath,
+                        passphrase: passphrase
+                    )
+                }
+            }.get()
         } onSuccess: { [weak self] in
             guard let self else { return }
             // The mounted TOC is now stale — drop it so the re-list re-reads the rewritten archive.
@@ -163,14 +165,14 @@ extension PanelViewController {
         let paths = entries.map(\.path)
         let backend = backend
         Task {
-            let restorations = await Task.detached(priority: .userInitiated) {
+            let restorations = await BlockingWork.run {
                 () -> [(VFSPath, VFSPath)] in
                 var out: [(VFSPath, VFSPath)] = []
                 for path in paths {
                     if let trashed = try? backend.trashItem(at: path) { out.append((path, trashed)) }
                 }
                 return out
-            }.value
+            }
             panel.clearSelection()
             refreshCurrentDirectory()
             focusTable()

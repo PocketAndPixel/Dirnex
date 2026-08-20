@@ -189,13 +189,13 @@ private enum FinderTagScanner {
     /// file) throw `.unsupported` from the core and are skipped: they have no extended attributes,
     /// so they simply have no dots.
     static func scan(_ paths: [VFSPath]) async -> FinderTagSnapshot {
-        await Task.detached(priority: .userInitiated) {
+        await BlockingWork.run {
             var tagsByPath: [VFSPath: [FinderTag]] = [:]
             for path in paths {
                 guard let tags = try? FinderTagStorage.tags(at: path), !tags.isEmpty else { continue }
                 tagsByPath[path] = tags
             }
             return FinderTagSnapshot(tagsByPath: tagsByPath)
-        }.value
+        }
     }
 }

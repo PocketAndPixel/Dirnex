@@ -314,9 +314,9 @@ extension PanelViewController {
             // One `stat` decides the branch: an existing name means *open that file*, which is why
             // `createFile` is `O_EXCL` underneath — a file appearing between this read and the
             // create is reported, never truncated.
-            let existing = await Task.detached(priority: .userInitiated) {
+            let existing = await BlockingWork.run {
                 try? backend.stat(at: target)
-            }.value
+            }
             if let existing {
                 guard existing.kind == .file else {
                     presentOperationFailure(
@@ -335,9 +335,11 @@ extension PanelViewController {
                 return
             }
             do {
-                try await Task.detached(priority: .userInitiated) {
-                    try backend.createFile(at: target)
-                }.value
+                try await BlockingWork.run {
+                    Result {
+                        try backend.createFile(at: target)
+                    }
+                }.get()
                 refreshCurrentDirectory(selecting: target)
                 focusTable()
                 openInEditor(target)

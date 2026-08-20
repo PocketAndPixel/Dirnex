@@ -113,15 +113,17 @@ extension BrowserWindowController {
         Task { [weak self] in
             defer { SidebarRowActivity.shared.end(vault.resolvedImagePath) }
             do {
-                try await Task.detached(priority: .userInitiated) {
-                    try DiskImageRunner.create(
-                        atPath: path,
-                        volumeName: name,
-                        kind: .sparseBundle,
-                        megabytes: megabytes,
-                        passphrase: passphrase
-                    )
-                }.value
+                try await BlockingWork.run {
+                    Result {
+                        try DiskImageRunner.create(
+                            atPath: path,
+                            volumeName: name,
+                            kind: .sparseBundle,
+                            megabytes: megabytes,
+                            passphrase: passphrase
+                        )
+                    }
+                }.get()
                 guard let self else { return }
                 // Saved before it is opened, so a vault that creates and then fails to mount is
                 // still in the sidebar to try again — rather than a file the user has to go and

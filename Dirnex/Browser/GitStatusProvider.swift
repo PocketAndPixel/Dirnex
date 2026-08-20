@@ -58,11 +58,11 @@ final class GitStatusProvider {
     /// someone just deleted) must show up on the next look, and the cost of being right is a few
     /// microseconds per navigation.
     func repositoryRoot(for directory: VFSPath) async -> VFSPath? {
-        await Task.detached(priority: .userInitiated) {
+        await BlockingWork.run {
             GitRepository.repositoryRoot(for: directory) {
                 FileManager.default.fileExists(atPath: $0)
             }
-        }.value
+        }
     }
 
     // MARK: - Snapshots
@@ -97,13 +97,13 @@ private enum GitStatusReader {
     /// no longer a working tree. Runs entirely off the main thread.
     static func read(repositoryRoot: VFSPath) async -> GitStatusSnapshot? {
         guard let executablePath else { return nil }
-        return await Task.detached(priority: .userInitiated) {
+        return await BlockingWork.run {
             guard let porcelain = output(
                 of: executablePath,
                 arguments: GitCommand.status(repositoryRoot: repositoryRoot.path)
             ) else { return nil }
             return GitStatusParser.parse(porcelain: porcelain, repositoryRoot: repositoryRoot)
-        }.value
+        }
     }
 
     /// Run `git` and return its standard output, or `nil` if it could not be spawned or exited

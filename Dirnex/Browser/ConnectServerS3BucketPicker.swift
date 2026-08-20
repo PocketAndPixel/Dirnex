@@ -96,12 +96,12 @@ final class ConnectServerS3BucketPicker {
         }
         beginLoading()
         Task { @MainActor in
-            let outcome = await Task.detached(priority: .userInitiated) {
+            let outcome = await BlockingWork.run {
                 S3BucketLister.buckets(
                     for: resolved.account,
                     secretAccessKey: resolved.secretAccessKey
                 )
-            }.value
+            }
             endLoading()
             present(menuItems(for: outcome))
         }

@@ -93,16 +93,18 @@ extension BrowserWindowController {
         Task { [weak self] in
             defer { SidebarRowActivity.shared.end(vault.resolvedImagePath) }
             do {
-                let landed = try await Task.detached(priority: .userInitiated) {
-                    try DiskImageRunner.renameVolume(mountPoint: mountPoint, to: name)
-                    // Where the volume *actually* ended up, asked rather than assumed: a name
-                    // already in use still renames, and remounts at `/Volumes/<name> 1` (probed),
-                    // and a `/` in the name reaches the path as `:`.
-                    return DiskImageMount.isMounted(
-                        imageAtPath: imagePath,
-                        in: DiskImageRunner.attachedImages()
-                    )
-                }.value
+                let landed = try await BlockingWork.run {
+                    Result {
+                        try DiskImageRunner.renameVolume(mountPoint: mountPoint, to: name)
+                        // Where the volume *actually* ended up, asked rather than assumed: a name
+                        // already in use still renames, and remounts at `/Volumes/<name> 1` (probed),
+                        // and a `/` in the name reaches the path as `:`.
+                        return DiskImageMount.isMounted(
+                            imageAtPath: imagePath,
+                            in: DiskImageRunner.attachedImages()
+                        )
+                    }
+                }.get()
                 guard let self, let landed else { throw VaultError.couldNotRename }
                 adoptRenamedVolume(vault, from: mountPoint, to: landed)
             } catch {

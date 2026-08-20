@@ -131,6 +131,47 @@ at build time.
     shape the gate's `waitForStarted` had. When a wait must live in a test double, poll with
     `await Task.sleep`; the existing house rule under Testing said so already, for a different
     reason.
+- **The app had the same bug 64 times, and the rule is that a `VFSBackend` call is *always* blocking
+  — so `Task.detached` is never its home.** Audited 2026-08-20: 68 real `Task.detached` sites in the
+  app against 5 `BlockingWork.run` ones, and 64 of the 68 blocked on a subprocess (19 — `bsdtar`,
+  `hdiutil`, `git`, `mdfind`, `netfs`, `curl`), a remote transport (8), or filesystem/backend I/O
+  (37). Every one of them held a cooperative worker for its duration, which on a remote backend is a
+  network round trip: `DirectoryLoader.list` is 0.601–0.699 s per `ListObjectsV2` (▸ curl for S3), and
+  a `CloudSyncStatusProvider` scan is 650–1000 µs *per row* inside a File Provider domain — 3–5 s of
+  one worker for a 5000-row cloud folder.
+  - **The pool's width really is the core count and really does not over-commit** — worth measuring
+    once rather than citing. With 24 and then 64 concurrent blocking bodies on a 16-core Mac the peak
+    in flight was **16** both times, for a task-group child and a `Task.detached` alike, and **1**
+    under `LIBDISPATCH_COOPERATIVE_POOL_STRICT=1`; the same bodies through `BlockingWork.run` all ran
+    at once (24 of 24). The two shapes are identical in this respect, so "detached" buys nothing.
+  - **`BlockingWork.run` silently destroys `Task.isCancelled`, so a walk that reads it cannot be
+    converted blindly.** Measured: a body polling `Task.isCancelled` inside `BlockingWork.run` runs
+    to completion — 40 of 40 steps — because the body executes on a `DispatchQueue` thread, outside
+    any task, and `withCheckedContinuation` carries no cancellation. Only two sites in the app read
+    it inside a detached body (`DirectoryLoader.budgetedSize` and, as a child task,
+    `cancellableSize`), and both were deliberately left alone. `SubtreeSearchRunner` shows the shape
+    that converts for free: its cancellation already rides on an external `control.isStopped`, which
+    is a plain flag and does not care what thread reads it. Where a bridge *is* wanted,
+    `withTaskCancellationHandler` writing a `Sendable` flag restores it exactly (3–6 steps, normal
+    pool and strict alike).
+  - **The suite cannot see any of this, in either direction.** Under the strict-pool instrument the
+    baseline was already green (600 tests, 106 suites, 31.3 s, zero issues) and stayed green after
+    all 64 conversions (3/3 runs). The 2026-08-20 flakiness fix took the *live test suites* off the
+    pool, and with them went the only thing that failed — so a green run says nothing about the
+    product code, and this had to be argued from probes.
+  - **A probe measuring cancellation must not put the canceller on the pool.** A first pass reported
+    that today's `cancellableSize` never sees cancellation under a narrow pool (40/40 steps, 3/3) and
+    that was the harness: the probe cancelled from a `Task.sleep` on the pool, which the walks
+    themselves were starving — the instrumented timeline showed `cancel()` firing at **17114 ms**
+    instead of 300. The real canceller is `cancelAllScans()` on the main actor, which AppKit serves
+    from its own run loop. Re-run with a genuine independent thread, cancellation lands promptly even
+    at pool width 1 (`[0,0,0,0,0,0,0,6]`). The claim to be careful with is not "does cancellation
+    work" but "is my canceller reachable" — the same lesson this file records for the WebKit sandbox
+    probe and the `swiftc`-defaults harness, arriving on a scheduler.
+  - `DirectoryLoader.sorted` is the one deliberate `Task.detached` left in the listing path: it reads
+    nothing and is ~350 ms of `localizedStandardCompare`, which is exactly the CPU work the
+    cooperative pool exists to run. The two external launchers are the other exception — they call
+    `process.run()` and return without waiting, so they block on nothing.
 
 ## Testing
 

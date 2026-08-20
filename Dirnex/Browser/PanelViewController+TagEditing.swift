@@ -194,7 +194,7 @@ extension PanelViewController {
         guard !targets.isEmpty else { return }
         let paths = targets.map(\.path)
         Task {
-            let failure = await Task.detached(priority: .userInitiated) { () -> String? in
+            let failure = await BlockingWork.run { () -> String? in
                 for path in paths {
                     do {
                         try edit(path)
@@ -206,7 +206,7 @@ extension PanelViewController {
                     }
                 }
                 return nil
-            }.value
+            }
             if let failure {
                 presentOperationFailure(
                     message: String(

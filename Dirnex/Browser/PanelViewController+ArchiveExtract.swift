@@ -60,17 +60,21 @@ extension PanelViewController {
         let innerPaths = sources.map(\.path.path)
         let backend = backend
         withArchivePassphrase(forArchiveAt: archivePath) { passphrase in
-            try await Task.detached(priority: .userInitiated) { () throws -> [FileEntry] in
-                let extraction = try ArchiveExtractor.extract(
-                    innerPaths: innerPaths,
-                    fromArchiveAt: archivePath,
-                    passphrase: passphrase
-                )
-                // Stat each extracted file into a local source entry; a member that never landed —
-                // bsdtar couldn't find it, or the reader refused its name as a traversal attempt —
-                // fails its stat and is dropped from the copy.
-                return extraction.extractedPaths.compactMap { try? backend.stat(at: .local($0)) }
-            }.value
+            try await BlockingWork.run { () -> Result<[FileEntry], any Error> in
+                Result {
+                    let extraction = try ArchiveExtractor.extract(
+                        innerPaths: innerPaths,
+                        fromArchiveAt: archivePath,
+                        passphrase: passphrase
+                    )
+                    // Stat each extracted file into a local source entry; a member that never
+                    // landed — bsdtar couldn't find it, or the reader refused its name as a
+                    // traversal attempt — fails its stat and is dropped from the copy.
+                    return extraction.extractedPaths.compactMap {
+                        try? backend.stat(at: .local($0))
+                    }
+                }
+            }.get()
         } onSuccess: { [weak self] localSources in
             self?.finishArchiveExtraction(localSources: localSources, destination: destination)
         } onFailure: { [weak self] error in

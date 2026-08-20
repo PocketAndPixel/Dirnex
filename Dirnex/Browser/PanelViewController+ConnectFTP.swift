@@ -68,9 +68,9 @@ extension PanelViewController {
             }
         }
 
-        let result = await Task.detached(priority: .userInitiated) { () -> Result<Void, Error> in
+        let result = await BlockingWork.run { () -> Result<Void, Error> in
             do { return .success(try transport.probeConnection()) } catch { return .failure(error) }
-        }.value
+        }
         guard token == loadToken else { return .succeeded } // the pane moved on while we probed
 
         switch result {
@@ -159,9 +159,9 @@ extension PanelViewController {
             authentication: request.authentication,
             password: request.password
         )
-        return await Task.detached(priority: .userInitiated) { () -> FTPCertificate? in
+        return await BlockingWork.run { () -> FTPCertificate? in
             try? transport.fetchCertificate()
-        }.value
+        }
     }
 
     // MARK: - Trust prompt

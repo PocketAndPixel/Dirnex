@@ -77,14 +77,16 @@ extension BrowserWindowController {
         let pane = focusedPanel
         let temporaryPath = edit.temporaryURL.path
         pane.withArchivePassphrase(forArchiveAt: archivePath) { passphrase in
-            try await Task.detached(priority: .userInitiated) {
-                try ArchiveWriter.add(
-                    localPaths: [temporaryPath],
-                    toInnerDirectory: innerDirectory,
-                    ofArchiveAt: archivePath,
-                    passphrase: passphrase
-                )
-            }.value
+            try await BlockingWork.run {
+                Result {
+                    try ArchiveWriter.add(
+                        localPaths: [temporaryPath],
+                        toInnerDirectory: innerDirectory,
+                        ofArchiveAt: archivePath,
+                        passphrase: passphrase
+                    )
+                }
+            }.get()
         } onSuccess: { [weak self] in
             guard let self else { return }
             // Stop watching the copy that has now been absorbed: the archive is a new file, and the

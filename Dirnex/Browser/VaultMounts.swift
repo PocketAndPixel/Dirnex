@@ -83,9 +83,9 @@ final class VaultMounts: NSObject {
     func refresh() {
         let vaults = VaultStore.load()
         Task { [weak self] in
-            let attached = await Task.detached(priority: .utility) {
+            let attached = await BlockingWork.run(qos: .utility) {
                 DiskImageRunner.attachedImages()
-            }.value
+            }
             self?.mountPoints = VaultPrivacy.mountPoints(of: vaults, attached: attached)
         }
     }
