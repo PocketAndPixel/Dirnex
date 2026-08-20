@@ -490,6 +490,15 @@ at build time.
     window reports `isVisible == false` and the window's `attachedSheet` is still the first — so a
     trust prompt raised from inside the Connect sheet's own attempt would never appear, deadlocking
     a flow that is waiting on its answer. `runModal` was the correct workaround for that constraint.
+    - **Re-measured 2026-08-20 on macOS 26 and it no longer queues**: a second sheet raised on a
+      window that already has one stacks *on top*, `isVisible == true` and key, `attachedSheet` now
+      naming the newer one, and it answers its keys — dismissing either one leaves the other
+      working. So the deadlock this bullet describes has gone, and with it the argument that made
+      `runModal` the workaround. `sheetHost(over:)` still earns its keep for the other two reasons
+      (an app-modal *window* is not its parent's `attachedSheet`, and a report should attach to the
+      dialog in front rather than behind it) — but do not re-derive the queueing constraint from
+      this entry without measuring it again, and note ~48 call sites still call
+      `beginSheetModal(for:)` directly without it.
   - **Hosting it on the *sheet's* window is what makes the sheet version possible**: visible,
     attached, centered on its host (probed). Hence `NSAlert.sheetHost(over:)` —
     `NSApp.modalWindow ?? window?.attachedSheet ?? window`, the same ordering
@@ -1911,6 +1920,50 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
     button and is not one. Verify Escape on such a sheet with
     `NSWindow.performKeyEquivalent(with:)`; Return is not reachable that way at all, since it is no
     longer a key equivalent.
+  - **Calling the fix is not the same as the fix taking, and the CI scan could only see the call.**
+    Reported 2026-08-20 as ⎋ and ⏎ "sometimes" doing nothing but beep. The scan said *all 70 NSAlert
+    sites call `enableEscapeToCancel()`* and it was right; three of them had no Escape whatever,
+    because the helper was a **no-op in both call orders** for a single-button alert carrying an
+    accessory — `accessoryView == nil` fails when the accessory is set first, and the caller's own
+    assignment throws the catcher away when it is set second. That is every progress sheet the app
+    has: remote download, iCloud download, search. Measured on a live bundled sheet,
+    `performKeyEquivalent(⎋) == false` and the sheet did not dismiss. The generalizable half is the
+    one this file keeps re-learning from a new direction: a check that a remedy is *invoked* says
+    nothing about whether it *bound*, so the assertion has to read the binding back.
+  - **The other half of the same report was Return, and it is AppKit's doing rather than the
+    helper's: when the safe choice occupies the default (first-added, rightmost) slot, the alert has
+    no default button at all.** Measured on a live sheet — `Cancel` added first comes back
+    `Cancel[⎋] Trust[—]` with **`defaultButtonCell == nil`**, and both Return and keypad Enter fall
+    straight through to the beep. The control that makes it a fact about AppKit and not about us:
+    the identical alert with `enableEscapeToCancel` **removed** behaves the same, since AppKit
+    matched the English "Cancel" itself and declined to make it the default. Four alerts shipped
+    that way — the SSH host-key prompt, both FTPS certificate prompts, and Full Disk Access's
+    already-granted notice — and a translated build reaches the same state by our own hand, because
+    `safe: .alertFirstButtonReturn` assigns `⎋` over the `\r` that button was carrying.
+  - **So which key may live on the safe button depends on whether anything *else* answers Return**,
+    which is the rule the helper now encodes. A button cannot carry two key equivalents, so: while
+    some other button is the default, Escape rides the safe button (the ordinary
+    `Delete[⏎] Cancel[⎋]` confirmation, unchanged); otherwise the safe button *is* the default, it
+    keeps Return, and Escape rides an `EscapeDismissingView`. Note what that means for the trust
+    prompts — ⏎ now answers **Cancel**, which is the whole reason those sites put Cancel in the
+    default slot to begin with.
+  - **Put the catcher in the alert window's own `contentView`, never in the `accessoryView` slot.**
+    That is what makes the helper independent of when it is called, and it is what the accessory
+    collision above cost. Realising `window` early is free: probed in both call orders, the alert
+    lays out to the same **292×170 pt** with the accessory on screen and inside the content bounds
+    either way. Idempotent, too, or a second call leaves two catchers aimed at different buttons.
+  - **Assert the two keys together or neither assertion means anything.** Each defect above is
+    invisible to a test that checks only the other key, which is exactly how both shipped past a
+    suite that had nine Escape tests: the progress sheets read `escape: DEAD, return: answered` and
+    the trust prompts `escape: answered, return: DEAD`. `EscapeToDismissTests` now checks the pair
+    over every shape the app builds; reverted, that suite fails with 18 issues naming both halves.
+  - **Four mechanisms were probed and cleared first, and they are worth not re-suspecting.** With a
+    sheet attached the parent window reports `isKeyWindow == false`, so the Quick View key monitor
+    already bows out; `focusTable()`'s `makeFirstResponder` on the *parent* leaves the sheet key and
+    answering; a sheet raised while an app-modal window is up is still key and still answers; and on
+    macOS 26 a second sheet on a window that already has one is **no longer queued invisibly** —
+    it stacks, visible and key, which retires the older observation recorded above under
+    `sheetHost(over:)`. The bug was in the binding all along, not in who held focus.
 - **A dialog's answer arrives at *nothing* if the object that asked the question is not retained
   across the sheet — and `[weak self]` in the completion handler is how that is written.**
   `RemoteFetchPrompt.confirm` did: `fetch` builds the prompt in a local, `beginSheetModal` returns

@@ -152,6 +152,33 @@ non-empty folder, which hid three folders Finder shows.
 M19 closed on 2026-08-09; M20 opened and closed 2026-08-12 (HISTORY.md). Three things landed
 between M19 and M18, which closed on 2026-08-07, and five after it.
 
+**2026-08-20 — ⎋ and ⏎ on the app's dialogs, which were dead on different alerts for different
+reasons.** Reported as both keys "sometimes" doing nothing but beep. Two independent defects, each
+invisible to the tests that covered the other key. **Escape** was dead on all three progress sheets
+(remote download, iCloud download, search): `enableEscapeToCancel` served a lone-button alert by
+installing its catcher in the `accessoryView` slot, which is a **no-op in both call orders** once the
+alert has a real accessory — `accessoryView == nil` fails when the accessory is set first, and the
+caller's own assignment throws the catcher away when it is set second. **Return** was dead on the SSH
+host-key prompt, both FTPS certificate prompts and Full Disk Access's already-granted notice: where
+the safe choice occupies the default (first-added, rightmost) slot, AppKit withholds
+`defaultButtonCell` outright, so Return *and* keypad Enter fall through to the beep — measured, and
+the control with `enableEscapeToCancel` removed behaves identically, so it is AppKit's doing rather
+than ours. The helper now decides by what else answers Return: while another button is the default,
+Escape rides the safe button (the ordinary `Delete[⏎] Cancel[⎋]` confirmation, unchanged); otherwise
+the safe button keeps Return and Escape rides an `EscapeDismissingView` installed in the alert
+window's own `contentView`, which is what makes the whole thing independent of call order. Note the
+deliberate consequence on the four trust prompts: **⏎ now answers Cancel**, which is what putting
+Cancel in the default slot always meant. `scripts/check_alert_escape.py` had reported "all 70 NSAlert
+sites call `enableEscapeToCancel()`" throughout — true, and no evidence at all, since it could only
+see the call and not the binding; it now also fails on a call that runs before the last `addButton`
+(verified against a synthetic violation), and the binding itself is pinned by
+`EscapeToDismissTests.everyShapeAnswersBothKeys`, which asserts the **pair** on every shape the app
+builds and fails with 18 issues when reverted, naming both halves. Four other mechanisms were probed
+and cleared before the binding was suspected — the Quick View key monitor (the parent window reports
+`isKeyWindow == false` while a sheet is up, so it already bows out), `focusTable()`'s
+`makeFirstResponder` on the parent, a sheet raised under an app-modal window, and sheet stacking,
+which on macOS 26 **no longer queues invisibly** (docs/NOTES.md corrected).
+
 **2026-08-19 — the download dialog's Download button, and the dialog on top of the card.** ⌃Q on a
 14,5 MB object raised the size confirmation, and pressing **Download** closed it and did nothing:
 `RemoteFetchPrompt.confirm` handed its completion `[weak self]` on an object nobody else retained —

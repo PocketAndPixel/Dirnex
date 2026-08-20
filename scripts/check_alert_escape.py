@@ -12,6 +12,16 @@ without it — the New Folder sheet among them, Escape-dead in all thirteen non-
 Nothing logs, every test stays green, and the English screenshot is perfect: a check living in
 prose is not a check (docs/NOTES.md), so this runs in CI.
 
+**The call is not the binding**, which is the 2026-08-20 lesson: this script reported "all 70
+NSAlert sites call enableEscapeToCancel()" while three of them — the download, iCloud and search
+progress sheets — had no Escape at all, because the helper was a no-op for a single-button alert
+that carried an accessory. Checking that a fix is *invoked* says nothing about whether it *took*,
+so the binding itself is now pinned by `EscapeToDismissTests.everyShapeAnswersBothKeys`, which
+asserts Escape and Return together on every shape the app builds. What is left here is the half a
+test cannot see — that every alert reaches the helper at all, and reaches it with all of its
+buttons already added, since the helper chooses by position and a button added afterwards silently
+moves the safe one.
+
 Usage: scripts/check_alert_escape.py [root]
 """
 
@@ -52,10 +62,15 @@ def check(path: Path, root: Path) -> list[str]:
             continue
         name = m.group(2)
         enabled = False
+        enabled_at = None
+        last_button_at = None
         for j in range(i + 1, len(lines)):
             body = lines[j]
             if f"{name}.enableEscapeToCancel(" in body:
                 enabled = True
+                enabled_at = j + 1
+            if f"{name}.addButton(" in body:
+                last_button_at = j + 1
             # Stop at the first thing that shows the alert: the call has to come before it, and
             # an alert shown twice would only need the first one covered anyway.
             if any(f"{name}" in body and r in body for r in RUNNERS):
@@ -66,6 +81,14 @@ def check(path: Path, root: Path) -> list[str]:
             problems.append(
                 f"{path.relative_to(root)}:{i + 1}: `{name}` is shown without "
                 f"`{name}.enableEscapeToCancel()` — Escape will not dismiss it once translated"
+            )
+        elif last_button_at is not None and enabled_at is not None and enabled_at < last_button_at:
+            # The helper picks the safe button by position, so a button added after it runs shifts
+            # the choice underneath it — silently, and only in the alert's last-added language.
+            problems.append(
+                f"{path.relative_to(root)}:{i + 1}: `{name}.enableEscapeToCancel()` at line "
+                f"{enabled_at} runs before `addButton` at line {last_button_at} — it binds by "
+                f"position, so call it once every button is added"
             )
     return problems
 

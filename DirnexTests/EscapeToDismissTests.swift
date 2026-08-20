@@ -14,6 +14,13 @@ import Testing
 ///
 /// So the choice must not be readable from a title, and these tests are written to fail if it ever
 /// becomes so again: the Russian cases carry no English word anywhere.
+///
+/// **Return is asserted beside Escape throughout**, because the 2026-08-20 report was of *both* keys
+/// beeping and they failed on different alerts for different reasons: Escape was dead on the three
+/// single-button progress sheets (the helper was a no-op once an accessory was present), and Return
+/// was dead wherever the safe choice occupies the default slot (AppKit withholds `defaultButtonCell`
+/// entirely). Asserting one key alone passes against a build where the other is unanswerable, which
+/// is exactly how both shipped — so ``answerableKeys`` checks the pair on every shape.
 @Suite("Escape to dismiss")
 @MainActor
 struct EscapeToDismissTests {
@@ -47,8 +54,11 @@ struct EscapeToDismissTests {
     func namedResponseWins() {
         let alert = alert(["OK", "Open System Settings"])
         alert.enableEscapeToCancel(safe: .alertFirstButtonReturn)
-        #expect(alert.buttons.first?.keyEquivalent == Self.escape)
+        // The safe choice sits in the default slot, so it keeps Return and Escape rides the catcher
+        // — the alternative, moving Escape onto it, is what left this alert with no Return at all.
+        #expect(escapeTarget(of: alert) === alert.buttons.first)
         #expect(alert.buttons.last?.keyEquivalent != Self.escape)
+        #expect(answerableKeys(of: alert) == .both)
     }
 
     /// AppKit gives an English "Cancel" Escape as the alert is built. When the caller names a
@@ -61,8 +71,9 @@ struct EscapeToDismissTests {
         #expect(alert.buttons.first?.keyEquivalent == Self.escape)
         alert.enableEscapeToCancel(safe: .alertSecondButtonReturn)
         let bound = alert.buttons.filter { $0.keyEquivalent == Self.escape }
-        #expect(bound.count == 1)
-        #expect(bound.first === alert.buttons.last)
+        #expect(bound.count <= 1)
+        #expect(escapeTarget(of: alert) === alert.buttons.last)
+        #expect(answerableKeys(of: alert) == .both)
     }
 
     /// A translated Cancel added *first* to make it rightmost — the host-key alert's shape. AppKit
@@ -72,17 +83,44 @@ struct EscapeToDismissTests {
         let alert = alert(["Отмена", "Доверять новому ключу"])
         #expect(alert.buttons.first?.keyEquivalent != Self.escape)
         alert.enableEscapeToCancel(safe: .alertFirstButtonReturn)
-        #expect(alert.buttons.first?.keyEquivalent == Self.escape)
+        #expect(escapeTarget(of: alert) === alert.buttons.first)
+        #expect(answerableKeys(of: alert) == .both)
     }
 
     /// One button can't carry Return *and* Escape, so a lone-button alert keeps its default and
-    /// answers Escape through a zero-size accessory that clicks it.
-    @Test("a lone button keeps Return and gets an accessory catcher instead")
-    func loneButtonGetsAccessory() {
+    /// answers Escape through a zero-size catcher that clicks it.
+    @Test("a lone button keeps Return and gets a catcher instead")
+    func loneButtonGetsCatcher() {
         let alert = alert(["OK"])
         alert.enableEscapeToCancel()
         #expect(alert.buttons.first?.keyEquivalent == "\r")
-        #expect(alert.accessoryView is EscapeDismissingView)
+        #expect(catcher(in: alert) != nil)
+        #expect(answerableKeys(of: alert) == .both)
+    }
+
+    /// The catcher must not take the `accessoryView` slot. It used to, and that is the whole of the
+    /// progress-sheet bug: the three progress sheets each set a real accessory, so the helper either
+    /// declined (accessory already there) or had its catcher thrown away by the caller's assignment.
+    /// Measured on a live sheet: `performKeyEquivalent(⎋) == false` and the sheet did not dismiss.
+    @Test("an alert with a real accessory still answers Escape, in either call order")
+    func accessoryDoesNotDisplaceTheCatcher() {
+        for accessoryFirst in [true, false] {
+            let alert = alert(["Stop"])
+            let bar = NSProgressIndicator()
+            bar.style = .bar
+            bar.isIndeterminate = true
+            bar.frame = NSRect(x: 0, y: 0, width: 260, height: 16)
+            if accessoryFirst {
+                alert.accessoryView = bar
+                alert.enableEscapeToCancel()
+            } else {
+                alert.enableEscapeToCancel()
+                alert.accessoryView = bar
+            }
+            #expect(alert.accessoryView === bar)
+            #expect(catcher(in: alert) != nil)
+            #expect(answerableKeys(of: alert) == .both)
+        }
     }
 
     /// The three plain "something went wrong" alerts add no button at all and let AppKit supply the
@@ -94,7 +132,8 @@ struct EscapeToDismissTests {
         let alert = alert([])
         #expect(alert.buttons.count == 1) // precondition: AppKit's doing, not ours
         alert.enableEscapeToCancel()
-        #expect(alert.accessoryView is EscapeDismissingView)
+        #expect(catcher(in: alert) != nil)
+        #expect(answerableKeys(of: alert) == .both)
     }
 
     /// Escape is the only thing the helper may touch. A sheet whose Return commits real work (the
@@ -118,5 +157,99 @@ struct EscapeToDismissTests {
         let twoButtons = alert(["Да", "Нет"])
         twoButtons.enableEscapeToCancel(safe: .alertThirdButtonReturn)
         #expect(twoButtons.buttons.last?.keyEquivalent == Self.escape)
+    }
+
+    /// The invariant the report came down to: **every alert the app builds answers both keys.**
+    ///
+    /// One case per shape that exists in `Dirnex/`, English and translated. Two of these were dead
+    /// in the shipped build — the progress sheet had no Escape, the trust prompt no Return — and
+    /// each was invisible to a test that asserted only the other key.
+    @Test(
+        "every alert shape answers Escape and Return",
+        arguments: [
+            (["Delete", "Cancel"], nil as NSApplication.ModalResponse?, false),
+            (["Download", "Cancel"], .alertSecondButtonReturn, false),
+            (["Удалить", "Отмена"], nil, false),
+            (["Cancel", "Trust New Key & Connect"], .alertFirstButtonReturn, false),
+            (["Отмена", "Доверять"], .alertFirstButtonReturn, false),
+            (["OK", "Open System Settings"], .alertFirstButtonReturn, false),
+            (["Retry", "Skip", "Abort"], nil, false),
+            (["OK"], nil, false),
+            (["Stop"], nil, true), // the progress sheets: one button + a real accessory
+            (["Остановить"], nil, true)
+        ]
+    )
+    func everyShapeAnswersBothKeys(
+        titles: [String],
+        safe: NSApplication.ModalResponse?,
+        withAccessory: Bool
+    ) {
+        let alert = alert(titles)
+        if withAccessory {
+            let bar = NSProgressIndicator()
+            bar.style = .bar
+            bar.frame = NSRect(x: 0, y: 0, width: 260, height: 16)
+            alert.accessoryView = bar
+        }
+        alert.enableEscapeToCancel(safe: safe)
+        #expect(answerableKeys(of: alert) == .both)
+    }
+
+    /// Escape must never be answered twice — by a button *and* a catcher — or which one wins is
+    /// undefined, and they can be aimed at different buttons.
+    @Test("Escape is answered in exactly one way")
+    func escapeHasOneAnswer() {
+        let onButton = alert(["Delete", "Cancel"])
+        onButton.enableEscapeToCancel()
+        #expect(catcher(in: onButton) == nil)
+
+        let onCatcher = alert(["OK"])
+        onCatcher.enableEscapeToCancel()
+        #expect(onCatcher.buttons.allSatisfy { $0.keyEquivalent != Self.escape })
+    }
+
+    /// Calling twice must not leave two catchers aimed at different buttons.
+    @Test("a second call replaces the first catcher rather than stacking one")
+    func catcherIsIdempotent() {
+        let alert = alert(["OK"])
+        alert.enableEscapeToCancel()
+        alert.enableEscapeToCancel()
+        let catchers = alert.window.contentView?.subviews.filter { $0 is EscapeDismissingView } ?? []
+        #expect(catchers.count == 1)
+    }
+
+    // MARK: - Reading the bindings back
+
+    /// Which of the two keys this alert can answer. Named rather than a tuple of `Bool`s so a
+    /// failure message says *which* key is dead.
+    private struct AnswerableKeys: Equatable, CustomStringConvertible {
+        var escape: Bool
+        var `return`: Bool
+        static let both = AnswerableKeys(escape: true, return: true)
+        var description: String {
+            "escape: \(escape ? "answered" : "DEAD"), return: \(`return` ? "answered" : "DEAD")"
+        }
+    }
+
+    /// Escape is answered by a button carrying it or by the catcher; Return by whichever button
+    /// carries `\r`, which is also what makes AppKit draw a default button at all.
+    private func answerableKeys(of alert: NSAlert) -> AnswerableKeys {
+        AnswerableKeys(
+            escape: escapeTarget(of: alert) != nil,
+            return: alert.buttons.contains { $0.keyEquivalent == "\r" }
+        )
+    }
+
+    /// The button Escape reaches, whichever mechanism carries it.
+    private func escapeTarget(of alert: NSAlert) -> NSButton? {
+        if let bound = alert.buttons.first(where: { $0.keyEquivalent == Self.escape }) { return bound }
+        // The catcher clicks the default button — the branch it is installed in is exactly the one
+        // where the safe choice took Return.
+        guard catcher(in: alert) != nil else { return nil }
+        return alert.buttons.first { $0.keyEquivalent == "\r" }
+    }
+
+    private func catcher(in alert: NSAlert) -> EscapeDismissingView? {
+        alert.window.contentView?.subviews.compactMap { $0 as? EscapeDismissingView }.first
     }
 }

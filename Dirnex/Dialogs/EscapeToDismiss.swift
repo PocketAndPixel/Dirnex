@@ -78,7 +78,8 @@ final class EscapeToCloseMonitor {
 }
 
 extension NSAlert {
-    /// Ensure the Escape key dismisses this alert, bound to the choice that loses nothing.
+    /// Ensure Escape **and** Return both answer this alert, with Escape bound to the choice that
+    /// loses nothing.
     ///
     /// `NSAlert` does bind Escape itself — but it matches the **byte string "Cancel"**, not a
     /// localized one, so under any translation its binding silently stops happening: probed with the
@@ -91,25 +92,70 @@ extension NSAlert {
     /// Dirnex's alerts put theirs; pass it explicitly wherever the safe choice sits elsewhere
     /// (`Cancel` added first to make it the rightmost, `OK` ahead of an action button).
     ///
-    /// A lone-button alert keeps Return as its button's default and answers Escape through a
-    /// zero-size accessory that clicks it — one button can't carry two key equivalents at once.
-    /// Call after adding every button and before running the alert.
+    /// **Return is half the job, and it was the half missing.** A button cannot carry two key
+    /// equivalents, so which key can live on the safe button depends on whether anything *else*
+    /// answers Return — and when the safe choice occupies the default (first-added, rightmost) slot,
+    /// nothing does. Measured on a live sheet 2026-08-20: `Cancel` added first comes back
+    /// `Cancel[⎋] Trust[—]` with **`defaultButtonCell == nil`**, so Return and keypad Enter both fall
+    /// through to the beep — and the control run with this method removed behaves identically, so it
+    /// is AppKit's doing rather than ours. Hence the split below: Escape rides the safe button only
+    /// while some other button is the default, and otherwise the safe button *is* the default and
+    /// Escape rides ``EscapeDismissingView`` instead.
+    ///
+    /// The catcher goes in the alert window's own content view rather than the `accessoryView` slot,
+    /// which is what makes this independent of when it is called. The slot version could not serve an
+    /// alert that has a real accessory at all: with one button and an accessory the old method was a
+    /// **no-op in both call orders** — `accessoryView == nil` fails when the accessory is set first,
+    /// and the caller's own assignment throws the catcher away when it is set second. That is what
+    /// left the three progress sheets (remote download, iCloud download, search) with no Escape at
+    /// all — measured `performKeyEquivalent(⎋) == false`, sheet not dismissed. Realising `window`
+    /// early is free: probed both orders, the alert lays out to the same 292×170 pt with the accessory
+    /// on screen and inside the content bounds either way.
+    ///
+    /// Call after adding every button; the accessory may be set before or after.
     func enableEscapeToCancel(safe: NSApplication.ModalResponse? = nil) {
-        if buttons.count > 1 {
-            let first = NSApplication.ModalResponse.alertFirstButtonReturn.rawValue
-            let index = safe.map { Int($0.rawValue - first) }
-            let named = index.flatMap { buttons.indices.contains($0) ? buttons[$0] : nil }
-            guard let target = named ?? buttons.last else { return }
-            // AppKit may have put Escape on an English "Cancel" that isn't the button we want, and
-            // two buttons answering Escape is undefined — clear before assigning.
-            for button in buttons where button !== target && button.keyEquivalent == "\u{1b}" {
-                button.keyEquivalent = ""
-            }
-            target.keyEquivalent = "\u{1b}"
-        } else if let only = buttons.first, accessoryView == nil {
-            let catcher = EscapeDismissingView()
-            catcher.onEscape = { [weak only] in only?.performClick(nil) }
-            accessoryView = catcher
+        guard let target = safeButton(named: safe) else { return }
+        // AppKit may have put Escape on an English "Cancel" that isn't the button we want, and two
+        // buttons answering Escape is undefined — clear before assigning.
+        for button in buttons where button !== target && button.keyEquivalent == "\u{1b}" {
+            button.keyEquivalent = ""
         }
+        if buttons.contains(where: { $0 !== target && $0.keyEquivalent == "\r" }) {
+            // Another button is the default and answers Return, so Escape can ride the safe one.
+            // The ordinary confirmation (`Delete[⏎] Cancel[⎋]`) takes this branch and is unchanged.
+            target.keyEquivalent = "\u{1b}"
+        } else {
+            // Nothing else answers Return — a lone-button alert, or one whose safe choice sits in the
+            // default slot. Either way the safe choice is the right default, so it takes Return and
+            // Escape goes to the catcher.
+            target.keyEquivalent = "\r"
+            installEscapeCatcher(clicking: target)
+        }
+    }
+
+    /// The button `safe` names, or the last one — where a Cancel belongs.
+    private func safeButton(named safe: NSApplication.ModalResponse?) -> NSButton? {
+        let first = NSApplication.ModalResponse.alertFirstButtonReturn.rawValue
+        let index = safe.map { Int($0.rawValue - first) }
+        let named = index.flatMap { buttons.indices.contains($0) ? buttons[$0] : nil }
+        return named ?? buttons.last
+    }
+
+    /// Give Escape to a zero-size responder in the alert's own content view, clicking `button`.
+    ///
+    /// Idempotent: a second call replaces the first, so an alert cannot end up with two catchers
+    /// answering for different buttons.
+    private func installEscapeCatcher(clicking button: NSButton) {
+        guard let content = window.contentView else { return }
+        for existing in content.subviews where existing is EscapeDismissingView {
+            existing.removeFromSuperview()
+        }
+        let catcher = EscapeDismissingView(frame: .zero)
+        // A field editor does not eat a button's Escape key equivalent (docs/NOTES.md), so the
+        // button branch answers even with an accessory field focused; matching that here keeps the
+        // two branches from differing on an alert that later grows a text field.
+        catcher.dismissesWhileEditing = true
+        catcher.onEscape = { [weak button] in button?.performClick(nil) }
+        content.addSubview(catcher)
     }
 }
