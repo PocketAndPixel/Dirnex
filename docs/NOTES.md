@@ -1988,6 +1988,107 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
     as the dialog having no default button. `window.defaultButtonCell?.controlView as? NSButton` is
     the way in — and never a title match, which passes in English and fails in thirteen languages.
 
+- **A dialog raised by a modifier chord is unanswerable until the user lifts the modifier, and it
+  reads as a broken binding.** AppKit matches a key equivalent on the character **and** the exact
+  modifier mask, so ⌃⎋ and ⌃⏎ are refused by an alert whose buttons carry bare ⎋ and ⏎ — measured on
+  live sheets, `performKeyEquivalent` returns **false**, the event falls through to `keyDown:`,
+  nothing handles it, and the user gets a beep. Standard macOS, and ordinarily unreachable, because
+  a confirmation is raised by a *click*. Dirnex raises them from chords — ⌃Q, ⇧F8, ⌘F5, ⌘F2 — and
+  the dialog is on screen **53 ms** after the chord (measured in the running app), so it asks its
+  question while the finger is still on the modifier. Reported 2026-08-21 as ⎋ needing two presses
+  and ⏎ never working at all.
+  - **Every automated and headless signal was clean, and so was every window-state reading.** Both
+    suites and both linters were green; `enableEscapeToCancel` had done its job (`Cancel[⎋]`,
+    `Download[⏎]`, `defaultButtonCell = Download`); the sheet was key and the parent was not; no
+    Quick Look panel existed; the Quick View key monitor bowed out exactly as designed. Four
+    plausible mechanisms this file already documents were each checked and cleared. **The difference
+    was in the *event*, which nothing was logging** — two presses from byte-identical window state
+    with opposite outcomes is the tell, and it says to stop instrumenting the window and instrument
+    the key.
+  - **The instrument is a dump of `modifierFlags` beside a "would AppKit match this?" line**, per
+    button: `chars` and `mods` compared separately is what turns a puzzle into one line —
+    `Cancel:chars=true,mods=false` names the cause outright, where a bare "the key did nothing"
+    does not. Log **every** key while a sheet is up, not just the one being reported: the first pass
+    logged only Escape and letters, so ⏎ — the half that never worked at all — produced no evidence.
+  - **"It works for this file and not that one" was a *timing* report wearing a data report's
+    clothes.** The two files differed only in when the user's finger left Control; the log's
+    intervals overlap between the working and failing presses (0.87 s worked, 0.74 s failed), which
+    is exactly what a per-press human variable looks like and is why the timing could not settle it.
+    What settled it in five seconds was asking for a deliberate A/B — hold Control, tap ⎋; release,
+    tap ⎋.
+  - **The fix forgives *stale* modifiers, not any modifiers**, and the narrowness is the whole
+    design. `enableEscapeToCancel` captures `NSEvent.modifierFlags` at build time — it runs
+    synchronously inside the action the chord invoked, so that set is exactly the chord's — and
+    `AlertKeyCatcher` answers ⎋/⏎ whose modifiers are a **subset** of it. Two properties follow: an
+    alert raised by a click captures nothing, so both keys stay strict and every such dialog is
+    byte-identically unchanged; and a deliberate ⌘⏎ can never confirm a ⇧F8 delete, because ⌘ was
+    not held when that alert was built. That matters because ⏎ is the committing direction, where
+    being wrong costs a file — the asymmetry that made forgiving *both* keys affordable rather than
+    only the safe one. Bare ⏎ is deliberately never claimed: it already works, and two answers on
+    one key is undefined.
+  - **A test suite that presents real `NSAlert` sheets kills the test host, and it reads as several
+    broken features.** Tearing one down inside the runner segfaults in AppKit's own completion block
+    (`objc_release` under `__destroy_helper_block_…`, EXC_BAD_ACCESS on the main thread) — so
+    xcodebuild restarts, and its summary then lists every suite that was in flight under "Failing
+    tests:", naming features that work. `.serialized` does not help; neither does letting the
+    dismissal settle before closing the window. Split the rule out instead
+    (`AlertKeyCatcher.button(for:)` decides, `performKeyEquivalent` clicks) and assert **which
+    button the key reaches**, with no sheet presented — `defaultButtonCell` is already populated
+    before presentation, so the decision is fully reachable. What that costs is "the click lands",
+    which is covered by one live run against real sheets (13 cases, including bare ⎋/⏎ and three
+    refusals) rather than by the suite.
+  - One trap in the harness that measured it, worth not re-deriving: `window.endSheet(_:)` runs the
+    completion handler itself with `NSModalResponse(-1000)`, so a test that reads the response
+    *after* its own teardown turns every refusal into an answer.
+  - **A second, *intermittent* refusal lives here — the alert's own buttons are bound and enabled
+    and nothing answers — and the fix is to let the walk itself decide.** Same symptom (a **bare** ⎋
+    or ⏎ doing nothing but beep), and every property that could explain it measured identical
+    between a press that worked and one that did not, seconds apart: the sheet is `keyWindow`, the
+    event's own `window`/`windowNumber` **is** that sheet, `Cancel[⎋]`/`Download[⏎]` are bound,
+    enabled, unhidden and unoccluded, `defaultButtonCell` is set, the app is active, no modal window,
+    no `QLPreviewPanel`, one alert panel alive, the `NSAlert` object itself alive, the Quick View
+    monitor bows out, `fileTableCancel` never runs, and `charactersIgnoringModifiers` is
+    `U+1b`/`U+d`. Three causes were proposed from that data and all three refuted by it (event
+    routing; a running transfer — `transfer FINISH` was logged **8 s before** a dead press; and the
+    chord modifiers, which are a real and *separate* bug).
+    - **What cracked it was a witness inside the walk, and the finding is about the press that
+      *works*.** `AlertKeyCatcher` is the last subview of the alert's content view, so
+      `NSView.performKeyEquivalent` reaches it only when nothing before it matched — and it is
+      reached on **every** press, the working ones included. So `Cancel[⎋]`'s own key equivalent
+      never matches during the walk at all; the alert is normally answered *afterwards*, through the
+      responder chain, and it is that second, invisible step that intermittently does not run. A
+      dead press walks the tree (twice), finds everything in order, and answers nothing.
+    - **So the catcher claims the bare keys too**, which converts a two-step dance into one
+      deterministic step and cannot double-answer: being reached *means* no button matched. The
+      buttons keep their bindings and still match first; this only changes which mechanism answers
+      when AppKit's own matching has already declined.
+    - **The instrument has to be cheap or it hides the bug.** A probe that logged a full state block
+      from a key monitor cost milliseconds *before* dispatch and masked the race completely — five
+      reproductions in a row looked clean, and a green session was read as evidence twice. One short
+      `NSLog` inside the catcher caught it on the first try. When a bug survives instrumentation,
+      suspect the instrument's *cost*, not the reporter.
+    - **A green session proves nothing here**: 12 dialogs answered on the first press with the heavy
+      probe in place, on a build whose shape had failed three times in the preceding half hour. The
+      reproduction that provokes it is the **second** confirmation of a session (⌃Q on a large remote
+      file, answer, then ⌃Q on another), and the dead stretch lasts seconds — six consecutive Enters
+      ignored in one run — before recovering on its own with nothing touched.
+    - `open` vs launching the binary from a shell was measured **irrelevant**, and was worth
+      eliminating: it was the other variable that differed between the developer's runs and the
+      user's, and it kept "it works in your build" alive as an explanation for two rounds.
+    - Superseded, do not re-derive: **an intermittent refusal here is not unresolved.** Same symptom (a bare ⎋ or ⏎ doing nothing but beep on the confirmation), and
+    every property that could explain it has been measured identical between a press that worked
+    and one that did not, in the same session, seconds apart: the sheet is `keyWindow`, the event's
+    own `window`/`windowNumber` **is** that sheet, `Cancel[⎋]`/`Download[⏎]` are bound, enabled,
+    unhidden and unoccluded, `defaultButtonCell` is set, the app is active, no modal window, no
+    `QLPreviewPanel`, one alert panel alive, the Quick View monitor bows out, `fileTableCancel`
+    never runs, and the event's `charactersIgnoringModifiers` is `U+1b`/`U+d`. Calling
+    **`sheet.performKeyEquivalent(with:)` by hand from a monitor returns `false`** on the failing
+    press and `true` on the working one — so AppKit genuinely refuses, and it is not a routing,
+    binding or focus problem. Three causes were proposed from this data and all three were then
+    refuted by it (event routing; a running transfer — `transfer FINISH` was logged **8 s before** a
+    dead press; the chord modifiers, which are a real and separate bug).
+
+
 - **An `NSAlert` reserves vertical space for its `accessoryView` from that view's *frame*, so a
   pure-Auto-Layout accessory (only `translatesAutoresizingMaskIntoConstraints = false` + internal
   constraints) reports a **zero frame** and the alert draws it *overlapping* the informative text.**

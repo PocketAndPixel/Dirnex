@@ -150,7 +150,32 @@ non-empty folder, which hid three folders Finder shows.
 ### After M19
 
 M19 closed on 2026-08-09; M20 opened and closed 2026-08-12 (HISTORY.md). Three things landed
-between M19 and M18, which closed on 2026-08-07, and five after it.
+between M19 and M18, which closed on 2026-08-07, and six after it.
+
+**2026-08-21 — ⎋ and ⏎ on a dialog raised by a modifier chord, which is unanswerable until the
+user lifts the modifier.** Reported the day after the entry below, against the remote-download
+confirmation: ⎋ needed two presses and ⏎ never worked at all. Nothing was wrong with the binding this
+time, and every window-state reading was clean — the sheet was key, `Cancel[⎋]`/`Download[⏎]` were
+correctly bound, no Quick Look panel existed, and the Quick View key monitor bowed out exactly as
+designed. AppKit matches a key equivalent on the character **and** the exact modifier mask, and ⌃Q
+raises that dialog **53 ms** after the chord, so the key arrives with Control still down and is
+refused — `performKeyEquivalent` returns `false`, the event reaches `keyDown:`, nothing handles it,
+beep. Standard macOS, and ordinarily unreachable because a confirmation is raised by a click; Dirnex
+raises them from ⌃Q, ⇧F8, ⌘F5 and ⌘F2. `enableEscapeToCancel` now captures `NSEvent.modifierFlags`
+at build time — it runs synchronously inside the action the chord invoked, so that set is exactly
+the chord's — and `AlertKeyCatcher` answers ⎋/⏎ whose modifiers are a **subset** of it. Deliberately
+*stale*, not *any*: an alert raised by a click captures nothing, so every such dialog is unchanged,
+and a deliberate ⌘⏎ can never confirm a ⇧F8 delete, which is what made forgiving the committing key
+affordable at all. Two presses from byte-identical window state is what said to stop instrumenting
+the window and instrument the event; the full diagnosis, and why a test suite that presents real
+sheets kills the test host, are in [docs/NOTES.md](docs/NOTES.md) ▸ AppKit. **A second, intermittent refusal
+was found underneath it and fixed in the same pass**: a *bare* ⎋ or ⏎ that the alert declines with
+every measurable property identical to a press that worked. A witness inside the key-equivalent walk
+showed that `Cancel[⎋]`'s own binding never matches during the walk *even when the dialog works* —
+the alert is answered afterwards through the responder chain, and that step intermittently does not
+run. `AlertKeyCatcher` is walked last, so it now claims the bare keys as well, which cannot
+double-answer and makes the first press decide. Worth knowing for the next hunt: a heavy probe in a
+key monitor masked the race for five reproductions, and one short log line caught it.
 
 **2026-08-20 — ⎋ and ⏎ on the app's dialogs, which were dead on different alerts for different
 reasons.** Reported as both keys "sometimes" doing nothing but beep. Two independent defects, each

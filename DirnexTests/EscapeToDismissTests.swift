@@ -195,17 +195,23 @@ struct EscapeToDismissTests {
         #expect(answerableKeys(of: alert) == .both)
     }
 
-    /// Escape must never be answered twice — by a button *and* a catcher — or which one wins is
-    /// undefined, and they can be aimed at different buttons.
-    @Test("Escape is answered in exactly one way")
+    /// Escape must never be answered twice by two things *racing*. It cannot be: the catcher is the
+    /// last subview of the content view and `NSView.performKeyEquivalent` stops at the first `true`,
+    /// so a button carrying ⎋ matches before the catcher is ever reached. What this pins is the
+    /// ordering that guarantee rests on, plus the one-catcher invariant.
+    @Test("Escape has a single, ordered answer")
     func escapeHasOneAnswer() {
-        let onButton = alert(["Delete", "Cancel"])
-        onButton.enableEscapeToCancel()
-        #expect(catcher(in: onButton) == nil)
-
-        let onCatcher = alert(["OK"])
-        onCatcher.enableEscapeToCancel()
-        #expect(onCatcher.buttons.allSatisfy { $0.keyEquivalent != Self.escape })
+        for titles in [["Delete", "Cancel"], ["OK"]] {
+            let alert = alert(titles)
+            alert.enableEscapeToCancel()
+            let subviews = alert.window.contentView?.subviews ?? []
+            #expect(subviews.last is AlertKeyCatcher)
+            #expect(subviews.filter { $0 is AlertKeyCatcher }.count == 1)
+        }
+        // And the ordinary confirmation still binds ⎋ on the button, which matches first.
+        let confirmation = alert(["Delete", "Cancel"])
+        confirmation.enableEscapeToCancel()
+        #expect(confirmation.buttons.last?.keyEquivalent == Self.escape)
     }
 
     /// Calling twice must not leave two catchers aimed at different buttons.
@@ -214,7 +220,7 @@ struct EscapeToDismissTests {
         let alert = alert(["OK"])
         alert.enableEscapeToCancel()
         alert.enableEscapeToCancel()
-        let catchers = alert.window.contentView?.subviews.filter { $0 is EscapeDismissingView } ?? []
+        let catchers = alert.window.contentView?.subviews.filter { $0 is AlertKeyCatcher } ?? []
         #expect(catchers.count == 1)
     }
 
@@ -240,16 +246,20 @@ struct EscapeToDismissTests {
         )
     }
 
-    /// The button Escape reaches, whichever mechanism carries it.
+    /// The button *bare* Escape reaches, whichever mechanism carries it.
     private func escapeTarget(of alert: NSAlert) -> NSButton? {
         if let bound = alert.buttons.first(where: { $0.keyEquivalent == Self.escape }) { return bound }
-        // The catcher clicks the default button — the branch it is installed in is exactly the one
-        // where the safe choice took Return.
-        guard catcher(in: alert) != nil else { return nil }
-        return alert.buttons.first { $0.keyEquivalent == "\r" }
+        // Otherwise the catcher answers it — ask the catcher itself which button it would click,
+        // rather than restating its rule here.
+        let escape = NSEvent.keyEvent(
+            with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0, windowNumber: 0,
+            context: nil, characters: Self.escape, charactersIgnoringModifiers: Self.escape,
+            isARepeat: false, keyCode: 53
+        )
+        return escape.flatMap { catcher(in: alert)?.button(for: $0) }
     }
 
-    private func catcher(in alert: NSAlert) -> EscapeDismissingView? {
-        alert.window.contentView?.subviews.compactMap { $0 as? EscapeDismissingView }.first
+    private func catcher(in alert: NSAlert) -> AlertKeyCatcher? {
+        alert.window.contentView?.subviews.compactMap { $0 as? AlertKeyCatcher }.first
     }
 }
