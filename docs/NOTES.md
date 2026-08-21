@@ -3135,6 +3135,38 @@ what made the milestone affordable and the rest inverted rules borrowed from the
   corollary is the one that bites later: a **dotted** name is perfectly legal and was accepted in the
   same run, and it is the one that strands the user, because a wildcard certificate is one label deep
   — so it belongs in a warning about *addressing* and never in a naming refusal.
+- **A parsed page carries keys in the *wire's* spelling, and every consumer has to decode — the
+  recursive delete was the one that did not, so deleting a folder whose contents hold a space
+  deleted nothing and reported success.** `S3ListingPage.objects[].key` is deliberately raw, with
+  `S3ListingParser.decoder(for:)` as the one decoder callers apply; `S3SubtreeListing` and the entry
+  builder both use it and `S3Backend.allKeys(under:at:)` did not, so the sweep behind `removeItem`
+  handed `DeleteObjects` `untitled+folder/a.txt` for a key stored `untitled folder/a.txt`. **S3's
+  delete is idempotent**, so keys that had never existed answered deleted, `<Quiet>true</Quiet>` left
+  the response body empty, there was no `<Error>` row to raise, and the folder was still on screen.
+  Every request succeeded; nothing logged. Present since the backend shipped.
+  - **It reached the user as a *rename*, which is the shape worth remembering, because the visible
+    symptom names the wrong verb.** `moveItem` answers `EXDEV` for a prefix, `CopyEngine` copies the
+    subtree and then calls `removeItem` — so what the user saw was a folder that came back under
+    **both** names (reported 2026-08-22, on a folder called `untitled folder untitled folder …`). F8
+    on the same folder had been silently deleting nothing the whole time, and nobody had noticed,
+    because a delete that quietly does nothing looks like a refresh that has not caught up.
+  - **The existing corpus was structurally blind to it.** Every fixture in `S3Fixtures` carries
+    `<EncodingType>url</EncodingType>` — the flag the decode is keyed on — and not one of their keys
+    holds a character the encoding touches, so the whole file exercises the flag and never the rule.
+    That is the same disjoint-corpus trap the 2026-08-18 whitespace bug turned on, one layer down and
+    with the halves swapped, which is why one had already been paid for and did not prevent the
+    other. `S3EncodedKeyFixtures` is now a separate enum for exactly that reason: a gap is visible as
+    a missing file and invisible as a missing case inside one whose name suggests coverage.
+  - **A key that does not decode must fail the delete, where a listing is right to drop the row.**
+    The asymmetry is the whole rule: a row nobody can name is one a listing should omit, and a key a
+    delete omits is a file left behind under a folder reported as gone.
+  - The reproduction needs a **stateful** double, and that is a finding about the instrument rather
+    than an inconvenience: `FakeS3Transport` hands out pages by call index, which cannot express a
+    walk that lists a directory per level, and the claim being made is about *what is left in the
+    bucket* rather than about which requests were sent. `StatefulS3Bucket` (a key→size map plus the
+    listing document) reproduces the user's screenshot exactly when the fix is reverted — the folder
+    under both names — and it is the only test here that would.
+
 - **A key's leading and trailing whitespace is part of its name, and one `trimmingCharacters` over a
   parsed XML value costs three verbs at once.** `S3ListingParser` trimmed every element it read,
   which is right for a size, a date, a boolean or a token and wrong for a `<Key>` or a `<Prefix>`.
@@ -4824,6 +4856,37 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
       introduce is the opposite one: answering for an ordinary *local* results tab would send every
       Spotlight hit down the extraction or download path. All four are unit-testable with no window
       — build a pane on the `search:` path holding one hit and read the property.
+  - **The seventh is the same family arriving on a gate that had *already* been fixed once, which is
+    what says the fix has to name the subject rather than the site.** `canRenameHere` was corrected
+    in Slice 10 from `backend.capabilities` to `capabilities(for: panel.path)` — the right *object*,
+    still the wrong *subject* — so once trees could be rooted anywhere, F2 three levels inside an
+    expanded bucket in an S3 **account** pane did nothing at all, the gate answering for the account
+    (whose rows are buckets, which nothing renames) whatever the cursor was on. Reported 2026-08-22.
+    The gate is now the row's own directory, which is what `performRename` had always built the
+    destination in (`source.parent`); the two had simply never been asked to agree.
+    - **Its other half was a listing flag standing in for a row property, and naming the property
+      widened the feature for free.** `!isVirtualDirectory` was in the predicate for one honest
+      reason — the merged iCloud listing draws an **app's** name over its `Documents` folder — and it
+      refused every ordinary row standing beside those: a loose file in the same listing, a search
+      hit, a row inside an expanded folder in either. `FileEntry.nameMatchesPath` says the thing that
+      was actually meant, and it is false for exactly one row in this codebase, the one
+      `ICloudDrive.libraryRow(for:stat:)`'s own comment already calls out as the single place where a
+      row's name and its path disagree. The three refusals that had shared that flag now each state
+      their own reason — an archive member and an account's buckets by the capability, a trashed item
+      by the `.rename` a trash withdraws — which is what makes the next one findable.
+    - **Widening a gate to a listing that cannot refresh itself brings its staleness with it.** A
+      search snapshot re-lists nothing by design (`refreshCurrentDirectory` returns; `refreshTree`
+      deliberately skips a results root), so renaming a hit would have left the row drawing a name
+      that is no longer on disk — the exact symptom the S3 bug was reported by, reintroduced by the
+      fix for it. One substitution (`substituteSearchHit`) closes it, and it is a substitution rather
+      than a re-`stat` because a hit can be on a server. Worth asking of any gate being relaxed: can
+      the surface behind it show the result?
+    - **A rename inside a Trash is the one place "everywhere" had to mean *less*.** Put Back is keyed
+      on the item's name in the trash — the origin lives in that folder's `.DS_Store` as a
+      `ptbL`/`ptbN` pair looked up by it — so renaming a trashed item orphans the record silently and
+      permanently. `.rename` is withdrawn alongside `.trash` in `capabilities(for:)`, which covers
+      the merged listing, a pane standing in `~/.Trash`, a volume's `.Trashes` and a tree over any of
+      them in one place; Finder refuses the same gesture.
 - **A "can this apply here" gate can be testing the wrong *subject* entirely, and it then reads as a
   considered restriction rather than as a bug.** `canUseTreeMode` was `panel.path.backend == .local`,
   under a doc comment explaining that a per-level lazy listing "needs a real directory to read" —

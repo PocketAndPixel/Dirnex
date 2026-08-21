@@ -57,17 +57,22 @@ private struct Case {
     /// Applied to the routing backend before the pane is built — `nil` for a location that needs no
     /// connection (local, virtual) or is deliberately left unconnected.
     let connect: ((CompositeBackend) -> Void)?
+    /// The single row the pane's listing holds. `nil` puts an ordinary file in it, named after
+    /// itself; a case supplies one only when the *row* is what it is about.
+    let row: FileEntry?
 
     init(
         _ name: String,
         _ path: VFSPath,
         canRename: Bool,
-        connect: ((CompositeBackend) -> Void)? = nil
+        connect: ((CompositeBackend) -> Void)? = nil,
+        row: FileEntry? = nil
     ) {
         self.name = name
         self.path = path
         self.canRename = canRename
         self.connect = connect
+        self.row = row
     }
 }
 
@@ -109,10 +114,51 @@ struct RenameReachTests {
         )
         pane.panel = Panel(model: DirectoryModel(listing: DirectoryListing(
             path: testCase.path,
-            entries: [entry("notes.txt", on: testCase.path.backend)]
+            entries: [testCase.row ?? entry("notes.txt", on: testCase.path.backend)]
         )))
         return pane
     }
+
+    /// The merged iCloud listing's app-library row: an app's name over its `Documents` folder, which
+    /// `ICloudDrive.libraryRow(for:stat:)` calls the one place in the codebase where a row's name and
+    /// its path disagree.
+    fileprivate static let iCloudLibraryRow = FileEntry(
+        path: .local(NSHomeDirectory() + "/Library/Mobile Documents/com~apple~Pages/Documents"),
+        name: "Pages",
+        kind: .directory,
+        byteSize: 0,
+        modificationDate: Date(timeIntervalSince1970: 0),
+        creationDate: Date(timeIntervalSince1970: 0),
+        isHidden: false,
+        permissions: 0o755,
+        inode: 0
+    )
+
+    /// An ordinary local file, for the rows a synthesized listing draws beside that one.
+    fileprivate static let looseFile = FileEntry(
+        path: .local(NSHomeDirectory() + "/Library/Mobile Documents/com~apple~CloudDocs/notes.txt"),
+        name: "notes.txt",
+        kind: .file,
+        byteSize: 10,
+        modificationDate: Date(timeIntervalSince1970: 0),
+        creationDate: Date(timeIntervalSince1970: 0),
+        isHidden: false,
+        permissions: 0o644,
+        inode: 0
+    )
+
+    /// The same file, in the home trash — where the capability, not the listing, refuses it.
+    fileprivate static let trashedFile = FileEntry(
+        path: .local(NSHomeDirectory() + "/.Trash/notes.txt"),
+        name: "notes.txt",
+        kind: .file,
+        byteSize: 10,
+        modificationDate: Date(timeIntervalSince1970: 0),
+        creationDate: Date(timeIntervalSince1970: 0),
+        isHidden: false,
+        permissions: 0o644,
+        inode: 0
+    )
 
     private static func menuItem(_ action: Selector) -> NSMenuItem {
         let item = NSMenuItem()
@@ -167,16 +213,46 @@ struct RenameReachTests {
                 $0.connectS3Account(account: Remote.bucket.account, secretAccessKey: "secret")
             }
         ),
-        // The other half of the asymmetry: real local files, so the *capability* says yes, in a
-        // synthesized listing where half the rows are an app's `Documents` folder wearing the app's
-        // name. `isVirtualDirectory` is what refuses it, and the menu item now refuses with it.
-        Case("the merged iCloud listing", VFSPath(backend: .icloud, path: "/"), canRename: false),
+        // The one row in this app whose name is not its file's: an app library in the merged iCloud
+        // listing draws "Pages" over a folder called `Documents`. The capability says yes — it is an
+        // ordinary local folder — so `nameMatchesPath` is the whole of the refusal, and it is the
+        // only thing the old `!isVirtualDirectory` gate was right about.
+        Case(
+            "an app library row in the merged iCloud listing",
+            VFSPath(backend: .icloud, path: "/"),
+            canRename: false,
+            row: iCloudLibraryRow
+        ),
+        // Everything standing beside it. These four were refused for a property of their
+        // *container* until 2026-08-22; each is an ordinary file in an ordinary directory, and the
+        // rename lands in that directory rather than in the synthetic one.
+        Case(
+            "a loose file in the merged iCloud listing",
+            VFSPath(backend: .icloud, path: "/"),
+            canRename: true,
+            row: looseFile
+        ),
         Case(
             "a search-results listing",
             VFSPath(backend: .search, path: "/Results"),
-            canRename: false
+            canRename: true,
+            row: looseFile
         ),
-        Case("the merged Trash", VFSPath(backend: .trash, path: "/Trash"), canRename: false),
+        // Not a virtual-listing refusal at all: a trash withdraws `.rename`, because Put Back is
+        // keyed on the name in the trash and renaming a trashed item orphans its `.DS_Store`
+        // record. The same answer for a pane standing in `~/.Trash` itself, below.
+        Case(
+            "the merged Trash",
+            VFSPath(backend: .trash, path: "/Trash"),
+            canRename: false,
+            row: trashedFile
+        ),
+        Case(
+            "a pane standing inside ~/.Trash",
+            .local(NSHomeDirectory() + "/.Trash"),
+            canRename: false,
+            row: trashedFile
+        ),
         Case(
             "a browsed archive",
             VFSPath(backend: .archive(forArchiveAt: "/Users/tester/pkg.zip"), path: "/inner"),

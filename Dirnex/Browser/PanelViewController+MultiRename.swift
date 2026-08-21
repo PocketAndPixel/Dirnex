@@ -23,6 +23,9 @@ extension PanelViewController {
     /// Internal rather than private so `RenameReachTests` can drive the real refusal; the whole
     /// point of the fix it pins is that this guard and the menu item's are one property.
     func beginMultiRename() {
+        // Reconcile before reading the cursor, for the reason `beginRename` states: the gate's
+        // directory — and with it the backend it asks — follows the cursor in a tree.
+        reconcileCursorFromTable()
         // `canRenameHere`, the same property ⇧F2's menu item grays itself off — see `beginRename`.
         guard canRenameHere else { return }
         let targets = selectionTargets()
@@ -108,6 +111,11 @@ extension PanelViewController {
             }
 
             panel.clearSelection()
+            // A search snapshot re-lists nothing, so each row this batch renamed is put back under
+            // its new name by hand (`substituteSearchHit`); every other listing refreshes below.
+            for pair in result.renamed {
+                substituteSearchHit(pair.original, renamedTo: pair.renamed.lastComponent)
+            }
             // Land the cursor on the first renamed item's new location.
             refreshCurrentDirectory(selecting: result.renamed.first?.renamed)
             focusTable()

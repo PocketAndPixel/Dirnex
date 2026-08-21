@@ -159,10 +159,37 @@ public extension S3Backend {
     /// ``S3Backend/enumeratePages(prefix:delimiter:at:isCancelled:body:)`` — literally, since a
     /// partial enumeration here would report a folder as deleted while leaving most of it in place,
     /// and a rule that important is not one to keep a second copy of.
+    ///
+    /// **The keys are decoded, and this is the one enumeration that forgot to be** (fixed
+    /// 2026-08-22). A page carries keys exactly as the wire spelled them, and under
+    /// `encoding-type=url` that is `application/x-www-form-urlencoded` — so a folder holding
+    /// `untitled folder/a.txt` enumerated as `untitled+folder/a.txt` and *that* is what went into
+    /// `DeleteObjects`. S3's delete is idempotent, so every one of those keys came back in a
+    /// `<Deleted>` row without ever having existed: the request succeeded, the parser found no
+    /// `<Error>`, and the folder was still there. Two features failed on it, both silently — F8 on
+    /// any folder holding a name with a space, and the *delete half* of a folder rename, which is
+    /// how it was reported (a rename that left the folder under both names, docs/NOTES.md ▸ curl
+    /// for S3).
+    ///
+    /// `S3ListingParser.decoder(for:)` rather than a decode of our own, for the reason its own
+    /// comment gives: a second decoder is how two routes come to disagree about what a key is
+    /// called. `S3SubtreeListing` already used it, and its comment claimed this delete "enumerates
+    /// the same way and takes its keys from the same element" — true of the element and not of the
+    /// decode, which is exactly the shape that hides.
+    ///
+    /// A key that does not decode **throws**, where the listing routes drop the row. The asymmetry
+    /// is the point: a row nobody can name is one a listing is right to omit, and a key a delete
+    /// omits is a file left behind under a folder reported as gone.
     private func allKeys(under prefix: String, at path: VFSPath) throws -> [String] {
         var keys: [String] = []
         try enumeratePages(prefix: prefix, delimiter: nil, at: path) { page in
-            keys += page.objects.map(\.key)
+            let decode = S3ListingParser.decoder(for: page)
+            for object in page.objects {
+                guard let key = decode(object.key) else {
+                    throw VFSError.io(path: path, code: EILSEQ)
+                }
+                keys.append(key)
+            }
         }
         return keys
     }

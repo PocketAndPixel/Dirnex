@@ -166,8 +166,16 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
             // (probed 2026-07-21). Withdrawing the capability is the whole of the inversion the
             // Trash needs — the M5 degradation then turns F8 into a confirmed permanent delete,
             // with no branch in the delete path and no way for a caller to forget to ask.
+            //
+            // `.rename` goes with it, and for a reason of the Trash's own: **Put Back is keyed on
+            // the name in the trash**. The origin lives in the trash folder's `.DS_Store` as a
+            // `ptbL`/`ptbN` pair looked up by that name (`TrashPutBack`), so renaming a trashed
+            // item orphans its record — Put Back stops working, with nothing on screen to say so
+            // and no way back. Finder refuses the same gesture. Withdrawing the capability rather
+            // than gating the flows covers every route at once: the merged Trash listing, a pane
+            // navigated into `~/.Trash`, a volume's `.Trashes`, and a tree over any of them.
             return TrashLocations.isInsideTrash(path)
-                ? local.capabilities.subtracting(.trash)
+                ? local.capabilities.subtracting([.trash, .rename])
                 : local.capabilities
         }
         if path.backend.isSFTP { return sftpBackend(for: path.backend)?.capabilities ?? .read }

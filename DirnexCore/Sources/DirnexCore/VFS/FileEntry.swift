@@ -147,4 +147,48 @@ public struct FileEntry: Sendable, Hashable, Identifiable {
 
     /// Whether ``modificationDate`` is a real timestamp rather than ``unknownDate``.
     public var hasModificationDate: Bool { modificationDate != Self.unknownDate }
+
+    /// Whether the name this row shows is the name of the thing at its ``path``.
+    ///
+    /// True of every row this project produces but one, which is what makes it worth asking:
+    /// ``ICloudDrive/libraryRow(for:stat:)`` puts an **app's** name over its `Documents` folder, and
+    /// its own doc comment calls that out as the single place where name and path disagree. So a row
+    /// reading "Pages" is a folder called `Documents`, and offering to rename it offers to rename
+    /// something the user is not looking at — under a name that is not the one they would be
+    /// editing.
+    ///
+    /// It is the honest form of a rule that used to be spelled `!isVirtualDirectory`. That gate was
+    /// right about the app rows and wrong about everything standing beside them: a loose file in the
+    /// merged iCloud listing, a search hit, a row inside an expanded folder in either — all of them
+    /// are ordinary files wearing their own names, and all of them were refused because the
+    /// *container* they were drawn in is synthetic. What a rename needs is a row whose name it can
+    /// edit and a directory that can perform it, and neither question is about the pane.
+    public var nameMatchesPath: Bool { name == path.lastComponent }
+
+    /// The same item under a new name in the same directory.
+    ///
+    /// Everything else is carried over untouched, because a rename changes nothing else: the size,
+    /// the dates, the inode and the cloud state are the same file's. That is what makes this cheap
+    /// enough to use where re-`stat`ing would be a network round trip.
+    ///
+    /// The caller is a listing that cannot re-gather itself — a search snapshot, whose whole
+    /// contract is that it keeps the hits it was given (`PanelViewController+Tree` says so where it
+    /// refuses to re-list a results root). A hit the app has just renamed is still that hit, so the
+    /// row is substituted rather than dropped or left showing a name that is no longer on disk.
+    public func renamed(to newName: String) -> FileEntry {
+        FileEntry(
+            path: (path.parent ?? path).appending(newName),
+            name: newName,
+            kind: kind,
+            byteSize: byteSize,
+            modificationDate: modificationDate,
+            creationDate: creationDate,
+            isHidden: isHidden,
+            permissions: permissions,
+            inode: inode,
+            symlinkDestination: symlinkDestination,
+            symlinkTargetKind: symlinkTargetKind,
+            isDataless: isDataless
+        )
+    }
 }

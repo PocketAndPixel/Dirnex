@@ -152,6 +152,38 @@ non-empty folder, which hid three folders Finder shows.
 M19 closed on 2026-08-09; M20 opened and closed 2026-08-12 (HISTORY.md). Three things landed
 between M19 and M18, which closed on 2026-08-07, and six after it.
 
+**2026-08-22 — F2 in an S3 tree did nothing, and the rename that followed it left the folder under
+two names.** Two independent bugs behind one report, and the second is the older and worse of them.
+
+The dead key was a gate reading the **pane** where it meant the **row**: `canRenameHere` asked
+`capabilities(for: panel.path)`, so in an S3 *account* pane — whose own rows are buckets, which S3
+cannot rename at any level — the answer was "no rename here" for every row, including a prefix three
+levels inside an expanded bucket. It is the seventh instance of that family (docs/NOTES.md ▸ Design
+lessons) and the second on this very predicate, so the fix names the subject rather than the site:
+the gate is the row's own directory, which is what `performRename` had always built the destination
+in. A cursor on a bucket row still answers with the account and is still refused.
+
+Renaming then produced a **duplicate**, because a folder rename is `EXDEV` → copy the subtree →
+delete the source, and the delete swept keys in the wire's spelling. A page's keys arrive
+form-urlencoded under `encoding-type=url`, and `S3Backend.allKeys(under:at:)` was the one enumeration
+that never decoded them — so `DeleteObjects` was handed `untitled+folder/…` for keys stored
+`untitled folder/…`. S3's delete is idempotent, `<Quiet>true</Quiet>` leaves the body empty, and
+there is no `<Error>` row: the request succeeded and deleted nothing. **F8 on any folder holding a
+name with a space had been silently doing nothing since the backend shipped**; the rename is merely
+what made it visible. Every fixture in `S3Fixtures` declares that encoding and none of their keys has
+a character it touches, which is why the corpus could not see it — the same disjoint-corpus trap as
+the 2026-08-18 whitespace bug, with the halves swapped.
+
+The gate's second half changed with it. `!isVirtualDirectory` was standing in for one real fact — the
+merged iCloud listing draws an **app's** name over its `Documents` folder — and refusing every
+ordinary row beside those. `FileEntry.nameMatchesPath` says what was meant, so rename now works on a
+loose file in that listing, on a search hit, and at every level of a tree over either, while the
+three refusals that had shared the flag each state their own reason. Two things that cost more than
+the widening: a search snapshot re-lists nothing by design, so a renamed hit is substituted in place
+(`substituteSearchHit`) rather than left drawing a name that is no longer on disk; and `.rename` is
+now withdrawn **inside a Trash**, because Put Back is keyed on the item's name there and renaming a
+trashed file orphans its `.DS_Store` record silently and for good.
+
 **2026-08-21 — ⎋ and ⏎ on a dialog raised by a modifier chord, which is unanswerable until the
 user lifts the modifier.** Reported the day after the entry below, against the remote-download
 confirmation: ⎋ needed two presses and ⏎ never worked at all. Nothing was wrong with the binding this

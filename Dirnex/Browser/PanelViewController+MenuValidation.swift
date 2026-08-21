@@ -200,8 +200,8 @@ extension PanelViewController: NSMenuItemValidation {
         backend.capabilities(for: panel.path).contains(.write) && creationDirectory != nil
     }
 
-    /// This pane can rename an item in place — the owning backend advertises `.rename`, and the pane
-    /// is standing in a real directory rather than a synthesized listing.
+    /// The row under the cursor can be renamed in place — the backend that owns the directory it
+    /// lives in advertises `.rename`, and the name on screen is the name that would be edited.
     ///
     /// Internal, and asked by the **flows** as well as by this validator (F2's `beginRename`, ⇧F2's
     /// `beginMultiRename`), because two hand-written copies of one rule is how they drifted: the
@@ -214,14 +214,59 @@ extension PanelViewController: NSMenuItemValidation {
     /// no directory of its own. One property answers both, so neither surface can be reached without
     /// the other (docs/NOTES.md ▸ AppKit — the size-bar and `canGoToParent` lessons).
     ///
-    /// `isVirtualDirectory` is the second half rather than a capability because it is not about the
-    /// backend at all: an iCloud row's real path *is* renameable, and renaming an app library's
-    /// `Documents` folder — which is what half those rows are — is not what the name on screen
-    /// offers. Same shape as `canWriteHere`, whose `creationDirectory` half exists for the mirror
-    /// case. Safe in a validator, which does not reconcile the cursor first: *which* directory
-    /// follows the cursor in a tree, but *whether the pane has one* never does.
+    /// The second half is the **row**, not the pane. `FileEntry.nameMatchesPath` is false for
+    /// exactly one kind of row in this app — the merged iCloud listing's app-library rows, which
+    /// wear an app's name over its `Documents` folder — and renaming one would rename a folder the
+    /// user is not looking at, under a name that is not the one they would be editing.
+    ///
+    /// It replaced `!isVirtualDirectory`, which was right about those rows and wrong about every row
+    /// standing beside them: a loose file in the merged listing, a search hit, a row inside an
+    /// expanded folder in either. All were refused for a property of the *container* rather than of
+    /// themselves. Nothing else needed relaxing — an archive member and an S3 account's buckets are
+    /// refused by the capability, and a trashed item by the `.rename` a trash withdraws, so each
+    /// refusal now states its own reason instead of three of them sharing one flag.
     var canRenameHere: Bool {
-        !isVirtualDirectory && backend.capabilities(for: panel.path).contains(.rename)
+        cursorRowCarriesItsOwnName && backend.capabilities(for: renameDirectory).contains(.rename)
+    }
+
+    /// Whether the row under the cursor shows its file's real name.
+    ///
+    /// `true` with no row under the cursor, which keeps this a question about a *location* for the
+    /// callers that ask it that way: F2's validator adds `panel.currentEntry != nil` and ⇧F2's a
+    /// non-empty selection, so an empty pane is refused there rather than here.
+    private var cursorRowCarriesItsOwnName: Bool {
+        guard !cursorOnParentRow, let entry = panel.currentEntry else { return true }
+        return entry.nameMatchesPath
+    }
+
+    /// The directory whose backend decides whether the cursor's row can be renamed: the row's own,
+    /// which is `performRename`'s `source.parent` — the directory the rename actually happens in.
+    ///
+    /// It used to be `panel.path`, and the two are the same answer in a plain directory listing,
+    /// which is every listing this app had when the gate was written. Two shapes broke it:
+    ///
+    /// - **A tree** draws rows from several directories, and they can be on a different *backend*
+    ///   than the pane (docs/NOTES.md ▸ the results-tab family). An S3 account pane is where that
+    ///   reached a user: its own rows are buckets, which nothing can rename, so F2 three levels
+    ///   inside an expanded bucket did nothing at all and File ▸ Rename… was gray beside it
+    ///   (reported 2026-08-22). A cursor on a bucket row still answers with the account, and is
+    ///   still — correctly — refused.
+    /// - **A synthesized listing** has a container with no capabilities to speak of. A search hit
+    ///   and a loose file in the merged iCloud listing are ordinary files in ordinary directories,
+    ///   and asking `search:` or `icloud:` about them answered for the *presentation*.
+    ///
+    /// Deliberately **not** `Panel.cursorDirectory`, which stops at `panel.path` outside a tree —
+    /// that property answers where a *create* lands, and there the pane's own directory is right
+    /// (F7 in the merged iCloud listing creates in the CloudDocs container underneath, via
+    /// `writeDirectory`, not beside whichever row the cursor happens to be on). Two questions that
+    /// coincide in a plain listing and must not be collapsed.
+    private var renameDirectory: VFSPath {
+        // The `..` row stands for the pane's own parent rather than for any row, so a cursor parked
+        // on it is pointing at nothing and the pane's own directory is the answer.
+        guard !cursorOnParentRow, let directory = panel.currentEntry?.path.parent else {
+            return panel.path
+        }
+        return directory
     }
 
     /// Boolean view toggles that carry a checkmark tracking their state and are always

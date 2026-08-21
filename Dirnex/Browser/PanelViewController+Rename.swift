@@ -23,6 +23,11 @@ extension PanelViewController {
     /// the cursor is on `..`/empty, or when this pane can't rename.
     func beginRename() {
         guard renamingEntryID == nil else { return }
+        // The cursor is read three times below — for the gate's *directory*, for the entry, and for
+        // the row — and the table's selection is the live one until its change notification fires a
+        // runloop pass later. In a tree a stale cursor is a different **directory**, hence a
+        // different backend, not merely a different row (docs/NOTES.md ▸ `creationDirectory`).
+        reconcileCursorFromTable()
         // `canRenameHere` — the same property File ▸ Rename… grays itself off, rather than a second
         // spelling of it. The two had drifted, and a menu item's own key equivalent is dispatched
         // through the item, so a mismatch is a key that works where the menu says it cannot (or the
@@ -129,6 +134,10 @@ extension PanelViewController {
                         try backend.moveItem(at: source, to: destination)
                     }
                 }.get()
+                // A search snapshot cannot re-list itself, so the row it is still drawing has to be
+                // put back under the new name by hand; every other listing re-lists or re-gathers
+                // below.
+                substituteSearchHit(source, renamedTo: newName)
                 refreshCurrentDirectory(selecting: destination)
                 focusTable()
                 host?.recordUndoableAction(.rename(from: source, to: destination))

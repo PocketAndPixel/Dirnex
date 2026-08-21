@@ -137,6 +137,37 @@ extension PanelViewController {
         host?.panelDidNavigate(self)
     }
 
+    /// Put one hit back under the name the app just gave it.
+    ///
+    /// A search snapshot is the one listing here that can neither re-list nor re-gather itself —
+    /// `refreshCurrentDirectory` returns without touching it, and `refreshTree` deliberately skips a
+    /// results root, both saying the same thing: it keeps the hits it was given. That is right for
+    /// the world changing underneath it, and wrong for a change *this pane* made, which would
+    /// otherwise leave the row showing a name that is no longer on disk — the tell the S3 rename bug
+    /// was first reported by.
+    ///
+    /// A substitution rather than a re-`stat`: a rename changes nothing but the name, and the hit
+    /// may be on a server, where confirming what we just did would be a round trip. Nothing else in
+    /// the snapshot moves, so a search that found a hundred files still shows a hundred.
+    ///
+    /// The merged Trash and iCloud listings need none of this — both re-gather on refresh — and a
+    /// rename that had to run as a **job** (an S3 prefix, `EXDEV`) is still outside it: the queue
+    /// refreshes both panes when it finishes, which for a search snapshot does nothing, so such a
+    /// hit keeps its old name until the search is run again.
+    func substituteSearchHit(_ source: VFSPath, renamedTo newName: String) {
+        guard panel.path.backend == .search else { return }
+        let entries = panel.model.listing.entries
+        guard entries.contains(where: { $0.path == source }) else { return }
+        panel.setListing(DirectoryListing(
+            path: panel.path,
+            entries: entries.map { $0.path == source ? $0.renamed(to: newName) : $0 }
+        ))
+        if let index = panel.displayedIndex(ofID: source.parent?.appending(newName) ?? source) {
+            panel.moveCursor(to: index)
+        }
+        reloadEverything()
+    }
+
     /// The model behind a results tab — shared by opening one and by re-gathering an open one
     /// (which the Trash does after a delete, since unlike a search snapshot its contents change
     /// because of what the user just did in it).
