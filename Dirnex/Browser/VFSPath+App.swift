@@ -53,6 +53,19 @@ extension VFSPath {
         return nil
     }
 
+    /// Whether this path is a **bucket row** — an entry in an S3 account's own listing, which is
+    /// the one thing an ``S3AccountBackend`` draws below its root.
+    ///
+    /// The subject is the *row*, never the pane that holds it, and that distinction is the whole
+    /// reason this is a property rather than a comparison written out at each site. A tree rooted on
+    /// an account draws each expanded bucket's own contents beneath it, and those rows carry `s3://`
+    /// paths — so a pane-level test answers "bucket" for every folder inside every bucket, and ⏎ on
+    /// a folder three levels down asked the service to connect to a bucket of that name (reported
+    /// 2026-08-22: entering `test2` inside `amzn-s3-df` reported that the key may not list "test2").
+    var isS3BucketRow: Bool {
+        backend.isS3Account && !isRoot
+    }
+
     /// What to call this location when a sentence has to name it — the load-failure sheet's title,
     /// the tab chip, the New Folder sheet, and anything else that would otherwise print a bare
     /// `lastComponent`.

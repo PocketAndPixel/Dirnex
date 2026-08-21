@@ -100,6 +100,17 @@ extension PanelViewController {
 
     // MARK: - Entering a bucket
 
+    /// The bucket ⏎ would connect to for this row, or `nil` when the row opens some other way.
+    ///
+    /// Split out from the gesture because it is the *decision* that was wrong and the decision is
+    /// the only half that can be asserted: acting on it ends in a connect, whose failure raises an
+    /// alert that would block the test host (docs/NOTES.md ▸ Testing). Pure, so a test can drive it
+    /// against a real pane with the cursor on a real row and fail when the subject drifts back to
+    /// the pane.
+    func s3BucketToEnter(for entry: FileEntry) -> VFSPath? {
+        entry.path.isS3BucketRow ? entry.path : nil
+    }
+
     /// Enter the bucket row under the cursor by **connecting to it**.
     ///
     /// Not a path walk: a bucket is another backend, and the connection to it is the thing that
@@ -107,9 +118,13 @@ extension PanelViewController {
     /// what makes the wrong-region correction apply here — a bucket list spans regions while an
     /// account is signed for one, so the row the user pressed Enter on may well not live where the
     /// account does, and the 301 that says so is already handled one file over.
-    func enterS3Bucket(named name: String) {
-        guard let account = panel.path.backend.s3Account else { return }
-        guard let request = s3BucketConnectRequest(for: account, bucket: name) else {
+    ///
+    /// The bucket comes from the **row's** own path rather than the pane's, which is the same
+    /// subject `s3BucketChildren(at:)` reads: in a tree the pane may be standing on an account whose
+    /// rows are two backends deep, and only the row says whether this is a bucket at all.
+    func enterS3Bucket(at path: VFSPath) {
+        guard path.isS3BucketRow, let account = path.backend.s3Account else { return }
+        guard let request = s3BucketConnectRequest(for: account, bucket: path.lastComponent) else {
             presentOperationFailure(
                 message: connectFailureTitle(account.host),
                 detail: Self.genericS3ConnectError
@@ -170,7 +185,7 @@ extension PanelViewController {
     /// tab's root and answers `nil` across a backend boundary — and the point is moot either way,
     /// since a restored account pane has no live connection to list its own root with.
     func s3BucketChildren(at path: VFSPath) async -> [FileEntry]? {
-        guard let account = path.backend.s3Account, !path.isRoot else { return nil }
+        guard path.isS3BucketRow, let account = path.backend.s3Account else { return nil }
         let bucket = path.lastComponent
         guard let request = s3BucketConnectRequest(for: account, bucket: bucket) else {
             reportBucketExpansionFailure(bucket)

@@ -145,7 +145,7 @@ final class S3AccountLiveIntegrationTests {
         let config = try #require(S3LiveEnvironment.current)
         let controller = await connectedPane(config)
 
-        controller.enterS3Bucket(named: config.bucket)
+        controller.enterS3Bucket(at: controller.panel.path.appending(config.bucket))
         await waitUntil("the bucket to list") { controller.panel.path.backend.isS3 }
 
         let location = try #require(controller.panel.path.backend.s3Location)
@@ -186,7 +186,7 @@ final class S3AccountLiveIntegrationTests {
         defer { ServerConnectionStore.save(savedServers) }
 
         let controller = await connectedPane(config)
-        controller.enterS3Bucket(named: config.bucket)
+        controller.enterS3Bucket(at: controller.panel.path.appending(config.bucket))
         await waitUntil("the bucket to list") { controller.panel.path.backend.isS3 }
 
         let location = try #require(controller.panel.path.backend.s3Location)
@@ -212,7 +212,7 @@ final class S3AccountLiveIntegrationTests {
     func leavesABucket() async throws {
         let config = try #require(S3LiveEnvironment.current)
         let controller = await connectedPane(config)
-        controller.enterS3Bucket(named: config.bucket)
+        controller.enterS3Bucket(at: controller.panel.path.appending(config.bucket))
         await waitUntil("the bucket to list") { controller.panel.path.backend.isS3 }
         let bucket = try #require(controller.panel.path.backend.s3Location)
 

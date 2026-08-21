@@ -125,6 +125,51 @@ struct PanelTreeBucketExpansionTests {
         #expect(pane.transientStatus == nil, "neither is a failure worth a sentence")
     }
 
+    // MARK: - ⏎ inside an expanded bucket
+
+    /// The row is the subject, not the pane — reported 2026-08-22.
+    ///
+    /// With a bucket expanded in an account pane, its contents are drawn beneath it on the `s3://`
+    /// backend. ⏎ asked `panel.path.backend.isS3Account`, which is the *pane*, so every folder
+    /// inside every expanded bucket was treated as a bucket row: entering `test2` inside
+    /// `amzn-s3-df` asked the service to connect to a bucket called `test2` and reported that the
+    /// key isn't allowed to list it — a refusal about a bucket that does not exist, over a folder
+    /// the pane was already showing the contents of.
+    ///
+    /// The decision is asserted rather than the gesture: acting on it ends in a connect whose
+    /// failure raises an alert, and an alert with no window blocks the whole run.
+    @Test("⏎ on a folder inside an expanded bucket is not a bucket connect")
+    func folderInsideABucketIsNotABucketRow() {
+        let pane = Self.pane(at: Self.accountRoot)
+        let bucket = Self.accountRoot.appending("amzn-s3-df")
+        Self.seed(pane, [Self.folder(bucket)])
+
+        let objects = VFSPath(
+            backend: .s3(Self.account.bucketLocation(named: "amzn-s3-df")),
+            path: "/"
+        )
+        let folder = Self.folder(objects.appending("test2"))
+        pane.panel.expand(bucket)
+        pane.panel.setTreeChildListing(bucket, entries: [folder])
+        pane.panel.moveCursor(to: 1)
+
+        let entry = pane.panel.currentEntry
+        #expect(entry?.path == folder.path, "the cursor is on the row inside the bucket")
+        #expect(pane.s3BucketToEnter(for: folder) == nil, "an object folder is not a bucket")
+    }
+
+    /// The narrowness control, and the half that keeps the fix from becoming "nothing is a bucket":
+    /// the bucket row itself still crosses, from the same pane in the same tree.
+    @Test("⏎ on the bucket row itself is still a bucket connect")
+    func bucketRowIsStillABucketRow() {
+        let pane = Self.pane(at: Self.accountRoot)
+        let bucket = Self.accountRoot.appending("amzn-s3-df")
+        let row = Self.folder(bucket)
+        Self.seed(pane, [row])
+
+        #expect(pane.s3BucketToEnter(for: row) == bucket)
+    }
+
     // MARK: - What the crossing changed
 
     /// `←` used to climb by `entry.path.parent`, which is the same answer everywhere a child's path

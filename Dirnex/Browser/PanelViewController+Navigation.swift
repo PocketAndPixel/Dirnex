@@ -22,8 +22,12 @@ extension PanelViewController {
         // directory, and the path it points at is one this backend deliberately refuses to list
         // (`S3AccountBackend` is depth 0 — everything below a bucket is reached by connecting to
         // it). Walking in is a backend crossing, so it is a connect (PLAN.md §M21 Slice 9).
-        if panel.path.backend.isS3Account {
-            enterS3Bucket(named: entry.name)
+        //
+        // Asked of the **row**, not of the pane: a tree rooted on an account draws each expanded
+        // bucket's contents beneath it on the `s3://` backend, and those are ordinary folders that
+        // navigate (`VFSPath.isS3BucketRow`).
+        if let bucket = s3BucketToEnter(for: entry) {
+            enterS3Bucket(at: bucket)
             return
         }
         if let target = panel.openTarget(for: entry) {

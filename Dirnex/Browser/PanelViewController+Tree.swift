@@ -299,7 +299,7 @@ extension PanelViewController {
     /// `nil` for anything that failed to list — the folder stays childless, as an unreadable or
     /// deleted one does.
     private func treeChildEntries(at path: VFSPath) async -> [FileEntry]? {
-        if path.backend.isS3Account, !path.isRoot {
+        if path.isS3BucketRow {
             return await s3BucketChildren(at: path)
         }
         return try? await DirectoryLoader.list(backend, at: path).entries
