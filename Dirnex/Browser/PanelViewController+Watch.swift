@@ -99,15 +99,41 @@ extension PanelViewController {
             ) else { return }
             guard token == loadToken, panel.path == watchedPath else { return }
             if deferRefreshIfRenaming() { return }
-            reconcileCursorFromTable()
-            installSortedModel(model)
+            // **Only when the listing actually moved.** The stream is recursive, so the great
+            // majority of events are about something far below this directory and change nothing the
+            // pane draws: measured on `/Users/oleg` with nothing touched, ~5 events a second, every
+            // one of them from `~/Library` (Chrome's cache, Spotlight's index, a sync client's
+            // metrics) and the 27 rows identical throughout. Re-installing them anyway costs a full
+            // `reloadData` several times a second, which the user *sees* — it tears down the
+            // expansion tooltip on the row under the pointer, so a name too long for its column
+            // blinks (docs/NOTES.md ▸ AppKit), and it is the same teardown `deferRefreshIfRenaming`
+            // exists to keep away from an open rename field.
+            //
+            // This is the rule the other three consumers of this event already keep — `applyGitSnapshot`,
+            // `applyTagSnapshot` and `applySyncSnapshot` each say "a no-op when nothing changed, so
+            // the FSEvents-driven republish of an untouched directory costs no reload". The listing
+            // was the one that did not, and it is the consumer that repaints every row.
+            let listingChanged = model.listing != panel.model.listing
+            if listingChanged {
+                reconcileCursorFromTable()
+                installSortedModel(model)
+            }
             // Before the re-render, which re-seeds bars from the cache: this event is the only proof
             // available that a cached total went stale, and seeding first would re-plant the number
             // we are about to disprove. `DirectoryWatcher` discards the event's paths and its stream
             // is recursive, so all this proves is "something under here changed" — the core's rule
             // turns that into the right set of evictions (this line, root to leaf; siblings survive).
+            // Unconditional, unlike the render: a change *below* a folder is exactly what makes its
+            // cached total stale while leaving this directory's own entries untouched.
             invalidateDirectorySizes(under: watchedPath)
-            renderRefresh()
+            if listingChanged { renderRefresh() }
+            // The three below still run on **every** event, unconditionally, and that is the point of
+            // waking them separately: none of their states is derivable from the listing. `git add`
+            // moves the gutter without touching a worktree file; a Finder tag is an xattr, which
+            // changes no field of a `stat` this listing carries; a provider evicting a file changes
+            // its badge. Each has its own no-op-when-unchanged guard, so an event that means nothing
+            // to them costs no reload either.
+            //
             // Re-derives the repository too, so a `git init` (or a deleted `.git`) right here turns
             // the gutter on or off as it happens, rather than on the next navigation.
             updateGitStatus()

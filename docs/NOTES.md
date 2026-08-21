@@ -540,6 +540,39 @@ at build time.
   vanishes and focus jumps. Guard both refresh sites and replay the owed refresh when editing
   ends. Only reproducible with a *real* FSEvents change landing during the edit window, not via
   synthetic F2 → type → Enter.
+- **An `FSEventStream` is *recursive*, so a pane on a home directory is told about `~/Library` several
+  times a second — and reacting to each with a `reloadData` is visible to the user, because AppKit's
+  expansion tooltip dies with the cell view a reload discards.** `DirectoryWatcher` also discards the
+  event's paths, so a ping proves only "something under here changed". Measured 2026-08-21 with a
+  pane sitting on `/Users/oleg` and nothing touched: **62 FSEvents callbacks in 30 s** at the stream
+  (every one from Chrome's cache, Spotlight's index, a sync client's metrics — not one about the
+  directory itself), and **152 full `reloadData` calls in 31 idle seconds** over 27 rows that never
+  changed. A truncated name floats its full value through `allowsExpansionToolTips`, which needs an
+  uninterrupted hover to appear; at five reloads a second it never survives its own appearance delay.
+  Reported by a user as a tooltip that "blinks" on any long folder in the home directory.
+  - **The other three consumers of that event already had the rule, which is what makes it findable
+    in the source rather than only in a profiler:** `applyGitSnapshot`, `applyTagSnapshot` and
+    `applySyncSnapshot` each carry the sentence "a no-op when nothing changed, so the FSEvents-driven
+    republish of an untouched directory costs no reload". The **listing** was the one consumer without
+    it — and it is the one that repaints every row. When a single event wakes several consumers, the
+    audit is to read each one's guard, not the event.
+  - **Only the *render* may be skipped, not the wake-ups**, and the split is what keeps the fix from
+    being a regression: none of git, tags or sync is derivable from a listing. `git add` moves the
+    gutter without touching a worktree file; a Finder tag is an xattr, which changes no field of the
+    `stat` a listing carries; and `invalidateDirectorySizes` must stay unconditional, since a change
+    *below* a folder is exactly what makes its cached total stale while leaving the rows identical.
+  - **The A/B is the whole proof, and it is the opposite of what "blinking" predicts.** Same pointer
+    resting on the same row: with the guard in, the floated panel was present in **3/3** samples over
+    4.5 s; with it reverted, **absent in 4/4** — the reload wins the race far more often than the
+    tooltip does, so what the user sees is the rare frame where it got through.
+  - **`NSTableView` offers no reload count, and the table's *selection* is the honest stand-in.**
+    `renderRefresh` ends in `syncCursorToTable`, so a table deselected by hand comes back selected if
+    and only if the pane re-rendered, and `reconcileCursorFromTable` returns early on an empty
+    selection so deselecting does not disturb the cursor it would be read from. Two things the test
+    needs: a **quiesce** step, because a freshly loaded pane has three legitimate first-snapshot
+    renders still to come and measuring before they land reads their arrival as the bug; and the
+    narrowness control, which is the half that keeps passing when the fix is reverted (a create in
+    the pane's own directory must still appear) — without it, "never reload" would pass.
 - **Every bare `NSTextField` initializer hands back a *wrapping* cell, so a value longer than the
   field hides its tail on a second line the field is too short to show.** Measured on macOS 26:
   `NSTextField()`, `NSTextField(frame:)` and both `NSSecureTextField` spellings all come back

@@ -394,8 +394,22 @@ extension PanelViewController {
             }
             guard token == loadToken, panel.isTree, panel.path == root else { return }
             if deferRefreshIfRenaming() { return }
+            // **Which of them actually moved.** The stream is recursive over every listed directory,
+            // so on a tree rooted anywhere near a busy subtree the great majority of events describe
+            // something far below the deepest row: measured on a tree at `/Users/oleg` with nothing
+            // touched, this ran ~5 times a second for half a minute and the 27 rows were identical
+            // every time. Re-installing identical entries is not free — each pass ends in a
+            // `renderRefresh`, whose `reloadData` the user *sees*, because it tears down the
+            // expansion tooltip on the row under the pointer and a name too long for its column
+            // blinks (docs/NOTES.md ▸ AppKit). The list-mode watcher keeps the same rule, and so do
+            // the git, tag and sync consumers of this event.
+            let changed = listings.filter { directory, entries in
+                directory == root
+                    ? entries != panel.model.listing.entries
+                    : entries != panel.tree?.entries(in: directory)
+            }
             reconcileCursorFromTable()
-            for (directory, entries) in listings {
+            for (directory, entries) in changed {
                 if directory == root {
                     // The root goes through the model too — it stays the settings-of-record the tree
                     // is re-seeded from — while a child touches only the tree.
@@ -409,13 +423,15 @@ extension PanelViewController {
             // watcher keeps, so a revisit re-walks what grew rather than trusting the cache. The tree
             // keeps the totals it is already drawing (a stale total is an approximation, not a lie),
             // and `renderRefresh` re-queues anything now genuinely unsized.
+            // Unconditional, unlike the render below: a change *below* a listed folder is exactly
+            // what makes its cached total stale while leaving every row on screen untouched.
             invalidateDirectorySizes(under: root)
             if let target, let index = panel.displayedIndex(ofID: target) {
                 panel.moveCursor(to: index)
                 cursorOnParentRow = false
                 renderRefresh()
                 syncCursorToTable(scroll: true)
-            } else {
+            } else if !changed.isEmpty {
                 renderRefresh()
             }
             startWatchingTree()
