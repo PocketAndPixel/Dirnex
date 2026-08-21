@@ -407,15 +407,20 @@ extension BrowserWindowController {
         remoteFileCache.rebaseline(path, to: RemoteFileRevision(uploaded), url: url)
     }
 
-    /// Re-list any pane standing in `directory`, so the size and date it draws for the object are
-    /// the ones just written.
+    /// Re-list any pane drawing `directory`, so the size and date it shows for the object are the
+    /// ones just written.
     ///
     /// Both panes, by *content* rather than by role — the pane that opened the file may have
     /// navigated away, both may be in the same directory, or neither may be. The same "ask which
     /// pane is showing this, don't assume" shape the archive write-back and the pack outcome need.
+    ///
+    /// Through `isShowing`, not `panel.path ==`, and that is the whole of the 2026-08-22 fix: a tree
+    /// draws several directories at once, so an object edited from an account pane with its bucket
+    /// expanded is two levels below the path this used to compare against. The upload succeeded and
+    /// the row kept the size and date it had.
     private func refreshPanesShowing(_ directory: VFSPath?) {
         guard let directory else { return }
-        for pane in [leftPanel, rightPanel] where pane.panel.path == directory {
+        for pane in [leftPanel, rightPanel] where pane.isShowing(directory) {
             pane.refreshCurrentDirectory()
         }
     }

@@ -152,6 +152,24 @@ non-empty folder, which hid three folders Finder shows.
 M19 closed on 2026-08-09; M20 opened and closed 2026-08-12 (HISTORY.md). Three things landed
 between M19 and M18, which closed on 2026-08-07, and six after it.
 
+**2026-08-22 — an edited S3 object uploaded, and the row went on saying `Zero KB`.** The fifth in
+the day's chain, and the one that shows the family's real subject: the *window*, not the pane, asks
+"who is showing this directory". After a save-back `refreshPanesShowing(path.parent)` re-listed the
+pane whose `panel.path == directory` — true in a flat list, false in a **tree**, which draws several
+directories at once. Edited from an account pane with its bucket expanded, the object's parent sits
+two levels below the path being compared, so neither pane matched and nothing refreshed. Everything
+else worked: the `PUT` landed, the re-baseline ran, the server had the new bytes.
+
+`PanelViewController.isShowing(_:)` is the one question now, and what makes it right is that it asks
+the **rows**: `TreeProjection` files an expanded level under the row that was expanded, so a bucket's
+children sit under `s3account:/<bucket>` while every row inside carries `s3://…` — matching the
+tree's listing keys would still have answered no. Both controls were run, and the second is the one
+worth keeping: pane-path-only fails 2 of the 4 tests, listing-keys fails exactly 1, the reported
+shape. The pane's own path stays in the union regardless, since an empty directory has no row to
+derive it from and is where a create lands. The sibling sites were checked and left alone — a pack
+writes to `destinationPane.panel.path` and the archive write-back keys on `backend.archivePath`, so
+neither can name a directory its pane merely draws.
+
 **2026-08-22 — ⇧F4 handed the editor a file that lives on a server.** The fourth in the same day's
 chain and the first that was never about the tree. F4 has routed by the row's own backend since M21
 Slice 10 — that is what `editRoute(for:)` is — and **⇧F4 had a second spelling that knew only about

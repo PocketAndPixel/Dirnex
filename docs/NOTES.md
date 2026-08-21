@@ -4942,17 +4942,44 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     doomed `NSWorkspace` launch takes about **sixty** to fail, so the expiry wins that race and the
     line reads `nil` again by the time anything asks. Measured on the control: `token=1` in both
     tests, `status=nil` in one of them. A self-clearing observable is not one; count instead.
-  - **A bounded wait can destabilize a *neighbouring* suite without blocking anything**, which is the
-    pool-starvation lesson one notch gentler and it fails as somebody else's bug.
-    `PanelPassiveRefreshTests` measures that a pane does *not* repaint while nothing touched it, and
-    its `quiesce` waits for the first git/tag/sync snapshots to land — so two new tests each holding
-    a 2 s window of polling and a loaded pane pushed one of those arrivals into its measurement:
-    3 full runs failed of 7, always inside that suite, never the same test twice, and it passed
-    alone every time. Nothing here blocks the main actor; the cost is simply *how long* something
-    else is running beside it. Shortening the window to 0.5 s — which loses nothing, since the act
-    being watched for happens in the same turn the `stat` resumes on — made it 6 full runs green,
-    against 5/5 for the same suite with this file removed. Measure both sides before blaming the
-    neighbour: "it passes alone" says nothing about which of the two is at fault.
+  - **`PanelPassiveRefreshTests` is load-sensitive and flakes on a busy Mac with nothing touched, so
+    a new suite beside it will look like the cause and is not necessarily one.** It measures that a
+    pane does **not** repaint while nothing touched it, after a `quiesce` that waits for the first
+    git/tag/sync snapshots to land — and a snapshot that arrives late lands inside the measurement
+    and reads as the bug. Adding two 2 s-holding tests beside it failed 3 full runs of 7, always in
+    that suite, never the same test twice, which is a convincing-looking accusation; shortening the
+    hold to 0.5 s then read 6 green. The control is what retired that story: with both new files
+    **skipped**, the same machine still failed 1 run in 4. So the honest reading is a pre-existing
+    flake whose rate rises with whatever else is running. Two things follow, and the second is the
+    general one: keep a new suite's bounded waits as short as the claim allows (0.5 s loses nothing
+    here — the act being watched for happens in the turn the `stat` resumes on), and **run the
+    baseline before believing that your change caused a neighbour's failure**, because "it was green
+    before" is a measurement of the machine as much as of the code.
+- **The tenth is "which pane do I re-list", and it is the eighth's question asked from the *window*
+  rather than from the pane.** The remote write-back finished its upload and called
+  `refreshPanesShowing(path.parent)`, whose predicate was `pane.panel.path == directory` — the same
+  sentence as "is this pane showing that folder" in a flat list, and not in a tree. An S3 object
+  edited from an **account** pane with its bucket expanded has its parent two levels below the path
+  being compared, so neither pane matched, nothing refreshed, and the row went on reading `Zero KB`
+  with the old date for the rest of the session (reported 2026-08-22, immediately after the same
+  day's rename and refresh fixes). Everything else was right: the `PUT` landed, the re-baseline ran,
+  the server had the file.
+  - **The rows are the subject, and the tree's own listing keys are the trap that looks like the
+    fix.** `TreeProjection.listings` is keyed by the **row** that was expanded, which is not always
+    the directory it holds: an expanded bucket files its children under `s3account:/<bucket>` while
+    every row inside carries `s3://…`, so matching `listedDirectories` still answers no. Deriving the
+    set from each displayed entry's own `path.parent` is what answers, and it needed measuring rather
+    than reasoning — the listing-key version *passes* the same test written over a local tree, which
+    is the version a first pass would have shipped (both controls run: pane-path-only fails 2 of 4,
+    listing-keys fails 1 of 4, and the one it fails is the reported shape).
+  - **Keep the pane's own path in the union whatever the rows say**, because an empty directory has
+    no row to derive it from and is exactly where a create lands — a rows-only answer leaves the pane
+    showing an empty folder un-refreshed by the work that fills it.
+  - The sibling sites were checked rather than converted on principle: the **pack** outcome's
+    `paneShowing` is safe because a pack writes to `destinationPane.panel.path`, so its destination
+    *is* the pane's own path by construction, and the **archive** write-back keys on
+    `backend.archivePath`, which every row in a browsed archive shares. Only the site whose
+    destination can be a directory the pane merely *draws* needed the wider question.
 - **A "can this apply here" gate can be testing the wrong *subject* entirely, and it then reads as a
   considered restriction rather than as a bug.** `canUseTreeMode` was `panel.path.backend == .local`,
   under a doc comment explaining that a per-level lazy listing "needs a real directory to read" —
