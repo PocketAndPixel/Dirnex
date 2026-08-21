@@ -4887,6 +4887,37 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
       permanently. `.rename` is withdrawn alongside `.trash` in `capabilities(for:)`, which covers
       the merged listing, a pane standing in `~/.Trash`, a volume's `.Trashes` and a tree over any of
       them in one place; Finder refuses the same gesture.
+- **The eighth is a *refresh* rather than a gate, and it says what the family's real subject is: the
+  question is not only "who decides" but "who re-reads".** `refreshTree` re-listed every directory
+  the tree holds with `DirectoryLoader.list`, which is not how half of them were produced — a
+  **bucket row** hangs under an `s3account:` path, and `S3AccountBackend` answers for its root and
+  nothing deeper by design, so the re-read threw `notFound` into a `try?` and the row simply kept the
+  entries it already had. Reported 2026-08-22, one bug after the two above: the rename now worked
+  perfectly on the server and the pane went on drawing the old name for the rest of the session.
+  - **It is invisible in every direction at once**, which is what makes the refresh a worse home for
+    this shape than a gate. Nothing logs, every request succeeds, both suites and both linters are
+    green, and the *screenshot is of a correct listing* — just not of the bucket. And it is the whole
+    funnel, not one gesture: F7, F8 and the queued rename an S3 prefix becomes all reach
+    `refreshCurrentDirectory`, so "the view doesn't update" was true of every write in an expanded
+    bucket.
+  - **The fix is to re-read through the funnel that produced the rows** (`treeChildEntries`), not to
+    add a branch to the refresh — the same rule this file keeps restating for *decisions*, applied to
+    a re-read. The audit it suggests is cheap and worth running whenever rows can come from somewhere
+    a listing cannot: grep the refresh path for `list(` and ask whether every row it covers was
+    listed that way.
+  - **Routing a refresh through a funnel that *connects* is where it costs something**, and the cost
+    is not the request everyone would guess. Reconnecting to a bucket that is already open spends a
+    second billed probe (`probeConnection` is a `ListObjectsV2` of the same root), re-files the
+    secret in the Keychain and re-registers the backend — side effects a passive refresh has no
+    business having. There is no session to keep alive on S3, so the root a connection settled on
+    stays listable: record it where the rows were recorded (`PanelTab.s3BucketRoots`, the shape
+    `mergedSources` already had) and re-list it, falling back to the full connect when that fails so
+    a dropped registration heals rather than becoming a row that never refreshes again.
+  - **A record of "where these rows came from" is also what makes the whole path testable with no
+    network**: point it at a real local directory, rename a folder inside it, and drive the real
+    `refreshTree`. Reverted, the test fails with `names → ["test3"]` — the reporter's screenshot,
+    verbatim — while the narrowness control (an ordinary local child is still re-read by listing it)
+    keeps passing, which is what stops the fix from becoming "everything is a bucket".
 - **A "can this apply here" gate can be testing the wrong *subject* entirely, and it then reads as a
   considered restriction rather than as a bug.** `canUseTreeMode` was `panel.path.backend == .local`,
   under a doc comment explaining that a per-level lazy listing "needs a real directory to read" —

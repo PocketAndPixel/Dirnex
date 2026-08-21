@@ -291,14 +291,14 @@ extension PanelViewController {
         }
     }
 
-    /// What to draw beneath an expanded row: ordinarily one listing, and for a **bucket row in an
-    /// S3 account pane** a connection, since `S3AccountBackend` answers for its root and nothing
-    /// deeper. See `s3BucketChildren(at:)` for why that is a crossing rather than a walk, and why
-    /// the rows it hands back keep their own `s3://` paths.
+    /// What to draw beneath an expanded row — and what a refresh re-reads it with: ordinarily one
+    /// listing, and for a **bucket row in an S3 account pane** a connection, since
+    /// `S3AccountBackend` answers for its root and nothing deeper. See `s3BucketChildren(at:)` for
+    /// why that is a crossing rather than a walk, and why its rows keep their own `s3://` paths.
     ///
     /// `nil` for anything that failed to list — the folder stays childless, as an unreadable or
     /// deleted one does.
-    private func treeChildEntries(at path: VFSPath) async -> [FileEntry]? {
+    func treeChildEntries(at path: VFSPath) async -> [FileEntry]? {
         if path.isS3BucketRow {
             return await s3BucketChildren(at: path)
         }
@@ -388,8 +388,11 @@ extension PanelViewController {
         Task {
             var listings: [(VFSPath, [FileEntry])] = []
             for directory in directories {
-                if let listing = try? await DirectoryLoader.list(backend, at: directory) {
-                    listings.append((directory, listing.entries))
+                // Through `treeChildEntries`, the same funnel the expansion used — a bucket row's
+                // children are a *connection*, and listing `s3account:/<bucket>` throws `notFound`
+                // into a `try?`, so a rename inside one left the old row on screen (2026-08-22).
+                if let entries = await treeChildEntries(at: directory) {
+                    listings.append((directory, entries))
                 }
             }
             guard token == loadToken, panel.isTree, panel.path == root else { return }

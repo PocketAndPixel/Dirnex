@@ -152,6 +152,28 @@ non-empty folder, which hid three folders Finder shows.
 M19 closed on 2026-08-09; M20 opened and closed 2026-08-12 (HISTORY.md). Three things landed
 between M19 and M18, which closed on 2026-08-07, and six after it.
 
+**2026-08-22 — a rename inside an expanded bucket left the old name on screen.** The third bug in
+one day's chain: F2 now reached the row and the delete now swept the right keys, so the rename
+finally worked end to end — and the tree went on drawing `test3` for a folder that was `test4` on the
+server, for the rest of the session.
+
+`refreshTree` re-read every listed directory with `DirectoryLoader.list`, which is not how half of
+them were produced. A **bucket row** hangs under an `s3account:` path, and `S3AccountBackend`
+answers for its root and nothing deeper by design — so the re-read threw `notFound` into a `try?`
+and the row kept the entries it already had. Nothing logged, every request succeeded, and it is the
+*whole* refresh funnel: F7, F8 and the queued rename an S3 prefix becomes all reach it through
+`refreshPanes`. The fix is one line of routing — the refresh re-reads through `treeChildEntries`,
+the same funnel the expansion used, so the two cannot drift.
+
+What that costs is the other half. A refresh now arrives at an already-open bucket, and answering it
+by *connecting* again would spend a second billed probe, a Keychain write and a re-registration to
+land on the root it had already settled on — so the tab records where each expanded bucket's rows
+were listed from (`PanelTab.s3BucketRoots`, `mergedSources`' shape one level down) and re-lists that
+directly, falling back to the full connect when the listing fails so a dropped registration heals
+itself. The tests stand a real local directory in for the connected root, which is exactly what that
+record means, so the whole path runs with no network; reverted, the first one fails with
+`names → ["test3"]` — the user's screenshot, verbatim.
+
 **2026-08-22 — F2 in an S3 tree did nothing, and the rename that followed it left the folder under
 two names.** Two independent bugs behind one report, and the second is the older and worse of them.
 

@@ -161,6 +161,13 @@ extension PanelViewController {
 
     // MARK: - Expanding a bucket in a tree
 
+    /// The active tab's record of where each expanded bucket row's children came from, forwarded
+    /// the way `viewMode` and `mergedSources` are — the tree is per tab, so this is too.
+    var s3BucketRoots: [VFSPath: VFSPath] {
+        get { tabs[activeTabIndex].s3BucketRoots }
+        set { tabs[activeTabIndex].s3BucketRoots = newValue }
+    }
+
     /// The rows beneath an expanded **bucket row** in a tree — the bucket's own root listing.
     ///
     /// A backend crossing rather than a path walk, exactly as Enter is. `S3AccountBackend` answers
@@ -180,6 +187,16 @@ extension PanelViewController {
     /// deliberate gesture (`→`, or the disclosure triangle), never by cursor movement, so no billed
     /// request is spent on a key that was only passing through.
     ///
+    /// **A refresh asks the same question again and must not answer it by re-connecting.**
+    /// `refreshTree` re-reads every listed directory through this same funnel, so an open bucket
+    /// arrives here after every file operation — and connecting again would re-probe (a second
+    /// billed `ListObjectsV2` each time), re-file the secret in the Keychain and re-register the
+    /// backend, to land on the root it already settled on. There is no session to keep alive here —
+    /// a connection is the credential plus the endpoint — so the settled root stays listable, and
+    /// it is remembered per bucket row (``s3BucketRoots``) and re-listed directly. A listing that
+    /// fails falls back to the full connect, which is what makes a dropped registration or a
+    /// re-addressed endpoint heal itself rather than becoming a row that never refreshes again.
+    ///
     /// One thing it does *not* buy, stated rather than left to be discovered: a bucket expansion is
     /// not restored across a relaunch. `rootRelativePath` anchors a persisted expansion under the
     /// tab's root and answers `nil` across a backend boundary — and the point is moot either way,
@@ -187,6 +204,31 @@ extension PanelViewController {
     func s3BucketChildren(at path: VFSPath) async -> [FileEntry]? {
         guard path.isS3BucketRow, let account = path.backend.s3Account else { return nil }
         let bucket = path.lastComponent
+        if let root = s3BucketRoots[path],
+           let listing = try? await DirectoryLoader.list(backend, at: root) {
+            return listing.entries
+        }
+        guard let root = await connectedS3BucketRoot(for: account, bucket: bucket) else {
+            return nil
+        }
+        guard let listing = try? await DirectoryLoader.list(backend, at: root) else {
+            reportBucketExpansionFailure(bucket)
+            return nil
+        }
+        s3BucketRoots[path] = root
+        return listing.entries
+    }
+
+    /// Connect to `bucket` and hand back the root the connection settled on — which is not always
+    /// the one asked for, since the region redirect and the path-style retry re-aim it.
+    ///
+    /// `nil` on every outcome that has nothing to list. Only two of them are worth a sentence: an
+    /// account whose secret is not in the Keychain, and a refusal. The explanation itself belongs to
+    /// the gesture that asked for this bucket outright — Enter reports it in an alert, where there
+    /// is room for one and somebody is waiting for it — so an expansion names the row that could not
+    /// be opened and leaves the diagnosis to the deliberate route. A pane that moved on while the
+    /// probe ran (`.abandoned`) is nobody's question any more and says nothing.
+    private func connectedS3BucketRoot(for account: S3Account, bucket: String) async -> VFSPath? {
         guard let request = s3BucketConnectRequest(for: account, bucket: bucket) else {
             reportBucketExpansionFailure(bucket)
             return nil
@@ -195,19 +237,10 @@ extension PanelViewController {
         case .abandoned:
             return nil
         case .failed:
-            // The explanation belongs to the gesture that asked for this bucket outright: Enter
-            // reports it in an alert, where there is room for a sentence and somebody is waiting for
-            // it. An expansion is one key in a run of them, so it names the row that could not be
-            // opened and leaves the diagnosis to the deliberate route.
             reportBucketExpansionFailure(bucket)
             return nil
         case let .connected(location):
-            let root = VFSPath(backend: .s3(location), path: "/")
-            guard let listing = try? await DirectoryLoader.list(backend, at: root) else {
-                reportBucketExpansionFailure(bucket)
-                return nil
-            }
-            return listing.entries
+            return VFSPath(backend: .s3(location), path: "/")
         }
     }
 

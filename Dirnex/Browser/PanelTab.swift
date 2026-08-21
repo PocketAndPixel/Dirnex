@@ -117,6 +117,17 @@ final class PanelTab {
     /// always describes what is actually on screen. Session-scoped like the snapshots above.
     var mergedSources: [VFSPath] = []
 
+    /// Where each expanded **bucket row** in this tab's tree had its children listed from: the
+    /// `s3://` root the connection settled on, keyed by the `s3account:` row it hangs under.
+    ///
+    /// `mergedSources`' shape one level down — the tab's record of where rows on screen were
+    /// gathered from, recorded by the gather that produced them. A tree refresh re-reads every
+    /// listed directory through the same funnel the expansion used, so without this an open bucket
+    /// would be re-*connected* on every file operation: a second billed probe, a Keychain write and
+    /// a re-registration, to arrive at the root already recorded here. Session-scoped — a restored
+    /// tab has no live connection, and no bucket expansion to restore either.
+    var s3BucketRoots: [VFSPath: VFSPath] = [:]
+
     /// Drop everything that describes *results* rather than a place: the chip label and the query
     /// behind "Save Search…". Called when the tab stops showing a results listing — navigating a
     /// Trash or search tab to a real folder — because those three outlive the listing otherwise,
