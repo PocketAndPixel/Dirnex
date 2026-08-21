@@ -4918,6 +4918,41 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     `refreshTree`. Reverted, the test fails with `names → ["test3"]` — the reporter's screenshot,
     verbatim — while the narrowness control (an ordinary local child is still re-read by listing it)
     keeps passing, which is what stops the fix from becoming "everything is a bucket".
+- **The ninth is not a gate and not a re-read but the *act*, which is the half a shared decision does
+  not cover on its own.** F4 has asked `editRoute(for:)` since M21 Slice 10 — the function this list's
+  third entry is about — and **⇧F4 never called it**: whatever its dialog resolved went straight to
+  `openInEditor`, whose `localURL` is `file://` plus the path *inside* the backend. So ⇧F4 on an S3
+  object asked macOS to open `/test2.txt`, Finder answered that the file couldn't be found, and
+  nothing was downloaded, while F4 on the same row worked perfectly. Reported 2026-08-22.
+  - **Extracting the decision is what made the act's copy invisible.** `editRoute` was pulled out
+    precisely because a key and its menu validator had drifted, and it fixed both of *those* — so the
+    file reads as having one rule, and the third caller sitting two hundred lines below simply never
+    joined. The tell is a `switch` over the routes in one function and a bare call to the local-only
+    verb in another; grep for what the `.local` branch calls, not for the enum.
+  - **Two call sites, and only the first is ever in the report.** ⇧F4 opens a name that is already
+    there *and* creates one that is not, and the create half reads as working for longer — the object
+    really does appear on the server — before it hands the editor a path that has never existed.
+  - **A created file has to be read back rather than assumed.** The route is decided from an *entry*,
+    and a remote one's fetch and its later save-back are keyed on the size, time and entity tag only
+    a `stat` carries (`RemoteFileRevision`), so a hand-built stand-in saves one round trip and makes
+    the very first save look like somebody else's write.
+  - **The observable in the test is the status *token*, not the message.** `openInEditor` shows
+    "Opening …" before it launches anything, which is what makes the flow testable with no editor
+    ever opening — but a transient message clears itself after four seconds and the reverted build's
+    doomed `NSWorkspace` launch takes about **sixty** to fail, so the expiry wins that race and the
+    line reads `nil` again by the time anything asks. Measured on the control: `token=1` in both
+    tests, `status=nil` in one of them. A self-clearing observable is not one; count instead.
+  - **A bounded wait can destabilize a *neighbouring* suite without blocking anything**, which is the
+    pool-starvation lesson one notch gentler and it fails as somebody else's bug.
+    `PanelPassiveRefreshTests` measures that a pane does *not* repaint while nothing touched it, and
+    its `quiesce` waits for the first git/tag/sync snapshots to land — so two new tests each holding
+    a 2 s window of polling and a loaded pane pushed one of those arrivals into its measurement:
+    3 full runs failed of 7, always inside that suite, never the same test twice, and it passed
+    alone every time. Nothing here blocks the main actor; the cost is simply *how long* something
+    else is running beside it. Shortening the window to 0.5 s — which loses nothing, since the act
+    being watched for happens in the same turn the `stat` resumes on — made it 6 full runs green,
+    against 5/5 for the same suite with this file removed. Measure both sides before blaming the
+    neighbour: "it passes alone" says nothing about which of the two is at fault.
 - **A "can this apply here" gate can be testing the wrong *subject* entirely, and it then reads as a
   considered restriction rather than as a bug.** `canUseTreeMode` was `panel.path.backend == .local`,
   under a doc comment explaining that a per-level lazy listing "needs a real directory to read" —

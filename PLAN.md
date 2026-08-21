@@ -152,6 +152,30 @@ non-empty folder, which hid three folders Finder shows.
 M19 closed on 2026-08-09; M20 opened and closed 2026-08-12 (HISTORY.md). Three things landed
 between M19 and M18, which closed on 2026-08-07, and six after it.
 
+**2026-08-22 — ⇧F4 handed the editor a file that lives on a server.** The fourth in the same day's
+chain and the first that was never about the tree. F4 has routed by the row's own backend since M21
+Slice 10 — that is what `editRoute(for:)` is — and **⇧F4 had a second spelling that knew only about
+this Mac**: whatever its dialog resolved went straight to `openInEditor`, whose `localURL` is
+`file://` plus the path *inside* the backend. So the Edit button asked macOS to open `/test2.txt`,
+Finder answered that the file couldn't be found, nothing was ever downloaded — and F4 on that same
+row would have opened it correctly.
+
+Both of ⇧F4's call sites were wrong and only one is in a report: the name that is already there, and
+the name it **creates**, which reads as working for longer because the object really does appear on
+the server before the editor is asked for a path that has never existed. There is one dispatch now
+(`openForEditing`), which is what extracting `editRoute` was for — arriving on the *act* rather than
+on the decision. The created file is read back rather than assumed: a route is decided from an entry,
+and a remote one's fetch and its later save-back are keyed on the size, time and entity tag only a
+`stat` carries, so a hand-built stand-in would save one round trip and make the very first save look
+like somebody else's write. The rest of the family audits clean — Enter's `NSWorkspace.open` and
+`handoffTargets` (Open With, Share) both already gate on `backend == .local`.
+
+The test drives the real flow on a pane with no `PanelHost`, so the remote route stops at a fetch it
+cannot start; the discriminator is `transientStatusToken` rather than the status line itself, because
+"Opening …" clears itself after four seconds while the reverted build's doomed launch takes about
+sixty to fail. Reverted, both tests fail — and TextEdit is asked for a file that is not there, which
+is the user's screenshot.
+
 **2026-08-22 — a rename inside an expanded bucket left the old name on screen.** The third bug in
 one day's chain: F2 now reached the row and the delete now swept the right keys, so the rename
 finally worked end to end — and the tree went on drawing `test3` for a folder that was `test4` on the
