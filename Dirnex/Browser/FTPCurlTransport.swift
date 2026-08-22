@@ -85,6 +85,40 @@ struct FTPCurlTransport: FTPTransport {
         try quote([try FTPQuoteCommand.removeDirectory(remotePath)], near: parentOf(remotePath))
     }
 
+    /// Create an empty file, preferring `APPE` and falling back to `STOR`.
+    ///
+    /// The order is what the two measurements ask for, and neither is optional.
+    /// `APPE` leaves an already-present file untouched, so it is the one that keeps a lost race
+    /// against `createFile`'s `stat` from truncating somebody's document; `STOR` is the one every
+    /// server offers, and a server that grants it while refusing `APPE` answers exit 25 / 550 —
+    /// measured 2026-08-23 by withdrawing exactly the append permission from a real server, with
+    /// `STOR` still succeeding on the same connection.
+    ///
+    /// The fallback is safe to run blind. It is only ever reached for a name `createFile` has
+    /// already found free, and every *other* reason `APPE` could fail — a missing parent, a
+    /// read-only directory — fails `STOR` identically, so a retry costs one round trip and reports
+    /// the second failure rather than masking anything.
+    func createEmptyFile(_ remotePath: String) throws {
+        let scratch = try EmptyUploadFile()
+        defer { scratch.remove() }
+        do {
+            try uploadEmpty(scratch.path, to: remotePath, append: true)
+        } catch {
+            try uploadEmpty(scratch.path, to: remotePath, append: false)
+        }
+    }
+
+    private func uploadEmpty(_ localPath: String, to remotePath: String, append: Bool) throws {
+        _ = try runWithTLSRetry(timeout: metadataTimeout) { session in
+            FTPProcessArguments.createFile(
+                session: session,
+                localPath: localPath,
+                remotePath: remotePath,
+                append: append
+            )
+        }
+    }
+
     /// `RNFR` and `RNTO` are a *pair*: the server holds the pending rename between them, so they
     /// must travel on one connection. `curl` sends each `-Q` in order on the same connection, which
     /// is exactly what makes this expressible without a session.

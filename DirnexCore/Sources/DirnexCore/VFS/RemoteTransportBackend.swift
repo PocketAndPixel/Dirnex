@@ -1,13 +1,28 @@
 import Foundation
 
-/// The four write verbs a remote file transport offers, whatever wire protocol it speaks.
+/// The write verbs a remote file transport offers, whatever wire protocol it speaks.
 ///
 /// `FTPTransport` and `SFTPTransport` both refine this: `curl`'s `MKD`/`RNFR`+`RNTO`/`DELE`/`RMD`
-/// and `sftp`'s `mkdir`/`rename`/`rm`/`rmdir` are the same four operations under different names,
+/// and `sftp`'s `mkdir`/`rename`/`rm`/`rmdir` are the same operations under different names,
 /// which is what lets `RemoteTransportBackend` express the writes once for both.
 public protocol RemoteWriteTransport: Sendable {
     /// Create one directory. The parent must already exist — neither protocol has a `mkdir -p`.
     func makeDirectory(_ remotePath: String) throws
+
+    /// Create an empty regular file at `remotePath` — ⇧F4 "Edit File…" on a server (PLAN.md §M11).
+    ///
+    /// **Neither protocol has a create-if-absent, so this one may overwrite and the caller is what
+    /// stops it.** ``RemoteTransportBackend/createFile(at:)`` refuses an occupied name before
+    /// calling here; what each transport owes is to write zero bytes to a name it is told is free,
+    /// and to get as close to harmless as its protocol allows if it turns out not to be.
+    ///
+    /// Measured 2026-08-23 against a real `sshd` and a real FTP server, because the two protocols
+    /// differ in how bad "not free after all" is. Over FTP `APPE` **creates when absent and leaves
+    /// an existing file untouched**, so the window between the check and the write is benign there;
+    /// over SFTP `put` truncates, `put -a` can create nothing, and `rename` overwrites, so the
+    /// window is real and unavoidable. Neither is expressible as a flag on ``upload``, which is why
+    /// this is its own verb rather than a zero-byte transfer.
+    func createEmptyFile(_ remotePath: String) throws
 
     /// Rename (move) within the account.
     func rename(_ source: String, to destination: String) throws
@@ -48,6 +63,36 @@ public extension RemoteTransportBackend {
     func createDirectory(at path: VFSPath) throws {
         try requireOwnBackend(path)
         try mapErrors(path) { try writeTransport.makeDirectory(path.path) }
+    }
+
+    /// Create an empty file at `path` — the ⇧F4 "Edit File…" route on a server (PLAN.md §M11).
+    ///
+    /// **The `stat` is the whole guard, and it is load-bearing twice over rather than once.**
+    /// Neither protocol offers a create-if-absent — measured 2026-08-23 against a real `sshd` and a
+    /// real FTP server — so an unguarded write is destructive in two different ways, and only one of
+    /// them is the one everybody expects:
+    ///
+    /// - **It truncates.** `put` and `STOR` alike replace an existing file's bytes with none, so
+    ///   ⇧F4 on a name that is already taken would empty the very document the user was reaching
+    ///   for. That is the case ``VFSBackend/createFile(at:)``'s contract exists to forbid.
+    /// - **Over SFTP it also writes somewhere else entirely.** `put <local> <an existing directory>`
+    ///   exits **0** having created `<directory>/<the local file's basename>` — so a create aimed at
+    ///   a folder's name would succeed, report success, and leave a file named after a temporary
+    ///   file nobody chose inside a folder nobody was editing. (`curl` refuses the same thing with
+    ///   550, so this half is SFTP's alone and would not have shown up on the FTP side.)
+    ///
+    /// The window between the check and the write cannot be closed here the way ``S3Backend`` closes
+    /// it with `If-None-Match: *`: there is no conditional write in either protocol. What FTP has
+    /// instead is `APPE`, which creates an absent file and leaves a present one *untouched*, so on
+    /// that side a lost race is merely a create that quietly did nothing — see
+    /// ``RemoteWriteTransport/createEmptyFile(_:)``. Over SFTP the window is real, and it is stated
+    /// rather than papered over: three candidates were measured and none of them is exclusive
+    /// (`put` truncates, `put -a` cannot create, `rename` overwrites).
+    func createFile(at path: VFSPath) throws {
+        try requireOwnBackend(path)
+        guard path.parent != nil else { throw VFSError.alreadyExists(path) }
+        if (try? stat(at: path)) != nil { throw VFSError.alreadyExists(path) }
+        try mapErrors(path) { try writeTransport.createEmptyFile(path.path) }
     }
 
     /// Rename within this account. A move whose destination lives on a *different* backend

@@ -175,6 +175,43 @@ public enum FTPProcessArguments {
         return arguments + [url(session, remotePath)]
     }
 
+    /// Upload `localPath` — expected to be an **empty** file — to create `remotePath`, the ⇧F4
+    /// "Edit File…" route (PLAN.md §M11).
+    ///
+    /// `append` picks the FTP verb, and the choice is the whole reason this is not
+    /// ``upload(session:localPath:remotePath:resume:)`` with a flag. Measured 2026-08-23 against a
+    /// real server, with `-v` read for the verb actually sent:
+    ///
+    /// - **`--append` sends `APPE`**, which creates the file when it is absent and — appending zero
+    ///   bytes — leaves an existing one **byte-for-byte untouched**. That is as close to
+    ///   create-if-absent as FTP gets, and it is what makes losing the race against
+    ///   ``RemoteTransportBackend/createFile(at:)``'s `stat` harmless rather than destructive.
+    /// - **Plain `--upload-file` sends `STOR`**, which truncates. It is nonetheless the fallback,
+    ///   because `APPE` is not universally offered: a server that grants `STOR` and refuses `APPE`
+    ///   answers **exit 25 / 550**, so an `APPE`-only create would simply fail there.
+    ///
+    /// Two flags this deliberately does *not* borrow from `upload`. No `-w '%{size_upload}'`: the
+    /// answer is always 0 and the caller has nothing to reconcile. And **no `showingProgress`** —
+    /// `-S` exists so a long transfer's meter can be read, and letting a meter onto stderr for an
+    /// empty file would only put a three-digit speed column in front of the classifier that reads
+    /// FTP reply codes out of that same stream (docs/NOTES.md ▸ curl).
+    ///
+    /// The URL must not end in `/`, which is why `remotePath` is passed through untouched where
+    /// ``list(session:remotePath:)`` appends one: `curl -T` against a trailing slash appends the
+    /// *local* file's basename, so the create would land under the temporary file's name instead of
+    /// the user's (measured over FTP, and the same trap S3's own upload URL carries).
+    public static func createFile(
+        session: FTPSession,
+        localPath: String,
+        remotePath: String,
+        append: Bool
+    ) -> [String] {
+        var arguments = common(session: session) + configFromStandardInput
+        if append { arguments.append("--append") }
+        arguments += ["--upload-file", localPath]
+        return arguments + [url(session, remotePath)]
+    }
+
     /// Ask for one file's metadata only (`SIZE` + `MDTM`, surfaced as `Content-Length` and
     /// `Last-Modified`). The one path that yields an **exact, zone-anchored** mtime — a `LIST`
     /// stamp has neither year nor zone — so it is worth a round trip for a single item and never

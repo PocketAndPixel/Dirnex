@@ -149,8 +149,8 @@ non-empty folder, which hid three folders Finder shows.
 
 ### After M19
 
-M19 closed on 2026-08-09; M20 opened and closed 2026-08-12, M22 on 08-16, M21 on 08-19. Twenty
-further passes landed between 2026-08-07 and 2026-08-22 without a milestone of their own, and
+M19 closed on 2026-08-09; M20 opened and closed 2026-08-12, M22 on 08-16, M21 on 08-19.
+Twenty-one further passes landed between 2026-08-07 and 2026-08-23 without a milestone of their own, and
 every one of them is shipped — so that log lives in **[docs/HISTORY.md](docs/HISTORY.md) ▸ After
 M19** with the rest of the archive, together with the two passes that closed M19's own loose ends.
 

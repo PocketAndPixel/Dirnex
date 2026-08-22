@@ -2446,6 +2446,37 @@ one, so all four columnar parsers — `bsdtar -tvf`, `sftp`'s `ls -la`, FTP's `L
   `usage: sftp` / `usage: ssh` in stderr, not just a nonzero-exit check — the exit code is 1, which
   is also what a real failed command gives.
 
+- **There is no way to create a file exclusively over `sftp`, and all three candidates fail
+  differently.** Measured 2026-08-23 against a real `sshd` while building ⇧F4's remote route, because
+  "create an empty file" reads as though one of them must work: `put` of an empty file **truncates**
+  an existing one (exit 0); `put -a` cannot create at all (`stat remote: No such file or directory`)
+  *and* refuses an existing file (`destination file same size or larger`), so it is useless in both
+  directions; and `rename` onto an occupied destination **overwrites** it silently, exit 0 — OpenSSH
+  uses the POSIX-rename extension, so put-to-a-temp-name-then-rename is not exclusive either. So a
+  create is a client-side `stat` followed by a `put`, and the window between them is real. Worth
+  stating plainly rather than leaving as an implementation detail: FTP has `APPE` and S3 has
+  `If-None-Match`, so SFTP is the one backend here where the race cannot be closed at all.
+  - Note the third measurement contradicts `RemoteTransportBackend.moveItem`'s own doc comment,
+    which claims `.alreadyExists` for an occupied destination. Over SFTP it does not.
+- **`put /dev/null` is refused — `local "/dev/null" is not a regular file`, exit 1, nothing
+  created.** The obvious spelling of "upload nothing", and it works over FTP (measured) while
+  libcurl's HTTP side accepts it and chunk-frames it into a *non*-empty body (▸ curl for S3). Three
+  protocols, three answers; a real empty temp file behaves the same everywhere, which is why
+  `EmptyUploadFile` exists rather than each transport picking what its own tool tolerates.
+- **`put <local> <an existing directory>` exits 0 and creates `<directory>/<the local basename>`.**
+  The same basename-appending trap `curl -T` has on a trailing-slash URL, arriving where there is no
+  slash to warn you — and it is the quietest failure available, because every layer reports success.
+  For ⇧F4 that means a create aimed at a folder's name would drop a file named after a *temporary*
+  file inside a folder nobody was editing. `curl` refuses the same thing with 550, so this half is
+  SFTP's alone and cannot be found from the FTP side. It is what makes `createFile`'s `stat` guard
+  load-bearing for two reasons rather than one, and it is only assertable against a real server: the
+  witness is the directory still being **empty** afterwards.
+- A failed `put` classifies correctly on both auth paths without any new vocabulary: a missing parent
+  gives `dest open "…": No such file or directory` and a read-only one `… Permission denied`, which
+  `classify` maps by exit code and `detect` catches on its `no such file` / `permission denied`
+  substring checks before its prefix scan (neither message starts with `can't`/`couldn't`/`remote`,
+  so the prefix scan alone would have missed both).
+
 #### The SSH exec channel (M22's server-side search)
 
 `ssh <host> <command>` is the *other* thing an SSH connection can do, and Dirnex uses it for exactly
@@ -2593,6 +2624,28 @@ off a man page.
   exit 18**, not up front — forcing every server to 1.2 is a real downgrade for the ones that do 1.3
   correctly. It fails in the quiet direction (an empty listing reads as an empty directory), so a
   smoke test must assert *non-empty* rather than merely "no error".
+
+- **`APPE` is FTP's create-if-absent, and it is the reason a create there is non-destructive where
+  SFTP's cannot be.** Measured 2026-08-23 against a real server with `-v` read for the verb:
+  `curl --append -T <empty file>` sends **`APPE`**, which **creates** the file when it is absent
+  (exit 0, zero bytes) and — appending nothing — leaves an existing one **byte-for-byte untouched**.
+  Plain `--upload-file` sends `STOR` and truncates. So the window between a client-side existence
+  check and the write is benign over FTP and genuinely destructive over SFTP, for the same feature.
+  - **But `APPE` is not universally offered, and the fallback is not optional.** A server that grants
+    `STOR` and refuses `APPE` answers **exit 25 / 550** — reproduced by withdrawing exactly the
+    append permission from a real account, with `STOR` succeeding on the same connection seconds
+    later. So an `APPE`-only create simply fails there, and `FTPCurlTransport.createEmptyFile` tries
+    `APPE` first and falls back. The fallback is safe to run blind because every *other* reason
+    `APPE` could fail — a missing parent, a read-only directory — fails `STOR` identically.
+  - **`-T` onto an existing directory is refused with 550** (exit 25), unlike `sftp`'s `put`, which
+    fills it silently (▸ sftp / ssh). Two protocols, opposite failure directions, one guard — which
+    is the argument for the guard living in `RemoteTransportBackend` rather than in either transport.
+  - The **trailing-slash** rule holds here as it does for S3: `-T` against a URL ending in `/`
+    appends the *local* file's basename, so a create URL must be the file's own path. Measured over
+    FTP directly rather than inherited from the S3 note.
+  - A create must **not** borrow `upload`'s `-S`. There is no progress in zero bytes, and letting a
+    meter onto stderr puts a three-digit speed column in front of the classifier that reads FTP reply
+    codes out of that same stream — a bug this project has already paid for once.
 
 #### FTPS trust
 

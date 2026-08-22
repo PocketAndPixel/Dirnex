@@ -11118,15 +11118,60 @@ searching (3 hits at three depths inside a zip).
 
 ---
 
-### After M19 — the follow-on log (2026-08-07 → 2026-08-22)
+### After M19 — the follow-on log (2026-08-07 → 2026-08-23)
 
-Twenty dated passes that landed outside a milestone of their own, between M18's close on
-2026-08-07 and 2026-08-22: user-reported bugs, three vault features, the tree crossing into S3,
+Twenty-one dated passes that landed outside a milestone of their own, between M18's close on
+2026-08-07 and 2026-08-23: user-reported bugs, three vault features, the tree crossing into S3,
 and the chain of five that one S3 rename pulled apart. They ran *alongside* M20, M21 and M22
 rather than after them — which is why they sit here at the end rather than in a numeric slot —
 and they keep their **newest-first** order, because several read as a chain and refer to the
 entry below. Moved out of [PLAN.md](../PLAN.md) §4 on 2026-08-23, once the plan had nothing left
 to say about them; what is still open from this stretch stayed there.
+
+**2026-08-23 — ⇧F4 "Edit File…" creates a file on a server (SFTP, FTP and FTPS).** Reported with a
+screenshot: the dialog opens on a connected SFTP pane, takes a name, and answers *"This location
+doesn't support creating files."* Everything around it was already right — `canCreateFileHere` reads
+`.write` plus a real `creationDirectory`, both true of a remote pane, and `canEditRemoteFile` is
+backend-agnostic — so the whole gap was one verb: `VFSBackend.createFile` had no implementation
+below `RemoteTransportBackend`, and the protocol default throws `.unsupported(.createFile)`. The
+route the created file then takes to the editor and back has worked since the previous day's pass.
+
+The design came out of the probes rather than the other way round, and two of them inverted the
+obvious implementation. **Over FTP, `--append` sends `APPE`, which creates an absent file and leaves
+a present one byte-for-byte untouched** — as close to create-if-absent as FTP gets — while plain
+`-T` sends `STOR` and truncates; so the window between a client-side check and the write is benign
+there. It is nonetheless tried *with* a `STOR` fallback, because a server that grants `STOR` and
+refuses `APPE` answers exit 25 / 550, reproduced by withdrawing exactly that permission from a real
+account. **Over SFTP there is no such option at all**: `put` truncates, `put -a` can neither create
+nor overwrite, and `rename` silently overwrites its destination (OpenSSH uses the POSIX-rename
+extension), so all three candidates were measured and all three refused. The race is stated rather
+than papered over — S3 closes the same window with `If-None-Match`, FTP softens it with `APPE`, and
+SFTP cannot.
+
+The `stat` guard is therefore load-bearing twice over, and the second reason is the one no fake could
+have found: **`sftp`'s `put` aimed at an existing directory exits 0 having created
+`<directory>/<the local file's basename>`** — so an unguarded create aimed at a folder's name would
+drop a file named after a *temporary* file inside a folder nobody was editing, with every layer
+reporting success. `curl` refuses the identical thing with 550, so the two protocols fail in opposite
+directions and the guard is what makes them behave the same; that is the argument for it living in
+`RemoteTransportBackend` rather than in either transport. One verb (`RemoteWriteTransport
+.createEmptyFile`) and one `createFile` now serve both backends.
+
+Verified against real servers rather than only doubles — a local `sshd`, `pyftpdlib` plain, and
+`pyftpdlib` over explicit FTPS with a pinned self-signed certificate, which is what an FTPS server
+usually is. The FTPS run's own log is the clearest evidence the guard works from outside: one
+`APPE … bytes=0`, and **no** upload attempted for either of the two names already taken. The
+`STOR` fallback was exercised live by running the same suite against a server with append withdrawn.
+`FTPLiveIntegrationTests` is new and file-gated like the SFTP one; `SFTPProcessTransport` split at
+the `type_body_length` ceiling into a `+Process` companion, by concept and mirroring the shape
+`FTPCurlTransport` already had.
+
+One live assertion was written and then deleted, which is the pass's own lesson: "a create leaves an
+existing file's bytes alone" is true on an `APPE` server and false on a `STOR`-only one, so as a live
+test it is a claim about the endpoint wearing a claim about the code — the shape NOTES.md records as
+the kind that expires the day the suite meets a different server. What the project can hold itself
+to, that the non-destructive verb is the one *tried first*, is pinned deterministically in the pure
+argument-builder suite instead.
 
 **2026-08-22 — remote write-back was already shipped for SFTP and FTP, and had never worked.**
 Opened as "build the write-back slice the plan says is open" and the first hour of it was reading:

@@ -138,6 +138,50 @@ struct SFTPLiveIntegrationTests {
         }
     }
 
+    /// ⇧F4 "Edit File…" end to end: the empty file really lands on the server, an occupied name is
+    /// really refused, and — the half no fake can reach — a name held by a **directory** is refused
+    /// rather than silently filled.
+    ///
+    /// That last case is why this is a live test and not another double. `sftp`'s `put` aimed at an
+    /// existing directory exits **0** having created `<directory>/<the local file's basename>`
+    /// (measured 2026-08-23), so the failure a missing guard produces is not an error at all: it is
+    /// a scratch file appearing inside a folder, under a name nobody chose, with every layer
+    /// reporting success. The assertion that catches it is the directory being **empty afterwards**,
+    /// which is a claim only a real server can answer.
+    @Test("creates an empty file, and refuses a name a file or a directory already holds")
+    func createsEmptyFile() async throws {
+        // Off the cooperative pool: every verb below blocks on a subprocess for a real network
+        // round trip, which a test body may not do — see ``offCooperativePool``.
+        try await offCooperativePool {
+            let (backend, config) = try makeBackend()
+            let base = VFSPath(backend: .sftp(config.location), path: config.remotePath)
+            let dir = base.appending("dirnex_create_test_\(UUID().uuidString)")
+            try backend.createDirectory(at: dir)
+            defer { try? backend.removeItem(at: dir) }
+
+            // A free name is created, empty, and is a *file*.
+            let file = dir.appending("notes.txt")
+            try backend.createFile(at: file)
+            let created = try backend.stat(at: file)
+            #expect(created.kind == .file)
+            #expect(created.byteSize == 0)
+
+            // The same name again is refused — and, crucially, the existing file is still there
+            // rather than truncated, since `put` would have replaced it perfectly happily.
+            #expect(throws: VFSError.alreadyExists(file)) {
+                try backend.createFile(at: file)
+            }
+
+            // A name held by a directory is refused, and nothing is written *into* that directory.
+            let occupied = dir.appending("photos")
+            try backend.createDirectory(at: occupied)
+            #expect(throws: VFSError.alreadyExists(occupied)) {
+                try backend.createFile(at: occupied)
+            }
+            #expect(try backend.listDirectory(at: occupied).isEmpty)
+        }
+    }
+
     @Test("resumes a partial transfer both ways: put -a then get -a reconstruct the whole file")
     func resumesPartialTransfer() async throws {
         // Off the cooperative pool: every verb below blocks on a subprocess for a real network

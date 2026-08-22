@@ -11,6 +11,7 @@ final class FakeSFTPTransport: SFTPTransport, @unchecked Sendable {
 
     // Recorded write calls, in the order the backend issued them.
     private(set) var madeDirectories: [String] = []
+    private(set) var createdFiles: [String] = []
     private(set) var renames: [(String, String)] = []
     private(set) var removedFiles: [String] = []
     private(set) var removedDirectories: [String] = []
@@ -63,6 +64,11 @@ final class FakeSFTPTransport: SFTPTransport, @unchecked Sendable {
     func makeDirectory(_ remotePath: String) throws {
         if let error { throw error }
         madeDirectories.append(remotePath)
+    }
+
+    func createEmptyFile(_ remotePath: String) throws {
+        if let error { throw error }
+        createdFiles.append(remotePath)
     }
 
     func rename(_ source: String, to destination: String) throws {

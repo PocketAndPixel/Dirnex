@@ -34,6 +34,10 @@ struct FTPProcessArgumentsTests {
                 session: session(explicitTLS), localPath: "/tmp/a", remotePath: "/a.bin",
                 resume: false
             ),
+            FTPProcessArguments.createFile(
+                session: session(explicitTLS), localPath: "/tmp/empty", remotePath: "/new.txt",
+                append: true
+            ),
             FTPProcessArguments.head(session: session(explicitTLS), remotePath: "/a.bin"),
             FTPProcessArguments.quote(session: session(explicitTLS), commands: ["MKD /x"]),
             FTPProcessArguments.certificateProbe(session: session(explicitTLS))
@@ -46,6 +50,69 @@ struct FTPProcessArgumentsTests {
             // Every one reads its credential from stdin instead.
             #expect(arguments.contains("-K"))
         }
+    }
+
+    // MARK: - Creating an empty file (⇧F4)
+
+    /// `--append` is what makes `APPE` travel, and `APPE` is the only thing in FTP that resembles a
+    /// create-if-absent: measured 2026-08-23 against a real server, it creates the file when it is
+    /// absent and leaves an existing one byte-for-byte untouched, where plain `--upload-file` sends
+    /// `STOR` and truncates. Asserted on the flag rather than on the verb because the verb is
+    /// `curl`'s to choose — the mapping was read off `-v` in the same probe.
+    @Test("append sends the non-destructive verb and plain does not")
+    func appendFlagSelectsTheVerb() {
+        let appending = FTPProcessArguments.createFile(
+            session: session(plain), localPath: "/tmp/empty", remotePath: "/new.txt", append: true
+        )
+        #expect(appending.contains("--append"))
+        #expect(appending.contains("--upload-file"))
+
+        let storing = FTPProcessArguments.createFile(
+            session: session(plain), localPath: "/tmp/empty", remotePath: "/new.txt", append: false
+        )
+        #expect(!storing.contains("--append"))
+        #expect(storing.contains("--upload-file"))
+    }
+
+    /// The URL must carry the name the user typed and nothing else. `curl -T` against a URL ending
+    /// in `/` appends the **local** file's basename (measured over FTP, and the same trap S3's own
+    /// upload URL carries), so a trailing slash here would create the scratch file's random name
+    /// instead of the user's — and report success doing it.
+    @Test("the URL is the file's own path, never a directory")
+    func urlDoesNotGainATrailingSlash() {
+        let arguments = FTPProcessArguments.createFile(
+            session: session(plain), localPath: "/tmp/dirnex-empty-ABC", remotePath: "/pub/new.txt",
+            append: true
+        )
+        let target = try? #require(arguments.last)
+        #expect(target == "ftp://nas.local:21/pub/new.txt")
+        #expect(!(target ?? "").hasSuffix("/"))
+    }
+
+    /// No meter, unlike an upload's. `-S` exists so a long transfer's progress can be read off
+    /// stderr; there is no progress in zero bytes, and that stream is where `FTPTransportError`
+    /// reads the reply code — a meter's three-digit speed column sharing it with the classification
+    /// is a bug this project has already paid for once (docs/NOTES.md ▸ curl).
+    @Test("no progress meter is let onto the stream the classifier reads")
+    func silencesTheMeter() {
+        let arguments = FTPProcessArguments.createFile(
+            session: session(plain), localPath: "/tmp/empty", remotePath: "/new.txt", append: true
+        )
+        #expect(arguments.contains("-sS"))
+        #expect(!arguments.contains("-S"))
+        #expect(!arguments.contains("--write-out"))
+    }
+
+    /// The security flags are the common ones, so a create over FTPS is as protected as every other
+    /// verb — a new builder inherits nothing by default, which is the whole reason to assert it.
+    @Test("an FTPS create requires the TLS upgrade like every other verb")
+    func createCarriesTheSecurityFlags() {
+        let arguments = FTPProcessArguments.createFile(
+            session: session(explicitTLS), localPath: "/tmp/empty", remotePath: "/new.txt",
+            append: true
+        )
+        #expect(arguments.contains("--ssl-reqd"))
+        #expect(!arguments.contains("--insecure"))
     }
 
     // MARK: - The trust invariant
