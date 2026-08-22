@@ -131,6 +131,18 @@ public protocol VFSBackend: Sendable {
     /// Create a single directory at `path`. Throws `.alreadyExists` if something is
     /// already there and `.notFound` if the parent does not exist (no intermediate
     /// directories are created — mirrors `mkdir(2)`).
+    ///
+    /// **Unlike ``moveItem(at:to:)``'s, this promise is kept — but it was not free, and one backend
+    /// is a deliberate exception.** Only local `mkdir(2)` says "already exists" on its own
+    /// (`EEXIST`): SFTP answers a bare `Failure` and FTP a 550, so `RemoteTransportBackend` earns
+    /// the case by disambiguating a failed create with a `stat`. `S3Backend` is the exception and
+    /// throws nothing — a folder there is a zero-byte marker, so writing one twice leaves one
+    /// object and there is nothing a second create could destroy; its own doc comment argues the
+    /// asymmetry against `createFile`, which *does* check because an empty PUT would replace a real
+    /// file. A caller that must know whether the name was free therefore cannot rely on this alone
+    /// over S3, and none does: the two that care (`PanelViewController+Copy.submitBranchTransfer`
+    /// skipping an intermediate directory, and `UndoJournal`'s rebuild) both want "make sure it
+    /// exists", which idempotence satisfies outright.
     func createDirectory(at path: VFSPath) throws
 
     /// Create an empty regular file at `path`. Throws `.alreadyExists` if anything is already

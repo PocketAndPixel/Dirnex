@@ -4548,15 +4548,27 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     of the apply loop. So the codebase knew; only the contract did not — three correct workarounds
     sitting under a sentence saying they were unnecessary. When a doc comment and several call sites
     disagree, the call sites are the measurement.
-  - **The neighbouring claim has the same defect and a caller that actually believes it**, which is
-    what makes this worth more than a documentation tidy. `createDirectory` says "Throws
+  - **The neighbouring claim had the same defect and a caller that actually believed it**, which is
+    what made it a bug rather than a documentation tidy. `createDirectory` says "Throws
     `.alreadyExists` if something is already there" — true of local `mkdir(2)`'s `EEXIST` and false
     remotely: measured, `sftp`'s `mkdir` onto an existing directory gives `remote mkdir …: Failure`
-    (→ `.io`) and FTP's `MKD` gives 550 (→ `.notFound`). `PanelViewController+Copy
-    .submitBranchTransfer` catches `.alreadyExists` to skip an intermediate directory that is
-    already there, so on a remote destination that `catch` never fires and the whole transfer fails
-    instead of continuing. Unfixed as of 2026-08-23 and recorded here rather than in a comment
-    nobody would find.
+    (OpenSSH's SFTP v3 has no "already exists" status, so `EEXIST` arrives as `SSH_FX_FAILURE`) →
+    `.io`, and FTP's `MKD` gives 550 — its one ambiguous refusal → `.notFound`.
+    `PanelViewController+Copy.submitBranchTransfer` catches `.alreadyExists` to skip an intermediate
+    directory that is already there, so on a remote destination that `catch` never fired and the
+    whole transfer failed instead of continuing; F7 on a taken name reported the wrong sentence for
+    the same reason. **Fixed 2026-08-23** in `RemoteTransportBackend.createDirectory`, which
+    disambiguates a *failed* create with a `stat` — the shape S3's own existence check already
+    settled on, where the cheap answer raises the question and only a name about to be refused pays
+    to have it answered. Two properties keep it honest and both are pinned, headlessly and live: a
+    refusal that is **not** about the name (a missing parent, a read-only directory) keeps its own
+    error, or the user is sent to rename a folder that was free; and a `stat` that cannot be had
+    leaves the original error standing rather than reading as either answer.
+    - **`S3Backend` is deliberately outside the fix and its `createDirectory` still throws
+      nothing**, because a folder there is a zero-byte marker: writing one twice leaves one object,
+      so there is nothing a second create could destroy and nothing to disambiguate. Worth stating
+      because "make every backend honour the contract" is the tempting next step and would bill a
+      listing to answer a question no caller asks.
   - The general shape: **an error case a caller `catch`es by name is API, and it needs a test per
     backend the same way a capability does.** A `catch` that never fires is invisible in every
     direction — it compiles, it reads as defensive, and the failure it was supposed to absorb

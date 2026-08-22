@@ -172,3 +172,134 @@ struct RemoteCreateFileTests {
         #expect(transport.createdFiles.isEmpty)
     }
 }
+
+/// `RemoteTransportBackend.createDirectory` — the sibling of the above, and the one with a caller
+/// that genuinely believed the contract.
+///
+/// Neither wire protocol says "already exists": `sftp` answers a bare `Failure` (OpenSSH's SFTP v3
+/// has no such status) and FTP answers 550, its one ambiguous refusal — measured 2026-08-23. So
+/// `PanelViewController+Copy.submitBranchTransfer`, which skips an existing intermediate directory
+/// by catching `.alreadyExists`, never caught anything on a server and failed the whole transfer;
+/// and F7 reported the wrong sentence for a taken name. Driven through both backends for the same
+/// reason the file suite is: the implementation is shared, so asking one proves nothing about the
+/// other.
+@Suite("Remote createDirectory")
+struct RemoteCreateDirectoryTests {
+    private let sftpLocation = SFTPLocation(host: "example.com", port: 22, username: "oleg")
+    private let ftpLocation = FTPLocation(
+        host: "nas.local",
+        port: 21,
+        username: "sa",
+        security: .explicit
+    )
+
+    private func sftpPath(_ remote: String) -> VFSPath {
+        VFSPath(backend: .sftp(sftpLocation), path: remote)
+    }
+
+    private func ftpPath(_ remote: String) -> VFSPath {
+        VFSPath(backend: .ftp(ftpLocation), path: remote)
+    }
+
+    private func sftpBackend(_ transport: FakeSFTPTransport) -> SFTPBackend {
+        SFTPBackend(location: sftpLocation, transport: transport)
+    }
+
+    private func ftpBackend(_ transport: FakeFTPTransport) -> FTPBackend {
+        FTPBackend(location: ftpLocation, transport: transport)
+    }
+
+    // MARK: - The refusal a caller can act on
+
+    /// `sftp`'s real refusal, verbatim, which classifies as `.failure` → `.io` and is the error the
+    /// dead `catch` was silently receiving.
+    @Test("SFTP: a taken name answers alreadyExists, not the server's generic Failure")
+    func sftpTakenNameIsAlreadyExists() {
+        let transport = FakeSFTPTransport()
+        transport.makeDirectoryError = .failure(#"remote mkdir "/home/oleg/photos": Failure"#)
+        transport.listings["/home/oleg/photos"] =
+            "drwxr-xr-x ? oleg staff 64 Jul 13 00:09 /home/oleg/photos/."
+        #expect(throws: VFSError.alreadyExists(sftpPath("/home/oleg/photos"))) {
+            try sftpBackend(transport).createDirectory(at: sftpPath("/home/oleg/photos"))
+        }
+    }
+
+    /// FTP's 550 reads as `.notFound` — the wrong answer in the most confusing direction, since the
+    /// name is refused precisely because it *is* there.
+    @Test("FTP: a taken name answers alreadyExists, not notFound")
+    func ftpTakenNameIsAlreadyExists() {
+        let transport = FakeFTPTransport()
+        transport.makeDirectoryError = .notFound
+        transport.listings["/pub"] = "drwxr-xr-x 2 sa users 4096 Jul 25 20:55 photos"
+        #expect(throws: VFSError.alreadyExists(ftpPath("/pub/photos"))) {
+            try ftpBackend(transport).createDirectory(at: ftpPath("/pub/photos"))
+        }
+    }
+
+    /// A **file** holding the name is `.alreadyExists` too: the contract is "something is already
+    /// there", and a caller that means to create a directory cannot proceed either way.
+    @Test("a name held by a file is alreadyExists as well")
+    func fileHoldingTheNameIsAlreadyExists() {
+        let transport = FakeSFTPTransport()
+        transport.makeDirectoryError = .failure("remote mkdir: Failure")
+        transport.listings["/home/oleg/notes.txt"] =
+            "-rw-r--r-- ? oleg staff 128 Jul 13 00:09 /home/oleg/notes.txt"
+        #expect(throws: VFSError.alreadyExists(sftpPath("/home/oleg/notes.txt"))) {
+            try sftpBackend(transport).createDirectory(at: sftpPath("/home/oleg/notes.txt"))
+        }
+    }
+
+    // MARK: - Narrowness
+
+    /// The half that keeps the fix from becoming "every refusal is a collision". A `mkdir` refused
+    /// for a reason that is *not* the name — a missing parent, a read-only directory — must keep
+    /// its own error, or the user is sent to pick a different name for a folder that is free.
+    @Test("SFTP: a refusal on a name that is free keeps the server's own error")
+    func sftpFreeNameKeepsItsError() {
+        let transport = FakeSFTPTransport()
+        transport.makeDirectoryError = .permissionDenied
+        // No listing for the path: the disambiguating stat finds nothing.
+        #expect(throws: VFSError.permissionDenied(sftpPath("/home/oleg/new"))) {
+            try sftpBackend(transport).createDirectory(at: sftpPath("/home/oleg/new"))
+        }
+    }
+
+    @Test("FTP: a refusal on a name that is free keeps the server's own error")
+    func ftpFreeNameKeepsItsError() {
+        let transport = FakeFTPTransport()
+        transport.makeDirectoryError = .permissionDenied
+        transport.listings["/pub"] = "" // the parent lists, and the name is not in it
+        #expect(throws: VFSError.permissionDenied(ftpPath("/pub/new"))) {
+            try ftpBackend(transport).createDirectory(at: ftpPath("/pub/new"))
+        }
+    }
+
+    /// The happy path pays nothing: a create that succeeds asks no second question, which is the
+    /// whole reason the disambiguation sits in the `catch` rather than in front of the call.
+    @Test("SFTP: a successful create costs no extra round trip")
+    func sftpSuccessAsksNothingExtra() throws {
+        let transport = FakeSFTPTransport()
+        try sftpBackend(transport).createDirectory(at: sftpPath("/home/oleg/new"))
+        #expect(transport.madeDirectories == ["/home/oleg/new"])
+    }
+
+    @Test("FTP: a successful create costs no extra round trip")
+    func ftpSuccessAsksNothingExtra() throws {
+        let transport = FakeFTPTransport()
+        try ftpBackend(transport).createDirectory(at: ftpPath("/pub/new"))
+        #expect(transport.madeDirectories == ["/pub/new"])
+        #expect(transport.listedPaths.isEmpty)
+    }
+
+    /// A `stat` that cannot be had must not read as "the name is free" *or* as "the name is taken":
+    /// the original error stands. Arranged with the fake's blanket `error`, which fails the listing
+    /// too — a server that refused the `mkdir` and then dropped the connection.
+    @Test("a stat that fails leaves the original error standing")
+    func unanswerableStatKeepsTheOriginalError() {
+        let transport = FakeSFTPTransport()
+        transport.error = .permissionDenied
+        #expect(throws: VFSError.permissionDenied(sftpPath("/home/oleg/new"))) {
+            try sftpBackend(transport).createDirectory(at: sftpPath("/home/oleg/new"))
+        }
+    }
+}

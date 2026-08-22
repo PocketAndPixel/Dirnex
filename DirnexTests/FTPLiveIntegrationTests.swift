@@ -85,6 +85,29 @@ struct FTPLiveIntegrationTests {
             #expect(try backend.listDirectory(at: occupied).isEmpty)
         }
     }
+
+    /// FTP's refusal for a taken name is **550**, its single ambiguous "file unavailable", which the
+    /// classifier reads as `.notFound` — the wrong answer in the most confusing direction, since the
+    /// name is refused precisely because it is there. The backend disambiguates with a `stat`.
+    @Test("a directory name that is taken answers alreadyExists")
+    func createDirectoryRefusesATakenName() async throws {
+        try await offCooperativePool {
+            let (backend, config) = try makeBackend()
+            let base = VFSPath(backend: .ftp(config.location), path: config.remotePath)
+            let dir = base.appending("dirnex_mkdir_test_\(UUID().uuidString)")
+            try backend.createDirectory(at: dir)
+            defer { try? backend.removeItem(at: dir) }
+
+            #expect(throws: VFSError.alreadyExists(dir)) {
+                try backend.createDirectory(at: dir)
+            }
+            // Live narrowness control: a refusal that is not about the name keeps its own error.
+            let orphan = dir.appending("no_such_parent/child")
+            #expect(throws: VFSError.notFound(orphan)) {
+                try backend.createDirectory(at: orphan)
+            }
+        }
+    }
 }
 
 /// The opt-in configuration for the live FTP suite — the same file-gated shape

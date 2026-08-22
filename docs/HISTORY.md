@@ -11120,13 +11120,52 @@ searching (3 hits at three depths inside a zip).
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-08-23)
 
-Twenty-one dated passes that landed outside a milestone of their own, between M18's close on
+Twenty-two dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-08-23: user-reported bugs, three vault features, the tree crossing into S3,
 and the chain of five that one S3 rename pulled apart. They ran *alongside* M20, M21 and M22
 rather than after them — which is why they sit here at the end rather than in a numeric slot —
 and they keep their **newest-first** order, because several read as a chain and refer to the
 entry below. Moved out of [PLAN.md](../PLAN.md) §4 on 2026-08-23, once the plan had nothing left
 to say about them; what is still open from this stretch stayed there.
+
+**2026-08-23 — two `VFSBackend` contracts that no backend kept, one of them load-bearing.** Fell
+out of the ⇧F4 pass below, from a single aside: `moveItem`'s doc promised `.alreadyExists` for an
+occupied destination and SFTP's `rename` had just been measured overwriting silently. Checking the
+other three made it worse rather than better — **no** backend has ever delivered it for the case
+that matters. Local `rename(2)` *replaces* a destination file and yields `.alreadyExists` only from
+`ENOTEMPTY` (a directory onto a **non-empty** directory); OpenSSH's `rename` uses the POSIX-rename
+extension and overwrites, its directory refusal arriving as a bare `Failure` → `.io`; FTP's
+`RNFR`/`RNTO` overwrote on the server measured, its refusal a 550 → `.notFound`; S3's copy-then-
+delete overwrites unconditionally. The tell that it was documentation rather than behaviour: every
+caller had already worked around it *independently* — `PanelViewController+Rename` and
+`+TrashRestore` each `stat` first, both with a comment naming `rename(2)`'s overwrite, and
+`MultiRename.plan` refuses a colliding name upstream of the apply loop. Three correct workarounds
+under a sentence saying they were unnecessary. Corrected to say what is true, with the per-backend
+table, since a contract nobody can key on is worth stating precisely once.
+
+**The neighbouring claim was the same defect with teeth.** `createDirectory` promises
+`.alreadyExists` too, and there a caller believed it: `PanelViewController+Copy.submitBranchTransfer`
+skips an already-present intermediate directory by catching exactly that, so a tree-mode branch
+transfer into a remote destination failed outright the moment one existed — and F7 on a taken name
+reported `.io`'s or `.notFound`'s sentence instead of "already exists". Measured rather than
+inferred: `sftp`'s `mkdir` onto an existing directory answers `remote mkdir "…": Failure` (SFTP v3
+has no "already exists" status, so `EEXIST` arrives as `SSH_FX_FAILURE`) and FTP's `MKD` answers
+550, its one ambiguous refusal.
+
+Fixed in `RemoteTransportBackend.createDirectory` rather than at either caller — one backend-side
+answer serves both consumers, where two workarounds would have been the third and fourth copies of a
+rule this project keeps finding on the wrong side of a fix. A *failed* create disambiguates with a
+`stat`, which is the shape `S3Backend`'s own existence check already settled on: the happy path pays
+nothing, and only a name about to be refused pays to have the question answered. Two properties keep
+it from becoming "every refusal is a collision", and both are pinned headlessly and live — a refusal
+that is not about the name keeps its own error, and a `stat` that cannot be had leaves the original
+error standing rather than reading as either answer. `S3Backend` stays outside the fix on purpose:
+its folder is a zero-byte marker, so a second create destroys nothing and has nothing to
+disambiguate.
+
+The negative control reproduces the report verbatim — reverted, the three taken-name tests fail with
+`.io(code: 5)` on SFTP and `.notFound` on FTP while all five narrowness controls stay green — and
+the live suites were re-run over SFTP, plain FTP and FTPS.
 
 **2026-08-23 — ⇧F4 "Edit File…" creates a file on a server (SFTP, FTP and FTPS).** Reported with a
 screenshot: the dialog opens on a connected SFTP pane, takes a name, and answers *"This location

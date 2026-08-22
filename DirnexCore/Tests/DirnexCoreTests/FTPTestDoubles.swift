@@ -64,7 +64,13 @@ final class FakeFTPTransport: FTPTransport, @unchecked Sendable {
         return listings[remotePath] ?? ""
     }
 
+    /// Fails **only** `makeDirectory`, leaving listings answerable — the state a real server is in
+    /// when it refuses a `mkdir` for a name that is already taken. `error` cannot express it: it
+    /// fails every verb, including the `stat` the backend disambiguates with.
+    var makeDirectoryError: FTPTransportError?
+
     func makeDirectory(_ remotePath: String) throws {
+        if let makeDirectoryError { throw makeDirectoryError }
         if let error { throw error }
         madeDirectories.append(remotePath)
     }

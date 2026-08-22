@@ -60,9 +60,44 @@ public extension RemoteTransportBackend {
     // `requireOwnBackend` is `ConnectionScopedBackend`'s — the same guard `S3Backend` needs, which
     // is why it sits one level up rather than here.
 
+    /// Create one directory, answering ``VFSError/alreadyExists(_:)`` when the name is taken —
+    /// which neither protocol says on its own, and which a caller cannot recover without.
+    ///
+    /// **The refusal is generic on both wires, so it has to be disambiguated here.** Measured
+    /// 2026-08-23: `sftp`'s `mkdir` onto an existing directory answers a bare
+    /// `remote mkdir "…": Failure` (OpenSSH's SFTP v3 has no "already exists" status, so EEXIST
+    /// arrives as `SSH_FX_FAILURE`), which classifies as `.failure` → `.io`; FTP's `MKD` answers
+    /// **550**, which is FTP's one ambiguous "file unavailable" and is read as `.notFound`. Local
+    /// `mkdir(2)` has `EEXIST` and needs none of this, which is exactly why the gap was invisible:
+    /// every caller was written and tested against the one backend that answers correctly.
+    ///
+    /// What it cost was a `catch` that never fires. `PanelViewController+Copy.submitBranchTransfer`
+    /// skips an intermediate directory that is already there by catching `.alreadyExists`, so a
+    /// tree-mode branch transfer into a remote destination failed outright the moment one existed;
+    /// and F7 on a taken name reported `.io`'s or `.notFound`'s sentence instead of "an item with
+    /// that name already exists". One backend-side answer fixes both, where two caller-side
+    /// workarounds would have been the third and fourth copies of a rule this file keeps finding on
+    /// the wrong side of a fix.
+    ///
+    /// **Only a failure pays for the extra round trip**, and only a failure can: asking first would
+    /// bill every create for a question the happy path never needs, and would still race. That is
+    /// the shape `S3Backend`'s own existence check settled on — the cheap answer raises the
+    /// question, and only a name about to be refused pays to have it answered.
+    ///
+    /// A `stat` that itself fails leaves the original error standing rather than reading as "the
+    /// name is free": the two directions are not equal, and inventing `.alreadyExists` from a
+    /// listing nobody could get would refuse a create that should have been attempted.
     func createDirectory(at path: VFSPath) throws {
         try requireOwnBackend(path)
-        try mapErrors(path) { try writeTransport.makeDirectory(path.path) }
+        do {
+            try mapErrors(path) { try writeTransport.makeDirectory(path.path) }
+        } catch {
+            // Something already occupying the name is the answer the caller can act on, whatever
+            // the server's own reason was — a file or a symlink included, since the contract is
+            // "something is already there" rather than "a directory is".
+            if (try? stat(at: path)) != nil { throw VFSError.alreadyExists(path) }
+            throw error
+        }
     }
 
     /// Create an empty file at `path` — the ⇧F4 "Edit File…" route on a server (PLAN.md §M11).
