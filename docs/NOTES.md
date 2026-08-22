@@ -4533,6 +4533,35 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
 
 ## Design lessons that generalize
 
+- **A protocol doc comment is a claim, and an untested one drifts exactly like a duplicated
+  predicate — except nothing at all checks it, not even a linter.** `VFSBackend.moveItem` promised
+  "Throws `.alreadyExists` if `destination` is occupied" from M2 until 2026-08-23, and **no backend
+  has ever done it** for the case that matters. Measured across all four: local `rename(2)`
+  *replaces* a destination file (the bytes afterwards are the source's) and yields `.alreadyExists`
+  only from `ENOTEMPTY`, i.e. a directory onto a **non-empty** directory; OpenSSH's `rename` uses the
+  POSIX-rename extension and overwrites, its directory refusal arriving as a bare `Failure` →
+  `.io`; FTP's `RNFR`/`RNTO` overwrote on the server measured, its refusal a 550 → `.notFound`; and
+  S3's copy-then-delete overwrites unconditionally.
+  - **The tell is that every caller had already worked around it, independently.**
+    `PanelViewController+Rename` and `+TrashRestore` each `stat` the destination first, *both with a
+    comment naming `rename(2)`'s overwrite*, and `MultiRename.plan` refuses a colliding name upstream
+    of the apply loop. So the codebase knew; only the contract did not — three correct workarounds
+    sitting under a sentence saying they were unnecessary. When a doc comment and several call sites
+    disagree, the call sites are the measurement.
+  - **The neighbouring claim has the same defect and a caller that actually believes it**, which is
+    what makes this worth more than a documentation tidy. `createDirectory` says "Throws
+    `.alreadyExists` if something is already there" — true of local `mkdir(2)`'s `EEXIST` and false
+    remotely: measured, `sftp`'s `mkdir` onto an existing directory gives `remote mkdir …: Failure`
+    (→ `.io`) and FTP's `MKD` gives 550 (→ `.notFound`). `PanelViewController+Copy
+    .submitBranchTransfer` catches `.alreadyExists` to skip an intermediate directory that is
+    already there, so on a remote destination that `catch` never fires and the whole transfer fails
+    instead of continuing. Unfixed as of 2026-08-23 and recorded here rather than in a comment
+    nobody would find.
+  - The general shape: **an error case a caller `catch`es by name is API, and it needs a test per
+    backend the same way a capability does.** A `catch` that never fires is invisible in every
+    direction — it compiles, it reads as defensive, and the failure it was supposed to absorb
+    arrives as something else entirely.
+
 - **One transfer with two things reporting it is one reporter too many, and the modal one is the one
   to withdraw.** A remote preview download had a placeholder card standing exactly where the preview
   will appear — naming the file, its size, a determinate bar and Stop — *and* a deferred progress

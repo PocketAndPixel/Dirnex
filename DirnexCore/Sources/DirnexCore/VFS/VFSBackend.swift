@@ -140,8 +140,32 @@ public protocol VFSBackend: Sendable {
     func createFile(at path: VFSPath) throws
 
     /// Move or rename `source` to `destination` within this backend. Same-volume moves
-    /// are an atomic rename; a cross-volume move throws (the operation engine falls back
-    /// to copy-then-delete). Throws `.alreadyExists` if `destination` is occupied.
+    /// are an atomic rename; a cross-volume — or cross-backend — move throws `EXDEV`, which is the
+    /// operation engine's cue to fall back to copy-then-delete rather than a failure.
+    ///
+    /// **An occupied `destination` is silently replaced, and a caller that must not clobber has to
+    /// check first.** This used to promise `.alreadyExists` and no backend has ever delivered it for
+    /// the case that matters — measured across all four, 2026-08-23:
+    ///
+    /// - **Local** is `rename(2)`, which *replaces* a destination file (verified: the bytes
+    ///   afterwards are the source's). `.alreadyExists` comes back only from `ENOTEMPTY`, i.e. a
+    ///   directory onto a **non-empty** directory; a file onto a file, and a directory onto an
+    ///   *empty* directory, both succeed.
+    /// - **SFTP** is OpenSSH's `rename`, which uses the POSIX-rename extension and overwrites, exit
+    ///   0. Its directory-onto-non-empty-directory refusal is a bare `Failure`, so it arrives as
+    ///   `.io`, not `.alreadyExists`.
+    /// - **FTP** is `RNFR`/`RNTO`, which overwrote on the server measured; the refusal is a 550,
+    ///   which is FTP's ambiguous "file unavailable" and is read as `.notFound`. Both halves are the
+    ///   server's choice, not ours.
+    /// - **S3** is a copy followed by a delete, and `CopyObject` overwrites unconditionally. (A
+    ///   prefix never gets this far — it throws `EXDEV` so the engine runs the walk.)
+    ///
+    /// So there is no error a caller can key on, and the three that must not overwrite all guard
+    /// themselves rather than relying on this: `PanelViewController+Rename` and
+    /// `PanelViewController+TrashRestore` each `stat` the destination first — both with a comment
+    /// naming `rename(2)`'s overwrite — and `MultiRename.plan` refuses a colliding name as
+    /// `.collision` before any job is applied. `CopyEngine` calls this only for a target its
+    /// conflict resolution has already made free.
     func moveItem(at source: VFSPath, to destination: VFSPath) throws
 
     /// Permanently remove `path`, recursively for directories. This is not reversible;
