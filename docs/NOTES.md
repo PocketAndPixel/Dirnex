@@ -315,6 +315,54 @@ at build time.
         unprompted by this rule and were deliberately **left alone**: each is handed a window by
         construction, and each is marked as shown once presented — so dropping it would consume the
         one-shot in silence, which is a worse failure than the one being prevented.
+- **A test that measures *whether anything repainted* is measuring the whole process, and on a
+  main-actor UI that is a much larger surface than the feature under test.** `PanelPassiveRefreshTests`
+  pins the rule that a listing refresh finding nothing changed must not reload the table, and its
+  observable has to be the table's **selection**, because `NSTableView` offers no reload count. That
+  observable answers every repaint from anywhere. It failed about **one full run in four** while
+  passing alone every time — which reads as machine load, and was not: three separate races, all in
+  the fixture, found by logging every `renderRefresh` with its call stack (2026-08-22).
+  - **Waiting for "the pane has listed" is the first one, and the `..` row is what makes it wrong.**
+    The wait was `numberOfRows > 0 && selectedRow >= 0`, which an **empty** pane satisfies — the
+    parent row is drawn and selected before any listing lands — so the navigation's own
+    `reloadEverything` arrived 130 ms *inside* the quiesce that was supposed to follow it. Wait on
+    the **entries** (`panel.displayedEntries.count == 3`), which only a real listing can satisfy.
+  - **What a refresh *pulls* is the second, and it is invisible in the diff of anything.** Both
+    refresh paths deliberately end by waking the git, tag and sync consumers unconditionally, and the
+    sync provider's first scan publishes into a **shared cache after the listing has landed** — so
+    the measured refresh collected it and repainted 650 ms into the quiet window. The pane was doing
+    exactly its job. A fixture measuring "did the listing repaint" has to consume that first snapshot
+    itself, by calling the same three funnels (`updateGitStatus`/`updateTagStatus`/`updateSyncStatus`)
+    before it measures.
+  - **And pulling on a 300 ms cadence starves the very scan it is waiting for.** Every one of those
+    providers reads through `DirectoryScanCache`, whose `requestRefresh` runs the *first* look at once
+    and debounces the rest by **300 ms**, cancelling the pending timer each time — so a pull every
+    300 ms pushes the scan out in front of itself indefinitely, and it published 460 ms *after* the
+    loop gave up. Any polling loop that also *requests* the thing it polls for has this shape; make
+    the round outlast the debounce (750 ms here) and pull **again at the end of the round**, since a
+    quiet round proves nothing if its only pull happened before the publish it was waiting for.
+  - **The exact fix is to wait on the provider's own cache, and the tell that a duration is not
+    enough is a *fast* failing run.** With rounds alone the residual was 1 run in 6, always the two
+    tree tests together, always in a run that finished ~1 s faster than a green one — which is what a
+    loop settling in a single round looks like from outside. Waiting until
+    `CloudSyncStatusProvider.shared.cachedSnapshot(for:)` and `FinderTagProvider`'s are non-`nil`
+    removes the race rather than narrowing it: 16 consecutive green full runs. Gate each wait on the
+    pane's own `isSyncStatusVisible` / `areTagsVisible`, or a Mac whose owner has that setting off
+    waits out the budget for nothing — the test host runs against the **developer's** preferences.
+  - **The third race is the other suites, and it is worth knowing how large it is**: of the 58–66
+    repaints the four fixture panes took in one run, *every one* came from another suite writing a
+    preference (`applyPalette`, `applyRowDensity`, `applyFileColorRules`) through
+    `AppPreferences.shared` and `NotificationCenter`, which every live pane in the test host observes.
+    `NotificationCenter.default.removeObserver(pane)` after `loadViewIfNeeded()` takes the lot — every
+    observer here is selector-based and installed once — and leaves what the suite measures untouched,
+    since the FSEvents watcher is a stream callback rather than a notification. It is belt and braces
+    rather than the fix (reverting it alone left six full runs green), and it is worth keeping anyway:
+    nothing would announce itself the day another suite's timing shifts.
+  - **The negative control is the whole point and must be re-run at the end**: with the two
+    unchanged-guards removed from `directoryDidChange` and `refreshTree`, all three no-repaint tests
+    fail on their own assertions while the narrowness control ("a real change still reaches the tree")
+    stays green. A quiet fixture is only worth having if it still fails for the original reason.
+
 - **`HeadBucket` goes on answering 200 for a bucket AWS has deleted — intermittently, and for longer
   than a test run — so any code that `stat`s before it creates can refuse a name that is not there.**
   Measured 2026-08-20 on the live account, polling immediately after a `DELETE` returned 204:
@@ -4942,19 +4990,13 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     doomed `NSWorkspace` launch takes about **sixty** to fail, so the expiry wins that race and the
     line reads `nil` again by the time anything asks. Measured on the control: `token=1` in both
     tests, `status=nil` in one of them. A self-clearing observable is not one; count instead.
-  - **`PanelPassiveRefreshTests` is load-sensitive and flakes on a busy Mac with nothing touched, so
-    a new suite beside it will look like the cause and is not necessarily one.** It measures that a
-    pane does **not** repaint while nothing touched it, after a `quiesce` that waits for the first
-    git/tag/sync snapshots to land — and a snapshot that arrives late lands inside the measurement
-    and reads as the bug. Adding two 2 s-holding tests beside it failed 3 full runs of 7, always in
-    that suite, never the same test twice, which is a convincing-looking accusation; shortening the
-    hold to 0.5 s then read 6 green. The control is what retired that story: with both new files
-    **skipped**, the same machine still failed 1 run in 4. So the honest reading is a pre-existing
-    flake whose rate rises with whatever else is running. Two things follow, and the second is the
-    general one: keep a new suite's bounded waits as short as the claim allows (0.5 s loses nothing
-    here — the act being watched for happens in the turn the `stat` resumes on), and **run the
-    baseline before believing that your change caused a neighbour's failure**, because "it was green
-    before" is a measurement of the machine as much as of the code.
+  - **A neighbour's suite failed beside this one and the accusation was wrong** — the diagnosis and
+    the fix are under ▸ Testing, "a test that measures *whether anything repainted*". The lesson to
+    carry from this end is the control: **run the baseline before believing your change caused a
+    neighbour's failure**, because "it was green before" measures the machine as much as the code.
+    Here two new 2 s-holding tests failed 3 full runs of 7 while the suite passed alone every time,
+    which is a convincing-looking case; with both new files *skipped*, the same machine still failed
+    1 run in 4.
 - **The tenth is "which pane do I re-list", and it is the eighth's question asked from the *window*
   rather than from the pane.** The remote write-back finished its upload and called
   `refreshPanesShowing(path.parent)`, whose predicate was `pane.panel.path == directory` — the same

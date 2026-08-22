@@ -152,6 +152,25 @@ non-empty folder, which hid three folders Finder shows.
 M19 closed on 2026-08-09; M20 opened and closed 2026-08-12 (HISTORY.md). Three things landed
 between M19 and M18, which closed on 2026-08-07, and six after it.
 
+**2026-08-22 — `PanelPassiveRefreshTests` failed one full run in four, and none of it was the
+product.** It measures that a listing refresh finding nothing changed does not reload the table, and
+the only observable available is the table's **selection** — which answers every repaint from
+anywhere in the process. Logging every `renderRefresh` with its call stack found three races, all in
+the fixture: the "has it listed yet" wait was satisfied by an **empty** pane (the `..` row is drawn
+and selected first), so the navigation's own reload landed *inside* the quiesce; the measured refresh
+**pulled** the sync provider's first snapshot, which publishes into a shared cache after the listing
+lands, and repainted 650 ms into the quiet window; and 58–66 repaints per run arrived from other
+suites writing preferences through `AppPreferences.shared`.
+
+The fixture now waits on the **entries**, consumes the refresh tail itself (the same three
+`update*Status()` funnels both refresh paths wake), and waits on the providers' own caches rather than
+on a duration — with one trap paid for on the way: pulling every 300 ms *starves* the scan it waits
+for, because `DirectoryScanCache` debounces by exactly that and cancels the pending timer each time.
+The pane is also deafened outright (`removeObserver` after `loadViewIfNeeded`), which is belt and
+braces: reverting it alone left six runs green. 16 consecutive full runs are green, and the negative
+control still fails all three no-repaint tests with the unchanged-guards removed while the narrowness
+control stays green.
+
 **2026-08-22 — an edited S3 object uploaded, and the row went on saying `Zero KB`.** The fifth in
 the day's chain, and the one that shows the family's real subject: the *window*, not the pane, asks
 "who is showing this directory". After a save-back `refreshPanesShowing(path.parent)` re-listed the

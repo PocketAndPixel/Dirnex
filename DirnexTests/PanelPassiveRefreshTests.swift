@@ -29,6 +29,29 @@ import Testing
 /// `renderRefresh` ends in `syncCursorToTable`, so a table deselected by hand comes back selected if
 /// and only if the pane re-rendered. `reconcileCursorFromTable` returns early on an empty selection,
 /// so deselecting does not disturb the model cursor it would otherwise be read from.
+///
+/// **That observable answers every repaint, including the ones nobody here caused**, and until
+/// 2026-08-22 this suite failed about **one full run in four** while passing alone every time —
+/// which reads as machine load and was not. Logging every `renderRefresh` with its call stack found
+/// three separate races, none of them in the product:
+///
+/// 1. **The suite's own first step.** `pane(at:)` waited for `numberOfRows > 0`, which an *empty*
+///    pane satisfies — the `..` row is drawn and selected before any listing lands — so the
+///    navigation's own `reloadEverything` arrived 130 ms *inside* `quiesce`.
+/// 2. **What a refresh pulls.** Both refresh paths end by waking the git, tag and sync consumers
+///    unconditionally, and the sync provider's first scan publishes into a shared cache *after* the
+///    listing has. The measured refresh collected it and repainted — the pane doing exactly its job,
+///    650 ms into a window that was supposed to be quiet.
+/// 3. **Other suites.** Of the **58–66** repaints these four fixture panes took in one run, every
+///    single one came from another suite writing a preference — `applyPalette`, `applyRowDensity`,
+///    `applyFileColorRules` — through `AppPreferences.shared` and `NotificationCenter`, which every
+///    live pane in the test host observes.
+///
+/// (1) and (2) are what actually failed; (3) is a coin toss against a 2 s window, and removing it is
+/// belt and braces (measured: with the deafening alone reverted, six full runs stayed green). All
+/// three are answered in the fixture rather than in the product, because the product is right — a
+/// preference change *should* repaint every pane, and so should a first sync snapshot. What none of
+/// them may do is land inside a measurement of the listing path.
 @MainActor
 @Suite("Passive refresh")
 struct PanelPassiveRefreshTests {
@@ -48,10 +71,32 @@ struct PanelPassiveRefreshTests {
         return root
     }
 
-    /// A loaded pane that has finished listing its own directory.
+    /// What ``fixture()`` puts in the pane's own directory: `alpha.txt`, `beta.txt` and `sub/`.
+    private static let fixtureEntryCount = 3
+
+    /// A loaded, **deafened** pane that has finished listing its own directory.
     ///
     /// `loadViewIfNeeded()` for the reason `RenameReachTests` records — an unloaded pane's table has
     /// no columns and no rows, so every assertion here would read the same whatever the code did.
+    ///
+    /// `removeObserver` immediately after it, which takes the preference storm above out of the
+    /// window: every one of the pane's observers is selector-based on the default center (the house
+    /// rule docs/NOTES.md states for a `nonisolated deinit`) and all of them are installed once, in
+    /// `viewDidLoad` and `configureTable`, so one call takes the lot and nothing re-registers. What
+    /// stays is everything this suite measures — the FSEvents watcher is an `FSEventStream`
+    /// callback, not a notification, and `refreshTree()` is called here by name.
+    ///
+    /// It is **insurance rather than the fix**, and the control says so: with it removed and the two
+    /// repairs below kept, six full runs were still green. A storm render is a coin toss against a
+    /// 2 s window rather than a certainty — which is exactly the kind of coupling worth removing
+    /// while the reason for it is known and written down, since nothing about it would announce
+    /// itself the day another suite's timing shifts.
+    ///
+    /// The wait is on the **entries**, not on the row count, and the difference is not cosmetic: a
+    /// pane whose listing has not landed still draws the `..` row and still selects it, so
+    /// `numberOfRows > 0 && selectedRow >= 0` was satisfied by an *empty* pane — measured, the
+    /// navigation's own `reloadEverything` then landed 130 ms **inside** `quiesce`. The suite's own
+    /// first step was a race.
     private static func pane(at root: URL, tree: Bool) async throws -> PanelViewController {
         let pane = PanelViewController(
             backend: CompositeBackend(local: LocalBackend()),
@@ -60,30 +105,95 @@ struct PanelPassiveRefreshTests {
             restorationKey: nil
         )
         pane.loadViewIfNeeded()
+        NotificationCenter.default.removeObserver(pane)
         if tree {
             pane.viewMode = .tree
             pane.applyViewMode()
         }
-        let listed = await settle { pane.tableView.numberOfRows > 0 && pane.tableView.selectedRow >= 0 }
+        let listed = await settle {
+            pane.panel.displayedEntries.count == fixtureEntryCount && pane.tableView.selectedRow >= 0
+        }
         #expect(listed, "the pane never listed its own directory")
         await quiesce(pane)
         return pane
     }
 
-    /// Wait until the pane stops repainting of its own accord, leaving the table deselected.
+    /// Wait until the pane stops repainting of its own accord, leaving the table deselected and
+    /// ready to be measured — **pulling** what a refresh would pull rather than only waiting.
     ///
-    /// A freshly loaded pane has three more renders still to come, and none of them is the bug: the
-    /// git, tag and sync consumers each land their *first* snapshot asynchronously, and going from
-    /// "no snapshot" to one is a real change by their own guards. Measuring before they settle
-    /// reads their arrival as the listing having repainted. That it settles at all is itself an
-    /// assertion — a temp directory nothing writes to has nothing left to report.
+    /// That last part is what the original was missing, and it is the half that carried the flake.
+    /// Some of what a refresh re-derives is pulled rather than pushed: both refresh paths end by
+    /// waking the git, tag and sync consumers *unconditionally* — deliberately, since none of their
+    /// states is derivable from a listing (`directoryDidChange` names exactly these three) — and
+    /// `updateSyncStatus` reads a shared provider cache whose first scan lands **after** the listing
+    /// has. So the first refresh after that legitimately repaints, and it was the *measured* one:
+    /// every fixture pane took an `applySyncSnapshot` render 650 ms into its measurement window
+    /// (measured 2026-08-22, by logging every `renderRefresh` with its call stack).
+    ///
+    /// Calling the three funnels directly rather than driving a whole refresh is deliberate: the
+    /// mechanism under test must not be what prepares the measurement, and `refreshCurrentDirectory`
+    /// in list mode is an *explicit* re-list with no unchanged-guard at all, so driving that would
+    /// never settle. Each of the three is a no-op once its snapshot has landed, so this converges on
+    /// the round after the last one publishes.
+    ///
+    /// **The round has to outlast the scan's debounce, and 300 ms starves it exactly.** Every
+    /// provider here reads through a `DirectoryScanCache`, whose `requestRefresh` runs the *first*
+    /// look at once and debounces the rest by 300 ms — cancelling the pending timer each time. A
+    /// pull every 300 ms therefore keeps pushing the scan out in front of itself: measured, the
+    /// snapshot then landed 460 ms **after** quiesce gave up, inside the measurement window, and the
+    /// two tree tests failed on it every run. At 750 ms the scan fires inside the round and the next
+    /// pull collects it. `maximumStaleness` (2 s) is the other end of the same rule — a pull that
+    /// arrives later than that runs immediately.
     private static func quiesce(_ pane: PanelViewController) async {
-        for _ in 0..<25 {
+        await waitForProviderScans(pane)
+        for _ in 0..<15 {
             pane.tableView.deselectAll(nil)
-            try? await Task.sleep(for: .milliseconds(300))
+            pullRefreshTail(pane)
+            try? await Task.sleep(for: .milliseconds(750))
+            // **Again, after the wait**, and this is the line the whole helper turns on: a quiet
+            // round proves nothing if the round's only pull happened before the scan it was waiting
+            // for had published. Measured that way round, quiesce returned after one silent round
+            // and the *measured* refresh collected the snapshot 400 ms later — 2 tests failing every
+            // run. Pulling again at the end is what makes "quiet" mean "and nothing was left to
+            // collect": if this one repaints, the round was not quiet and the loop goes again.
+            pullRefreshTail(pane)
             if pane.tableView.selectedRow == -1 { return }
         }
         Issue.record("the pane never stopped repainting an untouched directory")
+    }
+
+    /// What both refresh paths do after the listing, unconditionally and by design — none of these
+    /// three states is derivable from a listing, so each is woken on every event and each carries its
+    /// own no-op-when-unchanged guard (`directoryDidChange` names exactly these).
+    private static func pullRefreshTail(_ pane: PanelViewController) {
+        pane.updateGitStatus()
+        pane.updateTagStatus()
+        pane.updateSyncStatus()
+    }
+
+    /// Wait until the providers this pane would pull from have actually published for its directory,
+    /// so the loop above collects a snapshot rather than racing one.
+    ///
+    /// Waiting on the **provider's own cache** rather than on a duration is what makes this exact:
+    /// the loop's rounds only narrow the window a late publish can land in, and the residual was
+    /// visible — 1 run in 6, always the two tree tests together, and always in a run that finished
+    /// *faster* than a green one, which is what a `quiesce` that settled in a single round looks
+    /// like from outside.
+    ///
+    /// Asked of the pane, not of the preference: `areTagsVisible` and `isSyncStatusVisible` are the
+    /// same gates `updateTagStatus` and `updateSyncStatus` read, so a pane that will never pull
+    /// waits for nothing — which matters because both are user settings this suite must not touch,
+    /// and the test host runs against whatever the developer has set. Git has no wait: a temp
+    /// directory is not a repository, so its snapshot stays `nil` and `applyGitSnapshot` is a no-op
+    /// however late it arrives.
+    private static func waitForProviderScans(_ pane: PanelViewController) async {
+        let directory = pane.panel.path
+        if pane.isSyncStatusVisible {
+            _ = await settle { CloudSyncStatusProvider.shared.cachedSnapshot(for: directory) != nil }
+        }
+        if pane.areTagsVisible {
+            _ = await settle { FinderTagProvider.shared.cachedSnapshot(for: directory) != nil }
+        }
     }
 
     /// Poll rather than spin the run loop: these refreshes land through a `Task`, and a run-loop spin
