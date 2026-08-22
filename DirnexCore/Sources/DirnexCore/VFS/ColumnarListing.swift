@@ -67,15 +67,41 @@ enum ColumnarListing {
     /// formats (`MM-dd-yy hh:mma`) that carry a year and must not be given one. The three copies this
     /// replaces had drifted on exactly this point — two spelled it `"yyyy"` and only the FTP one
     /// `"y"` — which was harmless only because the `yy` formats lived solely in the FTP copy.
+    ///
+    /// **The anchor is truncated to the minute, and that is what makes a parse repeatable.**
+    /// `defaultDate` supplies *every* component the format does not name — not just the year it is
+    /// here for — and `MMM d HH:mm` names no **seconds**. A bare `Date()` therefore stamped each
+    /// parse with the second and millisecond it happened to run at, so parsing one unchanged `ls`
+    /// row twice produced two dates up to a minute apart. Nothing in a listing shows it: the column
+    /// is drawn to the minute and sorting is unaffected. What it broke is every comparison of two
+    /// readings of the same file — `RemoteFileRevision` has only size and date to work with on SFTP
+    /// and FTP, so a remote write-back compared the listing's date against the pre-upload `stat`'s
+    /// and told the user **"someone else has edited it"** on every save (measured live against a
+    /// real server 2026-08-22: 36 bytes both sides, dates 39 s apart). S3 never saw it — it carries
+    /// an entity tag, which settles the comparison before the date is consulted.
     static func formatters(for formats: [String]) -> [DateFormatter] {
-        let now = Date()
+        let anchor = yearAnchor()
         return formats.map { format in
             let formatter = DateFormatter()
             formatter.locale = Locale(identifier: "en_US_POSIX")
             formatter.dateFormat = format
-            if !format.contains("y") { formatter.defaultDate = now }
+            if !format.contains("y") { formatter.defaultDate = anchor }
             return formatter
         }
+    }
+
+    /// Now, truncated to the minute — a `defaultDate` that can only ever contribute the **year**.
+    ///
+    /// Every finer component a year-less format leaves unnamed (second, nanosecond) reads zero from
+    /// this, and every coarser one it *does* name (month, day, hour, minute) is overwritten by the
+    /// stamp being parsed — so two parses of one row agree for as long as the year does, which is
+    /// the whole claim. The year boundary is already handled downstream by ``date(from:formatters:)``
+    /// rolling a clearly-future result back.
+    private static func yearAnchor() -> Date {
+        let calendar = Calendar(identifier: .gregorian)
+        let now = Date()
+        let parts = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: now)
+        return calendar.date(from: parts) ?? now
     }
 
     /// The formatters for the Unix `ls -l` time column, which is a recent entry's `HH:mm` or an

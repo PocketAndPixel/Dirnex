@@ -101,6 +101,37 @@ struct ColumnarListingTests {
         #expect(ColumnarListing.date(from: "not a date", formatters: formatters) == .distantPast)
     }
 
+    /// The half `defaultDate = Date()` got wrong: it supplies **every** component the format does
+    /// not name, and `MMM d HH:mm` names no seconds — so each parse was stamped with the second and
+    /// millisecond it happened to run at. Asserted as a property of the result rather than by timing
+    /// anything, so it cannot drift with the machine.
+    @Test("a year-less stamp parses with no seconds of its own")
+    func yearLessStampCarriesNoSeconds() {
+        let formatters = ColumnarListing.unixDateFormatters()
+        let parsed = ColumnarListing.date(from: "Jul 25 20:55", formatters: formatters)
+        let parts = Calendar(identifier: .gregorian)
+            .dateComponents([.second, .nanosecond], from: parsed)
+        #expect(parts.second == 0)
+        #expect(parts.nanosecond == 0)
+    }
+
+    /// The claim the property above exists to serve, stated directly. Equality alone would be a weak
+    /// test and was measured to be one: two `formatters(for:)` calls a few microseconds apart can
+    /// land on the same anchor by luck, so the broken version passes this roughly as often as not.
+    /// The seconds assertion is what makes it fail for the right reason every time — the equality is
+    /// kept beside it because it is what a reader is actually looking for.
+    @Test("two separately built formatter sets read one stamp identically")
+    func repeatedParsesAgree() {
+        let first = ColumnarListing.date(
+            from: "Jul 25 20:55", formatters: ColumnarListing.unixDateFormatters()
+        )
+        let second = ColumnarListing.date(
+            from: "Jul 25 20:55", formatters: ColumnarListing.unixDateFormatters()
+        )
+        #expect(first == second)
+        #expect(Calendar(identifier: .gregorian).component(.second, from: first) == 0)
+    }
+
     /// A "Dec 30 12:00" entry read on Jan 2 means *last* December, and the day of slack also absorbs
     /// a server clock running ahead of ours.
     @Test("a clearly-future year-less date is rolled back a year")

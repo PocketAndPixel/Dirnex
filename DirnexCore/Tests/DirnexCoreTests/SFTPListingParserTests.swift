@@ -136,4 +136,30 @@ struct SFTPListingParserTests {
         #expect(SFTPListingParser.parse("Can't ls: \"/x\" not found").isEmpty)
         #expect(SFTPListingParser.parse("Remote working directory: /home/oleg").isEmpty)
     }
+
+    /// The shape a remote write-back rests on: a listing and the pre-upload `stat` are two separate
+    /// parses of the same unchanged row, and `RemoteFileRevision` has only size and date to compare
+    /// them with — SFTP carries no entity tag. When those two parses disagreed, every save reported
+    /// **"someone else has edited it"** on a file nobody had touched (measured live 2026-08-22 and
+    /// fixed in `ColumnarListing.formatters(for:)`). Pinned here, at the parser, because that is
+    /// where the disagreement was and no fixture with a hard-coded date can see it.
+    @Test("one row parsed twice yields revisions that do not supersede each other")
+    func repeatedParsesDoNotReadAsAnEdit() throws {
+        let row = "-rwxrwxrwx    ? 1027     100            36 Aug 22 23:35 /home/test/note.txt"
+        let first = try #require(SFTPListingParser.parse(row).first)
+        let second = try #require(SFTPListingParser.parse(row).first)
+        let recorded = RemoteFileRevision(
+            byteSize: first.byteSize, modified: first.modificationDate
+        )
+        let current = RemoteFileRevision(
+            byteSize: second.byteSize, modified: second.modificationDate
+        )
+        #expect(!recorded.isSuperseded(by: current))
+        // Deterministic for the same reason `ColumnarListingTests` spells out: two
+        // parses can agree by luck, and a stamp carrying no seconds cannot.
+        #expect(
+            Calendar(identifier: .gregorian)
+                .component(.second, from: first.modificationDate) == 0
+        )
+    }
 }
