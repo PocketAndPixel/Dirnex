@@ -189,14 +189,14 @@ final class RemoteFileEditLiveIntegrationTests {
         }.get()
         #expect(recorded.isSuperseded(by: RemoteFileRevision(current)))
 
-        // And the sentence the user would read is the one that names it, rather than the one that
-        // says everything is fine.
-        let body = BrowserWindowController.writeBackBody(
+        // And it is a sentence the user is stopped to read, where an untouched object is not a
+        // sentence at all — the asymmetry the silent save rests on, against a real endpoint.
+        #expect(BrowserWindowController.writeBackConcern(
             recorded: recorded, current: RemoteFileRevision(current)
-        )
-        #expect(body != BrowserWindowController.writeBackBody(
+        ) != nil)
+        #expect(BrowserWindowController.writeBackConcern(
             recorded: recorded, current: recorded
-        ))
+        ) == nil)
     }
 
     /// The other half, and the one that stops the check from being "always warn", which would train
@@ -227,5 +227,12 @@ final class RemoteFileEditLiveIntegrationTests {
         // and the case had been mis-ordered: the tag is really there, and it is the object's own.
         #expect(recorded.entityTag != nil)
         #expect(recorded.entityTag == RemoteFileRevision(current).entityTag)
+        // So this save asks nothing: the check had nothing to hand the user, and the upload is the
+        // one they already requested by saving (2026-08-23). The live half of the headless rule in
+        // `RemoteWriteBackWordingTests` — proof that a real server's own answer reaches that verdict,
+        // not just a revision built in a fixture.
+        #expect(BrowserWindowController.writeBackConcern(
+            recorded: recorded, current: RemoteFileRevision(current)
+        ) == nil)
     }
 }

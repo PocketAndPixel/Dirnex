@@ -11120,13 +11120,39 @@ searching (3 hits at three depths inside a zip).
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-08-23)
 
-Twenty-two dated passes that landed outside a milestone of their own, between M18's close on
+Twenty-three dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-08-23: user-reported bugs, three vault features, the tree crossing into S3,
 and the chain of five that one S3 rename pulled apart. They ran *alongside* M20, M21 and M22
 rather than after them — which is why they sit here at the end rather than in a numeric slot —
 and they keep their **newest-first** order, because several read as a chain and refer to the
 entry below. Moved out of [PLAN.md](../PLAN.md) §4 on 2026-08-23, once the plan had nothing left
 to say about them; what is still open from this stretch stayed there.
+
+**2026-08-23 — the remote save-back stopped asking when it has nothing to say.** Reported by a
+user editing a file over FTP: every ⌘S raised *"Upload “test.txt” back to the server?"*, whose body
+said the server's copy was exactly as downloaded. One dialog per save, for the life of the edit —
+`EditedFileRegistry` deliberately keeps watching after an upload — while the local F4 this is the
+twin of asks nothing at all. Three things decided it. **The trigger is the user's own ⌘S**, so on
+the unchanged path the dialog confirmed an intent already stated. **The archive arm's reason does
+not carry over**: a repack rewrites the whole container and every other member with it, where an
+upload replaces the one file being edited with the version just saved, which is what "save" means.
+And **the FTP body argued against itself** — it named a real weakness (a `LIST` stamp is year-less,
+zone-less and on the server's clock, so "same size and date" misses most of a working day) and then
+offered two buttons resting on that same evidence, with no way to strengthen it and the same
+sentence again on the next save. Reporting a caveat nobody can act on is what `RemoteFileRevision`
+already refuses to do with a confidence percentage; this is that rule one layer out. So
+`writeBackBody` became `writeBackConcern`, returning `String?`: `nil` for all four
+`RemoteRevisionEvidence` shapes, and the three answers that carry a fact the user has to weigh —
+somebody else wrote this file, the check could not be made, nothing was recorded to compare against
+— keep the dialog unchanged. The upload now reports on the **status line** instead, since an upload
+that leaves no trace is indistinguishable from one that never happened; measured at 230 pt (43-char
+name: 427 pt) against the 542 pt the pane gives that label, across all fourteen catalogs. The
+`If-Match` precondition, the refused-precondition escalation and the failure alert are untouched.
+Both negative controls run and are cleanly separated: putting the old always-ask back fails only the
+four "don't interrupt" cases, and over-correcting to never-ask fails only the five that must still
+stop the user. The live S3 suite gained the same assertion against a real endpoint, on both sides.
+Nothing automated could have found this — the dialog was *correct*, every test was green, and the
+English screenshot is perfect; it needed somebody saving a file ten times.
 
 **2026-08-23 — two `VFSBackend` contracts that no backend kept, one of them load-bearing.** Fell
 out of the ⇧F4 pass below, from a single aside: `moveItem`'s doc promised `.alreadyExists` for an

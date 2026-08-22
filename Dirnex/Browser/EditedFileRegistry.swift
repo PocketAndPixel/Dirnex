@@ -78,8 +78,9 @@ final class EditedFileRegistry {
     /// A **remote** write-back deliberately does *not* call this, which is the one place the two
     /// endings differ. Repacking replaces the archive, so the copy that was absorbed is finished
     /// with; an upload changes nothing on this Mac, and the editor still has that same file open. A
-    /// second save must offer again, so the watch stays and only the revision it compares the
-    /// *server* against is re-baselined.
+    /// second save must be carried up too — checked afresh, and asked about only if that check finds
+    /// something — so the watch stays and only the revision it compares the *server* against is
+    /// re-baselined.
     func stopWatching(_ temporaryURL: URL) {
         watchers[temporaryURL]?.stop()
         watchers[temporaryURL] = nil

@@ -73106,273 +73106,6 @@
         }
       }
     },
-    "The file on the server is byte-for-byte the one you downloaded. %@": {
-      "comment": "Remote write-back body when entity tags proved the server's copy is unchanged; %@ is the shared “uploading replaces…” sentence.",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The file on the server is byte-for-byte the one you downloaded. %@"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Die Datei auf dem Server ist Byte für Byte die, die du heruntergeladen hast. %@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El archivo del servidor es byte a byte el que descargaste. %@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le fichier sur le serveur est identique octet pour octet à celui que vous avez téléchargé. %@"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Il file sul server è byte per byte quello che hai scaricato. %@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "サーバー上のファイルは、ダウンロードしたものとバイト単位で同一です。%@"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "서버의 파일은 다운로드한 파일과 바이트 단위로 동일합니다. %@"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Het bestand op de server is byte voor byte hetzelfde als wat je hebt gedownload. %@"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Plik na serwerze jest bajt w bajt tym, który pobrano. %@"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "O arquivo no servidor é, byte a byte, o mesmo que você baixou. %@"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Файл на сервере побайтово совпадает с загруженным. %@"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Файл на сервері побайтово збігається із завантаженим. %@"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "服务器上的文件与您下载的文件逐字节相同。%@"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "伺服器上的檔案與您下載的檔案逐位元組相同。%@"
-          }
-        }
-      }
-    },
-    "The file on the server still has the size and modification date it had when you downloaded it — but FTP reports times without a year and on the server’s own clock, so a recent change may not show up here. %@": {
-      "comment": "Remote write-back body over FTP, whose LIST timestamps are too coarse to rely on; %@ is the shared “uploading replaces…” sentence.",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The file on the server still has the size and modification date it had when you downloaded it — but FTP reports times without a year and on the server’s own clock, so a recent change may not show up here. %@"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Die Datei auf dem Server hat noch Größe und Änderungsdatum wie beim Herunterladen – FTP meldet Zeiten aber ohne Jahr und nach der Uhr des Servers, sodass eine kürzliche Änderung hier nicht auffallen muss. %@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El archivo del servidor conserva el tamaño y la fecha de modificación que tenía al descargarlo, pero FTP informa las horas sin año y según el reloj del servidor, así que un cambio reciente puede no verse aquí. %@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le fichier sur le serveur a toujours la taille et la date de modification qu’il avait au téléchargement, mais FTP indique les heures sans l’année et selon l’horloge du serveur : une modification récente peut donc passer inaperçue ici. %@"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Il file sul server ha ancora la dimensione e la data di modifica che aveva al download, ma FTP riporta gli orari senza l’anno e secondo l’orologio del server, quindi una modifica recente potrebbe non risultare qui. %@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "サーバー上のファイルは、ダウンロード時のサイズと更新日のままです。ただし FTP は年を含まないサーバー側の時刻を返すため、最近の変更はここに現れないことがあります。%@"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "서버의 파일은 다운로드 당시의 크기와 수정 날짜를 그대로 유지하고 있습니다. 다만 FTP는 연도 없이 서버 자체 시계 기준으로 시각을 알려주므로, 최근 변경은 여기에 나타나지 않을 수 있습니다. %@"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Het bestand op de server heeft nog de grootte en wijzigingsdatum van bij het downloaden, maar FTP geeft tijden zonder jaartal en volgens de klok van de server, dus een recente wijziging is hier misschien niet te zien. %@"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Plik na serwerze ma nadal rozmiar i datę modyfikacji z chwili pobrania, ale FTP podaje czas bez roku i według zegara serwera, więc niedawna zmiana może się tu nie ujawnić. %@"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "O arquivo no servidor ainda tem o tamanho e a data de modificação de quando você o baixou, mas o FTP informa horários sem o ano e pelo relógio do servidor, então uma alteração recente pode não aparecer aqui. %@"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "У файла на сервере прежние размер и дата изменения, но FTP сообщает время без года и по часам сервера, поэтому недавнее изменение здесь может не проявиться. %@"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Файл на сервері має той самий розмір і дату зміни, що й під час завантаження, але FTP повідомляє час без року й за годинником сервера, тож нещодавня зміна може тут не проявитися. %@"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "服务器上的文件仍保持您下载时的大小和修改日期，但 FTP 报告的时间不含年份且以服务器自身的时钟为准，因此最近的更改可能不会在此显示。%@"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "伺服器上的檔案仍保持您下載時的大小和修改日期，但 FTP 回報的時間不含年份且以伺服器自身的時鐘為準，因此最近的變更可能不會在此顯示。%@"
-          }
-        }
-      }
-    },
-    "The file on the server still has the size and modification date it had when you downloaded it. %@": {
-      "comment": "Remote write-back body when size and a trustworthy timestamp both matched; %@ is the shared “uploading replaces…” sentence.",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The file on the server still has the size and modification date it had when you downloaded it. %@"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Die Datei auf dem Server hat noch Größe und Änderungsdatum wie beim Herunterladen. %@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El archivo del servidor conserva el tamaño y la fecha de modificación que tenía al descargarlo. %@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le fichier sur le serveur a toujours la taille et la date de modification qu’il avait au téléchargement. %@"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Il file sul server ha ancora la dimensione e la data di modifica che aveva al download. %@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "サーバー上のファイルは、ダウンロード時のサイズと更新日のままです。%@"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "서버의 파일은 다운로드 당시의 크기와 수정 날짜를 그대로 유지하고 있습니다. %@"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Het bestand op de server heeft nog de grootte en wijzigingsdatum van bij het downloaden. %@"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Plik na serwerze ma nadal rozmiar i datę modyfikacji z chwili pobrania. %@"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "O arquivo no servidor ainda tem o tamanho e a data de modificação de quando você o baixou. %@"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "У файла на сервере прежние размер и дата изменения. %@"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Файл на сервері має той самий розмір і дату зміни, що й під час завантаження. %@"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "服务器上的文件仍保持您下载时的大小和修改日期。%@"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "伺服器上的檔案仍保持您下載時的大小和修改日期。%@"
-          }
-        }
-      }
-    },
     "The file or folder to reveal.": {
       "comment": "Shortcuts parameter description for Reveal in Dirnex.",
       "localizations": {
@@ -75683,95 +75416,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "伺服器拒絕了這次上傳：這個檔案已經不在了 — 有人把它刪除或移走了。仍要上傳會把它當作新檔案重新放回去。"
-          }
-        }
-      }
-    },
-    "The server reports no modification date for this file, so only its size could be checked — a change that kept the same length wouldn’t show up here. %@": {
-      "comment": "Remote write-back body when the server gave no timestamp at all; %@ is the shared “uploading replaces…” sentence.",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The server reports no modification date for this file, so only its size could be checked — a change that kept the same length wouldn’t show up here. %@"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Der Server meldet für diese Datei kein Änderungsdatum, daher konnte nur die Größe geprüft werden – eine Änderung mit gleicher Länge fiele hier nicht auf. %@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El servidor no indica fecha de modificación para este archivo, así que solo se pudo comprobar el tamaño: un cambio que mantuviera la misma longitud no se vería aquí. %@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le serveur n’indique aucune date de modification pour ce fichier ; seule la taille a pu être vérifiée, et une modification de même longueur passerait donc inaperçue. %@"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Il server non indica una data di modifica per questo file, quindi è stato possibile controllare solo la dimensione: una modifica della stessa lunghezza non risulterebbe qui. %@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "サーバーはこのファイルの更新日を返していないため、確認できたのはサイズだけです。長さが変わらない変更はここに現れません。%@"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "서버가 이 파일의 수정 날짜를 알려주지 않아 크기만 확인할 수 있었습니다 — 길이가 같은 변경은 여기에 나타나지 않습니다. %@"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "De server geeft voor dit bestand geen wijzigingsdatum, dus alleen de grootte kon worden gecontroleerd — een wijziging met dezelfde lengte zou hier niet opvallen. %@"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Serwer nie podaje daty modyfikacji tego pliku, więc można było sprawdzić tylko rozmiar — zmiana o tej samej długości nie byłaby tu widoczna. %@"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "O servidor não informa data de modificação para este arquivo, então só o tamanho pôde ser verificado — uma alteração que mantivesse o mesmo tamanho não apareceria aqui. %@"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Сервер не сообщает дату изменения этого файла, поэтому удалось сверить только размер — изменение с той же длиной здесь не проявится. %@"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Сервер не повідомляє дату зміни цього файлу, тож удалося звірити лише розмір — зміна з тією самою довжиною тут не проявиться. %@"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "服务器未提供此文件的修改日期，因此只能核对大小 — 长度不变的更改不会在此显示。%@"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "伺服器未提供此檔案的修改日期，因此只能核對大小 — 長度不變的變更不會在此顯示。%@"
           }
         }
       }
@@ -82358,6 +82002,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "要將「%@」上傳回伺服器嗎？"
+          }
+        }
+      }
+    },
+    "Uploaded “%@” to the server": {
+      "comment": "Status line shown after an edited file was uploaded back to the server it came from; %@ is the file's name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ auf den Server geladen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uploaded “%@” to the server"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se subió “%@” al servidor"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« %@ » envoyé sur le serveur"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” caricato sul server"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」をサーバーにアップロードしました"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”을(를) 서버에 업로드함"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” geüpload naar de server"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wysłano „%@” na serwer"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” enviado para o servidor"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» загружен на сервер"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» завантажено на сервер"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已将“%@”上传到服务器"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已將「%@」上傳到伺服器"
           }
         }
       }

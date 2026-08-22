@@ -7,36 +7,56 @@ import DirnexCore
 /// the panes are showing. Someone can open a file off a bucket, navigate both panes elsewhere, close
 /// the tab, and save an hour later — and the answer still has to be "put it back".
 ///
-/// **It re-`stat`s before it writes, and the dialog is worded from what that answered.** None of the
+/// **It re-`stat`s before it writes, and only *asks* when that answered something.** None of the
 /// three remote protocols has a lock, and an upload is a whole-file write: S3's is a whole-object
 /// `PUT`. So the ordinary hazard is not the transfer failing, it is the transfer *succeeding* and
 /// silently erasing an edit somebody else made in the meantime, with nothing on screen at any point
-/// to say so. One request answers it, and it is asked before the sheet appears rather than after the
-/// user has agreed — so the sentence they are agreeing to is the true one.
+/// to say so. One request answers that, and it is asked before anything is shown rather than after
+/// the user has agreed — so whatever they are being told is the true thing.
 ///
-/// **What "unchanged" is worth is said out loud**, because it differs by protocol and the difference
-/// is not small: an FTP `LIST` stamp is year-less, zone-less and on the server's clock, so "same size
-/// and date" over FTP misses most of a working day. `RemoteRevisionEvidence` names each blind spot
-/// and this words them; a confidence percentage would be a number nobody can act on.
+/// **A check that found nothing uploads straight away** (2026-08-23). What raises this is the user's
+/// own ⌘S, and the watch deliberately outlives an upload (`EditedFileRegistry.stopWatching`) — so a
+/// dialog on the unchanged case is a confirmation of an intent already stated, once per save, for
+/// the life of the edit, while the local F4 this is the twin of asks nothing at all. The archive
+/// arm's reason for asking does not carry over either: a repack rewrites the whole container and
+/// every other member with it, where an upload replaces the one file being edited with the version
+/// just saved, which is what "save" means. What survives is the question actually worth a modal —
+/// somebody else wrote this file, or the check could not be made — plus a status line, so a silent
+/// save is still a visible one.
+///
+/// **The blind spots that used to be worded are why that is defensible, not an argument against
+/// it.** An FTP `LIST` stamp is year-less, zone-less and on the server's clock, so "same size and
+/// date" over FTP misses most of a working day (`RemoteRevisionEvidence`) — and the dialog saying so
+/// offered two buttons resting on that same weak evidence, with no way for the user to strengthen
+/// it, and the same sentence again on the next save. Reporting a caveat nobody can act on is what
+/// `RemoteFileRevision` already refuses to do with a confidence percentage; this is that rule one
+/// layer out.
 extension BrowserWindowController {
-    /// A watched copy of a remote file has been saved — check the server, then offer to upload.
+    /// A watched copy of a remote file has been saved — check the server, then upload it or ask.
     func offerRemoteWriteBack(_ edit: EditedFile, to path: VFSPath) {
         let backend = focusedPanel.backend
         let recorded = remoteFileCache.revision(for: path)
         Task {
             let current = await BlockingWork.run { try? backend.stat(at: path) }
-            presentRemoteWriteBackOffer(
-                edit, to: path, recorded: recorded, current: current.map(RemoteFileRevision.init)
-            )
+            let checked = current.map(RemoteFileRevision.init)
+            let condition = Self.writeCondition(checked: checked)
+            guard let concern = Self.writeBackConcern(recorded: recorded, current: checked) else {
+                // Nothing to weigh, so nothing to interrupt for: this is the save the user asked
+                // for, landing where they asked for it.
+                uploadEditedFile(edit, to: path, condition: condition)
+                return
+            }
+            presentRemoteWriteBackOffer(edit, to: path, concern: concern, condition: condition)
         }
     }
 
-    /// The one dialog, whose body says what the check found.
+    /// The one dialog, raised only when ``writeBackConcern(recorded:current:)`` had something to say
+    /// and worded by it.
     private func presentRemoteWriteBackOffer(
         _ edit: EditedFile,
         to path: VFSPath,
-        recorded: RemoteFileRevision?,
-        current: RemoteFileRevision?
+        concern: String,
+        condition: S3WriteCondition
     ) {
         let alert = NSAlert()
         alert.messageText = String(
@@ -46,7 +66,7 @@ extension BrowserWindowController {
             the file's name.
             """
         )
-        alert.informativeText = Self.writeBackBody(recorded: recorded, current: current)
+        alert.informativeText = concern
         alert.addButton(withTitle: String(
             localized: "Upload",
             comment: "Button that uploads an edited file back to the server it came from."
@@ -64,24 +84,32 @@ extension BrowserWindowController {
 
         let handler: (NSApplication.ModalResponse) -> Void = { [weak self] response in
             guard response == .alertFirstButtonReturn else { return }
-            self?.uploadEditedFile(edit, to: path, condition: Self.writeCondition(checked: current))
+            self?.uploadEditedFile(edit, to: path, condition: condition)
         }
         // The watcher raised this, not the user — see `beginSheetIfVisible`.
         alert.beginSheetIfVisible(over: window, completionHandler: handler)
     }
 
-    /// What the re-`stat` found, in the user's terms.
+    /// What the re-`stat` found, in the user's terms — or `nil` when it found nothing worth saying.
     ///
-    /// Four answers rather than two, and the split that matters is not "changed / unchanged" — it is
-    /// that an *unchanged* answer is only as strong as the fields that could be compared. A
-    /// difference is always real evidence of a write; an absence of difference is not, and over FTP
-    /// it is barely evidence at all.
+    /// The split that decides whether anybody is interrupted is not "changed / unchanged": it is
+    /// whether the check produced a **fact the user has to weigh**. Three answers do, and each is
+    /// something no other surface would ever tell them — the server's copy moved under the edit, the
+    /// check could not be made, or nothing was recorded to compare against. The fourth is "the file
+    /// is as you left it", which is what pressing ⌘S already assumed, and handing that back as a
+    /// question is the redundancy `nil` exists for.
     ///
-    /// `static` and pure so the wording is testable without a window.
-    static func writeBackBody(
+    /// Note what is deliberately *not* consulted, having been the whole subject of this function
+    /// until 2026-08-23: ``RemoteRevisionEvidence``. How much an unchanged verdict is worth differs
+    /// sharply by protocol and every word of those four sentences was true — but each named a
+    /// weakness the reader could do nothing about from here, since both buttons rested on exactly
+    /// that evidence and declining produced the same sentence again on the next save.
+    ///
+    /// `static` and pure so both the decision and its wording are testable without a window.
+    static func writeBackConcern(
         recorded: RemoteFileRevision?,
         current: RemoteFileRevision?
-    ) -> String {
+    ) -> String? {
         let overwrite = String(
             localized: "Uploading replaces the copy on the server and can’t be undone.",
             comment: "Sentence appended to every remote write-back prompt."
@@ -122,70 +150,17 @@ extension BrowserWindowController {
                 """
             )
         }
-        return unchangedBody(recorded.evidence(comparedWith: current), overwrite: overwrite)
-    }
-
-    /// The unchanged half, one sentence per blind spot.
-    private static func unchangedBody(
-        _ evidence: RemoteRevisionEvidence,
-        overwrite: String
-    ) -> String {
-        switch evidence {
-        case .entityTag:
-            String(
-                localized: """
-                The file on the server is byte-for-byte the one you downloaded. \(overwrite)
-                """,
-                comment: """
-                Remote write-back body when entity tags proved the server's copy is unchanged; %@ \
-                is the shared “uploading replaces…” sentence.
-                """
-            )
-        case .sizeAndTimestamp:
-            String(
-                localized: """
-                The file on the server still has the size and modification date it had when you \
-                downloaded it. \(overwrite)
-                """,
-                comment: """
-                Remote write-back body when size and a trustworthy timestamp both matched; %@ is \
-                the shared “uploading replaces…” sentence.
-                """
-            )
-        case .sizeAndApproximateTimestamp:
-            String(
-                localized: """
-                The file on the server still has the size and modification date it had when you \
-                downloaded it — but FTP reports times without a year and on the server’s own clock, \
-                so a recent change may not show up here. \(overwrite)
-                """,
-                comment: """
-                Remote write-back body over FTP, whose LIST timestamps are too coarse to rely on; \
-                %@ is the shared “uploading replaces…” sentence.
-                """
-            )
-        case .sizeOnly:
-            String(
-                localized: """
-                The server reports no modification date for this file, so only its size could be \
-                checked — a change that kept the same length wouldn’t show up here. \(overwrite)
-                """,
-                comment: """
-                Remote write-back body when the server gave no timestamp at all; %@ is the shared \
-                “uploading replaces…” sentence.
-                """
-            )
-        }
+        return nil
     }
 
     // MARK: - The precondition
 
-    /// The precondition a save-back attaches, read off **the revision the user was shown** rather
+    /// The precondition a save-back attaches, read off **the revision the check just found** rather
     /// than off the one that was downloaded (PLAN.md §M21 Slice 18).
     ///
     /// This is the load-bearing line of the whole wiring, and the natural way round breaks the
-    /// feature outright: conditioning on the *download's* tag would refuse exactly the write this
-    /// dialog exists to authorize. Someone told "the file on the server has changed — someone else
+    /// feature outright: conditioning on the *download's* tag would refuse exactly the write the
+    /// prompt exists to authorize. Someone told "the file on the server has changed — someone else
     /// has edited it" who then presses Upload has said they mean to replace *that* version, and an
     /// `If-Match` naming the older tag answers 412 to their own decision, in a sentence claiming
     /// somebody changed the file. So the check's tag is what travels: it pins what they agreed to
@@ -195,8 +170,8 @@ extension BrowserWindowController {
     /// `.unconditional` for everything else, and that is the additive design rather than a gap.
     /// SFTP and FTP have no entity tag, a check that could not reach the server has nothing to pin,
     /// and an S3 row whose listing carried no `<ETag>` is the same case — each goes on resting on
-    /// the re-`stat` this prompt is worded from, which is where they were before this slice. Never
-    /// worse, and never claiming more.
+    /// the re-`stat` this whole flow is decided from, which is where they were before this
+    /// slice. Never worse, and never claiming more.
     static func writeCondition(checked current: RemoteFileRevision?) -> S3WriteCondition {
         guard let entityTag = current?.entityTag else { return .unconditional }
         // Verbatim, quotes included: an unquoted digest is a different byte string to S3 and
@@ -213,6 +188,13 @@ extension BrowserWindowController {
     /// ordinary `copyFile` when there is not — never the other way about. A conditional call that
     /// quietly lost its precondition is the one outcome worse than not having the feature, which is
     /// why the seam beneath this throws rather than dropping it (`S3WriteConditionUnsupported`).
+    ///
+    /// **It says so afterwards**, on the status line rather than in an alert, because since
+    /// 2026-08-23 the ordinary save reaches here having asked nothing — and an upload that leaves no
+    /// trace on screen is indistinguishable from one that never happened. Reported unconditionally,
+    /// including on the paths that *did* ask: a second surface saying the same thing costs a line
+    /// nobody has to dismiss, where a branch on how the user got here is a rule to keep right.
+    /// Failures keep their alert; this is the routine half, which is the half a modal is wrong for.
     private func uploadEditedFile(
         _ edit: EditedFile,
         to path: VFSPath,
@@ -254,12 +236,22 @@ extension BrowserWindowController {
                 return
             }
             // The watch deliberately stays: unlike a repack, an upload changes nothing on this Mac,
-            // the editor still has this very file open, and a second save has to offer again
-            // (`EditedFileRegistry.stopWatching`). What must move is the revision the *next* check
+            // the editor still has this very file open, and a second save has to come back through
+            // here (`EditedFileRegistry.stopWatching`). What must move is the revision the next check
             // compares against — leaving the pre-upload one would have our own write read back as
             // "someone else has edited it", which is the one sentence that must never be wrong.
             await rebaseline(path, to: url, using: backend)
             refreshPanesShowing(path.parent)
+            // On the focused pane, not on whichever pane is drawing the directory: this reports
+            // where the user's attention is, and both of them may have navigated away during an
+            // edit that took an hour.
+            focusedPanel.showTransientStatus(String(
+                localized: "Uploaded “\(edit.name)” to the server",
+                comment: """
+                Status line shown after an edited file was uploaded back to the server it came \
+                from; %@ is the file's name.
+                """
+            ))
         }
     }
 
@@ -364,7 +356,7 @@ extension BrowserWindowController {
     /// "puts it back" would be false in the other direction.
     ///
     /// `static` and pure so the wording is testable without a window, exactly like
-    /// ``writeBackBody(recorded:current:)``.
+    /// ``writeBackConcern(recorded:current:)``.
     static func uploadAnywayBody(_ conflict: RemoteWriteBackConflict) -> String {
         switch conflict {
         case .changed:

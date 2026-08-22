@@ -4533,6 +4533,39 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
 
 ## Design lessons that generalize
 
+- **A confirmation raised by a *watcher* over a gesture the user already made is a confirmation of an
+  intent already stated — and the test of whether it earns its modal is not "is this irreversible" but
+  "did the check produce a fact they can act on".** The remote save-back asked on every ⌘S, and its
+  body on the ordinary path said the server's copy was exactly as downloaded: a question about
+  nothing, once per save, for the life of the edit (`EditedFileRegistry` keeps watching after an
+  upload by design), where the **local** F4 it is the twin of asks nothing at all. Reported by a user
+  2026-08-23. Nothing automated can see this class — the dialog was *correct*, both suites and both
+  linters were green, and the English screenshot is perfect; it needs somebody saving a file ten
+  times.
+  - **The sharpest tell is a body that argues against itself.** The FTP wording named a real weakness
+    — a `LIST` stamp is year-less, zone-less and on the server's clock, so "same size and date" misses
+    most of a working day — and then offered two buttons resting on *that same evidence*, with no way
+    for the reader to strengthen it and the identical sentence again on the next save. Both choices
+    act on one input, so the dialog is asking a question it has already answered as well as it can be
+    answered. `RemoteFileRevision` refuses to show a confidence percentage for exactly this reason
+    ("a number nobody can act on"); a caveat with no action attached is the same thing in prose.
+  - **A neighbouring feature's reason for asking is not transferable, and its doc comment will read as
+    though it is.** The archive write-back asks because a repack rewrites the whole container and
+    every other member with it, so an autosave triggering one is a big deal. An upload replaces the
+    one file being edited with the version just saved — which is what "save" means. One
+    `offerWriteBack` switch, two endings, and only one of them had the argument.
+  - **What replaces it has to leave a trace, or "silent" becomes "did nothing".** An upload that
+    reports nowhere is indistinguishable from one that never happened, so the routine half moved to
+    the status line — which then owes the ▸ Localization budget check, since that label truncates its
+    *tail* in silence (measured 230 pt, and 427 pt with a 43-character name, against 542 pt, across
+    all fourteen catalogs).
+  - **Both negative controls are needed and they separate cleanly**: restoring the always-ask version
+    fails only the "an unchanged file must not interrupt" cases — over all four
+    `RemoteRevisionEvidence` shapes, spelled out rather than sampled, because the weak ones are where
+    the argument for asking used to live — while over-correcting to never-ask fails only the ones that
+    must still stop the user. Without the second, "don't interrupt" quietly becomes "never interrupt",
+    which loses the sentence the whole mechanism exists to say.
+
 - **A protocol doc comment is a claim, and an untested one drifts exactly like a duplicated
   predicate — except nothing at all checks it, not even a linter.** `VFSBackend.moveItem` promised
   "Throws `.alreadyExists` if `destination` is occupied" from M2 until 2026-08-23, and **no backend
