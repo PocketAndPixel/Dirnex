@@ -4560,11 +4560,21 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     *tail* in silence (measured 230 pt, and 427 pt with a 43-character name, against 542 pt, across
     all fourteen catalogs).
   - **Both negative controls are needed and they separate cleanly**: restoring the always-ask version
-    fails only the "an unchanged file must not interrupt" cases — over all four
-    `RemoteRevisionEvidence` shapes, spelled out rather than sampled, because the weak ones are where
-    the argument for asking used to live — while over-correcting to never-ask fails only the ones that
-    must still stop the user. Without the second, "don't interrupt" quietly becomes "never interrupt",
-    which loses the sentence the whole mechanism exists to say.
+    fails only the "an unchanged file must not interrupt" cases — spelled out over every shape such a
+    verdict can have rather than sampled, because the weakest ones are where the argument for asking
+    used to live — while over-correcting to never-ask fails only the ones that must still stop the
+    user. Without the second, "don't interrupt" quietly becomes "never interrupt", which loses the
+    sentence the whole mechanism exists to say.
+  - **The grading that produced those four sentences had no reader left, and deleting it is part of
+    the fix rather than tidying after it.** `RemoteRevisionEvidence` ranked how much an unchanged
+    verdict was worth; it fed nothing but the wording, so when the wording went it became public core
+    API used only by its own tests — and it took two more fields with it, since
+    `timestampIsApproximate` existed only to feed the grading and `VFSBackendID
+    .hasApproximateTimestamps` existed only to feed *that*. A chain worth walking whenever a display
+    decision is withdrawn: the value that fed it, and the predicate that fed the value, are usually
+    dead too, and each looks load-bearing on its own. What must not go with them is the *fact* — an
+    FTP `LIST` stamp is still year-less, zone-less and on the server's clock, which is why it is
+    recorded here (▸ curl) rather than only in a type.
 
 - **A protocol doc comment is a claim, and an untested one drifts exactly like a duplicated
   predicate — except nothing at all checks it, not even a linter.** `VFSBackend.moveItem` promised

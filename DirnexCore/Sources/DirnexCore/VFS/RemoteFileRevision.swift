@@ -43,43 +43,23 @@ public struct RemoteFileRevision: Sendable, Equatable {
     ///
     /// Supplied by S3 alone, out of the `<ETag>` of the very `ListObjectsV2` response the row was
     /// built from, so it costs no request of its own (``FileEntry/entityTag``). SFTP and FTP have
-    /// no such thing and go on comparing size and time; FTP's is approximate on top of that, which
-    /// is what ``timestampIsApproximate`` says out loud.
+    /// no such thing and go on comparing size and time — and FTP's stamp is year-less, zone-less
+    /// and on the server's clock on top of that (docs/NOTES.md ▸ curl), so over that one protocol
+    /// an "unchanged" answer is the weakest this type can give.
     public let entityTag: String?
 
-    /// Whether ``modified`` is too coarse to be trusted as an "unchanged" answer.
-    ///
-    /// True over FTP, and the reason is the protocol rather than the implementation: `LIST` is not
-    /// standardized, its stamp is **year-less** for recent files, carries **no zone**, and is on
-    /// the *server's* clock (docs/NOTES.md ▸ curl). So an FTP mtime is approximate by construction
-    /// — fine to display and sort by, and not something to compare two readings of the same file
-    /// with. Carried on the value rather than re-derived from the path at each call site, so a
-    /// caller wording a conflict dialog cannot forget to ask.
-    public let timestampIsApproximate: Bool
-
-    public init(
-        byteSize: Int64,
-        modified: Date?,
-        entityTag: String? = nil,
-        timestampIsApproximate: Bool = false
-    ) {
+    public init(byteSize: Int64, modified: Date?, entityTag: String? = nil) {
         self.byteSize = byteSize
         self.modified = modified
         self.entityTag = entityTag
-        self.timestampIsApproximate = timestampIsApproximate
     }
 
     /// The revision a listing or a `stat` just reported for `entry`.
-    ///
-    /// Reads the backend off the entry's own path, so the FTP caveat rides along without the caller
-    /// naming a backend — the same reason ``FileEntry`` carries `isDataless` rather than making
-    /// every sweep re-read `st_flags`.
     public init(_ entry: FileEntry) {
         self.init(
             byteSize: entry.byteSize,
             modified: entry.hasModificationDate ? entry.modificationDate : nil,
-            entityTag: entry.entityTag,
-            timestampIsApproximate: entry.path.backend.hasApproximateTimestamps
+            entityTag: entry.entityTag
         )
     }
 
@@ -93,48 +73,13 @@ public struct RemoteFileRevision: Sendable, Equatable {
     /// a spurious "someone changed this" is a dialog the user dismisses, while a missed one
     /// destroys their colleague's work with no dialog at all.
     ///
-    /// Note what this cannot do, and that ``timestampIsApproximate`` is where it is said: a
-    /// difference found here is always real evidence of a write, but *no* difference is only as
-    /// strong as the fields that were compared. See ``evidence(comparedWith:)``.
+    /// Note what this cannot do: a difference found here is always real evidence of a write, but
+    /// *no* difference is only as strong as the fields that could be compared — an entity tag is
+    /// proof of sameness, a size and a date are an absence of evidence, and over FTP that date is
+    /// year-less, zone-less and on the server's clock. So the two verdicts are not symmetric, and
+    /// a caller must not read "not superseded" as "provably untouched".
     public func isSuperseded(by other: Self) -> Bool {
         if let mine = entityTag, let theirs = other.entityTag { return mine != theirs }
         return byteSize != other.byteSize || modified != other.modified
     }
-
-    /// What a "nothing has changed" answer from ``isSuperseded(by:)`` is actually worth, so the
-    /// sentence the user reads can be honest about it.
-    ///
-    /// The four answers are not degrees of the same thing — each names a *different* blind spot,
-    /// and the app words them differently rather than showing a confidence percentage nobody can
-    /// act on.
-    public func evidence(comparedWith other: Self) -> RemoteRevisionEvidence {
-        if entityTag != nil, other.entityTag != nil { return .entityTag }
-        guard modified != nil, other.modified != nil else { return .sizeOnly }
-        if timestampIsApproximate || other.timestampIsApproximate {
-            return .sizeAndApproximateTimestamp
-        }
-        return .sizeAndTimestamp
-    }
-}
-
-/// How much weight two revisions comparing equal can carry (see
-/// ``RemoteFileRevision/evidence(comparedWith:)``).
-///
-/// Ordered strongest first, and deliberately without a `<` — ranking these would invite a caller to
-/// pick a floor, and the point is that each one is a different missing fact rather than less of the
-/// same one.
-public enum RemoteRevisionEvidence: Sendable, Equatable, CaseIterable {
-    /// Both sides carried an entity tag and the tags matched. The file is byte-identical to what
-    /// was downloaded; there is no case this misses.
-    case entityTag
-    /// Size and a trustworthy timestamp both matched. Misses only a rewrite that landed on the same
-    /// length within the timestamp's own resolution.
-    case sizeAndTimestamp
-    /// Size and a timestamp matched, but the timestamp is the server-clock, zone-less, year-less
-    /// kind FTP's `LIST` produces — so it misses any rewrite the coarse stamp cannot resolve, which
-    /// is most of a working day's worth.
-    case sizeAndApproximateTimestamp
-    /// Only the sizes could be compared: at least one side reported no modification time at all.
-    /// Misses every rewrite that kept the length.
-    case sizeOnly
 }

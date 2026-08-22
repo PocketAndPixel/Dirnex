@@ -217,14 +217,11 @@ final class RemoteFileEditLiveIntegrationTests {
             Result { try backend.stat(at: entry.path) }
         }.get()
         #expect(!recorded.isSuperseded(by: RemoteFileRevision(current)))
-        // The strongest answer there is: both readings carried an entity tag and the tags matched,
-        // so this is proof of sameness rather than an absence of evidence. It reads
-        // `.sizeAndTimestamp` — still true, and weaker — for as long as nothing supplies a tag,
-        // which is what this endpoint settled: it sends `<ETag>` on every `ListObjectsV2` row, so
-        // the tag rides in on the same request the row is built from and no verb pays for it.
-        #expect(recorded.evidence(comparedWith: RemoteFileRevision(current)) == .entityTag)
-        // Held separately, because the assertion above would also pass if *neither* side had one
-        // and the case had been mis-ordered: the tag is really there, and it is the object's own.
+        // And it is the strongest form of that answer: both readings carried an entity tag, so the
+        // verdict is proof of sameness rather than an absence of evidence. Worth pinning because it
+        // is a fact about this endpoint rather than about the code — it sends `<ETag>` on every
+        // `ListObjectsV2` row, so the tag rides in on the request the row is built from and no verb
+        // pays for it. Asserted as the tag itself now that `isSuperseded` is the only reader.
         #expect(recorded.entityTag != nil)
         #expect(recorded.entityTag == RemoteFileRevision(current).entityTag)
         // So this save asks nothing: the check had nothing to hand the user, and the upload is the

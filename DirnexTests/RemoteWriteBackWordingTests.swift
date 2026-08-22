@@ -24,15 +24,9 @@ struct RemoteWriteBackWordingTests {
     private static func revision(
         byteSize: Int64 = 100,
         modified: Date? = Date(timeIntervalSince1970: 1_700_000_000),
-        entityTag: String? = nil,
-        approximate: Bool = false
+        entityTag: String? = nil
     ) -> RemoteFileRevision {
-        RemoteFileRevision(
-            byteSize: byteSize,
-            modified: modified,
-            entityTag: entityTag,
-            timestampIsApproximate: approximate
-        )
+        RemoteFileRevision(byteSize: byteSize, modified: modified, entityTag: entityTag)
     }
 
     private static func concern(
@@ -45,15 +39,16 @@ struct RemoteWriteBackWordingTests {
     // MARK: - Whether anybody is interrupted
 
     /// The rule the whole change rests on, over **every** shape an unchanged verdict can have —
-    /// `RemoteRevisionEvidence`'s four, spelled out rather than sampled, because the weak ones are
-    /// exactly where the argument for asking used to live. An FTP row is the third of them, and is
-    /// the case this was reported from.
+    /// spelled out rather than sampled, because the weakest ones are exactly where the argument for
+    /// asking used to live, and the weakest of all is what this was reported from: an FTP row,
+    /// whose date is year-less, zone-less and on the server's clock. It reaches here as the plain
+    /// date case, since nothing downstream distinguishes them any more — which is the point, and is
+    /// why the FTP path is pinned live against a real server rather than here.
     @Test("a check that found nothing does not interrupt, whatever it was able to compare")
     func unchangedAsksNothing() {
         let unchanged: [(String, RemoteFileRevision)] = [
             ("entity tags matched", Self.revision(entityTag: "\"a\"")),
-            ("size and a trustworthy date matched", Self.revision()),
-            ("size and an FTP date matched", Self.revision(approximate: true)),
+            ("size and a date matched", Self.revision()),
             ("only the size could be compared", Self.revision(modified: nil))
         ]
         for (evidence, revision) in unchanged {

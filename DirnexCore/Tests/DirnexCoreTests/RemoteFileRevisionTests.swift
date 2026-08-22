@@ -162,94 +162,11 @@ struct RemoteFileRevisionTests {
         )
 
         #expect(downloaded.isSuperseded(by: rewritten))
-        #expect(downloaded.evidence(comparedWith: rewritten) == .entityTag)
         // The control that says the pair really is invisible to everything else: strip the tags
         // and the same two readings compare equal.
         let untagged = RemoteFileRevision(entry(backend: s3Backend, modified: noon))
         #expect(!untagged.isSuperseded(by: RemoteFileRevision(
             entry(backend: s3Backend, modified: noon)
         )))
-    }
-
-    @Test("the FTP caveat rides along without the caller naming a backend")
-    func ftpEntryIsMarkedApproximate() {
-        #expect(RemoteFileRevision(entry(backend: ftpBackend, modified: noon))
-            .timestampIsApproximate)
-        #expect(!RemoteFileRevision(entry(backend: s3Backend, modified: noon))
-            .timestampIsApproximate)
-    }
-
-    // MARK: - What "unchanged" is worth
-
-    @Test("evidence names the blind spot rather than a confidence")
-    func evidenceIsNamed() {
-        let tagged = RemoteFileRevision(byteSize: 1, modified: noon, entityTag: "\"a\"")
-        let dated = RemoteFileRevision(byteSize: 1, modified: noon)
-        let undated = RemoteFileRevision(byteSize: 1, modified: nil)
-        let coarse = RemoteFileRevision(
-            byteSize: 1, modified: noon, timestampIsApproximate: true
-        )
-
-        #expect(tagged.evidence(comparedWith: tagged) == .entityTag)
-        #expect(dated.evidence(comparedWith: dated) == .sizeAndTimestamp)
-        #expect(dated.evidence(comparedWith: undated) == .sizeOnly)
-        #expect(undated.evidence(comparedWith: undated) == .sizeOnly)
-        #expect(coarse.evidence(comparedWith: dated) == .sizeAndApproximateTimestamp)
-    }
-
-    /// A coarse stamp is still a *timestamp*, so the missing date must outrank it: with no date at
-    /// all there is nothing to be approximate about, and reporting the FTP sentence there would name
-    /// a weakness that is not the one in play.
-    @Test("no timestamp outranks an approximate one")
-    func missingTimestampOutranksApproximate() {
-        let coarse = RemoteFileRevision(
-            byteSize: 1, modified: noon, timestampIsApproximate: true
-        )
-        let undated = RemoteFileRevision(byteSize: 1, modified: nil)
-
-        #expect(coarse.evidence(comparedWith: undated) == .sizeOnly)
-    }
-
-    /// An entity tag is exact whatever the backend's clock is like, so it must outrank the FTP
-    /// caveat rather than being diluted by it.
-    @Test("an entity tag outranks an approximate timestamp")
-    func entityTagOutranksApproximate() {
-        let coarse = RemoteFileRevision(
-            byteSize: 1, modified: noon, entityTag: "\"a\"", timestampIsApproximate: true
-        )
-        let tagged = RemoteFileRevision(byteSize: 1, modified: noon, entityTag: "\"a\"")
-
-        #expect(coarse.evidence(comparedWith: tagged) == .entityTag)
-    }
-}
-
-/// The one-line predicate the revision reads its FTP caveat from, pinned where it lives rather than
-/// only through the value that consumes it — the size-bar lesson: a rule with two readers is a rule
-/// that drifts, and this one is invisible at the second reader.
-@Suite("Approximate timestamps by backend")
-struct ApproximateTimestampBackendTests {
-    @Test("only FTP's LIST stamp is approximate")
-    func onlyFTP() {
-        let ftp = VFSBackendID.ftp(FTPLocation(host: "h", username: "u"))
-        let sftp = VFSBackendID.sftp(SFTPLocation(host: "h", username: "u"))
-        let s3 = VFSBackendID.s3(S3Location(
-            host: "h", bucket: "b", region: "r", accessKeyID: "k"
-        ))
-
-        #expect(ftp.hasApproximateTimestamps)
-        #expect(!sftp.hasApproximateTimestamps)
-        #expect(!s3.hasApproximateTimestamps)
-        #expect(!VFSBackendID.local.hasApproximateTimestamps)
-    }
-
-    /// Every mode of FTP, not just the one the fixture happens to use: FTPS is the same `LIST`.
-    @Test("every FTP security mode carries the same caveat")
-    func everyFTPMode() {
-        for security in FTPSecurity.allCases {
-            let backend = VFSBackendID.ftp(
-                FTPLocation(host: "h", username: "u", security: security)
-            )
-            #expect(backend.hasApproximateTimestamps)
-        }
     }
 }

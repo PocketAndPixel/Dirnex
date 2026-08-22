@@ -26,11 +26,12 @@ import DirnexCore
 ///
 /// **The blind spots that used to be worded are why that is defensible, not an argument against
 /// it.** An FTP `LIST` stamp is year-less, zone-less and on the server's clock, so "same size and
-/// date" over FTP misses most of a working day (`RemoteRevisionEvidence`) — and the dialog saying so
-/// offered two buttons resting on that same weak evidence, with no way for the user to strengthen
-/// it, and the same sentence again on the next save. Reporting a caveat nobody can act on is what
+/// date" over FTP misses most of a working day — and the dialog saying so offered two buttons
+/// resting on that same weak evidence, with no way for the user to strengthen it, and the same
+/// sentence again on the next save. Reporting a caveat nobody can act on is what
 /// `RemoteFileRevision` already refuses to do with a confidence percentage; this is that rule one
-/// layer out.
+/// layer out. The four-way `RemoteRevisionEvidence` that graded those blind spots went with the
+/// wording it existed to produce, so `isSuperseded(by:)` is now the whole of the comparison.
 extension BrowserWindowController {
     /// A watched copy of a remote file has been saved — check the server, then upload it or ask.
     func offerRemoteWriteBack(_ edit: EditedFile, to path: VFSPath) {
@@ -99,11 +100,12 @@ extension BrowserWindowController {
     /// is as you left it", which is what pressing ⌘S already assumed, and handing that back as a
     /// question is the redundancy `nil` exists for.
     ///
-    /// Note what is deliberately *not* consulted, having been the whole subject of this function
-    /// until 2026-08-23: ``RemoteRevisionEvidence``. How much an unchanged verdict is worth differs
-    /// sharply by protocol and every word of those four sentences was true — but each named a
-    /// weakness the reader could do nothing about from here, since both buttons rested on exactly
-    /// that evidence and declining produced the same sentence again on the next save.
+    /// Note what is deliberately *not* weighed, having been the whole subject of this function
+    /// until 2026-08-23: **how much an unchanged verdict is worth**, which differs sharply by
+    /// protocol. Every word of the four sentences that said so was true — and each named a weakness
+    /// the reader could do nothing about from here, since both buttons rested on exactly that
+    /// evidence and declining produced the same sentence again on the next save. The core type that
+    /// graded it was removed with them, so `isSuperseded(by:)` is now the whole comparison.
     ///
     /// `static` and pure so both the decision and its wording are testable without a window.
     static func writeBackConcern(

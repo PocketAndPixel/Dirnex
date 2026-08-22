@@ -9431,7 +9431,11 @@ first and the probes still gate the app pass rather than being skipped.
   `.sizeAndApproximateTimestamp`, `.sizeOnly` — and the app words each rather than showing a
   percentage nobody can act on. `.sizeOnly` outranks the approximate case on purpose: with no date
   at all there is nothing to be approximate *about*, and the FTP sentence there would name a
-  weakness that is not the one in play.
+  weakness that is not the one in play. **All of it was removed on 2026-08-23** — the grading
+  existed to produce those four sentences, and when the unchanged case stopped raising a dialog it
+  had no reader left (▸ After M19). `isSuperseded(by:)` is now the whole comparison;
+  `hasApproximateTimestamps` and `timestampIsApproximate` went with it, and the FTP fact they
+  carried lives in [NOTES.md](NOTES.md) ▸ curl and in `VFSBackendID.isFTP`.
 - **The FTP caveat rides on the value, not on the call site.** `VFSBackendID.hasApproximateTimestamps`
   is the one spelling — a `LIST` stamp is year-less, zone-less and on the server's clock, which is
   fine to display and sort by and is not something to decide "nobody has touched this since" on —
@@ -9545,7 +9549,8 @@ one live one, and 19 strings in all 14 catalogs.
 - **The write-back's `stat` happens before the sheet, not after the user agrees** — so the sentence
   being agreed to is the true one, and the four `RemoteRevisionEvidence` cases become four different
   sentences instead of a confidence number. Six distinct bodies, asserted as six distinct strings:
-  matching a phrase would pass on the sentence saying the opposite.
+  matching a phrase would pass on the sentence saying the opposite. (The four unchanged ones, and
+  the grading behind them, were removed on 2026-08-23 — ▸ After M19.)
 - **A successful upload re-baselines the recorded revision, and this is not optional.** Leaving the
   pre-upload one makes our *own* write read back as "someone else has edited it" on the next save —
   the one sentence in this feature that must never be wrong. It costs one extra request, and a
@@ -11141,10 +11146,14 @@ zone-less and on the server's clock, so "same size and date" misses most of a wo
 offered two buttons resting on that same evidence, with no way to strengthen it and the same
 sentence again on the next save. Reporting a caveat nobody can act on is what `RemoteFileRevision`
 already refuses to do with a confidence percentage; this is that rule one layer out. So
-`writeBackBody` became `writeBackConcern`, returning `String?`: `nil` for all four
-`RemoteRevisionEvidence` shapes, and the three answers that carry a fact the user has to weigh —
-somebody else wrote this file, the check could not be made, nothing was recorded to compare against
-— keep the dialog unchanged. The upload now reports on the **status line** instead, since an upload
+`writeBackBody` became `writeBackConcern`, returning `String?`: `nil` for every shape of an
+unchanged verdict, and the three answers that carry a fact the user has to weigh — somebody else
+wrote this file, the check could not be made, nothing was recorded to compare against — keep the
+dialog unchanged. The grading that had ranked those unchanged shapes went with the wording it
+existed to produce: `RemoteRevisionEvidence`, `RemoteFileRevision.evidence(comparedWith:)`, the
+`timestampIsApproximate` field feeding it and `VFSBackendID.hasApproximateTimestamps` feeding
+*that* were all removed as unused core API, leaving `isSuperseded(by:)` as the whole comparison
+(6 core tests and one suite dropped; the FTP fact stays in NOTES.md ▸ curl and in `isFTP`). The upload now reports on the **status line** instead, since an upload
 that leaves no trace is indistinguishable from one that never happened; measured at 230 pt (43-char
 name: 427 pt) against the 542 pt the pane gives that label, across all fourteen catalogs. The
 `If-Match` precondition, the refused-precondition escalation and the failure alert are untouched.
