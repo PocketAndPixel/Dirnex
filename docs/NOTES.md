@@ -2325,6 +2325,47 @@ against a fake.
     (`ProcessWaitingReapTests`, whose negative control fails that one test at 63 ms and leaves its
     three narrowness controls green).
 
+### Parsing a year-less timestamp
+
+Every tool here prints a recent entry's date without a year (`MMM d HH:mm`) and an old one with
+one, so all four columnar parsers — `bsdtar -tvf`, `sftp`'s `ls -la`, FTP's `LIST`, and M22's
+`ssh … find … -exec ls -ldn` — share one date reader, `ColumnarListing`.
+
+- **`DateFormatter.defaultDate` supplies *every* component the format does not name, not just the
+  one you set it for — and a year-less format names no seconds.** So `defaultDate = Date()` stamps
+  each parse with the second and millisecond it happened to run at, and **parsing one unchanged row
+  twice yields two different dates**, up to a minute apart. Fix it by truncating the anchor to the
+  minute, which leaves it able to contribute only the year (`ColumnarListing.yearAnchor`).
+  - **It is invisible everywhere a date is *displayed*, which is why it survived four milestones.**
+    The column is drawn to the minute, sorting is unaffected, and no fixture can see it: a test with
+    a hard-coded expected date passes, because the *minute* was always right. What it breaks is any
+    comparison of **two readings of the same file**, and there it breaks completely rather than
+    approximately.
+  - **What it did in the product was tell the user their colleague had overwritten a file.**
+    `RemoteFileRevision.isSuperseded(by:)` compares size and date for **exact equality** — SFTP and
+    FTP carry no entity tag — and a remote write-back compares the *listing's* date (recorded when
+    the bytes were fetched) against the pre-upload `stat`'s. Two parses, so never equal: **every**
+    save over SFTP and FTP answered *"The file on the server has changed since you downloaded it —
+    someone else has edited it."* That is the one sentence `BrowserWindowController+RemoteWriteBack`
+    exists to get right, and it was wrong 100 % of the time. Measured live 2026-08-22 against a real
+    NAS: 36 bytes on both sides, dates **39 s** apart, `sizeDiff=0 dateDiff=1`.
+  - **S3 is immune, and that is exactly why it shipped.** An entity tag settles `isSuperseded`
+    before the date is consulted, and S3's stamps are ISO-8601 with real seconds — so the only live
+    suite this feature has (`RemoteFileEditLiveIntegrationTests`, S3-only) could not have caught it,
+    and neither could any of the 634 app tests. A backend-agnostic feature verified against one
+    backend is verified against one backend.
+  - **The neighbouring consumer degrades instead of breaking, which is worth knowing before
+    assuming the blast radius.** `DirectorySync`'s `.sizeAndDate` compares with a **2 s** tolerance
+    rather than for equality, so noise of up to 60 s could exceed it — but a sync between a local
+    side and an SFTP one is comparing a second-resolution mtime against a minute-resolution stamp
+    regardless, which is its own approximation and not this bug's.
+  - **The test has to be a property, because the obvious test passes on the broken code by luck.**
+    "Parse the same row twice and compare" was written first and measured useless: two
+    `formatters(for:)` calls a few microseconds apart can land on the same anchor, so the broken
+    version passed it roughly half the time (and the FTP copy of it passed the negative control
+    outright). Asserting that a parsed year-less date carries **zero seconds** cannot depend on
+    timing, and it is what makes the negative control fail 3/3 instead of sometimes.
+
 ### bsdtar
 
 - **Each extract member is a shell-glob pattern, not a literal** — a name containing `* ? [`
@@ -2337,8 +2378,13 @@ against a fake.
 - **`-a` misreads the zip-family aliases `.jar` and `.cbz` as TAR** — force `--format zip` on
   create and repack. All other browsable suffixes infer correctly.
 - **`-tvf`'s date column omits the year for recent files**, so a `MMM d HH:mm` parse yields year
-  2000. Set `defaultDate = now` on year-less formats and roll the year back if the result is in
-  the future.
+  2000. Set `defaultDate` on year-less formats and roll the year back if the result is in
+  the future — but set it to **now truncated to the minute**, not to a bare `Date()`. This entry
+  said `Date()` for four milestones and that is a bug, corrected 2026-08-22 (▸ Parsing a year-less
+  timestamp, below): `defaultDate` supplies *every* component the format does not name, and
+  `MMM d HH:mm` names no seconds, so each parse stamps the row with the second and millisecond it
+  ran at. Shared by all four columnar parsers (`bsdtar`, `sftp`, FTP `LIST`, and the `ssh` `find`
+  walk) through `ColumnarListing.formatters(for:)`.
 - **`--options compression-level=N` must go in *unprefixed*.** A module prefix has to name the
   writer actually running (`zip:`, `gzip:`, `bzip2:`, `7zip:`), so one prefixed string breaks the
   moment the user picks another format — `bsdtar: Unknown module name: 'zip'`, exit 1, no archive.

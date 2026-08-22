@@ -113,9 +113,9 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 | M8 | The sidebar as a first-class surface | 07-21 | Dragging a *remote* (SFTP) folder into the sidebar — stays menu-only; Recents ordered by modification date, not the true last-used stamp |
 | M9 | iCloud Drive, for real | 07-21 | Per-item download percentage (macOS exposes none through the URL resource keys); Put Back inside the iCloud trash — the origin is an opaque provider reference with no path in it |
 | M10 | Google Drive and Docs | 07-22 | A real Drive API backend (OAuth + Drive v3, native Docs export/import) — dropped 2026-07-22; sync status in Drive's *mirror* mode, which macOS exposes to no one but Finder |
-| M11 | F4 Edit, and Quick View at full size | 07-22 (text preview 07-27) | A built-in text editor (F4 hands the file to the user's own); write-back for archive and SFTP files (edit-temp-watch-repack is its own slice); a slideshow timer or thumbnail filmstrip in the preview |
+| M11 | F4 Edit, and Quick View at full size | 07-22 (text preview 07-27) | A built-in text editor (F4 hands the file to the user's own); write-back for archive and SFTP files — **both since shipped**, archives 2026-08-09 and SFTP with M21 Slice 10; a slideshow timer or thumbnail filmstrip in the preview |
 | M12 | Localization — 14 languages | 07-29 | The stock Finder-tag *names* in the ⌃T menu (`DirnexCore` `systemTagName` data); the AppleScript `.sdef` *terminology*, since renaming a verb breaks users' scripts (its error messages did translate); a lint rule keeping bare literals out of UI files (the repeated sweeps stand in for it); the "Results for Search results" stutter, a wording decision rather than a translation gap; RTL — none in the shipped set |
-| M13 | FTP and FTPS | 07-25 | `MLSD` (`curl` cannot send it); FTP-side `DirectorySync` by timestamp (unreliable by construction — LIST stamps are year- and zone-less); write-back for files edited in place over FTP (the shared edit-temp-watch-repack slice); an opportunistic "TLS optional" client mode (a password-downgrade vector — rejected 2026-07-26) |
+| M13 | FTP and FTPS | 07-25 | `MLSD` (`curl` cannot send it); FTP-side `DirectorySync` by timestamp (unreliable by construction — LIST stamps are year- and zone-less); write-back for files edited in place over FTP — **since shipped** with M21 Slice 10, which generalized the remote edit path to every backend that accepts uploads; an opportunistic "TLS optional" client mode (a password-downgrade vector — rejected 2026-07-26) |
 | M14 | Checksums and attributes | 07-30 (escalation 08-02) | Split/combine files (dropped 2026-07-29 — FAT32's ceiling, floppy/CD spanning and mail limits are all gone on macOS); multi-selection and recursive **privilege escalation** (the flat single-item path proves the mechanism; those sheets refuse a root-only change by name); escalating the *undo* of a non-owned change (still refused with `attributeRestoreNeedsAdministrator`, not escalated) |
 | M15 | The tree view, and color the user chooses | 08-02 | The **thumbnail grid, brief view and the `PaneSurface` extraction** (cut 2026-08-02 — the three are one unit, and `FileTableView` is a 25-method contract a grid satisfies none of); a memo in front of `fnmatch` (measured unnecessary — 0.46 ms per full reload for 5 rules); size bars in tree mode, withdrawn at close and re-scoped per parent directory in a follow-up (`SizeVisualization(tree:)`) |
 | M16 | Quick View: source or page | 08-06 | Markdown and RTF as dual-style types — markdown was taken up at M18, RTF stays undone — and `.webarchive` / `.mhtml`, which need `loadData` rather than a file load; the JavaScript mark in the *pane*-size preview, which has no header to carry it |
@@ -151,6 +151,39 @@ non-empty folder, which hid three folders Finder shows.
 
 M19 closed on 2026-08-09; M20 opened and closed 2026-08-12 (HISTORY.md). Three things landed
 between M19 and M18, which closed on 2026-08-07, and six after it.
+
+**2026-08-22 — remote write-back was already shipped for SFTP and FTP, and had never worked.**
+Opened as "build the write-back slice the plan says is open" and the first hour of it was reading:
+`editRoute(for:)` has answered `.remoteFile` for every backend that accepts uploads since M21 Slice
+10, `RemoteFileRevision`'s own doc comments name SFTP and FTP throughout, and the upload falls
+through to a plain `copyFile` where there is no conditional writer. So there was nothing to build —
+and running it once against a real NAS showed why nobody had noticed it was broken: **every** save
+answered *"The file on the server has changed since you downloaded it — someone else has edited
+it."* on a file nothing had touched. That is the sentence the whole feature exists to get right.
+
+The cause is one line in `ColumnarListing`, and it is a *shared* line: `formatter.defaultDate =
+Date()`. `DateFormatter` fills every component the format does not name from that, and a year-less
+`MMM d HH:mm` names no **seconds** — so each parse stamped the row with the second and millisecond
+it ran at, and the listing's date (recorded at fetch) could never equal the pre-upload `stat`'s.
+Probed in the running app: 36 bytes both sides, dates **39 s** apart, the fractional part of each
+matching the log line that printed it. Fixed by truncating the anchor to the minute, so it can
+contribute only the year; re-measured, both sides read `1787431680.0` exactly.
+
+**S3 could not have caught it, which is the part worth carrying.** An entity tag settles
+`isSuperseded(by:)` before the date is consulted, and this feature's only live suite
+(`RemoteFileEditLiveIntegrationTests`) is S3-only — so the one backend that was verified is the one
+backend immune to the defect, and 2544 core plus 634 app tests were green throughout. A
+backend-agnostic feature verified against one backend is verified against one backend.
+
+Verified live afterwards on both: an edit made in TextEdit reached the server over SFTP and over
+FTP, each confirmed by reading the bytes back over the *other* protocol; the FTP-only
+"`LIST` times are year-less and on the server's clock" sentence appeared for the first time (it was
+unreachable while the date always differed); a genuine outside write is still caught — on
+`sizeDiff`, both writes having landed in the same minute, which is exactly the blind spot that
+wording admits; and declining leaves the server untouched. Three core tests pin the parser, and the
+negative control fails 3/3 — the first version of them passed on the broken code about half the
+time, because two parses can agree by luck and only "carries no seconds" cannot
+(docs/NOTES.md ▸ Parsing a year-less timestamp).
 
 **2026-08-22 — `..` and Go Up, watched by a person on a real SFTP, FTP and FTPS server.** M21's
 last undone item, and the one thing about that fix a test could not close: the predicate is single
@@ -542,10 +575,14 @@ plus M15's cut: the **thumbnail grid, brief view and the `PaneSurface` extractio
 in HISTORY.md §M15, with the two constraints any future grid inherits — skip `FileEntry.isDataless`
 rows, and move sort off the column header first). The item two separate milestones had asked for —
 **edit-temp-watch-repack write-back**, M11 for archives and SFTP, M13 for FTP — **landed for archives
-on 2026-08-09** and is still open for the two remote backends, which is where the rest of its value
-is: `ArchiveMemberEditRegistry` and `EditedFileRevision` are backend-agnostic (watch a temp copy,
-notice a save, offer to put it back), so SFTP and FTP need an upload in place of the repack rather
-than a second mechanism.
+on 2026-08-09 and for all three remote backends with M21 Slice 10**, which generalized it rather
+than building it per protocol: `editRoute(for:)` answers `.remoteFile` for anything
+`isRemoteConnection && acceptsUploads` (`isSFTP || isFTP || isS3`), `EditedFileRegistry` watches the
+temp copy whatever it came from, and `uploadEditedFile` falls back to a plain `backend.copyFile`
+wherever there is no conditional writer — so S3 gets its `If-Match` and the other two get an
+ordinary upload, through one path. This paragraph claimed it was "still open for the two remote
+backends" until **2026-08-22**, when running it against a real server for the first time showed it
+had been shipped and broken for the whole of that time (below).
 
 M19's own loose end — **a per-archive passphrase held for the session** — **closed on 2026-08-09**,
 reported by a user who could not open a file inside an archive they had just packed. Preview, opening

@@ -25,19 +25,6 @@ extension BrowserWindowController {
         let recorded = remoteFileCache.revision(for: path)
         Task {
             let current = await BlockingWork.run { try? backend.stat(at: path) }
-            let cur = current.map(RemoteFileRevision.init)
-            NSLog("PROBE writeback path=%@", path.path)
-            NSLog("PROBE recorded=%@", String(describing: recorded))
-            NSLog("PROBE current =%@", String(describing: cur))
-            if let r = recorded, let c = cur {
-                NSLog("PROBE superseded=%d sizeDiff=%d dateDiff=%d",
-                      r.isSuperseded(by: c) ? 1 : 0,
-                      r.byteSize != c.byteSize ? 1 : 0,
-                      r.modified != c.modified ? 1 : 0)
-                NSLog("PROBE recordedDate=%@ currentDate=%@",
-                      String(describing: r.modified?.timeIntervalSince1970),
-                      String(describing: c.modified?.timeIntervalSince1970))
-            }
             presentRemoteWriteBackOffer(
                 edit, to: path, recorded: recorded, current: current.map(RemoteFileRevision.init)
             )
