@@ -8,7 +8,8 @@ M14 closed 07-30 (its escalation slice 08-02) and M15 opened and closed 08-02. M
 opened and closed 08-06; M18 opened 08-06 and closed 08-07; M19 (encryption) opened and closed
 08-09. M20 opened and closed 08-12 and M22 opened and closed 08-16, both inside the span of
 **M21** (Amazon S3), which opened 08-12 and closed 08-19 — the longest of them, and the one every
-other milestone in that fortnight was cut around.
+other milestone in that fortnight was cut around. A final section, **After M19**, carries the
+twenty dated passes from 2026-08-07 → 08-22 that landed outside a milestone of their own.
 
 This file is **archive, not instruction.** It moved out of [PLAN.md](../PLAN.md) once M7
 closed, so the plan could go back to being a plan, and each milestone since is archived
@@ -11114,3 +11115,471 @@ the trust dialog's fingerprint matching `openssl`'s byte for byte. The three oth
 14-site change touched were checked in the same run and all behave: Spotlight (⌥F7 locally),
 the git badge (`M` on a modified folder, plus the branch chip), and `bsdtar` archive browsing and
 searching (3 hits at three depths inside a zip).
+
+---
+
+### After M19 — the follow-on log (2026-08-07 → 2026-08-22)
+
+Twenty dated passes that landed outside a milestone of their own, between M18's close on
+2026-08-07 and 2026-08-22: user-reported bugs, three vault features, the tree crossing into S3,
+and the chain of five that one S3 rename pulled apart. They ran *alongside* M20, M21 and M22
+rather than after them — which is why they sit here at the end rather than in a numeric slot —
+and they keep their **newest-first** order, because several read as a chain and refer to the
+entry below. Moved out of [PLAN.md](../PLAN.md) §4 on 2026-08-23, once the plan had nothing left
+to say about them; what is still open from this stretch stayed there.
+
+**2026-08-22 — remote write-back was already shipped for SFTP and FTP, and had never worked.**
+Opened as "build the write-back slice the plan says is open" and the first hour of it was reading:
+`editRoute(for:)` has answered `.remoteFile` for every backend that accepts uploads since M21 Slice
+10, `RemoteFileRevision`'s own doc comments name SFTP and FTP throughout, and the upload falls
+through to a plain `copyFile` where there is no conditional writer. So there was nothing to build —
+and running it once against a real NAS showed why nobody had noticed it was broken: **every** save
+answered *"The file on the server has changed since you downloaded it — someone else has edited
+it."* on a file nothing had touched. That is the sentence the whole feature exists to get right.
+
+The cause is one line in `ColumnarListing`, and it is a *shared* line: `formatter.defaultDate =
+Date()`. `DateFormatter` fills every component the format does not name from that, and a year-less
+`MMM d HH:mm` names no **seconds** — so each parse stamped the row with the second and millisecond
+it ran at, and the listing's date (recorded at fetch) could never equal the pre-upload `stat`'s.
+Probed in the running app: 36 bytes both sides, dates **39 s** apart, the fractional part of each
+matching the log line that printed it. Fixed by truncating the anchor to the minute, so it can
+contribute only the year; re-measured, both sides read `1787431680.0` exactly.
+
+**S3 could not have caught it, which is the part worth carrying.** An entity tag settles
+`isSuperseded(by:)` before the date is consulted, and this feature's only live suite
+(`RemoteFileEditLiveIntegrationTests`) is S3-only — so the one backend that was verified is the one
+backend immune to the defect, and 2544 core plus 634 app tests were green throughout. A
+backend-agnostic feature verified against one backend is verified against one backend.
+
+Verified live afterwards on both: an edit made in TextEdit reached the server over SFTP and over
+FTP, each confirmed by reading the bytes back over the *other* protocol; the FTP-only
+"`LIST` times are year-less and on the server's clock" sentence appeared for the first time (it was
+unreachable while the date always differed); a genuine outside write is still caught — on
+`sizeDiff`, both writes having landed in the same minute, which is exactly the blind spot that
+wording admits; and declining leaves the server untouched. Three core tests pin the parser, and the
+negative control fails 3/3 — the first version of them passed on the broken code about half the
+time, because two parses can agree by luck and only "carries no seconds" cannot
+(docs/NOTES.md ▸ Parsing a year-less timestamp).
+
+**2026-08-22 — `..` and Go Up, watched by a person on a real SFTP, FTP and FTPS server.** M21's
+last undone item, and the one thing about that fix a test could not close: the predicate is single
+(`canGoToParent`), but the claim was about what somebody sees. Driven against a NAS on 192.168.1.3
+over all three protocols, each standing in `/home` and walking up to the connection root. Inside
+`/home` the synthetic `..` row is drawn, Backspace walks up, a double-click on the row walks up, and
+Go ▸ Up (⌘↑) is enabled — landing the cursor on the folder just left, over the network as it does on
+disk. At the root, where `parentPath` is `nil` because a connection's root has nothing above it,
+there is no `..` row and the menu item is **grayed**. That enabled/grayed pair is the narrowness
+control and is the half a single reading cannot give: "Go Up works" and "Go Up is offered
+everywhere" look identical from inside `/home`.
+
+Nothing was wrong, which is the usual outcome for an item like this and is still the last signal a
+shipped fix gets. Three things the session re-confirmed rather than found, all already in NOTES.md:
+`sftp -b -` forces `BatchMode=yes` and refuses password auth outright (`Permission denied
+(publickey,password)`) where the identical commands on piped stdin connect; an FTP `LIST` stamp is
+the server's own clock, so the same four folders read **three hours earlier** over FTP and FTPS than
+over SFTP — the daemon's timezone, not a parse, and exactly the approximation M13 accepted; and this
+server's FTPS is self-signed (`curl` exit 60 against a fresh trust store), so the saved record
+reconnected silently on its pin, which is the branch the M13 follow-on added and the one that
+otherwise only gets exercised by a first contact.
+
+**2026-08-22 — `PanelPassiveRefreshTests` failed one full run in four, and none of it was the
+product.** It measures that a listing refresh finding nothing changed does not reload the table, and
+the only observable available is the table's **selection** — which answers every repaint from
+anywhere in the process. Logging every `renderRefresh` with its call stack found three races, all in
+the fixture: the "has it listed yet" wait was satisfied by an **empty** pane (the `..` row is drawn
+and selected first), so the navigation's own reload landed *inside* the quiesce; the measured refresh
+**pulled** the sync provider's first snapshot, which publishes into a shared cache after the listing
+lands, and repainted 650 ms into the quiet window; and 58–66 repaints per run arrived from other
+suites writing preferences through `AppPreferences.shared`.
+
+The fixture now waits on the **entries**, consumes the refresh tail itself (the same three
+`update*Status()` funnels both refresh paths wake), and waits on the providers' own caches rather than
+on a duration — with one trap paid for on the way: pulling every 300 ms *starves* the scan it waits
+for, because `DirectoryScanCache` debounces by exactly that and cancels the pending timer each time.
+The pane is also deafened outright (`removeObserver` after `loadViewIfNeeded`), which is belt and
+braces: reverting it alone left six runs green. 16 consecutive full runs are green, and the negative
+control still fails all three no-repaint tests with the unchanged-guards removed while the narrowness
+control stays green.
+
+**2026-08-22 — an edited S3 object uploaded, and the row went on saying `Zero KB`.** The fifth in
+the day's chain, and the one that shows the family's real subject: the *window*, not the pane, asks
+"who is showing this directory". After a save-back `refreshPanesShowing(path.parent)` re-listed the
+pane whose `panel.path == directory` — true in a flat list, false in a **tree**, which draws several
+directories at once. Edited from an account pane with its bucket expanded, the object's parent sits
+two levels below the path being compared, so neither pane matched and nothing refreshed. Everything
+else worked: the `PUT` landed, the re-baseline ran, the server had the new bytes.
+
+`PanelViewController.isShowing(_:)` is the one question now, and what makes it right is that it asks
+the **rows**: `TreeProjection` files an expanded level under the row that was expanded, so a bucket's
+children sit under `s3account:/<bucket>` while every row inside carries `s3://…` — matching the
+tree's listing keys would still have answered no. Both controls were run, and the second is the one
+worth keeping: pane-path-only fails 2 of the 4 tests, listing-keys fails exactly 1, the reported
+shape. The pane's own path stays in the union regardless, since an empty directory has no row to
+derive it from and is where a create lands. The sibling sites were checked and left alone — a pack
+writes to `destinationPane.panel.path` and the archive write-back keys on `backend.archivePath`, so
+neither can name a directory its pane merely draws.
+
+**2026-08-22 — ⇧F4 handed the editor a file that lives on a server.** The fourth in the same day's
+chain and the first that was never about the tree. F4 has routed by the row's own backend since M21
+Slice 10 — that is what `editRoute(for:)` is — and **⇧F4 had a second spelling that knew only about
+this Mac**: whatever its dialog resolved went straight to `openInEditor`, whose `localURL` is
+`file://` plus the path *inside* the backend. So the Edit button asked macOS to open `/test2.txt`,
+Finder answered that the file couldn't be found, nothing was ever downloaded — and F4 on that same
+row would have opened it correctly.
+
+Both of ⇧F4's call sites were wrong and only one is in a report: the name that is already there, and
+the name it **creates**, which reads as working for longer because the object really does appear on
+the server before the editor is asked for a path that has never existed. There is one dispatch now
+(`openForEditing`), which is what extracting `editRoute` was for — arriving on the *act* rather than
+on the decision. The created file is read back rather than assumed: a route is decided from an entry,
+and a remote one's fetch and its later save-back are keyed on the size, time and entity tag only a
+`stat` carries, so a hand-built stand-in would save one round trip and make the very first save look
+like somebody else's write. The rest of the family audits clean — Enter's `NSWorkspace.open` and
+`handoffTargets` (Open With, Share) both already gate on `backend == .local`.
+
+The test drives the real flow on a pane with no `PanelHost`, so the remote route stops at a fetch it
+cannot start; the discriminator is `transientStatusToken` rather than the status line itself, because
+"Opening …" clears itself after four seconds while the reverted build's doomed launch takes about
+sixty to fail. Reverted, both tests fail — and TextEdit is asked for a file that is not there, which
+is the user's screenshot.
+
+**2026-08-22 — a rename inside an expanded bucket left the old name on screen.** The third bug in
+one day's chain: F2 now reached the row and the delete now swept the right keys, so the rename
+finally worked end to end — and the tree went on drawing `test3` for a folder that was `test4` on the
+server, for the rest of the session.
+
+`refreshTree` re-read every listed directory with `DirectoryLoader.list`, which is not how half of
+them were produced. A **bucket row** hangs under an `s3account:` path, and `S3AccountBackend`
+answers for its root and nothing deeper by design — so the re-read threw `notFound` into a `try?`
+and the row kept the entries it already had. Nothing logged, every request succeeded, and it is the
+*whole* refresh funnel: F7, F8 and the queued rename an S3 prefix becomes all reach it through
+`refreshPanes`. The fix is one line of routing — the refresh re-reads through `treeChildEntries`,
+the same funnel the expansion used, so the two cannot drift.
+
+What that costs is the other half. A refresh now arrives at an already-open bucket, and answering it
+by *connecting* again would spend a second billed probe, a Keychain write and a re-registration to
+land on the root it had already settled on — so the tab records where each expanded bucket's rows
+were listed from (`PanelTab.s3BucketRoots`, `mergedSources`' shape one level down) and re-lists that
+directly, falling back to the full connect when the listing fails so a dropped registration heals
+itself. The tests stand a real local directory in for the connected root, which is exactly what that
+record means, so the whole path runs with no network; reverted, the first one fails with
+`names → ["test3"]` — the user's screenshot, verbatim.
+
+**2026-08-22 — F2 in an S3 tree did nothing, and the rename that followed it left the folder under
+two names.** Two independent bugs behind one report, and the second is the older and worse of them.
+
+The dead key was a gate reading the **pane** where it meant the **row**: `canRenameHere` asked
+`capabilities(for: panel.path)`, so in an S3 *account* pane — whose own rows are buckets, which S3
+cannot rename at any level — the answer was "no rename here" for every row, including a prefix three
+levels inside an expanded bucket. It is the seventh instance of that family (docs/NOTES.md ▸ Design
+lessons) and the second on this very predicate, so the fix names the subject rather than the site:
+the gate is the row's own directory, which is what `performRename` had always built the destination
+in. A cursor on a bucket row still answers with the account and is still refused.
+
+Renaming then produced a **duplicate**, because a folder rename is `EXDEV` → copy the subtree →
+delete the source, and the delete swept keys in the wire's spelling. A page's keys arrive
+form-urlencoded under `encoding-type=url`, and `S3Backend.allKeys(under:at:)` was the one enumeration
+that never decoded them — so `DeleteObjects` was handed `untitled+folder/…` for keys stored
+`untitled folder/…`. S3's delete is idempotent, `<Quiet>true</Quiet>` leaves the body empty, and
+there is no `<Error>` row: the request succeeded and deleted nothing. **F8 on any folder holding a
+name with a space had been silently doing nothing since the backend shipped**; the rename is merely
+what made it visible. Every fixture in `S3Fixtures` declares that encoding and none of their keys has
+a character it touches, which is why the corpus could not see it — the same disjoint-corpus trap as
+the 2026-08-18 whitespace bug, with the halves swapped.
+
+The gate's second half changed with it. `!isVirtualDirectory` was standing in for one real fact — the
+merged iCloud listing draws an **app's** name over its `Documents` folder — and refusing every
+ordinary row beside those. `FileEntry.nameMatchesPath` says what was meant, so rename now works on a
+loose file in that listing, on a search hit, and at every level of a tree over either, while the
+three refusals that had shared the flag each state their own reason. Two things that cost more than
+the widening: a search snapshot re-lists nothing by design, so a renamed hit is substituted in place
+(`substituteSearchHit`) rather than left drawing a name that is no longer on disk; and `.rename` is
+now withdrawn **inside a Trash**, because Put Back is keyed on the item's name there and renaming a
+trashed file orphans its `.DS_Store` record silently and for good.
+
+**2026-08-21 — ⎋ and ⏎ on a dialog raised by a modifier chord, which is unanswerable until the
+user lifts the modifier.** Reported the day after the entry below, against the remote-download
+confirmation: ⎋ needed two presses and ⏎ never worked at all. Nothing was wrong with the binding this
+time, and every window-state reading was clean — the sheet was key, `Cancel[⎋]`/`Download[⏎]` were
+correctly bound, no Quick Look panel existed, and the Quick View key monitor bowed out exactly as
+designed. AppKit matches a key equivalent on the character **and** the exact modifier mask, and ⌃Q
+raises that dialog **53 ms** after the chord, so the key arrives with Control still down and is
+refused — `performKeyEquivalent` returns `false`, the event reaches `keyDown:`, nothing handles it,
+beep. Standard macOS, and ordinarily unreachable because a confirmation is raised by a click; Dirnex
+raises them from ⌃Q, ⇧F8, ⌘F5 and ⌘F2. `enableEscapeToCancel` now captures `NSEvent.modifierFlags`
+at build time — it runs synchronously inside the action the chord invoked, so that set is exactly
+the chord's — and `AlertKeyCatcher` answers ⎋/⏎ whose modifiers are a **subset** of it. Deliberately
+*stale*, not *any*: an alert raised by a click captures nothing, so every such dialog is unchanged,
+and a deliberate ⌘⏎ can never confirm a ⇧F8 delete, which is what made forgiving the committing key
+affordable at all. Two presses from byte-identical window state is what said to stop instrumenting
+the window and instrument the event; the full diagnosis, and why a test suite that presents real
+sheets kills the test host, are in [docs/NOTES.md](docs/NOTES.md) ▸ AppKit. **A second, intermittent refusal
+was found underneath it and fixed in the same pass**: a *bare* ⎋ or ⏎ that the alert declines with
+every measurable property identical to a press that worked. A witness inside the key-equivalent walk
+showed that `Cancel[⎋]`'s own binding never matches during the walk *even when the dialog works* —
+the alert is answered afterwards through the responder chain, and that step intermittently does not
+run. `AlertKeyCatcher` is walked last, so it now claims the bare keys as well, which cannot
+double-answer and makes the first press decide. Worth knowing for the next hunt: a heavy probe in a
+key monitor masked the race for five reproductions, and one short log line caught it.
+
+**2026-08-20 — ⎋ and ⏎ on the app's dialogs, which were dead on different alerts for different
+reasons.** Reported as both keys "sometimes" doing nothing but beep. Two independent defects, each
+invisible to the tests that covered the other key. **Escape** was dead on all three progress sheets
+(remote download, iCloud download, search): `enableEscapeToCancel` served a lone-button alert by
+installing its catcher in the `accessoryView` slot, which is a **no-op in both call orders** once the
+alert has a real accessory — `accessoryView == nil` fails when the accessory is set first, and the
+caller's own assignment throws the catcher away when it is set second. **Return** was dead on the SSH
+host-key prompt, both FTPS certificate prompts and Full Disk Access's already-granted notice: where
+the safe choice occupies the default (first-added, rightmost) slot, AppKit withholds
+`defaultButtonCell` outright, so Return *and* keypad Enter fall through to the beep — measured, and
+the control with `enableEscapeToCancel` removed behaves identically, so it is AppKit's doing rather
+than ours. The helper now decides by what else answers Return: while another button is the default,
+Escape rides the safe button (the ordinary `Delete[⏎] Cancel[⎋]` confirmation, unchanged); otherwise
+the safe button keeps Return and Escape rides an `EscapeDismissingView` installed in the alert
+window's own `contentView`, which is what makes the whole thing independent of call order. Note the
+deliberate consequence on the four trust prompts: **⏎ now answers Cancel**, which is what putting
+Cancel in the default slot always meant. `scripts/check_alert_escape.py` had reported "all 70 NSAlert
+sites call `enableEscapeToCancel()`" throughout — true, and no evidence at all, since it could only
+see the call and not the binding; it now also fails on a call that runs before the last `addButton`
+(verified against a synthetic violation), and the binding itself is pinned by
+`EscapeToDismissTests.everyShapeAnswersBothKeys`, which asserts the **pair** on every shape the app
+builds and fails with 18 issues when reverted, naming both halves. Four other mechanisms were probed
+and cleared before the binding was suspected — the Quick View key monitor (the parent window reports
+`isKeyWindow == false` while a sheet is up, so it already bows out), `focusTable()`'s
+`makeFirstResponder` on the parent, a sheet raised under an app-modal window, and sheet stacking,
+which on macOS 26 **no longer queues invisibly** (docs/NOTES.md corrected).
+
+**2026-08-19 — the download dialog's Download button, and the dialog on top of the card.** ⌃Q on a
+14,5 MB object raised the size confirmation, and pressing **Download** closed it and did nothing:
+`RemoteFetchPrompt.confirm` handed its completion `[weak self]` on an object nobody else retained —
+`fetch` builds it in a local, `beginSheetModal` returns at once, and the alert retains the *closure*
+— so the answer arrived at a deallocated prompt. Nothing logged, and the sibling path was fine for
+the reason that hid it: `start()` launches a `Task`, which captures `self` strongly, so the same
+click worked wherever no question was asked. The second half is what the fix made possible. A remote
+transfer had two reporters — the placeholder card that is already standing where the preview will
+be, naming the file and carrying a determinate bar and Stop, and `RemoteFetchPrompt`'s deferred
+*modal* sheet, which went up over it after 1200 ms and took the keyboard off the file list to say the
+same thing. The card now draws every preview download: an explicit fetch registers its counter and
+its cancel flag with `RemoteFileCache` (`beginExplicitFetch`) exactly as the cursor-following one
+does, `previewFetchState`/`previewFetchProgress` answer for either kind, Stop reaches either, and the
+sheet stands down wherever a card is on screen — ⌘Y with Quick View off, ⏎ and F4 keep it, since
+there the sheet is the only thing that can report anything. Two smaller pieces fell out: an explicit
+fetch needed an `onStart` hook, because a confirmed one begins when the user answers rather than when
+the caller returned, and the card was drawn before the question was asked; and `scheduleAutomaticFetch`
+now stands aside for a row an explicit fetch holds, or the redraw the Download button causes issues a
+second transfer of the same object (measured — the control fails at `copyCount == 2`). Pinned by
+seven tests driving a real `NSAlert` sheet on a real window, each fix's negative control failing in
+the reported shape: reverting the capture leaves `copyCount == 0` after a genuine click on the
+dialog's own default button. docs/NOTES.md ▸ AppKit, ▸ Design lessons.
+
+**2026-08-20 — the same fix, on the exit that actually happens.** The queue-bar half of the
+2026-08-19 fix worked; the Quick View card's half was inert, and the user re-reported the identical
+symptom on a preview download. Two things were wrong with it, and each is invisible on its own. The
+reset was keyed on `apply(_:)`'s non-downloading branch — which covers a transfer that stopped or
+failed, while the **ordinary** end of one hides the card outright (the bytes landed, so the surface
+shows the file) and applies no state at all. And the claim it was tested against was about the model
+rather than the screen: `startPolling` has always zeroed `doubleValue` in the same turn it unhides
+the bar, so the model reads 0 throughout while the fill *layer* still carries the last download's
+presentation. Sampling that layer at 10 ms in the running app against the real bucket, driving the
+user's own sequence: **0.96 at the reveal, empty 11 ms later**, with the model reading `0.00` at
+every sample. Emptying the bar in the stand-down funnel (`QuickViewPlaceholderCard.standDown`) plus
+the state branch covers both exits; re-measured live it opens at 0.02. The test now takes the exit as
+its argument, because a single-exit test passes against the half-fix — reverted to it, the `.stopped`
+case is green and the show-a-file case fails at 1.0. docs/NOTES.md ▸ AppKit.
+
+**2026-08-19 — a progress bar no longer opens on the last run's fill.** Both places a bar is hidden
+between runs kept the value they were last drawn with, so the *next* run revealed the previous one's
+fill before its own first number arrived: the queue bar (the window controller's idle branch hid it
+without drawing anything) and Quick View's placeholder card (its bar is hidden except while
+downloading). Reported by a user as a bar that "starts at 100 %, drops to zero, and only then runs",
+on a copy and on ⌃Q alike. The obvious cause is the wrong one and the queue's own doc comment
+predicts it — the aggregate rolls up finished jobs, and `clearFinished` is dispatched in a `Task` —
+but instrumenting `update(with:)` in the running app showed every fraction correct, the new batch's
+first included, with the only wrong number the one already on the bar. So the fix is to reset when
+the work *ends*, while the bar is off screen: an idle snapshot now goes through `update(with:)` like
+any other and empties it (`QueueBarView.reset`), which also clears the coalescer's memo — otherwise a
+copy started within a second of the last one opens on the previous batch's byte count and holds it.
+Measured before and after by sampling the indicator's **presentation** layer at 4 ms inside the app
+(its model snaps, so a `cacheDisplay` bitmap would have cleared the code): the second copy read
+`1.00` at the first sample and now reads empty from the first. Four tests, with each half reverted as
+its own negative control — the queue bar's reproduces the report verbatim, `progressFraction → 1.0`
+over a stale `"400 bytes of 400 bytes"` — and the three coalescing tests green throughout as the
+narrowness control. `QueueBarView` crossed the 500-line ceiling doing it, so the readout and its
+coalescing rule moved into `QueueBarView+Detail` beside the wording split that was already there.
+docs/NOTES.md ▸ AppKit.
+
+**2026-08-19 — a bucket row expands in a tree.** Tree mode stopped being local-only on 08-17, which
+gave every bucket row in an S3 account pane a disclosure triangle — opening into nothing.
+`S3AccountBackend` answers for its root and nothing deeper by design (everything below a bucket is
+the `S3Backend` that shipped five slices earlier), so the tree's lazy load threw `notFound` into its
+own `try?`: expanded, childless, silent, with nothing logged and both suites green. Reported from a
+screenshot the day M21 closed. A bucket's contents are a **connect**, not a listing, so `→` now goes
+through the funnel Enter uses — `connectS3` split into `establishS3Connection` (probe, self-correct,
+register) and the navigation that had been welded to it, so the region-301 correction and the
+path-style retry reach an expansion for exactly the reasons they reach Enter, rather than in a second
+spelling. The rows it installs keep their own `s3://` paths, which is what makes everything below
+them free: `TreeProjection` recurses into each entry's *own* path and never assumes a row descends
+from the tree's root, so deeper expansion, F5, ⌃Q and F8 route to the backend that owns the bytes
+with no new code, and the core needed no change at all. Two things the crossing changed underneath —
+`←` climbed by `entry.path.parent`, which is no answer where the child is on another backend, so it
+now walks the rows by depth; and a failed expansion names the row on the status line rather than
+raising an alert on a key that comes in runs, leaving the sentence to Enter, which is the gesture
+that asked for that bucket outright. What it deliberately does not buy is expansion surviving a
+relaunch: a persisted expansion is anchored under the tab's root and a restored account pane has no
+live connection to list its own root with. Verified live against the real AWS account through the
+app's own controller, with the reverted version failing that same test in the reported shape —
+expanded set holding the bucket, listings holding only the root. docs/NOTES.md ▸ Design lessons.
+
+**2026-08-11 — a vault can be shown in Finder, per vault.** Dirnex attaches `-nobrowse`, so an
+unlocked vault is invisible to the rest of the Mac — right as a default, and wrong as a rule for
+everyone's every vault: a vault of scanned documents is one you unlock here and then want to attach
+to an email. So it is a checked item on the vault's own row (`VaultLocation.showsInFinder`), off
+unless someone turned it on, rather than one switch in Settings forcing one answer onto every vault.
+Toggling it on an *open* vault applies immediately — `mount -u -o browse` was measured to work
+unprivileged on a mounted encrypted sparsebundle — so it needs no lock-and-unlock round trip; a
+read-only volume refuses that remount cleanly (exit 66, flags untouched) and is told it will apply
+next unlock, which is true either way since the stored setting is what the next attach reads. Three
+findings changed the code, all in docs/NOTES.md ▸ Encryption: a bare `-o browse` **drops
+`MNT_IGNORE_OWNERSHIP`**, so the whole flags word is re-stated from `statfs` and only the browse bit
+changes; a browsable vault is enumerated by `mountedVolumeURLs` like any other mount, so it appeared
+under **Volumes as well as Vaults** — an invariant `-nobrowse` used to hold for free, now a rule with
+a test; and a new field on a persisted `Codable` value needed a hand-written `init(from:)`, because
+the synthesized decoder throws on a missing key and would have emptied every existing user's Vaults
+section behind a `try?`. Verified live end to end, both directions, with the mount flags as the
+judge rather than a screenshot.
+
+**2026-08-10 — a vault can be renamed.** The sidebar's vault row grew a Rename… item, and F2 on a
+selected vault row does the same thing. It renames the **volume**, not the row: `volumeName` is
+re-derived from the mount point on every unlock, so a Favorites-style nickname would be silently
+reverted the next time the vault opened, and until then the sidebar would disagree with the pane's
+own path bar. The image file is deliberately left alone — `VaultLocation.volumeName`'s doc comment
+already notes it is the one thing a user may have made unrevealing on purpose. `diskutil rename`
+needs the volume mounted, so a locked vault unlocks first through the existing funnel (silent when
+the passphrase is in the Keychain), which is why `openVault` was split into `withUnlockedVault` plus
+a navigation the rename does not want. Everything measured before it was written, and two findings
+changed the code: a name already in use still renames and **remounts at `/Volumes/<name> 1`**, so the
+mount point is re-read rather than rebuilt from what was typed, and the name limit is 255 UTF-8
+**bytes** — 127 Cyrillic characters — so the check counts bytes and the refusal sentence never names
+the number. Verified against real encrypted sparsebundles end to end (including the collision), and
+the F2 routing is pinned by selector string with a negative control, since a drifted `@objc`
+signature is exactly how that key would go quietly dead. docs/NOTES.md ▸ Encryption.
+
+**2026-08-10 — a vault now survives having its image file moved.** The other half of the same
+addressing problem, found while verifying the rename: a saved vault is keyed on its image's path in
+*two* stores — the sidebar list and the Keychain account — so an ordinary F2 on the `.sparsebundle`
+(or an F6, or a move of any folder above it) left the row pointing at nothing and the passphrase
+orphaned, with the row looking completely normal until it was clicked. The hook is `UndoRecord`, the
+one funnel every rename, move, multi-rename and sync already reports through; reading **both** ends
+of each step and letting the disk decide is what makes undo, redo and a half-applied revert all come
+out right with no direction bookkeeping. A trashed vault is deliberately *not* followed — leaving the
+path alone is what lets Put Back repair the row. The trap underneath took the measurement: `hdiutil`
+reports an image by the path it had when it was attached, forever, and carries no other identifier —
+so following a move would have made an unlocked vault read as locked with Lock unreachable.
+`MovedVaultImages` corrects that one answer where it is produced, honored only while the reported
+path is missing from disk, which is why it needs no expiry. Verified live across a locked rename, an
+unlocked rename and a ⌘Z: the row kept working, the Keychain item moved each time with no orphan left
+at any of the three paths, and the alias stopped applying by itself once the old path existed again.
+
+**2026-08-10 — Enter on a vault's image opens the vault.** A `.sparsebundle` *is* a directory, so
+the pane's generic directory branch walked into it: an unlocked vault, its sidebar row showing an
+open padlock and an eject button, read as **locked** from the pane — `bands/`, `Info.plist`, `lock`,
+`token` — and the only way to the files was the sidebar (user-reported). `openCurrentEntry` now
+checks for a **saved** vault ahead of that branch and hands it to the window's existing unlock
+funnel, so the sidebar click, the Unlock command and Enter are one gesture. Deliberately narrower
+than the command's `vaultImageUnderCursor`, which takes any image because the user named it: Enter
+is pressed on everything, and attaching a stranger's `.dmg` would ask for a passphrase and file it
+in the sidebar's Vaults section, none of which anyone requested. The suffix test that both now share
+moved into `DiskImageArguments.Kind.isImageName`, and the store read sits behind it since Enter is
+overwhelmingly pressed on ordinary folders. The decision half takes the `SavedVaults` as a
+parameter, so its tests never write a fake vault into the user's own sidebar. Verified live in both
+directions — unlocked jumped straight to `/Volumes/SecDocs`, and after locking, Enter unlocked
+silently from the Keychain and landed in the same place.
+
+**2026-08-09 — 26 strings that were wrapped but never translated.** The whole of Settings ▸ Panels as
+M15 built it — the row-height and size-visualization pickers with their footers, the three color
+wells, the file-type color rules editor — plus M18's "not drawn in this preview" and M14's
+multi-selection failure detail. All correctly `String(localized:)`-wrapped and all absent from
+`Localizable.xcstrings`, which compiles such a key **to itself**: the strings rendered in English
+inside a fully translated build, with both suites green and a perfect English screenshot. M12's own
+audit had already named the class in docs/NOTES.md and prescribed the cross-check that finds it —
+diff the compiler's `.stringsdata` against the catalog — and nobody had run it, which is the actual
+lesson: a check that lives in prose is not a check. It is now
+`scripts/check_localization_keys.py`, run in CI immediately after the app build, with the two keys
+that are legitimately absent named in its allow-list. The `allCases` pickers get a test as well
+(`LocalizationEnglishKeyCoverageTests`), since the sweep only fires once a key exists and a new enum
+case arrives with its catalog entry in the same commit. All 26 are translated into the 13 shipped
+languages and verified in the compiled bundle; the two segmented controls — the shape docs/NOTES.md
+records collapsing under a longer translation — were checked in a live Russian build rather than
+argued about, and the color-rule footer's `` `*.jpg;*.png` `` keeps its backticks so the wildcards
+survive SwiftUI's Markdown parser in every language.
+
+**2026-08-08 — the tree draws indent guides.** VS Code's vertical lines, one per ancestor level,
+always drawn faintly, with the ancestor line of the *focused* row drawn stronger — the focus being the
+pointer while it is over the pane and the **cursor** otherwise. That last part is the whole design
+difference: VS Code renders its guides `onHover` because a tree there is a mouse surface, and a
+keyboard-first pane where the guides only appear under the pointer would show them to nobody. Which
+line is active is the core's (`TreeProjection.activeGuide`, 13 tests): an open folder highlights the
+run its own children stand beside, anything else the run of the folder it is *in*. Two measurements
+decided the rest. The pane's `intercellSpacing` is **(17, 0)** — zero vertically — so a name cell's
+frame is the full row height and consecutive cells tile with no gap, which is what lets each row draw
+its own segment and have them join into one line with nothing coordinated between rows; no row-view
+drawing, no overlay. And the colors came from a contrast table over the pane's own two row stripes
+rather than from taste: the obvious pairing (`.separatorColor` at rest, `.tertiaryLabelColor` active)
+puts the *active* line at 1.88–2.26:1, which is where VS Code's **inactive** guide sits — so both moved
+up one, to `.tertiaryLabelColor` and `.secondaryLabelColor`. A 1 pt hairline is below what a
+computer-use screenshot resolves, so the geometry and the active/inactive step are pinned by a bitmap
+probe in the app suite (`TreeIndentGuideRenderingTests`) instead of by looking.
+
+**2026-08-07 — the Git status gutter became a badge.** M6's "status column (M/A/?/ignored)" was a
+contextual 20 pt column installed beside Name for the length of a stay in a repository; it is now
+`GitBadgeView`, at the trailing edge of the name cell outside the tag dots and the cloud badge —
+the order is dots, cloud, Git. Same information (Git's own letter, in the same colors), and the
+letters still line up in a vertical run, because the badge is right-aligned inside a fixed-width
+column and centered in a slot sized to the widest code. What it gives back is **37 pt of Name** — the
+column's 20 plus the 17 pt intercell spacing `NSTableView` charges per column — to put a letter about
+20 pt from where it lands now. That is the third time a "column" in the plan turned out to mean a
+badge in the name cell: tags and sync status made the same move at M6. Two things came with it: a
+per-status **tooltip** (the gutter could only name itself in its header, and `!` or `U` is nobody's
+vocabulary), and the fix for a latent `..` bug the third badge made worth looking for — the parent
+row's cell comes out of the same reuse pool as the real name cells and was clearing none of them.
+The one thing left alone deliberately: `GitStatusStyle`'s **colors** are unchanged, so `.systemGreen`
+still sits near 2.22:1 on a light background (docs/NOTES.md's palette table). That is a pre-existing
+call about the whole `.system*` palette, not this change's to make quietly.
+
+The item two separate milestones had asked for —
+**edit-temp-watch-repack write-back**, M11 for archives and SFTP, M13 for FTP — **landed for archives
+on 2026-08-09 and for all three remote backends with M21 Slice 10**, which generalized it rather
+than building it per protocol: `editRoute(for:)` answers `.remoteFile` for anything
+`isRemoteConnection && acceptsUploads` (`isSFTP || isFTP || isS3`), `EditedFileRegistry` watches the
+temp copy whatever it came from, and `uploadEditedFile` falls back to a plain `backend.copyFile`
+wherever there is no conditional writer — so S3 gets its `If-Match` and the other two get an
+ordinary upload, through one path. This paragraph claimed it was "still open for the two remote
+backends" until **2026-08-22**, when running it against a real server for the first time showed it
+had been shipped and broken for the whole of that time (above).
+
+M19's own loose end — **a per-archive passphrase held for the session** — **closed on 2026-08-09**,
+reported by a user who could not open a file inside an archive they had just packed. Preview, opening
+a member, and nested-archive entry all failed with `passphraseRequired`, and each swallowed it, so
+the keys read as broken rather than locked. `ArchivePassphraseStore` (one per window, memory only)
+now holds what the user typed and `withArchivePassphrase` is the single ask-once-retry-on-typo funnel
+all four gestures share, F5 included — so an archive unlocked by any of them is not asked about again.
+The *passive* half is the part with a rule behind it: a preview follows the cursor, so those paths
+read the store and stay quiet when it is empty, and only the gesture the user actually made may raise
+a sheet. Two things the same pass settled: Enter on a plain file member had never opened anything in
+*any* archive (it extracts to temp and launches the default app now, read-only, since nothing writes
+an edit back), and an encrypted archive's whole-archive extraction is reused for its later members
+rather than re-decrypted per arrow key. **A member filter is still open** — one member of a 600 MB
+encrypted archive still decrypts all of it, once.
+
+The same day, **editing a member in place** landed on top of it, and needed one thing nobody had
+noticed was missing: every archive *write* went through `bsdtar`, which cannot be given a
+passphrase — so F8 delete and F5/paste add inside an encrypted archive had never worked. They failed
+safely (the rewrite throws before the original is touched), which is why it read as unimplemented
+rather than broken. `ArchiveRewriteFormat` now picks the libarchive route off one header read and
+re-states what the extracted tree cannot say — that the archive was encrypted, and whether its names
+were hidden. On top of that, an opened member is watched (`ArchiveMemberEditRegistry`) and a save
+offers to repack it; the read-only `chmod` that stood in for this for one day is gone, and F4 works
+inside a writable archive. A **nested** archive stays read-only, since its bytes are themselves a
+temp copy. (Its other loose end, PLAN.md §6's derived-data clause,
+closed on 08-09 too — measuring the three leaks it named found none of them real and found a fourth
+that was ours, so it was fixed rather than documented: §M19 ▸ Follow-up above.)
