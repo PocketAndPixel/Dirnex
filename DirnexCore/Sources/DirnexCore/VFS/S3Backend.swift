@@ -164,14 +164,23 @@ public struct S3Backend: ConnectionScopedBackend {
     /// - **Up** (local disk → this bucket): a streamed `--upload-file`. The stream is what makes it
     ///   affordable — see ``S3ProcessArguments/upload(session:key:localPath:)``, where a 512 MiB
     ///   file measured 5.3 MB resident streamed against 1.08 GB buffered.
-    /// - **Sideways** (this bucket → itself): `x-amz-copy-source`, server-side. The bytes never
-    ///   leave S3, so nothing is downloaded and re-uploaded to duplicate a file — and this is the
-    ///   direction `CopyEngine` walks a folder move through, which is what keeps a recursive rename
-    ///   from costing the user the whole tree's bandwidth twice.
+    /// - **Sideways** (this bucket → itself, or **another bucket on the same service**):
+    ///   `x-amz-copy-source`, server-side. The bytes never leave S3, so nothing is downloaded and
+    ///   re-uploaded to duplicate a file — and this is the direction `CopyEngine` walks a folder
+    ///   move through, which is what keeps a recursive rename from costing the user the whole
+    ///   tree's bandwidth twice.
     ///
-    /// A copy to or from a *different* remote is refused rather than routed: it would have to land
-    /// on this machine in between, which is two operations wearing one name and neither backend's
-    /// to schedule.
+    /// The cross-bucket case is the same request with a different bucket in the header, and what
+    /// gates it is ``S3Location/acceptsServerSideCopy(from:)``: one signature reaches both ends
+    /// only if they share an access key id, and a bucket *name* only means one thing within one
+    /// service. A pair that fails either test is refused here — as is a copy to or from any other
+    /// remote — because it would have to land on this machine in between, which is two operations
+    /// wearing one name and not this backend's to schedule (the pane's routing backend stages
+    /// those, `RelayCopy`).
+    ///
+    /// **A server-side copy is capped at 5 GiB by the service**, above which S3 wants
+    /// `UploadPartCopy` — not built. A refusal is not fatal for the cross-bucket pair, since the
+    /// caller falls back to staging; a same-bucket copy of such an object fails, as it always has.
     ///
     /// The whole object transfers as one `curl` invocation, so both `progress` and `isCancelled`
     /// have to reach inside it: the transport polls them while the bytes move
@@ -218,6 +227,12 @@ public struct S3Backend: ConnectionScopedBackend {
             )
         } else if source.backend == id, destination.backend == id {
             let transferred = try copyObjectServerSide(from: source, to: destination)
+            if isCancelled() { throw CancellationError() }
+            progress(transferred)
+        } else if destination.backend == id,
+                  let origin = S3Location(backendID: source.backend),
+                  location.acceptsServerSideCopy(from: origin) {
+            let transferred = try copyObjectServerSide(from: source, in: origin, to: destination)
             if isCancelled() { throw CancellationError() }
             progress(transferred)
         } else {
@@ -319,12 +334,30 @@ public struct S3Backend: ConnectionScopedBackend {
     /// entry's size from the listing it made. So the *item* counter advances normally and the byte
     /// counter does not move for these copies. A direct single-file move never comes here at all —
     /// `CopyEngine.perform` tallies `entry.byteSize` itself when `moveItem` succeeds.
-    private func copyObjectServerSide(from source: VFSPath, to destination: VFSPath) throws -> Int64 {
+    ///
+    /// `origin` is the bucket the source lives in, and `nil` means this one. A cross-bucket copy is
+    /// the same request with that bucket in the header — but it goes through the *other* transport
+    /// verb, because a transport that cannot name another bucket must refuse rather than fall back
+    /// on its own (``S3Transport/copyObject(fromBucket:sourceKey:to:)``). Two connections can name
+    /// the same bucket under different descriptors (a re-addressed endpoint), so the fork is on the
+    /// bucket rather than on which argument arrived.
+    private func copyObjectServerSide(
+        from source: VFSPath,
+        in origin: S3Location? = nil,
+        to destination: VFSPath
+    ) throws -> Int64 {
+        let sourceKey = S3Key.key(for: source)
+        let destinationKey = S3Key.key(for: destination)
         _ = try write(at: destination) {
-            try transport.copyObject(
-                from: S3Key.key(for: source),
-                to: S3Key.key(for: destination)
-            )
+            if let origin, origin.bucket != location.bucket {
+                try transport.copyObject(
+                    fromBucket: origin.bucket,
+                    sourceKey: sourceKey,
+                    to: destinationKey
+                )
+            } else {
+                try transport.copyObject(from: sourceKey, to: destinationKey)
+            }
         }
         return 0
     }

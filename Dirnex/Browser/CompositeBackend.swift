@@ -328,7 +328,10 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
 
     /// The connected S3 backend for `backendID`, or `nil` when there's no live connection — the
     /// non-throwing lookup `capabilities(for:)` needs (it must never throw and must stay cheap).
-    private func s3Backend(for backendID: VFSBackendID) -> S3Backend? {
+    ///
+    /// Internal rather than private for `CompositeBackend+Transfer`'s cross-bucket route, which
+    /// asks the same question of the *destination* (Swift's `private` does not cross files).
+    func s3Backend(for backendID: VFSBackendID) -> S3Backend? {
         lock.lock()
         defer { lock.unlock() }
         return s3Connections[backendID.rawValue]

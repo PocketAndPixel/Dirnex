@@ -44,6 +44,10 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
         case upload(Upload)
         case putEmpty(String)
         case copy(Copy)
+        /// A copy whose source is in another bucket — recorded as its own case rather than as a
+        /// `copy` with a field, so an assertion about the *same-bucket* verb cannot be satisfied by
+        /// a cross-bucket request that happens to carry the right keys.
+        case copyAcrossBuckets(sourceBucket: String, Copy)
         case delete(String)
         case deleteBatch([String])
         case createMultipart(String)
@@ -187,6 +191,19 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
     func copyObject(from sourceKey: String, to destinationKey: String) throws -> S3Response {
         if let thrownError { throw thrownError }
         writes.append(.copy(Copy(sourceKey: sourceKey, destinationKey: destinationKey)))
+        return writeResponse
+    }
+
+    func copyObject(
+        fromBucket sourceBucket: String,
+        sourceKey: String,
+        to destinationKey: String
+    ) throws -> S3Response {
+        if let thrownError { throw thrownError }
+        writes.append(.copyAcrossBuckets(
+            sourceBucket: sourceBucket,
+            Copy(sourceKey: sourceKey, destinationKey: destinationKey)
+        ))
         return writeResponse
     }
 

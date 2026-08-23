@@ -137,6 +137,24 @@ public protocol S3Transport: Sendable {
     /// Copy one object to another key inside this bucket, server-side. The bytes never travel.
     func copyObject(from sourceKey: String, to destinationKey: String) throws -> S3Response
 
+    /// Copy one object into this bucket from **another bucket on the same service**, server-side.
+    /// The bytes never travel here either — S3 reads them itself, named by `x-amz-copy-source`.
+    ///
+    /// Additive rather than a widened ``copyObject(from:to:)``, for the reason ``upload`` states
+    /// above: a protocol requirement cannot carry a default, so widening the existing verb would
+    /// rewrite every conformance for a capability most callers never reach.
+    ///
+    /// **The default refuses instead of forwarding**, which is the same choice
+    /// ``S3WriteConditionUnsupported`` makes and for a sharper reason. A transport that ignored
+    /// `sourceBucket` would build the header from its *own* bucket and copy a different object
+    /// under the right name, exit 0, reporting success — the one failure a caller cannot detect.
+    /// Which bucket a copy reads is not a capability to degrade; it is the request.
+    func copyObject(
+        fromBucket sourceBucket: String,
+        sourceKey: String,
+        to destinationKey: String
+    ) throws -> S3Response
+
     /// Delete one object. S3's delete is idempotent, so a key that is not there still answers 204.
     func deleteObject(key: String) throws -> S3Response
 
@@ -226,6 +244,14 @@ public extension S3Transport {
         return try putEmptyObject(key: key)
     }
 
+    func copyObject(
+        fromBucket sourceBucket: String,
+        sourceKey: String,
+        to destinationKey: String
+    ) throws -> S3Response {
+        throw S3CrossBucketCopyUnsupported(sourceBucket: sourceBucket, sourceKey: sourceKey)
+    }
+
     func completeMultipartUpload(
         key: String,
         uploadID: String,
@@ -234,5 +260,23 @@ public extension S3Transport {
     ) throws -> S3Response {
         guard !condition.isConditional else { throw S3WriteConditionUnsupported(key: key) }
         return try completeMultipartUpload(key: key, uploadID: uploadID, parts: parts)
+    }
+}
+
+/// Thrown by ``S3Transport``'s default cross-bucket copy: this transport cannot name another
+/// bucket as a copy source, so it will not guess at one (``S3Transport/copyObject(fromBucket:sourceKey:to:)``).
+///
+/// Unreachable in the shipped app — `S3CurlTransport` implements the verb — and it is what a fake
+/// in a test, or a transport somebody adds later, meets first. It is a distinct type rather than a
+/// `VFSError` because nobody reads it: the pane's routing backend takes any failure of a
+/// server-side copy as "the service will not do this one" and stages the bytes through this
+/// machine instead, which is the route that needs no cooperation from either end.
+public struct S3CrossBucketCopyUnsupported: Error, Sendable, Equatable {
+    public let sourceBucket: String
+    public let sourceKey: String
+
+    public init(sourceBucket: String, sourceKey: String) {
+        self.sourceBucket = sourceBucket
+        self.sourceKey = sourceKey
     }
 }

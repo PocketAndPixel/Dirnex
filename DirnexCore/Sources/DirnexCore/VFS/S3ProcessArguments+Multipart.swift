@@ -102,18 +102,4 @@ public extension S3ProcessArguments {
             + ["-X", "DELETE"]
             + ["\(session.location.url(forKey: key))?uploadId=\(S3Key.encodedForQuery(uploadID))"]
     }
-
-    /// Copy one object to another key **inside the same bucket**, server-side.
-    ///
-    /// This is the rename primitive, and the reason a rename costs no local bandwidth: the bytes
-    /// never leave S3. `curl` signs the `x-amz-copy-source` header itself — measured on the wire,
-    /// it arrives in `SignedHeaders` as `host;x-amz-content-sha256;x-amz-copy-source;x-amz-date` —
-    /// which matters because S3 requires every `x-amz-*` header to be signed and would otherwise
-    /// refuse the request.
-    ///
-    /// What `curl` does **not** do is encode the value: the header is passed through byte for byte
-    /// (probed with spaces and `+` in the source key, both of which arrived exactly as written). So
-    /// the encoding is this builder's, and it uses the same path rule the URL does — S3 reads
-    /// `x-amz-copy-source` as an encoded path, so a raw `+` or `#` in a key would name a different
-    /// object than the one being renamed.
 }

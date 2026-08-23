@@ -165,6 +165,26 @@ struct S3CurlTransport: S3Transport {
         )
     }
 
+    /// The same request with another bucket in `x-amz-copy-source` — the cross-bucket copy the
+    /// pane routes here when both ends share a key and a service
+    /// (`S3Location.acceptsServerSideCopy(from:)`). Nothing else differs: one `PUT`, signed once,
+    /// with this connection's credentials doing the reading.
+    func copyObject(
+        fromBucket sourceBucket: String,
+        sourceKey: String,
+        to destinationKey: String
+    ) throws -> S3Response {
+        try perform(
+            S3ProcessArguments.copyObject(
+                session: session(maxTime: transferTimeout),
+                sourceBucket: sourceBucket,
+                sourceKey: sourceKey,
+                destinationKey: destinationKey
+            ),
+            measuring: .download
+        )
+    }
+
     func deleteObject(key: String) throws -> S3Response {
         try perform(
             S3ProcessArguments.deleteObject(session: session(maxTime: metadataTimeout), key: key),
@@ -199,101 +219,6 @@ struct S3CurlTransport: S3Transport {
         )
     }
 
-    // MARK: - Multipart
-
-    func createMultipartUpload(key: String) throws -> S3Response {
-        try perform(
-            S3ProcessArguments.createMultipartUpload(
-                session: session(maxTime: metadataTimeout),
-                key: key
-            ),
-            measuring: .download
-        )
-    }
-
-    func uploadPart(
-        _ part: S3PartRequest,
-        progress: (Int64) -> Void,
-        isCancelled: () -> Bool
-    ) throws -> S3Response {
-        try perform(
-            S3ProcessArguments.uploadPart(
-                session: session(maxTime: transferTimeout),
-                key: part.key,
-                uploadID: part.uploadID,
-                partNumber: part.number,
-                localPath: part.localPath
-            ),
-            measuring: .upload,
-            // The slice, not the whole file: this invocation's meter is a percentage of the part it
-            // was handed, and the orchestration above tops each part up to its exact length.
-            watching: .uploadMeter(totalBytes: Self.fileSize(part.localPath)),
-            progress: progress,
-            isCancelled: isCancelled
-        )
-    }
-
-    /// Close the upload, with the manifest travelling as a temp file.
-    ///
-    /// A file rather than an inline body for the same reason the batch delete uses one: 10 000
-    /// parts of `<Part>` markup runs past `ARG_MAX`, so an inline manifest would work right up to
-    /// the file sizes multipart exists for. It carries no secret — part numbers and ETags — and is
-    /// removed on every exit path, the throwing ones included.
-    func completeMultipartUpload(
-        key: String,
-        uploadID: String,
-        parts: [S3UploadedPart]
-    ) throws -> S3Response {
-        try completeMultipartUpload(
-            key: key,
-            uploadID: uploadID,
-            parts: parts,
-            condition: .unconditional
-        )
-    }
-
-    /// The conditional form is the real one and the plain one forwards to it, as it does for
-    /// `upload` and for the same reason: one place where these arguments are assembled, so a
-    /// precondition cannot be lost by a caller reaching the older spelling.
-    func completeMultipartUpload(
-        key: String,
-        uploadID: String,
-        parts: [S3UploadedPart],
-        condition: S3WriteCondition
-    ) throws -> S3Response {
-        let body = S3MultipartDocument.manifest(parts: parts)
-        let bodyPath = FileManager.default.temporaryDirectory
-            .appendingPathComponent("dirnex-s3-complete-\(UUID().uuidString).xml")
-        do {
-            try body.write(to: bodyPath, options: .atomic)
-        } catch {
-            throw S3ResponseError.transport(.other)
-        }
-        defer { try? FileManager.default.removeItem(at: bodyPath) }
-
-        return try perform(
-            S3ProcessArguments.completeMultipartUpload(
-                session: session(maxTime: transferTimeout),
-                key: key,
-                uploadID: uploadID,
-                bodyPath: bodyPath.path,
-                condition: condition
-            ),
-            measuring: .download
-        )
-    }
-
-    func abortMultipartUpload(key: String, uploadID: String) throws -> S3Response {
-        try perform(
-            S3ProcessArguments.abortMultipartUpload(
-                session: session(maxTime: metadataTimeout),
-                key: key,
-                uploadID: uploadID
-            ),
-            measuring: .download
-        )
-    }
-
     /// Reach the endpoint and come back with nothing to say — the connection test the connect flow
     /// runs before saving anything. Every failure that matters (bad key, denied bucket, wrong
     /// region, unreachable host) surfaces here as a response or a throw, classified.
@@ -306,7 +231,9 @@ struct S3CurlTransport: S3Transport {
 
     // MARK: - Process
 
-    private func session(maxTime: Int) -> S3Session {
+    /// Internal rather than private so `S3CurlTransport+Multipart` can spawn its own requests —
+    /// Swift's `private` does not cross files (docs/NOTES.md ▸ Lint ceilings and file splitting).
+    func session(maxTime: Int) -> S3Session {
         S3Session(location: location, connectTimeout: connectTimeout, maxTime: maxTime)
     }
 
@@ -320,7 +247,7 @@ struct S3CurlTransport: S3Transport {
         )
     }
 
-    private func perform(
+    func perform(
         _ arguments: [String],
         measuring direction: S3CurlRunner.Direction = .download,
         watching source: TransferProgressWatch.Source = .none,
@@ -339,7 +266,7 @@ struct S3CurlTransport: S3Transport {
     /// The size an upload is a percentage *of*. Zero for a file that cannot be read, which reads as
     /// "no estimate available" — the transfer still runs and still reports its exact count at the
     /// end, it simply has nothing to draw a moving bar from.
-    private static func fileSize(_ path: String) -> Int64 {
+    static func fileSize(_ path: String) -> Int64 {
         guard let attributes = try? FileManager.default.attributesOfItem(atPath: path),
               let size = attributes[.size] as? Int64 else { return 0 }
         return size

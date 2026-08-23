@@ -4533,6 +4533,38 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
 
 ## Design lessons that generalize
 
+- **When two remotes *can* talk to each other, the question is whether one can *name* the other —
+  and getting that wrong fails by succeeding.** S3 copies between its own buckets with
+  `x-amz-copy-source`, so staging those bytes through this machine would move them twice to produce
+  a request the service would have made itself. What gates it is not "are both ends S3" but
+  `S3Location.acceptsServerSideCopy(from:)`: the same **access key id** (there is one signature, and
+  the destination's key is what reads the source) and the same **service** — because a bucket name
+  means different things at different providers, so a MinIO bucket named in a request to AWS does
+  not 404, it addresses whatever bucket *AWS* has under that name. That is the failure worth
+  designing against, and it is the only one here that is not a refusal: a copy that completes, under
+  the right name, with the wrong bytes.
+  - **The one exception has to be a documented property, not a judgement.** Two `amazonaws.com`
+    endpoints are allowed to name each other's buckets because an AWS bucket name is globally unique
+    across every region and account — which is what `BucketAlreadyExists` means (▸ curl for S3) — so
+    they cannot disagree about which bucket a name is. Anything softer than that ("they look like
+    the same provider") is how the wrong-bytes case gets in.
+  - **A fast path that the service may refuse must degrade, not report** — and then it is safe to
+    attempt without knowing the answer in advance. `CopyObject` is capped at 5 GiB, an S3-compatible
+    endpoint need not offer a cross-bucket copy, and a bucket policy can allow the read through one
+    connection and not the other; all three are recoverable by moving the bytes ourselves, so the
+    route falls back to staging on any failure that is not a cancellation. The tell that a fallback
+    is honest rather than a mask: the error the user finally reads comes from the *slower* path, so
+    nothing that would have failed before now succeeds quietly.
+  - **The wire is the observable, and a fake endpoint that verifies nothing is the right instrument
+    for it.** `Tooling/fake-s3-endpoint.py` writes down every request and checks no signature — it
+    would agree with a broken client, which is why it can only be used for this question: *which
+    requests were made*. It settled all three cases in minutes with no AWS account: one PUT and no
+    GET for a compatible pair, three requests for a refused one, and — the safety rule, visible as an
+    absence — **no copy request at all** for two buckets on two ports.
+  - The headless control that separates "fell back" from "gave up" is the error's **path**: a refused
+    server-side copy names the destination (its `PUT`), the staged download that follows names the
+    source. No server needed to read it, and it fails loudly the day the fallback is removed.
+
 - **A verb a protocol lacks is not a verb the *product* lacks, and the honest home for the
   substitute is the layer holding both ends.** `VFSBackend.copyFile` reads as "duplicate this file"
   and over SFTP and FTP it is a **direction** — `get`/`put`, download/upload — so both backends

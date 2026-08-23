@@ -11125,13 +11125,60 @@ searching (3 hits at three depths inside a zip).
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-08-23)
 
-Twenty-four dated passes that landed outside a milestone of their own, between M18's close on
+Twenty-five dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-08-23: user-reported bugs, three vault features, the tree crossing into S3,
 and the chain of five that one S3 rename pulled apart. They ran *alongside* M20, M21 and M22
 rather than after them — which is why they sit here at the end rather than in a numeric slot —
 and they keep their **newest-first** order, because several read as a chain and refer to the
 entry below. Moved out of [PLAN.md](../PLAN.md) §4 on 2026-08-23, once the plan had nothing left
 to say about them; what is still open from this stretch stayed there.
+
+**2026-08-23 — and the pair S3 will copy for itself.** The staged relay below made every
+remote-to-remote pair work by moving the bytes twice through this machine, which is right for two
+protocols that cannot see each other and wrong for **two buckets on one service**: `CopyObject`
+takes an `x-amz-copy-source` naming any bucket, so S3 will read the source itself for one `PUT`. So
+the route now asks whether the two ends are a pair the *service* can name, and stages only what it
+cannot.
+
+**What decides it is a name, not a backend.** `S3Location.acceptsServerSideCopy(from:)` requires the
+same **access key id** — there is one signature, and the destination's key is what fetches the
+source — and the same **service**, because a bucket name means different things at different
+providers. That second half is the whole reason this is a predicate rather than an `isS3` test: a
+MinIO bucket named in a request to AWS does not fail cleanly, it addresses whatever bucket *AWS* has
+under that name, which can exist, be readable, and produce a copy that succeeds with the wrong bytes
+under the right name. One exception is allowed and it rests on a documented property rather than a
+guess — an AWS bucket name is globally unique across every region and account (it is what
+`BucketAlreadyExists` means), so two `amazonaws.com` endpoints cannot disagree about which bucket a
+name is. Whether AWS then performs a cross-region copy is unmeasured here and costs nothing when it
+will not.
+
+**The route carries a fallback rather than a promise**, which is what makes it safe to attempt at
+all: S3 caps `CopyObject` at 5 GiB (above it the service wants `UploadPartCopy` — not built), an
+S3-compatible endpoint need not offer a cross-bucket copy, and a bucket policy can allow the read
+through one connection and not the other. Every one of those is recoverable by moving the bytes
+ourselves, so `.serverSide` degrades to `.staged` on any failure that is not a cancellation, and the
+error the user finally reads is the staged path's — the route that would have run an hour earlier.
+Nothing about the **same-bucket** copy changed: it stays `.direct`, with the 5 GiB ceiling it has
+always had, because this pass is not about it and its live behaviour cannot be measured here.
+
+Below the route, the transport verb is additive with a **refusing** default
+(`S3CrossBucketCopyUnsupported`), the same shape `S3WriteConditionUnsupported` has and for a sharper
+reason: a transport that ignored `sourceBucket` would build the header from its own bucket and copy
+a different object under the right name, exit 0, reporting success. Which bucket a copy reads is not
+a capability to degrade; it is the request.
+
+**Verified on the wire without an AWS account**, which is the part worth keeping:
+`Tooling/fake-s3-endpoint.py` is now checked in — it verifies no signature and is useless as a mock,
+and it writes down every request, which is exactly what this needed. Driving the real
+`S3CurlTransport` through the real `CompositeBackend` against it: a compatible pair makes **one**
+request (`PUT backup/2026/a.jpg`, `x-amz-copy-source: /photos/holiday/a.jpg`) with no GET and no
+upload; the same pair against an endpoint refusing the copy makes three (the refused copy, then a
+GET and a PUT) and the object still lands; and a pair on **two ports** — two services — makes no
+copy request at all, which is the safety rule showing up as an absence. Headless controls separate
+the same three: neutering the predicate breaks only the refusal cases, dropping the bucket fork sends
+a cross-bucket copy down the same-bucket verb, and removing the fallback makes the error name the
+*destination* (its refused `PUT`) instead of the *source* (the staged download) — which is the only
+observable that tells "it fell back" from "it gave up", and needs no server to read.
 
 **2026-08-23 — copying between two remote locations, which had never been possible.** Reported by
 a user with a bucket in one pane and a server in the other: F5 answered *"Copying directly between

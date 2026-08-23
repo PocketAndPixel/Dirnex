@@ -208,6 +208,43 @@ public extension S3Location {
         self.init(descriptor: backendID.rawValue)
     }
 
+    /// Whether an object in `other` may be named as the **source** of a server-side copy into this
+    /// bucket — `x-amz-copy-source`, where the bytes never touch this machine.
+    ///
+    /// The request is one `PUT` to *this* bucket, signed once with *this* connection's credentials,
+    /// carrying the source as `/<bucket>/<key>`. So the source is identified by **bucket name
+    /// alone**, and both halves of this predicate are about making that name mean what the user
+    /// pointed at:
+    ///
+    /// - **The same access key id**, because there is one signature: the destination's key is what
+    ///   fetches the source. Two connections carrying different keys are the ordinary shape of "a
+    ///   key per bucket", where the destination's would simply be refused.
+    /// - **The same service**, because a bucket name means different things at different providers.
+    ///   Naming a MinIO bucket in a request to AWS does not fail cleanly — it addresses whatever
+    ///   bucket *AWS* has under that name, which may exist and may be readable. That is the failure
+    ///   worth designing against rather than the refusals: a copy that succeeds with the wrong
+    ///   bytes, under the right name, reporting success.
+    ///
+    /// "The same service" is the endpoint, with one exception that rests on a documented property
+    /// rather than a guess: **an AWS bucket name is globally unique across every region and
+    /// account** — it is what `BucketAlreadyExists` means, *"the bucket namespace is shared by all
+    /// users of the system"* (measured 2026-08-19, docs/NOTES.md ▸ curl for S3) — so two
+    /// `amazonaws.com` endpoints cannot disagree about which bucket a name is. Whether AWS then
+    /// *performs* a cross-region copy is unmeasured here, and costs nothing when it will not: the
+    /// caller falls back to staging the bytes through this machine, which is what happens for every
+    /// pair this predicate refuses.
+    ///
+    /// Addressing and region are deliberately not compared. Both are about how *this* connection
+    /// builds and signs its own request; neither appears in the source's name.
+    func acceptsServerSideCopy(from other: S3Location) -> Bool {
+        guard accessKeyID == other.accessKeyID, port == other.port, usesTLS == other.usesTLS
+        else { return false }
+        return host == other.host || (isAmazon && other.isAmazon)
+    }
+
+    /// Whether this endpoint is Amazon's own — the one place a bucket name is unique service-wide.
+    private var isAmazon: Bool { host == "amazonaws.com" || host.hasSuffix(".amazonaws.com") }
+
     /// The same connection spelled the other way — every field kept, ``addressing`` replaced.
     ///
     /// One definition rather than an `S3Location(…)` rebuilt at each call site, because the fields a
