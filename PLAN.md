@@ -154,7 +154,7 @@ Twenty-six further passes landed between 2026-08-07 and 2026-08-23 without a mil
 every one of them is shipped — so that log lives in **[docs/HISTORY.md](docs/HISTORY.md) ▸ After
 M19** with the rest of the archive, together with the two passes that closed M19's own loose ends.
 
-What is still open, rather than merely imaginable, is the *undone* column above plus three items:
+What is still open, rather than merely imaginable, is the *undone* column above plus two items:
 
 - **The thumbnail grid, brief view and the `PaneSurface` extraction** — M15's cut, and one unit
   rather than three items, argued in HISTORY.md §M15. Any future grid inherits two constraints from
@@ -162,11 +162,6 @@ What is still open, rather than merely imaginable, is the *undone* column above 
 - **A member filter for an encrypted archive** — M19's last loose end. The passphrase half closed
   2026-08-09, but the encrypted route still extracts the whole archive rather than the requested
   members, so opening one member of a 600 MB archive decrypts all of it, once.
-- **Segmented downloads for FTP** — the S3 half **shipped 2026-08-23** (HISTORY.md ▸ After M19),
-  and `curl --range` works over FTP too, so the same shape is available there. It is a separate
-  decision rather than a follow-through: each segment is a fresh **login**, and many servers cap
-  concurrent ones — so the measurement that settles it is somebody's real server, not this one's
-  arithmetic.
 
 ## 5. Cross-cutting: testing strategy
 

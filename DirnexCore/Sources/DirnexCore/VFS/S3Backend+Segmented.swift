@@ -12,7 +12,7 @@ import Foundation
 /// - **Nothing is left behind.** Every segment lands in a directory of this download's own, removed
 ///   on every exit path including the throwing ones — and each piece is deleted the moment it has
 ///   been appended, so peak disk is the object plus one segment rather than the object twice
-///   (``S3SegmentAssembly``).
+///   (``SegmentAssembly``).
 /// - **A transport that cannot split the request still works.** The verb's default forwards to the
 ///   plain download, and this reads which of the two happened rather than inferring it
 ///   (``S3SegmentedDownload``).
@@ -42,7 +42,7 @@ extension S3Backend {
     /// again more slowly.
     func downloadInSegments(
         _ request: S3DownloadRequest,
-        plan: S3DownloadPlan,
+        plan: SegmentedDownloadPlan,
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> Int64? {
@@ -85,7 +85,7 @@ extension S3Backend {
     /// that answered for a different set of segments cannot be reconciled with the plan, and
     /// pressing on would assemble a file out of whichever answers happened to line up.
     private func join(
-        _ segments: [S3DownloadSegment],
+        _ segments: [DownloadSegment],
         _ responses: [S3Response],
         of request: S3DownloadRequest
     ) throws -> Int64? {
@@ -98,11 +98,15 @@ extension S3Backend {
             }
         }
         // 206 is what a satisfied `Range` request answers. A 200 means the server sent the whole
-        // object to every section, so these files are copies rather than pieces.
-        guard responses.allSatisfy({ $0.status == 206 }) else { return nil }
+        // object to every section, so these files are copies rather than pieces — and every one of
+        // them cost the whole object, which is why the connection is not asked again.
+        guard responses.allSatisfy({ $0.status == 206 }) else {
+            segmentation.recordWholeFileAnswer()
+            return nil
+        }
 
         do {
-            return try S3SegmentAssembly.assemble(segments, into: request.localPath)
+            return try SegmentAssembly.assemble(segments, into: request.localPath)
         } catch {
             // A failed assembly is about this machine or about bytes that did not arrive, never
             // about S3 — which is why it is mapped here rather than left to read as a transfer

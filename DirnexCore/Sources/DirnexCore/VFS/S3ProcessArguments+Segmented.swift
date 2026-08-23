@@ -43,7 +43,7 @@ public extension S3ProcessArguments {
     static func downloadSegments(
         session: S3Session,
         key: String,
-        segments: [S3DownloadSegment],
+        segments: [DownloadSegment],
         credentials: String
     ) -> S3ParallelInvocation {
         let url = session.location.url(forKey: key)

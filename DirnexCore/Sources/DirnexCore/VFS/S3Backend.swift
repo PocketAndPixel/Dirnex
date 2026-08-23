@@ -21,6 +21,10 @@ public struct S3Backend: ConnectionScopedBackend {
     // `private` does not cross files (NOTES.md ▸ file splitting).
     let transport: any S3Transport
     let pageLimit: Int
+    /// What this connection has learned about splitting a download over several ranges. A reference
+    /// held by a value type on purpose: the backend is copied freely, and what it knows about the
+    /// *server* must not be copied away with it (``SegmentedDownloadSupport``).
+    let segmentation = SegmentedDownloadSupport()
 
     /// - Parameter pageLimit: how many `ListObjectsV2` pages one listing may fetch before it gives
     ///   up. S3 pages at 1000 keys whatever `max-keys` asks for, so the default allows a folder of

@@ -17,7 +17,13 @@ import Foundation
 public struct FTPBackend: RemoteTransportBackend {
     /// The remote account this backend is connected to — its identity.
     public let location: FTPLocation
-    private let transport: any FTPTransport
+    // Internal rather than private: the segmented download lives in `FTPBackend+Segmented.swift`,
+    // and Swift's `private` does not cross files (docs/NOTES.md ▸ file splitting).
+    let transport: any FTPTransport
+    /// What this connection has learned about splitting a download into several logins. A reference
+    /// held by a value type on purpose: the backend is copied freely, and what it knows about the
+    /// *server* must not be copied away with it (``SegmentedDownloadSupport``).
+    let segmentation = SegmentedDownloadSupport()
 
     public init(location: FTPLocation, transport: any FTPTransport) {
         self.location = location
@@ -123,6 +129,34 @@ public struct FTPBackend: RemoteTransportBackend {
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws {
+        try copyFile(
+            at: source,
+            to: destination,
+            expectedSize: nil,
+            progress: progress,
+            isCancelled: isCancelled
+        )
+    }
+
+    /// The same copy, told how big the file is (docs/HISTORY.md ▸ After M19).
+    ///
+    /// **The hint decides whether a download is split**, and it is a hint rather than a probe for a
+    /// measured reason: FTP's own `SIZE` is a round trip, and paying it on every small file to
+    /// answer a question that only matters above 16 MiB would slow the common case to speed up the
+    /// rare one. Both real callers already hold the number from the listing they made
+    /// (`CopyEngine`'s `entry.byteSize`, `RemoteFileCache`'s entry), so it costs no extra request
+    /// anywhere; with no hint, behaviour is exactly what it was.
+    ///
+    /// It is deliberately consulted **only** for the download direction. An upload's shape is
+    /// decided by the local file's own size, which this backend reads for itself and which cannot be
+    /// stale.
+    public func copyFile(
+        at source: VFSPath,
+        to destination: VFSPath,
+        expectedSize: Int64?,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws {
         if isCancelled() { throw CancellationError() }
         var tally = TransferProgressTally()
         let streamed = { (delta: Int64) in
@@ -132,8 +166,12 @@ public struct FTPBackend: RemoteTransportBackend {
         let transferred: Int64
         if source.backend == id, destination.backend == .local {
             transferred = try downloadFile(
-                remote: source,
-                toLocal: destination.path,
+                FTPDownloadRequest(
+                    remotePath: source.path,
+                    localPath: destination.path,
+                    source: source,
+                    expectedSize: expectedSize
+                ),
                 progress: streamed,
                 isCancelled: isCancelled
             )
@@ -156,21 +194,69 @@ public struct FTPBackend: RemoteTransportBackend {
     /// threshold — they gate on the local partial's size, which is free to read.)
     private static let resumeUploadThreshold: Int64 = 1 << 20 // 1 MiB
 
-    /// Download `remote` to `localPath`, resuming from a local partial when one is a proper prefix.
+    /// Download to `localPath` — in several ranges at once when that is worth doing, in one stream
+    /// when it is not.
+    ///
+    /// The fork has three conditions and each excludes a case the segmented path cannot serve. A
+    /// **partial already on disk** takes the resuming route untouched, because segments are fetched
+    /// into files of their own and have nothing to continue from; no **size hint** means no plan,
+    /// since asking for one would cost the `SIZE` round trip this avoids; and a connection that has
+    /// already shown it **will not serve a split download** is not asked again, which on a server
+    /// capping concurrent logins is the difference between paying for one wasted attempt and paying
+    /// for one per file.
+    ///
+    /// **The retry after a refused run reports nothing**, and that is the one subtlety worth
+    /// stating: whatever pieces landed have already been handed to `progress`. Reporting them again
+    /// would count one file twice in a job total that only adds, leaving a queue's bar permanently
+    /// ahead of the work. The tail in ``copyFile`` still tops the count up to whatever the stream
+    /// actually moved.
     private func downloadFile(
-        remote source: VFSPath,
-        toLocal localPath: String,
+        _ request: FTPDownloadRequest,
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> Int64 {
-        let existingLocal = localFileSize(localPath)
+        let existingLocal = localFileSize(request.localPath)
+        if existingLocal == 0,
+           let hint = request.expectedSize,
+           SegmentedDownloadPlan.isWorthwhile(totalSize: hint, limits: .ftp),
+           !segmentation.isRefused,
+           let plan = SegmentedDownloadPlan(totalSize: hint, limits: .ftp) {
+            if let moved = try downloadInSegments(
+                request,
+                plan: plan,
+                progress: progress,
+                isCancelled: isCancelled
+            ) {
+                return moved
+            }
+            return try downloadWholeFile(
+                request,
+                resume: false,
+                progress: { _ in },
+                isCancelled: isCancelled
+            )
+        }
         // Only when a local partial exists is a remote size worth fetching; `>` short-circuits so a
         // fresh download (the norm) never pays for the round trip.
-        let resume = existingLocal > 0 && remoteFileSize(source) > existingLocal
-        return try mapErrors(source) {
+        return try downloadWholeFile(
+            request,
+            resume: existingLocal > 0 && remoteFileSize(request.source) > existingLocal,
+            progress: progress,
+            isCancelled: isCancelled
+        )
+    }
+
+    /// One `curl`, the whole file, resuming from a local partial when the caller asks it to.
+    private func downloadWholeFile(
+        _ request: FTPDownloadRequest,
+        resume: Bool,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> Int64 {
+        try mapErrors(request.source) {
             try transport.download(
-                source.path,
-                to: localPath,
+                request.remotePath,
+                to: request.localPath,
                 resume: resume,
                 progress: progress,
                 isCancelled: isCancelled

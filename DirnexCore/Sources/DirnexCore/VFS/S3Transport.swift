@@ -55,7 +55,7 @@ public struct S3Response: Sendable, Equatable {
 /// thing it stood in for.
 public enum S3SegmentedDownload: Sendable {
     /// Each segment's own answer, in the order the segments were given. The pieces are on disk
-    /// under the paths the requests named, and joining them is the caller's (``S3SegmentAssembly``).
+    /// under the paths the requests named, and joining them is the caller's (``SegmentAssembly``).
     case segments([S3Response])
     /// This transport could not split the request, so the **whole** object was downloaded to the
     /// destination in one stream. There is nothing to assemble and nothing to clean up.
@@ -105,12 +105,12 @@ public protocol S3Transport: Sendable {
     ) throws -> S3Response
 
     /// Download one object as several byte ranges **at once**, each into its own file, for the
-    /// caller to join (``S3SegmentAssembly``).
+    /// caller to join (``SegmentAssembly``).
     ///
     /// One download is one `curl` and therefore one TCP connection, and a single connection is not
     /// what a link gives: measured on this project's own account, one stream carried 0.98 MB/s
     /// where eight carried 4.49 aggregate, and a whole object went from ~36 s to ~5.4 s
-    /// (docs/HISTORY.md ▸ After M19). What the segments are is ``S3DownloadPlan``'s; this verb only moves them.
+    /// (docs/HISTORY.md ▸ After M19). What the segments are is ``SegmentedDownloadPlan``'s; this verb only moves them.
     ///
     /// Additive, and — like ``uploadParts(_:progress:isCancelled:)``, unlike
     /// ``copyObject(fromBucket:sourceKey:to:)`` — with a default that **forwards** rather than
@@ -128,7 +128,7 @@ public protocol S3Transport: Sendable {
     /// `progress` reports deltas as bytes land, exactly as ``download(key:to:resume:progress:isCancelled:)``
     /// does, so a caller adds them up the same way whichever implementation answers.
     func downloadSegments(
-        _ segments: [S3DownloadSegment],
+        _ segments: [DownloadSegment],
         of key: String,
         to localPath: String,
         progress: (Int64) -> Void,
@@ -311,7 +311,7 @@ public extension S3Transport {
     }
 
     func downloadSegments(
-        _ segments: [S3DownloadSegment],
+        _ segments: [DownloadSegment],
         of key: String,
         to localPath: String,
         progress: (Int64) -> Void,

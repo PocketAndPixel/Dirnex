@@ -27,7 +27,7 @@ struct S3SegmentedDownloadBackendTests {
 
         try withDirectory { directory in
             let destination = directory.appendingPathComponent("holiday.mov").path
-            let plan = try #require(S3DownloadPlan(totalSize: 5000, segmentSize: 1000))
+            let plan = try #require(SegmentedDownloadPlan(totalSize: 5000, segmentSize: 1000))
             var reported: Int64 = 0
             let moved = try backend.downloadInSegments(
                 Self.request(key: "holiday.mov", to: destination, on: backend),
@@ -57,7 +57,7 @@ struct S3SegmentedDownloadBackendTests {
 
         try withDirectory { directory in
             let destination = directory.appendingPathComponent("holiday.mov").path
-            let plan = try #require(S3DownloadPlan(totalSize: 5000, segmentSize: 1000))
+            let plan = try #require(SegmentedDownloadPlan(totalSize: 5000, segmentSize: 1000))
             #expect(throws: (any Error).self) {
                 _ = try backend.downloadInSegments(
                     Self.request(key: "holiday.mov", to: destination, on: backend),
@@ -82,7 +82,7 @@ struct S3SegmentedDownloadBackendTests {
         let backend = S3Backend(location: Self.location, transport: transport)
 
         try withDirectory { directory in
-            let plan = try #require(S3DownloadPlan(totalSize: 5000, segmentSize: 1000))
+            let plan = try #require(SegmentedDownloadPlan(totalSize: 5000, segmentSize: 1000))
             let moved = try backend.downloadInSegments(
                 Self.request(
                     key: "holiday.mov",
@@ -105,8 +105,8 @@ struct S3SegmentedDownloadBackendTests {
     func defaultForwardsToOneStream() throws {
         let transport = SingleStreamTransport()
         let segments = [
-            S3DownloadSegment(number: 1, localPath: "/tmp/1", range: 0..<100),
-            S3DownloadSegment(number: 2, localPath: "/tmp/2", range: 100..<200)
+            DownloadSegment(number: 1, localPath: "/tmp/1", range: 0..<100),
+            DownloadSegment(number: 2, localPath: "/tmp/2", range: 100..<200)
         ]
         let outcome = try transport.downloadSegments(
             segments,

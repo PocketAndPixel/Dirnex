@@ -24,7 +24,7 @@ struct S3SegmentedDownloadTests {
 
     @Test("an object well over the threshold is cut into eight")
     func eightSegments() throws {
-        let plan = try #require(S3DownloadPlan(totalSize: 100 * Self.mebibyte))
+        let plan = try #require(SegmentedDownloadPlan(totalSize: 100 * Self.mebibyte, limits: .s3))
         #expect(plan.segmentCount == 8)
         #expect(plan.segmentSize == 13_107_200) // 100 MiB over 8, rounded up
         #expect(plan.length(ofSegment: 8) == 100 * Self.mebibyte - 7 * 13_107_200)
@@ -34,20 +34,22 @@ struct S3SegmentedDownloadTests {
     /// per-request overhead is larger than the transfer each performs.
     @Test("a small object takes as many segments as the floor allows, and no more")
     func floorBoundsTheCount() throws {
-        let small = try #require(S3DownloadPlan(totalSize: 12 * Self.mebibyte))
+        let small = try #require(SegmentedDownloadPlan(totalSize: 12 * Self.mebibyte, limits: .s3))
         #expect(small.segmentCount == 3)
         #expect(small.segmentSize == 4 * Self.mebibyte)
 
-        let barely = try #require(S3DownloadPlan(totalSize: 9 * Self.mebibyte))
+        let barely = try #require(SegmentedDownloadPlan(totalSize: 9 * Self.mebibyte, limits: .s3))
         #expect(barely.segmentCount == 2)
     }
 
     @Test("no segment is ever under the floor, at any size")
     func segmentsClearTheFloor() throws {
         for megabytes in [9, 12, 17, 33, 64, 100, 512, 4096] {
-            let plan = try #require(S3DownloadPlan(totalSize: Int64(megabytes) * Self.mebibyte))
-            #expect(plan.segmentSize >= S3DownloadLimits.minimumSegmentSize)
-            #expect(plan.segmentCount <= S3DownloadLimits.maximumSegments)
+            let plan = try #require(
+                SegmentedDownloadPlan(totalSize: Int64(megabytes) * Self.mebibyte, limits: .s3)
+            )
+            #expect(plan.segmentSize >= SegmentedDownloadLimits.s3.minimumSegmentSize)
+            #expect(plan.segmentCount <= SegmentedDownloadLimits.s3.maximumSegments)
         }
     }
 
@@ -56,7 +58,7 @@ struct S3SegmentedDownloadTests {
     @Test("the segments cover every byte once, in order")
     func segmentsCoverTheObject() throws {
         for size in [10, 999, 1000, 1024, 65_536] {
-            let plan = try #require(S3DownloadPlan(totalSize: Int64(size), segmentSize: 100))
+            let plan = try #require(SegmentedDownloadPlan(totalSize: Int64(size), segmentSize: 100))
             var expected: Int64 = 0
             for number in 1...plan.segmentCount {
                 let range = try #require(plan.range(ofSegment: number))
@@ -73,9 +75,9 @@ struct S3SegmentedDownloadTests {
     /// pass, and no second connection to show for it.
     @Test("nothing under the threshold is worth splitting")
     func thresholdIsTheFork() {
-        #expect(!S3DownloadPlan.isWorthwhile(totalSize: 8 * Self.mebibyte))
-        #expect(S3DownloadPlan.isWorthwhile(totalSize: 8 * Self.mebibyte + 1))
-        #expect(!S3DownloadPlan.isWorthwhile(totalSize: 0))
+        #expect(!SegmentedDownloadPlan.isWorthwhile(totalSize: 8 * Self.mebibyte, limits: .s3))
+        #expect(SegmentedDownloadPlan.isWorthwhile(totalSize: 8 * Self.mebibyte + 1, limits: .s3))
+        #expect(!SegmentedDownloadPlan.isWorthwhile(totalSize: 0, limits: .s3))
     }
 
     /// HTTP's `Range` is **inclusive at both ends** where the Swift range is half-open. One
@@ -83,11 +85,11 @@ struct S3SegmentedDownloadTests {
     /// seam.
     @Test("the header value is inclusive at both ends")
     func headerValueIsInclusive() {
-        let segment = S3DownloadSegment(number: 1, localPath: "/tmp/1", range: 0..<1024)
+        let segment = DownloadSegment(number: 1, localPath: "/tmp/1", range: 0..<1024)
         #expect(segment.headerValue == "0-1023")
         #expect(segment.length == 1024)
         #expect(
-            S3DownloadSegment(number: 2, localPath: "/tmp/2", range: 1024..<2048).headerValue
+            DownloadSegment(number: 2, localPath: "/tmp/2", range: 1024..<2048).headerValue
                 == "1024-2047"
         )
     }
@@ -243,7 +245,7 @@ struct S3SegmentedDownloadTests {
             session: S3Session(location: location, connectTimeout: 15, maxTime: 3600),
             key: "holiday.mov",
             segments: (1...count).map {
-                S3DownloadSegment(
+                DownloadSegment(
                     number: $0,
                     localPath: "/tmp/seg\($0)",
                     range: Int64($0 - 1) * 100..<Int64($0) * 100

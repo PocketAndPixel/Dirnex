@@ -21,7 +21,7 @@ struct S3DownloadRequest {
 /// Split out of `S3Backend` by concept when the segmented download arrived and the type reached
 /// SwiftLint's `type_body_length`: the listing verbs answer "what is there", these move bytes, and
 /// the write verbs next door change what is there. Nothing here decides *sizing* — that is
-/// `S3DownloadPlan`'s and `S3MultipartPlan`'s — and nothing here spawns anything, which is the
+/// `SegmentedDownloadPlan`'s and `S3MultipartPlan`'s — and nothing here spawns anything, which is the
 /// injected transport's.
 extension S3Backend {
     /// Copy one object's bytes, in whichever of the three directions this bucket can serve.
@@ -283,8 +283,9 @@ extension S3Backend {
         let existingLocal = localFileSize(request.localPath)
         if existingLocal == 0,
            let hint = request.expectedSize,
-           S3DownloadPlan.isWorthwhile(totalSize: hint),
-           let plan = S3DownloadPlan(totalSize: hint) {
+           SegmentedDownloadPlan.isWorthwhile(totalSize: hint, limits: .s3),
+           !segmentation.isRefused,
+           let plan = SegmentedDownloadPlan(totalSize: hint, limits: .s3) {
             if let moved = try downloadInSegments(
                 request,
                 plan: plan,

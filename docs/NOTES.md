@@ -2647,6 +2647,42 @@ off a man page.
     meter onto stderr puts a three-digit speed column in front of the classifier that reads FTP reply
     codes out of that same stream — a bug this project has already paid for once.
 
+- **`curl -Z` splits a download over FTP too — and the *answers* work nothing like the HTTP twin's,
+  which is what decides the design.** Measured 2026-08-24 against a real `pyftpdlib` server. The
+  transfer half is exactly as hoped: eight `range` sections of a 40 MiB file came back as eight exact
+  pieces reassembling **SHA-256 identical**, and the server logged **eight control connections and
+  eight logins** opened within about a millisecond, each with its own `REST` + `RETR`. So a segment is
+  a *login*, not a request, which is why FTP's policy allows four of them where S3's allows eight, and
+  raises the threshold to 16 MiB. Throughput on a 4 MB/s per-connection cap, alternating rounds over
+  32 MiB: **1 stream 16.02 s, 4 segments 4.01 s, 8 segments 2.01 s** (3/3 each).
+  - **A section's reply code is a race and cannot classify anything.** One *successful* run reported
+    `225` and `226` mixed across its sections — a range download closes the data connection early, so
+    whichever reply `curl` last saw is what `%{http_code}` reports — and a *failed* section reports
+    `221`, the goodbye. A whole run has **one** exit code. So over FTP there is no per-section
+    classification at all, and the only per-section fact is the file that landed, checked against the
+    range that was asked for. That is the opposite of the S3 side, where each section has a status
+    worth attributing and 206-vs-200 is load-bearing.
+  - **No `--fail`, and that is a real difference rather than an omission.** Over HTTP the flag stops a
+    refusal's `<Error>` document being saved under the file's own name; FTP has no error document, and
+    a refused `RETR` writes nothing at all (measured: the failing sections' files were simply absent,
+    with the flag and without it).
+  - **A server that caps concurrent connections fails the run rather than degrading — and it fails it
+    expensively.** With `max_cons_per_ip=2` and eight sections, two completed *in full* and six were
+    refused `421`. So the wasted work is a quarter of the file per attempt, not a round trip, which is
+    what makes a per-connection latch worth having rather than merely tidy: measured live on the same
+    server, two downloads over one connection cost **4 logins and 1 `REST`** with a latch and **6 and
+    2** without. Latch on the narrow rule — *the server served something and the run still failed* —
+    since a missing file serves nothing and latching on that would cost every later download its fast
+    path for one absent name.
+  - **The per-section options include the security ones**, and dropping them is the quiet direction:
+    `curl` reads one option set per transfer, so `--ssl-reqd` and a certificate pin have to be
+    repeated in every section or a segmented FTPS download is a downgrade nobody asked for, on the one
+    path the user is not watching.
+  - **The segmented attempt needs no TLS-1.2 retry of its own.** Exit 18 on an FTPS data connection is
+    worth retrying pinned to 1.2 (▸ FTPS trust) — and a failed segmented run already falls back to the
+    single-stream download, which *has* that retry. Repeating it would spend a second parallel attempt
+    to reach the same place.
+
 #### FTPS trust
 
 - **`--cacert` cannot be used to trust a self-signed server.** Handing `curl` the server's own

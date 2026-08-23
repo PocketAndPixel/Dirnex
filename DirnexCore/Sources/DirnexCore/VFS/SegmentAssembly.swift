@@ -1,7 +1,7 @@
 import Foundation
 
 /// Why joining a segmented download's pieces into one file failed.
-public enum S3SegmentAssemblyError: Error, Sendable, Equatable {
+public enum SegmentAssemblyError: Error, Sendable, Equatable {
     case unreadableSegment(number: Int)
     case unwritableDestination
     /// A segment does not hold the bytes its range asked for. Raised rather than tolerated: the
@@ -24,7 +24,7 @@ public enum S3SegmentAssemblyError: Error, Sendable, Equatable {
 /// pieces are `Range` responses whose offsets are the plan's, so concatenating them in number order
 /// reproduces the object exactly. Probed against a real bucket 2026-08-20 — four sections
 /// reassembled to bytes **SHA-256 identical** to a single-stream download of the same object.
-public enum S3SegmentAssembly {
+public enum SegmentAssembly {
     /// How much is held in memory at a time. Flat, and independent of both the segment size and the
     /// object size — the same property the streaming upload was chosen for, and it would be thrown
     /// away by reading a segment in one go.
@@ -38,12 +38,12 @@ public enum S3SegmentAssembly {
     /// already at that path is a previous attempt's and is replaced rather than grown.
     @discardableResult
     public static func assemble(
-        _ segments: [S3DownloadSegment],
+        _ segments: [DownloadSegment],
         into destinationPath: String
     ) throws -> Int64 {
         guard FileManager.default.createFile(atPath: destinationPath, contents: nil),
               let destination = FileHandle(forWritingAtPath: destinationPath) else {
-            throw S3SegmentAssemblyError.unwritableDestination
+            throw SegmentAssemblyError.unwritableDestination
         }
         defer { try? destination.close() }
 
@@ -57,9 +57,9 @@ public enum S3SegmentAssembly {
     }
 
     /// Stream one segment into the open destination, and refuse one that is not its range's length.
-    private static func append(_ segment: S3DownloadSegment, to destination: FileHandle) throws -> Int64 {
+    private static func append(_ segment: DownloadSegment, to destination: FileHandle) throws -> Int64 {
         guard let source = FileHandle(forReadingAtPath: segment.localPath) else {
-            throw S3SegmentAssemblyError.unreadableSegment(number: segment.number)
+            throw SegmentAssemblyError.unreadableSegment(number: segment.number)
         }
         defer { try? source.close() }
 
@@ -69,12 +69,12 @@ public enum S3SegmentAssembly {
             do {
                 try destination.write(contentsOf: data)
             } catch {
-                throw S3SegmentAssemblyError.unwritableDestination
+                throw SegmentAssemblyError.unwritableDestination
             }
             moved += Int64(data.count)
         }
         guard moved == segment.length else {
-            throw S3SegmentAssemblyError.segmentLengthMismatch(
+            throw SegmentAssemblyError.segmentLengthMismatch(
                 number: segment.number,
                 expected: segment.length,
                 available: moved

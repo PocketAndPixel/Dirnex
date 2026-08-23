@@ -5,8 +5,8 @@ import Foundation
 /// `S3CurlTransport` sits at SwiftLint's `type_body_length` ceiling, and the seam to split on is the
 /// concept rather than the line count.
 ///
-/// It decides nothing: the ranges are `S3DownloadPlan`'s, the invocation is
-/// `S3ProcessArguments.downloadSegments`', and joining the pieces is `S3SegmentAssembly`'s, one
+/// It decides nothing: the ranges are `SegmentedDownloadPlan`'s, the invocation is
+/// `S3ProcessArguments.downloadSegments`', and joining the pieces is `SegmentAssembly`'s, one
 /// layer up in the backend. What lives here is the same three things every other verb here owns —
 /// the session's time budget, the credential going in on stdin, and the runner.
 extension S3CurlTransport {
@@ -20,7 +20,7 @@ extension S3CurlTransport {
     /// nothing asked for the object, so nothing should be fetched. It is unreachable from the
     /// backend, which only ever calls this with a plan.
     func downloadSegments(
-        _ segments: [S3DownloadSegment],
+        _ segments: [DownloadSegment],
         of key: String,
         to localPath: String,
         progress: (Int64) -> Void,

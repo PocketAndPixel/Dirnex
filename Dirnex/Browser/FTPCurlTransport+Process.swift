@@ -80,6 +80,7 @@ extension FTPCurlTransport {
     /// or the panel's background list.
     func run(
         _ arguments: [String],
+        configuration: String? = nil,
         watching source: TransferProgressWatch.Source = .none,
         progress: (Int64) -> Void = { _ in },
         isCancelled: () -> Bool = { false }
@@ -114,8 +115,11 @@ extension FTPCurlTransport {
             ))
         }
 
-        // The credential goes in here and nowhere else — not in `arguments`, not on disk.
-        let config = FTPConfigFile.credentials(for: location, password: password)
+        // The credential goes in here and nowhere else — not in `arguments`, not on disk. A caller
+        // that supplies its own configuration has already put it in — a parallel batch must, since
+        // `curl` reads one option set per transfer and each section needs its own copy
+        // (`FTPProcessArguments.downloadSegments`).
+        let config = configuration ?? FTPConfigFile.credentials(for: location, password: password)
         input.fileHandleForWriting.write(Data(config.utf8))
         try? input.fileHandleForWriting.close()
 
@@ -151,7 +155,10 @@ extension FTPCurlTransport {
 
         // `curl`'s own `--max-time` should fire first; this is the backstop for a process that is
         // wedged rather than merely slow, so it is deliberately looser than the flag.
-        let budget = curlMaxTime(in: arguments) + 30
+        let budget = max(
+            curlMaxTime(in: arguments),
+            Self.curlMaxTime(inConfiguration: config)
+        ) + 30
         switch ProcessWaiting.wait(
             for: group,
             deadline: .now() + .seconds(budget),
@@ -204,5 +211,19 @@ extension FTPCurlTransport {
               index + 1 < arguments.count,
               let value = Int(arguments[index + 1]) else { return metadataTimeout }
         return value
+    }
+
+    /// The same value when it rides in the **configuration** instead — a parallel batch puts every
+    /// per-transfer option in its sections, so `argv` carries no `--max-time` at all and the
+    /// backstop would otherwise fall back to the metadata timeout and kill a long download it was
+    /// only ever meant to catch wedged. The same trap the S3 runner already documents.
+    /// Internal rather than private so the rule can be asserted directly.
+    static func curlMaxTime(inConfiguration configuration: String) -> Int {
+        configuration.split(whereSeparator: \.isNewline).compactMap { line in
+            let parts = line.split(separator: "=", maxSplits: 1)
+            guard parts.count == 2,
+                  parts[0].trimmingCharacters(in: .whitespaces) == "max-time" else { return nil }
+            return Int(parts[1].trimmingCharacters(in: .whitespaces))
+        }.max() ?? 0
     }
 }

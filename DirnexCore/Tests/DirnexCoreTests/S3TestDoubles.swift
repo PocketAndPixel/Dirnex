@@ -82,7 +82,7 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
     /// their numbers, because the paths are what makes the cleanup assertable exactly: a test can
     /// ask whether the files this run was given still exist, rather than scanning a temp directory
     /// it shares with every other test in the process.
-    private(set) var segmentRequests: [[S3DownloadSegment]] = []
+    private(set) var segmentRequests: [[DownloadSegment]] = []
     /// The segment numbers of each run — the only place the difference between one stream and
     /// several is visible at all.
     var segmentRuns: [[Int]] { segmentRequests.map { $0.map(\.number) } }
@@ -181,7 +181,7 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
     /// particular segment, and ``ignoresRanges`` reproduces a server that answers a `Range` request
     /// with the whole object under a 200 — a success, and not the thing that was asked for.
     func downloadSegments(
-        _ segments: [S3DownloadSegment],
+        _ segments: [DownloadSegment],
         of key: String,
         to localPath: String,
         progress: (Int64) -> Void,

@@ -66,6 +66,19 @@ public struct FTPSession: Sendable, Hashable {
         self.maxTime = maxTime
     }
 
+    /// The same session with a different time budget — how a caller arms a long transfer without
+    /// loosening the metadata calls that share the connection settings. `S3Session` has the same
+    /// pair, and for the same reason.
+    public func with(maxTime: Int) -> FTPSession {
+        FTPSession(
+            location: location,
+            trust: trust,
+            tls: tls,
+            connectTimeout: connectTimeout,
+            maxTime: maxTime
+        )
+    }
+
     /// The same session with a different TLS policy — how the transport arms the 1.2 retry.
     public func with(tls: FTPTLSCompatibility) -> FTPSession {
         FTPSession(

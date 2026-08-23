@@ -138,7 +138,7 @@ struct S3CurlRunner: Sendable {
     /// buffer to every segment would let one section's noise be read as another's `<Error>`.
     func performSegments(
         _ invocation: S3ParallelInvocation,
-        segments: [S3DownloadSegment],
+        segments: [DownloadSegment],
         totalBytes: Int64,
         progress: (Int64) -> Void = { _ in },
         isCancelled: () -> Bool = { false }

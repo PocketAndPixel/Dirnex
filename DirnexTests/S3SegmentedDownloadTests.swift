@@ -93,7 +93,7 @@ struct S3SegmentedDownloadTests {
         let invocation = S3ProcessArguments.downloadSegments(
             session: S3Session(location: Self.bucket, connectTimeout: 15, maxTime: 3600),
             key: "holiday.mov",
-            segments: [S3DownloadSegment(number: 1, localPath: "/tmp/1", range: 0..<100)],
+            segments: [DownloadSegment(number: 1, localPath: "/tmp/1", range: 0..<100)],
             credentials: "user = \"id:secret\"\n"
         )
         #expect(!invocation.arguments.contains("--max-time"))
@@ -187,7 +187,7 @@ private final class RecordingS3Transport: S3Transport, @unchecked Sendable {
     }
 
     func downloadSegments(
-        _ segments: [S3DownloadSegment],
+        _ segments: [DownloadSegment],
         of key: String,
         to localPath: String,
         progress: (Int64) -> Void,

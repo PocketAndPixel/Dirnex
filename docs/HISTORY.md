@@ -11125,13 +11125,65 @@ searching (3 hits at three depths inside a zip).
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-08-23)
 
-Twenty-seven dated passes that landed outside a milestone of their own, between M18's close on
+Twenty-eight dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-08-24: user-reported bugs, three vault features, the tree crossing into S3,
 and the chain of five that one S3 rename pulled apart. They ran *alongside* M20, M21 and M22
 rather than after them — which is why they sit here at the end rather than in a numeric slot —
 and they keep their **newest-first** order, because several read as a chain and refer to the
 entry below. Moved out of [PLAN.md](../PLAN.md) §4 on 2026-08-23, once the plan had nothing left
 to say about them; what is still open from this stretch stayed there.
+
+**2026-08-24 — FTP downloads split too, over four logins rather than eight requests.** PLAN.md had
+this as a *separate decision* rather than a follow-through, on the grounds that each segment is a
+fresh login and many servers cap concurrent ones — so it opened with six measurements against a real
+`pyftpdlib` server, and four of them changed the design rather than confirming it.
+
+**It works, and the wire says how.** Eight sections of a 40 MiB file came back as eight exact pieces
+that reassembled **SHA-256 identical**; the server logged **eight control connections and eight
+logins**, all opened within about a millisecond, each sending its own `REST` + `RETR`. So a segment
+really is a login, which is the fact the rest of the design hangs on. Throughput, alternating rounds
+on a 32 MiB file with a 4 MB/s per-connection cap: **1 stream 16.02 s, 4 segments 4.01 s, 8 segments
+2.01 s**, 3/3 each.
+
+**A section tells you almost nothing, which is the opposite of the S3 half.** One *successful* run
+reported `225` and `226` mixed across its sections — a range download closes the data connection
+early, so whichever reply `curl` saw last is what it reports — and a failed section reports `221`,
+the goodbye. One `curl` carrying N transfers has **one** exit code. So there is no per-section
+classification to read at all: the only per-section fact is the file that landed, checked against its
+range by the assembly that was already there. That also retires two flags the S3 invocation carries —
+no `--fail` (FTP writes no error document; a refused `RETR` creates nothing, measured) and no
+write-out (there would be nothing worth reading, and having one would invite somebody to read it).
+
+**A server that caps concurrent connections does not degrade — it fails the run.** With a cap of 2
+and eight sections, two completed and six were refused `421`. That is the commonest way this can
+fail, it is invisible to the user, and no error message would help them with somebody else's
+connection limit — so **any** failure falls back to a single stream, silently, which is what worked
+before. The retry reports no further progress, or one file would be counted twice in a job total that
+only adds.
+
+**And the fallback is not free, so the connection remembers.** Those two completed sections were a
+quarter of the file, downloaded and thrown away — a price that without a latch is paid again for
+every file. `SegmentedDownloadSupport` latches on a rule narrower than "the run failed": *the server
+served us something and it still failed*. A missing file serves nothing, and latching on that would
+cost every later download its fast path for one absent name. Measured live on a capped server, two
+downloads on one connection: **4 logins and 1 `REST` with the latch, 6 and 2 without**.
+
+**The core is now one implementation with two policy tables.** `S3DownloadPlan` became
+`SegmentedDownloadPlan` and `S3SegmentAssembly` became `SegmentAssembly`, with the constants moving
+into `SegmentedDownloadLimits.s3` (8 MiB, 4 MiB, 8) and `.ftp` (**16 MiB, 8 MiB, 4**) — twice the
+threshold and half the ceiling, because a segment costs a login rather than a handshake and because
+four sections meet fewer caps than eight. Two copies of that arithmetic is the bug this file writes
+essays about; two tables is the honest difference. The same reasoning gave the S3 side the latch it
+was missing, where an endpoint answering a range request with the whole object costs **every** section
+the whole object.
+
+Verified live end to end through the real `CompositeBackend` → `FTPBackend` → `FTPCurlTransport` →
+`curl`: 32 MiB byte-identical in **4.05 s** against the single stream's 16.02 s on the same throttled
+server, progress summing to exactly 33 554 432; and on the capped server, 2 doomed logins + 1
+fallback producing a byte-identical file. Six headless controls fire on their own assertions —
+dropping `--parallel-immediate`, dropping the per-section TLS half (which is what stops a segmented
+download quietly losing `--ssl-reqd` or a certificate pin), reporting a refusal instead of falling
+back, removing the latch, latching on *any* failure, and giving FTP S3's limits.
 
 **2026-08-24 — and a download's ranges go eight at a time.** The upload half's mirror image, and the
 design PLAN.md §4 had carried since 2026-08-20 without anyone building it: a download was one `curl`

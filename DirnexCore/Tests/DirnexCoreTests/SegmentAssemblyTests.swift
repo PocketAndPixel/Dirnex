@@ -9,15 +9,15 @@ import Testing
 /// is the whole correctness argument, since they are `Range` responses whose offsets are the plan's
 /// — and a piece that is not its range's length is **refused**, in either direction. Nothing
 /// downstream would notice a hole in the middle of a document, which is why it is caught here.
-@Suite("S3 segment assembly")
-struct S3SegmentAssemblyTests {
+@Suite("Segment assembly")
+struct SegmentAssemblyTests {
     // MARK: - Joining the pieces
 
     @Test("the pieces are spliced in order and each is deleted as it lands")
     func assemblesInOrder() throws {
         try withDirectory { directory in
             let object = Data((0..<1000).map { UInt8($0 % 251) })
-            let plan = try #require(S3DownloadPlan(totalSize: 1000, segmentSize: 300))
+            let plan = try #require(SegmentedDownloadPlan(totalSize: 1000, segmentSize: 300))
             let segments = plan.segments(under: directory)
             for segment in segments {
                 try Self.slice(object, segment.range)
@@ -25,7 +25,7 @@ struct S3SegmentAssemblyTests {
             }
             let destination = directory.appendingPathComponent("out.bin").path
 
-            let written = try S3SegmentAssembly.assemble(segments, into: destination)
+            let written = try SegmentAssembly.assemble(segments, into: destination)
             #expect(written == 1000)
             #expect(try Data(contentsOf: URL(fileURLWithPath: destination)) == object)
             // Peak disk is the object plus one segment, not the object twice, and this is what
@@ -39,19 +39,19 @@ struct S3SegmentAssemblyTests {
     @Test("a segment that is not its range's length is refused, by number")
     func refusesAShortSegment() throws {
         try withDirectory { directory in
-            let plan = try #require(S3DownloadPlan(totalSize: 300, segmentSize: 100))
+            let plan = try #require(SegmentedDownloadPlan(totalSize: 300, segmentSize: 100))
             let segments = plan.segments(under: directory)
             for segment in segments {
                 let short = segment.number == 2 ? 40 : 100
                 try Data(repeating: 7, count: short)
                     .write(to: URL(fileURLWithPath: segment.localPath))
             }
-            #expect(throws: S3SegmentAssemblyError.segmentLengthMismatch(
+            #expect(throws: SegmentAssemblyError.segmentLengthMismatch(
                 number: 2,
                 expected: 100,
                 available: 40
             )) {
-                _ = try S3SegmentAssembly.assemble(
+                _ = try SegmentAssembly.assemble(
                     segments,
                     into: directory.appendingPathComponent("out.bin").path
                 )
@@ -65,18 +65,18 @@ struct S3SegmentAssemblyTests {
     @Test("a segment longer than its range is refused too")
     func refusesALongSegment() throws {
         try withDirectory { directory in
-            let plan = try #require(S3DownloadPlan(totalSize: 200, segmentSize: 100))
+            let plan = try #require(SegmentedDownloadPlan(totalSize: 200, segmentSize: 100))
             let segments = plan.segments(under: directory)
             for segment in segments {
                 try Data(repeating: 7, count: 200)
                     .write(to: URL(fileURLWithPath: segment.localPath))
             }
-            #expect(throws: S3SegmentAssemblyError.segmentLengthMismatch(
+            #expect(throws: SegmentAssemblyError.segmentLengthMismatch(
                 number: 1,
                 expected: 100,
                 available: 200
             )) {
-                _ = try S3SegmentAssembly.assemble(
+                _ = try SegmentAssembly.assemble(
                     segments,
                     into: directory.appendingPathComponent("out.bin").path
                 )
@@ -87,12 +87,12 @@ struct S3SegmentAssemblyTests {
     @Test("a piece that is not there names itself")
     func refusesAMissingSegment() throws {
         try withDirectory { directory in
-            let plan = try #require(S3DownloadPlan(totalSize: 200, segmentSize: 100))
+            let plan = try #require(SegmentedDownloadPlan(totalSize: 200, segmentSize: 100))
             let segments = plan.segments(under: directory)
             try Data(repeating: 1, count: 100)
                 .write(to: URL(fileURLWithPath: segments[0].localPath))
-            #expect(throws: S3SegmentAssemblyError.unreadableSegment(number: 2)) {
-                _ = try S3SegmentAssembly.assemble(
+            #expect(throws: SegmentAssemblyError.unreadableSegment(number: 2)) {
+                _ = try SegmentAssembly.assemble(
                     segments,
                     into: directory.appendingPathComponent("out.bin").path
                 )
