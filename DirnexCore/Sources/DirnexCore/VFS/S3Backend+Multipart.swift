@@ -19,6 +19,13 @@ import Foundation
 /// - **Progress that moves.** The single-`PUT` path can only report its bytes once, at the end,
 ///   because the whole object is one `curl` invocation; here each part reports as it lands, which
 ///   is what makes a determinate bar honest on a file that takes an hour.
+///
+/// The parts go **several at a time** (docs/HISTORY.md ▸ After M19). One part is one connection,
+/// and one connection is not what a link gives — measured on this project's own account, one
+/// stream carried 0.98 MB/s where four carried 3.13 aggregate — so a loop that sends one 16 MiB
+/// part and waits leaves most of the link idle. How many go at once is the plan's
+/// (``S3MultipartPlan/partsInFlight``), because the bound that decides it is the *disk*: every
+/// part in flight is a slice cut to a temp file first.
 /// What one multipart upload is about: the local bytes, where they are going, and how they are cut.
 ///
 /// Bundled rather than passed as four parameters because every step of the upload needs the same
@@ -68,14 +75,11 @@ extension S3Backend {
         var parts: [S3UploadedPart] = []
         var moved: Int64 = 0
         do {
-            for number in 1...plan.partCount {
+            for numbers in plan.batches {
                 if isCancelled() { throw CancellationError() }
-                guard let range = plan.range(ofPart: number) else {
-                    throw VFSError.io(path: destination, code: EIO)
-                }
                 var streamed: Int64 = 0
-                let part = try sendPart(
-                    PlannedPart(number: number, range: range),
+                parts += try sendBatch(
+                    numbers,
                     of: request,
                     uploadID: uploadID,
                     progress: { delta in
@@ -84,8 +88,7 @@ extension S3Backend {
                     },
                     isCancelled: isCancelled
                 )
-                parts.append(part)
-                let length = range.upperBound - range.lowerBound
+                let length = numbers.reduce(0) { $0 + plan.length(ofPart: $1) }
                 moved += length
                 reportRemainder(of: length, streamed: streamed, to: progress)
             }
@@ -119,52 +122,93 @@ extension S3Backend {
         return uploadID
     }
 
-    /// Cut one part out of the file, send it, and return what the server called it.
+    /// Cut this batch's parts out of the file, send them **together**, and return what the server
+    /// called each one.
     ///
-    /// The slice is removed on every exit path including the throwing ones, so a failed upload of a
-    /// 100 GB file does not leave a part behind in the temp directory.
-    private func sendPart(
-        _ planned: PlannedPart,
+    /// Every slice is removed on every exit path including the throwing ones, so a failed upload of
+    /// a 100 GB file leaves nothing behind in the temp directory. They are cut before the batch
+    /// rather than during it because `curl` reads each one as a file: what is on disk at once is
+    /// ``S3MultipartPlan/partsInFlight`` slices, which is the bound that number exists to keep.
+    ///
+    /// A batch answers **per part**, and the first failing part in *number* order is the one
+    /// reported — not the first to answer, which is whichever section the network happened to
+    /// finish first and would make one failure name a different part on each run.
+    private func sendBatch(
+        _ numbers: [Int],
         of request: S3MultipartRequest,
         uploadID: String,
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
-    ) throws -> S3UploadedPart {
+    ) throws -> [S3UploadedPart] {
         let destination = request.destination
-        let slicePath = FileManager.default.temporaryDirectory
-            .appendingPathComponent("dirnex-s3-part-\(UUID().uuidString)")
-        defer { try? FileManager.default.removeItem(at: slicePath) }
-
-        do {
-            _ = try S3PartSlice.write(
-                from: request.localPath,
-                range: planned.range,
-                to: slicePath.path
-            )
-        } catch {
-            // The source is local, so a slice failure is about this machine's disk or about the file
-            // changing underneath the upload — never about S3.
-            throw VFSError.io(path: destination, code: EIO)
+        let planned = try numbers.map { number -> PlannedPart in
+            guard let range = request.plan.range(ofPart: number) else {
+                throw VFSError.io(path: destination, code: EIO)
+            }
+            return PlannedPart(number: number, range: range)
         }
+        let slices = planned.map { part in
+            (
+                part: part,
+                url: FileManager.default.temporaryDirectory
+                    .appendingPathComponent("dirnex-s3-part-\(UUID().uuidString)")
+            )
+        }
+        defer { slices.forEach { try? FileManager.default.removeItem(at: $0.url) } }
+        try cut(slices, of: request)
 
-        let response = try write(at: destination) {
-            try transport.uploadPart(
-                S3PartRequest(
-                    localPath: slicePath.path,
-                    key: request.key,
-                    uploadID: uploadID,
-                    number: planned.number
-                ),
+        let responses = try mapping(destination) {
+            try transport.uploadParts(
+                slices.map {
+                    S3PartRequest(
+                        localPath: $0.url.path,
+                        key: request.key,
+                        uploadID: uploadID,
+                        number: $0.part.number
+                    )
+                },
                 progress: progress,
                 isCancelled: isCancelled
             )
         }
-        guard let etag = response.etag, !etag.isEmpty else {
-            // A part with no ETag cannot be named in the manifest, so the upload can never be
-            // completed — fail here, where the abort still runs, rather than at the completion.
+        guard responses.count == slices.count else {
+            // A transport that answered for a different set of parts cannot be reconciled with the
+            // manifest, and pressing on would complete an upload naming parts nobody sent.
             throw VFSError.io(path: destination, code: EIO)
         }
-        return S3UploadedPart(number: planned.number, etag: etag)
+        return try zip(slices, responses).map { slice, response in
+            if let service = Self.serviceError(from: response) {
+                throw service.vfsError(for: destination)
+            }
+            guard let etag = response.etag, !etag.isEmpty else {
+                // A part with no ETag cannot be named in the manifest, so the upload can never be
+                // completed — fail here, where the abort still runs, rather than at the completion.
+                throw VFSError.io(path: destination, code: EIO)
+            }
+            return S3UploadedPart(number: slice.part.number, etag: etag)
+        }
+    }
+
+    /// Write each planned part's bytes into its own temp file.
+    ///
+    /// A slice failure is about **this machine** — its disk, or the file changing underneath the
+    /// upload — and never about S3, which is why it is mapped here rather than left to look like a
+    /// transfer error.
+    private func cut(
+        _ slices: [(part: PlannedPart, url: URL)],
+        of request: S3MultipartRequest
+    ) throws {
+        for slice in slices {
+            do {
+                _ = try S3PartSlice.write(
+                    from: request.localPath,
+                    range: slice.part.range,
+                    to: slice.url.path
+                )
+            } catch {
+                throw VFSError.io(path: request.destination, code: EIO)
+            }
+        }
     }
 
     /// Hand over the manifest, and read the **body** as well as the status.

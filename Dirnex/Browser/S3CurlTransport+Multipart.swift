@@ -48,6 +48,34 @@ extension S3CurlTransport {
     /// parts of `<Part>` markup runs past `ARG_MAX`, so an inline manifest would work right up to
     /// the file sizes multipart exists for. It carries no secret — part numbers and ETags — and is
     /// removed on every exit path, the throwing ones included.
+    /// Several parts at once, in one `curl` — what makes a large upload finish in a fraction of
+    /// the time (`S3ProcessArguments.uploadParts`, which argues the flags and what was measured).
+    ///
+    /// The credential goes into the **configuration** here rather than being added by the runner,
+    /// because `curl` reads one option set per transfer and each section needs its own copy. It
+    /// still never touches `argv`, which is the property that matters.
+    func uploadParts(
+        _ parts: [S3PartRequest],
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> [S3Response] {
+        guard !parts.isEmpty else { return [] }
+        let invocation = S3ProcessArguments.uploadParts(
+            session: session(maxTime: transferTimeout),
+            parts: parts,
+            credentials: S3ConfigFile.credentials(
+                accessKeyID: location.accessKeyID,
+                secretAccessKey: secretAccessKey
+            )
+        )
+        return try runner.performParts(
+            invocation,
+            parts: parts,
+            progress: progress,
+            isCancelled: isCancelled
+        )
+    }
+
     func completeMultipartUpload(
         key: String,
         uploadID: String,

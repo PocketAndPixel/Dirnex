@@ -27,11 +27,19 @@ final class TransferProgressWatch: @unchecked Sendable {
         case destinationFile(path: String)
         /// `curl`'s percentage meter on stderr, against a total the caller knows exactly.
         case uploadMeter(totalBytes: Int64)
+        /// A **parallel** part upload's own write-out lines, with each part's length — the only
+        /// observable a batch has, since several transfers share one meter and nothing local grows.
+        /// A part reports its whole length the moment its `s3-part<n>-status=` line lands.
+        case uploadedParts(lengths: [Int: Int64])
     }
 
     private let source: Source
     private let lock = NSLock()
     private var meter = CurlProgressMeter()
+    /// Fed the same text as the meter, and read only by ``Source/uploadedParts(lengths:)``. Two
+    /// readers rather than one because they answer different questions of the same stream: the
+    /// meter reads `curl`'s table, this reads the labels we asked `curl` to print.
+    private var parts = S3PartWriteOut()
     private var tally: TransferProgressTally
 
     init(_ source: Source) {
@@ -51,6 +59,7 @@ final class TransferProgressWatch: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         meter.consume(text)
+        parts.consume(text)
     }
 
     /// Report whatever has landed since the last turn. Called on the waiting thread — the operation
@@ -73,6 +82,9 @@ final class TransferProgressWatch: @unchecked Sendable {
             return tally.delta(forDestinationSize: Self.fileSize(path))
         case let .uploadMeter(totalBytes):
             guard let moved = meter.bytesTransferred(ofTotal: totalBytes) else { return nil }
+            return tally.delta(movedSoFar: moved)
+        case let .uploadedParts(lengths):
+            let moved = parts.completedParts.reduce(0) { $0 + (lengths[$1] ?? 0) }
             return tally.delta(movedSoFar: moved)
         }
     }

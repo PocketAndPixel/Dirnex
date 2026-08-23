@@ -13,17 +13,28 @@ Path-style addressing, so a bucket is the first URL segment and two buckets shar
 processes on two ports are two *services*, which is the distinction the copy route turns on. Set
 `REFUSE_COPY=1` to answer every server-side copy with the refusal S3 gives a source over 5 GiB,
 which is the branch that has no other way to be reached.
+
+It speaks enough **multipart** to run a real upload — create, part, complete, abort — and logs each
+part's start and end, which is how the parallel upload was shown to be parallel: four parts opening
+at the same instant rather than one after another. `DELAY=<seconds>` holds every response open, so
+overlap is visible on a machine fast enough to hide it otherwise.
 """
 import json
 import os
 import sys
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote
 
 PORT = int(sys.argv[1])
 LOG = sys.argv[2]
 REFUSE_COPY = os.environ.get("REFUSE_COPY") == "1"
+DELAY = float(os.environ.get("DELAY", "0"))
+# Hold each part open for DELAY x its number, so parts in one batch finish at different times —
+# which is what makes per-part progress reporting visible rather than merely believed.
+STAGGER = os.environ.get("STAGGER") == "1"
 OBJECTS = {}  # "bucket/key" -> bytes
+UPLOADS = {}  # upload id -> {part number: bytes}
 
 
 def note(entry):
@@ -64,6 +75,40 @@ class Handler(BaseHTTPRequestHandler):
         body = OBJECTS.get(target)
         self._send(200 if body is not None else 404, b"")
 
+    def _query(self, name):
+        if "?" not in self.path:
+            return None
+        for pair in self.path.split("?", 1)[1].split("&"):
+            key, _, value = pair.partition("=")
+            if key == name:
+                return unquote(value)
+        return None
+
+    def do_POST(self):
+        target = self._target()
+        length = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(length) if length else b""
+        upload = self._query("uploadId")
+        if upload is None:  # ?uploads — open one
+            upload = "upload-%d" % (len(UPLOADS) + 1)
+            UPLOADS[upload] = {}
+            note({"method": "CREATE", "target": target, "uploadId": upload})
+            self._send(200, ("<InitiateMultipartUploadResult><UploadId>%s</UploadId>"
+                             "</InitiateMultipartUploadResult>" % upload).encode())
+            return
+        parts = UPLOADS.pop(upload, {})
+        note({"method": "COMPLETE", "target": target, "uploadId": upload,
+              "parts": len(parts), "bytes": sum(len(v) for v in parts.values())})
+        OBJECTS[target] = b"".join(parts[n] for n in sorted(parts))
+        self._send(200, b"<CompleteMultipartUploadResult><ETag>\"whole\"</ETag>"
+                        b"</CompleteMultipartUploadResult>")
+
+    def do_DELETE(self):
+        upload = self._query("uploadId")
+        note({"method": "ABORT", "target": self._target(), "uploadId": upload})
+        UPLOADS.pop(upload, None)
+        self._send(204)
+
     def do_PUT(self):
         target = self._target()
         source = self.headers.get("x-amz-copy-source")
@@ -85,8 +130,18 @@ class Handler(BaseHTTPRequestHandler):
             OBJECTS[target] = body
             self._send(200, b"<CopyObjectResult><ETag>\"deadbeef\"</ETag></CopyObjectResult>")
             return
+        started = time.time()
         length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(length) if length else b""
+        upload, number = self._query("uploadId"), self._query("partNumber")
+        if DELAY:
+            time.sleep(DELAY * (int(number) if STAGGER and number else 1))
+        if upload and number:
+            UPLOADS.setdefault(upload, {})[int(number)] = body
+            note({"method": "PART", "part": int(number), "bytes": len(body),
+                  "start": round(started, 3), "end": round(time.time(), 3)})
+            self._send(200, b"", {"ETag": '"etag-part-%s"' % number})
+            return
         note({"method": "PUT", "target": target, "bytes": len(body)})
         OBJECTS[target] = body
         self._send(200, b"", {"ETag": '"deadbeef"'})

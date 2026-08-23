@@ -150,7 +150,7 @@ non-empty folder, which hid three folders Finder shows.
 ### After M19
 
 M19 closed on 2026-08-09; M20 opened and closed 2026-08-12, M22 on 08-16, M21 on 08-19.
-Twenty-five further passes landed between 2026-08-07 and 2026-08-23 without a milestone of their own, and
+Twenty-six further passes landed between 2026-08-07 and 2026-08-23 without a milestone of their own, and
 every one of them is shipped — so that log lives in **[docs/HISTORY.md](docs/HISTORY.md) ▸ After
 M19** with the rest of the archive, together with the two passes that closed M19's own loose ends.
 
@@ -232,10 +232,14 @@ partial already on disk still takes the resuming path untouched. **N requests in
 the threshold, on a verb billed per thousand. And the segment count stays a **policy constant
 measured on one link** — re-measure with interleaved rounds before tuning it.
 
-Scope is **S3 downloads only**. Multipart *upload* is still sequential (`S3Backend+Multipart`
-loops parts one at a time) and has the same headroom; FTP could take the same shape, since `--range`
-works there too, but each segment is a fresh login and many servers cap concurrent ones. Both are
-separate decisions, neither taken.
+Scope is **S3 downloads only**. Multipart *upload* had the same headroom and **took this shape on
+2026-08-23**, before the download half was built — one `curl -Z` per batch of parts, sections on
+stdin, indexed write-outs, and no new concurrency anywhere (docs/HISTORY.md ▸ After M19). So the
+design above is no longer only designed: its central claim has been exercised in the other
+direction, and one thing it does not mention turned out to be load-bearing — **`--parallel-immediate`**,
+without which `curl` runs the first transfer alone before starting the rest. FTP could take the
+same shape, since `--range` works there too, but each segment is a fresh login and many servers cap
+concurrent ones; that one is still a separate decision, not taken.
 
 ## 5. Cross-cutting: testing strategy
 

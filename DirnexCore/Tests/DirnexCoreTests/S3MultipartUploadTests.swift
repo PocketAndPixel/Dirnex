@@ -183,8 +183,16 @@ struct S3MultipartUploadTests {
         #expect(transport.sliceSizes == [400, 400, 200])
     }
 
-    @Test("progress reports one delta per part, summing to the file")
-    func progressIsPerPartDelta() throws {
+    /// Deltas, and they add up to the file — the two claims `CopyEngine` rests on.
+    ///
+    /// **One delta per *batch*, not per part**, and that is the parallel upload showing through: a
+    /// batch's parts are in flight together, so the moment any of them has "landed" is the moment
+    /// the batch answers. What reports *inside* a batch is the transport — the real one reads each
+    /// part's own write-out as it arrives (``S3PartWriteOut``) — and this fake reports nothing, so
+    /// what is left is the backend's own reconciliation at the end of each batch. Three parts, one
+    /// batch (``S3MultipartPlan/partsInFlight`` is 4), one delta of the whole file.
+    @Test("progress reports deltas that sum to the file, one per batch")
+    func progressIsPerBatchDelta() throws {
         let transport = FakeS3Transport()
         let backend = S3Backend(location: location, transport: transport)
         var deltas: [Int64] = []
@@ -198,7 +206,7 @@ struct S3MultipartUploadTests {
         }
         // Deltas, not a running total: `CopyEngine` adds them up, so cumulative values here would
         // count every byte of a large file several times over.
-        #expect(deltas == [400, 400, 200])
+        #expect(deltas == [1000])
         #expect(deltas.reduce(0, +) == 1000)
     }
 

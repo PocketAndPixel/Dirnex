@@ -73,6 +73,63 @@ struct S3CurlRunner: Sendable {
         )
     }
 
+    /// Run one invocation that carries **several** part uploads and answer for each of them, in
+    /// the order they were given.
+    ///
+    /// The single-response `perform` cannot serve this: four sections print four statuses into one
+    /// stream, so the answers are read out of the *indexed* write-out each section was given
+    /// (``S3PartWriteOut``) rather than from one set of labels. Everything else is the same run —
+    /// one process, both pipes drained, the wait bounded, one `terminate()` on cancel that stops
+    /// every section at once, which is the whole reason a batch is one `curl` rather than several.
+    ///
+    /// A part with **no status at all** is a transport failure rather than a refusal: `curl` prints
+    /// nothing for a section it never ran, which is what a bad argument or a terminated process
+    /// looks like. A part that ran and was refused has a status, and is classified by the caller
+    /// exactly as any other response is.
+    ///
+    /// The body is the whole invocation's stdout, handed to every part. It is only ever read for a
+    /// part that failed (`serviceError(from:)` ignores it on success), and an `UploadPart` that
+    /// succeeds answers with no body at all — so in the ordinary single-failure case it is exactly
+    /// that part's `<Error>` document. Several failing parts in one batch share it, which costs the
+    /// `<Code>` its attribution and not its accuracy: they are refused for the same reason.
+    func performParts(
+        _ invocation: S3ParallelInvocation,
+        parts: [S3PartRequest],
+        progress: (Int64) -> Void = { _ in },
+        isCancelled: () -> Bool = { false }
+    ) throws -> [S3Response] {
+        let lengths = Dictionary(
+            uniqueKeysWithValues: parts.map { ($0.number, Self.fileSize($0.localPath)) }
+        )
+        let result = try run(
+            invocation.arguments,
+            configuration: invocation.configuration,
+            watching: .uploadedParts(lengths: lengths),
+            progress: progress,
+            isCancelled: isCancelled
+        )
+        let reported = S3PartWriteOut.parse(stderr: result.standardError)
+        return try parts.map { part in
+            guard let fields = reported.fields(forPart: part.number) else {
+                throw S3ResponseError.transport(.classify(curlExit: result.exitCode))
+            }
+            return S3Response(
+                status: fields.status,
+                body: result.standardOutput,
+                bytesTransferred: fields.bytesUploaded,
+                etag: fields.etag
+            )
+        }
+    }
+
+    /// The size of a local file, or 0 when it cannot be read — a part whose length is unknown
+    /// simply reports nothing, which is the same "no estimate available" the meter falls back to.
+    private static func fileSize(_ path: String) -> Int64 {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: path),
+              let size = attributes[.size] as? Int64 else { return 0 }
+        return size
+    }
+
     private struct RunResult {
         let standardOutput: Data
         let standardError: String
@@ -83,6 +140,7 @@ struct S3CurlRunner: Sendable {
     /// wait. Blocks; call it off the main thread.
     private func run(
         _ arguments: [String],
+        configuration: String? = nil,
         watching source: TransferProgressWatch.Source,
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
@@ -114,8 +172,11 @@ struct S3CurlRunner: Sendable {
             throw S3ResponseError.transport(.other)
         }
 
-        // The secret goes in here and nowhere else — not in `arguments`, not on disk.
-        let config = S3ConfigFile.credentials(
+        // The secret goes in here and nowhere else — not in `arguments`, not on disk. A caller
+        // that supplies its own configuration has already put the credential in it — a parallel
+        // batch must, since `curl` reads one option set per transfer and each section needs its own
+        // (`S3ProcessArguments.uploadParts`).
+        let config = configuration ?? S3ConfigFile.credentials(
             accessKeyID: accessKeyID,
             secretAccessKey: secretAccessKey
         )
@@ -159,7 +220,7 @@ struct S3CurlRunner: Sendable {
 
         // `curl`'s own `--max-time` should fire first; this is the backstop for a process that is
         // wedged rather than merely slow, so it is deliberately looser than the flag.
-        let budget = curlMaxTime(in: arguments) + 30
+        let budget = max(curlMaxTime(in: arguments), Self.curlMaxTime(inConfiguration: config)) + 30
         switch ProcessWaiting.wait(
             for: group,
             deadline: .now() + .seconds(budget),
@@ -200,5 +261,20 @@ struct S3CurlRunner: Sendable {
               index + 1 < arguments.count,
               let value = Int(arguments[index + 1]) else { return fallbackTimeout }
         return value
+    }
+
+    /// The same value when it rides in the **configuration** instead — a parallel batch puts every
+    /// per-transfer option in its sections, so `argv` carries no `--max-time` at all and the
+    /// backstop would otherwise fall back to the metadata timeout and kill a long upload it was
+    /// only ever meant to catch wedged.
+    /// Internal rather than private so the rule can be asserted directly: it is the difference
+    /// between a bound that matches what `curl` was told and one that kills a long upload.
+    static func curlMaxTime(inConfiguration configuration: String) -> Int {
+        configuration.split(whereSeparator: \.isNewline).compactMap { line in
+            let parts = line.split(separator: "=", maxSplits: 1)
+            guard parts.count == 2,
+                  parts[0].trimmingCharacters(in: .whitespaces) == "max-time" else { return nil }
+            return Int(parts[1].trimmingCharacters(in: .whitespaces))
+        }.max() ?? 0
     }
 }

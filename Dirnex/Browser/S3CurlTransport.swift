@@ -239,7 +239,9 @@ struct S3CurlTransport: S3Transport {
 
     /// The process plumbing, which this shares with the account-level bucket list — see
     /// ``S3CurlRunner`` for the three rules that live there.
-    private var runner: S3CurlRunner {
+    /// Internal rather than private so `S3CurlTransport+Multipart` can drive a batch through it —
+    /// Swift's `private` does not cross files (docs/NOTES.md ▸ Lint ceilings and file splitting).
+    var runner: S3CurlRunner {
         S3CurlRunner(
             accessKeyID: location.accessKeyID,
             secretAccessKey: secretAccessKey,

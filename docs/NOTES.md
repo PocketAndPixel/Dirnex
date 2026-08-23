@@ -3132,6 +3132,50 @@ what made the milestone affordable and the rest inverted rules borrowed from the
   leaves the user paying for bytes they cannot see and did not keep. Abort on every failing exit
   including cancellation, and let the abort swallow its own failure: it runs where something has
   already gone wrong, and the caller's error is the one worth reporting.
+- **`curl -Z` runs the first transfer alone unless you tell it not to, and nothing says so.** A
+  batch of transfers given as `-K` config sections runs in parallel — except that `curl` holds the
+  rest back until the first one finishes, so it can see whether the connection is reusable.
+  Measured 2026-08-23 (8.7.1, four 8 MiB `-T` uploads against a local endpoint logging each
+  request's start and end): **1.02 s** without `--parallel-immediate`, the first part alone and
+  then three together, against **0.51 s** with it and all four opening at 0.000. A batch of N
+  therefore costs two rounds instead of one, which reads as "parallelism is only helping half as
+  much as it should" and produces no error, no log line and no failing test.
+  - **Every per-transfer option belongs in the section, not in `argv`.** The credential, the
+    signature specifier and both timeouts are repeated per section; `argv` carries only `-Z`, the
+    concurrency cap and the silencing. The credential repeated per section still never reaches
+    `argv`, which is the property that matters — and the *time budget* moving into the config is a
+    trap one layer out: a runner deriving its own backstop from `--max-time` in the arguments finds
+    none and falls back to the metadata timeout, terminating a healthy upload part-way through.
+  - **A section's write-out is emitted the moment that section finishes**, not at the end of the
+    run — which is what makes it a *progress* source and not merely a result. It is the only
+    observable a parallel upload has: several transfers share one meter, and nothing local grows the
+    way a download's destination file does.
+  - **With the meter on, a section that finishes mid-row glues its first field to that row** —
+    `…15.9M      s3-part4-status=200` — and a reader keyed on a line *prefix* drops it. Two answers,
+    both taken: the batch runs with the meter off (`-sS`), and every write-out opens with a newline
+    of its own. It costs a byte and it covers `curl`'s own prose, which shares the stream regardless.
+  - **Index the labels by transfer.** Four sections printing `s3-status=` into one stream cannot be
+    told apart at all; `s3-part<n>-status=` can, in any order. And the distinction that decides the
+    error is *absence*: a section that ran and was refused has a status, while one `curl` never ran
+    (a bad argument, a terminated process) prints nothing — so "no status" is a transport failure
+    and "status 403" is a service refusal, and a reader that conflates them reports the wrong thing
+    on every cancelled batch.
+  - **`--fail` is the flag to leave off here**, for the reason this file already gives for every
+    other S3 invocation: the `<Error>` document *is* the classification. A refused `UploadPart` is
+    the only thing that writes a body on that verb (a successful one answers with headers alone), so
+    stdout in the ordinary single-failure case is exactly that part's error, and `--fail` would
+    throw it away.
+
+- **An additive protocol requirement may *forward* to the old one only when the two are
+  indistinguishable in their result — otherwise it must throw.** Three of these now sit side by side
+  in `S3Transport` and the rule is what keeps them from being one decision made three ways: a
+  batched part upload forwards to a sequential loop (same object, slower), a segmented download
+  would forward to a single stream (same file), and a **cross-bucket copy must refuse**, because a
+  transport that ignored the bucket would copy a different object under the right name and report
+  success. The question to ask of a default is not "is this capability optional" but "can the caller
+  tell that it was not honoured" — the same test ``S3WriteCondition`` applies to a precondition that
+  went missing.
+
 - **`curl` signs `If-Match` and `If-None-Match` too, so a conditional write needs no new machinery —
   and the ETag's *quotes* are part of the value.** Probed 2026-08-16 against an endpoint that
   recomputes SigV4 by hand, driven the way the app drives it (`-K -`, `--aws-sigv4`, `-T`): both

@@ -11125,13 +11125,64 @@ searching (3 hits at three depths inside a zip).
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-08-23)
 
-Twenty-five dated passes that landed outside a milestone of their own, between M18's close on
+Twenty-six dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-08-23: user-reported bugs, three vault features, the tree crossing into S3,
 and the chain of five that one S3 rename pulled apart. They ran *alongside* M20, M21 and M22
 rather than after them — which is why they sit here at the end rather than in a numeric slot —
 and they keep their **newest-first** order, because several read as a chain and refer to the
 entry below. Moved out of [PLAN.md](../PLAN.md) §4 on 2026-08-23, once the plan had nothing left
 to say about them; what is still open from this stretch stayed there.
+
+**2026-08-23 — a multipart upload's parts now go four at a time.** `S3Backend+Multipart` sent one
+16 MiB part and waited for it, which is one TCP connection where a link gives far more: measured on
+this project's own account (PLAN.md §4's segmented-download probe), one stream carried 0.98 MB/s
+against 3.13 aggregate over four. So a large upload was spending most of its time not using the
+line.
+
+**One `curl` per batch, not one process per part** — the shape the segmented-*download* design had
+already argued for on the same grounds, arriving first in the other direction. `curl -Z` with an
+N-section config on stdin needs no concurrency anywhere in Swift: `S3CurlRunner` still spawns one
+child, drains both pipes, bounds the wait, and one `terminate()` on Stop stops every section (probed
+live — a cancel at 1.0 s threw at 1.06 s with the upload's `ABORT` on the wire, so nothing is left
+billing). The alternative — four `Process`es and four drains — would have put threads, a progress
+lock and four cancellation paths in the core to buy the same thing.
+
+**Four measurements decided the details, and one of them is a flag whose absence is silent.**
+Without **`--parallel-immediate`** `curl` runs the *first* transfer alone before starting the rest,
+so it can see whether the connection is reusable: four parts took **1.02 s** against **0.51 s** with
+it, all four opening at 0.000. A batch would have cost two rounds instead of one, at no visible
+symptom. The other three: every per-transfer option belongs in its own section (the credential
+included, so the secret still travels on stdin and never in `argv`); a section's write-out is
+emitted **the moment that section finishes**, which is what makes it a progress source and not just
+a result; and with the meter left on, a section finishing mid-row glues its first field to the end
+of that row (`…15.9M      s3-part4-status=200`), which a prefix-keyed reader drops — so the batch
+runs with the meter off and the write-out opens with a newline of its own anyway.
+
+**The answers are told apart by indexing the labels**, which is the same device the download design
+reached for (`s3-seg3-status=`): `S3PartWriteOut` reads `s3-part<n>-status/etag/up` out of one
+stream, in any order, from chunks split anywhere, and distinguishes a part that was *refused* (it
+has a status) from one `curl` never ran (it has nothing) — a difference that decides whether the
+upload reports a service refusal or a transport failure. Progress rides the same lines: a part
+reports its whole length the moment its status lands, which is the only observable a batch has,
+since several transfers share one meter and nothing local grows. Verified live at 5 reports for a
+5-part upload with staggered completions, summing to exactly 83 886 080 bytes.
+
+How many go at once is the **plan's**, because the bound is the disk: every part in flight is a
+slice cut to a temp file first, so `partsInFlight` is `min(4, partCount, 512 MiB / partSize)` — four
+for every ordinary upload (64 MiB staged), and it gives way rather than the disk does above 128 MiB
+parts, which the plan only reaches past 1,25 TiB. The transport verb is additive with a **forwarding**
+default, unlike the cross-bucket copy's refusing one, and the difference is the test: sequential
+parts produce the identical object, where a copy that guessed at a bucket would produce a different
+one and say nothing.
+
+Verified live against `Tooling/fake-s3-endpoint.py`, which grew multipart for the purpose: an 80 MiB
+file through the real `CompositeBackend` → `S3CurlTransport` → `curl` uploaded as 5 × 16 MiB with
+parts 1–4 opening within a millisecond of each other and part 5 following, then one `COMPLETE`
+naming 5 parts and 83 886 080 bytes. Every headless control fires on its own assertion: dropping
+`--parallel-immediate`, pinning `partsInFlight` to the policy constant alone, and un-indexing the
+write-out each break exactly the tests that name them. What is *not* measured here is a throughput
+gain — that needs a real link, and the 6,7× the download probe measured is the evidence the shape
+rests on.
 
 **2026-08-23 — and the pair S3 will copy for itself.** The staged relay below made every
 remote-to-remote pair work by moving the bytes twice through this machine, which is right for two

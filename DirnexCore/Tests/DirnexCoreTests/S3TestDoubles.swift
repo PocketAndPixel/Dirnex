@@ -69,6 +69,15 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
     /// Thrown by every verb when set — the "the request never reached a server" half.
     var thrownError: S3ResponseError?
 
+    /// The part numbers of each **batch** the backend handed over, in call order.
+    ///
+    /// Recorded beside ``writes`` rather than inside it, exactly as ``conditions`` is and for the
+    /// same reason: the two answer different questions. `writes` is *what was uploaded*, and a
+    /// sequential loop and a parallel batch produce identical entries there — which is the point,
+    /// since the parts are the same parts. This is *how many went at once*, which is the only place
+    /// the difference is visible at all.
+    var partBatches: [[Int]] = []
+
     /// Every precondition that reached the transport, in call order.
     ///
     /// Recorded beside ``writes`` rather than inside it so no existing assertion has to change —
@@ -186,6 +195,20 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
     func putEmptyObject(key: String, condition: S3WriteCondition) throws -> S3Response {
         conditions.append(condition)
         return try putEmptyObject(key: key)
+    }
+
+    /// Records the batch and then does exactly what the protocol's default does — send the parts
+    /// one at a time — so every existing assertion over ``writes`` is untouched.
+    func uploadParts(
+        _ parts: [S3PartRequest],
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> [S3Response] {
+        partBatches.append(parts.map(\.number))
+        return try parts.map { part in
+            if isCancelled() { throw CancellationError() }
+            return try uploadPart(part, progress: progress, isCancelled: isCancelled)
+        }
     }
 
     func copyObject(from sourceKey: String, to destinationKey: String) throws -> S3Response {

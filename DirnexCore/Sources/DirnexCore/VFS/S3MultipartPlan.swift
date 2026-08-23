@@ -39,6 +39,31 @@ public enum S3MultipartLimits {
 
     /// The part size used whenever ``maximumPartCount`` does not force a larger one.
     public static let preferredPartSize: Int64 = 16 * 1024 * 1024
+
+    /// How many parts a batch sends at once. Policy, and the reason a large upload finishes in a
+    /// fraction of the time it used to.
+    ///
+    /// One part is one TCP connection, and a single connection is not what a link gives: measured
+    /// on the account this project was built against (PLAN.md §4, the segmented-download probe),
+    /// one stream carried 0.98 MB/s where four carried **3.13** and eight **4.49** aggregate. The
+    /// same arithmetic is what makes a sequential multipart upload the slow shape — it sends one
+    /// 16 MiB part at a time over one connection, however much headroom the link has.
+    ///
+    /// Four rather than eight, because an upload pays in **disk** what a download does not: every
+    /// part in flight is a slice cut to a temp file first (``S3PartSlice``), so the staged cost is
+    /// this many parts at once. Eight would buy perhaps a third more throughput for twice the
+    /// scratch space, on a machine that may be nearly full — and the number is a constant measured
+    /// on one link, so it is the kind that should be re-measured before it is tuned rather than
+    /// raised on the strength of the same table.
+    public static let preferredPartsInFlight = 4
+
+    /// The most scratch space a batch may occupy — the bound that turns "four parts at once" into
+    /// a statable number of bytes.
+    ///
+    /// It binds only where a part is enormous: the plan grows the part size past 16 MiB only above
+    /// 156 GiB, so every ordinary upload stages 64 MiB and nothing else. Above that, concurrency
+    /// gives way rather than the disk (a 1 TiB object's 128 MiB parts go two at a time).
+    public static let stagingBudget: Int64 = 512 * 1024 * 1024
 }
 
 /// How one file is cut into parts — the pure arithmetic behind a multipart upload.
@@ -102,6 +127,26 @@ public struct S3MultipartPlan: Sendable, Equatable {
     /// ``S3MultipartLimits/maximumPartCount``.
     public var partCount: Int {
         Int(Self.ceilingDivide(totalSize, partSize))
+    }
+
+    /// How many of this plan's parts are sent at once.
+    ///
+    /// Three bounds, and each is a different kind of limit: the policy
+    /// (``S3MultipartLimits/preferredPartsInFlight``), the file (a two-part upload cannot run four
+    /// in flight), and the disk (``S3MultipartLimits/stagingBudget`` divided by the part size,
+    /// since every part in flight is staged as a temp file first). Never below 1, so a plan whose
+    /// single part is larger than the whole budget still runs — one part at a time is what this
+    /// code did before parallelism, not a state to refuse.
+    public var partsInFlight: Int {
+        let affordable = Int(max(1, S3MultipartLimits.stagingBudget / partSize))
+        return min(S3MultipartLimits.preferredPartsInFlight, partCount, affordable)
+    }
+
+    /// The part numbers of each batch, in order — what the orchestration loops over.
+    public var batches: [[Int]] {
+        stride(from: 1, through: partCount, by: partsInFlight).map { first in
+            Array(first...min(first + partsInFlight - 1, partCount))
+        }
     }
 
     /// The byte range of part `number`, counting from 1.

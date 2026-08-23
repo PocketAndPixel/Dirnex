@@ -180,6 +180,24 @@ public protocol S3Transport: Sendable {
         isCancelled: () -> Bool
     ) throws -> S3Response
 
+    /// Upload several parts of one multipart upload **at once**, answering for each of them in the
+    /// order they were given.
+    ///
+    /// Additive, and — unlike ``copyObject(fromBucket:sourceKey:to:)`` — with a default that
+    /// **forwards** rather than refuses: sending the parts one at a time produces the identical
+    /// object, so a transport that has not implemented this is slow and never wrong. That is the
+    /// same test the segmented-download design applies to its own additive verb (PLAN.md §4) —
+    /// a default may stand in when the two paths are indistinguishable in their result, and must
+    /// throw when one of them would quietly drop a protection or address a different object.
+    ///
+    /// `progress` reports deltas as parts land, exactly as the single-part verb does, so a caller
+    /// adds them up the same way whichever implementation answers.
+    func uploadParts(
+        _ parts: [S3PartRequest],
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> [S3Response]
+
     /// Close a multipart upload with the manifest of parts to assemble.
     ///
     /// The response body **is** part of the outcome: a completion can answer 200 carrying an
@@ -242,6 +260,17 @@ public extension S3Transport {
     func putEmptyObject(key: String, condition: S3WriteCondition) throws -> S3Response {
         guard !condition.isConditional else { throw S3WriteConditionUnsupported(key: key) }
         return try putEmptyObject(key: key)
+    }
+
+    func uploadParts(
+        _ parts: [S3PartRequest],
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> [S3Response] {
+        try parts.map { part in
+            if isCancelled() { throw CancellationError() }
+            return try uploadPart(part, progress: progress, isCancelled: isCancelled)
+        }
     }
 
     func copyObject(
