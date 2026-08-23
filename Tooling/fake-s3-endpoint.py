@@ -18,6 +18,12 @@ It speaks enough **multipart** to run a real upload — create, part, complete, 
 part's start and end, which is how the parallel upload was shown to be parallel: four parts opening
 at the same instant rather than one after another. `DELAY=<seconds>` holds every response open, so
 overlap is visible on a machine fast enough to hide it otherwise.
+
+It serves **`Range`** for the same reason in the other direction: a segmented download is N range
+requests in one `curl`, and each is logged with its own start and end. `IGNORE_RANGE=1` answers them
+with the whole object under a 200 instead — a success that is not what was asked for, which is the
+branch the backend has to notice and route around, and which no well-behaved server will produce on
+demand.
 """
 import json
 import os
@@ -29,6 +35,9 @@ from urllib.parse import unquote
 PORT = int(sys.argv[1])
 LOG = sys.argv[2]
 REFUSE_COPY = os.environ.get("REFUSE_COPY") == "1"
+# Answer a `Range` request with the whole object under a 200 — the S3-compatible endpoint that does
+# not honour ranges, which is the one branch a segmented download has to notice and route around.
+IGNORE_RANGE = os.environ.get("IGNORE_RANGE") == "1"
 DELAY = float(os.environ.get("DELAY", "0"))
 # Hold each part open for DELAY x its number, so parts in one batch finish at different times —
 # which is what makes per-part progress reporting visible rather than merely believed.
@@ -61,13 +70,51 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
 
     def do_GET(self):
+        started = time.time()
         target = self._target()
-        note({"method": "GET", "target": target})
         body = OBJECTS.get(target)
         if body is None:
+            note({"method": "GET", "target": target})
             self._send(404, b"<Error><Code>NoSuchKey</Code></Error>")
-        else:
+            return
+        # A `Range` request is what a segmented download is made of, so it is served properly —
+        # 206 with the piece and a `Content-Range` — and logged with its start and end, which is
+        # how "several at once" is told from "one after another".
+        span = self._range(len(body))
+        if span is None:
+            note({"method": "GET", "target": target, "bytes": len(body)})
+            if DELAY:
+                time.sleep(DELAY)
             self._send(200, body)
+            return
+        first, last = span
+        if IGNORE_RANGE:
+            note({"method": "GET", "target": target, "range": "ignored"})
+            self._send(200, body)
+            return
+        if first >= len(body):
+            self._send(416, b"<Error><Code>InvalidRange</Code></Error>")
+            return
+        piece = body[first:last + 1]
+        if DELAY:
+            time.sleep(DELAY)
+        note({"method": "RANGE", "target": target, "first": first, "last": last,
+              "bytes": len(piece), "start": round(started, 3), "end": round(time.time(), 3)})
+        self._send(206, piece, {
+            "Content-Range": "bytes %d-%d/%d" % (first, last, len(body)),
+        })
+
+    def _range(self, total):
+        """`bytes=<first>-<last>` as a pair, or None when the request asked for the whole thing."""
+        header = self.headers.get("Range")
+        if not header or not header.startswith("bytes="):
+            return None
+        first, _, last = header[len("bytes="):].partition("-")
+        try:
+            first = int(first)
+        except ValueError:
+            return None
+        return (first, int(last) if last else total - 1)
 
     def do_HEAD(self):
         target = self._target()

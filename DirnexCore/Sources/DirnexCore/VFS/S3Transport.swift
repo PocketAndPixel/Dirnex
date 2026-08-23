@@ -45,6 +45,23 @@ public struct S3Response: Sendable, Equatable {
     public var isSuccess: Bool { (200..<300).contains(status) }
 }
 
+/// What a segmented download turned out to be — the answer
+/// ``S3Transport/downloadSegments(_:of:to:progress:isCancelled:)`` gives.
+///
+/// Two cases rather than one, because a transport that cannot split a request has not *failed*: it
+/// has produced the same file by the older route, and the caller's next step differs entirely.
+/// Making that a returned distinction rather than something inferred from an empty array is what
+/// keeps the forwarding default honest — the one thing a stand-in must never do is look like the
+/// thing it stood in for.
+public enum S3SegmentedDownload: Sendable {
+    /// Each segment's own answer, in the order the segments were given. The pieces are on disk
+    /// under the paths the requests named, and joining them is the caller's (``S3SegmentAssembly``).
+    case segments([S3Response])
+    /// This transport could not split the request, so the **whole** object was downloaded to the
+    /// destination in one stream. There is nothing to assemble and nothing to clean up.
+    case whole(S3Response)
+}
+
 /// The non-hermetic boundary beneath an ``S3Backend``: it issues signed HTTP requests and hands
 /// back the raw answer for the backend to classify. Everything above it — key translation, the
 /// pagination loop, listing parsing, the stat rule, error mapping — is pure and tested in
@@ -86,6 +103,37 @@ public protocol S3Transport: Sendable {
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> S3Response
+
+    /// Download one object as several byte ranges **at once**, each into its own file, for the
+    /// caller to join (``S3SegmentAssembly``).
+    ///
+    /// One download is one `curl` and therefore one TCP connection, and a single connection is not
+    /// what a link gives: measured on this project's own account, one stream carried 0.98 MB/s
+    /// where eight carried 4.49 aggregate, and a whole object went from ~36 s to ~5.4 s
+    /// (docs/HISTORY.md ▸ After M19). What the segments are is ``S3DownloadPlan``'s; this verb only moves them.
+    ///
+    /// Additive, and — like ``uploadParts(_:progress:isCancelled:)``, unlike
+    /// ``copyObject(fromBucket:sourceKey:to:)`` — with a default that **forwards** rather than
+    /// refuses: a single stream produces the identical file, so a transport that has not
+    /// implemented this is slow and never wrong. That is the test a stand-in default has to pass,
+    /// and it is why the conditional write's default must throw instead — there, forwarding would
+    /// drop a protection the caller believes is in place.
+    ///
+    /// The answer says **which of the two happened**, rather than leaving the caller to infer it:
+    /// a segmented run hands back one response per segment and leaves the pieces on disk, and a
+    /// forwarded one hands back the whole object already at `localPath`, with nothing to assemble.
+    /// A `Bool` or an empty array would make "the transport could not split this" look like a
+    /// failure, which is the one reading that would turn a correct download into an error.
+    ///
+    /// `progress` reports deltas as bytes land, exactly as ``download(key:to:resume:progress:isCancelled:)``
+    /// does, so a caller adds them up the same way whichever implementation answers.
+    func downloadSegments(
+        _ segments: [S3DownloadSegment],
+        of key: String,
+        to localPath: String,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> S3SegmentedDownload
 
     /// One object's metadata. The size arrives in ``S3Response/contentLength``.
     func head(key: String) throws -> S3Response
@@ -186,7 +234,7 @@ public protocol S3Transport: Sendable {
     /// Additive, and — unlike ``copyObject(fromBucket:sourceKey:to:)`` — with a default that
     /// **forwards** rather than refuses: sending the parts one at a time produces the identical
     /// object, so a transport that has not implemented this is slow and never wrong. That is the
-    /// same test the segmented-download design applies to its own additive verb (PLAN.md §4) —
+    /// same test the segmented-download design applies to its own additive verb (docs/HISTORY.md ▸ After M19) —
     /// a default may stand in when the two paths are indistinguishable in their result, and must
     /// throw when one of them would quietly drop a protection or address a different object.
     ///
@@ -260,6 +308,22 @@ public extension S3Transport {
     func putEmptyObject(key: String, condition: S3WriteCondition) throws -> S3Response {
         guard !condition.isConditional else { throw S3WriteConditionUnsupported(key: key) }
         return try putEmptyObject(key: key)
+    }
+
+    func downloadSegments(
+        _ segments: [S3DownloadSegment],
+        of key: String,
+        to localPath: String,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> S3SegmentedDownload {
+        .whole(try download(
+            key: key,
+            to: localPath,
+            resume: false,
+            progress: progress,
+            isCancelled: isCancelled
+        ))
     }
 
     func uploadParts(

@@ -3165,16 +3165,44 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     the only thing that writes a body on that verb (a successful one answers with headers alone), so
     stdout in the ordinary single-failure case is exactly that part's error, and `--fail` would
     throw it away.
+  - **The download half is the same shape with `--fail` back *on*, and the reason is where the bytes
+    go.** A segmented download is N `range`/`output` sections in one `-Z` run (measured 2026-08-24
+    against a Range-serving local endpoint: eight ranges of a 40 MiB object opening within **98 ms**
+    of one another, 0.45 s against 0.72 s without `--parallel-immediate`, which ran section 1 alone
+    from +0.000 to +0.306 and the rest from +0.316). Here `output` writes whatever the server sends,
+    so without `--fail` a refused section saves an `<Error>` document into a piece that assembly
+    would splice into the middle of the user's file — the same inversion the single-stream download
+    already documents, per section.
+  - **A `Range` request answered with the *whole object* under a 200 is the failure with no symptom,
+    and `S3Response.isSuccess` cannot see it** — it is a range by design, because a resumed download
+    answers 206. Eight sections then each hold a full copy, every one a "success", and splicing them
+    produces a file eight times too long under the right name. Check for **206 specifically** on this
+    verb, and treat anything else 2xx as "this endpoint does not honour ranges" rather than as an
+    error: the single-stream route produces the right file, so such a server should be slow, not
+    broken. Reproducible on demand only by writing a server that does it (`IGNORE_RANGE=1` in
+    `Tooling/fake-s3-endpoint.py`), which is why it is designed against rather than waited for.
+  - **A download batch's progress is the files, not the meter — and the object's size has to ride
+    along as a cap.** Several sections share one meter, so the upload batch reads its own write-out
+    lines; a download is writing several files on this machine, whose combined size is exact and
+    continuous. The cap is what the paragraph above costs: with the meter's ceiling absent, an
+    endpoint answering 200 to every range reports N× the file's size into a queue tally that only
+    ever adds, and a bar that has drawn those bytes cannot un-draw them.
 
 - **An additive protocol requirement may *forward* to the old one only when the two are
   indistinguishable in their result — otherwise it must throw.** Three of these now sit side by side
   in `S3Transport` and the rule is what keeps them from being one decision made three ways: a
   batched part upload forwards to a sequential loop (same object, slower), a segmented download
-  would forward to a single stream (same file), and a **cross-bucket copy must refuse**, because a
-  transport that ignored the bucket would copy a different object under the right name and report
-  success. The question to ask of a default is not "is this capability optional" but "can the caller
-  tell that it was not honoured" — the same test ``S3WriteCondition`` applies to a precondition that
-  went missing.
+  forwards to a single stream (same file, shipped 2026-08-24), and a **cross-bucket copy must
+  refuse**, because a transport that ignored the bucket would copy a different object under the right
+  name and report success. The question to ask of a default is not "is this capability optional" but
+  "can the caller tell that it was not honoured" — the same test ``S3WriteCondition`` applies to a
+  precondition that went missing.
+  - **When a default forwards, the *return shape* has to say which of the two happened.** The
+    segmented download's stand-in produces the whole file in one stream, so there are no pieces to
+    join and no per-segment answers to classify — and a caller told that as an empty array, or as a
+    `false`, reads "this transport could not split the request" as a failure and reports one for a
+    download that worked perfectly. `S3SegmentedDownload` is two cases for exactly that: the one
+    thing a stand-in must never do is look like the thing it stood in for.
 
 - **`curl` signs `If-Match` and `If-None-Match` too, so a conditional write needs no new machinery —
   and the ETag's *quotes* are part of the value.** Probed 2026-08-16 against an endpoint that

@@ -47,6 +47,8 @@ public enum RelayCopy {
     ///   - stagingRoot: the directory each transfer's private staging directory is made under. The
     ///     caller owns it (and purging what a crash leaves behind); nothing here is reused between
     ///     calls, so two relays can run concurrently under one root.
+    ///   - expectedSize: the source file's size when the caller already knows it, passed to the
+    ///     download leg as a hint. Nothing here depends on it being right, or on it being given.
     ///   - progress: forward-only deltas, summing to the file's size — never twice it.
     ///   - isCancelled: polled between the legs and passed into both, so a cancel lands inside a
     ///     transfer rather than only between files.
@@ -60,6 +62,7 @@ public enum RelayCopy {
         from source: Endpoint,
         to destination: Endpoint,
         stagingRoot: URL,
+        expectedSize: Int64? = nil,
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws {
@@ -84,6 +87,10 @@ public enum RelayCopy {
         try source.backend.copyFile(
             at: source.path,
             to: .local(staged.path),
+            // The download leg is an ordinary download and gets the same hint one would — a relayed
+            // copy out of a bucket should be split like any other (docs/HISTORY.md ▸ After M19). The *upload* leg
+            // reads the staged file's own size, which cannot be stale, so it needs nothing.
+            expectedSize: expectedSize,
             progress: { delta in
                 downloaded += delta
                 report()

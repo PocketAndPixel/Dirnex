@@ -19,11 +19,42 @@ extension CompositeBackend {
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws {
+        try copyFile(
+            at: source,
+            to: destination,
+            expectedSize: nil,
+            progress: progress,
+            isCancelled: isCancelled
+        )
+    }
+
+    /// The same routing, carrying the caller's size hint through to whoever moves the bytes.
+    ///
+    /// **Forwarding it is the one failure here with no symptom** (docs/HISTORY.md ▸ After M19). The app holds a
+    /// composite, so a hint that stopped at this method would leave every download quietly
+    /// inheriting the single-stream default — same rows, same bytes, same correctness, just slow.
+    /// It is the `subtreeListing` shape docs/NOTES.md already records: an opt-in seam whose default
+    /// is "do it the old way" reports nothing at all when nobody wires it up, so what a test has to
+    /// separate is *routed* from *answered*.
+    ///
+    /// Every route gets it, including the staged one — a relayed copy out of a bucket is an ordinary
+    /// download followed by an ordinary upload, and the download half should be split like any
+    /// other. The server-side route is the one exception in effect rather than in code: S3 copies
+    /// those bytes itself, so the hint reaches a backend that has no use for it, and it matters
+    /// again only if that route is refused and the copy falls through to staging below.
+    func copyFile(
+        at source: VFSPath,
+        to destination: VFSPath,
+        expectedSize: Int64?,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws {
         switch try transferRoute(from: source, to: destination) {
         case let .direct(mover):
             try mover.copyFile(
                 at: source,
                 to: destination,
+                expectedSize: expectedSize,
                 progress: progress,
                 isCancelled: isCancelled
             )
@@ -32,6 +63,7 @@ extension CompositeBackend {
                 try mover.copyFile(
                     at: source,
                     to: destination,
+                    expectedSize: expectedSize,
                     progress: progress,
                     isCancelled: isCancelled
                 )
@@ -43,13 +75,20 @@ extension CompositeBackend {
                 // about the *other* function, which is not where this rule belongs.
                 throw CancellationError()
             } catch {
-                try stage(source, to: destination, progress: progress, isCancelled: isCancelled)
+                try stage(
+                    source,
+                    to: destination,
+                    expectedSize: expectedSize,
+                    progress: progress,
+                    isCancelled: isCancelled
+                )
             }
         case let .staged(sourceBackend, destinationBackend):
             try RelayCopy.copyFile(
                 from: .init(source, on: sourceBackend),
                 to: .init(destination, on: destinationBackend),
                 stagingRoot: Self.relayStagingRoot,
+                expectedSize: expectedSize,
                 progress: progress,
                 isCancelled: isCancelled
             )
@@ -60,6 +99,7 @@ extension CompositeBackend {
     private func stage(
         _ source: VFSPath,
         to destination: VFSPath,
+        expectedSize: Int64?,
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws {
@@ -67,6 +107,7 @@ extension CompositeBackend {
             from: .init(source, on: try backend(for: source)),
             to: .init(destination, on: try backend(for: destination)),
             stagingRoot: Self.relayStagingRoot,
+            expectedSize: expectedSize,
             progress: progress,
             isCancelled: isCancelled
         )

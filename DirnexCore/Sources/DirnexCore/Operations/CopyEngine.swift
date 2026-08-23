@@ -270,6 +270,10 @@ private final class CopyRun {
             try backend.copyFile(
                 at: entry.path,
                 to: target,
+                // The listing already measured it, so handing the size over costs nothing and is
+                // what lets a remote backend decide to split the transfer (docs/HISTORY.md ▸ After M19). A backend
+                // with no use for it copies exactly as before.
+                expectedSize: entry.byteSize,
                 progress: { [self] delta in
                     completedBytes += delta
                     emit(current: entry.path, force: false)

@@ -108,10 +108,21 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
     @discardableResult
     func connectS3(location: S3Location, secretAccessKey: String) -> S3Backend {
         let transport = S3CurlTransport(location: location, secretAccessKey: secretAccessKey)
-        let backend = S3Backend(location: location, transport: transport)
+        return register(s3: S3Backend(location: location, transport: transport))
+    }
+
+    /// Install an already-built bucket backend under its own descriptor — `connectS3` without the
+    /// `curl` transport.
+    ///
+    /// The split exists because **the routing is what breaks silently while running it needs a
+    /// network**: a copy that reaches the wrong backend, or a hint that stops at this class, reports
+    /// nothing at all (docs/HISTORY.md ▸ After M19, and the `subtreeListing` shape docs/NOTES.md records). A backend
+    /// over a fake transport is how those are asserted headlessly. Nothing in the app calls it.
+    @discardableResult
+    func register(s3 backend: S3Backend) -> S3Backend {
         lock.lock()
         defer { lock.unlock() }
-        s3Connections[location.descriptor] = backend
+        s3Connections[backend.location.descriptor] = backend
         return backend
     }
 

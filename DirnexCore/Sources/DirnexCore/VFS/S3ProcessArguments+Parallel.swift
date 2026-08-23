@@ -17,7 +17,7 @@ public extension S3ProcessArguments {
     /// One process rather than several is what keeps this a change of shape and not of
     /// architecture: `S3CurlRunner` already spawns one child, drains both pipes, bounds the wait
     /// and terminates on cancel, so a Stop still stops everything and nothing here needs a thread.
-    /// It is the shape the segmented-download design reached for on the same grounds (PLAN.md §4).
+    /// It is the shape the segmented-download design reached for on the same grounds (docs/HISTORY.md ▸ After M19).
     ///
     /// Measured 2026-08-23 (`curl` 8.7.1, four 8 MiB parts against a local endpoint that logs when
     /// each request starts and ends):

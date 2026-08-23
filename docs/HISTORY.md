@@ -11125,13 +11125,89 @@ searching (3 hits at three depths inside a zip).
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-08-23)
 
-Twenty-six dated passes that landed outside a milestone of their own, between M18's close on
-2026-08-07 and 2026-08-23: user-reported bugs, three vault features, the tree crossing into S3,
+Twenty-seven dated passes that landed outside a milestone of their own, between M18's close on
+2026-08-07 and 2026-08-24: user-reported bugs, three vault features, the tree crossing into S3,
 and the chain of five that one S3 rename pulled apart. They ran *alongside* M20, M21 and M22
 rather than after them — which is why they sit here at the end rather than in a numeric slot —
 and they keep their **newest-first** order, because several read as a chain and refer to the
 entry below. Moved out of [PLAN.md](../PLAN.md) §4 on 2026-08-23, once the plan had nothing left
 to say about them; what is still open from this stretch stayed there.
+
+**2026-08-24 — and a download's ranges go eight at a time.** The upload half's mirror image, and the
+design PLAN.md §4 had carried since 2026-08-20 without anyone building it: a download was one `curl`
+and therefore **one TCP connection**, on a link that gives far more. Measured on this project's own
+account, alternating rounds over one whole object: **1 segment ~36 s** (26.6, 35.2, 36.0, 46.7),
+2 → 7.8 s, 4 → 7.0 s, **8 → 5.4 s**, with 8 winning every round — about **6,7×**. Nothing was
+throttled and nothing was wrong; the app's exact argv measured identical to a plain `curl` on the
+same object. What started it was a user reporting a 28,5 MB object taking most of a minute to
+preview.
+
+**One `curl -Z` with an N-section config on stdin**, exactly as the upload batch does, so again
+nothing new is concurrent in Swift: one child, both pipes drained, the wait bounded, and one
+`terminate()` on Stop stopping every section. Each section carries its own `range`, `output`,
+credential and **`fail`** — that last one because `output` writes whatever the server sends, so
+without it a refused section would save an `<Error>` document into a piece that assembly would then
+splice into the middle of the user's file. The alternative was probed and does work (N processes
+each writing into one destination at its own offset through a seeked `FileHandle`, byte-identical
+result) and was not taken: it needs concurrent orchestration, N stderr drains, per-segment meters,
+and a sparse destination whose size has stopped being the byte count.
+
+**`--parallel-immediate` was re-measured on this side rather than inherited, and it is the same
+finding again**: without it `curl` runs the first transfer alone before starting the rest. Live
+against `Tooling/fake-s3-endpoint.py` (which grew `Range` for the purpose, and logs each range's own
+start and end): **with** the flag, all eight ranges of a 40 MiB object opened within **98 ms** of one
+another and the download took **0.45 s**; **without** it, segment 1 ran alone from +0.000 to +0.306
+and the other seven started at +0.316, for **0.72 s**. Two rounds instead of one, at no visible
+symptom.
+
+**Progress is exact and free here, which is the one place the two halves differ.** A batch of uploads
+has only its own write-out lines to read; a batch of downloads is writing several files on this
+machine, so their combined size is the byte count. The total rides along as a **cap** rather than a
+target, for a reason the live control then produced on demand: an endpoint that answers a `Range`
+request with the whole object writes every section a full copy, and the queue's tally only ever adds.
+The answers are still read from **indexed** labels (`s3-seg<n>-status=`), sharing one mechanism with
+the parts' (`S3IndexedWriteOut`) rather than a second copy of it — one stream, several transfers,
+labels that carry their own identity.
+
+**That 200-to-a-Range-request is the failure with no symptom, and it is why the transport verb
+answers which of two things it did.** `S3Response.isSuccess` is deliberately a *range* (a resumed
+download answers 206), so those eight copies all read as successes; the backend checks for **206**
+specifically, and on anything else returns `nil` rather than throwing — the older route produces the
+right file, so an endpoint that does not honour ranges should be slow here, not broken. Measured live
+with `IGNORE_RANGE=1`: eight 200s, then one plain `GET`, the file byte-identical and the bar reporting
+the object's size exactly once (the retry is deliberately silent, or one file would be counted twice
+in a job total that only adds). The protocol default forwards to the plain download for the same
+reason the upload batch's does — a single stream produces the identical file — and says so as
+`.whole(_)` rather than as an empty array, since "this transport could not split the request" must
+never look like a failure.
+
+**The size that decides all of it rides in and is never asked for.** `VFSBackend.copyFile` gained an
+additive `expectedSize:` spelling whose default forwards, because a `HEAD` before every download is a
+full handshake — ~0.5 s to first byte, since every `curl` re-signs and re-connects — which would
+roughly double the latency of the small files Quick View fetches constantly to answer a question that
+only matters above 8 MiB. Both real callers already hold the number from a listing they made
+(`CopyEngine`'s `entry.byteSize`, `RemoteFileCache`'s entry), and `RelayCopy` passes it to its
+download leg and deliberately not to its upload leg, whose staged file's own size cannot be stale.
+**`CompositeBackend` forwarding it is the one failure with no symptom at all** — the app holds a
+composite, so a hint that stopped there would leave every download on the single-stream default, with
+the same rows, the same bytes and nothing to report — which is the `subtreeListing` shape
+docs/NOTES.md already records, and why its test separates *routed* from *answered*.
+
+Three things given up on purpose, all argued rather than excused. **Resume goes on the segmented
+path**: a partial already on disk still takes the resuming route untouched (verified live — one
+`HEAD` and one plain `GET`, no ranges), and above the threshold with nothing on disk, restarting at
+6,7× costs less wall clock than resuming the remainder at 1×. **N requests instead of 1** on a verb
+billed per thousand. And an **object overwritten mid-download** can serve one version to one segment
+and another to the next — no client can close that without an identity the caller does not have, and
+the single-stream path has the same exposure in a milder form.
+
+Verified live end to end through the real `CompositeBackend` → `S3CurlTransport` → `curl`: a 40 MiB
+object came back **SHA-256 identical**, in 8 contiguous ranges covering every byte exactly once, with
+the progress deltas summing to 41 943 040. Every headless control fires on its own assertion —
+dropping `--parallel-immediate`, making the header range half-open, removing the 206 check, removing
+assembly's length check, un-indexing the write-out, dropping the cap, and each of the three callers
+dropping the hint. What is *not* measured here is the throughput gain: that needs a real link, and
+the 6,7× above is the evidence the shape rests on.
 
 **2026-08-23 — a multipart upload's parts now go four at a time.** `S3Backend+Multipart` sent one
 16 MiB part and waited for it, which is one TCP connection where a link gives far more: measured on

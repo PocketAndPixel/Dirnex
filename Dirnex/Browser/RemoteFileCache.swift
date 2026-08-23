@@ -126,6 +126,11 @@ final class RemoteFileCache {
                 try backend.copyFile(
                     at: source,
                     to: .local(destination.path),
+                    // The listing that produced this entry already measured it, which is what lets
+                    // a remote backend split the transfer without paying for a size probe first
+                    // (docs/HISTORY.md ▸ After M19) — and this is the path a preview takes, where that probe would
+                    // be a whole extra round trip on every small file.
+                    expectedSize: entry.byteSize,
                     progress: { chunk in
                         moved += chunk
                         progress(moved)

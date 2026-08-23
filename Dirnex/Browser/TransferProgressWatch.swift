@@ -1,8 +1,8 @@
 import DirnexCore
 import Foundation
 
-/// Watches one running transfer so it can report where it has got to, for whichever of the two
-/// observables the tool in question actually offers (PLAN.md §M21 Slice 12).
+/// Watches one running transfer so it can report where it has got to, for whichever observable the
+/// tool in question actually offers (PLAN.md §M21 Slice 12).
 ///
 /// All three remote transports spawn one long-lived child and park the operation engine's thread on
 /// `ProcessWaiting.wait`; this is what that loop reads on every turn. The rules for turning an
@@ -18,6 +18,9 @@ import Foundation
 ///   meter, at one-per-cent resolution. `sftp` has no equivalent at any resolution (probed six ways;
 ///   `SFTPTransport.upload`), which is why one of the four transfer verbs across the three transports
 ///   passes `.none` and reports at the end.
+/// - A **parallel** transfer has neither: several sections share one meter. An upload's batch reads
+///   the indexed write-out lines its own sections print, and a download's reads the several files it
+///   is writing — which is the same "watch what grows" rule as a single download, over a set.
 final class TransferProgressWatch: @unchecked Sendable {
     /// What to watch while the transfer runs.
     enum Source {
@@ -31,6 +34,16 @@ final class TransferProgressWatch: @unchecked Sendable {
         /// observable a batch has, since several transfers share one meter and nothing local grows.
         /// A part reports its whole length the moment its `s3-part<n>-status=` line lands.
         case uploadedParts(lengths: [Int: Int64])
+        /// A **parallel** segmented download's part files, and the object's total size. Their
+        /// combined length is what has landed — exact and free, where the batch's own write-out
+        /// lines could only ever step a whole segment at a time (docs/HISTORY.md ▸ After M19).
+        ///
+        /// The total is a **cap**, not a target: an endpoint that answers a `Range` request with
+        /// the whole object writes every section a full copy, and without it the bar would report
+        /// several times the file's size into a job total that only adds. The backend detects that
+        /// answer and re-fetches in one stream, so the cap is what keeps the report honest in the
+        /// meantime.
+        case destinationFiles(paths: [String], totalBytes: Int64)
     }
 
     private let source: Source
@@ -46,7 +59,9 @@ final class TransferProgressWatch: @unchecked Sendable {
         self.source = source
         // A resume starts with bytes already in the destination that are not this transfer's to
         // report. Read at construction — i.e. before the child is spawned — since afterwards the
-        // file is growing and the baseline would include some of what is being measured.
+        // file is growing and the baseline would include some of what is being measured. Only the
+        // single-file case can have one: a segmented download's part files are created by the run
+        // being watched, so there is never anything already in them.
         if case let .destinationFile(path) = source {
             tally = TransferProgressTally(destinationAlreadyHolds: Self.fileSize(path))
         } else {
@@ -86,6 +101,9 @@ final class TransferProgressWatch: @unchecked Sendable {
         case let .uploadedParts(lengths):
             let moved = parts.completedParts.reduce(0) { $0 + (lengths[$1] ?? 0) }
             return tally.delta(movedSoFar: moved)
+        case let .destinationFiles(paths, totalBytes):
+            let landed = paths.reduce(0) { $0 + Self.fileSize($1) }
+            return tally.delta(movedSoFar: min(landed, totalBytes))
         }
     }
 

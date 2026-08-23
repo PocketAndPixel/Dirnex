@@ -44,7 +44,7 @@ public enum S3MultipartLimits {
     /// fraction of the time it used to.
     ///
     /// One part is one TCP connection, and a single connection is not what a link gives: measured
-    /// on the account this project was built against (PLAN.md §4, the segmented-download probe),
+    /// on the account this project was built against (docs/HISTORY.md ▸ After M19, the segmented-download probe),
     /// one stream carried 0.98 MB/s where four carried **3.13** and eight **4.49** aggregate. The
     /// same arithmetic is what makes a sequential multipart upload the slow shape — it sends one
     /// 16 MiB part at a time over one connection, however much headroom the link has.

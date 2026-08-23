@@ -228,6 +228,31 @@ public protocol VFSBackend: Sendable {
         isCancelled: () -> Bool
     ) throws
 
+    /// The same copy, told how large `source` is when the caller already knows.
+    ///
+    /// A **hint**, never a promise and never a request for a probe: a backend is free to ignore it,
+    /// and the default does exactly that by forwarding to the spelling above. What it buys is a
+    /// decision a transfer cannot otherwise make without paying for it — S3 splits a download over
+    /// several connections above a threshold, and asking the service for the size first would cost a
+    /// full handshake on every small file to answer a question that only matters for large ones
+    /// (docs/HISTORY.md ▸ After M19).
+    ///
+    /// Additive for the reason every other widened verb in this project is: a protocol requirement
+    /// cannot carry a default parameter, so growing the existing one would rewrite every conformance
+    /// for a capability most backends have no use for. The forwarding default is safe here because
+    /// the two spellings produce the identical file — a backend that ignores the hint is slower, not
+    /// wrong — which is the test this project applies before letting a default stand in at all.
+    ///
+    /// Callers that hold a size from a listing they already made should pass it. Anything that would
+    /// have to *ask* should not: with no hint, behaviour is exactly what it was.
+    func copyFile(
+        at source: VFSPath,
+        to destination: VFSPath,
+        expectedSize: Int64?,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws
+
     /// Recreate a symbolic link at `destination` pointing at the raw (unresolved) target
     /// text `target`. Copying a symlink duplicates the link itself, never the file it
     /// points at (matching `clonefile`/`cp -R` semantics).
@@ -294,6 +319,17 @@ public extension VFSBackend {
         isCancelled: () -> Bool
     ) throws {
         throw VFSError.unsupported(.copyFile)
+    }
+
+    func copyFile(
+        at source: VFSPath,
+        to destination: VFSPath,
+        expectedSize: Int64?,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws {
+        // The hint is an optimization, so a backend that has no use for it copies exactly as before.
+        try copyFile(at: source, to: destination, progress: progress, isCancelled: isCancelled)
     }
 
     func createSymbolicLink(at destination: VFSPath, withDestination target: String) throws {

@@ -122,6 +122,46 @@ struct S3CurlRunner: Sendable {
         }
     }
 
+    /// Run one invocation that carries **several ranges of one object** and answer for each of
+    /// them, in the order they were given (docs/HISTORY.md ▸ After M19).
+    ///
+    /// The upload batch's twin, and it differs in exactly one place: where progress comes from. A
+    /// batch of uploads has only its own write-out lines to go on, while a batch of downloads is
+    /// writing several files on this machine — so their combined size is the byte count, exact and
+    /// arriving continuously rather than a segment at a time. Everything else is the same run: one
+    /// process, both pipes drained, the wait bounded, one `terminate()` on cancel that stops every
+    /// section at once.
+    ///
+    /// The body — this invocation's stdout — is deliberately **not** handed to the responses. Every
+    /// section writes its own bytes to its own file with `--fail`, so a refused section creates no
+    /// file and prints no document; stdout carries nothing worth attributing, and handing the same
+    /// buffer to every segment would let one section's noise be read as another's `<Error>`.
+    func performSegments(
+        _ invocation: S3ParallelInvocation,
+        segments: [S3DownloadSegment],
+        totalBytes: Int64,
+        progress: (Int64) -> Void = { _ in },
+        isCancelled: () -> Bool = { false }
+    ) throws -> [S3Response] {
+        let result = try run(
+            invocation.arguments,
+            configuration: invocation.configuration,
+            watching: .destinationFiles(
+                paths: segments.map(\.localPath),
+                totalBytes: totalBytes
+            ),
+            progress: progress,
+            isCancelled: isCancelled
+        )
+        let reported = S3SegmentWriteOut.parse(stderr: result.standardError)
+        return try segments.map { segment in
+            guard let fields = reported.fields(forSegment: segment.number) else {
+                throw S3ResponseError.transport(.classify(curlExit: result.exitCode))
+            }
+            return S3Response(status: fields.status, bytesTransferred: fields.bytesDownloaded)
+        }
+    }
+
     /// The size of a local file, or 0 when it cannot be read — a part whose length is unknown
     /// simply reports nothing, which is the same "no estimate available" the meter falls back to.
     private static func fileSize(_ path: String) -> Int64 {

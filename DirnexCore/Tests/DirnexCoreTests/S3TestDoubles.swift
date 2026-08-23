@@ -69,6 +69,24 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
     /// Thrown by every verb when set — the "the request never reached a server" half.
     var thrownError: S3ResponseError?
 
+    /// The object a segmented download serves its ranges out of. `nil` is an empty object, which
+    /// only a test that does not care about the bytes should leave it as.
+    var objectBytes: Data?
+    /// Answers a `Range` request with the **whole** object under a 200 — the S3-compatible endpoint
+    /// that does not honour ranges, which the backend has to notice and route around.
+    var ignoresRanges = false
+    /// Handed out in order, one per segment of a run. Falls back to a 206 carrying the range's own
+    /// length, so a test aiming a refusal at segment 2 says only that.
+    var segmentResponses: [S3Response] = []
+    /// Every segmented download the backend asked for, in call order. The *requests* rather than
+    /// their numbers, because the paths are what makes the cleanup assertable exactly: a test can
+    /// ask whether the files this run was given still exist, rather than scanning a temp directory
+    /// it shares with every other test in the process.
+    private(set) var segmentRequests: [[S3DownloadSegment]] = []
+    /// The segment numbers of each run — the only place the difference between one stream and
+    /// several is visible at all.
+    var segmentRuns: [[Int]] { segmentRequests.map { $0.map(\.number) } }
+
     /// The part numbers of each **batch** the backend handed over, in call order.
     ///
     /// Recorded beside ``writes`` rather than inside it, exactly as ``conditions`` is and for the
@@ -112,10 +130,13 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
     /// assertable at all. A real transport polls `isCancelled` *while the bytes move*, which a
     /// headless double cannot reproduce; what it can pin is that the backend hands the flag down to
     /// the transfer verb instead of only checking it at the file boundary, which is exactly the gap
-    /// measured 2026-08-14 (docs/NOTES.md ▸ curl for S3).
-    private(set) var cancelledTransfers: [String] = []
+    /// measured 2026-08-14 (docs/NOTES.md ▸ curl for S3). Internal setter for the reason ``writes``
+    /// has one: one of the verbs that fills it lives in a companion file.
+    var cancelledTransfers: [String] = []
     private(set) var headKeys: [String] = []
-    private(set) var writes: [Write] = []
+    /// Internal setter rather than `private(set)`: the multipart verbs live in a companion
+    /// file, and Swift's `private` does not cross files (docs/NOTES.md ▸ file splitting).
+    var writes: [Write] = []
 
     func listObjects(
         prefix: String,
@@ -143,8 +164,55 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
         // offered the chance, which is the half a headless test can pin.
         if isCancelled() { cancelledTransfers.append(key); throw CancellationError() }
         downloads.append(Download(key: key, localPath: localPath, resume: resume))
+        // Writes the object when one is set, so a test about *which route ran* can also check that
+        // the route it fell back to produced the file. Left alone when it is not, which is every
+        // test that predates segmented downloads.
+        if let objectBytes { try? objectBytes.write(to: URL(fileURLWithPath: localPath)) }
         for delta in streamedProgress { progress(delta) }
         return downloadResponse
+    }
+
+    /// Serve each range out of ``objectBytes`` into the file the segment names, exactly as a real
+    /// `curl` writes one — which is what lets the assembly, and the bytes it produces, be asserted
+    /// with no network.
+    ///
+    /// The two ways an endpoint can be *unhelpful* are switchable rather than hard-coded, because
+    /// each drives a different branch of the backend: ``segmentResponses`` aims a refusal at a
+    /// particular segment, and ``ignoresRanges`` reproduces a server that answers a `Range` request
+    /// with the whole object under a 200 — a success, and not the thing that was asked for.
+    func downloadSegments(
+        _ segments: [S3DownloadSegment],
+        of key: String,
+        to localPath: String,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> S3SegmentedDownload {
+        if let thrownError { throw thrownError }
+        if isCancelled() { cancelledTransfers.append(key); throw CancellationError() }
+        segmentRequests.append(segments)
+        let object = objectBytes ?? Data()
+        return .segments(segments.enumerated().map { index, segment in
+            let served = ignoresRanges ? object : Self.slice(object, segment.range)
+            // A refused section creates no file at all — `--fail` is what makes that true on the
+            // wire, and a double that wrote one anyway would let a broken assembly look correct.
+            let response = index < segmentResponses.count
+                ? segmentResponses[index]
+                : S3Response(
+                    status: ignoresRanges ? 200 : 206,
+                    bytesTransferred: Int64(served.count)
+                )
+            if response.isSuccess {
+                try? served.write(to: URL(fileURLWithPath: segment.localPath))
+                progress(Int64(served.count))
+            }
+            return response
+        })
+    }
+
+    private static func slice(_ object: Data, _ range: Range<Int64>) -> Data {
+        let lower = min(Int(range.lowerBound), object.count)
+        let upper = min(Int(range.upperBound), object.count)
+        return object.subdata(in: lower..<upper)
     }
 
     func head(key: String) throws -> S3Response {
@@ -197,20 +265,6 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
         return try putEmptyObject(key: key)
     }
 
-    /// Records the batch and then does exactly what the protocol's default does — send the parts
-    /// one at a time — so every existing assertion over ``writes`` is untouched.
-    func uploadParts(
-        _ parts: [S3PartRequest],
-        progress: (Int64) -> Void,
-        isCancelled: () -> Bool
-    ) throws -> [S3Response] {
-        partBatches.append(parts.map(\.number))
-        return try parts.map { part in
-            if isCancelled() { throw CancellationError() }
-            return try uploadPart(part, progress: progress, isCancelled: isCancelled)
-        }
-    }
-
     func copyObject(from sourceKey: String, to destinationKey: String) throws -> S3Response {
         if let thrownError { throw thrownError }
         writes.append(.copy(Copy(sourceKey: sourceKey, destinationKey: destinationKey)))
@@ -247,87 +301,16 @@ final class FakeS3Transport: S3Transport, @unchecked Sendable {
         return deleteBatchResponses[batchIndex]
     }
 
-    // MARK: - Multipart
-
-    func createMultipartUpload(key: String) throws -> S3Response {
-        if let thrownError { throw thrownError }
-        writes.append(.createMultipart(key))
-        return createMultipartResponse
-    }
-
-    func uploadPart(
-        _ part: S3PartRequest,
-        progress: (Int64) -> Void,
-        isCancelled: () -> Bool
-    ) throws -> S3Response {
-        if let thrownError { throw thrownError }
-        if isCancelled() { cancelledTransfers.append(part.key); throw CancellationError() }
-        // Recorded before the response is chosen, so a test can assert on the slice file the
-        // backend actually produced — including that it existed at the moment of the call.
-        sliceSizes.append(sizeOfFile(part.localPath))
-        // Capped at the slice, which is a real constraint rather than tidiness: a part's meter is a
-        // percentage *of that part*, so it cannot report more than the slice holds. An uncapped
-        // double would let a test "pass" on arithmetic the wire can never produce — and the short
-        // final part is exactly where that would hide.
-        var remaining = sizeOfFile(part.localPath)
-        for delta in streamedProgress where remaining > 0 {
-            let capped = min(delta, remaining)
-            remaining -= capped
-            progress(capped)
-        }
-        writes.append(
-            .uploadPart(
-                PartUpload(
-                    localPath: part.localPath,
-                    key: part.key,
-                    uploadID: part.uploadID,
-                    partNumber: part.number
-                )
-            )
-        )
-        let index = part.number - 1
-        guard index < uploadPartResponses.count else {
-            return S3Response(status: 200, etag: "\"etag-part-\(part.number)\"")
-        }
-        return uploadPartResponses[index]
-    }
-
-    func completeMultipartUpload(
-        key: String,
-        uploadID: String,
-        parts: [S3UploadedPart]
-    ) throws -> S3Response {
-        if let thrownError { throw thrownError }
-        writes.append(.completeMultipart(key: key, uploadID: uploadID, parts: parts))
-        return completeMultipartResponse
-    }
-
-    /// The completion is where a *large* upload's precondition rides, so the condition it was given
-    /// is recorded on the same list the two small-file verbs use — a large save-back that quietly
-    /// dropped its header would otherwise leave `writes` looking perfectly correct.
-    func completeMultipartUpload(
-        key: String,
-        uploadID: String,
-        parts: [S3UploadedPart],
-        condition: S3WriteCondition
-    ) throws -> S3Response {
-        conditions.append(condition)
-        return try completeMultipartUpload(key: key, uploadID: uploadID, parts: parts)
-    }
-
-    func abortMultipartUpload(key: String, uploadID: String) throws -> S3Response {
-        writes.append(.abortMultipart(key: key, uploadID: uploadID))
-        if abortThrows { throw S3ResponseError.transport(.other) }
-        return S3Response(status: 204)
-    }
-
     /// The size of each slice at the moment its part was uploaded — how a test proves the backend
     /// cut the ranges the plan describes without reaching into the temp directory afterwards, by
-    /// which time the slice is (correctly) gone.
-    private(set) var sliceSizes: [Int64] = []
+    /// which time the slice is (correctly) gone. Internal setter for the same reason ``writes`` has
+    /// one: the verb that fills it lives in a companion file.
+    var sliceSizes: [Int64] = []
 
-    private func sizeOfFile(_ path: String) -> Int64 {
-        (try? FileManager.default.attributesOfItem(atPath: path)[.size] as? Int64) as? Int64 ?? -1
+    func sizeOfFile(_ path: String) -> Int64 {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: path),
+              let size = attributes[.size] as? Int64 else { return -1 }
+        return size
     }
 }
 
