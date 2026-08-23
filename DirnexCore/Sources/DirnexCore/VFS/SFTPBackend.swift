@@ -91,8 +91,10 @@ public struct SFTPBackend: RemoteTransportBackend {
     /// (remote source → local destination, via `get`) or an **upload** (local source → remote
     /// destination, via `put`). The whole file transfers as one `sftp` command, and `isCancelled` is
     /// honored inside it as well as at the file boundary (the queue's pause/cancel still acts
-    /// between files). A copy that is neither direction — remote-to-remote, or between two different
-    /// accounts — has no `sftp` expression yet and is refused.
+    /// between files). A copy that is neither direction — between two accounts, or *within* this
+    /// one, since SFTP has no copy verb at all — has no `sftp` expression and is refused here. It
+    /// is not refused to the user: a caller holding both ends stages such a copy through this disk
+    /// (``RelayCopy``), which is what the app's composite backend does with that pair.
     ///
     /// **`progress` reports as a download runs and only at the end of an upload, and the asymmetry
     /// is `sftp`'s rather than a decision.** A download's destination is a file on this machine, so

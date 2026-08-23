@@ -19,6 +19,17 @@ public struct VFSCapabilities: OptionSet, Sendable, Hashable {
     public static let rename = VFSCapabilities(rawValue: 1 << 4)
     /// Live change notifications (FSEvents and friends).
     public static let watch = VFSCapabilities(rawValue: 1 << 5)
+    /// ``VFSBackend/copyFile(at:to:progress:isCancelled:)`` can move bytes with **both** ends
+    /// inside this backend — the local disk's ordinary copy, and S3's server-side
+    /// `x-amz-copy-source`, where the bytes never leave the service.
+    ///
+    /// It is not implied by `.write`, and the difference is the whole reason it has a name. SFTP
+    /// and FTP are writable and have no copy verb at all: their `copyFile` is an *upload* or a
+    /// *download*, so duplicating a file within one account — never mind between two accounts —
+    /// has to be staged through this disk (``RelayCopy``). A router asking "who can move these
+    /// bytes" needs that answer per backend, and the alternative is spelling the backends out at
+    /// the one site that asks, which is this project's most repeated bug.
+    public static let internalCopy = VFSCapabilities(rawValue: 1 << 6)
 
     /// The delete path a panel should take on a backend with these capabilities — the
     /// concrete "capability degradation" decision (PLAN.md §M5: "no Trash on SFTP →

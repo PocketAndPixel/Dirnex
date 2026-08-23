@@ -12,7 +12,8 @@ import Foundation
 /// methods are safe to call from a background queue.
 public struct LocalBackend: VFSBackend {
     public let id: VFSBackendID = .local
-    public let capabilities: VFSCapabilities = [.read, .write, .trash, .clone, .rename, .watch]
+    public let capabilities: VFSCapabilities =
+        [.read, .write, .trash, .clone, .rename, .watch, .internalCopy]
 
     public init() {}
 

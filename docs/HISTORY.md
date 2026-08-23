@@ -11125,13 +11125,60 @@ searching (3 hits at three depths inside a zip).
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-08-23)
 
-Twenty-three dated passes that landed outside a milestone of their own, between M18's close on
+Twenty-four dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-08-23: user-reported bugs, three vault features, the tree crossing into S3,
 and the chain of five that one S3 rename pulled apart. They ran *alongside* M20, M21 and M22
 rather than after them — which is why they sit here at the end rather than in a numeric slot —
 and they keep their **newest-first** order, because several read as a chain and refer to the
 entry below. Moved out of [PLAN.md](../PLAN.md) §4 on 2026-08-23, once the plan had nothing left
 to say about them; what is still open from this stretch stayed there.
+
+**2026-08-23 — copying between two remote locations, which had never been possible.** Reported by
+a user with a bucket in one pane and a server in the other: F5 answered *"Copying directly between
+remote locations isn't supported"* per file, over the Retry/Skip/Abort dialog. True of the backend
+and not of anything else — and the same refusal covered a case nobody had thought to try, since
+**SFTP and FTP have no copy verb at all**, so duplicating a file inside *one* account was equally
+dead. `copyFile` there is a *direction*: `sftp`'s `get`/`put`, `curl`'s download/upload, each
+refusing any pair of ends without a local side.
+
+The fix is the obvious mechanism and the decision was where to put it. **A backend cannot run it**
+— neither end has heard of the other — so it belongs to whoever holds both connections, which in
+the app is `CompositeBackend` and in the core is a caller-driven `RelayCopy`: download to a private
+staging directory, upload, delete, with the staged name **sanitised** because it comes from a remote
+listing (a stranger's choice, the same reasoning that refuses CR/LF in an FTP path). Progress is the
+part with a rule in it: the queue's denominator is the file's size, so reporting both legs would
+drive the bar to 200 % — each leg reports at **half weight** and the tail reconciles against the
+staged file's exact size, which also absorbs an upload that reports nothing at all (`sftp` prints no
+meter a spawned process can read). A partial upload is deliberately left where the destination
+backend left it, exactly as a direct upload leaves one.
+
+**Which pairs need staging is a capability rather than a list of backends.** `VFSCapabilities`
+gained `.internalCopy` — "this backend can copy with both ends inside itself" — carried by
+`LocalBackend` and by `S3Backend`, whose `x-amz-copy-source` keeps the bytes inside the service. So
+`CompositeBackend.transferRoute(from:to:)` answers `.direct` for a same-backend copy that backend
+can serve, `.direct` for an upload or a download, and `.staged` for everything else; a same-bucket
+S3 duplicate is untouched, which is the narrowness control that costs money if it breaks. Spelling
+the backends out at that one site instead is the shape this file keeps finding on the wrong side of
+a fix. A **move** needed nothing: `moveItem` already answers `EXDEV` across backends, so
+`CopyEngine` runs it as copy-then-delete, and a whole folder recurses through `createDirectory` on
+the destination backend the way an upload already did.
+
+Verified live against two real servers on this Mac — a non-root `/usr/sbin/sshd` on 2222 and
+`pyftpdlib` on 2121 — through the real `SFTPProcessTransport` and `FTPCurlTransport`:
+SFTP → FTP, FTP → SFTP, a duplicate inside one SFTP account, and a whole `CopyEngine.run`, all
+byte-identical with the staging root empty afterwards (`RemoteRelayLiveIntegrationTests`, gated on
+both existing live config files). The negative control is the report itself: with the staging route
+removed, all four fail with `.unsupported(.remoteToRemoteCopy)` — the user's sentence, verbatim. The
+headless controls separate cleanly too (removing the halving reports 8192 of 4096 bytes; removing
+the cleanup fails only the three staging assertions; removing the name guard fails only the hostile
+name), and the three narrowness tests stay green throughout.
+
+Two costs are stated rather than solved. A relayed file **occupies its own size on this disk** for
+the length of the transfer, which is what "no single backend can carry these bytes" means in
+practice — there is no free-space pre-check, since knowing the size at that point costs a round trip
+per file. And a **cross-bucket S3 copy is staged like any other pair**, though `x-amz-copy-source`
+can name a different bucket: it needs one credential authorised on both and the same endpoint, which
+is a check with its own failure modes and was not taken here.
 
 **2026-08-23 — the remote save-back stopped asking when it has nothing to say.** Reported by a
 user editing a file over FTP: every ⌘S raised *"Upload “test.txt” back to the server?"*, whose body

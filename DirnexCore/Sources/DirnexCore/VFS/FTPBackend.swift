@@ -93,7 +93,10 @@ public struct FTPBackend: RemoteTransportBackend {
     // walk. Only the byte transfer below is protocol-specific.
 
     /// Copy one file's bytes between this account and the local disk — a **download** (remote source
-    /// → local destination) or an **upload**. The whole file transfers as one `curl` invocation, and
+    /// → local destination) or an **upload**. Any other pair of ends is refused: FTP has no copy
+    /// verb, so a duplicate within one account is as unexpressible here as one between two, and a
+    /// caller holding both ends stages it through this disk instead (``RelayCopy``). The whole file
+    /// transfers as one `curl` invocation, and
     /// `isCancelled` is honored at the file boundary as well as inside the transfer; the queue's
     /// pause/cancel still acts between files.
     ///

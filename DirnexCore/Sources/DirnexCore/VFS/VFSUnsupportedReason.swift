@@ -37,7 +37,15 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
 
     /// `sftp` has no path above the connection root to delete.
     case deleteConnectionRoot
-    /// Every remote transfer goes through the local side; server-to-server has no `sftp` verb.
+    /// This backend's transfer is a *direction* — an upload or a download — so a pair of ends that
+    /// does not include the local disk has no verb here at all. Neither `sftp` nor `curl`'s FTP
+    /// side has a copy, so this covers a second account *and* a duplicate within this one.
+    ///
+    /// A caller holding **both** connections has an answer the backend does not (``RelayCopy``:
+    /// download, upload, delete the staged copy), which is what the app's composite backend does
+    /// with such a pair. So this refusal is what a backend driven on its own reports, and it is no
+    /// longer what the user meets on F5 — kept, rather than deleted, because the backend's own
+    /// contract is unchanged and answering `.copyFile`'s vaguer sentence instead would say less.
     case remoteToRemoteCopy
     /// A path handed to the wrong backend. `connection` is the location's descriptor.
     case pathOutsideConnection(path: String, connection: String)

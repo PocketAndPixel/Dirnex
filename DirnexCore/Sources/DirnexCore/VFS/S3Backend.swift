@@ -56,7 +56,12 @@ public struct S3Backend: ConnectionScopedBackend {
     /// rename does not have that machinery — it calls the primitive directly. So F2 on a prefix
     /// reports an error where it used to report the same error one gesture later. That is unchanged
     /// by this capability, which decides only whether the *menu item* agrees with the key.
-    public var capabilities: VFSCapabilities { [.read, .write, .rename] }
+    ///
+    /// `.internalCopy` is the one thing here the other two remote backends cannot claim: a copy
+    /// with both ends in this bucket is `x-amz-copy-source`, so the bytes never leave S3 and never
+    /// touch this disk. It is what keeps a router from staging a same-bucket duplicate through a
+    /// temporary file (``RelayCopy``), which is what SFTP and FTP have no alternative to.
+    public var capabilities: VFSCapabilities { [.read, .write, .rename, .internalCopy] }
 
     // MARK: - Listing
 

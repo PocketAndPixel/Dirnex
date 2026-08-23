@@ -4533,6 +4533,35 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
 
 ## Design lessons that generalize
 
+- **A verb a protocol lacks is not a verb the *product* lacks, and the honest home for the
+  substitute is the layer holding both ends.** `VFSBackend.copyFile` reads as "duplicate this file"
+  and over SFTP and FTP it is a **direction** — `get`/`put`, download/upload — so both backends
+  refuse any pair of ends with no local side. Correct at the backend, and it shipped as a dead end:
+  F5 from a bucket to a server failed per file with *"Copying directly between remote locations
+  isn't supported"*, and so did a duplicate **inside one account**, which nobody had thought to try
+  because "same server" reads as the easy case. Neither backend can be fixed — neither has heard of
+  the other — so the substitute (download, upload, delete the staged copy) belongs to whoever holds
+  both connections, which is the router: `RelayCopy` in the core, called by `CompositeBackend`.
+  - **Which pairs need it is a capability, never a list of backends.** `VFSCapabilities.internalCopy`
+    says "this backend can copy with both ends inside itself" — the local disk, and S3, whose
+    `x-amz-copy-source` keeps the bytes inside the service — and the router asks each backend rather
+    than naming them at the one site that decides. The alternative is this file's most repeated bug,
+    and here it has an expensive form: a same-bucket duplicate staged through this machine would
+    download and re-upload a file the service copies for nothing.
+  - **The tell to grep for is a backend's own doc comment explaining what it cannot express.** Both
+    said so plainly, for a milestone, in the file where nobody asking "why can't I copy this" would
+    look. A refusal that names a *missing mechanism* rather than a rule is a feature request with a
+    date on it (the archive-member edit lesson, arriving on a transfer).
+  - **A relay must count the file once.** The queue's denominator is the file's size, so reporting
+    both legs drives the bar to 200 %: report each at half weight and reconcile the tail against the
+    staged file's exact size, which also covers a leg that reports nothing at all (an SFTP upload
+    has no observable — `sftp` prints no meter a spawned process can read). And it costs the file's
+    own size in temp space for the length of the transfer, which is what "no single backend can
+    carry these bytes" means in practice rather than a shortcoming of the staging.
+  - **The move came free and is worth checking for before designing anything**: `moveItem` already
+    answers `EXDEV` across backends, so `CopyEngine` runs it as copy-then-delete with progress,
+    Stop, the conflict policy and an undo record — the same fallback an S3 prefix rename rides.
+
 - **A confirmation raised by a *watcher* over a gesture the user already made is a confirmation of an
   intent already stated — and the test of whether it earns its modal is not "is this irreversible" but
   "did the check produce a fact they can act on".** The remote save-back asked on every ⌘S, and its

@@ -259,27 +259,6 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         try backend(for: source).cloneItem(at: source, to: destination)
     }
 
-    func copyFile(
-        at source: VFSPath,
-        to destination: VFSPath,
-        progress: (Int64) -> Void,
-        isCancelled: () -> Bool
-    ) throws {
-        // A byte copy is performed by whichever backend can move the bytes. An upload (local
-        // source → SFTP destination) is the SFTP backend's `put`, so route on the *destination*
-        // when it can receive one; otherwise route on the source, which covers a download (SFTP or
-        // S3 source → local destination) and a plain local-to-local copy.
-        let mover = destination.backend.acceptsUploads
-            ? try backend(for: destination)
-            : try backend(for: source)
-        try mover.copyFile(
-            at: source,
-            to: destination,
-            progress: progress,
-            isCancelled: isCancelled
-        )
-    }
-
     func createSymbolicLink(at destination: VFSPath, withDestination target: String) throws {
         try backend(for: destination).createSymbolicLink(at: destination, withDestination: target)
     }
@@ -296,7 +275,9 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
 
     // MARK: - Routing
 
-    private func backend(for path: VFSPath) throws -> any VFSBackend {
+    /// Internal rather than private so `CompositeBackend+Transfer` can route a copy through it —
+    /// Swift's `private` does not cross files (docs/NOTES.md ▸ Lint ceilings and file splitting).
+    func backend(for path: VFSPath) throws -> any VFSBackend {
         if path.backend == .local { return local }
         if let archivePath = path.backend.archivePath { return try mountedArchive(at: archivePath) }
         if path.backend.isSFTP { return try connectedSFTP(for: path.backend) }

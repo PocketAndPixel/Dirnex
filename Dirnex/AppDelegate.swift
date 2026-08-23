@@ -43,6 +43,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ArchiveExtractor.purgeTemporaries()
         ArchiveWriter.purgeTemporaries()
         RemoteFileCache.purgeTemporaries()
+        CompositeBackend.purgeTemporaries()
 
         // Merge the standard places into the pin list before any window builds its sidebar
         // (PLAN.md §M8) — the Favorites section reads the favorites now, so an un-seeded store
