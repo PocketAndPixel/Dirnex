@@ -2477,6 +2477,15 @@ one, so all four columnar parsers — `bsdtar -tvf`, `sftp`'s `ls -la`, FTP's `L
   substring checks before its prefix scan (neither message starts with `can't`/`couldn't`/`remote`,
   so the prefix scan alone would have missed both).
 
+- **There is no way to fetch a byte *range* over SFTP, so a segmented download is not SFTP at all.**
+  Two dead ends, both cheap to check and both decisive: the system `curl` is built without libssh2 —
+  its `--version` protocol list carries no `sftp` and no `scp` — so the one-`curl -Z`-with-N-sections
+  shape that serves S3 and FTP cannot be spelled here; and `sftp(1)` has no range verb (`get -a`
+  resumes from the local file's length and reads to EOF, with no way to stop). What is left is the
+  **exec channel** below, which makes a segment a remote `tail | head` and brings that section's
+  caveats with it. Measured 2026-08-24; the whole feature turns on it, and it is one command to
+  re-check when the system `curl` next moves.
+
 #### The SSH exec channel (M22's server-side search)
 
 `ssh <host> <command>` is the *other* thing an SSH connection can do, and Dirnex uses it for exactly
@@ -2521,6 +2530,33 @@ works, which makes this whole family probeable on any Mac).
   newline and `*` are all literal, so the quote character is the only thing to escape. Note the path
   can arrive from a listing the *server* produced, so the name being quoted may be a stranger's
   choice — the same reasoning that makes FTP refuse a name carrying CR or LF.
+- **Reading a byte range: `tail -c +N | head -c M`, not `dd` — and the reason is short reads.**
+  Measured 2026-08-24, both are byte-exact in practice and both reassembled SHA-256 identical, but
+  only the pipeline is exact *by construction*: `dd` performs one `read()` per block and BSD has no
+  `iflag=fullblock`, so a short read gives a short piece, silently. It happened not to here (a 32 MiB
+  block read `1+0 records in`), which is precisely the kind of luck not to build on. `tail` and
+  `head` are stream-oriented and read to completion, and they need no block alignment — so a shared
+  segment plan works unchanged rather than growing an alignment rule for one backend.
+  - **`tail -c +N` seeks.** The obvious worry is that skipping to a late offset reads everything
+    before it. Over a 256 MiB file the same 8 MiB piece took **0.31 s at offset 1 and 0.28 s at
+    offset 224 MiB** — O(1) in the offset.
+  - **`tail -c +N` counts from one**, where a byte range counts from zero. One character, and it is
+    the difference between a correct assembly and every piece starting a byte early.
+  - **A pipeline's exit status is its last stage's, so this route cannot report a failure.** A
+    missing remote path gives `ssh` exit **0** and a **zero-byte** piece, because `head` succeeded.
+    `set -o pipefail` is not POSIX and the shell here is the user's own login shell, so there is
+    nothing to set. The piece's **length** is the only evidence, which is what makes a length check
+    on the assembled pieces load-bearing rather than defensive.
+  - **The `sftp`-only refusal lands in the data.** An account with `ForceCommand internal-sftp`
+    answers an exec request *successfully* with prose on **stdout** — where the piece's bytes go — so
+    a refusal arrives as a 43-byte file rather than as an error. Same finding as the search's, one
+    consequence further: there it corrupts a *listing*, here it would corrupt a *file*.
+- **N `ssh` children need no drains, if their streams are files rather than pipes.** The two-pipe
+  deadlock this file documents everywhere else is a property of pipes: point each child's stdout at
+  its own output file and its stderr at a small file beside it, and there is nothing to drain and
+  nothing that can fill. That is what keeps "four concurrent transfers" to four spawns joined into
+  one `DispatchGroup`, one bounded wait, and one `terminate()` each — rather than the orchestration
+  the S3 design rejected when it chose one `curl -Z` over N processes.
 - **`find … -exec ls -ldn {} +` is the portable metadata printer, and GNU `-printf` is the trap that
   looks like the right answer.** `-printf '%y\t%s\t%T@\t%p'` is exact, NUL-framable and locale-free —
   and GNU-only, so it needs a capability probe, a second parser and a fallback, and on a Mac with no

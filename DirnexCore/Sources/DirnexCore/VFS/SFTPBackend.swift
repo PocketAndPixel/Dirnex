@@ -29,6 +29,10 @@ public struct SFTPBackend: RemoteTransportBackend {
     /// exercised at 50 000 rows, and a rule with no test is a rule nobody has watched fail. Left at
     /// its default everywhere in the app.
     public var subtreeRowLimit = SSHFindCommand.defaultRowLimit
+    /// What this connection has learned about splitting a download into several exec channels. A
+    /// reference held by a value type on purpose: the backend is copied freely, and what it knows
+    /// about the *server* must not be copied away with it (``SegmentedDownloadSupport``).
+    let segmentation = SegmentedDownloadSupport()
 
     public init(location: SFTPLocation, transport: any SFTPTransport) {
         self.location = location
@@ -118,6 +122,35 @@ public struct SFTPBackend: RemoteTransportBackend {
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws {
+        try copyFile(
+            at: source,
+            to: destination,
+            expectedSize: nil,
+            progress: progress,
+            isCancelled: isCancelled
+        )
+    }
+
+    /// The same copy, told how big the file is (docs/HISTORY.md ▸ After M19).
+    ///
+    /// **The hint decides whether a download is split**, and it is a hint rather than a probe
+    /// because asking would cost a whole connection: `sftp` has no session to reuse, so a remote
+    /// `stat` is a fresh TCP connect, key exchange and authentication. Both real callers already
+    /// hold the number from the listing they made (`CopyEngine`'s `entry.byteSize`,
+    /// `RemoteFileCache`'s entry), so it costs no extra round trip anywhere; with no hint, behaviour
+    /// is exactly what it was.
+    ///
+    /// It is deliberately consulted **only** for the download direction. An upload's shape is
+    /// decided by the local file's own size, which this backend reads for itself and which cannot be
+    /// stale — and there is no way to split one in any case, since a segment's route here is the
+    /// server *reading* a range, and nothing symmetrical exists for writing one.
+    public func copyFile(
+        at source: VFSPath,
+        to destination: VFSPath,
+        expectedSize: Int64?,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws {
         if isCancelled() { throw CancellationError() }
         var tally = TransferProgressTally()
         let streamed = { (delta: Int64) in
@@ -127,8 +160,12 @@ public struct SFTPBackend: RemoteTransportBackend {
         let transferred: Int64
         if source.backend == id, destination.backend == .local {
             transferred = try downloadFile(
-                remote: source,
-                toLocal: destination.path,
+                SFTPDownloadRequest(
+                    remotePath: source.path,
+                    localPath: destination.path,
+                    source: source,
+                    expectedSize: expectedSize
+                ),
                 progress: streamed,
                 isCancelled: isCancelled
             )
@@ -151,22 +188,75 @@ public struct SFTPBackend: RemoteTransportBackend {
     /// need no threshold — they gate resume on the local partial's size, which is free to read.)
     private static let resumeUploadThreshold: Int64 = 1 << 20 // 1 MiB
 
-    /// Download `remote` to `localPath`, resuming from a local partial when one is a proper prefix.
-    /// Returns the bytes actually transferred (the whole file, or just the remainder on resume).
+    /// Download to `localPath` — in several ranges at once when that is worth doing, in one stream
+    /// when it is not.
+    ///
+    /// The fork has four conditions and each excludes a case the segmented path cannot serve. A
+    /// **partial already on disk** takes the resuming route untouched, because segments are fetched
+    /// into files of their own and have nothing to continue from; no **size hint** means no plan,
+    /// since asking for one would cost a whole extra connection; a file under SFTP's threshold is
+    /// not worth four key exchanges; and a connection that has already shown it **has no exec
+    /// channel** is not asked again — which for an `sftp`-only account is the difference between one
+    /// wasted attempt and one per file.
+    ///
+    /// **The retry after a refused run reports nothing**, and that is the one subtlety worth
+    /// stating: whatever pieces landed have already been handed to `progress`. Reporting them again
+    /// would count one file twice in a job total that only adds. The tail in ``copyFile`` still tops
+    /// the count up to whatever the stream actually moved.
     private func downloadFile(
-        remote source: VFSPath,
-        toLocal localPath: String,
+        _ request: SFTPDownloadRequest,
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> Int64 {
-        let existingLocal = localFileSize(localPath)
+        let existingLocal = localFileSize(request.localPath)
+        if existingLocal == 0,
+           let hint = request.expectedSize,
+           SegmentedDownloadPlan.isWorthwhile(totalSize: hint, limits: .sftp),
+           !segmentation.isRefused,
+           let plan = SegmentedDownloadPlan(totalSize: hint, limits: .sftp) {
+            if let moved = try downloadInSegments(
+                request,
+                plan: plan,
+                progress: progress,
+                isCancelled: isCancelled
+            ) {
+                return moved
+            }
+            return try downloadWholeFile(
+                request,
+                resume: false,
+                existingLocal: 0,
+                progress: { _ in },
+                isCancelled: isCancelled
+            )
+        }
         // Only when a local partial exists is a remote size worth fetching; `>` short-circuits so a
         // fresh download (the norm) never pays for the `stat`.
-        let resume = existingLocal > 0 && remoteFileSize(source) > existingLocal
-        let finalSize = try mapErrors(source) {
+        return try downloadWholeFile(
+            request,
+            resume: existingLocal > 0 && remoteFileSize(request.source) > existingLocal,
+            existingLocal: existingLocal,
+            progress: progress,
+            isCancelled: isCancelled
+        )
+    }
+
+    /// One `sftp` `get`, the whole file, resuming from a local partial when the caller asks it to.
+    ///
+    /// `sftp` leaves the *whole* file on disk and reports its size, so the transferred delta is the
+    /// caller's to derive — which is why `existingLocal` travels with the decision rather than being
+    /// read again here, where the file has since grown.
+    private func downloadWholeFile(
+        _ request: SFTPDownloadRequest,
+        resume: Bool,
+        existingLocal: Int64,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> Int64 {
+        let finalSize = try mapErrors(request.source) {
             try transport.download(
-                source.path,
-                to: localPath,
+                request.remotePath,
+                to: request.localPath,
                 resume: resume,
                 progress: progress,
                 isCancelled: isCancelled

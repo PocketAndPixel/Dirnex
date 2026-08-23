@@ -11125,13 +11125,66 @@ searching (3 hits at three depths inside a zip).
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-08-23)
 
-Twenty-eight dated passes that landed outside a milestone of their own, between M18's close on
+Twenty-nine dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-08-24: user-reported bugs, three vault features, the tree crossing into S3,
 and the chain of five that one S3 rename pulled apart. They ran *alongside* M20, M21 and M22
 rather than after them — which is why they sit here at the end rather than in a numeric slot —
 and they keep their **newest-first** order, because several read as a chain and refer to the
 entry below. Moved out of [PLAN.md](../PLAN.md) §4 on 2026-08-23, once the plan had nothing left
 to say about them; what is still open from this stretch stayed there.
+
+**2026-08-24 — and SFTP, which needed a different route entirely.** The third of three, and the only
+one where the *shape* the first two share was unavailable: the system `curl` is built without libssh2
+— its protocol list carries no `sftp` and no `scp` — and `sftp(1)` has no range verb at all (`get -a`
+resumes to EOF, with no way to stop). So there was nothing to hand a list of ranges to, and the
+question was whether to build it another way at all. Put to Oleg as a fork with the measurements
+attached; the answer was to build it.
+
+**A segment is an SSH exec channel**, which is the second thing this project asks an SSH account to
+do after §M22's subtree search. `/usr/bin/env tail -c +N '<path>' | /usr/bin/env head -c M`, and each
+of those three choices was probed rather than assumed: `tail`+`head` over `dd` because only the
+pipeline is exact *by construction* (`dd` does one `read()` per block and BSD has no
+`iflag=fullblock`, so a short read gives a short piece — it happened not to here, which is exactly
+the kind of luck not to build on), `tail -c +N` **seeks** (the same 8 MiB piece of a 256 MiB file
+took **0.31 s at offset 1 and 0.28 s at offset 224 MiB**), and `env` on both halves because an exec
+channel runs the user's login shell with their rc sourced, where a function shadows a binary —
+measured, a `dd() { echo SHADOWED; }` did.
+
+**Two things about this route report failure badly, and both shape the design.** A pipeline's exit
+status is its *last* stage's, so a `tail` that cannot open the file is masked by a `head` that exits
+0 — measured, a missing remote path gives `ssh` exit **0** and a **zero-byte** piece. And an account
+confined to the `sftp` subsystem has no exec channel at all: it answers *successfully* with the
+sentence "This service allows sftp connections only." on **stdout**, which is where a piece's bytes
+go — so a refusal arrives as a 43-byte file rather than as an error. Nothing but a piece's **length**
+separates either case from a real download, which is what makes `SegmentAssembly`'s length check
+load-bearing here rather than defensive, and why a segmented SFTP download never diagnoses anything:
+it succeeds, or it hands over to the plain `sftp` download whose error is the one worth reporting.
+
+**The concurrency the other two avoided lands here, and it is smaller than it looks.** There is no
+multi-transfer driver for SSH, so four `ssh` children run at once — the shape the S3 design rejected.
+What keeps it modest is that **nothing is piped**: each child's stdout is its own piece and its stderr
+a small file beside it, so there is no pipe that can fill and no drain to run, and the two-pipe
+deadlock this project documents everywhere else has no shape here. What is left is four spawns joined
+into one `DispatchGroup`, one `ProcessWaiting.wait` for all of them, and one `terminate()` each on
+cancel.
+
+The limits get their own table (`SegmentedDownloadLimits.sftp`, 16 MiB / 8 MiB / 4) even though the
+numbers equal FTP's today, because the reasons do not: a segment here costs a key exchange *and* an
+authentication, and four leaves room under OpenSSH's `MaxStartups`, whose default throttles above ten
+unauthenticated connections. `FTPSegmentedDownload` became the shared `SegmentedDownloadOutcome`,
+since the two protocols whose answer is a byte count now both use it — S3 keeps its own, whose
+sections carry statuses worth attributing. The POSIX quoting `SSHFindCommand` had was hoisted to
+`SSHShellQuote`, because two commands now send a stranger's path to a shell and a second spelling of
+that rule is how one of them gets a weaker one.
+
+Verified live through the real `CompositeBackend` → `SFTPBackend` → `SFTPProcessTransport` → four
+`ssh` children: 32 MiB **byte-identical**, progress summing to exactly 33 554 432. On an
+`internal-sftp` server, two downloads cost **6 sessions with the latch and 10 without** — four doomed
+plus one fallback for the first file, then one for the second — with both files byte-identical. Six
+headless controls fire on their own assertions: a zero-based `tail`, dropping `env`, leaving the path
+unquoted, reporting a refusal instead of falling back, removing the latch, and giving SFTP S3's
+limits. **Uploads stay whole** on all three backends, and here it is not even expressible: a segment's
+route is the server *reading* a range, and nothing symmetrical exists for writing one.
 
 **2026-08-24 — FTP downloads split too, over four logins rather than eight requests.** PLAN.md had
 this as a *separate decision* rather than a follow-through, on the grounds that each segment is a

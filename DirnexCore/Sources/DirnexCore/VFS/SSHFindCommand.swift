@@ -74,18 +74,9 @@ public enum SSHFindCommand {
         return trimmed.isEmpty ? "/" : String(trimmed)
     }
 
-    /// POSIX single-quoting: the only thing standing between a remote path and the server's shell.
-    ///
-    /// Inside single quotes every character is literal, including `$`, backtick, `;`, newline and
-    /// `*` — so the sole escape needed is for the quote itself, closed and re-opened around a
-    /// backslashed one (`'\''`). Verified against a real server: a path built as
-    /// `…/tree'; touch CANARY; echo '` created no canary and was reported by `find` as one missing
-    /// path, and a directory genuinely named ``it's $a `b` ;x.txt`` came back byte-for-byte.
-    ///
-    /// This is not formatting. A remote path can arrive from a listing the *server* produced, so a
-    /// name a stranger chose reaches a shell here — the same reasoning that makes FTP refuse a name
-    /// carrying CR or LF (docs/NOTES.md ▸ curl).
+    /// POSIX single-quoting, shared with the segmented download's own command — see
+    /// ``SSHShellQuote``, which carries the rule and what was probed against a real server.
     static func quote(_ value: String) -> String {
-        "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'"
+        SSHShellQuote.quote(value)
     }
 }

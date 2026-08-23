@@ -143,7 +143,7 @@ final class FakeFTPTransport: FTPTransport, @unchecked Sendable {
         to localPath: String,
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
-    ) throws -> FTPSegmentedDownload {
+    ) throws -> SegmentedDownloadOutcome {
         if isCancelled() { cancelledTransfers.append(remotePath); throw CancellationError() }
         segmentRequests.append(segments)
         if let error { throw error }

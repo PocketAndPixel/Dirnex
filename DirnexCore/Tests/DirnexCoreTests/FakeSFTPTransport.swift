@@ -17,6 +17,21 @@ final class FakeSFTPTransport: SFTPTransport, @unchecked Sendable {
     private(set) var removedDirectories: [String] = []
     private(set) var symlinks: [(link: String, target: String)] = []
     private(set) var downloads: [RecordedTransfer] = []
+    /// The bytes a segmented download serves its ranges out of. `nil` is an empty file, which only a
+    /// test that does not care about the bytes should leave it as.
+    var fileBytes: Data?
+    /// Answers every segment with the prose an `sftp`-only account sends **instead of** the bytes —
+    /// exit 1, on stdout, where a piece's data would go. The commonest refusal on this route, and
+    /// the one that arrives looking like a very short file rather than like an error.
+    var hasNoExecChannel = false
+    /// Serves every segment the **whole** file rather than its range.
+    var ignoresRanges = false
+    /// Every segmented download the backend asked for, in call order — the requests rather than
+    /// their numbers, so a test can ask whether the files this run was given still exist.
+    private(set) var segmentRequests: [[DownloadSegment]] = []
+    /// The segment numbers of each run — the only place the difference between one stream and
+    /// several is visible at all.
+    var segmentRuns: [[Int]] { segmentRequests.map { $0.map(\.number) } }
     /// Transfers this fake was asked to abandon — the record that makes the cancellation rule
     /// assertable at all. A real transport polls `isCancelled` *while the bytes move*, which a
     /// headless double cannot reproduce; what it can pin is that the backend hands the flag down to
@@ -108,7 +123,54 @@ final class FakeSFTPTransport: SFTPTransport, @unchecked Sendable {
         if let error { throw error }
         for delta in streamedProgress { progress(delta) }
         downloads.append(RecordedTransfer(local: localPath, remote: remotePath, resume: resume))
+        // Writes the file when one is set, so a test about *which route ran* can also check that
+        // the route it fell back to produced it. Left alone when it is not, which is every test
+        // that predates segmented downloads.
+        if let fileBytes { try? fileBytes.write(to: URL(fileURLWithPath: localPath)) }
         return downloadBytes
+    }
+
+    /// Serve each range out of ``fileBytes`` into the file the segment names, exactly as the real
+    /// `ssh` child writes one — which is what lets the assembly, and the bytes it produces, be
+    /// asserted with no server.
+    ///
+    /// ``hasNoExecChannel`` reproduces the shape that has no equivalent on the other two routes: the
+    /// server answers, successfully, with something that is not the data — so the pieces exist, are
+    /// the wrong length, and nothing threw.
+    @discardableResult
+    func downloadSegments(
+        _ segments: [DownloadSegment],
+        of remotePath: String,
+        to localPath: String,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> SegmentedDownloadOutcome {
+        if isCancelled() { cancelledTransfers.append(remotePath); throw CancellationError() }
+        segmentRequests.append(segments)
+        if let error { throw error }
+        let refusal = Data("This service allows sftp connections only.\n".utf8)
+        let contents = fileBytes ?? Data()
+        var moved: Int64 = 0
+        for segment in segments {
+            let served: Data
+            if hasNoExecChannel {
+                served = refusal
+            } else if ignoresRanges {
+                served = contents
+            } else {
+                served = Self.slice(contents, segment.range)
+            }
+            try? served.write(to: URL(fileURLWithPath: segment.localPath))
+            moved += Int64(served.count)
+            progress(Int64(served.count))
+        }
+        return .segments(bytes: moved)
+    }
+
+    private static func slice(_ contents: Data, _ range: Range<Int64>) -> Data {
+        let lower = min(Int(range.lowerBound), contents.count)
+        let upper = min(Int(range.upperBound), contents.count)
+        return contents.subdata(in: lower..<upper)
     }
 
     func upload(

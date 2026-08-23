@@ -63,6 +63,25 @@ public struct SegmentedDownloadLimits: Sendable, Equatable {
         minimumSegmentSize: 8 * 1024 * 1024,
         maximumSegments: 4
     )
+
+    /// SFTP: the same three numbers as ``ftp``, arrived at from different measurements — which is
+    /// why it is its own table rather than a second name for that one.
+    ///
+    /// A segment here is an **SSH exec channel**, so its fixed cost is a TCP connect, a key
+    /// exchange and an authentication — dearer than FTP's login and much dearer than S3's TLS
+    /// handshake, which is what keeps the threshold at 16 MiB rather than S3's 8. The ceiling of
+    /// four is not about caps on concurrent *logins* but about OpenSSH's `MaxStartups`, whose
+    /// default throttles unauthenticated connections above ten: four leaves room for whatever else
+    /// the account is doing.
+    ///
+    /// They coincide today and are free to diverge: the reasons do not share a cause, and a table
+    /// per protocol is what makes changing one of them a one-line decision rather than an
+    /// archaeology exercise.
+    public static let sftp = SegmentedDownloadLimits(
+        threshold: 16 * 1024 * 1024,
+        minimumSegmentSize: 8 * 1024 * 1024,
+        maximumSegments: 4
+    )
 }
 
 /// How one file is cut into byte ranges — the pure arithmetic behind a segmented download.

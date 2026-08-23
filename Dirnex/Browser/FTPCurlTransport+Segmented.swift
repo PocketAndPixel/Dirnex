@@ -31,7 +31,7 @@ extension FTPCurlTransport {
         to localPath: String,
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
-    ) throws -> FTPSegmentedDownload {
+    ) throws -> SegmentedDownloadOutcome {
         guard !segments.isEmpty else { return .segments(bytes: 0) }
         let invocation = FTPProcessArguments.downloadSegments(
             session: session.with(maxTime: transferTimeout),

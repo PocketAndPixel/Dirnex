@@ -50,6 +50,36 @@ public protocol SFTPTransport: RemoteWriteTransport {
         isCancelled: () -> Bool
     ) throws -> Int64
 
+    /// Download several byte ranges of one remote file **at once**, each into its own file, for the
+    /// caller to join (``SegmentAssembly``).
+    ///
+    /// **Not SFTP at all, and it cannot be**: the system `curl` is built without libssh2 — its
+    /// protocol list carries no `sftp` and no `scp` — and `sftp(1)` has no range verb (`get -a`
+    /// resumes to EOF, with no way to stop). So the one-`curl -Z`-with-N-sections shape that serves
+    /// S3 and FTP does not exist here, and each segment is an SSH **exec** channel running
+    /// ``SSHSegmentCommand``: the second thing this project asks an SSH account to do, after §M22's
+    /// subtree search. That brings §M22's caveat with it — an account confined to the `sftp`
+    /// subsystem has no exec channel and answers with prose, on *stdout*, where a piece's bytes
+    /// would go — so this can be refused by a perfectly healthy server and the caller has to be
+    /// ready to fall back.
+    ///
+    /// It **throws on any failure of the run** rather than reporting per segment, for a reason of
+    /// its own: a pipeline's exit status is its last stage's, so a `tail` that could not open the
+    /// file is masked by a `head` that exits 0 — measured, a missing remote path gives `ssh` exit 0
+    /// and a zero-byte piece. The pieces' lengths are the evidence, and ``SegmentAssembly`` weighs
+    /// them.
+    ///
+    /// Additive, with a default that **forwards** to the plain download: a single stream produces
+    /// the identical file, so a transport that has not implemented this is slow and never wrong.
+    @discardableResult
+    func downloadSegments(
+        _ segments: [DownloadSegment],
+        of remotePath: String,
+        to localPath: String,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> SegmentedDownloadOutcome
+
     /// Upload the local file at `localPath` to a remote path (`put`, or `put -a` to **resume**),
     /// returning the local source's size (which is the remote file's total size once the transfer
     /// finishes). When `resume` is true the upload picks up from the remote file's current length,
@@ -112,6 +142,29 @@ public protocol SFTPTransport: RemoteWriteTransport {
 
 public extension SFTPTransport {
     func runCommand(_ command: String, isCancelled: () -> Bool) throws -> String? { nil }
+
+    /// The additive half of ``downloadSegments(_:of:to:progress:isCancelled:)``: a transport that
+    /// predates segmented downloads keeps compiling and keeps working.
+    ///
+    /// It forwards rather than throwing — the test this project applies before letting a default
+    /// stand in is whether the caller can tell it was not honoured, and here the two paths produce
+    /// the identical file.
+    @discardableResult
+    func downloadSegments(
+        _ segments: [DownloadSegment],
+        of remotePath: String,
+        to localPath: String,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> SegmentedDownloadOutcome {
+        .whole(bytes: try download(
+            remotePath,
+            to: localPath,
+            resume: false,
+            progress: progress,
+            isCancelled: isCancelled
+        ))
+    }
 }
 
 /// A remote operation's failure, in the few shapes the backend needs to distinguish so it can map
@@ -291,169 +344,5 @@ public struct SFTPHostKeyChange: Sendable, Equatable {
 public enum SFTPKnownHosts {
     public static func removalTarget(host: String, port: Int) -> String {
         port == SFTPLocation.defaultPort ? host : "[\(host)]:\(port)"
-    }
-}
-
-/// Builds the `sftp` batch commands the transport feeds on stdin. Pure and tested so the escaping —
-/// the one place a remote path with spaces or quotes could break the command — is verified without
-/// a server. `sftp`'s batch parser splits on whitespace but honors double quotes and backslash
-/// escapes, so a path is wrapped in quotes with `\` and `"` escaped.
-public enum SFTPBatchCommand {
-    /// The batch line that lists (or stats) `remotePath`: `ls -la "…"`.
-    public static func list(_ remotePath: String) -> String {
-        "ls -la \(quote(remotePath))"
-    }
-
-    /// The batch line that creates a remote directory: `mkdir "…"`.
-    public static func makeDirectory(_ remotePath: String) -> String {
-        "mkdir \(quote(remotePath))"
-    }
-
-    /// The batch line that renames/moves a remote item: `rename "src" "dst"`.
-    public static func rename(_ source: String, to destination: String) -> String {
-        "rename \(quote(source)) \(quote(destination))"
-    }
-
-    /// The batch line that removes a remote file or symlink: `rm "…"`.
-    public static func removeFile(_ remotePath: String) -> String {
-        "rm \(quote(remotePath))"
-    }
-
-    /// The batch line that removes an empty remote directory: `rmdir "…"`.
-    public static func removeDirectory(_ remotePath: String) -> String {
-        "rmdir \(quote(remotePath))"
-    }
-
-    /// The batch line that creates a remote symbolic link: `ln -s "target" "link"` (`sftp`'s `ln`
-    /// takes the existing target first, the new link path second, like `ln(1)`).
-    public static func createSymbolicLink(_ remotePath: String, target: String) -> String {
-        "ln -s \(quote(target)) \(quote(remotePath))"
-    }
-
-    /// The batch line that downloads a remote file to a local path: `get "remote" "local"`, or
-    /// `get -a "remote" "local"` to **resume** — `sftp` seeks to the local file's current length and
-    /// fetches only the remainder, instead of restarting from zero.
-    public static func download(_ remotePath: String, to localPath: String, resume: Bool = false) -> String {
-        "get \(resume ? "-a " : "")\(quote(remotePath)) \(quote(localPath))"
-    }
-
-    /// The batch line that uploads a local file to a remote path: `put "local" "remote"`, or
-    /// `put -a "local" "remote"` to **resume** — `sftp` seeks past the remote file's current length
-    /// and sends only the remainder.
-    public static func upload(_ localPath: String, to remotePath: String, resume: Bool = false) -> String {
-        "put \(resume ? "-a " : "")\(quote(localPath)) \(quote(remotePath))"
-    }
-
-    /// The batch line that prints the remote working directory (`pwd`), used to discover the home
-    /// directory to land in on connect.
-    public static let printWorkingDirectory = "pwd"
-
-    static func quote(_ path: String) -> String {
-        let escaped = path
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-        return "\"\(escaped)\""
-    }
-}
-
-/// How the CLI-driven transport authenticates against a server. Carries no secret for `.password`:
-/// the password is resolved from the Keychain by the app and fed to `sftp` out-of-band via an
-/// `SSH_ASKPASS` helper (never on the command line, never in this value, never on disk), so an auth
-/// *method* is safe to describe and thread around like an `SFTPLocation`.
-public enum SFTPAuthentication: Sendable, Hashable, Codable {
-    /// Public-key auth with the private key at `identityFile` — `sftp`'s native non-interactive path.
-    case key(identityFile: String)
-    /// Password auth; the password is supplied out-of-band, never held here.
-    case password
-}
-
-/// Builds the `sftp` process arguments (after the executable path) for a one-command session. Pure
-/// and tested so the security-sensitive flag assembly — which auth methods are offered, and crucially
-/// whether the interactive password prompt is enabled — is verified without spawning `sftp`, the
-/// same reason `SFTPBatchCommand` is pure.
-///
-/// The two modes differ fundamentally, verified live against OpenSSH 10:
-/// - **Key auth uses `-b -`**: quiet, fail-fast batch semantics (no `sftp>` echo, a non-zero exit on
-///   a failed command). `-b` also forces `-oBatchMode=yes` onto `ssh`, which is what makes key auth
-///   fully non-interactive. This is the shipped, verified browse/transfer path — left untouched.
-/// - **Password auth cannot use `-b`**: it forces `BatchMode=yes`, which disables the password prompt
-///   entirely (`ssh` would report "no more authentication methods"). So password auth runs `sftp`
-///   *interactively* over a piped stdin — the prompt is answered out-of-band by `SSH_ASKPASS` — which
-///   means stdout carries `sftp>` echo lines (`SFTPListingParser` skips them) and a failed command
-///   exits zero (so the transport must scan stderr with `detect(stderr:)`, not just the exit code).
-///   Only the `password` method is offered: `keyboard-interactive` stalls for a minute on a *wrong*
-///   password when `SSH_ASKPASS` auto-answers it (macOS PAM), which would hang the pane on a typo;
-///   and `PubkeyAuthentication=no` stops a machine's stray authorized key from bypassing the choice.
-public enum SFTPProcessArguments {
-    public static func batch(
-        location: SFTPLocation,
-        authentication: SFTPAuthentication,
-        connectTimeout: Int
-    ) -> [String] {
-        arguments(
-            location: location,
-            authentication: authentication,
-            connectTimeout: connectTimeout,
-            portFlag: "-P",
-            batchFile: true
-        )
-    }
-
-    /// The `ssh` arguments for one **exec** channel — the search shortcut's route (PLAN.md §M22
-    /// Slice 4) — with `command` as the trailing operand the server's shell will run.
-    ///
-    /// Two things differ from ``batch(location:authentication:connectTimeout:)`` and nothing else
-    /// does, which is the point: the same host key policy, the same timeout, the same offered
-    /// authentication methods, so the exec channel cannot become a second security posture that
-    /// drifts from the browsing one.
-    ///
-    /// - `ssh` spells the port **`-p`** where `sftp` spells it `-P`. Getting that backwards is a
-    ///   *usage* error, which exits 1 having printed help — it cost this milestone's own benchmark
-    ///   a wrong answer before the assertion that now guards it (docs/NOTES.md ▸ sftp / ssh).
-    /// - There is no `-b -`, because there is no batch file: the command *is* an argument. Key auth
-    ///   therefore has to ask for `BatchMode=yes` explicitly, which `-b` used to imply for it.
-    public static func exec(
-        location: SFTPLocation,
-        authentication: SFTPAuthentication,
-        connectTimeout: Int,
-        command: String
-    ) -> [String] {
-        arguments(
-            location: location,
-            authentication: authentication,
-            connectTimeout: connectTimeout,
-            portFlag: "-p",
-            batchFile: false
-        ) + [command]
-    }
-
-    private static func arguments(
-        location: SFTPLocation,
-        authentication: SFTPAuthentication,
-        connectTimeout: Int,
-        portFlag: String,
-        batchFile: Bool
-    ) -> [String] {
-        let common = [
-            "-o", "ConnectTimeout=\(connectTimeout)",
-            // Trust-on-first-use: a fresh host is added to known_hosts, a *changed* key still fails.
-            "-o", "StrictHostKeyChecking=accept-new",
-            portFlag, String(location.port)
-        ]
-        let target = "\(location.username)@\(location.host)"
-        switch authentication {
-        case let .key(identityFile):
-            return ["-i", identityFile, "-o", "BatchMode=yes"] + common
-                + (batchFile ? ["-b", "-"] : []) + [target]
-        case .password:
-            // No `-b`: it would disable the prompt. Interactive over piped stdin; `SSH_ASKPASS`
-            // answers the prompt (wired by the transport's environment).
-            return [
-                "-o", "PreferredAuthentications=password",
-                "-o", "PubkeyAuthentication=no",
-                // One attempt, so a wrong password fails fast instead of re-prompting three times.
-                "-o", "NumberOfPasswordPrompts=1"
-            ] + common + [target]
-        }
     }
 }

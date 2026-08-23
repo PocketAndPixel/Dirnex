@@ -107,7 +107,8 @@ extension SFTPProcessTransport {
         return captured.standardOutput
     }
 
-    private var isPasswordAuthentication: Bool {
+    /// Internal for the reason ``passwordEnvironment()`` is.
+    var isPasswordAuthentication: Bool {
         if case .password = authentication { return true }
         return false
     }
@@ -218,7 +219,9 @@ extension SFTPProcessTransport {
     /// and the rest survive — `ssh` needs `HOME` to find `known_hosts`) plus the `SSH_ASKPASS`
     /// wiring that feeds the password without a TTY. `SSH_ASKPASS_REQUIRE=force` makes modern OpenSSH
     /// use the helper even with no controlling terminal.
-    private func passwordEnvironment() throws -> [String: String] {
+    /// Internal rather than private so the segmented download can arm each of its children with it
+    /// — Swift's `private` does not cross files (docs/NOTES.md ▸ file splitting).
+    func passwordEnvironment() throws -> [String: String] {
         var environment = ProcessInfo.processInfo.environment
         environment["SSH_ASKPASS"] = try SFTPAskpassHelper.scriptPath()
         environment["SSH_ASKPASS_REQUIRE"] = "force"

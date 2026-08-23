@@ -75,7 +75,7 @@ public protocol FTPTransport: RemoteWriteTransport {
         to localPath: String,
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
-    ) throws -> FTPSegmentedDownload
+    ) throws -> SegmentedDownloadOutcome
 
     /// Upload the local file at `localPath` to a remote path, returning **the bytes transferred by
     /// this call**. With `resume`, `curl -C -` asks the server for the remote file's current size
@@ -133,7 +133,7 @@ public extension FTPTransport {
         to localPath: String,
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
-    ) throws -> FTPSegmentedDownload {
+    ) throws -> SegmentedDownloadOutcome {
         .whole(bytes: try download(
             remotePath,
             to: localPath,
@@ -142,22 +142,6 @@ public extension FTPTransport {
             isCancelled: isCancelled
         ))
     }
-}
-
-/// What a segmented FTP download turned out to be — the answer
-/// ``FTPTransport/downloadSegments(_:of:to:progress:isCancelled:)`` gives.
-///
-/// Two cases rather than one, because a transport that cannot split a request has not *failed*: it
-/// has produced the same file by the older route, and the caller's next step differs entirely —
-/// there are pieces to join in one case and nothing to do in the other. Making that a returned
-/// distinction is what keeps the forwarding default honest.
-public enum FTPSegmentedDownload: Sendable, Equatable {
-    /// The pieces are on disk under the paths the segments named, and joining them is the caller's
-    /// (``SegmentAssembly``). Carries the bytes this run moved.
-    case segments(bytes: Int64)
-    /// This transport could not split the request, so the **whole** file was downloaded to the
-    /// destination in one stream. There is nothing to assemble and nothing to clean up.
-    case whole(bytes: Int64)
 }
 
 /// A remote FTP operation's failure, in the shapes the backend and the app's trust flow need to
