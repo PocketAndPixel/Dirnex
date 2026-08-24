@@ -76755,6 +76755,95 @@
         }
       }
     },
+    "There’s no Trash on this volume, so this can’t be undone.": {
+      "comment": "Body of the delete confirmation raised when a volume — typically a network share — refuses a move-to-Trash, explaining why the item can only be deleted for good.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf diesem Volume gibt es keinen Papierkorb, daher kann dies nicht widerrufen werden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There’s no Trash on this volume, so this can’t be undone."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este volumen no tiene papelera, así que esto no se puede deshacer."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce volume n’a pas de corbeille, cette action est donc irréversible."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo volume non ha un cestino, quindi l’operazione non può essere annullata."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このボリュームにはゴミ箱がないため、この操作は取り消せません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 볼륨에는 휴지통이 없으므로 이 작업은 취소할 수 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dit volume heeft geen prullenmand, dus dit kan niet ongedaan worden gemaakt."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten wolumin nie ma Kosza, więc tej operacji nie można cofnąć."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На этом томе нет Корзины, поэтому отменить это действие нельзя."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На цьому томі немає Кошика, тому скасувати цю дію не вдасться."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este volume não tem Lixeira, portanto isso não pode ser desfeito."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此宗卷没有废纸篓，因此该操作无法撤销。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此儲存空間沒有垃圾桶，因此無法還原此操作。"
+          }
+        }
+      }
+    },
     "There’s no bucket named “%@” on %@.": {
       "comment": "S3 connect failure detail; %1$@ is the bucket name and %2$@ the endpoint.",
       "localizations": {

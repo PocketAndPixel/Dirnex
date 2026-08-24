@@ -119,6 +119,9 @@ public struct LocalBackend: VFSBackend {
     /// `.trash` capability and F8 there is already a permanent delete; the guard is here so the
     /// invariant is enforced (and tested) at the layer that touches the bytes rather than resting
     /// on a caller remembering to ask.
+    ///
+    /// **A volume that has no Trash refuses here, and only here** — see ``trashFailure(_:path:)``
+    /// for why that refusal cannot be asked about in advance.
     @discardableResult
     public func trashItem(at path: VFSPath) throws -> VFSPath? {
         guard !TrashLocations.isInsideTrash(path) else {
@@ -129,10 +132,43 @@ public struct LocalBackend: VFSBackend {
         do {
             try FileManager.default.trashItem(at: url, resultingItemURL: &resultingURL)
         } catch {
-            throw Self.mapCocoaError(error, path: path)
+            throw Self.trashFailure(error, path: path)
         }
         guard let resolved = resultingURL as URL? else { return nil }
         return .local(resolved.path)
+    }
+
+    /// Translate a `trashItem` failure, which has one outcome the shared mapper cannot express:
+    /// **this volume has no Trash at all**, which Cocoa reports as `NSFeatureUnsupportedError`
+    /// (3328). Reported by a user 2026-08-25, deleting from a mounted SMB share on a NAS.
+    ///
+    /// Named rather than left to ``mapCocoaError(_:path:)``, whose `default` branch renders it as
+    /// `.io(code: 3328)` — *"The system reported an error (code 3 328)"*, a number, for a volume
+    /// that is working perfectly and simply keeps no Trash. It is also the one delete failure that
+    /// is **not a failure**: the user asked to throw a file away, and the honest answer is that here
+    /// that means for good. So the app reads this case back out (`TrashRefusal`) and re-offers the
+    /// permanent delete it already has for a Trash-less backend, exactly as Finder does on a share.
+    ///
+    /// **The refusal cannot be anticipated, which is why it is handled after the fact rather than
+    /// in `capabilities(for:)`.** Probed 2026-08-25 for a cheap pre-check and there is none: no
+    /// `VOL_CAP_FMT_*`/`VOL_CAP_INT_*` bit names a Trash, no `URLResourceKey` does either, and
+    /// `FileManager.url(for: .trashDirectory, appropriateFor:)` answers the *opposite* way round —
+    /// it throws this very code for a volume that trashes fine but has nothing trashed on it yet
+    /// (measured on freshly created ExFAT and HFS+ images, both of which then trashed into
+    /// `<volume>/.Trashes/501` without complaint). So 3328 from the *lookup* means nothing and 3328
+    /// from the *attempt* is the verdict, and the attempt is the only instrument there is.
+    ///
+    /// The code is read before ``mapCocoaError(_:path:)`` gets the error, which prefers an
+    /// underlying POSIX errno. That ordering is deliberate: 3328 is the API's verdict about the
+    /// *feature*, and an errno tucked under it is how it found out rather than what it means. A
+    /// missing file does not arrive this way — `trashItem` reports that as `NSFileNoSuchFileError`
+    /// — so nothing else is being swallowed.
+    static func trashFailure(_ error: Error, path: VFSPath) -> VFSError {
+        let nsError = error as NSError
+        if nsError.domain == NSCocoaErrorDomain, nsError.code == NSFeatureUnsupportedError {
+            return .unsupported(.trash)
+        }
+        return mapCocoaError(error, path: path)
     }
 
     /// Translate a `FileManager` failure into a `VFSError`, recovering the POSIX errno

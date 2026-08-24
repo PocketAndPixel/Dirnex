@@ -3648,6 +3648,38 @@ what made the milestone affordable and the rest inverted rules borrowed from the
   reads as "external volumes have no Trash," a wrong answer in the quiet direction. It resolves `/`,
   `/System/Volumes/Data` and the `/Volumes/<name>` root symlink all to `~/.Trash`, which is why the
   boot volume is skipped when merging (or the home trash is listed two or three times).
+- **A volume can refuse `trashItem` outright — an SMB share does — and the same 3328 that means
+  nothing above is the whole verdict here.** Reported 2026-08-25 as *"The system reported an error
+  (code 3 328)"* on F8 over a NAS share. `LocalBackend.mapCocoaError`'s `default` branch rendered
+  `NSFeatureUnsupportedError` as `.io(code: 3328)`, so a volume that works perfectly and simply
+  keeps no Trash was reported to the user as a number. The two readings of that code are the trap:
+  from `url(for: .trashDirectory, appropriateFor:)` it is noise (the entry above — measured again
+  on freshly created **ExFAT and HFS+** images, both of which threw it and then trashed happily
+  into `<volume>/.Trashes/501`), while from **`trashItem` itself** it is the volume's answer.
+  The SMB half is the *report* rather than a measurement taken here — no share was mountable on
+  this Mac, and no disk image can stand in for one, since every filesystem `hdiutil` makes trashes.
+  What was measured is everything on this side of the syscall.
+  - **There is no pre-check, so `capabilities(for:)` cannot be taught this.** Probed 2026-08-25:
+    no `VOL_CAP_FMT_*` or `VOL_CAP_INT_*` bit names a Trash, and no `URLResourceKey`/`kCFURL*`
+    does either — the `volumeSupports…` family covers cloning, renaming, immutable files and a
+    dozen more, and stops short of this one. The attempt is the only instrument, which is why the
+    degradation happens *after* the refusal rather than in the capability set the way SFTP's does.
+  - **It is not a failure and must not be reported as one.** Nothing has moved when the refusal
+    arrives, so the honest answer is the confirmed permanent delete the app already has for a
+    Trash-less backend — offered, not performed, and worded as the ordinary permanent-delete
+    question with the *reason* in the body. Finder does exactly this on a share, down to renaming
+    its own menu item. `LocalBackend.trashFailure` names the case and `TrashRefusal` reads it back.
+  - **Read the outer code before the underlying errno**, which is the reverse of what the shared
+    Cocoa mapper does. A 3328 carrying an `NSPOSIXErrorDomain` `ENOENT` underneath is real (the
+    lookup produced exactly that shape on both probe volumes), and letting the errno win reports a
+    Trash-less volume as *"not found"* — a second wrong answer wearing a more plausible sentence. A
+    genuinely missing file never arrives this way: `trashItem` reports that as
+    `NSFileNoSuchFileError`, so nothing is being swallowed.
+  - **The two `try?` callers are the same bug still open, and they fail in silence**, which is
+    worse: `removeArchiveMoveOriginals` (F6 into an archive) and `runSyncDeletes` both swallow the
+    refusal, so on such a volume the move leaves its originals and the sync leaves its deletions,
+    each reporting success. Neither is reachable from F8, and each needs its own decision about
+    what to ask, so they are recorded rather than quietly given the same fallback.
 - **Put Back has no API, and the data is in the trash folder's `.DS_Store`.** Probed: a trashed file's
   only xattr is `com.apple.provenance`, `mdls` exposes nothing, and every plausible `URLResourceKey`
   spelling (`NSURLTrashOriginalPathKey` and friends) returns an empty dictionary. The origin is a

@@ -298,13 +298,16 @@ extension PanelViewController {
         }
     }
 
-    private func runDelete(_ targets: [FileEntry], permanent: Bool) {
+    /// Internal rather than private because the Trash-less-volume fallback re-enters it from
+    /// `PanelViewController+DeleteFallback`, with the same targets and `permanent: true`.
+    func runDelete(_ targets: [FileEntry], permanent: Bool) {
         let paths = targets.map(\.path)
         let backend = backend
         Task {
             let result = await BlockingWork.run { () -> DeleteResult in
                 var failures: [OperationFailure] = []
                 var restorations: [TrashRestoration] = []
+                var trashRefused: [VFSPath] = []
                 for path in paths {
                     do {
                         if permanent {
@@ -313,6 +316,11 @@ extension PanelViewController {
                             // Capture where it landed so Cmd+Z can restore it from the Trash.
                             restorations.append(TrashRestoration(original: path, trashed: trashed))
                         }
+                    } catch let error where TrashRefusal.isVolumeWithoutTrash(error) {
+                        // Not a failure to report: the volume keeps no Trash, so this item is
+                        // still sitting there untouched and the caller re-offers it as a
+                        // permanent delete (`offerPermanentDelete(forVolumeWithoutTrash:)`).
+                        trashRefused.append(path)
                     } catch let error as VFSError {
                         failures.append(OperationFailure(path: path, error: error))
                     } catch {
@@ -321,7 +329,11 @@ extension PanelViewController {
                         )
                     }
                 }
-                return DeleteResult(failures: failures, restorations: restorations)
+                return DeleteResult(
+                    failures: failures,
+                    restorations: restorations,
+                    trashRefused: trashRefused
+                )
             }
 
             panel.clearSelection()
@@ -335,6 +347,12 @@ extension PanelViewController {
             if !result.failures.isEmpty {
                 presentDeletionFailures(result.failures, permanent: permanent)
             }
+            // Last, so that in the (rare) mixed pass the question the user must answer is the sheet
+            // left in front rather than behind the report.
+            let refused = Set(result.trashRefused)
+            offerPermanentDelete(
+                forVolumeWithoutTrash: targets.filter { refused.contains($0.path) }
+            )
         }
     }
 
@@ -459,7 +477,12 @@ private struct TrashRestoration: Sendable {
 
 /// What a delete pass produced: the items it couldn't remove, and (for Trash) where the
 /// removed items landed so the operation can be journaled for undo.
+///
+/// ``trashRefused`` is kept apart from ``failures`` because it is not one: those items are
+/// untouched on a volume that keeps no Trash, and what they need is the permanent delete offered
+/// instead — not an alert with a number in it (`TrashRefusal`).
 private struct DeleteResult: Sendable {
     let failures: [OperationFailure]
     let restorations: [TrashRestoration]
+    let trashRefused: [VFSPath]
 }
