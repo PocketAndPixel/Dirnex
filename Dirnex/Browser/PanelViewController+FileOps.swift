@@ -212,14 +212,14 @@ extension PanelViewController {
         let goesToTrash = !permanent && strategy == .trash
         if !goesToTrash {
             confirmPermanentDelete(of: targets) { [weak self] in
-                self?.runDelete(targets, permanent: true)
+                self?.runDelete(targets.map(\.path), permanent: true)
             }
         } else if AppPreferences.shared.confirmTrash {
             confirmTrash(of: targets) { [weak self] in
-                self?.runDelete(targets, permanent: false)
+                self?.runDelete(targets.map(\.path), permanent: false)
             }
         } else {
-            runDelete(targets, permanent: false)
+            runDelete(targets.map(\.path), permanent: false)
         }
     }
 
@@ -299,41 +299,16 @@ extension PanelViewController {
     }
 
     /// Internal rather than private because the Trash-less-volume fallback re-enters it from
-    /// `PanelViewController+DeleteFallback`, with the same targets and `permanent: true`.
-    func runDelete(_ targets: [FileEntry], permanent: Bool) {
-        let paths = targets.map(\.path)
+    /// `PanelViewController+DeleteFallback`, with the same paths and `permanent: true`.
+    ///
+    /// Takes paths rather than entries because that is all a delete needs, and because the two
+    /// other flows that trash items — the F6 move into an archive and a directory sync — reach the
+    /// same fallback holding paths alone.
+    func runDelete(_ paths: [VFSPath], permanent: Bool) {
         let backend = backend
         Task {
-            let result = await BlockingWork.run { () -> DeleteResult in
-                var failures: [OperationFailure] = []
-                var restorations: [TrashRestoration] = []
-                var trashRefused: [VFSPath] = []
-                for path in paths {
-                    do {
-                        if permanent {
-                            try backend.removeItem(at: path)
-                        } else if let trashed = try backend.trashItem(at: path) {
-                            // Capture where it landed so Cmd+Z can restore it from the Trash.
-                            restorations.append(TrashRestoration(original: path, trashed: trashed))
-                        }
-                    } catch let error where TrashRefusal.isVolumeWithoutTrash(error) {
-                        // Not a failure to report: the volume keeps no Trash, so this item is
-                        // still sitting there untouched and the caller re-offers it as a
-                        // permanent delete (`offerPermanentDelete(forVolumeWithoutTrash:)`).
-                        trashRefused.append(path)
-                    } catch let error as VFSError {
-                        failures.append(OperationFailure(path: path, error: error))
-                    } catch {
-                        failures.append(
-                            OperationFailure(path: path, error: .io(path: path, code: 0))
-                        )
-                    }
-                }
-                return DeleteResult(
-                    failures: failures,
-                    restorations: restorations,
-                    trashRefused: trashRefused
-                )
+            let outcome = await BlockingWork.run {
+                DeletePass.run(paths, using: backend, permanent: permanent)
             }
 
             panel.clearSelection()
@@ -341,22 +316,23 @@ extension PanelViewController {
             focusTable()
             // Permanent delete is irreversible and never journaled; Trash is restorable.
             if !permanent,
-               let record = UndoRecord.trash(result.restorations.map { ($0.original, $0.trashed) }) {
+               let record = UndoRecord.trash(outcome.restorations.map { ($0.original, $0.trashed) }) {
                 host?.recordUndoableAction(record)
             }
-            if !result.failures.isEmpty {
-                presentDeletionFailures(result.failures, permanent: permanent)
+            if !outcome.failures.isEmpty {
+                presentDeletionFailures(outcome.failures, permanent: permanent)
             }
             // Last, so that in the (rare) mixed pass the question the user must answer is the sheet
             // left in front rather than behind the report.
-            let refused = Set(result.trashRefused)
-            offerPermanentDelete(
-                forVolumeWithoutTrash: targets.filter { refused.contains($0.path) }
-            )
+            offerPermanentDelete(forVolumeWithoutTrash: outcome.refused) { [weak self] refused in
+                self?.runDelete(refused, permanent: true)
+            }
         }
     }
 
-    private func presentDeletionFailures(_ failures: [OperationFailure], permanent: Bool) {
+    /// Internal so the sync and archive-move flows report their own delete failures with the
+    /// same sentences — the wording is about the operation, not about which key started it.
+    func presentDeletionFailures(_ failures: [OperationItemFailure], permanent: Bool) {
         // Whole sentences per branch rather than a spliced verb: `"Couldn’t \(verb)…"` reads wrong
         // in a language that inflects the object or reorders the clause (docs/NOTES.md).
         let name = failures[0].path.lastComponent
@@ -458,31 +434,4 @@ extension PanelViewController {
             alert.runModal()
         }
     }
-}
-
-/// A single item's failure during a batch operation, in a `Sendable` shape so it can
-/// cross back from the background delete task. Per-file retry/abort is a later M2 item;
-/// for now failures are collected and summarized.
-private struct OperationFailure: Sendable {
-    let path: VFSPath
-    let error: VFSError
-}
-
-/// One trashed item's before/after locations, captured so Cmd+Z can restore it from the
-/// Trash (PLAN.md §M2 "delete-to-Trash restore").
-private struct TrashRestoration: Sendable {
-    let original: VFSPath
-    let trashed: VFSPath
-}
-
-/// What a delete pass produced: the items it couldn't remove, and (for Trash) where the
-/// removed items landed so the operation can be journaled for undo.
-///
-/// ``trashRefused`` is kept apart from ``failures`` because it is not one: those items are
-/// untouched on a volume that keeps no Trash, and what they need is the permanent delete offered
-/// instead — not an alert with a number in it (`TrashRefusal`).
-private struct DeleteResult: Sendable {
-    let failures: [OperationFailure]
-    let restorations: [TrashRestoration]
-    let trashRefused: [VFSPath]
 }

@@ -187,26 +187,45 @@ extension PanelViewController {
 
     /// Move the sync's delete targets to the Trash off the main thread, journal them as one undo
     /// record, and re-list both panes. Trash (not permanent delete) keeps a mirror recoverable.
-    private func runSyncDeletes(_ paths: [VFSPath]) {
+    ///
+    /// **A volume that keeps no Trash refuses each of them, and that used to be silent.** The
+    /// deletes ran through a `try?`, so on a network share (``LocalBackend/trashFailure(_:path:)``,
+    /// reported 2026-08-25) the sync finished claiming it had removed files that were still there —
+    /// and the confirmation it had shown up front promised the Trash by name. The refusal cannot be
+    /// anticipated (there is no pre-check; see the same doc comment), so it is collected across the
+    /// whole run and asked about **once**, at the end: a batch may span hundreds of items, and
+    /// stopping at each one to ask is not a question, it is an obstacle.
+    ///
+    /// Asking afterwards costs nothing, because a refusal moves nothing — every refused item is
+    /// exactly where it was when the sheet goes up.
+    ///
+    /// `permanent` is how the answer comes back in: the same pass, deleting for good. It can raise
+    /// no second question, since `removeItem` consults no Trash (``DeletePass/Outcome``).
+    ///
+    /// Internal rather than private so the Trash-less path can be driven directly: reaching it
+    /// through the sheet would mean presenting a movable window in the test host, which wedges
+    /// the run rather than failing it (docs/NOTES.md ▸ Testing).
+    func runSyncDeletes(_ paths: [VFSPath], permanent: Bool = false) {
         let backend = backend
         Task {
-            let restorations = await BlockingWork.run { () -> [
-                (VFSPath, VFSPath)
-            ] in
-                var out: [(VFSPath, VFSPath)] = []
-                for path in paths {
-                    if let trashed = try? backend.trashItem(at: path) {
-                        out.append((path, trashed))
-                    }
-                }
-                return out
+            let outcome = await BlockingWork.run {
+                DeletePass.run(paths, using: backend, permanent: permanent)
             }
-            if let record = UndoRecord.trash(restorations) {
+            if let record = UndoRecord.trash(outcome.restorations.map { ($0.original, $0.trashed) }) {
                 host?.recordUndoableAction(record)
             }
             if let window = host as? BrowserWindowController {
                 window.leftPanel.refreshCurrentDirectory()
                 window.rightPanel.refreshCurrentDirectory()
+            }
+            // Reported rather than swallowed: a sync that could not remove an item has left the two
+            // sides unequal, which is the one thing the operation exists to fix.
+            if !outcome.failures.isEmpty {
+                presentDeletionFailures(outcome.failures, permanent: permanent)
+            }
+            // Last, so the sheet the user must answer is in front of any report (as in `runDelete`).
+            offerPermanentDelete(forVolumeWithoutTrash: outcome.refused) { [weak self] refused in
+                self?.runSyncDeletes(refused, permanent: true)
             }
         }
     }

@@ -256,6 +256,30 @@ at build time.
   waiting a delay **out** to prove nothing happens has its length *as* the claim and cannot be
   widened for a slow machine. Split them — `settle(within:until:)` at 10 s against a 1200 ms sheet
   delay, `hold(until:)` fixed at 2–2.5 s — rather than scaling one number for both.
+- **Tearing a window down while a sheet it carried is still settling segfaults the test host, and
+  the crash lands on a *later* test — one that may present no sheet at all.** This file's entry on a suite
+  that presents real `NSAlert`s killing the runner (▸ AppKit, the `AlertKeyCatcher` tests) says it
+  happens; this is the mechanism, and the cheap way out.
+  Measured 2026-08-25 while covering the Trash-less flows: `EXC_BAD_ACCESS` in `objc_release` under
+  **`-[_NSWindowTransformAnimation dealloc]`**, from a Core Animation transaction committing inside
+  the *next* test's `XCTWaiter` run-loop spin — so of seven serialized tests, the two that crashed
+  were #4 and #7 while the sheets belonged to #3 and #6. xcodebuild then restarts and lists whatever
+  was in flight under "Failing tests:", naming features that work.
+  - **Waiting for `attachedSheet` to go `nil` first is not enough** — the tests that crashed the run
+    already did that. What fixes it is never tearing down: drop the `defer { window.close() }` and
+    let the probe **retain** its windows for the life of the process (`TrashlessProbe.window()`). A
+    handful of retained windows in a test host costs nothing against a crash that reads as several
+    broken features. Re-measured: 7/7 green, no restarts, and the full app suite 6/6.
+  - **The wall clock lies about which fix worked.** The crashing runs took 23 s against a 12 s
+    baseline, which reads as "these tests are slow" and invites tuning the waits; the restarts were
+    the whole difference, and with them gone the suite costs ~6 s.
+- **A doc comment between `@MainActor` and `@Suite` discovers *zero tests*, and reports success.**
+  Same run: the suite printed `✔ Suite "…" passed after 0.001 seconds` and the run summary read
+  `Test run with 0 tests in 1 suite passed`, with no warning at build time and no error anywhere —
+  attributes and the declaration have to be contiguous for the macro to attach. It is the quietest
+  failure a test file has available (a green suite that ran nothing), and the only tell is the test
+  *count*, which is why a run's count is worth reading rather than its verdict. It invalidated a
+  measurement taken while it was in place, so re-take any measurement made across such an edit.
 - **A live suite that drives one server, or writes one shared credential, has to be `.serialized` —
   and the collision fails in the *setup*, so it reads as the feature being broken.** Swift Testing
   runs a suite's tests in parallel by default, which for `S3AccountLiveIntegrationTests` meant four
@@ -3675,11 +3699,29 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     Trash-less volume as *"not found"* — a second wrong answer wearing a more plausible sentence. A
     genuinely missing file never arrives this way: `trashItem` reports that as
     `NSFileNoSuchFileError`, so nothing is being swallowed.
-  - **The two `try?` callers are the same bug still open, and they fail in silence**, which is
-    worse: `removeArchiveMoveOriginals` (F6 into an archive) and `runSyncDeletes` both swallow the
-    refusal, so on such a volume the move leaves its originals and the sync leaves its deletions,
-    each reporting success. Neither is reachable from F8, and each needs its own decision about
-    what to ask, so they are recorded rather than quietly given the same fallback.
+  - **The two `try?` callers were the same bug in silence, which is worse, and they are fixed**
+    (2026-08-25): `removeArchiveMoveOriginals` (F6 into an archive) and `runSyncDeletes` both
+    swallowed the refusal, so on such a volume the move left its originals — F6 silently meaning F5
+    — and the sync left its deletions while reporting a mirror it had not made. Neither is reachable
+    from F8, so neither inherited its fix.
+    - **A `try?` around a byte-touching verb cannot tell "it worked" from "it was refused" from "it
+      failed", and all three need different answers** — which is what made one line the whole
+      defect. ``DeletePass`` is now the one loop all three flows run (F8 included), returning the
+      three outcomes apart: `restorations` to journal, `refused` to *ask* about, `failures` to
+      report. The rule generalizes past deletes: a `try?` is only honest where the caller genuinely
+      does not care *which* of those happened, and a delete is never that caller.
+    - **Each flow's answer had to be its own, and the shape of the gesture decides it.** F6's
+      originals are already copied into the archive when the refusal lands, so declining is a good
+      outcome (a copy) rather than a lost one — it offers the permanent delete that would finish the
+      move, and *says so* when declined, since a move quietly meaning something else is the defect
+      itself. A sync's refusals arrive one per item inside a batch that may span hundreds, and
+      cannot be anticipated (there is no pre-check, above), so they are collected and asked about
+      **once at the end** — which costs nothing, because a refusal moves nothing, so every refused
+      item is still there when the sheet goes up.
+    - The permanent re-run each answer performs can raise no second question: `removeItem` consults
+      no Trash, so `.unsupported(.trash)` cannot arise there. That is what makes the offer
+      terminate, and it is asserted rather than assumed — a backend answering otherwise would loop
+      the sheet forever.
 - **Put Back has no API, and the data is in the trash folder's `.DS_Store`.** Probed: a trashed file's
   only xattr is `com.apple.provenance`, `mdls` exposes nothing, and every plausible `URLResourceKey`
   spelling (`NSURLTrashOriginalPathKey` and friends) returns an empty dictionary. The origin is a

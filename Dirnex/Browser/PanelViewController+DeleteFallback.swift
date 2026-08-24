@@ -1,25 +1,6 @@
 import AppKit
 import DirnexCore
 
-/// Whether a delete failure is really the volume saying it keeps no Trash.
-///
-/// Its own type for the reason `RenameDeferral` is: this is the decision that routes a failure away
-/// from the errno alert, it is the half a test can drive with no window, and spelling it inline in
-/// `runDelete` would leave the rule where nothing can assert it.
-///
-/// The predicate is narrow on purpose. `VFSError.unsupported(.trash)` reaches a delete from exactly
-/// two places — the protocol default, for a backend with no `trashItem` at all, and `LocalBackend`'s
-/// ``LocalBackend/trashFailure(_:path:)``, for a volume that refused one — and the delete path can
-/// only have *attempted* a trash on a backend whose `deleteStrategy` was `.trash`, so reaching this
-/// at all means the second. Every other failure is a real one and keeps its own alert: a permission
-/// problem is not answered by offering to delete the file for good.
-enum TrashRefusal {
-    static func isVolumeWithoutTrash(_ error: any Error) -> Bool {
-        guard let error = error as? VFSError, case .unsupported(.trash) = error else { return false }
-        return true
-    }
-}
-
 extension PanelViewController {
     /// Offer the permanent delete for items a volume with no Trash refused to take.
     ///
@@ -29,10 +10,24 @@ extension PanelViewController {
     /// refusal happens before any bytes move — so the confirmation is a genuine question and not a
     /// report, and declining leaves the files exactly where they are.
     ///
+    /// Shared by the three flows that move items to the Trash: F8, the F6 move into an archive, and
+    /// a directory sync's deletes. All three ask the *same* question, so it is asked in one place —
+    /// what differs is what each does with the answer, which is what the two closures are for.
+    /// `declined` exists because for two of them a "no" is not simply "nothing happened": an F6
+    /// move whose originals stay put has silently become a copy, and the user is owed that.
+    ///
+    /// The refused paths are handed back to `confirmed` rather than left for the caller to
+    /// re-derive, so the delete it performs cannot be a different set from the one the sheet
+    /// counted.
+    ///
     /// The question is the ordinary permanent-delete one and only the *reason* is new — see the
     /// note at the wording below.
-    func offerPermanentDelete(forVolumeWithoutTrash targets: [FileEntry]) {
-        guard !targets.isEmpty else { return }
+    func offerPermanentDelete(
+        forVolumeWithoutTrash paths: [VFSPath],
+        confirmed: @escaping ([VFSPath]) -> Void,
+        declined: @escaping () -> Void = {}
+    ) {
+        guard !paths.isEmpty else { return }
         let alert = NSAlert()
         alert.alertStyle = .critical
         // The *question* is the ordinary permanent-delete one, deliberately — those two keys are
@@ -41,13 +36,13 @@ extension PanelViewController {
         // the user is owed because they pressed the key that means "put this in the Trash".
         // Finder's own share dialog has this shape: the question in the title, why it cannot be
         // undone in the body.
-        alert.messageText = targets.count == 1
+        alert.messageText = paths.count == 1
             ? String(
-                localized: "Delete “\(targets[0].name)” permanently?",
+                localized: "Delete “\(paths[0].lastComponent)” permanently?",
                 comment: "Permanent-delete confirmation for a single item; %@ is its name."
             )
             : String(
-                localized: "Delete \(targets.count) items permanently?",
+                localized: "Delete \(paths.count) items permanently?",
                 comment: "Permanent-delete confirmation for several items; %lld is the count."
             )
         alert.informativeText = String(
@@ -66,12 +61,11 @@ extension PanelViewController {
         alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
         alert.enableEscapeToCancel()
 
-        let handler: (NSApplication.ModalResponse) -> Void = { [weak self] response in
-            guard response == .alertFirstButtonReturn else { return }
-            self?.runDelete(targets, permanent: true)
+        let handler: (NSApplication.ModalResponse) -> Void = { response in
+            if response == .alertFirstButtonReturn { confirmed(paths) } else { declined() }
         }
-        // `beginSheetIfVisible` is deliberately not used: a user pressed F8 and is waiting for the
-        // answer, so an alert detached from the app beats no answer at all (docs/NOTES.md, the
+        // `beginSheetIfVisible` is deliberately not used: a user pressed a key and is waiting for
+        // the answer, so an alert detached from the app beats no answer at all (docs/NOTES.md, the
         // "who is waiting?" rule).
         if let window = view.window {
             alert.beginSheetModal(for: window, completionHandler: handler)

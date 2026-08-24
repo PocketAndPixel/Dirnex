@@ -161,22 +161,71 @@ extension PanelViewController {
     /// "move" half (add-into-archive is a copy, so the sources are removed here). To the Trash, so
     /// it's recoverable, and journaled, so this half is undoable even though the rewrite isn't.
     /// Runs on the *source* pane.
+    ///
+    /// **A volume that keeps no Trash refuses this, and that used to make F6 silently mean F5.**
+    /// The originals were trashed through a `try?`, so a network share's refusal
+    /// (``LocalBackend/trashFailure(_:path:)``, reported 2026-08-25) removed nothing and said
+    /// nothing — the archive held the items and so did the folder they came from. Now the refusal
+    /// is offered as the permanent delete that would finish the move, and a "no" is *reported*
+    /// rather than left to be discovered: the gesture really did end as a copy.
+    ///
+    /// Note what makes the question safe to ask here. The archive rewrite has already succeeded, so
+    /// the items exist in two places and declining is a good outcome rather than a lost one — the
+    /// opposite of F8, where declining leaves the user where they started.
     func removeArchiveMoveOriginals(_ entries: [FileEntry]) {
         let paths = entries.map(\.path)
         let backend = backend
         Task {
-            let restorations = await BlockingWork.run {
-                () -> [(VFSPath, VFSPath)] in
-                var out: [(VFSPath, VFSPath)] = []
-                for path in paths {
-                    if let trashed = try? backend.trashItem(at: path) { out.append((path, trashed)) }
-                }
-                return out
+            let outcome = await BlockingWork.run {
+                DeletePass.run(paths, using: backend, permanent: false)
             }
             panel.clearSelection()
             refreshCurrentDirectory()
             focusTable()
-            if let record = UndoRecord.trash(restorations) { host?.recordUndoableAction(record) }
+            if let record = UndoRecord.trash(outcome.restorations.map { ($0.original, $0.trashed) }) {
+                host?.recordUndoableAction(record)
+            }
+            // A real failure (a permission problem, a read-only folder) is reported for the same
+            // reason F8 reports one: the originals are still there, and only the user can act on it.
+            if !outcome.failures.isEmpty {
+                presentDeletionFailures(outcome.failures, permanent: false)
+            }
+            offerPermanentDelete(
+                forVolumeWithoutTrash: outcome.refused,
+                confirmed: { [weak self] refused in self?.runDelete(refused, permanent: true) },
+                declined: { [weak self] in self?.reportArchiveMoveKeptOriginals(outcome.refused) }
+            )
         }
+    }
+
+    /// Say that the move ended as a copy. The status line rather than an alert: nothing failed, the
+    /// archive holds everything it was asked to hold, and the user has just answered a question — a
+    /// second sheet to acknowledge their own answer is noise.
+    ///
+    /// One sentence, because this label truncates its *tail* in silence when it overruns and the
+    /// tail is where an explanation lives (docs/NOTES.md ▸ Localization). No file name is
+    /// interpolated for the same reason: a name here is unbounded, and the count is what the user
+    /// needs. Measured in the label's own font across all fourteen catalogs: 310 pt for the single
+    /// form (widest, ja) and 332 pt for the plural (ru, at a three-digit count), against a pane of
+    /// ~542 pt.
+    private func reportArchiveMoveKeptOriginals(_ paths: [VFSPath]) {
+        showTransientStatus(
+            paths.count == 1
+                ? String(
+                    localized: "Copied into the archive — the original is still here.",
+                    comment: """
+                    Status line after an F6 move into an archive whose single original could not be \
+                    moved to the Trash (the volume keeps none) and the user declined to delete it.
+                    """
+                )
+                : String(
+                    localized: "Copied into the archive — \(paths.count) originals are still here.",
+                    comment: """
+                    Status line after an F6 move into an archive whose originals could not be moved \
+                    to the Trash (the volume keeps none) and the user declined to delete them; \
+                    %lld is the count. Plural.
+                    """
+                )
+        )
     }
 }
