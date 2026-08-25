@@ -22,7 +22,7 @@ struct TransferProgressTallyTests {
             tally.delta(forDestinationSize: 4_194_304) == nil,
             "the poll caught it standing still"
         )
-        #expect(tally.totalReported == 4_194_304)
+        #expect(tally.remainder(against: 4_194_304) == nil)
     }
 
     @Test("a resume reports only what this transfer moved")
@@ -31,7 +31,7 @@ struct TransferProgressTallyTests {
         var tally = TransferProgressTally(destinationAlreadyHolds: 1_048_576)
         #expect(tally.delta(forDestinationSize: 1_048_576) == nil, "those bytes are not this run's")
         #expect(tally.delta(forDestinationSize: 1_572_864) == 524_288)
-        #expect(tally.totalReported == 524_288)
+        #expect(tally.remainder(against: 524_288) == nil)
     }
 
     /// `curl` and `sftp` both truncate a partial they are *not* resuming from, so a destination that
@@ -43,7 +43,7 @@ struct TransferProgressTallyTests {
         #expect(tally.delta(forDestinationSize: 0) == nil, "truncated: nothing has been moved yet")
         #expect(tally.delta(forDestinationSize: 400) == 400)
         #expect(tally.delta(forDestinationSize: 1000) == 600)
-        #expect(tally.totalReported == 1000)
+        #expect(tally.remainder(against: 1000) == nil)
     }
 
     // MARK: - A meter that counts upward
@@ -68,7 +68,7 @@ struct TransferProgressTallyTests {
         tally.add(7_250_000)
         tally.add(14_210_000)
         #expect(tally.remainder(against: 29_000_000) == 7_540_000)
-        #expect(tally.totalReported == 29_000_000)
+        #expect(tally.remainder(against: 29_000_000) == nil)
     }
 
     @Test("a transfer that streamed nothing reports the whole count at the end")
@@ -85,6 +85,6 @@ struct TransferProgressTallyTests {
         var tally = TransferProgressTally()
         tally.add(1200)
         #expect(tally.remainder(against: 1000) == nil)
-        #expect(tally.totalReported == 1200)
+        #expect(tally.remainder(against: 1200) == nil)
     }
 }

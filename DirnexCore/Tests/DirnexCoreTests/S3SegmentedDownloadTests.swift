@@ -177,7 +177,7 @@ struct S3SegmentedDownloadTests {
     @Test("every segment's answer is read back from the one stream")
     func parsesCapturedRun() throws {
         let reported = S3SegmentWriteOut.parse(stderr: Self.capturedStderr)
-        #expect(reported.completedSegments == [1, 2, 3])
+        #expect(reported.fields(forSegment: 4) == nil, "and nothing beyond the run's own segments")
         for number in 1...3 {
             let fields = try #require(reported.fields(forSegment: number))
             #expect(fields.status == 206)
@@ -198,7 +198,9 @@ struct S3SegmentedDownloadTests {
             reader.consume(String(remaining[..<end]))
             remaining = remaining[end...]
         }
-        #expect(reader.completedSegments == [1, 2, 3])
+        for number in 1...3 {
+            #expect(reader.fields(forSegment: number)?.status == 206)
+        }
         #expect(reader.fields(forSegment: 2)?.bytesDownloaded == 4_194_304)
     }
 
@@ -227,14 +229,15 @@ struct S3SegmentedDownloadTests {
         s3-segX-status=206
         not-a-label
         """)
-        #expect(reported.completedSegments.isEmpty)
+        #expect((1...3).allSatisfy { reported.fields(forSegment: $0) == nil })
     }
 
     /// The two indexed readers must not read each other's labels — they share one mechanism and
     /// nothing else, and a batch upload's stream is a batch upload's.
     @Test("the segment reader ignores a part's labels, and the part reader a segment's")
     func readersDoNotCross() {
-        #expect(S3SegmentWriteOut.parse(stderr: "\ns3-part1-status=200\n").completedSegments.isEmpty)
+        let segments = S3SegmentWriteOut.parse(stderr: "\ns3-part1-status=200\n")
+        #expect(segments.fields(forSegment: 1) == nil)
         #expect(S3PartWriteOut.parse(stderr: "\ns3-seg1-status=206\n").completedParts.isEmpty)
     }
 

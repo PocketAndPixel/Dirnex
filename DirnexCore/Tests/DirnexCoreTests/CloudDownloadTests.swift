@@ -11,7 +11,6 @@ struct CloudDownloadTests {
     func materializedStartsReady() {
         let tracker = CloudDownloadTracker(isDataless: false)
         #expect(tracker.phase == .ready)
-        #expect(!tracker.needsDownload)
         #expect(tracker.phase.isSettled)
     }
 
@@ -19,7 +18,6 @@ struct CloudDownloadTests {
     func datalessStartsEvicted() {
         let tracker = CloudDownloadTracker(isDataless: true)
         #expect(tracker.phase == .evicted)
-        #expect(tracker.needsDownload)
         #expect(!tracker.phase.isSettled)
     }
 

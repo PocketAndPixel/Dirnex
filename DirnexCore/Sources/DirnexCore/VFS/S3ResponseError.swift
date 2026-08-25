@@ -162,7 +162,6 @@ public extension S3ServiceError {
 
 private final class ErrorDelegate: NSObject, XMLParserDelegate {
     var values: [String: String] = [:]
-    private var element = ""
     private var text = ""
 
     func parser(
@@ -172,7 +171,6 @@ private final class ErrorDelegate: NSObject, XMLParserDelegate {
         qualifiedName: String?,
         attributes: [String: String]
     ) {
-        element = elementName
         text = ""
     }
 

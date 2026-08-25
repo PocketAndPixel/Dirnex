@@ -35,12 +35,6 @@ enum LibArchive {
     static let directoryType: mode_t = 0o040_000
     static let symbolicLinkType: mode_t = 0o120_000
 
-    /// The linked library's version, e.g. `libarchive 3.7.4`. Read from the dylib rather than
-    /// assumed, so a diagnostic report names what actually ran.
-    static var versionString: String {
-        String(cString: archive_version_string())
-    }
-
     /// libarchive's message for `handle`, or `nil` when it has nothing to say.
     ///
     /// Never shown to a user — the sentences in `EncryptedArchiveError` are Dirnex's, in the user's

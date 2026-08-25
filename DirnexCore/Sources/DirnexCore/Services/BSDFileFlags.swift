@@ -52,9 +52,6 @@ public struct BSDFileFlags: OptionSet, Sendable, Hashable, Codable {
 
     // MARK: Convenience
 
-    /// Finder's "Locked": the owner-settable immutable bit.
-    public var isLocked: Bool { contains(.userImmutable) }
-
     /// Either immutable bit is set, so a write, `chmod`, `chown` or `utimes` on the file would fail
     /// until it is cleared — the condition ``AttributeChangePlan`` unlocks around.
     public var blocksModification: Bool {

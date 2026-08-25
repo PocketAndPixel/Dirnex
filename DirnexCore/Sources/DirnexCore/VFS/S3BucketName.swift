@@ -74,22 +74,6 @@ public enum S3BucketName {
     /// Whether `name` is usable at all.
     public static func isValid(_ name: String) -> Bool { problem(with: name) == nil }
 
-    /// Whether a **valid** name will nonetheless be unreachable over TLS under virtual-host
-    /// addressing.
-    ///
-    /// Separate from ``problem(with:)`` because it is not a rule about the name — the name is
-    /// perfectly legal, and was accepted by a real endpoint in the same probe run (2026-08-13). It
-    /// is a rule about the *host* the name then becomes: a wildcard certificate is one label deep
-    /// (RFC 6125), so `my.dotted.bucket.s3.example.com` is not covered by `*.s3.example.com` and the
-    /// connection fails at curl exit 60 before any S3 conversation happens (docs/NOTES.md ▸ curl
-    /// ▸ S3, where this cost a user their first connect).
-    ///
-    /// It applies to AWS exactly as it does to a third-party endpoint, so the caller must key the
-    /// warning on the *addressing mode* and never on the provider. A warning rather than a refusal:
-    /// path-style reaches such a bucket perfectly, and a name the user has good reason to want is
-    /// not ours to forbid.
-    public static func breaksVirtualHostTLS(_ name: String) -> Bool { name.contains(".") }
-
     /// Whether the name reads as an IPv4 address.
     ///
     /// Written out rather than reached for as a regular expression so the rule is exactly four

@@ -104,10 +104,6 @@ public struct CloudDownloadTracker: Sendable, Hashable {
         self.stallTimeout = stallTimeout
     }
 
-    /// Whether opening this item needs a download first — the question the open path asks
-    /// before it hands a path to a viewer.
-    public var needsDownload: Bool { phase == .evicted }
-
     /// Record that the download syscall has been made. Starts the stall clock; the phase
     /// only becomes `.downloading` once a reading confirms it, so the UI never claims
     /// progress the provider has not reported.

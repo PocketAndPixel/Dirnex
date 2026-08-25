@@ -187,7 +187,10 @@ struct VaultTests {
         PERCENT:-1.000000
         created: /tmp/vaultprobe/v.sparsebundle
         """
-        let fractions = DiskImageProgress.fractions(in: output)
+        let fractions = output.split(whereSeparator: \.isNewline).compactMap { line -> Double? in
+            guard case let .fraction(value) = DiskImageProgress.parse(String(line)) else { return nil }
+            return value
+        }
         #expect(fractions.count == 5)
         #expect(fractions.first == 0)
         let sorted = zip(fractions, fractions.dropFirst()).allSatisfy { $0 <= $1 }

@@ -28,10 +28,6 @@ public struct ArchiveMemberFilter: Sendable, Equatable {
     /// selects nothing, and that is a legitimate answer rather than a caller that forgot to ask.
     private let members: [String]?
 
-    private init(members: [String]?) {
-        self.members = members
-    }
-
     /// Every entry the archive holds — what an extraction that names no members does, and what a
     /// repack needs, since rewriting an archive requires all of it.
     public static let everything = ArchiveMemberFilter(members: nil)
@@ -54,10 +50,6 @@ public struct ArchiveMemberFilter: Sendable, Equatable {
             entry == member || entry.hasPrefix(member + "/")
         }
     }
-
-    /// Whether anything is filtered out at all — the cheap way for a caller to say "this extraction
-    /// holds the whole archive" without comparing lists.
-    public var isEverything: Bool { members == nil }
 
     /// One name in the form both sides are compared in: no leading slash (a VFS inner path carries
     /// one and an archive entry does not) and no trailing slash (a *directory* entry carries one —

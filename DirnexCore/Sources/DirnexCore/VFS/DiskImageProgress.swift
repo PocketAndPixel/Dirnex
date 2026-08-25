@@ -46,14 +46,4 @@ public enum DiskImageProgress {
         // behavior for 101 %.
         return .fraction(min(percent, 100) / 100)
     }
-
-    /// Every fraction in a chunk of output, in order — the shape a caller draining a pipe wants.
-    /// Indeterminate and non-progress lines are dropped, so a bar driven from this only ever moves
-    /// on a real measurement.
-    public static func fractions(in output: String) -> [Double] {
-        output.split(whereSeparator: \.isNewline).compactMap { line in
-            if case let .fraction(value) = parse(String(line)) { return value }
-            return nil
-        }
-    }
 }

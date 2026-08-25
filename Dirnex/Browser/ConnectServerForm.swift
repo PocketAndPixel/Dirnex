@@ -188,7 +188,6 @@ final class ConnectServerForm: NSObject {
         Protocols(rawValue: protocolControl.indexOfSelectedItem) ?? .sftp
     }
 
-    private var isFTP: Bool { selectedProtocol == .ftp }
     /// Whether SFTP key auth is selected (switch on); password auth is the default off state.
     private var usingKey: Bool { authSwitch.state == .on }
 

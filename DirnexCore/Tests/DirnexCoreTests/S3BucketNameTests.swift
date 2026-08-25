@@ -75,12 +75,12 @@ struct S3BucketNameTests {
     }
 
     /// A dotted name is **legal** — it was accepted by the same live endpoint that refused the five
-    /// above — and it is nonetheless the one that strands a user, because a wildcard certificate is
-    /// one label deep. So it is a warning about *addressing*, never a naming refusal.
-    @Test("a dot is legal and is what breaks virtual-host TLS")
-    func aDotIsLegalAndBreaksVirtualHostTLS() {
+    /// above — and it is nonetheless the one that strands a user over TLS, because a wildcard
+    /// certificate is one label deep. That is an *addressing* problem, not a naming one, so it is
+    /// recovered by the path-style retry (`PanelViewController+ConnectS3`) and must never be
+    /// refused here.
+    @Test("a dot is legal, whatever it costs the connection")
+    func aDotIsLegal() {
         #expect(S3BucketName.problem(with: "dirnex.probe.dotted") == nil)
-        #expect(S3BucketName.breaksVirtualHostTLS("dirnex.probe.dotted"))
-        #expect(!S3BucketName.breaksVirtualHostTLS("dirnex-probe-dotted"))
     }
 }

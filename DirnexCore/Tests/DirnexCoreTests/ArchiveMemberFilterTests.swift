@@ -13,7 +13,6 @@ struct ArchiveMemberFilterTests {
     @Test("no filter takes every entry, whatever it is called")
     func everythingTakesEverything() {
         let filter = ArchiveMemberFilter.everything
-        #expect(filter.isEverything)
         for name in ["a.txt", "docs/", "docs/api/x.md", "../evil", "", "/absolute"] {
             #expect(filter.includes(entryNamed: name), "should have taken \(name)")
         }
@@ -22,7 +21,6 @@ struct ArchiveMemberFilterTests {
     @Test("naming zero members selects nothing — not the same as naming none")
     func emptyListSelectsNothing() {
         let filter = ArchiveMemberFilter.members([])
-        #expect(!filter.isEverything)
         #expect(!filter.includes(entryNamed: "a.txt"))
     }
 

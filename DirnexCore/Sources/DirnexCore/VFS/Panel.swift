@@ -288,13 +288,6 @@ public struct Panel: Sendable {
 
     // MARK: - View settings (cursor-preserving)
 
-    public mutating func setSort(_ sort: FileSort) {
-        mutatingPreservingCursor {
-            $0.model.sort = sort
-            $0.tree?.sort = sort
-        }
-    }
-
     public mutating func setShowHidden(_ showHidden: Bool) {
         mutatingPreservingCursor {
             $0.model.showHidden = showHidden

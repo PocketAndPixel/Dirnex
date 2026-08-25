@@ -51,14 +51,6 @@ public struct S3SegmentWriteOut: Sendable, Equatable {
         return out
     }
 
-    /// The segments whose status has arrived — those that are **done**, whatever they answered.
-    ///
-    /// Unlike the upload's, this is *not* the progress source: a download's segments are files on
-    /// this machine that grow, so watching them is exact and free where a completed-section count
-    /// could only ever step in whole segments (``TransferProgressWatch``). It is here because the
-    /// result still has to be read per segment.
-    public var completedSegments: Set<Int> { reader.completed }
-
     /// What segment `number` reported, or `nil` when nothing of it has arrived yet.
     ///
     /// A segment with no status is *not* a segment with status 0: a section `curl` never ran prints

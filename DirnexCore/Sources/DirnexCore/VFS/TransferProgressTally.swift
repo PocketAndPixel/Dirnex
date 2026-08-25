@@ -39,9 +39,6 @@ public struct TransferProgressTally: Sendable, Equatable {
         lastSeenSize = baseline
     }
 
-    /// Everything reported so far, which is what a caller reconciles against.
-    public var totalReported: Int64 { reported }
-
     /// The delta to report now that the destination file is `size` bytes, or `nil` when nothing new
     /// has landed.
     public mutating func delta(forDestinationSize size: Int64) -> Int64? {
