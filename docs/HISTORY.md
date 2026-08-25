@@ -11123,15 +11123,109 @@ searching (3 hits at three depths inside a zip).
 
 ---
 
-### After M19 — the follow-on log (2026-08-07 → 2026-08-23)
+### After M19 — the follow-on log (2026-08-07 → 2026-08-25)
 
-Twenty-nine dated passes that landed outside a milestone of their own, between M18's close on
-2026-08-07 and 2026-08-24: user-reported bugs, three vault features, the tree crossing into S3,
-and the chain of five that one S3 rename pulled apart. They ran *alongside* M20, M21 and M22
-rather than after them — which is why they sit here at the end rather than in a numeric slot —
-and they keep their **newest-first** order, because several read as a chain and refer to the
-entry below. Moved out of [PLAN.md](../PLAN.md) §4 on 2026-08-23, once the plan had nothing left
-to say about them; what is still open from this stretch stayed there.
+Thirty-one dated passes that landed outside a milestone of their own, between M18's close on
+2026-08-07 and 2026-08-25: user-reported bugs, three vault features, the tree crossing into S3,
+the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
+in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
+sit here at the end rather than in a numeric slot — and they keep their **newest-first** order,
+because several read as a chain and refer to the entry below. Moved out of [PLAN.md](../PLAN.md)
+§4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
+stretch stayed there.
+
+**2026-08-25 — the same refusal, swallowed by a `try?` in two flows that then report success.**
+The entry below fixed F8 and recorded its other two callers as still open; this closes them.
+`removeArchiveMoveOriginals` (the F6 move into an archive) and `runSyncDeletes` each trashed their
+items through a `try?`, so on a volume that keeps no Trash the refusal removed nothing and said
+nothing: **F6 silently meant F5** — the archive held the items and so did the folder they came
+from — and a directory sync finished claiming a mirror it had not made, having promised the Trash
+by name in the confirmation it showed up front. Neither is reachable from F8, so neither inherited
+its fix.
+
+**A `try?` cannot tell "it worked" from "it was refused" from "it failed", and the three need
+opposite answers** — which is what made one line the whole defect. `DeletePass` is now the single
+loop all three flows run, F8 included, returning them apart: `restorations` to journal, `refused`
+to *ask* about, `failures` to report. It never throws, since one item's outcome must not abandon
+the rest of a batch. The rule generalizes past deletes: a `try?` is only honest where the caller
+genuinely does not care which of the three happened, and a delete is never that caller.
+
+**Each flow's answer had to be its own, and the shape of the gesture decides it.** F6's originals
+are already inside the archive when the refusal lands, so declining is a good outcome (a copy)
+rather than a lost one — it offers the permanent delete that would finish the move, and **says so
+when declined**, since a move quietly meaning something else is the defect itself. That report is
+the status line rather than a second sheet (nothing failed, and the user has just answered a
+question), one sentence with no interpolated name: measured 310 pt for the single form (ja) and
+332 pt for the plural (ru, three-digit count) across all fourteen catalogs, against the ~542 pt
+that label gets, because it truncates its *tail* in silence and the tail is where an explanation
+lives. A sync's refusals instead arrive one per item inside a batch that may span hundreds, and
+cannot be anticipated, so they are collected and asked about **once at the end** — which costs
+nothing, because a refusal moves nothing and every refused item is still there when the sheet goes
+up. Both answers re-run the same pass with `permanent: true`, and neither can raise a second
+question: `removeItem` consults no Trash, so `.unsupported(.trash)` cannot arise there — asserted
+rather than assumed, since a backend answering otherwise would loop the sheet forever.
+`TrashRefusal` moved into the core beside `DeletePass`, `offerPermanentDelete` became the one
+sheet all three flows raise (the refused paths handed back to its `confirmed` closure, so the
+delete cannot act on a different set from the one the sheet counted), and
+`presentDeletionFailures` the one report.
+
+**Covering it turned up two test-host traps, both now in NOTES.md.** Tearing a window down while a
+sheet it had carried was still settling segfaulted the runner — `EXC_BAD_ACCESS` in `objc_release`
+under `-[_NSWindowTransformAnimation dealloc]`, from a Core Animation transaction committing
+inside the *next* test's run-loop spin, so of seven serialized tests the two that crashed were #4
+and #7 while the sheets belonged to #3 and #6, and xcodebuild then listed whatever was in flight
+under "Failing tests:", naming features that work. Waiting for `attachedSheet` to go `nil` first
+is not enough (the crashing tests already did that); the probe simply never tears down, retaining
+its windows for the life of the process. And a doc comment written between `@MainActor` and
+`@Suite` discovered **zero tests** while reporting success —
+`✔ Suite "…" passed after 0.001 seconds` — with no warning anywhere, which invalidated a
+measurement taken while it was in place.
+Nine core tests over `DeletePass` and seven app tests over the two new flows, each with the
+narrowness control that keeps "don't report a refusal as a failure" from becoming "don't report
+failures" (a real failure is never turned into an offer to delete for good; a sync that trashes
+normally asks nothing).
+
+**2026-08-25 — F8 on a network share reported *"The system reported an error (code 3 328)"*.**
+Reported by a user deleting from a mounted SMB share on a NAS. `FileManager.trashItem` refuses
+outright there — the volume keeps no Trash — and Cocoa says so as `NSFeatureUnsupportedError`,
+which `LocalBackend.mapCocoaError`'s `default` branch rendered as `.io(code: 3328)`: a number, for
+a volume that is working perfectly and simply cannot do the one thing that was asked. **The same
+code means nothing two lines away**, which is the trap it turns on:
+`FileManager.url(for: .trashDirectory, appropriateFor:)` throws it for a volume that trashes fine
+and merely has nothing trashed on it yet — measured again on freshly created **ExFAT and HFS+**
+images, both of which threw it from the lookup and then trashed happily into
+`<volume>/.Trashes/501`. So 3328 from the
+*lookup* is noise and 3328 from the *attempt* is the verdict, which is why `trashFailure(_:path:)`
+is named apart from the shared mapper rather than added to it.
+
+**There is no pre-check, so `capabilities(for:)` cannot be taught this.** Probed: no
+`VOL_CAP_FMT_*` or `VOL_CAP_INT_*` bit names a Trash, and no `URLResourceKey`/`kCFURL*` does
+either — the `volumeSupports…` family covers cloning, renaming, immutable files and a dozen more
+and stops short of this one. The attempt is the only instrument there is, which is why the
+degradation happens *after* the refusal rather than in the capability set the way SFTP's, FTP's
+and S3's do. What it degrades to is what those three already get: the confirmed permanent delete —
+**offered, not performed**, since nothing has moved when the refusal arrives, so it is a genuine
+question and declining leaves the files exactly where they are. The question itself is the
+ordinary permanent-delete one, already translated in all fourteen languages; only the *reason* is
+new (“There’s no Trash on this volume, so this can’t be undone”), which is the shape Finder's own
+share dialog has.
+
+**Read the outer code before the underlying errno**, which is the reverse of what the shared
+mapper does. A 3328 carrying an `NSPOSIXErrorDomain` `ENOENT` underneath is real — the lookup
+produced exactly that shape on both probe volumes — and letting the errno win reports a Trash-less
+volume as *"not found"*, a second wrong answer wearing a more plausible sentence. Nothing is
+swallowed by that ordering: `trashItem` reports a genuinely missing file as
+`NSFileNoSuchFileError`.
+
+The SMB half is the **report** rather than a measurement taken here — no share was mountable on
+this Mac, and no disk image can stand in for one, since every filesystem `hdiutil` makes trashes.
+Everything on this side of the syscall was measured. Five core tests pin the mapping (the verdict
+is named rather than numbered; the feature code wins over an errno tucked under it; every other
+trash failure keeps the mapping it had; an errno is still recovered when the outer code is *not*
+the verdict; the volume refusal is distinct from the already-inside-a-Trash one), and three app
+tests drive the real sheet on a real window — it appears, its default button performs the
+permanent delete, and a genuine failure is never turned into an offer to delete for good. The two
+`try?` callers this could not reach were recorded as still open, and are the entry above.
 
 **2026-08-24 — and SFTP, which needed a different route entirely.** The third of three, and the only
 one where the *shape* the first two share was unavailable: the system `curl` is built without libssh2
