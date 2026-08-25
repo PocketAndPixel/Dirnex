@@ -391,19 +391,26 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
     /// deleted and repacked under the same name — the ordinary way to redo one — would otherwise go
     /// on listing the members it held when the pane first entered it, for the life of the window.
     /// One `stat` per list, against a `bsdtar` spawn saved, so it costs nothing worth measuring.
+    ///
+    /// ``ArchiveIdentity/stillDescribesFile(at:)`` rather than a comparison spelled out here: an
+    /// unreadable archive must be a *miss*, and that rule is the one thing all three archive caches
+    /// have to agree about (`ArchivePreviewCache`, `NestedArchiveRegistry`). Reading it back
+    /// costs nothing on the path that matters — a hit is still the single `stat` inside the helper,
+    /// and only a re-mount pays the second, beside a subprocess that dwarfs it.
     private func mountedArchive(at archivePath: String) throws -> ArchiveBackend {
-        let identity = ArchiveIdentity.current(ofFileAt: archivePath)
         lock.lock()
         defer { lock.unlock() }
-        if let identity, let cached = mounted[archivePath], cached.identity == identity {
+        if let cached = mounted[archivePath], cached.identity.stillDescribesFile(at: archivePath) {
             return cached.backend
         }
         let toc = try ArchiveMounter.readTableOfContents(ofArchiveAt: archivePath)
         let backend = ArchiveBackend(archiveOnDiskPath: archivePath, toc: toc)
-        // An archive that vanished between the stat and the read has no identity to stamp, and the
-        // read above has already thrown; one that appears in that window is stamped on its next
-        // list. Either way an unstamped mount is never cached, so it can never go stale.
-        if let identity { mounted[archivePath] = Mount(identity: identity, backend: backend) }
+        // An archive that vanished between the read and here has no identity to stamp, and the read
+        // above has already thrown; one that appears in that window is stamped on its next list.
+        // Either way an unstamped mount is never cached, so it can never go stale.
+        if let identity = ArchiveIdentity.current(ofFileAt: archivePath) {
+            mounted[archivePath] = Mount(identity: identity, backend: backend)
+        }
         return backend
     }
 }

@@ -91,6 +91,58 @@ struct ArchiveCacheFreshnessTests {
         #expect(cache.cachedURL(for: member) == url)
     }
 
+    // MARK: - The nested mount
+
+    @Test("a repacked outer archive is not browsed from the extraction it replaced")
+    func repackedOuterArchiveDropsItsNestedMount() throws {
+        let outer = try Fixture(entries: ["inner.zip": "pretend-archive"])
+        let registry = NestedArchiveRegistry()
+        let origin = VFSPath(backend: .archive(forArchiveAt: outer.path), path: "/inner.zip")
+        let mount = try outer.temporaryFile(named: "extracted-inner.zip")
+
+        registry.record(mountOnDiskPath: mount, origin: origin)
+        #expect(registry.reusableMount(forOrigin: origin) == mount)
+
+        try outer.repack(entries: ["inner.zip": "a different archive under the same name"])
+
+        #expect(registry.reusableMount(forOrigin: origin) == nil)
+    }
+
+    @Test("an untouched outer archive still reuses its extraction rather than re-spawning bsdtar")
+    func untouchedOuterArchiveKeepsItsNestedMount() throws {
+        let outer = try Fixture(entries: ["inner.zip": "pretend-archive"])
+        let registry = NestedArchiveRegistry()
+        let origin = VFSPath(backend: .archive(forArchiveAt: outer.path), path: "/inner.zip")
+        let mount = try outer.temporaryFile(named: "extracted-inner.zip")
+
+        registry.record(mountOnDiskPath: mount, origin: origin)
+
+        // The narrowness control for the two above: "never reuse" would pass both of them and
+        // would cost an extraction every time somebody re-enters an inner archive.
+        #expect(registry.reusableMount(forOrigin: origin) == mount)
+    }
+
+    /// An enclosing archive nobody can `stat` is a **miss**, exactly as it is for the mount and the
+    /// preview extraction above — the rule ``ArchiveIdentity/current(ofFileAt:)`` states and the
+    /// reason ``ArchiveIdentity/stillDescribesFile(at:)`` exists.
+    ///
+    /// Comparing the two identities directly cannot express it: both sides are `Optional`, so an
+    /// unstamped record and an unreadable archive compare **equal** and the stale extraction is
+    /// handed back. Narrow to reach in the app — the record is made moments after a successful
+    /// extraction — which is exactly why it is pinned here rather than left to be met later.
+    @Test("an enclosing archive that cannot be read is a miss, not an unchanged one")
+    func unreadableOuterArchiveIsAMiss() throws {
+        let outer = try Fixture(entries: ["inner.zip": "pretend-archive"])
+        let registry = NestedArchiveRegistry()
+        let origin = VFSPath(backend: .archive(forArchiveAt: outer.path), path: "/inner.zip")
+        let mount = try outer.temporaryFile(named: "extracted-inner.zip")
+
+        try FileManager.default.removeItem(atPath: outer.path)
+        registry.record(mountOnDiskPath: mount, origin: origin)
+
+        #expect(registry.reusableMount(forOrigin: origin) == nil)
+    }
+
     /// A real zip, packed by `bsdtar` from real files, that can be deleted and packed again under
     /// the same name — which is the gesture under test, so it must be the gesture the fixture makes.
     private final class Fixture {
@@ -123,6 +175,14 @@ struct ArchiveCacheFreshnessTests {
             try process.run()
             process.waitUntilExit()
             try FileManager.default.removeItem(at: staging)
+        }
+
+        /// A stand-in for the temp file a nested extraction lands in — the registry only ever asks
+        /// whether it still exists, so its contents are nobody's business.
+        func temporaryFile(named name: String) throws -> String {
+            let url = directory.appendingPathComponent(name)
+            try Data("extracted".utf8).write(to: url)
+            return url.path
         }
 
         deinit {

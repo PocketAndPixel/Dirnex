@@ -50,9 +50,16 @@ final class NestedArchiveRegistry {
     /// and `nil` too once the *enclosing* archive is no longer the file the member came out of,
     /// since a re-packed outer archive's member of the same name is different bytes, and reusing
     /// the extraction would browse the previous archive's contents.
+    ///
+    /// The freshness question goes through ``ArchiveIdentity/stillDescribesFile(at:)`` rather than
+    /// comparing the two identities here, because comparing them is an `Optional` comparison and
+    /// `nil == nil` reads as *unchanged* — so an enclosing archive that has become unreadable would
+    /// hand back the stale extraction, which is the one answer the rule forbids. An archive nobody
+    /// can stat is a miss, exactly as it is in `CompositeBackend` and `ArchivePreviewCache`.
     func reusableMount(forOrigin origin: VFSPath) -> String? {
         guard let path = map.mountOnDiskPath(forOrigin: origin),
-              enclosing[origin] == enclosingArchiveIdentity(of: origin),
+              let archivePath = origin.backend.archivePath,
+              enclosing[origin]?.stillDescribesFile(at: archivePath) == true,
               FileManager.default.fileExists(atPath: path) else { return nil }
         return path
     }
