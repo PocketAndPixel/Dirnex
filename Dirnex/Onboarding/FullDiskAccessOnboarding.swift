@@ -85,12 +85,15 @@ enum FullDiskAccessOnboarding {
     static func presentForICloud(over window: NSWindow?, afterLoss: Bool) {
         let alert = NSAlert()
         alert.messageText = String(localized: "Some of iCloud Drive needs Full Disk Access")
-        // A loss leads with the one fact that separates it from a first ask: these rows have been
-        // on screen before, so something has taken the access away rather than never granted it.
+        // A loss leads with the one fact that separates it from a first ask: this has worked
+        // before, so something took the access away rather than never having granted it. Worded to
+        // stand alone — it is the first thing read, so it cannot point at folders the paragraph
+        // below has not introduced yet, and "all of" answers the title's "Some of" directly.
         // Kept as a paragraph of its own instead of spliced into the sentence below, so the shared
         // explanation keeps the translations it already has.
         let opening = afterLoss ? String(localized: """
-        Dirnex could read these folders before, so its Full Disk Access has probably been reset.
+        Dirnex could read all of iCloud Drive before, so its Full Disk Access has probably been \
+        reset.
         """) + "\n\n" : ""
         alert.informativeText = opening + String(localized: """
         Your files in iCloud Drive are listed above. The folders apps keep there — Pages, \
@@ -99,7 +102,6 @@ enum FullDiskAccessOnboarding {
         Click Open System Settings, then switch on Dirnex under Full Disk Access. macOS will ask \
         Dirnex to relaunch so the new access takes effect.
         """) + reAddAdvice
-        NSLog("PROBE sheet afterLoss=\(afterLoss)\n---\n\(alert.messageText)\n\n\(alert.informativeText)\n---")
         alert.alertStyle = .informational
         alert.addButton(withTitle: String(localized: "Open System Settings"))
         alert.addButton(withTitle: String(localized: "Not Now"))

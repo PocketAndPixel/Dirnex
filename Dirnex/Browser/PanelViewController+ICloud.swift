@@ -149,24 +149,20 @@ extension PanelViewController {
             // is the case the original one-shot latch could not see (docs/NOTES.md ▸ iCloud Drive).
             let preferences = AppPreferences.shared
             let observation = gathered.observation
-            NSLog("PROBE icloud observation=\(observation) offered=\(preferences.hasOfferedFullDiskAccessForICloud) read=\(preferences.hasReadICloudAppLibraries) rows=\(gathered.entries.count) libs=\(gathered.libraries.count)")
             switch ICloudAccessOffer.decide(
                 observation: observation,
                 hasOfferedBefore: preferences.hasOfferedFullDiskAccessForICloud,
                 hasReadLibrariesBefore: preferences.hasReadICloudAppLibraries
             ) {
             case .offerFirstTime:
-                NSLog("PROBE decision=offerFirstTime")
                 preferences.hasOfferedFullDiskAccessForICloud = true
                 FullDiskAccessOnboarding.presentForICloud(over: view.window, afterLoss: false)
             case .offerAfterLoss:
-                NSLog("PROBE decision=offerAfterLoss")
                 // Spend the rescue rather than the first-ask latch: one loss buys one ask, so
                 // declining it is respected until the grant comes back and re-arms it below.
                 preferences.hasReadICloudAppLibraries = false
                 FullDiskAccessOnboarding.presentForICloud(over: view.window, afterLoss: true)
             case .stayQuiet:
-                NSLog("PROBE decision=stayQuiet")
                 break
             }
             // Recorded from the only positive proof there is — libraries actually came back — so a
