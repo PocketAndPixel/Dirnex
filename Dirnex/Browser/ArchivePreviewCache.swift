@@ -26,11 +26,6 @@ struct ArchiveMember: Hashable {
 @MainActor
 final class ArchivePreviewCache {
     private var extracted: [ArchiveMember: URL] = [:]
-    /// Where an *encrypted* archive's one whole-archive extraction landed. libarchive reads
-    /// sequentially and has no member filter, so extracting one member decrypts and writes them
-    /// all; without this, arrowing through five members of a 600 MB archive would do that five
-    /// times, on a keystroke. Keyed by archive, so each is paid for exactly once per session.
-    private var wholeArchiveExtractions: [String: URL] = [:]
     /// Which archive each cached extraction came out of, so a path that has since been given a
     /// different archive drops its entries instead of previewing bytes that are no longer in it.
     private var identities: [String: ArchiveIdentity] = [:]
@@ -55,12 +50,17 @@ final class ArchivePreviewCache {
         guard identities[archivePath] != identity else { return }
         identities[archivePath] = identity
         extracted = extracted.filter { $0.key.archivePath != archivePath }
-        wholeArchiveExtractions[archivePath] = nil
     }
 
     /// Extract `member` to disk (off-main) and cache it, returning its on-disk URL. Reuses the
-    /// cached copy when the same member is requested again, and — for an encrypted archive — the
-    /// sibling members that came out of the same extraction.
+    /// cached copy when the same member is requested again.
+    ///
+    /// It used to keep a second cache beside this one, holding where an *encrypted* archive's
+    /// whole-archive extraction landed, because the reader had no member filter and extracting one
+    /// member decrypted them all — so the sibling members were free once anyone had paid for the
+    /// first. ``DirnexCore/ArchiveMemberFilter`` retired it: one member of a 600 MB archive now
+    /// costs 0.001 s rather than 1.48 s, so there is nothing left to amortize and arrowing through
+    /// five members pays five times almost nothing instead of once for all of it.
     ///
     /// `passphrase` is required for an encrypted archive and ignored otherwise, so a caller holding
     /// one may pass it speculatively; without one, an encrypted archive throws
@@ -73,10 +73,6 @@ final class ArchivePreviewCache {
     ) async throws -> URL {
         dropExtractionsIfReplaced(archivePath: member.archivePath)
         if let url = extracted[member] { return url }
-        if let url = wholeArchiveURL(for: member) {
-            extracted[member] = url
-            return url
-        }
         let extraction = try await BlockingWork.run {
             Result {
                 try ArchiveExtractor.extract(
@@ -86,25 +82,10 @@ final class ArchivePreviewCache {
                 )
             }
         }.get()
-        if extraction.isWholeArchive {
-            wholeArchiveExtractions[member.archivePath] = extraction.directory
-        }
         // A single member extracts to exactly one location; `ArchiveExtractor` already threw if
         // nothing landed, so this file exists.
         let url = URL(fileURLWithPath: extraction.extractedPaths[0])
         extracted[member] = url
         return url
-    }
-
-    /// `member`'s file inside its archive's earlier whole-archive extraction, if there was one and
-    /// the file is still there. Checked before spawning anything, and `nil` when the extraction has
-    /// since been cleared out of the temp directory — in which case the ordinary route re-does it.
-    private func wholeArchiveURL(for member: ArchiveMember) -> URL? {
-        guard let directory = wholeArchiveExtractions[member.archivePath] else { return nil }
-        let path = ArchiveExtraction.extractedLocation(
-            ofInnerPath: member.innerPath, inDirectory: directory.path
-        )
-        guard FileManager.default.fileExists(atPath: path) else { return nil }
-        return URL(fileURLWithPath: path)
     }
 }

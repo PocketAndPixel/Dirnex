@@ -20,26 +20,20 @@ import Testing
 /// and `link.txt` → `notes/hello.txt`.
 @Suite("EncryptedArchiveReader")
 struct EncryptedArchiveReaderTests {
-    private static let passphrase = "dirnex-test-passphrase"
+    private static let passphrase = EncryptedArchiveFixture.passphrase
 
     private func fixture(_ name: String) throws -> String {
-        let url = try #require(
-            Bundle.module.url(forResource: name, withExtension: "zip", subdirectory: "Fixtures"),
-            "missing fixture \(name).zip"
-        )
-        return url.path
+        try EncryptedArchiveFixture.archive(name)
     }
 
     private func scratchDirectory() throws -> String {
-        let path = NSTemporaryDirectory() + "dirnex-reader-\(UUID().uuidString)"
-        try FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true)
-        return path
+        try EncryptedArchiveFixture.scratchDirectory()
     }
 
-    private func remove(_ path: String) { try? FileManager.default.removeItem(atPath: path) }
+    private func remove(_ path: String) { EncryptedArchiveFixture.remove(path) }
 
     private func contents(of path: String) throws -> String {
-        try String(contentsOf: URL(fileURLWithPath: path), encoding: .utf8)
+        try EncryptedArchiveFixture.contents(of: path)
     }
 
     // MARK: - Inspection

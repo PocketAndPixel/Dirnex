@@ -8586,7 +8586,9 @@ Two findings worth carrying:
   route extracts the **whole** archive rather than the requested members, since libarchive is read
   sequentially and the reader has no member filter. A member filter plus a per-archive passphrase
   held for the session — so preview and nested entry can use the one the user already typed — is its
-  own slice, and the doc comment at `ArchiveExtractor.extract` says so at the site.
+  own slice, and the doc comment at `ArchiveExtractor.extract` says so at the site. **Both halves
+  have since landed** — the passphrase 2026-08-09 and the member filter 2026-08-25 — see ▸ After
+  M19.
 - **Encrypting in place, or a "protect these files" gesture that removes the plaintext.** The delete
   is the dangerous half, and it belongs to the user, with the Trash's own rules in view. Dirnex
   creates and populates; it never removes the originals, because "encrypt these files" naively
@@ -12107,8 +12109,30 @@ read the store and stay quiet when it is empty, and only the gesture the user ac
 a sheet. Two things the same pass settled: Enter on a plain file member had never opened anything in
 *any* archive (it extracts to temp and launches the default app now, read-only, since nothing writes
 an edit back), and an encrypted archive's whole-archive extraction is reused for its later members
-rather than re-decrypted per arrow key. **A member filter is still open** — one member of a 600 MB
-encrypted archive still decrypts all of it, once.
+rather than re-decrypted per arrow key.
+
+**The member filter — M19's last loose end — landed 2026-08-25**, and with it the reuse above went
+away rather than being improved. `EncryptedArchiveReader.extract` now takes an `ArchiveMemberFilter`
+and steps over every entry nobody asked for; a probe against a real 600 MB AES-256 archive settled the
+design before any Swift, and it settled two things at once. Skipping an AES entry on a seekable zip is
+a **seek** — 1.48 s to read the archive's data against **0.001 s** to reach a 6-byte member past three
+100 MB ones, byte-identical either way, and the same holds for a stream-written zip and a `.tar.gz` —
+so the whole feature is worth having; and `archive_read_next_header` *already* skips at exactly the
+same cost, so the explicit `archive_read_data_skip` is legibility rather than speed, which is the
+opposite of what this entry was going to claim before the control was run. The matching rule is
+`bsdtar`'s, because a user cannot see which engine ran: a directory member takes its subtree, matched
+on whole components. A wrapped (hidden-names) archive is the case the filter could most easily get
+wrong — its one outer entry is `Contents.tar` and the member asked for is inside it — so the wrap is
+recognized from the headers and the filter is handed to the inner extraction.
+
+Two things it **deleted**. `ArchivePreviewCache` had kept a second cache holding where each encrypted
+archive's whole-archive extraction landed, so sibling members were free once anyone had paid for the
+first; that existed only to amortize the cost the filter removes, and `ArchiveExtractor.Extraction
+.isWholeArchive` existed only to feed it. Its test had to be *inverted* rather than dropped — the
+observable was a shared temp directory, and the property it was really protecting (arrowing through a
+large encrypted archive must not re-decrypt it per keystroke) is unchanged and now bought by not
+decrypting at all. Verified in the running app: F5 on the 6-byte member of a 600 MB encrypted archive
+left the temp extraction root holding **one file and 4 KB**.
 
 The same day, **editing a member in place** landed on top of it, and needed one thing nobody had
 noticed was missing: every archive *write* went through `bsdtar`, which cannot be given a

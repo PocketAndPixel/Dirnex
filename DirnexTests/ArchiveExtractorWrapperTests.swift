@@ -77,6 +77,75 @@ struct ArchiveExtractorWrapperTests {
         )
     }
 
+    // MARK: - The member filter
+
+    /// The app-layer form of M19's last loose end: the encrypted route used to extract the **whole**
+    /// archive however little was asked for, so previewing one file inside a 600 MB archive
+    /// decrypted all 600 MB. What is asserted is the *absence* of the sibling, since a filter that
+    /// silently did nothing would leave every other assertion in this suite passing.
+    @Test("only the requested member is placed; its siblings stay in the archive")
+    func filterLeavesSiblingsInTheArchive() throws {
+        let fixture = try Fixture(namePrivacy: .visible)
+        defer { fixture.remove() }
+
+        let extraction = try ArchiveExtractor.extract(
+            innerPaths: ["/payload/one.txt"],
+            fromArchiveAt: fixture.archive,
+            passphrase: Self.passphrase
+        )
+        defer { try? FileManager.default.removeItem(at: extraction.directory) }
+
+        #expect(try String(contentsOfFile: extraction.extractedPaths[0], encoding: .utf8) == "first")
+        let sibling = extraction.directory.appendingPathComponent("payload/two.txt").path
+        #expect(!FileManager.default.fileExists(atPath: sibling))
+    }
+
+    /// The same claim through the wrapper, which is the case the filter could most easily get wrong:
+    /// applied to the *outer* archive it would match nothing, because the outer holds one entry
+    /// called `Contents.tar` and the member asked for is inside it.
+    @Test("a hidden-names archive filters inside the wrapper, not against it")
+    func filterReachesInsideTheWrapper() throws {
+        let fixture = try Fixture(namePrivacy: .hidden)
+        defer { fixture.remove() }
+
+        let extraction = try ArchiveExtractor.extract(
+            innerPaths: ["/payload/one.txt"],
+            fromArchiveAt: fixture.archive,
+            passphrase: Self.passphrase
+        )
+        defer { try? FileManager.default.removeItem(at: extraction.directory) }
+
+        #expect(try String(contentsOfFile: extraction.extractedPaths[0], encoding: .utf8) == "first")
+        let sibling = extraction.directory.appendingPathComponent("payload/two.txt").path
+        #expect(!FileManager.default.fileExists(atPath: sibling))
+    }
+
+    /// Naming the folder takes what is under it, which is what F5 on a folder inside an archive
+    /// rests on — and the half a filter written as "match the entry exactly" would break, copying
+    /// out an empty directory and reporting success.
+    @Test("naming a folder member copies out its contents")
+    func filterTakesAFolderSubtree() throws {
+        let fixture = try Fixture(namePrivacy: .visible)
+        defer { fixture.remove() }
+
+        let extraction = try ArchiveExtractor.extract(
+            innerPaths: ["/payload"],
+            fromArchiveAt: fixture.archive,
+            passphrase: Self.passphrase
+        )
+        defer { try? FileManager.default.removeItem(at: extraction.directory) }
+
+        let placed = extraction.directory.appendingPathComponent("payload")
+        #expect(
+            try String(contentsOf: placed.appendingPathComponent("one.txt"), encoding: .utf8)
+                == "first"
+        )
+        #expect(
+            try String(contentsOf: placed.appendingPathComponent("two.txt"), encoding: .utf8)
+                == "second"
+        )
+    }
+
     // MARK: - The guard that turned this into a wrong error
 
     @Test("a member that never landed throws instead of reporting a path that isn't there")

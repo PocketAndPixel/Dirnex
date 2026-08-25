@@ -8,9 +8,17 @@ import Testing
 ///
 /// The gestures themselves cannot be driven headlessly — the prompt is an `NSAlert` sheet — so what
 /// is pinned here is the state the prompt writes and the state the passive paths read: the store's
-/// per-archive isolation, and the extraction reuse that is the whole reason previewing a second
-/// member of an encrypted archive is affordable. Both are built against a **real** AES-256 archive
-/// written by `EncryptedArchiveWriter`, so the passphrase travels the same route it does in the app.
+/// per-archive isolation, and what previewing a *second* member of an encrypted archive costs. Both
+/// are built against a **real** AES-256 archive written by `EncryptedArchiveWriter`, so the
+/// passphrase travels the same route it does in the app.
+///
+/// That second half used to be a claim about **reuse**: with no member filter, extracting one member
+/// decrypted the whole archive, so the cache kept where that landed and served every sibling from
+/// it — and the observable was a *shared* temp directory. ``DirnexCore/ArchiveMemberFilter`` retired
+/// the whole arrangement, so the assertion is now its opposite: each member gets its own extraction
+/// holding only itself. The property the user cares about is unchanged and is what both versions
+/// were really for — arrowing through a large encrypted archive must not re-decrypt it per
+/// keystroke — but it is now bought by not decrypting rather than by decrypting once.
 @MainActor
 @Suite("Encrypted archive session")
 struct ArchivePassphraseSessionTests {
@@ -72,8 +80,8 @@ struct ArchivePassphraseSessionTests {
         }
     }
 
-    @Test("a second member of an encrypted archive reuses the first extraction")
-    func secondMemberReusesTheExtraction() async throws {
+    @Test("a second member of an encrypted archive decrypts only itself")
+    func secondMemberExtractsOnlyItself() async throws {
         let archive = try Fixture()
         let cache = ArchivePreviewCache()
         let first = ArchiveMember(archivePath: archive.path, innerPath: "one.txt")
@@ -82,14 +90,22 @@ struct ArchivePassphraseSessionTests {
         let firstURL = try await cache.extractedURL(for: first, passphrase: Fixture.passphrase)
         let secondURL = try await cache.extractedURL(for: second, passphrase: Fixture.passphrase)
 
+        #expect(try String(contentsOf: firstURL, encoding: .utf8) == "first")
         #expect(try String(contentsOf: secondURL, encoding: .utf8) == "second")
-        // Each extraction gets its own UUID directory, so a shared parent is the observable proof
-        // that the archive was decrypted once rather than once per member — which is what keeps
-        // arrowing through a large encrypted archive from re-decrypting it on every keystroke.
-        #expect(firstURL.deletingLastPathComponent() == secondURL.deletingLastPathComponent())
+        // Each extraction gets its own UUID directory holding only what was asked for. The sibling's
+        // absence from each is the observable that the archive is no longer decrypted whole — the
+        // assertion that would fail if the member filter ever stopped being passed.
+        let firstSibling = firstURL.deletingLastPathComponent().appendingPathComponent("two.txt")
+        let secondSibling = secondURL.deletingLastPathComponent().appendingPathComponent("one.txt")
+        #expect(!FileManager.default.fileExists(atPath: firstSibling.path))
+        #expect(!FileManager.default.fileExists(atPath: secondSibling.path))
     }
 
-    @Test("the reuse is per archive — a second archive is extracted on its own")
+    /// The cache is keyed by archive *and* inner path, so two archives holding a member of the same
+    /// name must never be served each other's bytes. Written when the whole-archive extraction was
+    /// shared per archive and still worth keeping without it: the key is what stops the collision,
+    /// and nothing else would notice if it lost half of itself.
+    @Test("two archives holding the same member name never share an extraction")
     func reuseDoesNotCrossArchives() async throws {
         let one = try Fixture()
         let other = try Fixture()

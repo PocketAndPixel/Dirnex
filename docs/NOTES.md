@@ -4168,6 +4168,46 @@ overturned the decision the milestone opened on.
   tar carries permissions and symlinks losslessly. Give the wrapper a fixed mode and the current time
   — a real file's mode or mtime would leak a fact about the contents into the part that stays
   readable.
+- **Skipping an archive entry is a *seek*, so extracting one member of a large encrypted archive is
+  free for the members nobody asked for — and the saving belongs to not reading the data, not to the
+  skip call.** M19 shipped without a member filter: `EncryptedArchiveReader.extract` placed every
+  entry however little was requested, so previewing one file inside a 600 MB AES-256 archive
+  decrypted all 600 MB. Measured 2026-08-25 against exactly that archive (seven entries, a 6-byte
+  one fourth): reading every entry's data is **1.48 s** and reaching the small one past three 100 MB
+  ones is **0.001 s**, byte-identical output. Re-measured through Dirnex's own reader afterwards:
+  1.53 s → 0.001 s, and 0.256 s for a 100 MB member, i.e. the cost is now what was asked for.
+  - **`archive_read_next_header` already skips whatever is left of the previous entry**, at an
+    identical 0.001 s over three rounds — so `archive_read_data_skip` buys nothing measurable and is
+    called only so the loop's `continue` says out loud that it is leaving an entry alone. Worth
+    knowing before anyone attributes the speed to the call and defends it as load-bearing.
+  - **A skipped entry is never decrypted, so a skip cannot notice a wrong passphrase** — probed, it
+    answers `ARCHIVE_OK` in silence for every entry, and only the member whose data is actually read
+    reports `Incorrect passphrase`. That is right rather than lax (copying a symlink or an empty
+    folder out of an encrypted archive genuinely needs no passphrase) and it is the reason nothing
+    may claim a *filtered* extraction validated one.
+  - **It holds for a stream, too, which is what makes the filter safe on any format.** The same
+    member came back byte-identical from a seekable zip, a zip **written** to a pipe (data
+    descriptors — read from a file it still uses the seekable reader, so 0.001 s), and a `.tar.gz`,
+    where the gzip filter has to be read through and a 100 MB skip costs 0.032 s.
+  - **The filter's matching rule is `bsdtar`'s, because the two routes serve the same gestures and a
+    user cannot see which one ran**: a directory member takes its subtree (or F5 on a folder inside
+    an archive copies out an empty folder and reports success), matched on whole path components so
+    `docs` never takes `docs2`. Glob metacharacters are *not* escaped here, unlike
+    `ArchiveExtraction.member(forInnerPath:)` — that one builds a shell pattern for `bsdtar` and this
+    one compares strings, so the two spellings sit a few lines apart and disagree on purpose.
+  - **A filter must reach *inside* a hidden-names wrapper, and applied outside it fails as a claim
+    about the wrong thing.** Such an archive holds one entry, `Contents.tar`, with the requested
+    member inside it — so a filter matched against the outer places nothing, and the caller reports
+    "Couldn't read the archive". Recognize the wrap from the headers `inspect` has already read, take
+    the wrapper unconditionally, and hand the filter down to the inner extraction.
+  - **The cache that existed to amortize the old cost is dead the day the cost goes, and it is not in
+    the diff.** `ArchivePreviewCache` kept a second dictionary holding where each archive's
+    whole-archive extraction landed, so arrowing onto a sibling was free; `ArchiveExtractor.Extraction
+    .isWholeArchive` existed only to feed it. Both went with the filter, along with the test that
+    pinned *shared temp directories* as the observable — which had to be inverted rather than
+    deleted, since the property the user cares about (arrowing through a large encrypted archive must
+    not re-decrypt it per keystroke) is unchanged and is now bought by not decrypting at all.
+
 - **A zip probe that reads "the first entry" reads the *directory*.** Packing a folder puts its own
   entry first, and a directory has no data, so it is stored with method 0 and carries no AES field
   however the archive was encrypted — a probe written that way reports method 0 for a perfectly good

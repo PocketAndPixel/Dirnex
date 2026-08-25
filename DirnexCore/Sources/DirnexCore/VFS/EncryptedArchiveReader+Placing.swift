@@ -14,8 +14,7 @@ extension EncryptedArchiveReader {
         let handle: ArchiveReadHandle
         let root: String
         let totalBytes: Int64
-        let onProgress: (Progress) -> Void
-        let isCancelled: () -> Bool
+        let reporting: Reporting
     }
 
     static func place(
@@ -78,7 +77,7 @@ extension EncryptedArchiveReader {
         var written = alreadyWritten
         var buffer = [UInt8](repeating: 0, count: chunkSize)
         while true {
-            if session.isCancelled() { throw CancellationError() }
+            if session.reporting.isCancelled() { throw CancellationError() }
             let got = buffer.withUnsafeMutableBytes {
                 archive_read_data(handle.raw, $0.baseAddress, chunkSize)
             }
@@ -94,7 +93,7 @@ extension EncryptedArchiveReader {
                 offset += put
             }
             written += Int64(got)
-            session.onProgress(Progress(
+            session.reporting.onProgress(Progress(
                 bytesExtracted: written, totalBytes: session.totalBytes,
                 currentName: entry.archivePath
             ))

@@ -156,6 +156,69 @@ struct ArchiveNamePrivacyTests {
         #expect(FileManager.default.fileExists(atPath: destination + "/Contents.tar"))
     }
 
+    /// A member filter names something *inside* the wrapper, so applied to the outer archive — whose
+    /// only entry is `Contents.tar` — it would match nothing, place nothing, and report an archive
+    /// that could not be read. It has to reach the inner extraction instead, and the recognition
+    /// comes from the headers rather than from what the outer pass happened to place.
+    @Test("a member filter reaches inside the wrapper rather than matching against it")
+    func filterAppliesInsideTheWrapper() throws {
+        let source = try makeSource()
+        defer { remove(source.directory) }
+        let archive = source.directory + "/archive.zip"
+
+        try EncryptedArchiveWriter.write(
+            items: source.items, toArchiveAt: archive, encryption: .aes256,
+            passphrase: ArchivePassphrase("hunter2"), namePrivacy: .hidden
+        )
+
+        let destination = source.directory + "/one"
+        try FileManager.default.createDirectory(
+            atPath: destination, withIntermediateDirectories: true
+        )
+        defer { remove(destination) }
+
+        let report = try EncryptedArchiveReader.extract(
+            archiveAt: archive, into: destination,
+            passphrase: ArchivePassphrase("hunter2"),
+            members: .members(["/layoffs/salary-list.txt"])
+        )
+
+        #expect(report.extractedPaths == ["layoffs/salary-list.txt"])
+        #expect(!FileManager.default.fileExists(atPath: destination + "/layoffs/timeline.txt"))
+        // Still no container left beside the file it carried — the filter must not cost the unwrap.
+        #expect(!FileManager.default.fileExists(atPath: destination + "/Contents.tar"))
+    }
+
+    /// The other side of the same fork: a caller that wants the container declines unwrapping, and
+    /// its filter then names the wrapper. Both spellings have to reach the one entry — the app asks
+    /// this way whenever a pane browsing such an archive acts on its single row.
+    @Test("asking for the container by name, unwrapping declined, still yields it")
+    func filterCanNameTheWrapperItself() throws {
+        let source = try makeSource()
+        defer { remove(source.directory) }
+        let archive = source.directory + "/archive.zip"
+
+        try EncryptedArchiveWriter.write(
+            items: source.items, toArchiveAt: archive, encryption: .aes256,
+            passphrase: ArchivePassphrase("hunter2"), namePrivacy: .hidden
+        )
+
+        let destination = source.directory + "/raw-filtered"
+        try FileManager.default.createDirectory(
+            atPath: destination, withIntermediateDirectories: true
+        )
+        defer { remove(destination) }
+
+        let report = try EncryptedArchiveReader.extract(
+            archiveAt: archive, into: destination,
+            passphrase: ArchivePassphrase("hunter2"),
+            members: .members(["/Contents.tar"]),
+            unwrappingHiddenNames: false
+        )
+        #expect(report.extractedPaths == ["Contents.tar"])
+        #expect(FileManager.default.fileExists(atPath: destination + "/Contents.tar"))
+    }
+
     @Test("hiding names still refuses a blank passphrase, and hides nothing unencrypted")
     func guardsStillApply() throws {
         let source = try makeSource()
