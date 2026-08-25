@@ -63,7 +63,7 @@ enum FullDiskAccessOnboarding {
 
         Click Open System Settings, then switch on Dirnex under Full Disk Access. macOS will ask \
         Dirnex to relaunch so the new access takes effect.
-        """)
+        """) + reAddAdvice
         alert.alertStyle = .informational
         alert.addButton(withTitle: String(localized: "Open System Settings"))
         alert.addButton(withTitle: String(localized: "Not Now"))
@@ -82,18 +82,24 @@ enum FullDiskAccessOnboarding {
     /// So this is offered **once** and then never again, on its own latch: a silently short iCloud
     /// Drive is the same quiet-wrong-answer shape the Trash avoids by asking, but here there is
     /// something real on screen, which makes repeating the ask a nag rather than a rescue.
-    static func presentForICloud(over window: NSWindow?) {
-        guard !AppPreferences.shared.hasOfferedFullDiskAccessForICloud else { return }
-        AppPreferences.shared.hasOfferedFullDiskAccessForICloud = true
+    static func presentForICloud(over window: NSWindow?, afterLoss: Bool) {
         let alert = NSAlert()
         alert.messageText = String(localized: "Some of iCloud Drive needs Full Disk Access")
-        alert.informativeText = String(localized: """
+        // A loss leads with the one fact that separates it from a first ask: these rows have been
+        // on screen before, so something has taken the access away rather than never granted it.
+        // Kept as a paragraph of its own instead of spliced into the sentence below, so the shared
+        // explanation keeps the translations it already has.
+        let opening = afterLoss ? String(localized: """
+        Dirnex could read these folders before, so its Full Disk Access has probably been reset.
+        """) + "\n\n" : ""
+        alert.informativeText = opening + String(localized: """
         Your files in iCloud Drive are listed above. The folders apps keep there — Pages, \
         Preview, Shortcuts — are private to macOS until you allow Dirnex to read them.
 
         Click Open System Settings, then switch on Dirnex under Full Disk Access. macOS will ask \
         Dirnex to relaunch so the new access takes effect.
-        """)
+        """) + reAddAdvice
+        NSLog("PROBE sheet afterLoss=\(afterLoss)\n---\n\(alert.messageText)\n\n\(alert.informativeText)\n---")
         alert.alertStyle = .informational
         alert.addButton(withTitle: String(localized: "Open System Settings"))
         alert.addButton(withTitle: String(localized: "Not Now"))
@@ -102,6 +108,22 @@ enum FullDiskAccessOnboarding {
         present(alert, over: window) { response in
             if response == .alertFirstButtonReturn { openSystemSettings() }
         }
+    }
+
+    /// The paragraph every one of these sheets ends on, and the half that is not "switch it on".
+    ///
+    /// A TCC record minted against a differently signed build at the same bundle id goes on
+    /// failing after the switch is flipped — measured 2026-08-26, `tccd: Failed to match existing
+    /// code requirement`, with the row reading as on throughout. Flipping the switch only writes
+    /// the authorization; it does not re-derive the code requirement from the app now on disk, so
+    /// the only fix is to delete the entry and let macOS mint a new one. Phrased conditionally, so
+    /// it is a no-op sentence on the fresh install where Dirnex is not listed at all.
+    private static var reAddAdvice: String {
+        "\n\n" + String(localized: """
+        If Dirnex is already listed there, remove it with the minus button and add it again with \
+        the plus button. An entry left over from an earlier version can stay switched on without \
+        actually granting access.
+        """)
     }
 
     // MARK: - The sheets
@@ -117,7 +139,7 @@ enum FullDiskAccessOnboarding {
 
         Click Open System Settings, then switch on Dirnex under Full Disk Access. macOS will ask \
         Dirnex to relaunch so the new access takes effect.
-        """)
+        """) + reAddAdvice
         alert.alertStyle = .informational
         alert.addButton(withTitle: String(localized: "Open System Settings"))
         alert.addButton(withTitle: String(localized: "Not Now"))

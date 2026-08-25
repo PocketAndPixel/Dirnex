@@ -32348,6 +32348,95 @@
         }
       }
     },
+    "Dirnex could read these folders before, so its Full Disk Access has probably been reset.": {
+      "comment": "FDA (iCloud) sheet: opening line when access that used to work has gone.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex konnte diese Ordner zuvor lesen, daher wurde der Festplattenvollzugriff vermutlich zurückgesetzt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex could read these folders before, so its Full Disk Access has probably been reset."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex podía leer estas carpetas antes, así que probablemente se haya restablecido su acceso total al disco."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex pouvait lire ces dossiers auparavant : son accès complet au disque a probablement été réinitialisé."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prima Dirnex riusciva a leggere queste cartelle, quindi il suo Accesso completo al disco è stato probabilmente reimpostato."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex は以前これらのフォルダを読み取れていたため、フルディスクアクセスがリセットされた可能性があります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex는 이전에 이 폴더들을 읽을 수 있었으므로 전체 디스크 접근 권한이 초기화되었을 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex kon deze mappen eerder wel lezen, dus de volledige schijftoegang is waarschijnlijk opnieuw ingesteld."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex wcześniej odczytywał te foldery, więc jego pełny dostęp do dysku prawdopodobnie został zresetowany."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Dirnex conseguia ler essas pastas antes, então o Acesso Total ao Disco provavelmente foi redefinido."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Раньше Dirnex мог читать эти папки, поэтому его полный доступ к диску, вероятно, был сброшен."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Раніше Dirnex міг читати ці папки, тож його Повний доступ до диска, імовірно, було скинуто."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 之前可以读取这些文件夹，因此其完全磁盘访问权限可能已被重置。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 先前可以讀取這些檔案夾，因此其「完全取用磁碟」權限可能已被重設。"
+          }
+        }
+      }
+    },
     "Dirnex couldn’t download this file.": {
       "comment": "Quick View placeholder hint after an automatic remote fetch failed.",
       "localizations": {
@@ -41892,6 +41981,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "相同"
+          }
+        }
+      }
+    },
+    "If Dirnex is already listed there, remove it with the minus button and add it again with the plus button. An entry left over from an earlier version can stay switched on without actually granting access.": {
+      "comment": "FDA sheets: what to do when the app is listed but the grant still does not work.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Falls Dirnex dort bereits aufgeführt ist, entfernen Sie es mit der Minus-Taste und fügen Sie es mit der Plus-Taste erneut hinzu. Ein Eintrag aus einer früheren Version kann aktiviert bleiben, ohne tatsächlich Zugriff zu gewähren."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If Dirnex is already listed there, remove it with the minus button and add it again with the plus button. An entry left over from an earlier version can stay switched on without actually granting access."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si Dirnex ya aparece en la lista, elimínalo con el botón menos y vuelve a añadirlo con el botón más. Una entrada heredada de una versión anterior puede seguir activada sin conceder acceso realmente."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si Dirnex figure déjà dans la liste, supprimez-le avec le bouton moins puis rajoutez-le avec le bouton plus. Une entrée héritée d’une version antérieure peut rester activée sans réellement accorder l’accès."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se Dirnex è già presente nell’elenco, rimuovilo con il pulsante meno e aggiungilo di nuovo con il pulsante più. Una voce rimasta da una versione precedente può restare attiva senza concedere davvero l’accesso."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex がすでに一覧にある場合は、マイナスボタンで削除してから、プラスボタンで追加し直してください。以前のバージョンから残った項目は、オンのままでも実際にはアクセスを許可していないことがあります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex가 이미 목록에 있다면 빼기 버튼으로 제거한 다음 더하기 버튼으로 다시 추가하십시오. 이전 버전에서 남은 항목은 켜져 있어도 실제로는 접근 권한을 주지 않을 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Als Dirnex er al in de lijst staat, verwijder het dan met de minknop en voeg het opnieuw toe met de plusknop. Een item dat is achtergebleven van een eerdere versie kan ingeschakeld blijven zonder daadwerkelijk toegang te verlenen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jeśli Dirnex jest już na liście, usuń go przyciskiem minus i dodaj ponownie przyciskiem plus. Wpis pozostały po wcześniejszej wersji może być włączony, a mimo to nie przyznawać dostępu."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se o Dirnex já estiver na lista, remova-o com o botão de menos e adicione-o novamente com o botão de mais. Uma entrada deixada por uma versão anterior pode continuar ativada sem realmente conceder acesso."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Если Dirnex уже есть в списке, удалите его кнопкой «минус» и добавьте заново кнопкой «плюс». Запись, оставшаяся от прежней версии, может оставаться включённой, фактически не давая доступа."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Якщо Dirnex уже є в списку, вилучіть його кнопкою «мінус» і додайте знову кнопкою «плюс». Запис, що лишився від попередньої версії, може бути ввімкненим, насправді не надаючи доступу."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果列表中已有 Dirnex，请用减号按钮将其移除，再用加号按钮重新添加。早期版本遗留的条目可能仍处于打开状态，却并未真正授予权限。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果列表中已有 Dirnex，請用減號按鈕移除它，再用加號按鈕重新加入。舊版本遺留的項目可能仍為開啟狀態，卻未真正授予權限。"
           }
         }
       }

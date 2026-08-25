@@ -3750,6 +3750,39 @@ what made the milestone affordable and the rest inverted rules borrowed from the
   while TCC settles; try twice before concluding anything. Read the live state with
   `sqlite3 /Library/Application\ Support/com.apple.TCC/TCC.db "select auth_value from access where
   service='kTCCServiceSystemPolicyAllFiles' and client='com.dirnex.Dirnex'"` — `2` granted, `0` denied.
+  - **Re-granting can *fail*, with the row reading as switched on the whole time — and `auth_value`
+    is then the wrong thing to read.** A TCC record stores a **code requirement** alongside the
+    authorization, and flipping the switch writes only the authorization: it does not re-derive the
+    requirement from the app now on disk. So a bundle id whose signing identity has changed (an
+    ad-hoc local build copied over a Developer ID one, which is what testing App Intents asks for —
+    ▸ macOS system gates) keeps a record nothing can satisfy, and every read is refused however many
+    times the toggle is flipped. Measured 2026-08-26: `tccutil` shows the grant on, the app reads
+    `NSCocoaErrorDomain` 257, and the tell is in the log rather than the database —
+    `log show --last 10m --predicate 'process == "tccd"' | grep -i dirnex` printing **`Failed to
+    match existing code requirement for subject com.dirnex.Dirnex and service
+    kTCCServiceSystemPolicyAllFiles`**, at *launch*, seconds after a `TCCDEvent: type=Modify` for
+    that same service. Two consequences worth having before the next hunt. The **requirement it
+    prints is cert-based and carries no cdhash** (`anchor apple generic and identifier "…" and …
+    certificate leaf[subject.OU] = A9N92VGA2M`), so a Sparkle update signed by the release pipeline
+    — which pins one `SIGN_IDENTITY` — satisfies it unchanged and a *user's* grant survives every
+    update; this is a developer-machine failure, not one to design the product around. And
+    `codesign --verify -R=<that requirement>` on the installed bundle answers **exit 0, "explicit
+    requirement satisfied"**, which is what makes the state so confusing: the app qualifies, and the
+    stored record is what is stale. The only fix is to delete the record so macOS mints a new one —
+    `tccutil reset SystemPolicyAllFiles com.dirnex.Dirnex`, then re-add the app with **+** rather
+    than re-flipping a row that is still listed. Expect **several** stale records per bundle id
+    (`SystemPolicyDocumentsFolder` was still failing here after `SystemPolicyAllFiles` was reset),
+    so reset the service the failure actually names.
+  - **The app's own one-shot latch turned that into a permanent silent wrong answer, which is the
+    half that was ours.** iCloud Drive offers the grant *once* (`hasOfferedFullDiskAccessForICloud`)
+    because the listing works without it, one section short — right as an anti-nag rule, and unable
+    to tell "the user declined" from "it was working and has since broken". With the grant dead the
+    pane drew **2 of 19 rows** with no error, no log and a perfectly plausible listing, and the
+    prompt never returned. `ICloudAccessOffer.decide` now takes a second latch recording whether the
+    libraries have *ever* been read — the only positive proof available, and proof of exactly the
+    capability worth rescuing — so a loss buys one more ask while a decline still buys silence. The
+    general shape: **a latch that suppresses a prompt is a claim that the state cannot change back**,
+    and when it can, the latch needs to know which direction it moved.
 - **`~/.Trash` needs Full Disk Access** (`NSCocoaErrorDomain` 257 without it), and **"Put Back" has
   no public API**: the original path lives in the trash folder's `.DS_Store`, not in an xattr — a
   trashed file carries only `com.apple.TextEncoding` / `com.apple.provenance`.

@@ -135,7 +135,7 @@ extension PanelViewController {
                     // What this pass actually read: the loose-files container (when it exists) and
                     // every library folder that contributed a row.
                     sources: [container].compactMap { $0 } + rows.map(\.path),
-                    isRestricted: scan.isRestricted
+                    observation: scan.accessObservation
                 )
             }
 
@@ -143,11 +143,35 @@ extension PanelViewController {
             // rows can render an app's own icon rather than a generic folder.
             ICloudLibraryIcons.shared.record(gathered.libraries)
             present(gathered.entries, gathered.sources)
-            // Offered after the listing is on screen, and only once ever: the pane has just shown
-            // the loose files, so this explains what is *missing* rather than standing in for it.
-            if gathered.isRestricted {
-                FullDiskAccessOnboarding.presentForICloud(over: view.window)
+            // Offered after the listing is on screen: the pane has just shown the loose files, so
+            // this explains what is *missing* rather than standing in for it. `decide` owns when —
+            // once on a first refusal, and again if access that was working has since gone, which
+            // is the case the original one-shot latch could not see (docs/NOTES.md ▸ iCloud Drive).
+            let preferences = AppPreferences.shared
+            let observation = gathered.observation
+            NSLog("PROBE icloud observation=\(observation) offered=\(preferences.hasOfferedFullDiskAccessForICloud) read=\(preferences.hasReadICloudAppLibraries) rows=\(gathered.entries.count) libs=\(gathered.libraries.count)")
+            switch ICloudAccessOffer.decide(
+                observation: observation,
+                hasOfferedBefore: preferences.hasOfferedFullDiskAccessForICloud,
+                hasReadLibrariesBefore: preferences.hasReadICloudAppLibraries
+            ) {
+            case .offerFirstTime:
+                NSLog("PROBE decision=offerFirstTime")
+                preferences.hasOfferedFullDiskAccessForICloud = true
+                FullDiskAccessOnboarding.presentForICloud(over: view.window, afterLoss: false)
+            case .offerAfterLoss:
+                NSLog("PROBE decision=offerAfterLoss")
+                // Spend the rescue rather than the first-ask latch: one loss buys one ask, so
+                // declining it is respected until the grant comes back and re-arms it below.
+                preferences.hasReadICloudAppLibraries = false
+                FullDiskAccessOnboarding.presentForICloud(over: view.window, afterLoss: true)
+            case .stayQuiet:
+                NSLog("PROBE decision=stayQuiet")
+                break
             }
+            // Recorded from the only positive proof there is — libraries actually came back — so a
+            // later loss is distinguishable from a grant this Mac has never had.
+            if observation == .readable { preferences.hasReadICloudAppLibraries = true }
         }
     }
 
@@ -158,9 +182,10 @@ extension PanelViewController {
         let libraries: [ICloudAppLibrary]
         /// The real directories behind the listing, for the pane to watch.
         let sources: [VFSPath]
-        /// Whether a container's `Documents` refused to be read — the difference between "this Mac
-        /// has no app libraries" and "I was not allowed to look", which must not render alike.
-        let isRestricted: Bool
+        /// What this scan proved about the access: a refusal, a proven read, or neither. The
+        /// difference between "this Mac has no app libraries" and "I was not allowed to look" must
+        /// not render alike, and the third case must not be mistaken for either.
+        let observation: ICloudAccessObservation
     }
 
     /// The app icon for a merged row, or `nil` for a loose file (and everywhere but this listing).

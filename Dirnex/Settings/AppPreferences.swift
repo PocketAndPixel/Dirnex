@@ -341,6 +341,20 @@ final class AppPreferences: ObservableObject {
         }
     }
 
+    /// Whether Dirnex has ever actually read the iCloud app containers (docs/NOTES.md ▸ iCloud
+    /// Drive). Not a user-facing setting — the second half of the offer above, and the thing that
+    /// tells "the user declined" apart from "it worked and has since broken".
+    ///
+    /// Set from a scan that came back with libraries, which is the only positive proof of the
+    /// access available; spent by the rescue offer, so one loss buys one ask and declining it is
+    /// respected. A grant that returns sets it again and re-arms the rescue for the next loss.
+    /// `ICloudAccessOffer.decide` owns the rule.
+    @Published var hasReadICloudAppLibraries: Bool {
+        didSet {
+            defaults.set(hasReadICloudAppLibraries, forKey: Keys.hasReadICloudAppLibraries)
+        }
+    }
+
     /// Whether the first-run tour has been shown once already (PLAN.md §M7 "First-run tour"). Not a
     /// user-facing setting — a one-shot latch, the twin of `hasSeenFullDiskAccessOnboarding`, so a
     /// fresh install is walked through the tour at first launch but never again. Set the moment the
@@ -448,6 +462,7 @@ final class AppPreferences: ObservableObject {
         hasOfferedFullDiskAccessForICloud = defaults.bool(
             forKey: Keys.hasOfferedFullDiskAccessForICloud
         )
+        hasReadICloudAppLibraries = defaults.bool(forKey: Keys.hasReadICloudAppLibraries)
         hasSeenFirstRunTour = defaults.bool(forKey: Keys.hasSeenFirstRunTour)
     }
 
@@ -472,6 +487,7 @@ final class AppPreferences: ObservableObject {
         static let receiveBetaUpdates = "Dirnex.pref.receiveBetaUpdates"
         static let hasSeenFullDiskAccessOnboarding = "Dirnex.pref.hasSeenFullDiskAccessOnboarding"
         static let hasOfferedFullDiskAccessForICloud = "Dirnex.pref.hasOfferedFullDiskAccessForICloud"
+        static let hasReadICloudAppLibraries = "Dirnex.pref.hasReadICloudAppLibraries"
         static let hasSeenFirstRunTour = "Dirnex.pref.hasSeenFirstRunTour"
     }
 }
