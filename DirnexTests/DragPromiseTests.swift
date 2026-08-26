@@ -175,13 +175,27 @@ struct DragPromiseTests {
         #expect(types.contains("com.apple.pasteboard.promised-file-content-type"))
     }
 
-    @Test("an archive member goes on no board at all, drag or clipboard")
-    func archiveMemberIsNotDragged() {
+    @Test("an archive member drags on its payload alone — carried, but never promised")
+    func archiveMemberIsCarriedWithoutAPromise() throws {
+        // Slice 5 put the row on the board (a drop inside Dirnex reads it and extracts, as F5
+        // copy-out does) and deliberately gave it no promise: a promise is one file fetched behind
+        // somebody else's drop, and an encrypted archive would raise a passphrase sheet there.
         let member = entry(
             VFSPath(backend: VFSBackendID.archive(forArchiveAt: "/tmp/a.zip"), path: "/inner.txt")
         )
-        #expect(PanelPasteboard.dragWriters(for: [member], promisedTo: pane()).isEmpty)
-        #expect(!PanelPasteboard.writeDrag([member], promisedTo: pane(), to: board("archive")))
+        #expect(!RemoteFilePromiseProvider.canPromise(member))
+
+        let writers = PanelPasteboard.dragWriters(for: [member], promisedTo: pane())
+        #expect(writers.count == 1)
+        #expect(!(writers.first is RemoteFilePromiseProvider))
+
+        let board = board("archive")
+        #expect(PanelPasteboard.writeDrag([member], promisedTo: pane(), to: board))
+        #expect(PanelPasteboard.payloads(in: board).map(\.name) == ["inner.txt"])
+        // Nothing another app can accept: no file URL and no promised type at board level.
+        #expect(PanelPasteboard.fileURLs(in: board).isEmpty)
+        let types = try #require(board.types).map(\.rawValue)
+        #expect(!types.contains("com.apple.pasteboard.promised-file-content-type"))
     }
 
     // MARK: - The delegate AppKit dispatches by selector

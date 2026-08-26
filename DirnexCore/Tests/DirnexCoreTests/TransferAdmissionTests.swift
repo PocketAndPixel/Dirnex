@@ -12,6 +12,7 @@ struct TransferAdmissionTests {
     private let local = VFSBackendID.local
     private let sftp = VFSBackendID("sftp://user@host")
     private let s3 = VFSBackendID("s3://bucket")
+    private let archive = VFSBackendID.archive(forArchiveAt: "/tmp/pkg.zip")
 
     private func path(_ backend: VFSBackendID, _ path: String) -> VFSPath {
         VFSPath(backend: backend, path: path)
@@ -94,6 +95,43 @@ struct TransferAdmissionTests {
             .local("/Users/oleg/a"), .local("/Volumes/Ext/b"),
             volumeIdentifier: { $0.path.hasPrefix("/Volumes/Ext") ? "ext" : "boot" }
         ))
+    }
+
+    // MARK: - What may be moved at all
+
+    @Test("an archive member can only ever be copied — there is nothing to remove afterwards")
+    func anArchiveMemberIsNeverMoved() {
+        let member = path(archive, "/docs/x.md")
+        #expect(!TransferAdmission.allowsMove(from: [member]))
+        // The control: everything else still moves, or this rule has quietly become "never move".
+        #expect(TransferAdmission.allowsMove(from: [.local("/tmp/a.txt")]))
+        #expect(TransferAdmission.allowsMove(from: [path(sftp, "/srv/a.txt")]))
+        #expect(TransferAdmission.allowsMove(from: []))
+    }
+
+    @Test("one member answers for a mixed set — a drag is one operation with one kind")
+    func oneMemberMakesTheWholeSetCopyOnly() {
+        // The alternative is moving the local row while copying the archive one, which is two
+        // operations wearing one gesture; this is the direction that cannot delete anything.
+        #expect(!TransferAdmission.allowsMove(from: [
+            .local("/tmp/a.txt"), path(archive, "/inside.txt")
+        ]))
+    }
+
+    @Test("a ⌘-forced move over an archive member copies, because the offer never permitted it")
+    func forcedMoveOverAnArchiveMemberStillCopies() {
+        // The rule reaches the resolved kind through `DragOffer`, so the existing "a modifier the
+        // source does not offer is ignored" behaviour is what refuses it — no second branch.
+        let sources = [path(archive, "/docs/x.md")]
+        let kind = TransferAdmission.kind(
+            offer: TransferAdmission.DragOffer(
+                allowsCopy: true,
+                allowsMove: TransferAdmission.allowsMove(from: sources)
+            ),
+            modifiers: TransferAdmission.DragModifiers(forcesCopy: false, forcesMove: true),
+            sharesVolume: false
+        )
+        #expect(kind == .copy)
     }
 
     // MARK: - Copy or move

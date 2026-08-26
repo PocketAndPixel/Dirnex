@@ -36,9 +36,8 @@ extension PanelViewController: NSMenuItemValidation {
             // `copy:` only reaches the pane when the file table is first responder — a name/
             // path field editor intercepts ⌘C for text copy — so this validates the file case.
             // Since M23 the board carries a `PasteboardPayload` beside the file URL, so a row on a
-            // connected remote copies like any other; an **archive member** is still excluded, and
-            // `clipboardTargets` is where that is decided per row rather than per pane (a results
-            // tab can hold both kinds at once).
+            // connected remote copies like any other — and since Slice 5 an archive member does
+            // too, its paste extracting through the funnel F5 copy-out uses.
             return canCopyToClipboard
         case #selector(saveCurrentSearch(_:)):
             // Only meaningful on a results pane that still carries the query behind it.

@@ -46,6 +46,26 @@ at build time.
   `Dirnex.debug.dylib`, not the thin executable — grep the dylib to confirm new code actually
   compiled in. `xcodebuild` writes to `~/Library/Developer/Xcode/DerivedData/`, not the repo's
   `build/`.
+- **When no gesture can reach a state, drive the *reader* from outside through whatever seam it
+  already reads.** M23 Slice 5 had to prove that pasting a row from inside a `.zip` really extracts
+  and copies it in the running app, and the gesture is unreachable headlessly twice over: session
+  restore is `.local`-only (`PanelViewController+Restore` — a tab cannot come back inside an
+  archive), and nothing in the `.sdef` or `CommandBinding` *enters* one. What is reachable is the
+  pasteboard: a 10-line `swift` script writes the byte-identical `com.dirnex.locations` payload
+  naming an archive member onto the real general board, and
+  `osascript … run operation "edit.paste"` then runs the whole shipped path — the split, the
+  passphrase check, `bsdtar`, the `stat` back into local entries, the queue. It landed `one.txt`
+  with the right bytes, left the sibling in the archive, and left a temp extraction holding exactly
+  one file.
+  - **The payload has to be minted by hand, not copied from the app**, which is the half that makes
+    it evidence: what is being tested is the *reader*, so handing it something the writer produced
+    would prove the two agree rather than that either is right (▸ the same rule this file states for
+    the `--pinnedpubkey` digest walk).
+  - Generalizes past pasteboards to any feature whose input crosses a documented boundary — a
+    pasteboard flavour, a URL scheme, a defaults key, a file the app watches. **Ask what the code
+    under test reads, not how a person would get there**, and the unreachable half of a milestone is
+    usually reachable after all.
+
 - **For pixel and geometry work, probe the live view hierarchy — never eyeball a screenshot.**
   Measuring a captured screenshot by eye produced a *wrong* diagnosis twice in one session (a
   "13 pt gap" that was really 11, then an offset attributed to the wrong cause). The screenshot
@@ -247,6 +267,28 @@ at build time.
   - **Wrap the whole body, not each call, wherever a test measures durations**, so the clock, the
     subprocess and its progress callbacks stay on the one thread that ran it. Wrapping each call
     leaves the timing assertions measuring the scheduler.
+- **A decision that reads live global state *inside itself* cannot be varied by a test, and the tell
+  is a negative control that fails nothing.** `PanelViewController+Drop.resolvedKind` asked
+  `NSEvent.modifierFlags` directly, so a rule keyed on ⌘ or ⌥ had exactly one reachable value — the
+  keys nobody is holding during `xcodebuild test`. Reverting M23 Slice 5's "an archive member can
+  only ever be copied" left **743 of 743 green**, which reads as "this rule is redundant" and is
+  really "nothing here can see it": every *unmodified* archive drop is already a backend crossing,
+  so it copies whichever way the rule goes, and only the ⌘-forced case differs. This is not the
+  synthetic-event family (▸ AppKit) — the event mechanism is fine and the input never reaches the
+  decision at all, because the decision fetched its own.
+  - **A defaulted parameter is the whole fix**, and it costs the production callers nothing: Swift
+    evaluates a default argument at each *call*, so `modifiers: NSEvent.ModifierFlags =
+    NSEvent.modifierFlags` is the live keyboard everywhere but in the one test that passes
+    `.command`. With the seam in, the same revert fails on the badge (`plan.kind → .move`), which is
+    what the user is promised — `validateDrop` returns `plan.operation`.
+  - **Run the narrowness control in the same pass or the seam quietly becomes the bug.** "⌘ over an
+    ordinary local row still moves" is the assertion that stops "an archive member cannot move" from
+    being implemented as "nothing can", and it is green throughout both directions.
+  - The general form is worth more than the modifier case: **a rule whose input is read by the rule
+    is a rule with one test case.** The same shape hides behind `Date()`, `NSEvent.modifierFlags`,
+    `NSApp.currentEvent` and any `.shared` read taken mid-decision, and it always fails in the
+    reassuring direction — the control passes.
+
 - **A bounded wait that gives up *silently* reports the wrong thing when it expires, and "it passes
   alone" is the tell.** These suites polled a fixed count of 50 × 50 ms and then simply fell through
   to the assertion, so a starved run failed as `attachedSheet → nil → nil` — a dead button, not a

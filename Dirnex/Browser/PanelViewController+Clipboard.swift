@@ -51,14 +51,16 @@ extension PanelViewController {
 
     // MARK: - Enablement
 
-    /// The rows ⌘C would put on the board: the marked set, else the cursor row, minus anything the
-    /// pasteboard cannot carry yet (an archive member — see `PanelPasteboard.canWrite`).
+    /// The rows ⌘C would put on the board: the marked set, else the cursor row.
     ///
-    /// Filtered per **entry** rather than per pane, like tagging and Open With: a results tab is a
-    /// virtual pane whose rows can be local files, server objects and archive members at once, so
-    /// the pane's own backend answers for none of them.
+    /// Nothing is excluded any more. Slice 2 held archive members back because nothing that *read*
+    /// the board knew to route one to an extraction, so a paste would have failed inside the queue;
+    /// Slice 5's `resolveTransferSources` is that reader, and `PanelPasteboard` now carries every
+    /// row it can encode. Kept as its own name rather than folded into `selectionTargets` because
+    /// the two answer different questions — this is "what would go on the board", and a row the
+    /// board could not carry would belong here again the day one exists.
     func clipboardTargets() -> [FileEntry] {
-        selectionTargets().filter(PanelPasteboard.canWrite)
+        selectionTargets()
     }
 
     /// Whether ⌘C has anything to place on the board — the gate in `validateMenuItem`.
@@ -125,34 +127,21 @@ extension PanelViewController {
         guard let destination = pasteDestination else { return }
         guard let offered = PanelPasteboard.sources(in: .general) else { return }
 
-        let backend = backend
-        Task {
-            // Resolve off-main into the entries the engine copies, dropping any that would be a
-            // no-op or a recursion into the destination. The two carriers differ in what is still
-            // owed — ours is already a snapshot, a foreign board is URLs that have to be stat'ed —
-            // which is why `PanelPasteboard.Sources` keeps them apart rather than normalizing.
-            let sources = await BlockingWork.run { () -> [FileEntry] in
-                switch offered {
-                case let .locations(entries):
-                    // No stat: the payload carries what the engine reads, so pasting twenty objects
-                    // off a server costs no round trips (PLAN.md §M23). A source that has since
-                    // vanished is reported per item by the engine, exactly as it is for F5.
-                    return entries.filter { pasteAdmits($0.path, into: destination, kind: kind) }
-                case let .fileURLs(urls):
-                    return urls.compactMap { url -> FileEntry? in
-                        let source = VFSPath.local(url.path)
-                        guard pasteAdmits(source, into: destination, kind: kind) else { return nil }
-                        return try? backend.stat(at: source)
-                    }
-                }
+        // `resolveTransferSources` owns the off-main stat, the two carriers' difference, and the
+        // extraction an archive member needs before the queue can see it — all of it shared with
+        // drop, so the two gestures cannot end up reading one board two ways.
+        resolveTransferSources(
+            offered,
+            admitting: { pasteAdmits($0, into: destination, kind: kind) },
+            then: { [weak self] sources in
+                guard let self, !sources.isEmpty else { return }
+                submitTransfer(kind: kind, sources: sources, destination: destination)
+                // The paste makes this the active pane; the window controller re-lists both panes
+                // as the queued job finishes (matching drop, which also skips an eager reload).
+                host?.panelDidBecomeActive(self)
+                focusTable()
             }
-            guard !sources.isEmpty else { return }
-            submitTransfer(kind: kind, sources: sources, destination: destination)
-            // The paste makes this the active pane; the window controller re-lists both panes
-            // as the queued job finishes (matching drop, which also skips an eager reload).
-            host?.panelDidBecomeActive(self)
-            focusTable()
-        }
+        )
     }
 }
 
@@ -168,11 +157,21 @@ extension PanelViewController {
 /// - A **same-folder move** is dropped, because moving a file onto itself is nothing. A same-folder
 ///   *copy* is kept on purpose: that is the duplicate gesture, and `submit` renames it "<name> copy"
 ///   without a prompt, matching Finder.
+/// - An **archive member** is dropped from a *move*, and only from a move: there is nothing to
+///   remove from a read-only container afterwards, which is why F6 out of an archive does not exist
+///   either (`TransferAdmission.allowsMove`). ⌘V takes it and extracts, exactly as F5 does.
+///
+/// Per source rather than per set, unlike a drop — a paste's kind is chosen by the *key*, so
+/// dropping the items it cannot apply to is already what the same-folder rule above does, where a
+/// drag has one kind for the whole gesture and has to resolve it once.
 private func pasteAdmits(
     _ source: VFSPath,
     into destination: VFSPath,
     kind: FileOperation.Kind
 ) -> Bool {
-    if kind == .move, source.parent == destination { return false }
+    if kind == .move {
+        guard TransferAdmission.allowsMove(from: [source]) else { return false }
+        if source.parent == destination { return false }
+    }
     return !TransferAdmission.recurses(source: source, into: destination)
 }

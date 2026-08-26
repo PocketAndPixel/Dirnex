@@ -55,6 +55,25 @@ public enum TransferAdmission {
         return sourceVolume == destinationVolume
     }
 
+    // MARK: - What may be moved at all
+
+    /// Whether `sources` may be **moved**, or can only ever be copied.
+    ///
+    /// An archive member has no move. The container is read-only, so moving one would copy the
+    /// bytes out and then have nothing to remove — which is why F6 out of an archive does not exist
+    /// (PLAN.md §M4) and `moveToOtherPane` returns rather than queueing one. Since M23 Slice 5 the
+    /// clipboard and a drag reach exactly those rows, so ⌥⌘V and a ⌘-forced drag would each have
+    /// needed their own copy of that rule — which is the shape the two spellings of `recurses`
+    /// above were, and how both came to be wrong.
+    ///
+    /// **One member answers for the whole set**, deliberately. A drag is one operation with one
+    /// kind, and a mixed selection that moved its local rows while copying its archive ones would
+    /// be two operations wearing one gesture. Copying everything is the forgiving direction and the
+    /// only one that cannot delete something the user still has no second copy of.
+    public static func allowsMove(from sources: [VFSPath]) -> Bool {
+        !sources.contains { $0.backend.isArchive }
+    }
+
     // MARK: - Copy or move
 
     /// What the drag source is willing to allow, read off `NSDragOperation` by the caller so this

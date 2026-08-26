@@ -90,18 +90,31 @@ struct PanelPasteboardTests {
         #expect(payloads.map(\.name) == rows.map(\.name))
     }
 
-    @Test("an archive member is left off the board rather than written and failed later")
-    func refusesArchiveMembers() {
+    @Test("an empty selection leaves the board alone rather than clearing it")
+    func writingNothingLeavesTheBoard() {
+        let board = board("archive")
+        #expect(PanelPasteboard.write([local("/tmp/kept.txt")], to: board))
+        // Nothing writable at all: the previous contents stay, so a ⌘C with no target cannot
+        // silently destroy a clipboard the user still wanted.
+        #expect(!PanelPasteboard.write([], to: board))
+        #expect(PanelPasteboard.fileURLs(in: board).map(\.lastPathComponent) == ["kept.txt"])
+    }
+
+    @Test("an archive member is carried too since Slice 5 — the reader knows to extract it")
+    func carriesArchiveMembers() throws {
+        // Slice 2 deliberately left this row off the board: the payload could name it, and nothing
+        // that *read* one knew to route it to an extraction, so a paste would have failed inside
+        // the queue. `PanelViewController.resolveTransferSources` is that reader.
         let member = entry(
             VFSPath(backend: .archive(forArchiveAt: "/tmp/pkg.zip"), path: "/docs/x.md")
         )
-        #expect(!PanelPasteboard.canWrite(member))
+        let board = board("member")
+        #expect(PanelPasteboard.write([member], to: board))
 
-        let board = board("archive")
-        // Nothing writable at all: the board is left as it was rather than cleared, so a ⌘C inside
-        // an archive cannot silently destroy a clipboard the user still wanted.
-        #expect(!PanelPasteboard.write([member], to: board))
-        #expect(board.pasteboardItems?.isEmpty ?? true)
+        let item = try #require(board.pasteboardItems?.first)
+        #expect(item.data(forType: PanelPasteboard.locationsType) != nil)
+        #expect(item.string(forType: .fileURL) == nil)
+        #expect(PanelPasteboard.payloads(in: board).first?.path.backend.isArchive == true)
     }
 
     @Test("a mixed selection keeps every row for Dirnex and the local subset for everyone else")

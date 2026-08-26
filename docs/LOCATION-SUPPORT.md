@@ -1,9 +1,9 @@
 # What works where
 
 Every user-facing capability against every kind of location Dirnex can open, as of
-**2026-08-26** (M0–M22 shipped plus the post-M19 passes). The purpose is the parity question:
-*where does working on a server still feel unlike working on the disk, and which of those gaps
-are ours to close?*
+**2026-08-26** (M0–M22 shipped, M23 landed, plus the post-M19 passes). The purpose is the
+parity question: *where does working on a server still feel unlike working on the disk, and which
+of those gaps are ours to close?*
 
 Read [PLAN.md](../PLAN.md) for architecture, [HISTORY.md](HISTORY.md) for why a decision was
 taken, and [NOTES.md](NOTES.md) for the measurements behind the hard limits cited here. This
@@ -95,8 +95,10 @@ budget the pane says it gave up rather than showing a partial total as if it wer
 | Copy `F5` (destination) | yes | yes | yes, limited<sup>f</sup> | yes | yes | yes | no<sup>g</sup> | n/a | n/a |
 | Move `F6` | yes | yes | no<sup>f</sup> | yes | yes | yes, limited<sup>h</sup> | no<sup>g</sup> | yes | yes |
 | Copy between two different accounts | yes | yes | — | yes | yes | yes | — | — | — |
-| Copy / paste `⌘C` `⌘V` | yes | yes | yes, partially<sup>i</sup> | **no**<sup>i</sup> | **no**<sup>i</sup> | **no**<sup>i</sup> | no | yes | yes, partially |
-| Drag and drop (in and out) | yes | yes | **no** | **no** | **no** | **no** | no | yes, partially<sup>j</sup> | yes, partially<sup>j</sup> |
+| Copy / paste `⌘C` `⌘V` | yes | yes | yes<sup>i</sup> | yes | yes | yes | no<sup>g</sup> | yes, partially<sup>j</sup> | yes, partially<sup>j</sup> |
+| Drag and drop, inside Dirnex | yes | yes | yes, partially<sup>i</sup> | yes | yes | yes | no<sup>g</sup> | yes, partially<sup>j</sup> | yes, partially<sup>j</sup> |
+| Drag **out** to Finder and other apps | yes | yes | **no**<sup>i</sup> | yes, partially<sup>j</sup> | yes, partially<sup>j</sup> | yes, partially<sup>j</sup> | no<sup>g</sup> | yes, partially<sup>j</sup> | yes |
+| Drag **in** from Finder and other apps | yes | yes | **no**<sup>i</sup> | yes | yes | yes | no<sup>g</sup> | no<sup>j</sup> | no<sup>j</sup> |
 | New Folder `F7` | yes | yes | no | yes | yes | yes | yes, limited<sup>k</sup> | no | no |
 | New / Edit File `⇧F4` | yes | yes | no | yes | yes | yes | n/a | no | no |
 | Rename `F2` | yes | yes | no | yes | yes | yes, limited<sup>h</sup> | no | yes | no<sup>l</sup> |
@@ -122,12 +124,26 @@ Deliberate (`VFSBackendID.acceptsUploads`), not a gap.
 atomic**: stopping partway leaves items under both names. No layer can make it otherwise
 (PLAN.md §M21). Single objects are one copy + one delete.
 
-<sup>i</sup> `⌘C` writes local `file://` URLs, Finder's shape — a remote row has none, so the key
-is refused and `F5` is the copy-out route. **This is the biggest everyday parity gap.**
-`⌘V` *into* a writable archive works; `⌥⌘V` (move-paste) into one does not.
+<sup>i</sup> An archive member is **copied out**: ⌘V and a drop inside Dirnex extract it to a temp
+directory and copy the real file on, through the same funnel `F5` copy-out uses
+(`ArchiveTransferSources`), so a mixed selection of archive, local and remote rows travels as one
+gesture. It is always a **copy** — a read-only container has nothing to remove afterwards, so ⌥⌘V
+drops such a row and a ⌘-forced drag falls back to copying (`TransferAdmission.allowsMove`), the
+same rule that makes `F6` move-out not exist. Two asymmetries: dragging a member **out** to another
+app is the one gesture still missing (a promise is fulfilled behind somebody else's drop, where an
+encrypted archive would have to raise a passphrase sheet with nothing on screen to answer it on —
+`F5` is the route); and `⌘V` **into** a top-level archive adds files by repacking while a *drop*
+into one does not, `⌥⌘V` into one being unsupported either way.
 
-<sup>j</sup> Dragging a result or a trashed file **out** works (the rows are real local files).
-Dropping **into** a virtual listing does not, except the merged iCloud row.
+<sup>j</sup> What a drag can and cannot reach, in three parts. A row on a server is dragged **out**
+as an `NSFilePromiseProvider`: the board advertises the file and the bytes are fetched only if
+something accepts the drop, through the same funnel `⏎` and `F4` use — so a row already fetched for
+a preview drags out with no transfer at all. A **folder** is not promised (a promise is one file,
+and a recursive fetch behind a Finder drop has no progress surface and no way to stop it), so it
+travels inside Dirnex only. And a **virtual listing** — a results tab, the merged Trash — is a
+source and never a destination: its rows carry their real paths and copy or drag out per row, while
+nothing can be pasted or dropped *into* a listing that has no directory of its own. The merged
+iCloud row is the exception, landing in the CloudDocs container underneath.
 
 <sup>k</sup> `F7` in an account pane creates a **bucket** (with S3's stricter naming rules, and a
 listing-backed existence check because `HeadBucket` goes stale for ~1 read in 3 after a delete).
@@ -298,25 +314,20 @@ file changed since it was fetched, which is a narrower window and not a guarante
 Ranked by how often it is in the way, counting only the **"no"** and **"yes, partially"** cells —
 the "yes, limited" ones are the technology and are already as close as they get.
 
-1. **`⌘C` / `⌘V` and drag-and-drop do not work on remote rows.** `F5` covers the same ground, but
-   these are the two gestures a Mac user reaches for without thinking, and both are silently
-   dead. Both are refused for the same reason: the pasteboard carries local `file://` URLs and a
-   remote row has none. Closable with a private pasteboard flavour that Dirnex reads back on
-   paste (with the URL flavour promised lazily so a drop into Finder still downloads).
-2. **No live refresh on a server.** A file added by somebody else never appears until the folder
+1. **No live refresh on a server.** A file added by somebody else never appears until the folder
    is re-listed by hand. A cheap poll while a pane is frontmost would cover most of it.
-3. **Session restore and workspaces drop remote tabs.** Quit with four bucket tabs open and they
+2. **Session restore and workspaces drop remote tabs.** Quit with four bucket tabs open and they
    are gone. The saved connection survives in the sidebar; the *place* does not.
-4. **Archives are local-only in every direction.** A `.zip` on a server cannot be browsed, and
+3. **Archives are local-only in every direction.** A `.zip` on a server cannot be browsed, and
    nothing can be packed to or from one — even though the staging path that would do it already
    exists for `RelayCopy`.
-5. **Checksums, Compare By Contents, Synchronize and user scripts are local-only.** All four are
+4. **Checksums, Compare By Contents, Synchronize and user scripts are local-only.** All four are
    "download, then run the local implementation"; none is built.
-6. **Permissions and symlinks are not preserved on an SFTP/FTP copy.** `chmod` and `ln -s` are
+5. **Permissions and symlinks are not preserved on an SFTP/FTP copy.** `chmod` and `ln -s` are
    both available over SFTP; nothing consumes them.
-7. **Open With / Share are dead remotely.** Both need a local URL, which the remote fetch path
+6. **Open With / Share are dead remotely.** Both need a local URL, which the remote fetch path
    already knows how to produce.
-8. **No Trash anywhere remote**, so every remote delete is permanent and unreversible. This is
+7. **No Trash anywhere remote**, so every remote delete is permanent and unreversible. This is
    honest about the protocols, but a Dirnex-managed `.dirnex-trash` prefix would be a real
    improvement over a confirmation dialog.
 

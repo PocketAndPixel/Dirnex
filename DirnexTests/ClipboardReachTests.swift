@@ -94,34 +94,11 @@ struct ClipboardReachTests {
         #expect(pane.clipboardTargets().map(\.path) == [file])
     }
 
-    @Test("⌘C inside an archive stays gray — the payload can name a member, nothing reads one yet")
-    func copyStillRefusesArchiveMembers() {
-        let archive = VFSBackendID.archive(forArchiveAt: "/tmp/pkg.zip")
-        let member = VFSPath(backend: archive, path: "/docs/x.md")
-        let pane = pane(
-            at: VFSPath(backend: archive, path: "/docs"),
-            capabilities: .read,
-            rows: [entry(member)]
-        )
-
+    @Test("⌘C with nothing under the cursor has nothing to place")
+    func copyNeedsATarget() {
+        let pane = pane(at: .local("/tmp"))
         #expect(!pane.canCopyToClipboard)
         #expect(pane.clipboardTargets().isEmpty)
-    }
-
-    @Test("a mixed results tab copies what it can rather than refusing wholesale")
-    func copyFiltersPerRowNotPerPane() {
-        // A search inside an archive lands its hits in a `search:` tab beside local and remote ones,
-        // so the pane's own backend answers for none of them (the M22 results-tab family).
-        let archive = VFSBackendID.archive(forArchiveAt: "/tmp/pkg.zip")
-        let rows = [
-            entry(.local("/tmp/hit.txt")),
-            entry(VFSPath(backend: archive, path: "/inside.txt")),
-            entry(VFSPath(backend: Self.bucketID, path: "/remote.bin"))
-        ]
-        let pane = pane(at: VFSPath(backend: .search, path: "/results"), rows: rows)
-        pane.panel.selectAll()
-
-        #expect(pane.clipboardTargets().map(\.name) == ["hit.txt", "remote.bin"])
     }
 
     // MARK: - ⌘V

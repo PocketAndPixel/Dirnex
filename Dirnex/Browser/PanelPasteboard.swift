@@ -9,6 +9,12 @@ import DirnexCore
 /// row per item — and Slice 3's drag/drop reads exactly what Slice 2's clipboard writes, so a second
 /// spelling is how they drift. And nothing here needs a pane, which makes it testable without one.
 ///
+/// **Every row is carryable since Slice 5**, an archive member included. The payload could always
+/// name one; what was missing was a *reader* that knew to route it to an extraction rather than to
+/// the copy queue, so writing one would have replaced "⌘C does nothing" with "⌘V fails inside the
+/// queue". `PanelViewController.resolveTransferSources` is that reader, and it is shared by ⌘V and
+/// drop — so the only filter left here is whether a payload encodes at all.
+///
 /// **Every read iterates `pasteboardItems`.** A multi-row drag is N items by AppKit's construction
 /// (`pasteboardWriterForRow` is asked once per row), and a board-level `data(forType:)` returns only
 /// the **first** item's data — measured 2026-08-26. A reader written the obvious way therefore drops
@@ -23,20 +29,6 @@ enum PanelPasteboard {
 
     // MARK: - Writing
 
-    /// Whether `entry` can go on the pasteboard at all.
-    ///
-    /// Everything except an **archive member**, which is deliberately left out until Slice 5: the
-    /// payload can name one perfectly well, but nothing that *reads* one yet knows to route it to
-    /// the extraction path, so a paste would enqueue a copy whose backend has no `copyFile` and fail
-    /// inside the queue. Refusing to write it keeps the archive case exactly as it shipped —
-    /// nothing on the board — rather than replacing "does nothing" with "fails later".
-    ///
-    /// Asked of the **row**, not of the pane: a results tab's container reads `search:` while its
-    /// rows can be archive members, local files and objects on a server all at once.
-    static func canWrite(_ entry: FileEntry) -> Bool {
-        !entry.path.backend.isArchive
-    }
-
     /// One pasteboard item per entry: the payload always, plus `public.file-url` for a row that has
     /// a real one.
     ///
@@ -49,7 +41,7 @@ enum PanelPasteboard {
     /// **raises** if handed an item that has already been written to a board (probed fatally).
     static func items(for entries: [FileEntry]) -> [NSPasteboardItem] {
         entries.compactMap { entry in
-            guard canWrite(entry), let data = PasteboardPayload(entry).encoded() else { return nil }
+            guard let data = PasteboardPayload(entry).encoded() else { return nil }
             return item(for: entry, payload: data)
         }
     }
@@ -70,7 +62,7 @@ enum PanelPasteboard {
         promisedTo delegate: any NSFilePromiseProviderDelegate
     ) -> [any NSPasteboardWriting] {
         entries.compactMap { entry -> (any NSPasteboardWriting)? in
-            guard canWrite(entry), let data = PasteboardPayload(entry).encoded() else { return nil }
+            guard let data = PasteboardPayload(entry).encoded() else { return nil }
             if let promise = RemoteFilePromiseProvider.promise(
                 for: entry, payload: data, delegate: delegate
             ) { return promise }

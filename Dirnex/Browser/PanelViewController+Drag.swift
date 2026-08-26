@@ -32,8 +32,12 @@ extension PanelViewController {
 
     /// The pasteboard writer for a dragged row: Dirnex's own payload always, plus `public.file-url`
     /// for a row with real bytes here and a **file promise** for one whose bytes are on a server.
-    /// `nil` for the synthetic `..` row (no backing entry) and for an archive member, which nothing
-    /// yet knows how to route out of a drop (PLAN.md §M23 Slice 5).
+    /// `nil` only for the synthetic `..` row, which has no backing entry.
+    ///
+    /// An **archive member** drags on its payload alone since Slice 5 — a drop inside Dirnex reads
+    /// it and extracts, exactly as F5 copy-out does. It carries no promise, so another app is
+    /// offered nothing and shows "no drop": a promise is one file fetched behind somebody else's
+    /// drop, and an encrypted archive would raise a passphrase sheet there (PLAN.md §M23).
     ///
     /// One definition shared with the clipboard rather than a second one here: ⌘C and a drag have to
     /// put the identical payload on the board, and this is where they would otherwise drift.

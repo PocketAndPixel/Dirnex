@@ -42,24 +42,15 @@ extension PanelViewController {
         guard let plan = dropPlan(info, row: row, dropOperation: dropOperation) else {
             return false
         }
-        let backend = backend
-        let offered = plan.sources
         let destination = plan.destination
         let kind = plan.kind
-        Task {
-            // Resolve off-main into the entries the engine copies. The two carriers differ in what
-            // is still owed: our own payload is already a snapshot, so a drop of twenty objects off
-            // a server costs no round trips, while another app's URLs have to be stat'ed. A URL that
-            // can no longer be stat'd (deleted between drag start and drop) is dropped silently
-            // rather than failing the whole operation.
-            let sources = await BlockingWork.run { () -> [FileEntry] in
-                switch offered {
-                case let .locations(entries): return entries
-                case let .fileURLs(urls):
-                    return urls.compactMap { try? backend.stat(at: VFSPath.local($0.path)) }
-                }
-            }
-            guard !sources.isEmpty else { return }
+        // No filter: `dropPlan` has already refused the whole gesture if anything would recurse or
+        // if every item already lives here, so there is nothing left to drop per item. The shared
+        // funnel owns the off-main stat a foreign board owes and the extraction an archive member
+        // needs — a URL that no longer stats (deleted between drag start and drop) simply falls out
+        // rather than failing the operation.
+        resolveTransferSources(plan.sources) { [weak self] sources in
+            guard let self, !sources.isEmpty else { return }
             submitTransfer(kind: kind, sources: sources, destination: destination)
             // A drop makes this pane the active one, matching Finder's focus-follows-drop.
             host?.panelDidBecomeActive(self)
@@ -89,10 +80,17 @@ extension PanelViewController {
         let highlightRow: Int?
     }
 
+    /// `modifiers` defaults to the keys held right now, which is what every caller wants and what
+    /// makes it the one thing about a drop a headless test could not reach: `NSEvent.modifierFlags`
+    /// is the real keyboard, and a synthetic event is not a gesture (docs/NOTES.md ▸ AppKit). It is
+    /// a parameter so the ⌘-forced case can be pinned, because that is the only case where the
+    /// archive rule below changes an answer — everything else about an archive drop is already a
+    /// backend crossing, so it copies whatever the rule says.
     func dropPlan(
         _ info: NSDraggingInfo,
         row: Int,
-        dropOperation: NSTableView.DropOperation
+        dropOperation: NSTableView.DropOperation,
+        modifiers: NSEvent.ModifierFlags = NSEvent.modifierFlags
     ) -> DropPlan? {
         // A drop needs a real directory to land in — never a virtual pane (search results, the
         // Trash, or a read-only archive whose write support lands in a later M4 pass).
@@ -129,6 +127,7 @@ extension PanelViewController {
 
         guard let kind = resolvedKind(
             mask: info.draggingSourceOperationMask,
+            modifiers: modifiers,
             sources: sources,
             destination: destination
         ) else { return nil }
@@ -165,17 +164,25 @@ extension PanelViewController {
     /// Copy or move, following Finder's conventions: an explicit Option forces copy and
     /// Command forces move; otherwise the default is move within a volume and copy across
     /// volumes (so dragging to another disk never silently deletes the source). Constrained
-    /// by what the drag source actually offers (`mask`).
+    /// by what the drag source actually offers (`mask`) **and by what the sources permit**: an
+    /// archive member can only ever be copied, since the container is read-only and a move would
+    /// have nothing to remove afterwards.
+    ///
+    /// That rule rides in through the *offer* rather than as a branch of its own, which is what
+    /// makes a ⌘-forced move over an archive member fall back to a copy for free — "a modifier the
+    /// source does not offer is ignored" is already `TransferAdmission.kind`'s documented behaviour.
+    /// One member answers for the whole drop: a drag is one gesture with one kind, and copying
+    /// everything is the direction that cannot delete anything.
     private func resolvedKind(
         mask: NSDragOperation,
+        modifiers: NSEvent.ModifierFlags,
         sources: [VFSPath],
         destination: VFSPath
     ) -> FileOperation.Kind? {
-        let modifiers = NSEvent.modifierFlags
-        return TransferAdmission.kind(
+        TransferAdmission.kind(
             offer: TransferAdmission.DragOffer(
                 allowsCopy: mask.contains(.copy) || mask.contains(.generic),
-                allowsMove: mask.contains(.move)
+                allowsMove: mask.contains(.move) && TransferAdmission.allowsMove(from: sources)
             ),
             modifiers: TransferAdmission.DragModifiers(
                 forcesCopy: modifiers.contains(.option),
