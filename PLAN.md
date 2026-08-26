@@ -298,6 +298,32 @@ queue. What is **not** verified live is a ⌘C on an actual connected server: a 
 restored at launch (session restore is `.local`-only) and connecting needs the Connect sheet, so the
 remote half rests on the headless suites plus the pasteboard probe.
 
+**Slice 3 landed 2026-08-26** — drag works in every direction *inside* Dirnex, and a drop from
+Finder can land on a connected account. The drag source writes through the same `PanelPasteboard`
+items ⌘C does (so the two gestures cannot put different things on the board), the drop reads through
+the same `sources`, and both latent bugs went with it. +13 tests (2725 core, 719 app), both linters
+clean.
+
+**The destination is now validated instead of the base**, which is more than a widening: they are
+the same in a flat listing and differ in a **tree**, where a folder row can belong to another
+backend entirely — a bucket's contents drawn under an S3 *account* root. The old code checked
+`writeDirectory` and then dropped into whatever row was under the cursor.
+
+The **default-move** control is the one worth re-running before touching this code. Reverted *alone*
+— destination gate left fixed, so nothing masks it — an unmodified drag from this Mac onto a bucket
+comes back `plan.kind → .move`, which is the local original deleted. One test fails and the other
+twelve stay green. Run together with the other two controls it is *hidden*: the destination gate
+refuses the drop first, so the assertion fails on `nil` and never reaches the kind. A combined
+control run would have read as "three bugs caught" while saying nothing about the expensive one.
+
+**Verified live** for what a headless test cannot reach: a two-row selection puts **two** items on
+the real general pasteboard, each carrying the payload *and* its file URL, with `readObjects` still
+returning both URLs — the multi-row shape a drag produces, and the proof the widening path does not
+re-use items. A real drag *session* cannot be synthesized (synthetic events are not gestures), so
+what is pinned instead is the registration: `registeredDraggedTypes` carries both carriers, without
+which every rule above is unreachable and the pane refuses drags in silence. **Left for a human:**
+an actual drag between two panes, and a Finder drag onto a connected server.
+
 **Deliberately not in scope.** Dragging a *folder* out of a server as a promise (a promise is one
 file; a recursive fetch behind a Finder drop has no progress surface and no way to stop it);
 `⌥⌘V` move-paste into an archive, which stays gated where it is today; and the pasteboard as an

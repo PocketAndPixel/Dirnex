@@ -160,4 +160,98 @@ struct ClipboardReachTests {
         let pane = pane(at: VFSPath(backend: .search, path: "/results"))
         #expect(!pane.canReceiveFiles)
     }
+
+    // MARK: - ⌥⌘V, through the real validator
+
+    /// Snapshot the general pasteboard's items so a test can seed it and put it back.
+    ///
+    /// The suite runs *in the app*, on the developer's own Mac, so leaving their clipboard holding
+    /// a fixture is the same rudeness as the S3 suites deleting a Keychain item they had merely
+    /// overwritten (docs/NOTES.md ▸ curl for S3). Seeding it is unavoidable here: the validator
+    /// reads `NSPasteboard.general`, and a test whose answer depends on what the user happened to
+    /// copy is not a test.
+    ///
+    /// Only data that can be *read back* survives — a flavor another app promised lazily is not
+    /// reconstructible from outside it. That is the one thing this can degrade, and it is why the
+    /// seeding is confined to the two tests that cannot be written without it.
+    private func snapshotGeneralBoard() -> [[NSPasteboard.PasteboardType: Data]] {
+        (NSPasteboard.general.pasteboardItems ?? []).map { item in
+            var flavors: [NSPasteboard.PasteboardType: Data] = [:]
+            for type in item.types {
+                if let data = item.data(forType: type) { flavors[type] = data }
+            }
+            return flavors
+        }
+    }
+
+    private func restoreGeneralBoard(_ snapshot: [[NSPasteboard.PasteboardType: Data]]) {
+        NSPasteboard.general.clearContents()
+        let items = snapshot.map { flavors -> NSPasteboardItem in
+            let item = NSPasteboardItem()
+            for (type, data) in flavors { item.setData(data, forType: type) }
+            return item
+        }
+        if !items.isEmpty { NSPasteboard.general.writeObjects(items) }
+    }
+
+    private func menuItem(_ action: Selector) -> NSMenuItem {
+        NSMenuItem(title: "", action: action, keyEquivalent: "")
+    }
+
+    @Test("⌥⌘V is gray where files cannot land, even with a full clipboard")
+    func pasteMoveIsGrayWhereFilesCannotLand() {
+        // The account pane again, this time through `validateMenuItem` itself rather than through
+        // the property it reads — the validator is the surface no headless test used to drive, and
+        // a rule with two spellings is how a working command ends up gray (or a dead one enabled).
+        let saved = snapshotGeneralBoard()
+        defer { restoreGeneralBoard(saved) }
+        #expect(PanelPasteboard.write([entry(.local("/tmp/seed.txt"))], to: .general))
+
+        let account = pane(at: VFSPath(backend: Self.accountID, path: "/"))
+        account.loadViewIfNeeded()
+        NotificationCenter.default.removeObserver(account)
+        #expect(!account.validateMenuItem(menuItem(
+            #selector(PanelViewController.pasteAndMoveFromClipboard(_:))
+        )))
+    }
+
+    @Test("⌥⌘V follows ⌘V on every backend rather than carrying its own copy of the rule")
+    func pasteMoveTracksPaste() {
+        let saved = snapshotGeneralBoard()
+        defer { restoreGeneralBoard(saved) }
+        #expect(PanelPasteboard.write([entry(.local("/tmp/seed.txt"))], to: .general))
+
+        // Not an archive anywhere here: ⌘V alone also accepts a writable archive (add-into), which
+        // ⌥⌘V deliberately does not, so that is the one pane where the two are allowed to differ.
+        let places: [(String, VFSPath)] = [
+            ("local", .local("/tmp")),
+            ("bucket", VFSPath(backend: Self.bucketID, path: "/prefix")),
+            ("account", VFSPath(backend: Self.accountID, path: "/")),
+            ("results", VFSPath(backend: .search, path: "/results"))
+        ]
+        for (name, path) in places {
+            let pane = pane(at: path)
+            pane.loadViewIfNeeded()
+            NotificationCenter.default.removeObserver(pane)
+            let paste = pane.validateMenuItem(menuItem(#selector(PanelViewController.paste(_:))))
+            let move = pane.validateMenuItem(menuItem(
+                #selector(PanelViewController.pasteAndMoveFromClipboard(_:))
+            ))
+            #expect(paste == move, "⌘V and ⌥⌘V disagree in a \(name) pane")
+        }
+    }
+
+    @Test("⌥⌘V is enabled on a bucket — the half the gray test cannot show")
+    func pasteMoveReachesABucket() {
+        let saved = snapshotGeneralBoard()
+        defer { restoreGeneralBoard(saved) }
+        #expect(PanelPasteboard.write([entry(.local("/tmp/seed.txt"))], to: .general))
+
+        let bucket = pane(at: VFSPath(backend: Self.bucketID, path: "/prefix"))
+        bucket.loadViewIfNeeded()
+        NotificationCenter.default.removeObserver(bucket)
+        #expect(bucket.validateMenuItem(menuItem(
+            #selector(PanelViewController.pasteAndMoveFromClipboard(_:))
+        )))
+    }
 }
