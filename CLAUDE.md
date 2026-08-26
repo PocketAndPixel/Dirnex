@@ -16,6 +16,11 @@ for Settings and dialogs).
 - **[docs/NOTES.md](docs/NOTES.md)** — durable engineering gotchas: Swift 6 traps, AppKit
   behaviors, external CLI quirks, release-pipeline pitfalls. Read it before debugging something
   that "should just work."
+- **[docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md)** — what works where: every capability
+  against every backend (local, cloud mounts, archives, SFTP, FTP, S3, the virtual listings), with
+  the hard technical limits separated from the gaps that are still ours to close. Read it before
+  claiming a feature does or doesn't work on a given location, and update the cell when a slice
+  moves one.
 - **[docs/RELEASING.md](docs/RELEASING.md)** — the release procedure.
 
 @docs/NOTES.md
