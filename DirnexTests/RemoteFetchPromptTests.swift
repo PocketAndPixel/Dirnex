@@ -114,6 +114,10 @@ struct RemoteFetchPromptTests {
 
         #expect(cache.previewFetchProgress(for: entry) == CountingBackend.blockedChunk)
         #expect(cache.previewFetchProgress(for: Fixture.entry("other.jpg")) == nil)
+        // The only test here that asserts nothing about stopping still has to stop: a `.block`
+        // transfer now runs until it is told to, so leaving it would hold a `BlockingWork` thread
+        // in a `usleep` loop for the rest of the run (``CountingBackend.blockBackstop``).
+        cache.stopPreviewFetch()
     }
 
     /// The card's Stop button, on a transfer the card did not start. With the sheet standing down
@@ -144,29 +148,61 @@ struct RemoteFetchPromptTests {
         #expect(cache.cachedURL(for: entry) == nil)
     }
 
-    /// The second half of the report: no dialog over the card. 1200 ms is the sheet's own delay, so
-    /// the wait here is what the user would have watched.
+    /// The second half of the report: no dialog over the card.
+    ///
+    /// **Paced by a sheet that has to appear, rather than by a constant** — which is the whole
+    /// difference between this and a green test that proves nothing. It used to hold for 2.5 s, on
+    /// the reasoning that this clears the prompt's own 1200 ms delay twice over. In a full run that
+    /// delay is not what decides when a sheet goes up: the main actor is stalled 0.6–5.0 s at a time
+    /// and the sheet actually lands **2.9–6.3 s** in (▸ ``CountingBackend.blockBackstop``), so the
+    /// hold expired before one could have appeared either way. Measured 2026-08-27 by deleting
+    /// `scheduleSheet`'s `hasProgressSurface` guard: **3 of 3 full runs still passed**, while the
+    /// same build run *alone* raised the sheet — a control that only fires on an idle Mac.
+    ///
+    /// So a second, identical fetch runs beside it on its own window with nothing else reporting,
+    /// and that one says when to look. It is started **after** the covered fetch, so its sheet task
+    /// is created after and its timer fires no earlier: by the time the pacer's sheet is up, the
+    /// covered one's would have been.
     @Test("no progress sheet goes up while the placeholder card is drawing the transfer")
-    func noSheetWhereTheCardReports() async {
-        let window = Self.probeWindow()
-        defer { window.close() }
+    func noSheetWhereTheCardReports() async throws {
+        let covered = Self.probeWindow()
+        let pacer = Self.probeWindow()
+        defer {
+            covered.close()
+            pacer.close()
+        }
         let backend = CountingBackend(outcome: .block)
         let cache = RemoteFileCache()
         let entry = Fixture.entry("panorama.jpg", byteSize: Self.unmissablySized)
+        let pacerBackend = CountingBackend(outcome: .block)
+        let pacerCache = RemoteFileCache()
+        let pacerEntry = Fixture.entry("pacer.jpg", byteSize: Self.unmissablySized)
 
         RemoteFetchPrompt.fetchConfirmed(
             entry,
             in: .init(
-                backend: backend, cache: cache, window: window, hasProgressSurface: true
+                backend: backend, cache: cache, window: covered, hasProgressSurface: true
             ),
             then: { _ in },
             onFailure: { _ in }
         )
-        await hold { window.attachedSheet != nil }
+        RemoteFetchPrompt.fetchConfirmed(
+            pacerEntry,
+            in: .init(
+                backend: pacerBackend, cache: pacerCache, window: pacer,
+                hasProgressSurface: false
+            ),
+            then: { _ in },
+            onFailure: { _ in }
+        )
+        await settle { pacer.attachedSheet != nil }
+        let paced = try #require(pacer.attachedSheet, "the pacing sheet never appeared")
 
-        #expect(window.attachedSheet == nil)
+        #expect(covered.attachedSheet == nil)
+        pacer.endSheet(paced)
         cache.stopPreviewFetch()
-        await settle { backend.wasCancelledMidTransfer }
+        pacerCache.stopPreviewFetch()
+        await settle { backend.wasCancelledMidTransfer && pacerBackend.wasCancelledMidTransfer }
     }
 
     /// The control that keeps the rule from becoming "never report anything": ⌘Y with Quick View
@@ -265,10 +301,16 @@ struct RemoteFetchPromptTests {
     /// was 2.5 s against a 1200 ms sheet delay, about 2×, and it expired on a loaded Mac and read
     /// as a dead button (2026-08-20).
     ///
+    /// 10 s was the next one and was still too near the measurement. In a full run the main actor
+    /// is delayed **0.6–5.0 s at a time** by AppKit laying out the tables of panes other suites keep
+    /// alive, so this loop gets roughly one sample a second and the 1200 ms sheet lands 2.9–6.3 s in
+    /// (measured 2026-08-27, ▸ ``CountingBackend.blockBackstop``). 30 s is about five times the
+    /// worst of that, and a green run still returns on the poll after the predicate holds.
+    ///
     /// It is **not** how to wait a delay out — that is ``hold(until:)``, which is bounded because
     /// the length is the whole point of it.
     @discardableResult
-    private func settle(within seconds: Double = 10, until isDone: () -> Bool) async -> Bool {
+    private func settle(within seconds: Double = 30, until isDone: () -> Bool) async -> Bool {
         let deadline = Date().addingTimeInterval(seconds)
         while Date() < deadline {
             if isDone() { return true }
@@ -281,8 +323,15 @@ struct RemoteFetchPromptTests {
     /// real failure is reported promptly rather than after the whole wait.
     ///
     /// Bounded, unlike ``settle(within:until:)``, and it has to be: here the length is the claim,
-    /// so it cannot be widened to suit a slow machine. 2.5 s is what these waits have always been
-    /// and clears the prompt's own 1200 ms sheet delay, which is what the sheet tests wait out.
+    /// so it cannot be widened to suit a slow machine. Which is exactly why the *sheet* no longer
+    /// waits on this — a constant cannot outlast a main actor that is late by seconds, and one that
+    /// tried was measured vacuous (▸ ``noSheetWhereTheCardReports()``).
+    ///
+    /// The three waits left on it were each put under their own negative control in a full run on
+    /// 2026-08-27 and each still failed 3 of 3, so 2.5 s does cover what they are watching for: an
+    /// answered confirmation starting a transfer, a stopped fetch being forgotten, and an automatic
+    /// fetch issuing a second copy. All three are settled by work already in flight rather than by
+    /// a timer nobody has armed yet, which is what makes the constant hold for them and not there.
     private func hold(until isHappening: () -> Bool = { false }) async {
         _ = await settle(within: 2.5, until: isHappening)
     }

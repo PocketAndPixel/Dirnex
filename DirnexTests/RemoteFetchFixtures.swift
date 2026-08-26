@@ -66,6 +66,30 @@ final class CountingBackend: VFSBackend, @unchecked Sendable {
     static let body = "downloaded!"
     /// How much a `.block` transfer reports having moved before it parks.
     static let blockedChunk: Int64 = 7
+    /// The longest a `.block` transfer will sit there if nobody ever stops it.
+    ///
+    /// **A backstop against a leaked thread, and never a duration any assertion may rest on.** It
+    /// used to be 500 × 10 ms, which made it both — and the arithmetic that hid inside it broke a
+    /// test. `usleep` runs on a `BlockingWork` thread that nothing can starve, so the transfer ended
+    /// at a fixed 5 s of wall clock, while every observer of it is scheduled on the **main actor**,
+    /// which in a full run of this suite is delayed by seconds at a time: measured 2026-08-27, the
+    /// main queue and the main actor stall together for 0.6–5.0 s while AppKit lays out the tables
+    /// of panes other suites keep alive, and the progress sheet a 1200 ms timer asks for actually
+    /// appeared **2.9–7.3 s** in. Past 5 s the transfer had finished, so the sheet went up and was
+    /// torn down in the same drain of the main actor — 55 ms of visible life in one measured run —
+    /// and a poll loop getting one sample a second missed it about once in sixteen runs. Everything
+    /// downstream (`wasCancelledMidTransfer`, the cache's `.stopped` record) went the same way,
+    /// silently, because the transfer had already run to its own end.
+    ///
+    /// So it is long enough that no wait in these suites can outlive it, and every test that starts
+    /// one stops it — this only bounds the damage if one ever stops doing so.
+    ///
+    /// **Shortening it is the amplification**, and it is what turns the diagnosis into a
+    /// measurement: at 2 s the transfer reliably ends before the sheet is serviced, and both sheet
+    /// tests then fail **3 of 3** full runs with the reporter's own message —
+    /// `(window → <NSWindow: …>).attachedSheet → nil → nil`. At 60 s the same tree is green, and
+    /// the sheet is taken down by the test that was watching it rather than by this clock.
+    static let blockBackstop: TimeInterval = 60
 
     let id = Fixture.backendID
     let capabilities: VFSCapabilities = [.read, .write]
@@ -127,7 +151,8 @@ final class CountingBackend: VFSBackend, @unchecked Sendable {
             // On `BlockingWork`'s global queue, not a cooperative worker, which is the whole reason
             // that type exists — so sleeping here spends a thread the pool will replace rather than
             // one the process shares (docs/NOTES.md ▸ Swift 6 and concurrency).
-            for _ in 0..<500 where !isCancelled() {
+            let backstop = Date().addingTimeInterval(Self.blockBackstop)
+            while !isCancelled(), Date() < backstop {
                 usleep(10_000)
             }
             guard isCancelled() else { return }

@@ -298,6 +298,53 @@ at build time.
   waiting a delay **out** to prove nothing happens has its length *as* the claim and cannot be
   widened for a slow machine. Split them — `settle(within:until:)` at 10 s against a 1200 ms sheet
   delay, `hold(until:)` fixed at 2–2.5 s — rather than scaling one number for both.
+  - **That split is right and both of its numbers were still wrong, because a third clock was
+    hiding behind them: the *fixture's*.** Same suite, same message, 2026-08-27 — `attachedSheet →
+    nil → nil` about **1 full run in 8–16**, passing alone every time, and this entry's own fix
+    (the 10 s budget) had already been applied. What ends the fake transfer is `usleep` on a
+    `BlockingWork` thread, which nothing in the process can starve, so it landed at a fixed 5 s of
+    wall clock; everything watching it — the 1200 ms sheet timer, the prompt's `finish()`, the poll
+    loop — is scheduled on the **main actor**, which is late by seconds. Past 5 s the sheet went up
+    and was torn down in the same drain: **55 ms of visible life** in one measured run, sampled by a
+    loop getting one poll a second. So the test was not slow, it was watching a transient the code
+    under test destroys — and the run that *passed* had caught a 55 ms window by luck.
+    - **The fix is to make the fixture wait to be cancelled** rather than count out a duration
+      (`CountingBackend.blockBackstop`, now a 60 s backstop no assertion may rest on). The sheet is
+      then taken down by the test that was watching it. The suite's slowest test drops from **22.8 s
+      to ~7 s**, because two trailing waits that had been silently expiring at 10 s apiece now
+      return in under a second — they were asserting the cancellation of a transfer that had already
+      finished by itself, which is this entry's own failure one layer in. 18 full runs green
+      afterwards, and note what that is and is not worth: a 16-run baseline of the *unfixed* tree
+      caught the flake **0** times on this Mac against the 2-in-16 it was reported at, so the run
+      count corroborates and the amplification below is the evidence.
+    - **Shortening the same constant is the amplification**, and it is what makes the diagnosis a
+      measurement rather than a story: at 2 s both sheet tests fail **3/3** full runs with the
+      reporter's exact message, at 60 s the same tree is green.
+    - **Ask what makes the thing you are sampling go away**, not only how often you sample. A wait
+      whose subject is torn down by the code under test needs the teardown moved out of the run, or
+      an observable that latches — polling harder only narrows the window it can miss.
+  - **The stall is AppKit, not the cooperative pool, and four clocks in one process say so.** The
+    family above (▸ Swift 6 and concurrency) trains you to suspect blocked cooperative workers;
+    measured here with a real `Thread`, a `DispatchQueue.main` chain, a `@MainActor` `Task.sleep`
+    loop and a detached one all running together, the thread and the detached task were **never**
+    late while the main queue and the main actor stalled **together, by the same amount**, 0.6–5.0 s
+    at a time. `sample` on the test host names it: the main thread is inside
+    `CA::Transaction::flush_as_runloop_observer` → `NSDisplayCycleFlush` → `-[NSWindow
+    layoutIfNeeded]` → `-[NSTableView layout]` → `PanelViewController.tableView(_:viewFor:row:)` →
+    **IconServices**, laying out the tables of panes other suites keep alive for the life of the
+    process. It is a run-loop observer, so nothing main-actor-isolated is drained while it runs.
+    Two clocks stalling identically while an independent thread does not is the whole discriminator,
+    and it costs twenty lines.
+  - **A negative wait sized in seconds goes vacuous under that stall, and only a control finds it.**
+    The sibling test pinning "no progress sheet over the placeholder card" held 2.5 s — "the 1200 ms
+    delay, twice" — while the sheet actually lands 2.9–6.3 s in, so it expired before one could have
+    appeared either way. Deleting the guard it exists to protect left it passing **3 of 3** full
+    runs, and the *same build run alone* raised the sheet: a control that only fires on an idle Mac
+    is not a control. The repair is to stop timing it with a constant — a second, identical fetch on
+    its own window, started **after** the covered one so its sheet task is created after and its
+    timer fires no earlier, is what says when to look. Reverted, it now fails 3/3. The two other
+    waits in the suite were put under the same treatment and each still failed 3/3, which is what
+    bounds the audit: they are settled by work already in flight, not by a timer nobody has armed.
 - **Tearing a window down while a sheet it carried is still settling segfaults the test host, and
   the crash lands on a *later* test — one that may present no sheet at all.** This file's entry on a suite
   that presents real `NSAlert`s killing the runner (▸ AppKit, the `AlertKeyCatcher` tests) says it
