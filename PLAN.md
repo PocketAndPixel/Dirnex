@@ -95,7 +95,7 @@ Dirnex/
 Sizes are relative (S ≈ days, M ≈ 1–2 weeks, L ≈ 3+ weeks of focused work).
 Each milestone ends in something runnable; no milestone depends on a later one.
 
-### Shipped: M0 → M22 (2026-07-05 → 2026-08-19)
+### Shipped: M0 → M23 (2026-07-05 → 2026-08-26)
 
 Every milestone is closed. The checklists and the full per-pass progress log — what was probed,
 decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source comments citing
@@ -126,6 +126,7 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 | M20 | Every place reachable without the sidebar | 08-12 | Individual places as ⌘K palette results (the palette is a registry of *commands*, places are live data — a different mechanism, worth its own decision); reordering or editing places from the menu, which stays the sidebar's job; a Finder-style "Computer" or "Network" destination, which is not a place Dirnex has; and a **Help menu** — Slice 2 claimed Help ▸ Search made "Trash" findable and the app declares no Help menu at all, so adding one is its own decision and was not taken |
 | M21 | Amazon S3, and the mounts we already reach | 08-19 | **Atomicity of any kind** — a prefix rename or delete is N copies and N deletes, so stopping partway leaves items under both names, and no layer can make it otherwise; **a byte counter during a server-side copy**, which would cost a round trip per object (~25 min of pure latency on a 50 000-file prefix), so those jobs report items; **`copyMetadata` and `DirectorySync` by timestamp**, since S3 has no settable mtime, no permissions and no symlinks; **a File Provider mount** (Mountain Duck / `rclone mount` territory — a different product with a different lifecycle); **AES-style client-side encryption, versioning, lifecycle rules and storage-class changes**, none of which a file manager's ten verbs have a place for; and **the 200-committed multipart refusal seen from Amazon**, which AWS documents and answers `412` with the code in practice, so it stays pinned against our own SigV4-verifying endpoint |
 | M22 | Find Files on a connected server | 08-16 | **Content-grep and tags remotely** — no remote backend can answer either without reading every file, so `SearchFields` withholds them rather than skipping the clause (which would return *more* results under the same name); **an exact remote timestamp**, since FTP's `LIST` stamps are year- and zone-less on the server's clock; **searching an S3 *account* pane**, whose rows are buckets — "search every bucket" is a different and much more expensive question than the one ⌥F7 asks; and GNU `find -printf`, retired at the probe rather than handled, since choosing it would have shipped the common case unverified — POSIX `find … -exec ls -ldn {} +` instead, at the cost of the date column |
+| M23 | Copy, paste and drag, wherever the file is | 08-26 | Dragging a *folder* out of a server as a promise (a promise is one file; a recursive fetch behind a Finder drop has no progress surface and no way to stop it) and dragging an archive **member** out to another app, for the same reason one layer along — an encrypted archive would have to raise a passphrase sheet behind somebody else's drop, and `extractArchiveSources` reports failures with an alert rather than through a completion handler, so it would need Slice 4's always-answers contract first (taken by the user 2026-08-26, F5 copy-out being the route); `⌥⌘V` move-paste into an archive, which stays gated where it was; a *drop* into a browsed archive, where ⌘V adds by repacking and a drag does not; and the pasteboard as an automation surface — nothing here is scriptable that F5 was not. **Left for a human**, since a drag *session* cannot be synthesized: an actual drag between two panes, a Finder drag onto a connected server, and a drag from a connected server into Finder |
 
 The undone column is scope that was decided against, not forgotten — each one is argued in
 its HISTORY.md entry. The largest such call is the **built-in text editor** (2026-07-22): a
@@ -150,9 +151,9 @@ non-empty folder, which hid three folders Finder shows.
 
 ### After M19
 
-M19 closed on 2026-08-09; M20 opened and closed 2026-08-12, M22 on 08-16, M21 on 08-19.
-Thirty-one further passes landed between 2026-08-07 and 2026-08-25 without a milestone of their
-own, and every one of them is shipped — so that log lives in
+M19 closed on 2026-08-09; M20 opened and closed 2026-08-12, M22 on 08-16, M21 on 08-19 and M23 on
+08-26. Thirty-one further passes landed between 2026-08-07 and 2026-08-25 without a milestone of
+their own, and every one of them is shipped — so that log lives in
 **[docs/HISTORY.md](docs/HISTORY.md) ▸ After M19** with the rest of the archive, together with the
 two passes that closed M19's own loose ends.
 
@@ -171,255 +172,6 @@ Two things fell out of it rather than being built: the app's whole-archive extra
 existed only to amortize the cost the filter removes, and the explicit `archive_read_data_skip` turned
 out to buy nothing over libarchive's own implicit skip — the saving is in not reading the data. See
 docs/NOTES.md ▸ Encryption.
-
-### Shipped: M23 — Copy, paste and drag, wherever the file is (2026-08-26)
-
-Opened 2026-08-26. Scope set by the user the same day: **exactly what a local file has** — ⌘C/⌘V
-and drag in every direction inside Dirnex, drag *out* into Finder, Teams and anything else that
-takes a file, and drag *in* from them onto a server. Staged, not one pass.
-
-⌘C and drag-and-drop have been local-only since M1/M2 and the reason is one sentence: the
-pasteboard carries `file://` URLs, and a row on a server, in a bucket or inside an archive has no
-such URL. So `PanelViewController+Clipboard.copy(_:)` refuses ⌘C on a remote pane outright,
-`pasteboardWriterForRow` returns `nil` for every non-local row, and `dropPlan` requires a `.local`
-destination. **The transfer is not what is missing** — `CompositeBackend` routes per path, `RelayCopy`
-already stages bytes between two accounts that have never heard of each other, and F5/F6 reach all
-of it. What is missing is the *carrier*. These are the two gestures a Mac user reaches for without
-thinking, and both are silently dead: the top parity gap in
-[docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md).
-
-#### What the pasteboard will actually carry — probed 2026-08-26, before any Swift
-
-A private type (`com.dirnex.locations`) beside the file URL, and four measurements decide the shape:
-
-- **One `NSPasteboardItem` carries both**, and macOS still auto-promotes the URL into
-  `NSFilenamesPboardType` and friends — so a **local** row is byte-identical to today and gains the
-  private type for free. A **mixed** selection hands Finder exactly the local subset while Dirnex
-  gets every row, in order.
-- **A multi-row drag is N items, and a board-level `data(forType:)` returns only the *first*.** That
-  is the trap: a reader written the obvious way drops every row but one, silently, and a two-row
-  drag is the smallest case that shows it. So the rule is **one item per row on every write, and
-  every read iterates `pasteboardItems`** — which also makes ⌘C and drag the same shape, rather than
-  two writers needing two readers.
-- **A private-only board answers `canReadObject(forClasses: [NSURL.self])` → `false`**, so
-  `clipboardHasFiles()` keeps Paste correctly gray for a foreign board and must learn the new type
-  rather than be replaced by it.
-- **An `NSPasteboardItem` raises if written twice** (`-[NSPasteboard writeObjects:]` throws, probed
-  fatally). Items are built fresh per write — which the multi-row ⌘C path currently violates by
-  clearing and rewriting the board in `willBeginAt`.
-
-#### The payload is a snapshot, and that is not a compromise
-
-It carries the path **and** the few fields `CopyEngine` reads off a source entry (`kind`,
-`byteSize`, `name`, `symlinkDestination`), so a paste of 20 objects costs **no** round trips. The
-alternative — carry paths, re-`stat` on paste — is 0.6 s per item on S3, i.e. a 12-second stall
-before the job appears. Staleness is the obvious objection and it is answered by what already
-ships: **F5 hands the queue entries straight out of the pane's listing**, which are exactly as old.
-The engine re-reads what it must (it copies metadata by *path*) and reports a vanished source per
-item, as it does today.
-
-#### Two bugs that only become reachable here, and must land with the slice that reaches them
-
-- **A drop onto a remote pane would default to *move*, deleting the local original.**
-  `resolvedKind` follows Finder — move within a volume, copy across — and asks
-  `volumeIdentifier(for:)`, which `CompositeBackend` answers `nil` for every non-local path. `nil`
-  reads as *one indistinguishable volume*, so `sameVolume` returns `true` and the default is move.
-  Harmless while every drop destination is local; the expensive direction the moment one is not.
-  **A backend crossing is never the same volume.**
-- **The recursion guards compare paths as strings.** Both `pasteRecurses` and `dropPlan` test
-  `destination.path.hasPrefix(source.path + "/")` with no backend in it, so local `/tmp` reads as an
-  ancestor of `sftp:/tmp/x` and a legitimate transfer is silently refused. `VFSPath
-  .isSelfOrDescendant(of:)` already asks the question correctly and is what both should have used.
-
-#### Slices
-
-Core first, app untouched until (2). Each lands runnable.
-
-1. **`PasteboardPayload` in `DirnexCore`** — the per-item snapshot, its encoding, and the
-   backend-aware admission rules the two hand-rolled string comparisons above got wrong. Pure,
-   tested, additive; no app rebuild.
-2. **⌘C / ⌘V across every backend.** ⌘C writes one item per row (private type always, file URL for
-   local rows too); `clipboardHasFiles` learns the type; paste reads the payload first and falls
-   back to file URLs, so a copy out of **Finder** into a bucket works by the same path. Destination
-   widened from `.local` to `.local || acceptsUploads`, matching `beginTransfer`.
-3. **Drag inside Dirnex, and drops from other apps onto a server.** `pasteboardWriterForRow` for
-   every row, the `willBeginAt` multi-row widening rebuilt without re-using items, `dropPlan` widened
-   to remote destinations — and the two bugs above fixed here, since this is the slice that reaches
-   them.
-4. **Drag out into Finder, Teams and anything else** *(landed)* — `NSFilePromiseProvider` on a remote row,
-   fulfilled through the existing `RemoteFileCache` / `RemoteFetchPrompt` funnel so a promise cannot
-   become a second download path. The hard part is not the promise, it is that it runs **outside the
-   queue bar**: it needs its own cancel, and a failure has to reach the user rather than leaving the
-   receiving app with a zero-byte file.
-5. **Archive members** *(landed)*, which are the identical gap wearing a different backend — the
-   payload can already name one, and paste routes to the extraction path `copyToOtherPane` uses
-   rather than to the copy queue. Then the live verification pass and the
-   [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md) cells this moves.
-
-**Slice 1 landed 2026-08-26**, core-only and additive — the app is untouched and needs no rebuild.
-`PasteboardPayload` (the per-item snapshot, its wire format, and the two ways a read is allowed to
-fail) and `TransferAdmission` (recursion, volumes, copy-vs-move). +20 tests, 2723 green, both
-linters clean.
-
-The negative control is the reason to believe them: reverting both rules to the spellings the app
-ships today fails **4 of 12** `TransferAdmission` tests — including *"a drag onto another backend
-copies — the case that would have deleted the original"* — while every narrowness control stays
-green (a same-prefix neighbour still does not recurse, two paths on one real volume still share it,
-the modifier cases are untouched). The bugs are real and the tests see them.
-
-One thing the payload does **not** do, stated so it is not mistaken for an oversight: the rebuilt
-entry's dates, permissions and inode are neutral rather than invented. `CopyEngine` reads none of
-them (it copies metadata by *path*), and a caller that needs a real stat — Get Info, an attribute
-edit — must go and take one. The payload is a transfer's source, not a listing's row.
-
-**Slice 2 landed 2026-08-26** — ⌘C and ⌘V reach every backend. `PanelPasteboard` is the one bridge
-both this slice and Slice 3's drag read, so the two gestures cannot put different things on the
-board; `clipboardTargets` decides what may go on it **per row** (a results tab holds local, remote
-and archive rows at once); `pasteDestination`/`canReceiveFiles` decide what may land. +19 tests
-(2725 core, 703 app), both linters clean.
-
-`VFSBackendID.receivesFiles` is the new core predicate, and the **S3 account pane** is why it is not
-just `.write`: F7 there creates a *bucket*, so every capability-shaped gate says yes while a pasted
-file has nowhere to go — without it Paste lights up over a list of buckets and the job fails inside
-the queue rather than the menu item being gray.
-
-Four negative controls, run together: reverting ⌘C's remote refusal, the `receivesFiles` gate,
-payload-before-URLs, and URL-only enablement fails **6 assertions across 4 tests** and leaves the
-other 15 green. The sharpest is *"our own board resolves through the payload"* — reading the URLs off
-our own board is a **different answer**, not a poorer one, because a mixed selection's URL list
-silently omits every remote row, so copying three files and pasting two would report success.
-
-**Verified live**, in the running app via `run operation`: a real ⌘C on a local row puts
-`com.dirnex.locations` **and** `public.file-url` on the real general pasteboard, with macOS still
-promoting to `NSFilenamesPboardType` and `Apple URL pasteboard type` — so Finder and Teams still see
-an ordinary file, which is the non-regression that mattered. ⌘C then ⌘V in the same folder produced
-`alpha copy.txt` with the right bytes, driving the new payload read path end to end through the
-queue. What is **not** verified live is a ⌘C on an actual connected server: a remote tab cannot be
-restored at launch (session restore is `.local`-only) and connecting needs the Connect sheet, so the
-remote half rests on the headless suites plus the pasteboard probe.
-
-**Slice 3 landed 2026-08-26** — drag works in every direction *inside* Dirnex, and a drop from
-Finder can land on a connected account. The drag source writes through the same `PanelPasteboard`
-items ⌘C does (so the two gestures cannot put different things on the board), the drop reads through
-the same `sources`, and both latent bugs went with it. +13 tests (2725 core, 719 app), both linters
-clean.
-
-**The destination is now validated instead of the base**, which is more than a widening: they are
-the same in a flat listing and differ in a **tree**, where a folder row can belong to another
-backend entirely — a bucket's contents drawn under an S3 *account* root. The old code checked
-`writeDirectory` and then dropped into whatever row was under the cursor.
-
-The **default-move** control is the one worth re-running before touching this code. Reverted *alone*
-— destination gate left fixed, so nothing masks it — an unmodified drag from this Mac onto a bucket
-comes back `plan.kind → .move`, which is the local original deleted. One test fails and the other
-twelve stay green. Run together with the other two controls it is *hidden*: the destination gate
-refuses the drop first, so the assertion fails on `nil` and never reaches the kind. A combined
-control run would have read as "three bugs caught" while saying nothing about the expensive one.
-
-**Verified live** for what a headless test cannot reach: a two-row selection puts **two** items on
-the real general pasteboard, each carrying the payload *and* its file URL, with `readObjects` still
-returning both URLs — the multi-row shape a drag produces, and the proof the widening path does not
-re-use items. A real drag *session* cannot be synthesized (synthetic events are not gestures), so
-what is pinned instead is the registration: `registeredDraggedTypes` carries both carriers, without
-which every rule above is unreachable and the pane refuses drags in silence. **Left for a human:**
-an actual drag between two panes, and a Finder drag onto a connected server.
-
-**Slice 4 landed 2026-08-26** — a row whose bytes are on a server drags *out* into Finder, Mail and
-anything else that takes a file. `RemoteFilePromiseProvider` is an `NSFilePromiseProvider` that also
-carries the payload, so `PanelPasteboard.dragWriters` decides **per row** which writer a row gets and
-a mixed selection stays one drag: Finder is handed the local subset plus a promise for the rest,
-while Dirnex's own drop still reads the same snapshot for every row. +13 tests (2725 core, 732 app),
-both linters clean.
-
-**It runs outside the queue bar, which is the whole difficulty**, and the answer is that the
-completion handler is the report. Fulfilment goes through the same `fetchRemoteFile` funnel ⏎ and F4
-use — so a file already fetched for a preview drags out with no transfer at all, and the deferred
-sheet supplies the bar and the Stop a queue row would have — and the funnel gained one hook,
-`onEnded`, called on **every** terminal path. Two of those paths deliberately reported to nobody and
-were right to: `RemoteFetchPrompt` swallows a cancellation (the user's own answer, already on
-screen), and the funnel returns having started nothing when the pane has no host. Both are correct
-for every gesture except one holding somebody else's callback open.
-
-**The size question is skipped, deliberately.** A drag onto the desktop is the same act as F5, which
-asks nothing whatever the file weighs — and the confirmation would arrive *after* the drop, in front
-of a receiving app already sitting on a spinner it cannot dismiss. What a large transfer actually
-needs it keeps.
-
-One test was written, measured and **deleted**: driving the failure *alert* needs a live pane in a
-window, and that one test took the app suite from 9/9 green to 7/8, every failure landing in
-`PanelPassiveRefreshTests`. Bisected with `-skip-testing` against a 3/3 baseline of the unchanged
-tree, then re-measured 6/6 green with it gone. The claim it made is kept without a window — the
-handler is answered with an error and the destination is left empty (docs/NOTES.md ▸ AppKit).
-
-Six negative controls, **run one at a time** for the reason Slice 3 recorded: no row promised fails 4
-tests; the promise not carrying the payload fails 3, one of them reading `["x.txt", "y.txt"]` for a
-three-row drag — a remote row silently dropped, the exact failure the payload exists to prevent; the
-funnel's early return reporting to nobody fails the "always answers" test; answering success without
-placing the bytes fails on the *file*; and removing `onCancel` leaves a stopped drag unanswered. The
-sharpest is the last two, because both leave the receiving app with nothing and neither is visible in
-Dirnex at all.
-
-**Verified live**: the new class and — the half worth checking rather than assuming — the Objective-C
-selector `filePromiseProvider:writePromiseToURL:completionHandler:` are both present in the built
-`Dirnex.debug.dylib`, which is what says the delegate method AppKit dispatches by selector was
-actually emitted rather than merely compiled (docs/NOTES.md ▸ AppKit). The board shape was measured
-on a real pasteboard before any Swift. **Left for a human:** an actual drag from a connected server
-into Finder — a drag *session* cannot be synthesized, so the AppKit plumbing between the registration
-and the promise is the one link no test here reaches.
-
-**Slice 5 landed 2026-08-26** — an archive member travels on ⌘C/⌘V and on a drag inside Dirnex,
-extracting through the funnel F5 copy-out already used. +3 core tests (2728) and +11 app ones (743),
-both linters clean. **M23 is complete.**
-
-**The extraction was welded to F5 and had to be split before anything could share it.**
-`beginArchiveExtraction` reads *this* pane's selection and the *counterpart* pane's path, neither of
-which a paste has — so a paste written against it would have grown a second spelling of the
-extraction, which is this project's most repeated bug. `extractArchiveSources` is that step alone,
-`ArchiveTransferSources` is the per-**row** split that decides who needs it (a results tab holds
-archive, local and remote rows at once, so asking the *pane* answers for none of them), and
-`resolveTransferSources` is the one funnel ⌘V and drop now both read — which is what stopped the
-archive case from being learned twice.
-
-The rule that had to reach the core is that an archive member **can only ever be copied**: the
-container is read-only, so a move would have nothing to remove afterwards, which is why F6 out of an
-archive does not exist. `TransferAdmission.allowsMove` rides in through the *offer* rather than as a
-branch of its own, so a ⌘-forced drag falls back to a copy for free — "a modifier the source does
-not offer is ignored" was already that function's documented behaviour. One member answers for the
-whole drop, because a drag is one gesture with one kind and copying everything is the direction that
-cannot delete anything; a *paste* filters per row instead, since its kind comes from the key and
-dropping what it cannot apply to is what the same-folder rule already did.
-
-**Five negative controls, run one at a time.** Putting the archive filter back on the board fails 4
-tests; neutering the split so members reach the queue fails the two end-to-end ones — and it fails
-them by reporting a source path of `/one.txt`, a file on this Mac that does not exist, which is the
-symptom exactly; making `allowsMove` answer `true` fails 3 core tests; keeping only the first
-archive's members fails the two-archive grouping. The fifth is the one worth recording: reverting the
-**drop's** move rule alone failed **nothing**, because `resolvedKind` read `NSEvent.modifierFlags`
-directly and every unmodified archive drop is already a backend crossing. `dropPlan` now takes its
-modifiers as a defaulted parameter, and with that seam the same revert fails on the badge —
-`plan.kind → .move` — with the narrowness control (⌘ over a local row still moves) green throughout.
-
-**Verified live**, in the running app driven from a shell. ⌘C on a local row still puts both
-carriers on the real general pasteboard and still promotes to `NSFilenamesPboardType`, and ⌘C → ⌘V
-still copies — the non-regression that mattered, since the whole paste path moved onto a new funnel.
-Then the archive half, which needed no UI at all: writing the byte-identical payload onto the
-general board from a 10-line Swift script and running `edit.paste` extracted `one.txt` out of a real
-zip into a real folder with the right bytes, left `two.txt` in the archive, and left a temp
-extraction holding **one** file — the member filter, the passphrase check, `bsdtar` and the queue all
-the shipped ones. The pasteboard being the seam is what makes this reachable: a tab cannot be
-restored into an archive (session restore is `.local`-only) and nothing scriptable enters one, so
-driving the *reader* from outside is the only way in.
-
-**Deliberately not in scope.** Dragging a *folder* out of a server as a promise (a promise is one
-file; a recursive fetch behind a Finder drop has no progress surface and no way to stop it);
-dragging an archive **member** out to another app, for the same reason one layer along — a promise
-is fulfilled behind somebody else's drop, where an encrypted archive would have to raise a
-passphrase sheet with nothing on screen to answer it on, and `extractArchiveSources` reports a
-failure with an alert rather than through a completion handler, so it would need Slice 4's
-always-answers contract first (taken by the user 2026-08-26, F5 copy-out being the route);
-`⌥⌘V` move-paste into an archive, which stays gated where it is today; a *drop* into a browsed
-archive, where ⌘V adds and a drag does not; and the pasteboard as an automation surface — nothing
-here is scriptable that F5 was not.
 
 ## 5. Cross-cutting: testing strategy
 
@@ -446,7 +198,7 @@ here is scriptable that F5 was not.
 | A system-CLI quirk changes under us (M13's TLS-1.2 pin for FTPS is a workaround for `curl` 8.7.1, not a property of the protocol) | The flag lives in a pure, tested `FTPProcessArguments` with the reason in its doc comment, so it is one place to re-measure — and a listing that comes back empty is the *symptom*, so an FTPS smoke test asserts non-empty rather than merely "no error" |
 | M17's highlighter grows into a parser by accretion — one heredoc, one regex literal, one interpolation at a time, each individually reasonable | The scanner's boundary is written into the milestone as a list of *decisions*, and each one carries a comment at the place in the grammar where it would have been handled. The tell that the boundary is being crossed is a grammar gaining a **state stack**: a single pass with one lookahead is the whole design, and anything needing to remember where it has been is a parser, which is a compiler's job and not a preview's. The affordable escape hatch is that highlighting only ever *adds* foreground color to a document that already renders correctly — so a construct the scanner gets wrong is a wrong color, never a wrong character, and the honest fix for a hard one is to stop coloring it. **Held through the milestone, and the escape hatch was used**: `prefix` and `postfix` came out of the Swift keyword set rather than gaining a rule, because both are contextual and `prefix` is one of the language's most common method names (HISTORY.md §M17 ▸ Slice 1). No grammar gained a state stack; the closest anything came is one `Bool` inside `SyntaxMarkupScanner.scanAttributes`, which is a lookbehind of one token and is argued at the site |
 | M18's Markdown renderer chases CommonMark, and its mermaid subset chases mermaid — both indefinitely, one individually reasonable case at a time. The renderer has it worse than M17's scanner, because a wrong answer here is a wrong *document* rather than a wrong color | Two different mitigations, because the two halves fail differently. For **markdown**, the target is named as a corpus rather than as a spec — this repo's own files, plus whatever real `.md` the next bug report arrives with — and the escape hatch is that an unreadable construct falls back to its literal text, so the worst outcome is a paragraph that looks like its source. For **mermaid** the boundary is a *list of diagram types*, and crossing it is loud by construction: an unsupported type renders its fence with a note naming it, so the pressure to add one shows up as a user asking rather than as a silently wrong drawing. The tell that the mermaid half is going wrong is the layout gaining knobs — mermaid has a config surface of its own, and reproducing it is how a subset becomes a port. **Held through the milestone, and both escape hatches were used**: the markdown half is pinned by a corpus suite over this repo's own `PLAN.md`, `README.md`, `NOTES.md` and `HISTORY.md` rather than against the spec's test cases, and the mermaid half reports by name — not only an unsupported diagram *type* but an unsupported construct inside a supported one (`subgraph`, `loop`, `alt`, `style`), which is more than the milestone asked for and in the same direction. The one thing that did arrive is the knob the risk names: a `diagramScale` and a shared `labelSize` (HISTORY.md §M18 Slice 4), both of them constants the *app* sets once rather than a config surface read out of the diagram's own source, which is the line worth keeping |
-| M23's private pasteboard type becomes a *second* definition of what a transfer is — its own idea of what may land where, drifting from the one F5 already enforces | The payload carries **locations, not policy**: every read ends in the same `submitTransfer` → `FileOperation` → `CopyEngine` path F5/F6 use, under the same conflict prompter, and the admission rules it does own (no-op, recursion) are the ones that were *already* duplicated by hand in two places and got the backend wrong in both. The tell that the boundary is going is a paste or a drop growing a branch that F5 does not have — a second conflict policy, a second "can this land here" gate, a second refusal message. The gate is `acceptsUploads`, which `beginTransfer` already reads, and it must stay the one spelling. **Held through the milestone, and the pressure was real in both directions.** The gate widened once, to `receivesFiles`, and it widened *for F5 as well* rather than beside it — an S3 account pane says `.write` while a file has nowhere to go in it. Three admission rules moved **out** of the gestures into the tested `TransferAdmission` rather than being restated (recursion, volumes, and Slice 5's copy-only), each because it already had two hand-written spellings or was about to; and Slice 5 pulled the *extraction* out of F5 (`extractArchiveSources`) instead of teaching ⌘V a second way out of an archive, which is the same fork this file records for `editRoute(for:)`. The one refusal the paste path owns that F5 does not is dropping an archive member from a **move**, and it is the same rule `moveToOtherPane` enforces by returning — stated once, in the core, and read by both |
+| M23's private pasteboard type becomes a *second* definition of what a transfer is — its own idea of what may land where, drifting from the one F5 already enforces | The payload carries **locations, not policy**: every read ends in the same `submitTransfer` → `FileOperation` → `CopyEngine` path F5/F6 use, under the same conflict prompter, and the admission rules it does own (no-op, recursion) are the ones that were *already* duplicated by hand in two places and got the backend wrong in both. The tell that the boundary is going is a paste or a drop growing a branch that F5 does not have — a second conflict policy, a second "can this land here" gate, a second refusal message. The gate is `acceptsUploads`, which `beginTransfer` already reads, and it must stay the one spelling. **Held through the milestone, and the pressure was real in both directions.** The gate widened once, to `receivesFiles`, and it widened *for F5 as well* rather than beside it — an S3 account pane says `.write` while a file has nowhere to go in it. Three admission rules moved **out** of the gestures into the tested `TransferAdmission` rather than being restated (recursion, volumes, and Slice 5's copy-only), each because it already had two hand-written spellings or was about to; and Slice 5 pulled the *extraction* out of F5 (`extractArchiveSources`) instead of teaching ⌘V a second way out of an archive, which is the same fork this file records for `editRoute(for:)`. The one refusal the paste path owns that F5 does not is dropping an archive member from a **move**, and it is the same rule `moveToOtherPane` enforces by returning — stated once, in the core, and read by both (HISTORY.md §M23 ▸ What the risk row asked) |
 | The tree becomes a *second* pane implementation by accretion — a refresh path, a mark gesture or a sort that quietly forks from the flat one | The tree is a flat projection over the same `NSTableView` and the same index space, not a parallel surface (HISTORY.md §M15 Slice 4); anything that forks is a signal the projection is wrong, not that the tree needs its own copy. Both fork points were answered in the slice — `SizeVisualization`'s per-directory assumption (the bars were withdrawn in tree mode at M15 close, then re-scoped *per parent directory* rather than forked — `SizeVisualization(tree:)` groups each row against its own level, so the projection stays one definition of "share of this folder") and the `installSortedModel` → `reloadEverything` → `syncCursorToTable` tail. It arrived once already, as the *second index space*: six `panel.model[row]` sites that crashed on the first click below the root's last entry, now routed through `displayedIndex(ofID:)` — NOTES.md ▸ AppKit |
 
 ## 7. Open questions
