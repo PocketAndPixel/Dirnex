@@ -100,6 +100,27 @@ public struct VFSBackendID: RawRepresentable, Sendable, Hashable, CustomStringCo
     /// receive files. Collapsing them at any point since would have had to be undone here.
     public var acceptsUploads: Bool { isSFTP || isFTP || isS3 }
 
+    /// Whether a transfer can *land* here — this disk, or a remote account with an upload primitive
+    /// behind it.
+    ///
+    /// The union ``acceptsUploads`` is missing, and it exists because three sites were about to
+    /// spell it by hand: F5/F6's destination check (`PanelViewController+Copy.beginTransfer`, which
+    /// had it first), ⌘V's, and a drop's. One question, and this project's most-repeated bug is what
+    /// happens when it has several spellings — the day a fourth backend arrives, two of them are
+    /// updated.
+    ///
+    /// **An S3 *account* is the case that makes it worth a name rather than an `||` at each site.**
+    /// It carries `.write` — F7 there creates a *bucket* — and `writeDirectory` answers for it, so
+    /// every capability-shaped gate says yes while a file copied into it has nowhere to go. Without
+    /// this the paste would be enabled, start a job, and fail *inside the queue* rather than saying
+    /// up front that the other panel cannot receive files, which is exactly the failure
+    /// ``acceptsUploads``' own doc comment was written about.
+    ///
+    /// It says nothing about a *virtual* container: the merged Trash and a results listing have no
+    /// directory of their own, so a caller resolves that first (`writeDirectory`) and asks this of
+    /// whatever real location came back.
+    public var receivesFiles: Bool { self == .local || acceptsUploads }
+
     public var description: String { rawValue }
 }
 

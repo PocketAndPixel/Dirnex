@@ -35,11 +35,11 @@ extension PanelViewController: NSMenuItemValidation {
         case #selector(copy(_:)):
             // `copy:` only reaches the pane when the file table is first responder — a name/
             // path field editor intercepts ⌘C for text copy — so this validates the file case.
-            // An archive entry has no on-disk URL to place on the pasteboard, and an entry on a
-            // connected remote has no *local* one (F5 copies it out instead), so all are excluded.
-            return !isArchive
-                && !panel.path.backend.isRemoteConnection
-                && !selectionTargets().isEmpty
+            // Since M23 the board carries a `PasteboardPayload` beside the file URL, so a row on a
+            // connected remote copies like any other; an **archive member** is still excluded, and
+            // `clipboardTargets` is where that is decided per row rather than per pane (a results
+            // tab can hold both kinds at once).
+            return canCopyToClipboard
         case #selector(saveCurrentSearch(_:)):
             // Only meaningful on a results pane that still carries the query behind it.
             return canSaveCurrentSearch
@@ -117,13 +117,16 @@ extension PanelViewController: NSMenuItemValidation {
             // record of where anything came from, which is the whole operation.
             return isTrashListing && !selectionTargets().isEmpty
         case #selector(paste(_:)):
-            // ⌘V pastes into a real writable folder, or *adds into* a writable browsed archive
-            // (PLAN.md §M4 — a nested archive is read-only, so it's excluded).
-            return (canWriteHere || isWritableArchive) && clipboardHasFiles()
+            // ⌘V pastes into any folder bytes can land in — this disk or a connected account since
+            // M23 — or *adds into* a writable browsed archive (PLAN.md §M4 — a nested archive is
+            // read-only, so it's excluded). `canReceiveFiles` rather than `canWriteHere`: an S3
+            // account pane is writable (F7 creates a bucket) and is not somewhere a file can go.
+            return (canReceiveFiles || isWritableArchive) && clipboardHasFiles()
         case #selector(pasteAndMoveFromClipboard(_:)):
             // ⌥⌘V has no standard selector, so it reaches the pane even mid text-edit — step it
             // aside for a field editor, else gate it like Paste.
-            return canWriteHere && clipboardHasFiles() && !(view.window?.firstResponder is NSText)
+            return canReceiveFiles && clipboardHasFiles()
+                && !(view.window?.firstResponder is NSText)
         case #selector(renameSelection(_:)):
             // Rename is single-item on the cursor (not the marked set) and never `..`.
             return canRenameHere && !cursorOnParentRow && panel.currentEntry != nil

@@ -272,6 +272,32 @@ entry's dates, permissions and inode are neutral rather than invented. `CopyEngi
 them (it copies metadata by *path*), and a caller that needs a real stat — Get Info, an attribute
 edit — must go and take one. The payload is a transfer's source, not a listing's row.
 
+**Slice 2 landed 2026-08-26** — ⌘C and ⌘V reach every backend. `PanelPasteboard` is the one bridge
+both this slice and Slice 3's drag read, so the two gestures cannot put different things on the
+board; `clipboardTargets` decides what may go on it **per row** (a results tab holds local, remote
+and archive rows at once); `pasteDestination`/`canReceiveFiles` decide what may land. +19 tests
+(2725 core, 703 app), both linters clean.
+
+`VFSBackendID.receivesFiles` is the new core predicate, and the **S3 account pane** is why it is not
+just `.write`: F7 there creates a *bucket*, so every capability-shaped gate says yes while a pasted
+file has nowhere to go — without it Paste lights up over a list of buckets and the job fails inside
+the queue rather than the menu item being gray.
+
+Four negative controls, run together: reverting ⌘C's remote refusal, the `receivesFiles` gate,
+payload-before-URLs, and URL-only enablement fails **6 assertions across 4 tests** and leaves the
+other 15 green. The sharpest is *"our own board resolves through the payload"* — reading the URLs off
+our own board is a **different answer**, not a poorer one, because a mixed selection's URL list
+silently omits every remote row, so copying three files and pasting two would report success.
+
+**Verified live**, in the running app via `run operation`: a real ⌘C on a local row puts
+`com.dirnex.locations` **and** `public.file-url` on the real general pasteboard, with macOS still
+promoting to `NSFilenamesPboardType` and `Apple URL pasteboard type` — so Finder and Teams still see
+an ordinary file, which is the non-regression that mattered. ⌘C then ⌘V in the same folder produced
+`alpha copy.txt` with the right bytes, driving the new payload read path end to end through the
+queue. What is **not** verified live is a ⌘C on an actual connected server: a remote tab cannot be
+restored at launch (session restore is `.local`-only) and connecting needs the Connect sheet, so the
+remote half rests on the headless suites plus the pasteboard probe.
+
 **Deliberately not in scope.** Dragging a *folder* out of a server as a promise (a promise is one
 file; a recursive fetch behind a Finder drop has no progress surface and no way to stop it);
 `⌥⌘V` move-paste into an archive, which stays gated where it is today; and the pasteboard as an
