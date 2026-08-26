@@ -18041,6 +18041,95 @@
         }
       }
     },
+    "Check servers for changes every (seconds)": {
+      "comment": "Settings ▸ Panels label for the field setting how often a pane on a connected server re-lists it. The unit is inside the label so a translation can reorder the sentence.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server prüfen alle (Sekunden)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check servers for changes every (seconds)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobar los servidores cada (segundos)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vérifier les serveurs toutes les (secondes)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Controlla i server ogni (secondi)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバーの変更を確認する間隔（秒）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버 변경을 확인하는 간격(초)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Servers controleren elke (seconden)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprawdzaj serwery co (sekundy)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verificar os servidores a cada (segundos)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверять серверы каждые (секунды)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевіряти сервери кожні (секунди)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "检查服务器变化的间隔（秒）"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "檢查伺服器變更的間隔（秒）"
+          }
+        }
+      }
+    },
     "Check the passphrase": {
       "comment": "Title of the alert shown when the pack sheet’s two passphrases don’t match.",
       "localizations": {
@@ -23113,6 +23202,95 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "Couldn’t copy this item from the server": {
+      "comment": "Alert title when a file dragged out of a server to another app can't be downloaded.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Objekt konnte nicht vom Server kopiert werden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t copy this item from the server"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo copiar este elemento desde el servidor"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de copier cet élément depuis le serveur"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non è stato possibile copiare questo elemento dal server"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この項目をサーバーからコピーできませんでした"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 항목을 서버에서 복사할 수 없음"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kon dit onderdeel niet van de server kopiëren"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można skopiować tego elementu z serwera"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível copiar este item do servidor"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось скопировать этот объект с сервера"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося скопіювати цей об’єкт із сервера"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法从服务器复制此项目"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法從伺服器複製此項目"
           }
         }
       }
@@ -49482,6 +49660,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "沒有延伸屬性。"
+          }
+        }
+      }
+    },
+    "No server can tell Dirnex that somebody else added a file, so a pane showing one asks again on a timer — but only while you can actually see it, and never oftener than this. A folder that turns out to be slow or expensive to list is then asked less often still, so a huge one costs about as little as a small one. Set it to 0 to never contact a server unasked. Files on this Mac are never affected: they are watched exactly, and for free.": {
+      "comment": "Settings ▸ Panels footer under the server re-check interval. Explains that no remote protocol reports changes, that the pane only asks while it is on screen, that an expensive folder is asked less often still, and that 0 turns it off.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein Server kann Dirnex mitteilen, dass jemand anderes eine Datei hinzugefügt hat. Ein Bereich, der einen Server zeigt, fragt deshalb nach einem Zeitgeber erneut nach – aber nur, solange Sie ihn tatsächlich sehen können, und nie öfter als hier angegeben. Ein Ordner, dessen Auflistung sich als langsam oder teuer erweist, wird noch seltener abgefragt, sodass ein riesiger etwa so wenig kostet wie ein kleiner. Mit 0 wird nie unaufgefordert ein Server kontaktiert. Dateien auf diesem Mac sind nie betroffen: Sie werden exakt und kostenlos überwacht."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No server can tell Dirnex that somebody else added a file, so a pane showing one asks again on a timer — but only while you can actually see it, and never oftener than this. A folder that turns out to be slow or expensive to list is then asked less often still, so a huge one costs about as little as a small one. Set it to 0 to never contact a server unasked. Files on this Mac are never affected: they are watched exactly, and for free."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ningún servidor puede avisar a Dirnex de que otra persona ha añadido un archivo, así que un panel que muestre uno vuelve a preguntar con un temporizador, pero solo mientras puedas verlo y nunca más a menudo que esto. Una carpeta que resulta lenta o costosa de listar se consulta aún menos, de modo que una enorme cuesta casi lo mismo que una pequeña. Ponlo a 0 para no contactar nunca con un servidor sin pedirlo. Los archivos de este Mac nunca se ven afectados: se vigilan de forma exacta y gratuita."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun serveur ne peut prévenir Dirnex qu’une autre personne a ajouté un fichier ; un panneau qui en affiche un redemande donc à intervalle régulier, mais uniquement tant que vous pouvez le voir, et jamais plus souvent que cela. Un dossier qui se révèle lent ou coûteux à lister est interrogé encore moins souvent, si bien qu’un très gros coûte à peu près aussi peu qu’un petit. Réglez sur 0 pour ne jamais contacter un serveur sans le demander. Les fichiers de ce Mac ne sont jamais concernés : ils sont surveillés exactement, et gratuitement."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun server può dire a Dirnex che qualcun altro ha aggiunto un file, così un pannello che ne mostra uno richiede di nuovo l’elenco a intervalli — ma solo finché puoi vederlo, e mai più spesso di così. Una cartella che si rivela lenta o costosa da elencare viene interrogata ancora meno, quindi una enorme costa quasi quanto una piccola. Imposta 0 per non contattare mai un server senza chiederlo. I file su questo Mac non sono mai coinvolti: sono osservati in modo esatto e gratuito."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ほかの人がファイルを追加したことをサーバーが Dirnex に知らせる手段はありません。そのためサーバーを表示しているパネルは一定間隔で問い合わせ直します。ただし実際に画面で見えているあいだだけで、ここで指定した間隔より頻繁になることはありません。一覧の取得が遅い、または負担の大きいフォルダはさらに間隔を空けて問い合わせるので、巨大なフォルダでも小さなものとほぼ同じ負担で済みます。0 にすると、指示がないかぎりサーバーに接続しません。この Mac 上のファイルには影響しません。正確に、無償で監視されています。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "어떤 서버도 다른 사람이 파일을 추가했다고 Dirnex에 알려 주지 못합니다. 그래서 서버를 보여 주는 패널은 일정 간격으로 다시 물어봅니다. 단 실제로 화면에 보이는 동안에만, 그리고 여기서 정한 간격보다 자주 묻지는 않습니다. 목록을 가져오기 느리거나 부담이 큰 폴더는 더 드물게 물어보므로, 아주 큰 폴더도 작은 폴더와 비슷한 비용이면 됩니다. 0으로 설정하면 요청 없이는 서버에 연결하지 않습니다. 이 Mac의 파일은 영향을 받지 않습니다. 정확하게, 무료로 감시됩니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen enkele server kan Dirnex vertellen dat iemand anders een bestand heeft toegevoegd, dus een venster dat er een toont vraagt het met een timer opnieuw op — maar alleen zolang u het echt kunt zien, en nooit vaker dan dit. Een map die traag of duur blijkt op te halen wordt nog minder vaak bevraagd, zodat een enorme map bijna net zo weinig kost als een kleine. Zet het op 0 om nooit ongevraagd contact met een server te maken. Bestanden op deze Mac worden nooit geraakt: die worden exact en gratis bewaakt."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Żaden serwer nie powiadomi Dirnex, że ktoś inny dodał plik, więc panel pokazujący serwer pyta o listę ponownie według czasomierza — ale tylko wtedy, gdy naprawdę go widzisz, i nigdy częściej niż tutaj. Folder, który okaże się wolny lub kosztowny do wylistowania, jest odpytywany jeszcze rzadziej, więc ogromny kosztuje niemal tyle co mały. Ustaw 0, aby nigdy nie łączyć się z serwerem bez polecenia. Pliki na tym Macu nie są tym objęte: są obserwowane dokładnie i za darmo."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhum servidor consegue avisar o Dirnex de que outra pessoa adicionou um arquivo, então um painel que mostra um deles pergunta de novo por um temporizador — mas só enquanto você consegue vê-lo, e nunca com mais frequência que isto. Uma pasta que se revela lenta ou cara de listar é consultada ainda menos, de modo que uma enorme custa quase tão pouco quanto uma pequena. Defina 0 para nunca contatar um servidor sem pedir. Os arquivos neste Mac nunca são afetados: são monitorados com exatidão, e de graça."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ни один сервер не сообщит Dirnex, что кто-то другой добавил файл, поэтому панель, показывающая сервер, запрашивает список заново по таймеру — но только пока вы действительно её видите, и не чаще, чем указано здесь. Папку, которая окажется медленной или дорогой для перечисления, опрашивают ещё реже, так что огромная обходится почти так же дёшево, как маленькая. Значение 0 — никогда не обращаться к серверу без запроса. Файлов на этом Mac это не касается: за ними следят точно и бесплатно."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Жоден сервер не повідомить Dirnex, що хтось інший додав файл, тож панель, яка показує сервер, перепитує список за таймером — але лише поки ви справді її бачите, і не частіше, ніж вказано тут. Теку, яка виявиться повільною або дорогою для перелічування, опитують ще рідше, тож велика коштує майже стільки ж, скільки маленька. Значення 0 — ніколи не звертатися до сервера без запиту. Файлів на цьому Mac це не стосується: за ними стежать точно й безкоштовно."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器无法告知 Dirnex 别人添加了文件，因此显示服务器的面板会按计时器重新查询——但仅在你确实看得见它时，而且不会比这里设定的更频繁。若某个文件夹列出起来很慢或代价很高，查询会更少，因此很大的文件夹与很小的花费相差无几。设为 0 则永不主动连接服务器。本机上的文件不受影响：它们被精确且免费地监视着。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伺服器無法告知 Dirnex 有人新增了檔案，因此顯示伺服器的窗格會依計時器重新查詢——但只在你確實看得見它時，而且不會比這裡設定的更頻繁。若某個資料夾列出起來很慢或代價很高，查詢會更少，因此很大的資料夾與很小的花費相差無幾。設為 0 則永不主動連線伺服器。本機上的檔案不受影響：它們被精確且免費地監看著。"
           }
         }
       }

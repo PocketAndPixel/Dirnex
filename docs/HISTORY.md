@@ -11377,16 +11377,82 @@ plumbing between the registration and the promise is the one link no test in thi
 
 ---
 
-### After M19 — the follow-on log (2026-08-07 → 2026-08-25)
+### After M19 — the follow-on log (2026-08-07 → 2026-08-26)
 
-Thirty-one dated passes that landed outside a milestone of their own, between M18's close on
-2026-08-07 and 2026-08-25: user-reported bugs, three vault features, the tree crossing into S3,
+Thirty-two dated passes that landed outside a milestone of their own, between M18's close on
+2026-08-07 and 2026-08-26: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
 sit here at the end rather than in a numeric slot — and they keep their **newest-first** order,
 because several read as a chain and refer to the entry below. Moved out of [PLAN.md](../PLAN.md)
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there.
+
+**2026-08-26 — a pane on a server keeps itself current, and the first gap in
+LOCATION-SUPPORT.md closes.** *"No live refresh on a server. A file added by somebody else never
+appears until the folder is re-listed by hand"* headed that document's ranked list of what still
+feels unlike local. No remote protocol here can fix it — SFTP has no `inotify`, FTP has no verb, and
+S3 has no session to hold a notification open on — so the only way to learn that a folder moved is
+to ask again, and the whole design is about asking as little as will do.
+
+**A duty cycle rather than a table of intervals**, because the quantity that varies is the *folder*
+and not the protocol: an S3 listing pages at 1000 keys, so a 50 000-object prefix is fifty billed
+requests and ~32 s where an ordinary folder is one request and 0.65 s, and a tree re-lists every
+expanded level. `RemoteRefreshPolicy` therefore derives the gap from **what the previous refresh
+actually cost**, holding a pane to ~5 % of its wall time — so an expensive folder backs off by
+itself, on a slow link as much as on a large prefix, with no per-backend row to keep. For everything
+a person browses the ceiling is slack and the **floor** decides, which is why the floor is the one
+number in Settings ▸ Panels and `0` is a real setting: *never contact a server unasked*. The same
+division `DirectorySizeBudget` already draws — the budget is not the patience limit, it is what stops
+a runaway billing indefinitely.
+
+**Whether anybody is looking turned out to be one property.** Probed on a live window: `NSWindow
+.occlusionState` goes false for miniaturized, app-hidden, ordered-out **and covered by another
+window**, while `isVisible` stays true through the last of those — the commonest case and the one
+everybody reaches for first. The same probe caught the trap that `didBecomeActive` fires *before*
+occlusion updates, so the poll arms from the occlusion notification and never from activation.
+App-*activity* is deliberately not a second gate: a pane beside the user's editor showing rows that
+are quietly out of date is the bug being fixed, and it is still being read.
+
+**One refresh, two wake sources.** The poll re-uses `performListRefresh` / `performTreeRefresh`
+rather than growing a second re-list that would drift, and the two differ on exactly one thing,
+carried as a `RefreshWake`: an FSEvents ping is itself proof that something under the directory
+changed, where a poll knows only what two listings disagree about — so only the event may evict
+cached folder totals unconditionally. Inert today (a remote path never reaches
+`DirectorySizeProvider`) and gated anyway, since the day a budgeted remote walk banks a total there,
+an ungated poll would drop a ten-minute answer every fifteen seconds with nothing to say why. The
+existing "only when the listing actually moved" guard is what makes the whole thing affordable: a
+server asked every fifteen seconds answers *the same rows* nearly every time, and that costs one
+request and no repaint.
+
+**Verified against a real server, and it is what found the bug.** A throwaway unprivileged `sshd` on
+port 2229, a saved connection seeded into the defaults domain so reaching a remote pane was one
+sidebar click, and the app run from a shell with a short-lived `NSLog`. A file created from the
+shell — genuinely somebody else — appeared in the SFTP pane 4 s later with no key pressed, beside a
+local pane on the same directory that had it instantly from FSEvents; hiding the app logged one
+`stop` and then nothing at all for two intervals. What the run caught was the catch-up: a pane
+uncovered after 25 s waited out **a fresh interval** instead of refreshing at once, because the
+timings it subtracts were cleared whenever the armed path changed and `stopRemoteRefresh` nils that
+path. Keyed by the path they describe, the same run reads `fire after 0.0s`. Nothing headless could
+have seen it — no test arms a timer — so the arithmetic moved into `RemoteRefreshPolicy.delay`,
+where reverting it fails four assertions. See docs/NOTES.md ▸ AppKit.
+
+The pass also paid three lint ceilings the feature crossed, by concept rather than by shaving:
+`navigate` joined the small navigation actions it is the funnel for, the tree's watcher and re-list
+became `PanelViewController+TreeRefresh` beside list mode's `+Watch`, and `AppPreferences` gave up
+its defaults-key vocabulary and its palette. Both new Settings strings were measured across all
+fourteen catalogs before shipping — French ran 24 pt past the widest label already on that tab, and
+the shortened set clears it by 96 pt.
+
+Running `scripts/check_localization_keys.py` for the new strings also surfaced one that was already
+failing it: **"Couldn't copy this item from the server"**, the alert title a failed drag of a
+server's file out to another app raises, had shipped with M23 wrapped in `String(localized:)` and
+absent from the catalog — so it rendered English in thirteen languages, which is exactly the
+silent-by-construction class that script exists to catch and the reason it is a CI step rather than
+a test. Added in all fourteen, in the register of its two siblings on the same funnel
+("Couldn't open this item" and "Couldn't open this item for editing") rather than as three
+translators' guesses, and read back out of the **compiled** `.lproj`s rather than trusted from the
+catalog. The script now reports 912 extracted keys, all present.
 
 **2026-08-25 — the same refusal, swallowed by a `try?` in two flows that then report success.**
 The entry below fixed F8 and recorded its other two callers as still open; this closes them.

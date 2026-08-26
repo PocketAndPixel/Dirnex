@@ -14,7 +14,9 @@ import Foundation
 final class AppPreferences: ObservableObject {
     static let shared = AppPreferences()
 
-    private let defaults: UserDefaults
+    /// `internal` rather than `private` only because Swift's `private` does not cross files and
+    /// `AppPreferences+Palette` writes through it (docs/NOTES.md ▸ Lint ceilings and file splitting).
+    let defaults: UserDefaults
 
     /// General ▸ reopen the previous session's tabs at launch (default on — the existing
     /// behavior). Off starts every window fresh at Home.
@@ -222,6 +224,44 @@ final class AppPreferences: ObservableObject {
         }
     }
 
+    /// Panels ▸ how long a pane on a connected server waits before re-listing it on its own
+    /// (docs/LOCATION-SUPPORT.md ▸ "No live refresh on a server"), in seconds.
+    ///
+    /// **Zero is a setting** — never talk to my server unless I ask — and is exactly what every
+    /// remote pane did before this existed. It is the honest answer on a metered link or a bill
+    /// somebody watches, which is why the band starts there rather than at some small number.
+    ///
+    /// The floor is all the user owns: how often a pane *actually* re-lists is derived from what the
+    /// previous refresh cost (``RemoteRefreshPolicy``), so a folder that turns out to be expensive
+    /// backs off on its own and there is no second number to keep consistent with this one. Clamped
+    /// on the way in *and* on the way out, because a defaults domain is hand-editable by design.
+    @Published var remoteRefreshFloor: TimeInterval {
+        didSet {
+            let clamped = RemoteRefreshPolicy.clampedFloor(remoteRefreshFloor)
+            guard clamped == remoteRefreshFloor else {
+                remoteRefreshFloor = clamped
+                return
+            }
+            guard remoteRefreshFloor != oldValue else { return }
+            defaults.set(remoteRefreshFloor, forKey: Keys.remoteRefreshFloor)
+            NotificationCenter.default.post(name: Self.remoteRefreshFloorDidChange, object: self)
+        }
+    }
+
+    /// The same floor as the whole number of seconds the Settings field edits. A computed forward
+    /// rather than a second stored value, so the two can never disagree about what is in force.
+    var remoteRefreshFloorSeconds: Int {
+        get { Int(remoteRefreshFloor.rounded()) }
+        set { remoteRefreshFloor = TimeInterval(newValue) }
+    }
+
+    /// Posted (on the main actor) when `remoteRefreshFloor` changes, so every open remote pane
+    /// re-arms — turning polling off has to stop the pane the user is looking at, not the one they
+    /// see after the next navigation.
+    static let remoteRefreshFloorDidChange = Notification.Name(
+        "Dirnex.remoteRefreshFloorDidChange"
+    )
+
     /// The same limit in the decimal megabytes the Settings field edits. A computed forward rather
     /// than a second stored value, so the two can never disagree about what is in force.
     var quickViewFetchLimitMegabytes: Int {
@@ -266,45 +306,10 @@ final class AppPreferences: ObservableObject {
         didSet { paletteValueChanged(markColorHex, oldValue, key: Keys.markColorHex) }
     }
 
-    /// The three, resolved. Read at each drawing site — cheap (three dictionary lookups' worth of
-    /// stored string parsing) and always current, so no view has to be told twice.
-    var palette: PanelPalette {
-        PanelPalette(
-            accent: PanelPalette.color(fromHex: accentColorHex),
-            cursor: PanelPalette.color(fromHex: cursorColorHex),
-            mark: PanelPalette.color(fromHex: markColorHex)
-        )
-    }
-
-    /// Posted (on the main actor) when any of the three colors changes, so every open pane, tab
-    /// strip, path bar and titlebar indicator restyles live. One notification for all three rather
-    /// than three: every observer repaints the same surfaces regardless of which color moved, and
-    /// splitting them would only invite a site that listens for two of the three.
-    static let paletteDidChange = Notification.Name("Dirnex.paletteDidChange")
-
     /// Set while `resetPalette` writes all three, so the run posts one notification instead of up to
-    /// three — each of which would drive a full re-render of every open pane.
-    private var isResettingPalette = false
-
-    private func paletteValueChanged(_ new: String, _ old: String, key: String) {
-        guard new != old else { return }
-        defaults.set(new, forKey: key)
-        guard !isResettingPalette else { return }
-        NotificationCenter.default.post(name: Self.paletteDidChange, object: self)
-    }
-
-    /// Put all three back to Follow System in one step, for the Settings button that offers it —
-    /// the one gesture that restores the shipped rendering exactly, without the user having to
-    /// remember which of the three they had touched.
-    func resetPalette() {
-        guard !palette.isFollowingSystem else { return }
-        isResettingPalette = true
-        accentColorHex = ""
-        cursorColorHex = ""
-        markColorHex = ""
-        isResettingPalette = false
-        NotificationCenter.default.post(name: Self.paletteDidChange, object: self)
-    }
+    /// three — each of which would drive a full re-render of every open pane. Stays in the class
+    /// while the rest of the palette lives in `AppPreferences+Palette`, as stored properties must.
+    var isResettingPalette = false
 
     /// Operations ▸ ask for confirmation before moving items to the Trash (default off —
     /// Trash is recoverable, matching Finder). Permanent delete always confirms regardless.
@@ -441,6 +446,14 @@ final class AppPreferences: ObservableObject {
             (defaults.object(forKey: Keys.quickViewFetchLimit) as? NSNumber)?.int64Value
                 ?? RemoteFetchPolicy.defaultPreviewLimit
         )
+        // `object(forKey:)` for the same reason as the line above: a missing key reads as **0**
+        // through `double(forKey:)`, and 0 is the one setting here that turns polling off — so the
+        // cheap spelling would ship every fresh install with the feature disabled and no way to tell
+        // that from a deliberate choice.
+        remoteRefreshFloor = RemoteRefreshPolicy.clampedFloor(
+            (defaults.object(forKey: Keys.remoteRefreshFloor) as? NSNumber)?.doubleValue
+                ?? RemoteRefreshPolicy.defaultFloor
+        )
         // Empty (never written) = the source, the shipped default, and so is anything an
         // older/newer build can't parse.
         quickViewRenderStyle = QuickViewRenderStyle(
@@ -464,30 +477,5 @@ final class AppPreferences: ObservableObject {
         )
         hasReadICloudAppLibraries = defaults.bool(forKey: Keys.hasReadICloudAppLibraries)
         hasSeenFirstRunTour = defaults.bool(forKey: Keys.hasSeenFirstRunTour)
-    }
-
-    private enum Keys {
-        static let restoreSession = "Dirnex.pref.restoreSession"
-        static let showHidden = "Dirnex.pref.showHidden"
-        static let showTags = "Dirnex.pref.showTags"
-        static let showSyncStatus = "Dirnex.pref.showSyncStatus"
-        static let showFunctionBar = "Dirnex.pref.showFunctionBar"
-        static let rowDensity = "Dirnex.pref.rowDensity"
-        static let sizeVizDisplayMode = "Dirnex.pref.sizeVizDisplayMode"
-        static let quickViewRenderStyle = "Dirnex.pref.quickViewRenderStyle"
-        static let quickViewJavaScriptEnabled = "Dirnex.pref.quickViewJavaScriptEnabled"
-        static let quickViewFetchLimit = "Dirnex.pref.quickViewFetchLimit"
-        static let accentColorHex = "Dirnex.pref.accentColorHex"
-        static let cursorColorHex = "Dirnex.pref.cursorColorHex"
-        static let markColorHex = "Dirnex.pref.markColorHex"
-        static let confirmTrash = "Dirnex.pref.confirmTrash"
-        static let diffToolIdentifier = "Dirnex.pref.diffToolIdentifier"
-        static let textEditorIdentifier = "Dirnex.pref.textEditorIdentifier"
-        static let focusOpenedSearchDirectory = "Dirnex.pref.focusOpenedSearchDirectory"
-        static let receiveBetaUpdates = "Dirnex.pref.receiveBetaUpdates"
-        static let hasSeenFullDiskAccessOnboarding = "Dirnex.pref.hasSeenFullDiskAccessOnboarding"
-        static let hasOfferedFullDiskAccessForICloud = "Dirnex.pref.hasOfferedFullDiskAccessForICloud"
-        static let hasReadICloudAppLibraries = "Dirnex.pref.hasReadICloudAppLibraries"
-        static let hasSeenFirstRunTour = "Dirnex.pref.hasSeenFirstRunTour"
     }
 }

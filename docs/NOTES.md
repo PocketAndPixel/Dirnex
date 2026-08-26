@@ -1425,6 +1425,43 @@ at build time.
     is also what stops "it was green before" being read as evidence about the code rather than about
     the machine.
 
+- **`NSWindow.occlusionState` is the only property that answers "is anybody looking at this pane",
+  and `isVisible` is the one everybody reaches for first and is wrong for the commonest case.**
+  Probed on macOS 26 against a real window while building the remote poll, which must stand down
+  whenever nobody is reading the pane (it costs a billed request on S3): `occlusionState
+  .contains(.visible)` goes **false** for a window that is miniaturized, app-hidden, ordered out
+  **and one fully covered by another window** — the last of which `isVisible` reports as `true`
+  throughout. It answers for a window covered by another *application* too, since occlusion is the
+  window server's own bookkeeping rather than the app's. One reading, four states, no bookkeeping to
+  keep.
+  - **Arm from `didChangeOcclusionState`, never from an activation notification.** The same probe
+    caught the trap: at the instant `NSApplicationDidBecomeActive` fires, occlusion still reads
+    *not visible* and is corrected a beat later by its own notification. So a gate that reads
+    occlusion inside `didBecomeActive` stands the work down at the exact moment it should start —
+    and it fails quietly, because the next genuine occlusion change papers over it.
+  - **Reading it must not build the pane.** `view.window` *loads* the view, which for a
+    `PanelViewController` runs `viewDidLoad` → `activateTab()` → a real listing. `viewIfLoaded?
+    .window` is what makes "is anybody looking" a question rather than an event, and it is also what
+    keeps a headless test host from opening network connections: an unloaded view is definitionally
+    not on screen. Worth an explicit assertion (`viewIfLoaded == nil` after asking), since the
+    reverted version passes every *other* test in the suite.
+  - **Scope the observer to the pane's own window.** `object: nil` wakes every pane in the process
+    on every window's occlusion change — panes in other windows, and in a test host every pane any
+    suite has ever built, since suites there retain windows for the process's life. The registration
+    has to wait for `viewDidAppear`, since a pane has no window at `viewDidLoad`, which is exactly
+    what makes `nil` look necessary.
+  - **A timer that is armed and stood down must not key its own state on what the stand-down
+    clears.** The poll spaces its next round by subtracting how long it is since the last one
+    finished, so a pane uncovered after twenty minutes catches up at once while one flicked away and
+    back does not spend a request on the gesture. Both timings were reset whenever the *armed path*
+    changed — and `stopRemoteRefresh` nils that path, so **every stand-down threw the timings away**
+    and the catch-up silently became "wait out a fresh interval". Invisible at a 15 s floor and an
+    hour of staleness at an hour's; no test could see it, because none arms a timer. Caught by
+    reading `PROBE fire after 5.0s` in a running app where it should have said `0.0s`. Key the
+    measurement **by the path it describes** and ignore a foreign one rather than clearing anything:
+    there is then nothing to clear, and the arithmetic moves into the core where a negative control
+    can fail on it.
+
 - **Right-click menu items must capture their paths at build time** into `representedObject`,
   and entry-vs-`..` must be decided from the clicked row, not a cursor flag — a right-click on a
   marked row leaves that flag stale.
@@ -5626,7 +5663,12 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     neighbour's failure**, because "it was green before" measures the machine as much as the code.
     Here two new 2 s-holding tests failed 3 full runs of 7 while the suite passed alone every time,
     which is a convincing-looking case; with both new files *skipped*, the same machine still failed
-    1 run in 4.
+    1 run in 4. **And a three-run baseline is not a baseline**: measured again
+    2026-08-26 while adding the remote poll, the same suite was 3/3 green with the change stashed and
+    then 5/6 on a longer run of the *identical* tree — so the first control "cleared" the baseline and
+    sent two plausible causes to be fixed before a six-run one showed the failure was there all along.
+    Match the number of baseline runs to the failure rate you are trying to see, not to your
+    patience.
 - **The tenth is "which pane do I re-list", and it is the eighth's question asked from the *window*
   rather than from the pane.** The remote write-back finished its upload and called
   `refreshPanesShowing(path.parent)`, whose predicate was `pane.panel.path == directory` — the same

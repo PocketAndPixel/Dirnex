@@ -41,6 +41,14 @@ extension PanelViewController {
         } else {
             navigate(to: panel.path)
         }
+        // Re-point the remote poll at whichever tab is now on screen. It cannot ride
+        // `refreshActiveDirectory` the way the FSEvents watcher does: that returns early for exactly
+        // the tabs this is for — a remote list tab falls out at its `.local` guard, and a remote tree
+        // tab is served by `startWatchingTree` rather than by `startPaneWatcher`. So switching to a
+        // server tab would leave the loop armed for the tab you *left*, where its own path guard
+        // ends it, and nothing would poll again until the next navigation. Here instead, beside the
+        // size-walk cancellation, because this is the one funnel every tab change goes through.
+        updateRemoteRefreshSchedule()
         // The switched-to tab owns its own back/forward trail — re-validate the titlebar buttons.
         host?.panelDidNavigate(self)
     }

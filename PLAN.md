@@ -152,7 +152,7 @@ non-empty folder, which hid three folders Finder shows.
 ### After M19
 
 M19 closed on 2026-08-09; M20 opened and closed 2026-08-12, M22 on 08-16, M21 on 08-19 and M23 on
-08-26. Thirty-one further passes landed between 2026-08-07 and 2026-08-25 without a milestone of
+08-26. Thirty-two further passes landed between 2026-08-07 and 2026-08-26 without a milestone of
 their own, and every one of them is shipped — so that log lives in
 **[docs/HISTORY.md](docs/HISTORY.md) ▸ After M19** with the rest of the archive, together with the
 two passes that closed M19's own loose ends.
@@ -162,6 +162,21 @@ What is still open, rather than merely imaginable, is the *undone* column above 
 - **The thumbnail grid, brief view and the `PaneSurface` extraction** — M15's cut, and one unit
   rather than three items, argued in HISTORY.md §M15. Any future grid inherits two constraints from
   it: skip `FileEntry.isDataless` rows, and move sort off the column header first.
+
+**The first gap in [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md)'s ranked list — "no live
+refresh on a server" — closed 2026-08-26.** A pane on a connected server now re-lists itself while
+it is on screen, so a file somebody else added appears without anyone pressing a key.
+`RemoteRefreshPolicy` derives the gap from **what the previous refresh actually cost** rather
+than from a per-backend table, holding a pane to ~5 % of its wall time — so an ordinary folder runs
+at the floor
+the user owns (Settings ▸ Panels, 15 s, **0 = never contact a server unasked**) while a
+50 000-object prefix backs off to about one refresh every eleven minutes on its own. It polls only
+while `NSWindow.occlusionState` says the pane is genuinely visible, and it re-uses the existing
+passive refresh rather than growing a second one — the two wake sources differ on one thing only,
+which is whether the wake is itself proof that the subtree changed. Verified against a throwaway
+local `sshd`; the run is what caught the catch-up bug that no headless test could (HISTORY.md ▸
+After M19, NOTES.md ▸ AppKit). It stays a **"yes, limited"** in that document rather than a plain
+yes: a poll is not a notification, and nothing can make it one.
 
 M19's last loose end — **a member filter for an encrypted archive** — **closed 2026-08-25**. The
 encrypted route extracted the whole archive however little was asked for, so opening one member of a

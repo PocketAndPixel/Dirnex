@@ -233,6 +233,34 @@ final class PanelViewController: NSViewController {
     /// The two drift apart exactly when a pane's other tab takes the watcher over, which is why the
     /// rebuild guard in `watchMergedListing` reads this and not the tab's copy (PLAN.md §M8).
     var watchedSources: [VFSPath] = []
+    /// The remote poll's loop, or `nil` when this pane is not talking to a server — a pane on the
+    /// local disk, one nobody is looking at, or polling switched off in Settings. Driven entirely by
+    /// `PanelViewController+RemoteRefresh`; a stored property cannot live in that extension.
+    ///
+    /// Held `[weak self]` inside rather than cancelled from `deinit`, which a `nonisolated deinit`
+    /// cannot reach: the loop is one-shot-sleep-then-check, so a pane that goes away leaves at most
+    /// one sleeping task holding a weak reference, which returns on its next wake.
+    var remoteRefreshTask: Task<Void, Never>?
+    /// The path `remoteRefreshTask` was armed for, so re-arming can be idempotent — a burst of
+    /// occlusion notifications must not keep resetting the clock and starve the poll forever.
+    var remoteRefreshScheduledFor: VFSPath?
+    /// The last poll this pane completed: which directory it was of, what it cost, and when it
+    /// finished. The cost is what `RemoteRefreshPolicy` spaces the next round by — an expensive
+    /// folder backs off on its own — and the timestamp is what lets a pane uncovered after twenty
+    /// minutes catch up at once while one flicked away and back does not bill a request for the
+    /// gesture.
+    ///
+    /// **Carrying the path is what makes it survive its own teardown.** It began as a bare pair
+    /// cleared whenever the armed path changed, and `stopRemoteRefresh` nils that path — so every
+    /// stand-down threw the timings away and the catch-up above silently became "wait out a fresh
+    /// interval". Invisible at a 15 s floor and an hour of staleness at an hour's; caught by
+    /// watching the running app rather than by any test, which cannot arm a timer. Keyed by path
+    /// there is nothing to clear: a measurement of another directory is simply not used.
+    var remoteRefreshLastPoll: RemoteRefreshMeasurement?
+    /// The window whose occlusion this pane is observing, so the registration can be re-pointed
+    /// rather than duplicated. `weak` because the observation is the only thing that would keep a
+    /// closed window alive, and a pane must not be that thing.
+    weak var occlusionObservedWindow: NSWindow?
     /// FSEvents watcher for the *repository root* of the directory on screen, and the root it
     /// covers. Distinct from `watcher`, which re-lists this folder: what Git says about these rows
     /// also changes with the index and `HEAD` at the root — a `git add` in a terminal — and no
@@ -380,7 +408,18 @@ final class PanelViewController: NSViewController {
         observeCloudSyncStatusChanges()
         observeDirectorySizeChanges()
         observeSizeVizDisplayModePreference()
+        observeRemoteRefreshConditions()
         activateTab()
+    }
+
+    /// The pane has a window, so "is anybody looking" has an answer for the first time — at
+    /// `viewDidLoad` there is no window and the remote poll correctly stands down. Occlusion changes
+    /// after this are the observer's, but the *first* one is not guaranteed to arrive: a pane whose
+    /// view is installed into a window that is already on screen has nothing to change.
+    override func viewDidAppear() {
+        super.viewDidAppear()
+        observeWindowOcclusion()
+        updateRemoteRefreshSchedule()
     }
 
     // MARK: - Focus
@@ -393,105 +432,5 @@ final class PanelViewController: NSViewController {
     private func updateActiveAppearance() {
         pathBar.isActive = isActivePanel
         tabBar.isActivePane = isActivePanel
-    }
-
-    // MARK: - Navigation
-
-    /// Load `path` and install it in the active tab. When `focus` names a child that
-    /// still exists (used when walking up), the cursor lands on it — the expected "go up,
-    /// land on where I came from" behavior. A successful load records the visit in the tab's
-    /// back/forward history (PLAN.md §M3) unless `recordHistory` is `false` — the flag
-    /// back/forward/jump navigation passes so walking the trail doesn't append to it.
-    /// Internal so `PanelViewController+Tabs` can load a freshly opened tab.
-    func navigate(to path: VFSPath, focus child: VFSPath? = nil, recordHistory: Bool = true) {
-        loadToken += 1
-        // Whatever this pane was paying a server to measure, it has stopped looking at. A local
-        // walk is untracked and deliberately survives — see `PanelViewController+Sizing`.
-        cancelUnwatchedDirectorySizeWalks()
-        let token = loadToken
-        let tabIndex = activeTabIndex
-        // Captured before the async load: was this tab showing a *non-re-listable* virtual pane
-        // when we left? A `.search` results listing (and a browsed archive) can't be re-entered
-        // from a history trail, so leaving one starts fresh. A connected remote *is* re-listable,
-        // so it keeps a normal back/forward trail like a local directory.
-        let wasVirtual = panel.path.backend != .local && !panel.path.backend.isRemoteConnection
-        // Captured alongside it: was this tab showing a *results* listing? Its chip label and the
-        // query behind "Save Search…" describe the results, not a place, so arriving at a real
-        // directory has to drop them — otherwise clicking Home out of the Trash lands in the home
-        // folder with the tab still chipped "Trash".
-        let wasResults = isResultsListing
-        // Captured before the load (`setListing` makes `panel.path` the destination): the departed
-        // directory and its marks, so leaving a folder with marks records the loss against *that*
-        // folder — undo restores them on return; a same-directory reload keeps marks, so it no-ops.
-        let departed = panel.path
-        let departedMarks = panel.selection
-        Task {
-            do {
-                // Sort the fresh listing off the main thread (PLAN.md §M7 perf pass): a 100k
-                // directory's ~350 ms `localizedStandardCompare` pass must not jank the pane.
-                // Built with an empty filter, so entering a directory starts fresh — a quick-filter
-                // from the folder we just left shouldn't silently hide the new folder's contents —
-                // and with no computed sizes, since a directory we're arriving at has none yet.
-                // Hidden files come from the app-wide toggle rather than the departed model: a
-                // results listing forces them *on* (see `ResultsPresentation.showsHidden`), and
-                // carrying that into a real directory would show dotfiles with the eye toggled off.
-                let model = try await DirectoryLoader.model(
-                    backend,
-                    at: path,
-                    sort: panel.model.sort,
-                    showHidden: AppPreferences.shared.showHidden
-                )
-                guard token == loadToken else { return }
-                panel.setModel(model)
-                // Bring the pane into the tab's shape (PLAN.md §M15 Slice 4) before the render: a
-                // fresh model is an all-collapsed tree, so this seeds `panel.tree` when the tab wants
-                // one, and flattens back where a tree can't apply.
-                applyViewMode()
-                resetMouseSelectionAnchor()
-                recordMarkChange(since: departedMarks, in: departed, label: .clearSelection)
-                if let child, let index = panel.displayedIndex(ofID: child) {
-                    panel.moveCursor(to: index)
-                }
-                // Land on a real entry; only an empty directory parks the cursor on `..`. Asked
-                // through `canGoToParent` rather than through `parentPath`, so the flag cannot claim
-                // the cursor is on a row the pane does not draw — which it did for an empty results
-                // listing, whose synthetic path has a parent that is not somewhere to go.
-                cursorOnParentRow = panel.isEmpty && canGoToParent
-                // A restored tab's first listing: re-open the folders a restored tree had expanded,
-                // listing each lazily…
-                restorePendingTreeExpansion()
-                // …then re-anchor its saved cursor and re-mark its saved selection, overriding the
-                // defaults just set. Second, because a cursor or mark *inside* one of those folders
-                // can only be anchored once that folder's rows exist — this pass takes whatever the
-                // root already shows, and each expansion's landing re-runs it for the rest. A no-op
-                // for every other navigation.
-                applyPendingRestore(toTab: tabIndex)
-                tabs[tabIndex].hasLoaded = true
-                if wasResults { tabs[tabIndex].clearResultsIdentity() }
-                if wasVirtual {
-                    // Leaving a virtual results pane for a real directory starts a fresh trail —
-                    // the synthetic `.search` path can't be re-listed, so it must never enter the
-                    // back/forward history. Frecency still records the real destination.
-                    tabs[tabIndex].history = NavigationHistory(initialPath: path)
-                    FrecencyStore.shared.recordVisit(path)
-                } else {
-                    recordVisit(path, tab: tabIndex, recordHistory: recordHistory)
-                }
-                // The directory we just left has a scan queued against it that nobody will render.
-                DirectorySizeProvider.shared.cancelScan(for: departed)
-                reloadEverything()
-                refreshTabBar()
-                startPaneWatcher(path, force: true)
-                updateGitStatus()
-                updateTagStatus()
-                updateSyncStatus()
-                updateSizeVisualization()
-                persistState()
-                host?.panelDidNavigate(self)
-            } catch {
-                guard token == loadToken else { return }
-                presentLoadFailure(error, path: path)
-            }
-        }
     }
 }

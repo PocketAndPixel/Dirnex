@@ -81,6 +81,8 @@ struct PanelsSettingsView: View {
 
             QuickViewFetchLimitSection(preferences: preferences)
 
+            RemoteRefreshSection(preferences: preferences)
+
             Section {
                 Toggle(
                     "Run JavaScript in rendered HTML previews",

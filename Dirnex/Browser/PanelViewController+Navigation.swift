@@ -197,4 +197,108 @@ extension PanelViewController {
         panel.moveCursor(to: index)
         openCurrentEntry()
     }
+
+    // MARK: - Loading a directory
+
+    // Moved here from `PanelViewController` when the remote poll pushed that file past SwiftLint's
+    // 500-line ceiling: this is the navigation the small actions above all funnel into, so the seam
+    // is the concept's, not a line count's (docs/NOTES.md ▸ Lint ceilings and file splitting).
+
+    /// Load `path` and install it in the active tab. When `focus` names a child that
+    /// still exists (used when walking up), the cursor lands on it — the expected "go up,
+    /// land on where I came from" behavior. A successful load records the visit in the tab's
+    /// back/forward history (PLAN.md §M3) unless `recordHistory` is `false` — the flag
+    /// back/forward/jump navigation passes so walking the trail doesn't append to it.
+    /// Internal so `PanelViewController+Tabs` can load a freshly opened tab.
+    func navigate(to path: VFSPath, focus child: VFSPath? = nil, recordHistory: Bool = true) {
+        loadToken += 1
+        // Whatever this pane was paying a server to measure, it has stopped looking at. A local
+        // walk is untracked and deliberately survives — see `PanelViewController+Sizing`.
+        cancelUnwatchedDirectorySizeWalks()
+        let token = loadToken
+        let tabIndex = activeTabIndex
+        // Captured before the async load: was this tab showing a *non-re-listable* virtual pane
+        // when we left? A `.search` results listing (and a browsed archive) can't be re-entered
+        // from a history trail, so leaving one starts fresh. A connected remote *is* re-listable,
+        // so it keeps a normal back/forward trail like a local directory.
+        let wasVirtual = panel.path.backend != .local && !panel.path.backend.isRemoteConnection
+        // Captured alongside it: was this tab showing a *results* listing? Its chip label and the
+        // query behind "Save Search…" describe the results, not a place, so arriving at a real
+        // directory has to drop them — otherwise clicking Home out of the Trash lands in the home
+        // folder with the tab still chipped "Trash".
+        let wasResults = isResultsListing
+        // Captured before the load (`setListing` makes `panel.path` the destination): the departed
+        // directory and its marks, so leaving a folder with marks records the loss against *that*
+        // folder — undo restores them on return; a same-directory reload keeps marks, so it no-ops.
+        let departed = panel.path
+        let departedMarks = panel.selection
+        Task {
+            do {
+                // Sort the fresh listing off the main thread (PLAN.md §M7 perf pass): a 100k
+                // directory's ~350 ms `localizedStandardCompare` pass must not jank the pane.
+                // Built with an empty filter, so entering a directory starts fresh — a quick-filter
+                // from the folder we just left shouldn't silently hide the new folder's contents —
+                // and with no computed sizes, since a directory we're arriving at has none yet.
+                // Hidden files come from the app-wide toggle rather than the departed model: a
+                // results listing forces them *on* (see `ResultsPresentation.showsHidden`), and
+                // carrying that into a real directory would show dotfiles with the eye toggled off.
+                let model = try await DirectoryLoader.model(
+                    backend,
+                    at: path,
+                    sort: panel.model.sort,
+                    showHidden: AppPreferences.shared.showHidden
+                )
+                guard token == loadToken else { return }
+                panel.setModel(model)
+                // Bring the pane into the tab's shape (PLAN.md §M15 Slice 4) before the render: a
+                // fresh model is an all-collapsed tree, so this seeds `panel.tree` when the tab wants
+                // one, and flattens back where a tree can't apply.
+                applyViewMode()
+                resetMouseSelectionAnchor()
+                recordMarkChange(since: departedMarks, in: departed, label: .clearSelection)
+                if let child, let index = panel.displayedIndex(ofID: child) {
+                    panel.moveCursor(to: index)
+                }
+                // Land on a real entry; only an empty directory parks the cursor on `..`. Asked
+                // through `canGoToParent` rather than through `parentPath`, so the flag cannot claim
+                // the cursor is on a row the pane does not draw — which it did for an empty results
+                // listing, whose synthetic path has a parent that is not somewhere to go.
+                cursorOnParentRow = panel.isEmpty && canGoToParent
+                // A restored tab's first listing: re-open the folders a restored tree had expanded,
+                // listing each lazily…
+                restorePendingTreeExpansion()
+                // …then re-anchor its saved cursor and re-mark its saved selection, overriding the
+                // defaults just set. Second, because a cursor or mark *inside* one of those folders
+                // can only be anchored once that folder's rows exist — this pass takes whatever the
+                // root already shows, and each expansion's landing re-runs it for the rest. A no-op
+                // for every other navigation.
+                applyPendingRestore(toTab: tabIndex)
+                tabs[tabIndex].hasLoaded = true
+                if wasResults { tabs[tabIndex].clearResultsIdentity() }
+                if wasVirtual {
+                    // Leaving a virtual results pane for a real directory starts a fresh trail —
+                    // the synthetic `.search` path can't be re-listed, so it must never enter the
+                    // back/forward history. Frecency still records the real destination.
+                    tabs[tabIndex].history = NavigationHistory(initialPath: path)
+                    FrecencyStore.shared.recordVisit(path)
+                } else {
+                    recordVisit(path, tab: tabIndex, recordHistory: recordHistory)
+                }
+                // The directory we just left has a scan queued against it that nobody will render.
+                DirectorySizeProvider.shared.cancelScan(for: departed)
+                reloadEverything()
+                refreshTabBar()
+                startPaneWatcher(path, force: true)
+                updateGitStatus()
+                updateTagStatus()
+                updateSyncStatus()
+                updateSizeVisualization()
+                persistState()
+                host?.panelDidNavigate(self)
+            } catch {
+                guard token == loadToken else { return }
+                presentLoadFailure(error, path: path)
+            }
+        }
+    }
 }
