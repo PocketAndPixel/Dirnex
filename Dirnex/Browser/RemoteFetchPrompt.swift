@@ -43,6 +43,7 @@ final class RemoteFetchPrompt {
         for purpose: RemoteFetchPurpose,
         in context: Context,
         onStart: @escaping () -> Void = {},
+        onCancel: @escaping () -> Void = {},
         then proceed: @escaping (URL) -> Void,
         onFailure: @escaping (any Error) -> Void
     ) {
@@ -54,6 +55,7 @@ final class RemoteFetchPrompt {
             entry: entry,
             context: context,
             onStart: onStart,
+            onCancel: onCancel,
             proceed: proceed,
             onFailure: onFailure
         )
@@ -91,6 +93,7 @@ final class RemoteFetchPrompt {
         _ entry: FileEntry,
         in context: Context,
         onStart: @escaping () -> Void = {},
+        onCancel: @escaping () -> Void = {},
         then proceed: @escaping (URL) -> Void,
         onFailure: @escaping (any Error) -> Void
     ) {
@@ -102,6 +105,7 @@ final class RemoteFetchPrompt {
             entry: entry,
             context: context,
             onStart: onStart,
+            onCancel: onCancel,
             proceed: proceed,
             onFailure: onFailure
         ).start()
@@ -140,6 +144,15 @@ final class RemoteFetchPrompt {
     /// drawn from a snapshot the pane took before the question was asked, so without this it goes on
     /// offering a Download button for a download already under way.
     private let onStart: () -> Void
+    /// Called when the transfer is stopped — by the sheet’s Stop button, or by the placeholder
+    /// card’s.
+    ///
+    /// Every other caller ignores it, because a stopped preview or a stopped ⏎ simply does nothing
+    /// and the user is the one who stopped it. It exists for a caller **holding somebody else’s
+    /// completion handler open**: a drag out to Finder is fulfilled by an `NSFilePromiseProvider`,
+    /// which owes an answer on every path — and a stop that reported nowhere would leave the
+    /// receiving app waiting on a file that is never coming.
+    private let onCancel: () -> Void
     private let proceed: (URL) -> Void
     private let onFailure: (any Error) -> Void
 
@@ -160,12 +173,14 @@ final class RemoteFetchPrompt {
         entry: FileEntry,
         context: Context,
         onStart: @escaping () -> Void,
+        onCancel: @escaping () -> Void,
         proceed: @escaping (URL) -> Void,
         onFailure: @escaping (any Error) -> Void
     ) {
         self.entry = entry
         self.context = context
         self.onStart = onStart
+        self.onCancel = onCancel
         self.proceed = proceed
         self.onFailure = onFailure
     }
@@ -251,9 +266,11 @@ final class RemoteFetchPrompt {
                 finish()
                 proceed(url)
             } catch is CancellationError {
-                // The user's own answer, already on screen. Nothing to report, and nothing left on
-                // disk — the cache removed the partial.
+                // The user's own answer, already on screen: nothing to *report*, and nothing left on
+                // disk — the cache removed the partial. `onCancel` is not a report, it is the answer
+                // owed to whoever is still waiting on this transfer's outcome.
                 finish()
+                onCancel()
             } catch {
                 finish()
                 onFailure(error)

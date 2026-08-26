@@ -246,7 +246,7 @@ Core first, app untouched until (2). Each lands runnable.
    every row, the `willBeginAt` multi-row widening rebuilt without re-using items, `dropPlan` widened
    to remote destinations — and the two bugs above fixed here, since this is the slice that reaches
    them.
-4. **Drag out into Finder, Teams and anything else** — `NSFilePromiseProvider` on a remote row,
+4. **Drag out into Finder, Teams and anything else** *(landed)* — `NSFilePromiseProvider` on a remote row,
    fulfilled through the existing `RemoteFileCache` / `RemoteFetchPrompt` funnel so a promise cannot
    become a second download path. The hard part is not the promise, it is that it runs **outside the
    queue bar**: it needs its own cancel, and a failure has to reach the user rather than leaving the
@@ -323,6 +323,49 @@ re-use items. A real drag *session* cannot be synthesized (synthetic events are 
 what is pinned instead is the registration: `registeredDraggedTypes` carries both carriers, without
 which every rule above is unreachable and the pane refuses drags in silence. **Left for a human:**
 an actual drag between two panes, and a Finder drag onto a connected server.
+
+**Slice 4 landed 2026-08-26** — a row whose bytes are on a server drags *out* into Finder, Mail and
+anything else that takes a file. `RemoteFilePromiseProvider` is an `NSFilePromiseProvider` that also
+carries the payload, so `PanelPasteboard.dragWriters` decides **per row** which writer a row gets and
+a mixed selection stays one drag: Finder is handed the local subset plus a promise for the rest,
+while Dirnex's own drop still reads the same snapshot for every row. +13 tests (2725 core, 732 app),
+both linters clean.
+
+**It runs outside the queue bar, which is the whole difficulty**, and the answer is that the
+completion handler is the report. Fulfilment goes through the same `fetchRemoteFile` funnel ⏎ and F4
+use — so a file already fetched for a preview drags out with no transfer at all, and the deferred
+sheet supplies the bar and the Stop a queue row would have — and the funnel gained one hook,
+`onEnded`, called on **every** terminal path. Two of those paths deliberately reported to nobody and
+were right to: `RemoteFetchPrompt` swallows a cancellation (the user's own answer, already on
+screen), and the funnel returns having started nothing when the pane has no host. Both are correct
+for every gesture except one holding somebody else's callback open.
+
+**The size question is skipped, deliberately.** A drag onto the desktop is the same act as F5, which
+asks nothing whatever the file weighs — and the confirmation would arrive *after* the drop, in front
+of a receiving app already sitting on a spinner it cannot dismiss. What a large transfer actually
+needs it keeps.
+
+One test was written, measured and **deleted**: driving the failure *alert* needs a live pane in a
+window, and that one test took the app suite from 9/9 green to 7/8, every failure landing in
+`PanelPassiveRefreshTests`. Bisected with `-skip-testing` against a 3/3 baseline of the unchanged
+tree, then re-measured 6/6 green with it gone. The claim it made is kept without a window — the
+handler is answered with an error and the destination is left empty (docs/NOTES.md ▸ AppKit).
+
+Six negative controls, **run one at a time** for the reason Slice 3 recorded: no row promised fails 4
+tests; the promise not carrying the payload fails 3, one of them reading `["x.txt", "y.txt"]` for a
+three-row drag — a remote row silently dropped, the exact failure the payload exists to prevent; the
+funnel's early return reporting to nobody fails the "always answers" test; answering success without
+placing the bytes fails on the *file*; and removing `onCancel` leaves a stopped drag unanswered. The
+sharpest is the last two, because both leave the receiving app with nothing and neither is visible in
+Dirnex at all.
+
+**Verified live**: the new class and — the half worth checking rather than assuming — the Objective-C
+selector `filePromiseProvider:writePromiseToURL:completionHandler:` are both present in the built
+`Dirnex.debug.dylib`, which is what says the delegate method AppKit dispatches by selector was
+actually emitted rather than merely compiled (docs/NOTES.md ▸ AppKit). The board shape was measured
+on a real pasteboard before any Swift. **Left for a human:** an actual drag from a connected server
+into Finder — a drag *session* cannot be synthesized, so the AppKit plumbing between the registration
+and the promise is the one link no test here reaches.
 
 **Deliberately not in scope.** Dragging a *folder* out of a server as a promise (a promise is one
 file; a recursive fetch behind a Finder drop has no progress surface and no way to stop it);

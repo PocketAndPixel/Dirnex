@@ -9,14 +9,17 @@ import DirnexCore
 /// `PanelViewController+Table`.
 ///
 /// Since M23 every row is draggable **within Dirnex**, a server's included, because the board
-/// carries a `PasteboardPayload` beside the file URL. A row with no local URL still drags nowhere
-/// *outside* Dirnex — another app is handed nothing it can read — which is Slice 4's job
-/// (`NSFilePromiseProvider`), not this one's.
+/// carries a `PasteboardPayload` beside the file URL — and since Slice 4 a row whose bytes are on a
+/// server drags *out* as well, as an `NSFilePromiseProvider` another app can accept. Which of the
+/// two writers a row gets is `PanelPasteboard.dragWriters`' decision, made per row, so a mixed
+/// selection is one drag rather than two.
 extension PanelViewController {
     /// Configure the pane as a drag source and register it to receive file-URL drops.
     ///
     /// External drags (to Finder or other apps) offer only `.copy`, so a drag out can
-    /// never move or delete the original. Local drags (pane-to-pane, or onto a subfolder
+    /// never move or delete the original — which since Slice 4 covers a promised row too, where a
+    /// move would mean deleting a file on a server on the strength of somebody else's drop.
+    /// Local drags (pane-to-pane, or onto a subfolder
     /// of the same pane) offer both `.copy` and `.move` so `PanelViewController+Drop` can
     /// honor Finder's copy-vs-move conventions.
     func configureDragging() {
@@ -27,17 +30,17 @@ extension PanelViewController {
         tableView.registerForDraggedTypes(PanelPasteboard.acceptedDragTypes)
     }
 
-    /// The pasteboard item for a dragged row — the same item ⌘C would write for it
-    /// (`PanelPasteboard.items`): Dirnex's own payload, plus `public.file-url` when the row has a
-    /// real one. `nil` for the synthetic `..` row (no backing entry) and for an archive member,
-    /// which nothing yet knows how to route out of a drop (PLAN.md §M23 Slice 5).
+    /// The pasteboard writer for a dragged row: Dirnex's own payload always, plus `public.file-url`
+    /// for a row with real bytes here and a **file promise** for one whose bytes are on a server.
+    /// `nil` for the synthetic `..` row (no backing entry) and for an archive member, which nothing
+    /// yet knows how to route out of a drop (PLAN.md §M23 Slice 5).
     ///
-    /// One definition shared with the clipboard rather than a second one here: the two gestures have
-    /// to put the identical thing on the board, and this is where they would otherwise drift.
+    /// One definition shared with the clipboard rather than a second one here: ⌘C and a drag have to
+    /// put the identical payload on the board, and this is where they would otherwise drift.
     func tableView(_ tableView: NSTableView, pasteboardWriterForRow row: Int) -> NSPasteboardWriting? {
         guard let index = entryIndex(forRow: row),
               let entry = panel.displayedEntry(at: index) else { return nil }
-        return PanelPasteboard.items(for: [entry]).first
+        return PanelPasteboard.dragWriters(for: [entry], promisedTo: self).first
     }
 
     /// When the grab starts on a marked file, drag the whole marked set (Total Commander
@@ -62,8 +65,14 @@ extension PanelViewController {
         guard grabbedMarkedFile else { return }
         // Rebuilt, never re-used: `-[NSPasteboard writeObjects:]` **raises** if handed an item that
         // has already been written to a board (probed fatally 2026-08-26), and AppKit has just
-        // written one per row through `pasteboardWriterForRow` above. `PanelPasteboard.write` mints
-        // fresh items, and leaves the board alone when the marked set holds nothing it can carry.
-        PanelPasteboard.write(panel.selectedEntries, to: session.draggingPasteboard)
+        // written one per row through `pasteboardWriterForRow` above. `PanelPasteboard.writeDrag`
+        // mints fresh writers — promises included, so a marked *remote* row survives the widening
+        // rather than the multi-row drag quietly becoming local-only — and leaves the board alone
+        // when the marked set holds nothing it can carry.
+        PanelPasteboard.writeDrag(
+            panel.selectedEntries,
+            promisedTo: self,
+            to: session.draggingPasteboard
+        )
     }
 }

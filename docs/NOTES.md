@@ -1330,6 +1330,59 @@ at build time.
   about drawing; use `isHidden` for the overlay, since a hidden view is not hit-tested. Watch for it
   anywhere a spinner shares a frame with what it is reporting on, which is the natural way to build a
   button that shows its own progress without changing width.
+- **An `NSFilePromiseProvider` can carry a private pasteboard type alongside its promise, and that
+  is what keeps one drag from being two.** Measured 2026-08-26 on a real board while building M23's
+  drag-out: a subclass overriding `writableTypes(for:)`, `writingOptions(forType:pasteboard:)` and
+  `pasteboardPropertyList(forType:)` adds `com.dirnex.locations` to the promise's own types, and a
+  **mixed** drag of one promise plus one plain `NSPasteboardItem` then exposes that type on **both**
+  items, hands `readObjects` only the local URL, and still advertises `Apple files promise pasteboard
+  type` at board level. So one drag serves Finder and serves the app's own drop handler, rather than
+  the app accepting its own promise and round-tripping a server's file through this Mac.
+  `NSFilePromiseProvider` **does** implement `writingOptionsForType:pasteboard:`, so the `override`
+  compiles — worth checking rather than assuming, since it is an *optional* `NSPasteboardWriting`
+  member and implementing it without `override` would silently strip the promised-ness of the
+  superclass's own types.
+  - **The Swift label and the Objective-C selector differ on the one method AppKit dispatches
+    dynamically**: the requirement is `filePromiseProvider:writePromiseToURL:completionHandler:`
+    while Swift spells it `writePromiseTo:`. That is the gap that swallowed `QuickViewWebView`'s
+    delegate method (▸ above), so assert by **selector string** and confirm it in the built
+    `Dirnex.debug.dylib` (`strings - <dylib> | grep '^filePromiseProvider:writePromiseToURL:'`), not
+    only in a test.
+  - **`fileType` raises for a UTI conforming to neither `public.data` nor `public.directory`**, and a
+    name with no extension resolves to no UTI at all — so the `public.data` floor is not defensive
+    tidiness, it is what stops a file called `README` from throwing while its neighbour drags fine.
+  - **Not implementing `operationQueueForFilePromiseProvider:` puts the write on the *main* operation
+    queue** (AppKit's documented default), so the callback arrives on the main thread — but the
+    requirement is `NS_SWIFT_NONISOLATED`, and Swift 6 refuses to *send* the provider across an actor
+    boundary because `NSFilePromiseProvider` is not `Sendable`. Read the row off it **before** the
+    hop and send the `FileEntry` instead; the value is what the work needs anyway.
+- **A promise runs outside every progress surface the app has, so the completion handler is the only
+  thing that can report — and there are three ways to get that wrong, not one.** Unanswered is a
+  beachball in somebody else's app; answered with `nil` after a failed transfer is a **zero-byte
+  file** under the right name, which is worse, because nothing anywhere then says the bytes are
+  missing; and answered *twice* is as wrong as never, which is why the test's observable is a
+  **count** rather than a `Bool`. The paths that had to be taught to answer were the two that
+  deliberately report nothing to anybody else: `RemoteFetchPrompt` swallows `CancellationError` (the
+  user's own answer, already on screen), and the fetch funnel's `guard let cache = host?…` returns
+  having started nothing. Both are correct for every gesture but the one holding somebody else's
+  callback.
+  - **The delegate is held `weak`**, which is a lifetime question and also a *test* trap: a fixture
+    that binds the host to `_` deallocates it before the fetch starts, so every test then measures
+    the no-host path instead of the one it named — and it fails as a plausible-looking
+    `NSCocoaErrorDomain 256` rather than as "your fixture is wrong".
+  - **A test that drives the failure path needs a window**, because a failed drag-out is a gesture
+    somebody made and therefore keeps the `runModal` fallback (▸ the who-is-waiting rule above). With
+    no window that is an app-modal alert blocking the entire run until a human clicks it — measured
+    here first hand, as a run that simply never finished. **And with one it destabilises the
+    neighbours**, which is the reason such a test was written, measured and then deleted: hosting a
+    live pane in a window makes it do real pane work in the test host, and over 17 full runs that one
+    test took the suite from **9/9 green to 7/8**, every failure landing in `PanelPassiveRefreshTests`
+    — the suite that measures whether anything repainted and is documented above as starving on
+    exactly this. The bisect is what settles it and is cheap:
+    `-skip-testing:<Suite>/<oneTest>` over four runs, against a baseline of the unchanged tree, which
+    is also what stops "it was green before" being read as evidence about the code rather than about
+    the machine.
+
 - **Right-click menu items must capture their paths at build time** into `representedObject`,
   and entry-vs-`..` must be decided from the clicked row, not a cursor flag — a right-click on a
   marked row leaves that flag stale.

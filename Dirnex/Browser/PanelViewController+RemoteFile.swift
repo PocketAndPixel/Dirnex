@@ -251,33 +251,102 @@ extension PanelViewController {
             && entry.kind == .file
     }
 
+    // MARK: - Dragging one out
+
+    /// Fetch `entry` so a **promise dropped in another app** can be fulfilled, calling `onEnded`
+    /// however it turns out (PLAN.md §M23 Slice 4).
+    ///
+    /// **It does not ask about the size**, and that is the one decision here rather than an
+    /// omission. Dragging a row onto the desktop is the same act as F5, which asks nothing whatever
+    /// the file weighs — and the question would arrive *after* the drop, in front of a receiving app
+    /// already sitting on a spinner it cannot dismiss. What the user keeps is everything a large
+    /// transfer actually needs: the deferred sheet, its determinate bar, and Stop.
+    ///
+    /// Routed through the same funnel as ⏎ and F4 rather than reaching for `RemoteFileCache`
+    /// directly, so the promise cannot become a second download path — a file already fetched for a
+    /// preview drags out with no transfer at all, and one dragged out twice costs one.
+    func fulfillRemotePromise(
+        for entry: FileEntry,
+        then proceed: @escaping @MainActor (URL) -> Void,
+        onEnded: @escaping @MainActor ((any Error)?) -> Void
+    ) {
+        fetchRemoteFile(
+            entry,
+            // Unread: `alreadyConfirmed` is what decides, and it skips the policy outright. Spelled
+            // `.open` because that is what the gesture is — hand this file to another application.
+            for: .open,
+            alreadyConfirmed: true,
+            onEnded: onEnded,
+            then: proceed
+        ) {
+            String(
+                localized: "Couldn’t copy this item from the server",
+                comment: """
+                Alert title when a file dragged out of a server to another app can't be downloaded.
+                """
+            )
+        }
+    }
+
     // MARK: - Plumbing
 
     /// The one funnel every explicit gesture goes through: policy, the deferred sheet, the cache.
+    ///
+    /// `onEnded` is called on **every** terminal path — the bytes landed (`nil`), the user stopped it
+    /// (a `CancellationError`), or it failed (that error) — and it runs *beside* `proceed` and the
+    /// failure alert rather than instead of them. Nobody needed it until a caller appeared that is
+    /// holding somebody else's completion handler open (`fulfillRemotePromise`), and for that caller
+    /// "nothing happened" is not an outcome it may report: a promise with no answer leaves the
+    /// receiving app waiting on a file that is never coming.
     private func fetchRemoteFile(
         _ entry: FileEntry,
         for purpose: RemoteFetchPurpose,
         alreadyConfirmed: Bool = false,
         onStart: @escaping @MainActor () -> Void = {},
+        onEnded: @escaping @MainActor ((any Error)?) -> Void = { _ in },
         then proceed: @escaping @MainActor (URL) -> Void,
         failureMessage: @escaping () -> String
     ) {
-        guard let cache = host?.remoteFileCache else { return }
+        guard let cache = host?.remoteFileCache else {
+            // The one path that starts nothing, and it still owes an answer: `onEnded`'s whole
+            // reason for existing is a caller holding somebody else's completion handler, and
+            // "returned without doing anything" is the outcome such a caller can never report. A
+            // stock Cocoa error rather than a sentence of ours — nothing here is worth wording,
+            // because a pane with no window controller cannot be reached from any gesture.
+            onEnded(CocoaError(.fileReadUnknown))
+            return
+        }
         let context = RemoteFetchPrompt.Context(
             backend: backend,
             cache: cache,
             window: view.window,
+            // The card stands where the **cursor row** would be previewed, so it can only be drawing
+            // this transfer when that is the row being fetched. Every gesture but a drag fetches the
+            // cursor row, which is why this read as one question for a milestone; a drag can be of a
+            // marked row three screens away, and there the sheet is the only thing that can report.
             hasProgressSurface: showsRemoteFetchOnPreviewSurface
+                && remoteFileUnderCursor?.path == entry.path
         )
         let onFailure: (any Error) -> Void = { [weak self] error in
+            onEnded(error)
             self?.presentOperationFailure(
                 message: failureMessage(),
                 detail: self?.describe(error) ?? ""
             )
         }
+        let landed: @MainActor (URL) -> Void = { url in
+            onEnded(nil)
+            proceed(url)
+        }
+        let stopped: () -> Void = { onEnded(CancellationError()) }
         if alreadyConfirmed {
             RemoteFetchPrompt.fetchConfirmed(
-                entry, in: context, onStart: onStart, then: proceed, onFailure: onFailure
+                entry,
+                in: context,
+                onStart: onStart,
+                onCancel: stopped,
+                then: landed,
+                onFailure: onFailure
             )
         } else {
             RemoteFetchPrompt.fetch(
@@ -285,7 +354,8 @@ extension PanelViewController {
                 for: purpose,
                 in: context,
                 onStart: onStart,
-                then: proceed,
+                onCancel: stopped,
+                then: landed,
                 onFailure: onFailure
             )
         }

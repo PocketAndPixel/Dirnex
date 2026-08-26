@@ -50,23 +50,72 @@ enum PanelPasteboard {
     static func items(for entries: [FileEntry]) -> [NSPasteboardItem] {
         entries.compactMap { entry in
             guard canWrite(entry), let data = PasteboardPayload(entry).encoded() else { return nil }
-            let item = NSPasteboardItem()
-            item.setData(data, forType: locationsType)
-            if entry.path.backend == .local {
-                item.setString(entry.path.localURL.absoluteString, forType: .fileURL)
-            }
-            return item
+            return item(for: entry, payload: data)
         }
+    }
+
+    /// One writer per entry for a **drag**, which is where the clipboard's shape stops being enough:
+    /// a row whose bytes are on a server gets an `NSFilePromiseProvider` instead of a plain item, so
+    /// another app has something it can actually accept (PLAN.md §M23 Slice 4).
+    ///
+    /// The promise carries the payload as well (see `RemoteFilePromiseProvider`), so this stays one
+    /// definition of what a dragged row *is* rather than two — a drag inside Dirnex reads the same
+    /// snapshot whichever kind of writer produced the item, and only a drop in somebody else's app
+    /// ever asks for the bytes.
+    ///
+    /// `delegate` is held **weakly** by every promise AppKit builds here, so the caller has to be
+    /// something that outlives the drag; a pane is, which is why it is the pane that conforms.
+    static func dragWriters(
+        for entries: [FileEntry],
+        promisedTo delegate: any NSFilePromiseProviderDelegate
+    ) -> [any NSPasteboardWriting] {
+        entries.compactMap { entry -> (any NSPasteboardWriting)? in
+            guard canWrite(entry), let data = PasteboardPayload(entry).encoded() else { return nil }
+            if let promise = RemoteFilePromiseProvider.promise(
+                for: entry, payload: data, delegate: delegate
+            ) { return promise }
+            return item(for: entry, payload: data)
+        }
+    }
+
+    /// The plain item for `entry`: the payload always, plus `public.file-url` for a row that has a
+    /// real one. Built fresh on every call — see ``items(for:)``.
+    private static func item(for entry: FileEntry, payload: Data) -> NSPasteboardItem {
+        let item = NSPasteboardItem()
+        item.setData(payload, forType: locationsType)
+        if entry.path.backend == .local {
+            item.setString(entry.path.localURL.absoluteString, forType: .fileURL)
+        }
+        return item
     }
 
     /// Replace `pasteboard`'s contents with `entries`. Returns `false` when there was nothing
     /// writable, so the caller can leave the previous clipboard alone rather than clearing it.
     @discardableResult
     static func write(_ entries: [FileEntry], to pasteboard: NSPasteboard) -> Bool {
-        let items = items(for: entries)
-        guard !items.isEmpty else { return false }
+        write(items(for: entries), to: pasteboard)
+    }
+
+    /// Replace `pasteboard`'s contents with the drag writers for `entries` — the widening a
+    /// multi-row drag needs, once AppKit has already written the one row it knows about.
+    @discardableResult
+    static func writeDrag(
+        _ entries: [FileEntry],
+        promisedTo delegate: any NSFilePromiseProviderDelegate,
+        to pasteboard: NSPasteboard
+    ) -> Bool {
+        write(dragWriters(for: entries, promisedTo: delegate), to: pasteboard)
+    }
+
+    /// The one place the board is actually replaced, so ⌘C and a drag cannot disagree about what
+    /// "there was nothing to write" does to whatever was already on it.
+    private static func write(
+        _ writers: [any NSPasteboardWriting],
+        to pasteboard: NSPasteboard
+    ) -> Bool {
+        guard !writers.isEmpty else { return false }
         pasteboard.clearContents()
-        return pasteboard.writeObjects(items)
+        return pasteboard.writeObjects(writers)
     }
 
     // MARK: - Reading
