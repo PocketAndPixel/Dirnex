@@ -94,7 +94,16 @@ extension PanelViewController {
         )
         // Whatever is already cached renders now; the scan republishes if it changed. Revisiting a
         // folder therefore paints its badges with the folder, not after it.
-        applySyncSnapshot(CloudSyncStatusProvider.shared.cachedSnapshot(for: directory))
+        //
+        // **Only a hit.** A miss is "not known here", not "this directory has nothing"
+        // (`DirectoryScanCache.cachedSnapshot`), so applying it would blank every badge in the pane
+        // and cost a `reloadData` — twice, since the scan started above then draws them again.
+        // Leaving the directory needs nothing here: a snapshot is keyed by absolute path, so one
+        // held for a folder the pane has left answers `nil` for every row of the folder it arrived
+        // at, and the visibility gate above is what drops it when badges stop applying at all.
+        if let cached = CloudSyncStatusProvider.shared.cachedSnapshot(for: directory) {
+            applySyncSnapshot(cached)
+        }
     }
 
     /// Adopt `snapshot` as what the active tab renders. A no-op when nothing changed, so the

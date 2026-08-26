@@ -99,7 +99,13 @@ extension PanelViewController {
         )
         // Whatever is already cached renders now; the scan republishes if it changed. Revisiting a
         // folder therefore paints its dots with the folder, not after it.
-        applyTagSnapshot(FinderTagProvider.shared.cachedSnapshot(for: directory))
+        //
+        // **Only a hit**, for the reason its twin in `+SyncStatus` spells out and
+        // `DirectoryScanCache.cachedSnapshot` argues: a miss is "not known here", so adopting one
+        // would blank the dots and reload the table for a directory nothing happened to.
+        if let cached = FinderTagProvider.shared.cachedSnapshot(for: directory) {
+            applyTagSnapshot(cached)
+        }
     }
 
     /// Ask for a re-scan of the directory on screen — what the tag editor calls after writing, so

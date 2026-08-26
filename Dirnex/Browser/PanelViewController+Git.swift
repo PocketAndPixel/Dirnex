@@ -85,12 +85,26 @@ extension PanelViewController {
                 clearGitStatus()
                 return
             }
+            let previousRoot = gitRepositoryRoot
             gitRepositoryRoot = root
             startWatchingRepository(root)
             GitStatusProvider.shared.requestRefresh(for: root)
             // Whatever is already cached renders now; the refresh above republishes if it changed.
             // Revisiting a repository therefore paints its column with the folder, not after it.
-            applyGitSnapshot(GitStatusProvider.shared.cachedSnapshot(for: root))
+            //
+            // **Only a hit**, and here with one carve-out its twins in `+Tags` and `+SyncStatus` do
+            // not need. A miss is "not known here", not "this repository has nothing to say"
+            // (`DirectoryScanCache.cachedSnapshot`), so adopting one blanks the badges and reloads
+            // the table for a repository nothing happened to — the same defect, for the same reason.
+            // But this snapshot is not purely per-row: it also names the branch in the path bar and
+            // decides whether totals are counted git-aware. Held across a move to a *different*
+            // repository it would put repo A's branch over repo B's rows, which no path-keyed lookup
+            // can protect against, so that one case still clears and waits for the scan.
+            if let cached = GitStatusProvider.shared.cachedSnapshot(for: root) {
+                applyGitSnapshot(cached)
+            } else if previousRoot != root {
+                applyGitSnapshot(nil)
+            }
         }
     }
 

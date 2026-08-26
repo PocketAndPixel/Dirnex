@@ -52,6 +52,14 @@ import Testing
 /// three are answered in the fixture rather than in the product, because the product is right — a
 /// preference change *should* repaint every pane, and so should a first sync snapshot. What none of
 /// them may do is land inside a measurement of the listing path.
+///
+/// A **fourth** was left, and unlike those three it was the product's: the providers' shared
+/// `DirectoryScanCache` is an LRU of eight across every pane and tab, so a directory still on screen
+/// aged out whenever eight others were scanned, and the pull that followed read the miss as an
+/// answer and blanked the pane's badges. Same probe, 2026-08-27 — a fixture's own directory evicted
+/// mid-test for `/Users/oleg`, for `/iCloud Drive`, for another suite's tree fixture, and once for a
+/// sibling pane in this very suite. It is answered in the product (a miss is not an answer) and
+/// pinned by `evictionFromTheSharedScanCacheDoesNotRepaint` below.
 @MainActor
 @Suite("Passive refresh")
 struct PanelPassiveRefreshTests {
@@ -293,5 +301,96 @@ struct PanelPassiveRefreshTests {
             pane.tableView.selectedRow == -1,
             "an event about a file two levels down re-rendered the pane"
         )
+    }
+
+    // MARK: - The shared scan cache
+
+    /// A pane must not repaint because the **shared** provider cache evicted the directory it is
+    /// showing.
+    ///
+    /// `DirectoryScanCache` holds eight directories for every pane and tab in the process and evicts
+    /// by store recency, which knows nothing about what is on screen — so a directory still being
+    /// drawn ages out as soon as eight others are scanned. `updateSyncStatus` and `updateTagStatus`
+    /// then read a **miss**, and until 2026-08-27 applied it: the tab's snapshot went to `nil`, every
+    /// badge and dot in the pane was erased, and `renderRefresh` reloaded the table — twice, because
+    /// the scan those same calls had just started published a moment later and drew them back.
+    ///
+    /// In the app that is a visible flicker of every badge on any Mac with five tabs open, since two
+    /// panes of four is already the whole cache. Here it was the fourth race, and the one that
+    /// outlived the three the fixture above answers: it repainted a pane inside `hold()` and failed
+    /// `treeRefreshWithADeepChange` about one full run in six.
+    ///
+    /// **Both directions are asserted, and the first is the narrowness control.** A cache *hit* must
+    /// still be adopted — the pane holds a snapshot before the eviction because `quiesce`'s pulls
+    /// took one — or "ignore the cache" would pass the second half by never reading it at all.
+    ///
+    /// Exercises whichever badge the developer has switched on, the same gate `waitForProviderScans`
+    /// respects and for the same reason: the test host inherits their own preferences, and flipping
+    /// one here would post the notification that repaints every live pane in the process (race 3).
+    /// A default install has both on, and this machine's run of the reverted fix failed here.
+    @Test("a shared-cache eviction of the directory on screen does not reload the table")
+    func evictionFromTheSharedScanCacheDoesNotRepaint() async throws {
+        let root = try Self.fixture()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let pane = try await Self.pane(at: root, tree: false)
+        let directory = pane.panel.path
+
+        if pane.isSyncStatusVisible {
+            #expect(pane.syncSnapshot != nil, "the pane never adopted a cached sync snapshot")
+        }
+        if pane.areTagsVisible {
+            #expect(pane.tagSnapshot != nil, "the pane never adopted a cached tag snapshot")
+        }
+
+        let aged = try await Self.ageOutOfTheScanCaches(directory, pane: pane)
+        #expect(aged, "the fixture's directory never aged out of the shared caches")
+
+        pane.tableView.deselectAll(nil)
+        Self.pullRefreshTail(pane)
+        await Self.hold()
+
+        #expect(
+            pane.tableView.selectedRow == -1,
+            "a shared-cache eviction repainted a pane whose directory nothing had happened to"
+        )
+        if pane.isSyncStatusVisible {
+            #expect(pane.syncSnapshot != nil, "the eviction erased the pane's sync badges")
+        }
+        if pane.areTagsVisible {
+            #expect(pane.tagSnapshot != nil, "the eviction erased the pane's tag dots")
+        }
+    }
+
+    /// Push enough other directories through the shared caches to evict `directory` — what a fifth
+    /// open tab does to the app, arranged on purpose.
+    ///
+    /// Comfortably more than the cache's own limit, because this is not the only thing filling it:
+    /// every other suite's panes are storing their own keys into it at the same time, and each of
+    /// those pushes ours one place further along rather than holding it still. Real directories, so
+    /// what lands in the cache is what a real visit would put there.
+    ///
+    /// Reports whether the eviction actually happened for whichever provider the pane will pull
+    /// from, so the assertion above cannot pass against a cache that never dropped anything.
+    private static func ageOutOfTheScanCaches(
+        _ directory: VFSPath,
+        pane: PanelViewController
+    ) async throws -> Bool {
+        let ballast = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("dirnex-passive-ballast-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: ballast) }
+        for index in 0..<24 {
+            let child = ballast.appendingPathComponent("\(index)")
+            try FileManager.default.createDirectory(at: child, withIntermediateDirectories: true)
+            let path = VFSPath.local(child.path)
+            CloudSyncStatusProvider.shared.requestRefresh(for: path, entries: [])
+            FinderTagProvider.shared.requestRefresh(for: path, entries: [])
+        }
+        return await settle {
+            let syncGone = !pane.isSyncStatusVisible
+                || CloudSyncStatusProvider.shared.cachedSnapshot(for: directory) == nil
+            let tagsGone = !pane.areTagsVisible
+                || FinderTagProvider.shared.cachedSnapshot(for: directory) == nil
+            return syncGone && tagsGone
+        }
     }
 }

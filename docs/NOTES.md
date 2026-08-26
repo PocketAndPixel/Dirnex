@@ -428,6 +428,47 @@ at build time.
     unchanged-guards removed from `directoryDidChange` and `refreshTree`, all three no-repaint tests
     fail on their own assertions while the narrowness control ("a real change still reaches the tree")
     stays green. A quiet fixture is only worth having if it still fails for the original reason.
+  - **The fourth race was the product's, and "16 consecutive green runs" is not a claim with a shelf
+    life — it expired.** Re-measured 2026-08-26 with an unrelated branch stashed, the baseline was 2
+    failures in 8 full runs, always the two tree tests. Same probe as before (an `NSLog` in
+    `renderRefresh` with its call stack, plus one on the cache's eviction), and it named the cause on
+    the first run: the pane's own fixture directory **evicted from the shared `DirectoryScanCache`**
+    — for `/Users/oleg`, for `/iCloud Drive`, for another suite's tree fixture, and once for a
+    sibling pane in this very suite — after which the tail's `updateSyncStatus` read the miss and
+    applied it, blanking the pane's badges through `applySyncSnapshot(nil)` and repainting inside the
+    measurement window.
+    - **A cache miss is "not known here", never "this directory has nothing", and the two are
+      indistinguishable at the call site.** That cache is an LRU of **eight** shared by every pane
+      and tab, evicting by *store* recency, which knows nothing about what is on screen — so two
+      panes of four tabs fill it and a fifth tab anywhere drops a directory a user is looking at. The
+      three pulls each read the miss as an answer, so a badge set that was perfectly current was
+      erased and then re-drawn by the scan the same call had just started: two full `reloadData`
+      passes and a visible flicker, over a directory nothing had happened to. Fixed by adopting only
+      a **hit** (`if let cached = …`) in `updateSyncStatus`, `updateTagStatus` and `updateGitStatus`.
+    - **Leaving the directory needs no bookkeeping for two of the three, and does for the third.** A
+      tag or sync snapshot is keyed by absolute path, so one held for a folder the pane has left
+      answers `nil` for every row of the folder it arrived at — the visibility gate is what drops it
+      when badges stop applying at all. A **Git** snapshot is not purely per-row: it also names the
+      branch in the path bar and decides whether totals are counted git-aware, so held across a move
+      to a different repository it would put repo A's branch over repo B's rows. That one case still
+      clears, on the previous root captured before the new one is stored.
+    - **The suite is where it surfaced; the user-visible bug is the flicker**, and it is the same one
+      this whole entry exists to prevent, reached through cache pressure instead of an unchanged
+      listing. Worth carrying past this cache: **a bounded shared cache whose eviction policy cannot
+      see what is on screen will eventually drop something that is**, so every reader of one owes an
+      answer to "what does absent mean here" — and the reassuring answer is usually the wrong one.
+    - Measured after the fix: **0 failures in 16 full runs**, against 2 in 8 for the baseline. The
+      regression test (`evictionFromTheSharedScanCacheDoesNotRepaint`) forces the eviction on purpose
+      and asserts both directions — the pane keeps its badges *and* does not repaint — with the
+      adoption of a hit as its narrowness control, or "ignore the cache" would pass it by never
+      reading the cache at all. Reverted, it fails on both assertions, and its ballast is enough
+      pressure to fail `treeRefreshWithADeepChange` with the suite **run alone**, which nothing else
+      here has managed.
+    - **`RemoteFetchPromptTests` flakes in the same runs and is not this**, which took a control to
+      say rather than a hunch: 2 failures in 16 with the new test in and **1 in 16 with just that
+      test skipped**, on the same tree. It is the bounded-wait family already recorded above, and the
+      baseline's 0-in-8 was a small sample rather than evidence of a regression — which is this
+      file's own rule about baselines, met from the other side.
 
 - **`HeadBucket` goes on answering 200 for a bucket AWS has deleted — intermittently, and for longer
   than a test run — so any code that `stat`s before it creates can refuse a name that is not there.**

@@ -78,8 +78,23 @@ final class DirectoryScanCache<Input: Sendable, Snapshot: Sendable> {
 
     // MARK: - Reading
 
-    /// The snapshot already in hand for `key`, or `nil` when none has been read yet. Synchronous and
-    /// O(1) — this is what a pane calls while rendering rows.
+    /// The snapshot already in hand for `key`, or `nil` when none is. Synchronous and O(1) — this is
+    /// what a pane calls while rendering rows.
+    ///
+    /// **`nil` means "not known here", never "this directory has nothing".** The two read alike and
+    /// are not: a key that was scanned perfectly well ages out of the LRU below whenever `cacheLimit`
+    /// others are stored, and nothing tells its readers. So a caller holding its own copy must treat
+    /// a miss as *no news* and keep drawing what it has — the scan its `requestRefresh` just started
+    /// will publish, and that is what may replace it. Adopting the miss instead erases whatever the
+    /// caller was showing and then draws it again a moment later, which for a pane is two full
+    /// `reloadData` passes and a visible flicker over a directory nothing happened to.
+    ///
+    /// Not hypothetical, and not only a test's problem: eight is two panes of four tabs, so a fifth
+    /// tab anywhere evicts a directory that is still on screen. Measured 2026-08-27 in the test host,
+    /// where a pane's own fixture was evicted for another suite's — by `/Users/oleg`, by
+    /// `/iCloud Drive`, and once by a sibling pane in the same suite — and the miss that followed
+    /// repainted a pane inside `PanelPassiveRefreshTests`' measurement window, failing it about one
+    /// full run in six.
     func cachedSnapshot(for key: VFSPath) -> Snapshot? {
         snapshots[key]
     }
