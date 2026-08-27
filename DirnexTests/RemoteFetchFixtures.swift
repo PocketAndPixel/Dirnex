@@ -1,6 +1,8 @@
 import DirnexCore
 import Foundation
 
+@testable import Dirnex
+
 /// Fixtures shared by `RemoteFileCacheTests` and `RemotePreviewFetchTests`.
 ///
 /// One cache tested from two sides — what it *remembers*, and what its cursor-following fetch
@@ -39,6 +41,36 @@ enum Fixture {
             inode: 0
         )
     }
+}
+
+/// Wait until an automatic fetch scheduled *now* would have issued its transfer — by scheduling one
+/// that must, on its own cache, and waiting for it.
+///
+/// **What paces a negative wait on `RemoteFileCache`'s 400 ms settle delay, in place of a constant.**
+/// Holding 2.5 s reads as six times that delay and is not: in a full run the main actor is late by
+/// 0.6–5.0 s at a time (docs/NOTES.md ▸ Testing), so the wait can expire before a fetch that *was*
+/// going to issue has been scheduled at all. Measured 2026-08-27 by deleting the guards those tests
+/// exist to protect — `stopIsNotRestartedByItsOwnRedraw` and `failedFetchReportsOnceAndDoesNotLoop`
+/// went on passing **0 failures in 4 full runs**, and `automaticStandsAsideForAnExplicitFetch`
+/// failed only 2 of 4, while all three failed **3 of 3** with the same build run alone. A control
+/// that only fires on an idle Mac is not a control.
+///
+/// Call it **immediately after** the schedules under test. Both tasks sleep for the same delay and
+/// the ones under test were created first, so their continuations are enqueued first and run first:
+/// by the time this one's transfer has begun, theirs would have. It is a fresh cache and a fresh
+/// backend, so nothing it does can be mistaken for what the test is counting.
+@MainActor
+func holdOutTheAutomaticFetchDelay() async {
+    let backend = CountingBackend(outcome: .succeed)
+    let cache = RemoteFileCache()
+    cache.scheduleAutomaticFetch(Fixture.entry("pacer.bin"), using: backend, onSettled: {})
+    // Generous, like every wait *for* something: a satisfied predicate returns on the next poll, so
+    // the budget only bounds how much scheduling delay is absorbed before the code is blamed.
+    let deadline = Date().addingTimeInterval(30)
+    while Date() < deadline, backend.copyCount == 0 {
+        try? await Task.sleep(for: .milliseconds(25))
+    }
+    cache.cancelAutomaticFetch()
 }
 
 /// A main-actor counter for the landing callback. A plain `var` captured by an `@escaping

@@ -134,7 +134,10 @@ struct RemotePreviewFetchTests {
         for _ in 0..<3 {
             cache.scheduleAutomaticFetch(entry, using: backend) { settled.times += 1 }
         }
-        await hold()
+        // Paced by a fetch that must issue rather than by a constant: a `hold()` here reads as six
+        // times the 400 ms settle delay and expired before it in a full run, leaving this passing
+        // with the guard deleted (▸ ``holdOutTheAutomaticFetchDelay()``).
+        await holdOutTheAutomaticFetchDelay()
 
         #expect(backend.copyCount == 1)
         #expect(settled.times == 1)
@@ -177,9 +180,12 @@ struct RemotePreviewFetchTests {
         for _ in 0..<3 {
             cache.scheduleAutomaticFetch(entry, using: backend, onSettled: {})
         }
-        await hold()
+        await holdOutTheAutomaticFetchDelay()
 
         #expect(backend.copyCount == 1)
+        // Settled by the stop already in flight rather than by a delay: the transfer notices on its
+        // next 10 ms poll, so this is a wait *for* something and free to be generous.
+        await settle { backend.wasCancelledMidTransfer }
         #expect(backend.wasCancelledMidTransfer)
         #expect(cache.cachedURL(for: entry) == nil)
     }

@@ -249,7 +249,11 @@ struct RemoteFetchPromptTests {
         for _ in 0..<3 {
             cache.scheduleAutomaticFetch(entry, using: backend, onSettled: {})
         }
-        await hold { backend.copyCount > 1 }
+        // Paced by a fetch that must issue, not by a constant: 2.5 s reads as six times the 400 ms
+        // settle delay and is not, on a main actor that is late by seconds — with the stand-aside
+        // deleted this failed only 2 full runs of 4, and 3 of 3 run alone
+        // (▸ ``holdOutTheAutomaticFetchDelay()``).
+        await holdOutTheAutomaticFetchDelay()
 
         #expect(backend.copyCount == 1)
         cache.stopPreviewFetch()

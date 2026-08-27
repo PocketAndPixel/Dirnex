@@ -323,6 +323,28 @@ at build time.
     - **Ask what makes the thing you are sampling go away**, not only how often you sample. A wait
       whose subject is torn down by the code under test needs the teardown moved out of the run, or
       an observable that latches — polling harder only narrows the window it can miss.
+  - **Audit the whole family once the first one is found, and audit it with controls rather than by
+    reading.** Sweeping every negative wait in the app target on 2026-08-27 — 18 of them — turned up
+    **four** more sized by a constant against a delayed product path, and only a negative control
+    could tell which were still doing anything. Three were dead in a full run and alive alone:
+    `RemotePreviewFetchTests`' `stopIsNotRestartedByItsOwnRedraw` and
+    `failedFetchReportsOnceAndDoesNotLoop` (**0 failures in 4** full runs with the guard they protect
+    deleted, **3 of 3** with the same build run alone) and `RemoteFetchPromptTests`'
+    `automaticStandsAsideForAnExplicitFetch` (2 of 4, 3 of 3 alone). All three held 2.5 s against
+    `RemoteFileCache`'s **400 ms** settle delay — nominally six times over, and not once the main
+    actor is late by seconds.
+    - The repair is the same shape as the sheet's and is worth having as a named helper rather than
+      re-derived per test: `holdOutTheAutomaticFetchDelay()` schedules a fetch that *must* issue, on
+      its own cache, and waits for it. Called immediately after the schedules under test, whose
+      tasks were created first and therefore run first, it says "a fetch that was going to start has
+      started" instead of guessing how long that takes. Re-measured with the same guard deleted:
+      **4 of 4** full runs failing, from 0, 0 and 2.
+    - **The ones that survived the audit are the useful half of the result**, because they say what
+      makes a constant safe: `leavingTheRowTransfersNothing` fails 3/3 both alone and in a full run,
+      and every Trash-less no-sheet wait fires reliably because `beginSheetModal` sets
+      `attachedSheet` **synchronously** — measured here at `polls=0, elapsed≈2 µs`. A negative wait
+      is safe exactly when what it is watching for would happen in the turn it is already waiting
+      on, and unsafe the moment a timer stands between them.
   - **The stall is AppKit, not the cooperative pool, and four clocks in one process say so.** The
     family above (▸ Swift 6 and concurrency) trains you to suspect blocked cooperative workers;
     measured here with a real `Thread`, a `DispatchQueue.main` chain, a `@MainActor` `Task.sleep`
