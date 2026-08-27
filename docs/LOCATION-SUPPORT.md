@@ -1,14 +1,16 @@
 # What works where
 
 Every user-facing capability against every kind of location Dirnex can open, as of
-**2026-08-27** (M0–M22 shipped, M23 landed, plus the post-M19 passes). The purpose is the
-parity question: *where does working on a server still feel unlike working on the disk, and which
-of those gaps are ours to close?*
+**2026-08-27** (M0–M23 shipped, plus the post-M19 passes). The purpose is the parity question:
+*where does working on a server still feel unlike working on the disk, and which of those gaps are
+ours to close?*
 
-Read [PLAN.md](../PLAN.md) for architecture, [HISTORY.md](HISTORY.md) for why a decision was
-taken, and [NOTES.md](NOTES.md) for the measurements behind the hard limits cited here. This
-file is a **status table**, not an argument — every "no" that is a decision rather than a gap is
-marked as such and points at the entry that argues it.
+Read [PLAN.md](../PLAN.md) for architecture and for the milestones that close what is still open,
+[HISTORY.md](HISTORY.md) for why a decision was taken, and [NOTES.md](NOTES.md) for the measurements
+behind the hard limits cited here. This file is a **status table**, not an argument and not a log:
+every "no" that is a decision rather than a gap is marked as such and points at the entry that
+argues it, and every one that *is* a gap points at the milestone that owns it. A cell that has
+closed simply reads differently — it is not explained here.
 
 ## Statuses
 
@@ -16,8 +18,8 @@ marked as such and points at the entry that argues it.
 |---|---|
 | **yes** | Fully done. Behaves as it does on the local disk. |
 | **yes, limited** | Fully done for what the technology allows. The remaining difference **cannot** be closed from our side — the protocol, the service or macOS does not expose it. |
-| **yes, partially** | Done, and the gap **could** be narrowed to look more local. These are the parity backlog. |
-| **no** | Not implemented. Nothing structural prevents it. |
+| **yes, partially** | Done, and the gap **could** be narrowed to look more local. Parity backlog: PLAN.md §4, M24 or M25. |
+| **no** | Not implemented, and nothing structural prevents it — so it is backlog too, and its footnote names the milestone. A "no" with no route to a yes is written **n/a** instead. |
 | **n/a** | The concept does not exist there (a Trash inside the Trash, a checksum of a bucket list). |
 
 ## Locations
@@ -64,25 +66,15 @@ watched live. It is still a virtual container: no size bars, no pack, no Open in
 | Tree view (`→` to expand) | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 | Live auto-refresh when it changes elsewhere | yes | yes | no<sup>d</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | n/a | yes |
 | Folder size on `Space` / `⌥⇧⏎` | yes | yes | yes | yes, limited<sup>e</sup> | yes, limited<sup>e</sup> | yes, limited<sup>e</sup> | n/a | yes | yes |
-| Size visualization bars (`⌃B`) | yes | yes | no | no | no | no | no | no | no |
+| Size visualization bars (`⌃B`) | yes | yes | no<sup>nn</sup> | no<sup>nn</sup> | no<sup>nn</sup> | no<sup>nn</sup> | no<sup>nn</sup> | n/a<sup>nn</sup> | n/a<sup>nn</sup> |
 | Git status column, `.gitignore`-aware sizes | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
-| Appears in Recents | yes | yes | no | no | no | no | no | n/a | n/a |
-| Reopens at launch / in a saved workspace | yes | yes | yes | yes, limited<sup>g</sup> | yes, limited<sup>g</sup> | yes, limited<sup>g</sup> | yes, limited<sup>g</sup> | n/a | n/a |
+| Appears in Recents | yes | yes | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a | n/a |
+| Reopens at launch / in a saved workspace | yes | yes | yes | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | n/a | n/a |
 
 <sup>a</sup> Entering a bucket row is a **connect**, not a listing: `S3AccountBackend` is depth 0
 by design (everything below a bucket is the bucket backend). It carries the region-301 correction
 and the path-style retry, so it usually just works — but the first entry can raise a connect
 sheet where a folder never would.
-
-<sup>g</sup> The tab comes back and re-opens its connection when it is first shown — the active
-one at launch, the others when you switch to them, so a window of five server tabs contacts one
-server rather than five. Two things it will not do on its own, both deliberate. A connection whose
-secret is no longer in the Keychain cannot be re-established unattended, so the tab returns saying
-so and one gesture (any navigation, or the sidebar row) signs it back in. And with Settings ▸
-Panels set to **0 — never contact a server unasked** — the relaunch itself opens nothing: the tabs
-are all there and the first gesture connects them. A *nested* archive is the one location that
-cannot come back at all: its bytes are a temp extraction of a member of the enclosing archive, so
-the file it was mounted from is gone by the next launch.
 
 <sup>b</sup> A virtual listing draws a label, not a walkable crumb trail — there is no directory
 to walk to.
@@ -90,7 +82,10 @@ to walk to.
 <sup>c</sup> Leaving a virtual listing resets the trail, so back cannot return to the hits.
 
 <sup>d</sup> An archive re-reads when its file on disk changes identity (device/inode/size/mtime),
-so repacking it under the same name is picked up. There is no watcher on the members.
+so repacking it under the same name is picked up — but only when something asks it to: `startWatching`
+returns early for any backend but `.local`, so nothing wakes the pane. The decision is already made
+and tested (`ArchiveIdentity`); the stream over the archive file is not built (PLAN.md §M25, smaller
+than a milestone). There is no watcher on the members, and there cannot be one.
 
 <sup>e</sup> Bounded at **1000 directories** (`DirectorySizeBudget.remote`) because a remote walk
 is a billed request and a round trip each — measured 0.601–0.699 s per `ListObjectsV2`, so
@@ -112,6 +107,27 @@ answer — "the same rows" — costs one request and no work. A pane stood down 
 moment it is visible again rather than waiting out a fresh interval. FSEvents stays exact and free,
 which is why the local and cloud-mount columns are a plain yes.
 
+<sup>nn</sup> A bar is a row's share of **its own directory**, so it needs every sibling's total
+rather than the cursor's — remotely that is N bounded walks where the `Space` total above is one. In
+an archive it is cheap (the whole table of contents is already in hand) and simply gated with the
+rest; on a virtual listing whose rows live in a dozen different folders "share of this directory" has
+no referent, which is why those two read n/a. So what is missing is a budget for the set, not a
+capability (PLAN.md §M25, smaller than a milestone).
+
+<sup>oo</sup> Recents is Spotlight's `kMDItemLastUsedDate` over the local index, so a location macOS
+does not index cannot appear in it whatever Dirnex does. The same is true of the ⌘L fuzzy jump, which
+records local directories only because it navigates by picking the first candidate still on disk.
+
+<sup>ww</sup> The tab comes back and re-opens its connection when it is first shown — the active
+one at launch, the others when you switch to them, so a window of five server tabs contacts one
+server rather than five. Two things it will not do on its own, both deliberate. A connection whose
+secret is no longer in the Keychain cannot be re-established unattended, so the tab returns saying
+so and one gesture (any navigation, or the sidebar row) signs it back in. And with Settings ▸
+Panels set to **0 — never contact a server unasked** — the relaunch itself opens nothing: the tabs
+are all there and the first gesture connects them. A *nested* archive is the one location that
+cannot come back at all: its bytes are a temp extraction of a member of the enclosing archive, so
+the file it was mounted from is gone by the next launch.
+
 ## 2. File operations
 
 | Functionality | Local | Cloud mount | Archive | SFTP | FTP | S3 | S3 acct | Results | Trash |
@@ -131,11 +147,11 @@ which is why the local and cloud-mount columns are a plain yes.
 | Delete `F8` → Trash | yes | yes | n/a | n/a | n/a | n/a | n/a | yes | n/a |
 | Delete `F8` → permanent (confirmed) | yes | yes | yes, limited<sup>n</sup> | yes | yes | yes | yes, limited<sup>l</sup> | yes | yes |
 | Put Back (restore from Trash) | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | yes, limited<sup>o</sup> |
-| Undo `⌘Z` | yes | yes | no | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially | yes | no |
+| Undo `⌘Z` | yes | yes | no<sup>qq</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially | yes | no |
 | Background queue, progress bar, Stop | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 | Per-file conflict dialog | yes | yes | yes | yes | yes | yes | n/a | yes | yes |
 | Preserve permissions / dates / xattrs on copy | yes | yes | yes, limited | **no**<sup>q</sup> | **no**<sup>q</sup> | n/a<sup>q</sup> | n/a | yes | yes |
-| Copy a symlink as a symlink | yes | yes | yes | **no** | **no** | n/a | n/a | yes | yes |
+| Copy a symlink as a symlink | yes | yes | yes | **no**<sup>pp</sup> | n/a<sup>pp</sup> | n/a | n/a | yes | yes |
 | APFS clone fast path | yes | yes | n/a | n/a | n/a | n/a | n/a | yes | yes |
 
 <sup>g</sup> `F5` **out of** an archive extracts the marked members into the other pane (which
@@ -190,7 +206,19 @@ undo remotely. A **permanent delete is not reversible anywhere** — which is ev
 since no remote backend has a Trash.
 
 <sup>q</sup> `copyMetadata` is a no-op on the remote backends. S3 has no settable mtime, no
-permissions and no symlinks at all (PLAN.md §M21); SFTP and FTP could carry more than they do.
+permissions and no symlinks at all (PLAN.md §M21); SFTP and FTP could carry more than they do, and
+`sftp`'s own `get -p` / `put -p`, `chmod`, `chown` and `chgrp` are the verbs that would (PLAN.md
+§M25). Over FTP it is the mode alone, through `-Q` quote commands.
+
+<sup>pp</sup> Only the **read** half is missing, and only over SFTP: `SFTPBackend.createSymbolicLink`
+ships and `CopyEngine` calls it, so a link can be written — but `sftp`'s `ls -la` prints the kind
+(`l`) with no ` -> target`, and the batch language has no `readlink`, so the target would have to
+come from the SSH exec channel an `sftp`-only account does not have (PLAN.md §M25). Writing an empty
+link instead is the failure being refused. FTP has no symlink verb at all.
+
+<sup>qq</sup> Deleting a member **rewrites the container**, and the journal has nowhere to put the
+bytes that left. Reversing it means keeping them, which is a storage decision rather than a missing
+hook (PLAN.md §M25, smaller than a milestone).
 
 ## 3. Preview, open and edit
 
@@ -201,9 +229,9 @@ permissions and no symlinks at all (PLAN.md §M21); SFTP and FTP could carry mor
 | Syntax highlighting, Markdown, diagrams in preview | yes | yes | yes | yes | yes | yes | n/a | yes | yes |
 | Open in the default app (`⏎`) | yes | yes | yes, limited<sup>t</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | n/a | yes | yes |
 | Edit `F4`, with save written back | yes | yes | yes, limited<sup>v</sup> | yes | yes | yes | n/a | yes | yes |
-| Open With… / Share sheet | yes | yes | **no** | **no** | **no** | **no** | n/a | yes | yes |
-| Compare By Contents (`⌥F3`) | yes | yes | **no** | **no** | **no** | **no** | n/a | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> |
-| Synchronize Directories | yes | yes | **no** | **no**<sup>x</sup> | **no**<sup>x</sup> | **no**<sup>x</sup> | n/a | no | no |
+| Open With… / Share sheet | yes | yes | **no**<sup>rr</sup> | **no**<sup>rr</sup> | **no**<sup>rr</sup> | **no**<sup>rr</sup> | n/a | yes | yes |
+| Compare By Contents (`⌥F3`) | yes | yes | **no**<sup>rr</sup> | **no**<sup>rr</sup> | **no**<sup>rr</sup> | **no**<sup>rr</sup> | n/a | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> |
+| Synchronize Directories | yes | yes | **no**<sup>x</sup> | **no**<sup>x</sup> | **no**<sup>x</sup> | **no**<sup>x</sup> | n/a | n/a<sup>x</sup> | n/a<sup>x</sup> |
 | Browse *into* an archive file | yes | yes | yes | **no**<sup>y</sup> | **no**<sup>y</sup> | **no**<sup>y</sup> | n/a | yes | yes |
 
 <sup>r</sup> The member is extracted to a temp file first; only the **cursor's** member is ever
@@ -223,14 +251,22 @@ is ever fetched.
 preserving encryption and hidden names. A nested archive's member cannot.
 
 <sup>w</sup> Only for hits that are real local files; two archive members or two server objects
-are not comparable.
+are not comparable — the same gate note <sup>rr</sup> describes, reached through a results tab.
 
-<sup>x</sup> Deliberate for FTP by timestamp (`LIST` stamps are year-less, zone-less and on the
-server's clock) and for S3 (no settable mtime). SFTP by **size** would be honest and is simply
-not built.
+<sup>x</sup> Comparing by **timestamp** is deliberately refused for FTP (`LIST` stamps are year-less,
+zone-less and on the server's clock) and for S3 (no settable mtime), and always will be. Comparing by
+**size** would be honest on any of them and is simply not built; by *contents* becomes reachable once
+⌥F3 can fetch two sides (PLAN.md §M25). A virtual listing has no directory to synchronize.
 
-<sup>y</sup> `⏎` on a `.zip` sitting on a server downloads it and hands it to the default app
-rather than browsing it. Fetch-then-browse is the obvious shape and is not built.
+<sup>y</sup> `⏎` on a `.zip` sitting on a server downloads it and hands it to the default app rather
+than browsing it. `ArchiveBackend.init(archiveOnDiskPath:)` needs a real path, so fetch-then-mount is
+the shape — and writing into one is repack-then-upload. Not built (PLAN.md §M24 Slice 6).
+
+<sup>rr</sup> Every one of these refuses in one line — `backend == .local`, in
+`PanelViewController+OpenWith.swift`, `+Compare.swift` and their siblings — and none of them needs
+the file to be *local*, only to be **a file**. The fetch that would supply one has shipped since M21
+Slice 10 for a single row under the cursor; what these need is a marked *set*, downloaded with a
+progress bar and a Stop (PLAN.md §M24).
 
 ## 4. Find Files (`⌥F7`)
 
@@ -242,7 +278,7 @@ rather than browsing it. Fetch-then-browse is the obvious shape and is not built
 | by **file contents** | yes | yes | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | n/a | yes | yes |
 | by **Finder tag** | yes | yes | n/a | n/a | n/a | n/a | n/a | yes | yes |
 | Runs off an index (instant) | yes | yes | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | n/a | yes | yes |
-| Server-side walk (one request, not one per folder) | n/a | n/a | n/a | yes, limited<sup>dd</sup> | **no** | yes | n/a | — | — |
+| Server-side walk (one request, not one per folder) | n/a | n/a | n/a | yes, limited<sup>dd</sup> | **no**<sup>ss</sup> | yes | n/a | — | — |
 | Live progress + Stop | yes | yes | yes | yes | yes | yes | n/a | yes | yes |
 | Save the search to the sidebar, re-run later | yes | yes | yes | yes | yes | yes | n/a | yes | yes |
 
@@ -264,21 +300,26 @@ return *more* results under the same name.
 `sftp`-only account (`ForceCommand internal-sftp`) falls back to the per-directory walk, decided
 per connection at run time.
 
+<sup>ss</sup> FTP has neither an exec channel nor a delimiter-less listing, so its search is one
+`LIST` per directory. `curl` reuses one connection across many `ftp://` URLs, which is the shape
+worth measuring — and worth much less than it looks now that `ProcessWaiting` no longer taxes every
+child ~71 ms (PLAN.md §M25, smaller than a milestone).
+
 ## 5. Metadata and macOS integration
 
 | Functionality | Local | Cloud mount | Archive | SFTP | FTP | S3 | S3 acct | Results | Trash |
 |---|---|---|---|---|---|---|---|---|---|
-| Get Info: permissions, flags, dates | yes | yes | **no** | **no** | **no** | n/a | n/a | yes<sup>ee</sup> | yes<sup>ee</sup> |
+| Get Info: permissions, flags, dates | yes | yes | **no**<sup>tt</sup> | **no**<sup>tt</sup> | **no**<sup>tt</sup> | n/a | n/a | yes<sup>ee</sup> | yes<sup>ee</sup> |
 | Get Info: ACLs, extended attributes | yes | yes | n/a | n/a | n/a | n/a | n/a | yes<sup>ee</sup> | yes<sup>ee</sup> |
 | Privilege escalation for a root-only change | yes | yes | n/a | n/a | n/a | n/a | n/a | yes | yes |
 | Finder tags (`⌃T`, tag dots) | yes | yes | n/a | n/a | n/a | n/a | n/a | yes<sup>ee</sup> | yes<sup>ee</sup> |
 | Cloud sync badges | yes | yes | n/a | n/a | n/a | n/a | n/a | yes | yes |
-| Create / verify checksum files | yes | yes | **no** | **no**<sup>ff</sup> | **no**<sup>ff</sup> | **no**<sup>ff</sup> | n/a | no | no |
+| Create / verify checksum files | yes | yes | **no**<sup>ff</sup> | **no**<sup>ff</sup> | **no**<sup>ff</sup> | **no**<sup>ff</sup> | n/a | no<sup>xx</sup> | no<sup>xx</sup> |
 | Open in Terminal | yes | yes | n/a | **no**<sup>gg</sup> | n/a | n/a | n/a | no | no |
-| Run a user script | yes | yes | **no** | **no** | **no** | **no** | no | no | no |
+| Run a user script | yes | yes | **no**<sup>rr</sup> | **no**<sup>rr</sup> | **no**<sup>rr</sup> | **no**<sup>rr</sup> | no | no<sup>xx</sup> | no<sup>xx</sup> |
 | Pack `⌥F5` (create an archive) | yes | yes | n/a | **no**<sup>hh</sup> | **no**<sup>hh</sup> | **no**<sup>hh</sup> | n/a | **no** | no |
 | Encrypted archives / hidden member names | yes | yes | yes | no<sup>hh</sup> | no<sup>hh</sup> | no<sup>hh</sup> | n/a | no | no |
-| Create / unlock an encrypted vault | yes | yes | n/a | **no** | **no** | **no** | n/a | no | n/a |
+| Create / unlock an encrypted vault | yes | yes | n/a | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a | no | n/a |
 | Saved connection in the sidebar | n/a | n/a | n/a | yes | yes | yes | yes | n/a | n/a |
 | Pin to Favorites / Places menu | yes | yes | no | yes, partially<sup>ii</sup> | yes, partially<sup>ii</sup> | yes, partially<sup>ii</sup> | yes, partially | no | n/a |
 
@@ -286,17 +327,38 @@ per connection at run time.
 file, so it carries a mode, an ACL and tags like any other.
 
 <sup>ff</sup> Neither `sftp` nor `curl` can hash server-side, so a remote checksum is a full
-download. Buildable (a streaming read over the existing transports); not built.
+download of everything in scope — the marked-set fetch note <sup>rr</sup> describes, with
+`ChecksumEngine` behind it and the manifest keeping the **remote** names rather than the temp ones
+(PLAN.md §M24 Slice 4).
 
 <sup>gg</sup> A local shell cannot `cd` to a server. An `ssh` session to the SFTP account's own
 host is a different feature and is not built.
 
-<sup>hh</sup> Both ends of a pack must be real local folders. Packing *to* or *from* a server
-would work through the existing staging path and is not built.
+<sup>hh</sup> Both ends of a pack must be real local folders. Packing *to* or *from* a server is
+build-into-temp-then-upload, or fetch-then-build, through the staging path `RelayCopy` already uses —
+not built (PLAN.md §M24 Slice 6).
 
 <sup>ii</sup> A remote folder can be pinned from the menu, but the pin is not restored at launch
-and is not a drag target in the sidebar (PLAN.md §M8's deliberate omission). The **Servers**
-section is the reconnectable surface.
+and is not a drag target in the sidebar (PLAN.md §M8's deliberate omission). The **Servers** section
+is the reconnectable surface. A `FavoriteEntry` carries a `VFSPath`, whose `VFSBackendID` says nothing
+about the auth method — which is exactly the gap `PersistedTab` closed by carrying a
+`StoredServerEndpoint`, so the same fix one type along is what would make the pin reconnect (PLAN.md
+§M25, smaller than a milestone).
+
+<sup>tt</sup> The SFTP and FTP listings already carry mode, owner, group and modification date into
+`FileEntry`; the panel refuses to draw them. Reading them is PLAN.md §M24 Slice 7 and *editing* them
+is §M25, because the two fail differently — a panel showing a mode it cannot change is honest, and
+one offering a change it cannot make is not. An archive member has attributes in its header and no
+way to write them back short of a repack.
+
+<sup>uu</sup> A vault is an encrypted disk image that macOS mounts as a volume, so it is a *local*
+thing by construction; `hdiutil` cannot attach one over SFTP, FTP or S3. Copying the image file to a
+server and back works today and is an ordinary transfer.
+
+<sup>xx</sup> Not the remote reason: a virtual listing has no directory of its own, and both of these
+need one — a manifest is written *beside* the files it covers, and a script is run *in* a working
+directory. The rows themselves are ordinary files, so the same gesture works from the folder they
+actually live in.
 
 ## 6. Transfer behaviour
 
@@ -309,7 +371,7 @@ local one.
 | Determinate byte progress, uploading | yes | yes | n/a | **yes, limited**<sup>jj</sup> | yes | yes | n/a |
 | Resume an interrupted transfer | n/a | n/a | n/a | yes | yes | yes | n/a |
 | Split one file over several connections | n/a | n/a | n/a | yes | yes | yes | n/a |
-| Multipart upload for very large files | n/a | n/a | n/a | no | no | yes | n/a |
+| Multipart upload for very large files | n/a | n/a | n/a | no<sup>vv</sup> | no<sup>vv</sup> | yes | n/a |
 | Stop actually stops the bytes | yes | yes | yes | yes | yes | yes | n/a |
 | Server-side copy (bytes never touch this Mac) | yes<sup>kk</sup> | yes<sup>kk</sup> | n/a | **no**<sup>ll</sup> | **no**<sup>ll</sup> | yes | n/a |
 | Duplicate a file inside one account | yes | yes | n/a | yes, limited<sup>ll</sup> | yes, limited<sup>ll</sup> | yes | n/a |
@@ -324,50 +386,43 @@ at the end.
 
 <sup>kk</sup> An APFS clone, which is instant and costs no bytes.
 
-<sup>ll</sup> Neither protocol has a copy verb — their `copyFile` *is* an upload or a download. A
-duplicate inside one account, or a copy between two accounts, is staged through this Mac
-(`RelayCopy`), which costs the file's size in temp space and moves the bytes twice. Correct, and
-slower than it looks.
+<sup>ll</sup> Neither backend uses a copy verb — their `copyFile` *is* an upload or a download — so
+a duplicate inside one account, or a copy between two accounts, is staged through this Mac
+(`RelayCopy`), costing the file's size in temp space and moving the bytes twice. Correct, and slower
+than it looks. **One qualifier, unmeasured:** `sftp(1)` on macOS 26 (OpenSSH 10.2p1) documents a
+`copy` / `cp` command, "only supported by servers that implement the `copy-data` extension". Nobody
+here has asked a real server whether it does, which is where PLAN.md §M25 opens; `RelayCopy` stays
+the answer for every server that does not. FTP has no such verb at all.
 
 <sup>mm</sup> S3 sends `If-Match`; SFTP and FTP re-`stat` before uploading and tell you if the
 file changed since it was fetched, which is a narrower window and not a guarantee.
+
+<sup>vv</sup> S3 splits a large upload into parts that fail and retry independently; the other two
+send one stream, so a transfer that dies late resumes from wherever `-C -` or `put -a` can pick it up
+rather than from a part boundary (PLAN.md §M25, smaller than a milestone).
 
 ---
 
 ## Where remote still feels unlike local
 
-Ranked by how often it is in the way, counting only the **"no"** and **"yes, partially"** cells —
-the "yes, limited" ones are the technology and are already as close as they get.
+Every **"no"** and **"yes, partially"** cell above that is *ours* to close is scheduled in
+[PLAN.md](../PLAN.md) §4, as **M24** (every local-only feature, on a file that is not local) and
+**M25** (what a remote write carries, and what a remote delete costs), with the cells too small for
+either listed beside them. This file is the status; the plan is the work. Nothing that has already
+shipped is argued here — a closed gap is simply a changed cell, and why it changed is in
+[HISTORY.md](HISTORY.md).
 
-**No live refresh on a server** used to head this list and is closed: a pane on a connected server
-now re-lists itself while it is on screen, so a file somebody else added appears on its own. It is a
-"yes, limited" rather than a plain yes — §1's note <sup>f</sup> says what the three limits are and
-why each is deliberate — because a poll is not a notification, and nothing can make it one.
+What is **not** scheduled, because it cannot be closed from here — these are the "yes, limited"
+rows, and the app is already as close as the technology permits:
 
-**Session restore and workspaces dropping remote tabs** headed it next and is closed too: quit with
-four bucket tabs open and they come back, as does a browsed `.zip`. A tab now writes down *where to
-reconnect* rather than only which account it was on — the coordinates and the auth method, never a
-secret, which is what a saved server already keeps as plain JSON — so a server connected once from
-the Connect sheet and never saved comes back as readily as a named one, and deleting a sidebar row
-does not silently close your tabs. The connection is re-opened by the navigation that first wants
-it, so restoring costs one server per pane rather than one per tab. It stays a "yes, limited"
-because of the two things §1's note <sup>g</sup> names: a secret that has left the Keychain, and
-the user's own "never contact a server unasked".
-
-1. **Archives are local-only in every direction.** A `.zip` on a server cannot be browsed, and
-   nothing can be packed to or from one — even though the staging path that would do it already
-   exists for `RelayCopy`.
-2. **Checksums, Compare By Contents, Synchronize and user scripts are local-only.** All four are
-   "download, then run the local implementation"; none is built.
-3. **Permissions and symlinks are not preserved on an SFTP/FTP copy.** `chmod` and `ln -s` are
-   both available over SFTP; nothing consumes them.
-4. **Open With / Share are dead remotely.** Both need a local URL, which the remote fetch path
-   already knows how to produce.
-5. **No Trash anywhere remote**, so every remote delete is permanent and unreversible. This is
-   honest about the protocols, but a Dirnex-managed `.dirnex-trash` prefix would be a real
-   improvement over a confirmation dialog.
-
-Things that are **not** on this list because they cannot be fixed, and the app is already as
-close as the technology permits: content search and tag search on a server, exact FTP timestamps,
-atomicity of an S3 prefix rename, upload progress over SFTP, per-item download percentages from
-macOS's cloud providers, and Put Back inside the iCloud trash.
+- Content search and Finder-tag search on a server: both need every file's bytes or its xattrs.
+- Exact FTP timestamps: `LIST` stamps are year-less, zone-less and on the server's clock, and
+  `curl` cannot send `MLSD`.
+- Atomicity of an S3 prefix rename or delete: it is N copies and N deletes, whoever writes it.
+- Upload progress over SFTP: `sftp` prints no meter to a spawned process, in any configuration.
+- Per-item download percentages from macOS's cloud providers, and sync status in Google Drive's
+  mirror mode: neither is exposed to anyone but Finder.
+- Put Back inside the iCloud trash, or for a Finder delete on Box: the origin is an opaque provider
+  reference with no path in it.
+- Live change notifications from any remote protocol: SFTP has no `inotify`, FTP has no verb, and
+  S3 has no session to hold one open on. A poll is not a notification, and nothing can make it one.

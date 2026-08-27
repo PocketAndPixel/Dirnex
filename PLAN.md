@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: M0–M23 shipped (14 languages) · Created: 2026-07-05 ·
+Status: M0–M23 shipped (14 languages) · **M24–M25 planned** · Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md) · What works where:
 [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md)
 
@@ -157,13 +157,15 @@ their own, and every one of them is shipped — so that log lives in
 **[docs/HISTORY.md](docs/HISTORY.md) ▸ After M19** with the rest of the archive, together with the
 two passes that closed M19's own loose ends.
 
-What is still open, rather than merely imaginable, is the *undone* column above plus one item:
+What is still open, rather than merely imaginable, is the *undone* column above, the two planned
+milestones below — which is where [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md)'s parity
+backlog now lives — plus one item:
 
 - **The thumbnail grid, brief view and the `PaneSurface` extraction** — M15's cut, and one unit
   rather than three items, argued in HISTORY.md §M15. Any future grid inherits two constraints from
   it: skip `FileEntry.isDataless` rows, and move sort off the column header first.
 
-**The first gap in [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md)'s ranked list — "no live
+**The top parity gap in [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md) — "no live
 refresh on a server" — closed 2026-08-26.** A pane on a connected server now re-lists itself while
 it is on screen, so a file somebody else added appears without anyone pressing a key.
 `RemoteRefreshPolicy` derives the gap from **what the previous refresh actually cost** rather
@@ -178,7 +180,7 @@ local `sshd`; the run is what caught the catch-up bug that no headless test coul
 After M19, NOTES.md ▸ AppKit). It stays a **"yes, limited"** in that document rather than a plain
 yes: a poll is not a notification, and nothing can make it one.
 
-**The next gap on that list — "session restore and workspaces drop remote tabs" — closed
+**The next one — "session restore and workspaces drop remote tabs" — closed
 2026-08-27.** Quit with four bucket tabs open and they come back, as does a browsed `.zip`; a saved
 workspace carries its server tabs the same way. What was missing was never the *place* — a persisted
 tab has always stored the account's descriptor — but the way back to it: a `VFSBackendID` says
@@ -215,6 +217,171 @@ existed only to amortize the cost the filter removes, and the explicit `archive_
 out to buy nothing over libarchive's own implicit skip — the saving is in not reading the data. See
 docs/NOTES.md ▸ Encryption.
 
+### Planned: M24 and M25 — the parity backlog
+
+[docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md) used to rank what still feels unlike local at
+the bottom of its own tables. It ranks nothing now: that document is the *status*, and every cell in
+it that is a gap rather than a limit points at one of the two milestones below, or at the shorter
+list of cells after them. Nothing here is scheduled that the tables do not mark, and nothing they
+mark as a limit is scheduled at all.
+
+### Planned: M24 — Every local-only feature, on a file that is not local
+
+**Seven features refuse anything that is not on this disk, and each refuses it in one line.**
+`PanelViewController+OpenWith.swift:25` filters the selection to `backend == .local`;
+`+Compare.swift:86` requires it of both sides; `+Checksum.swift:60`, `+UserScript.swift:25`,
+`+ArchivePack.swift:28`, `+Attributes.swift:146` and `+Sync.swift:68` each say the same thing about
+their own gesture. Fifty-five sites in the app read that comparison and most of them are right — Git
+status, Finder tags, vaults, the terminal drawer and the cloud-download prompt are all genuinely
+about *this disk*. These seven are not: nothing about them needs the file to be local, only to be
+**a file**.
+
+The bytes are already reachable, which is what makes this a milestone rather than a rewrite.
+`fetchRemoteFile(_:for:)` has pulled a remote row down for ⏎, F4 and every preview since M21 Slice
+10, under a size policy that decides whether to ask first (`RemoteFetchPolicy`, four purposes and a
+table of thresholds); `ArchiveExtractor` has placed a member since M4, and M19's member filter made
+that 0.001 s for one member of a 600 MB encrypted archive. What is missing is not a download. It is
+a download of **a marked set**, with a determinate bar and a Stop — which is the operation queue's
+job and not a cache's.
+
+#### Three things to settle before any Swift
+
+- **A gesture over N remote files has to say what it will cost before it starts.**
+  `RemoteFetchPolicy` answers per file, for the one file under a cursor, because that is the only
+  shape that existed. ⌥F3 is two files; a checksum run and ⌥F5 are a marked set; a user script is
+  whatever the user marked. So the plan itself is the deliverable — which of the set is already
+  cached, what the rest weighs, and how many billed requests it is — and the confirmation names that
+  total rather than asking once per file.
+- **The engine must never materialize; the gesture must.** `ByteComparator` refuses an evicted cloud
+  placeholder rather than reading through it, and that rule arrives here one protocol out: the
+  compare was asked for, so the *gesture* fetches and reports, and the comparator still only ever
+  sees files that are already here. Anything else puts a silent multi-gigabyte download behind a
+  keystroke — which is the failure `SF_DATALESS` exists to prevent, wearing a network instead of a
+  file provider.
+- **A `.zip` on a server is the whole file.** `ArchiveBackend.init(archiveOnDiskPath:)` needs a real
+  path, so browsing one is fetch-all-then-mount and writing into one is repack-then-upload. Both are
+  affordable and neither is free, and the difference from ⏎ on a small text file is exactly that the
+  user should be told before it starts.
+
+#### Slices
+
+Core first, app untouched until (2), as usual. Each lands runnable.
+
+1. **`MaterializationPlan` in `DirnexCore`** — given a set of `FileEntry` and what the cache already
+   holds, what must be fetched, its total bytes and its request count, and whether that total is
+   over the threshold a given purpose confirms at. `RemoteFetchPurpose` grows the cases these
+   gestures need, so each one's threshold is a line in the existing table rather than a constant at
+   a call site. Pure, tested, additive; no app rebuild.
+2. **Bulk materialize as a queue job.** An N-file fetch is a `FileOperation`, which buys the
+   determinate bar, Stop, per-item failure reporting and the pause/resume the queue already has —
+   and stops a second copy of the transfer loop existing. `RemoteFileCache` stays the *store* and
+   gains no second way to be filled.
+3. **Open With… and the Share sheet.** The cheapest of the seven: one file, one URL, and ⏎ already
+   fetches exactly that. The only new question is what a *marked set* of remote rows means for Open
+   With, which is the plan from (1) with a different verb after it.
+4. **Compare By Contents and checksums.** ⌥F3 fetches both sides and hands `ByteComparator` two
+   local files; a checksum run fetches the marked set and hands `ChecksumEngine` real paths.
+   `ChecksumScope` and the manifest's *stored* names must stay the remote names, or a manifest
+   written beside a bucket's objects names temp directories.
+5. **User scripts.** Hand the script real paths and let it run. The interesting half is a script
+   that *edits* its argument: that is the `EditedFileRegistry` watch F4 already installs, so a save
+   is offered back up rather than lost in a temp directory nobody will look in again.
+6. **Pack in both directions, and browsing a `.zip` on a server.** Both ends of ⌥F5 stage — build
+   into temp, upload the archive — and browsing one is the mirror. This is the slice that needs the
+   "the whole file is coming down" sentence, and the one where a *nested* archive stays out of
+   scope for the reason it always has: its bytes are already a temp copy.
+7. **Get Info, read-only, on a remote row.** The SFTP and FTP listings already carry mode, owner,
+   group and modification date into `FileEntry`; `AttributesController` refuses to draw them. Read
+   first and write in M25, because the two fail differently — a panel that shows a mode it cannot
+   change is honest, and one that offers a change it cannot make is not.
+
+**Deliberately not in scope.** Content-grep and tag search on a server, both withheld at M22 for
+the reason that has not changed — no remote backend can answer either without reading every file.
+ACLs and extended attributes remotely, which SFTP and FTP do not carry at all. Open in Terminal for
+an SFTP account, which is an `ssh` session and a different feature. And Get Info's **write** half,
+which is M25's.
+
+### Planned: M25 — What a remote write carries, and what a remote delete costs
+
+Three parts, and they share a subject: a remote operation that succeeds while quietly doing less
+than the local one it stands in for.
+
+**A copy that carries more than bytes.** `VFSBackend.copyMetadata` defaults to a no-op and SFTP and
+FTP both take the default, so a mode and a timestamp are dropped on every transfer with nothing said.
+Extended attributes and ACLs are out of scope in both directions — neither protocol carries them, and
+that is a limit rather than a gap. What the protocol *does* offer is more than "wire up `chmod`":
+`sftp(1)` on this Mac (OpenSSH 10.2p1) documents verbs nothing here consumes, and every line below is
+a **probe to run before any Swift** rather than a fact yet, because a man page is not a server.
+
+- **`get -p` / `put -p`** says it copies "full file permissions and access times" — a flag on the two
+  verbs `SFTPCommands.download`/`upload` already build, rather than a `chmod` pass after the fact.
+  Whether it carries the *modification* time as well as the access time is exactly the sort of thing
+  the man page's wording will not settle; measure it against a real `sshd`.
+- **`chmod`, `chown` and `chgrp`** are batch commands, each taking `-h` to act on a symlink rather
+  than its target — the fallback if `-p` under-delivers, and the only route for a *directory* the
+  engine recreated by hand.
+- **`copy` / `cp` is a server-side copy**, gated on the server implementing the `copy-data`
+  extension. If a server advertises it, a duplicate inside one SFTP account stops being a download
+  and an upload through this Mac. That contradicts a claim this repo has written down twice — that
+  neither remote protocol has a copy verb, which is `RelayCopy`'s own doc comment and a line in
+  docs/NOTES.md — so the probe settles a **correction**, and `RelayCopy` stays the fallback for
+  every server that does not offer it.
+- **Symlinks are asymmetric and only one half is missing.** `SFTPBackend.createSymbolicLink` ships
+  and `CopyEngine` already calls it, so a link can be *written*. What cannot be read is its target:
+  `sftp`'s `ls -la` prints the kind (`l`) and no ` -> target`, so `symlinkDestination` is `nil` and
+  a copy would write `ln -s "" link`. There is no `readlink` in the batch language, so the target
+  comes from the SSH **exec** channel — which M22 already established, and which an
+  `sftp`-only account (`ForceCommand internal-sftp`) does not have. So this degrades per connection
+  exactly as the search walk does, and the honest answer where it cannot be read is to keep
+  refusing rather than to write an empty link.
+- **FTP** has no symlink verb at all and its `LIST` stamps are year- and zone-less, so its share of
+  this is the mode alone, through `-Q` quote commands. `MFMT` for a modification time is worth one
+  probe and nothing more; it is an extension, not a verb.
+
+**Get Info's write half, and Synchronize on a side with no exact clock.** M24 draws a remote row's
+mode and dates; this makes them editable through the same verbs above, with the same per-connection
+degradation. `DirectorySync` is the other consumer of the same fact: comparing by timestamp is
+deliberately refused for FTP and S3 and always will be, but comparing by **size** is honest and is
+simply not built — and once ⌥F3 can fetch two sides (M24 Slice 4), comparing by *contents* is
+reachable too, at a price the plan from M24 Slice 1 can state up front.
+
+**A Trash where no protocol has one.** Every remote delete is permanent and unreversible, because
+`deleteStrategy` degrades to `.permanent` wherever `.trash` is absent and it is absent everywhere
+remote. A confirmation dialog is what stands in for it today. Whether Dirnex should invent one — a
+managed `.dirnex-trash/` prefix, a rename into it, and a sidecar naming the origin the way a trash
+folder's `.DS_Store` carries `ptbL`/`ptbN` — is a **format commitment that outlives the code**, so
+it is §7's open question rather than a slice, and the milestone does not start on it before it is
+answered.
+
+#### Smaller than a milestone
+
+Each of these is one remaining cell in [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md), too
+small to be a slice of either milestone above and too real to leave unwritten:
+
+- **An archive pane does not notice its own file changing.** `startWatching` returns early for any
+  backend but `.local`, so a browsed `.zip` re-reads only when something asks it to. The decision is
+  already made and tested — `ArchiveIdentity` compares device, inode, size and mtime — so this is an
+  FSEvents stream on the archive file, not a rule.
+- **A favorite pointing at a remote folder does not survive a launch.** A `FavoriteEntry` carries a
+  `VFSPath`, whose `VFSBackendID` says nothing about the auth method — which is precisely the gap
+  `PersistedTab` closed by carrying a `StoredServerEndpoint`. Same fix, one type along, and it is
+  what would make the Favorites row as reconnectable as the Servers section.
+- **Size bars are local-only for a cost reason that covers only half of what it gates.**
+  `areSizeBarsVisible` requires `.local` because a bar needs *every* sibling's total, which remotely
+  is N bounded walks where the cursor's own total is one — and that argument does not apply to an
+  **archive**, whose whole table of contents is already in hand. The per-file half already works
+  remotely under `DirectorySizeBudget.remote`, so what is missing is a budget for the set.
+- **FTP has no server-side walk.** SFTP got one at M22 through the exec channel and S3 through a
+  delimiter-less listing; FTP has neither, so its search is one `LIST` per directory. `curl` reuses
+  one connection across many `ftp://` URLs, which is the shape worth measuring — and worth far less
+  than it looks now that `ProcessWaiting` no longer taxes every child ~71 ms.
+- **No multipart upload over SFTP or FTP.** S3 splits a large upload into parts that fail and retry
+  independently; the other two send one stream, so a transfer that dies late resumes from wherever
+  `put -a` or `curl -C -` can pick it up rather than from a part boundary.
+- **An archive rewrite is not undoable.** Deleting a member rewrites the container, and the journal
+  has nowhere to put the bytes that left. Reversing it means keeping them, which is a storage
+  decision rather than a missing hook.
+
 ## 5. Cross-cutting: testing strategy
 
 | Layer | Approach |
@@ -242,10 +409,31 @@ docs/NOTES.md ▸ Encryption.
 | M18's Markdown renderer chases CommonMark, and its mermaid subset chases mermaid — both indefinitely, one individually reasonable case at a time. The renderer has it worse than M17's scanner, because a wrong answer here is a wrong *document* rather than a wrong color | Two different mitigations, because the two halves fail differently. For **markdown**, the target is named as a corpus rather than as a spec — this repo's own files, plus whatever real `.md` the next bug report arrives with — and the escape hatch is that an unreadable construct falls back to its literal text, so the worst outcome is a paragraph that looks like its source. For **mermaid** the boundary is a *list of diagram types*, and crossing it is loud by construction: an unsupported type renders its fence with a note naming it, so the pressure to add one shows up as a user asking rather than as a silently wrong drawing. The tell that the mermaid half is going wrong is the layout gaining knobs — mermaid has a config surface of its own, and reproducing it is how a subset becomes a port. **Held through the milestone, and both escape hatches were used**: the markdown half is pinned by a corpus suite over this repo's own `PLAN.md`, `README.md`, `NOTES.md` and `HISTORY.md` rather than against the spec's test cases, and the mermaid half reports by name — not only an unsupported diagram *type* but an unsupported construct inside a supported one (`subgraph`, `loop`, `alt`, `style`), which is more than the milestone asked for and in the same direction. The one thing that did arrive is the knob the risk names: a `diagramScale` and a shared `labelSize` (HISTORY.md §M18 Slice 4), both of them constants the *app* sets once rather than a config surface read out of the diagram's own source, which is the line worth keeping |
 | M23's private pasteboard type becomes a *second* definition of what a transfer is — its own idea of what may land where, drifting from the one F5 already enforces | The payload carries **locations, not policy**: every read ends in the same `submitTransfer` → `FileOperation` → `CopyEngine` path F5/F6 use, under the same conflict prompter, and the admission rules it does own (no-op, recursion) are the ones that were *already* duplicated by hand in two places and got the backend wrong in both. The tell that the boundary is going is a paste or a drop growing a branch that F5 does not have — a second conflict policy, a second "can this land here" gate, a second refusal message. The gate is `acceptsUploads`, which `beginTransfer` already reads, and it must stay the one spelling. **Held through the milestone, and the pressure was real in both directions.** The gate widened once, to `receivesFiles`, and it widened *for F5 as well* rather than beside it — an S3 account pane says `.write` while a file has nowhere to go in it. Three admission rules moved **out** of the gestures into the tested `TransferAdmission` rather than being restated (recursion, volumes, and Slice 5's copy-only), each because it already had two hand-written spellings or was about to; and Slice 5 pulled the *extraction* out of F5 (`extractArchiveSources`) instead of teaching ⌘V a second way out of an archive, which is the same fork this file records for `editRoute(for:)`. The one refusal the paste path owns that F5 does not is dropping an archive member from a **move**, and it is the same rule `moveToOtherPane` enforces by returning — stated once, in the core, and read by both (HISTORY.md §M23 ▸ What the risk row asked) |
 | The tree becomes a *second* pane implementation by accretion — a refresh path, a mark gesture or a sort that quietly forks from the flat one | The tree is a flat projection over the same `NSTableView` and the same index space, not a parallel surface (HISTORY.md §M15 Slice 4); anything that forks is a signal the projection is wrong, not that the tree needs its own copy. Both fork points were answered in the slice — `SizeVisualization`'s per-directory assumption (the bars were withdrawn in tree mode at M15 close, then re-scoped *per parent directory* rather than forked — `SizeVisualization(tree:)` groups each row against its own level, so the projection stays one definition of "share of this folder") and the `installSortedModel` → `reloadEverything` → `syncCursorToTable` tail. It arrived once already, as the *second index space*: six `panel.model[row]` sites that crashed on the first click below the root's last entry, now routed through `displayedIndex(ofID:)` — NOTES.md ▸ AppKit |
+| M24 turns "fetch it first" into a download nobody asked for. Seven gestures gain the right to pull bytes over a network, and each one is a keystroke that used to be free | The rule is stated once and belongs to the **gesture**, never to the engine: `ByteComparator` refuses an evicted cloud placeholder rather than reading through it, and every engine reached here keeps that posture — it sees only files already on this disk, and the gesture is what fetches and what reports. The tell that the boundary is going is an *engine* learning to materialize, or a second threshold table appearing beside `RemoteFetchPolicy`'s. What makes it enforceable rather than a wish is that the size decision is already a named table keyed by `RemoteFetchPurpose`, so a new gesture is a row in it — and a purpose whose `isAutomatic` is true may never raise a dialog, which is the fork M21 Slice 10 settled and the bug a user reported when it was got wrong |
+| M25 writes attributes to a server through verbs that vary per account, and reports success it did not have. `sftp`'s `-p`, `chmod`, `copy` and the `readlink` behind a symlink target are each present on some accounts and absent on others — `ForceCommand internal-sftp` alone removes the exec channel | Degrade **per connection at run time**, the shape M22's search walk already proved: the account is asked once, the answer is remembered for that connection, and what cannot be carried is *not* carried rather than approximated. The failure to design against is the quiet one — writing an empty symlink because no target could be read, or reporting a preserved mode that was silently dropped — so the milestone opens with probes against a real `sshd` rather than with a man page, and a capability that cannot be established leaves the old behaviour standing. The corollary is that this milestone owes docs/NOTES.md a **correction** rather than only an entry: "neither remote protocol has a copy verb" is written down twice, and `sftp copy` exists |
 
 ## 7. Open questions
 
-**Open now:** none. M19's two were taken at open and M18's one likewise (both below); M15's two
+**Open now: one, and M25 does not start on its half of it before it is answered.**
+
+- **Whether Dirnex should invent a Trash the protocol does not have.** Every remote delete is
+  permanent, because `VFSCapabilities.deleteStrategy` degrades to `.permanent` wherever `.trash` is
+  absent and no remote backend has one; a confirmation dialog is what stands in for it today. The
+  fork is whether that stays the answer, or whether F8 on a server renames into a managed
+  `.dirnex-trash/` prefix with a sidecar naming the origin — the shape a trash folder's `.DS_Store`
+  already carries as its `ptbL`/`ptbN` pair, one layer out. It buys the one safety net remote
+  browsing has never had, and it costs three things worth stating before rather than after. It is a
+  **format** other software will meet: a stranger's FTP client, or the account's owner on the web
+  console, sees a folder of renamed junk and no explanation, so the layout outlives our code the way
+  M19's cipher choice does. Its price is not uniform — a rename is one cheap verb over SFTP and FTP
+  and is **N copies plus N deletes** on S3, so "delete" there would move the whole prefix twice and
+  a large one is a bill rather than a safety net. And the sidecar is a second source of truth that
+  can drift from the files beside it, which is the failure the `.DS_Store` origin records already
+  have and survive only because Finder writes them too. The alternative — leave it permanent, keep
+  the confirmation, and say plainly in the dialog that there is nothing to undo — is honest and
+  costs nothing, which is why this is a question and not a slice.
+
+M19's two were taken at open and M18's one likewise (both below); M15's two
 closed with it, and M17's one closed at open and was then
 **re-taken twice** (2026-08-06, every time by the user):
 
