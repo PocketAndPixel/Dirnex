@@ -123,6 +123,18 @@ protocol PanelHost: AnyObject {
     /// (PLAN.md §M21 Slice 10). Owned by the window for the same reason, and shared by both panes so
     /// previewing an object and then opening it costs one transfer.
     var remoteFileCache: RemoteFileCache { get }
+
+    /// Queue a download of `entries` and report back when it has finished, however it finished
+    /// (PLAN.md §M24 Slice 3). The copies are filed in ``remoteFileCache`` before `then` runs.
+    ///
+    /// On the host rather than in the pane because all three things it needs are the window's: the
+    /// queue that gives an N-file transfer a determinate bar, Stop and pause; the cache the copies
+    /// go into; and a lifetime that outlasts the pane, since a marked set of remote objects is
+    /// minutes during which the user may change tabs or navigate away and is still owed an answer.
+    func materializeRemoteFiles(
+        _ entries: [FileEntry],
+        then: @escaping @MainActor (OperationReport) -> Void
+    )
 }
 
 /// One file pane: a path bar, an `NSTableView` of the current directory, and a status

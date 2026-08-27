@@ -58,11 +58,14 @@ public struct OpenWithCandidates: Sendable, Hashable {
 /// rule is tested without depending on which apps happen to be installed on the machine running
 /// the tests (per PLAN.md §2 — the logic lives here and has tests, the app is a thin shell).
 public enum OpenWithApplications {
-    /// The applications that can open **every** item in `paths`.
+    /// The applications that can open **every** item in `items`.
     ///
     /// - Parameters:
-    ///   - paths: the selection. Order only matters for reading the default.
-    ///   - typeOf: a path's uniform type identifier, or `nil` when it has none.
+    ///   - items: the selection, as whatever key `typeOf` understands. Nothing here treats one as a
+    ///     path — it is handed straight back — which is what lets the caller key a row that has no
+    ///     file on this disk to ask about (PLAN.md §M24 Slice 3: a remote object is typed by its
+    ///     name). Order only matters for reading the default.
+    ///   - typeOf: an item's uniform type identifier, or `nil` when it has none.
     ///   - applications: every application that can open items of a type.
     ///   - defaultApplication: the application macOS would use for a type.
     ///
@@ -71,12 +74,12 @@ public enum OpenWithApplications {
     /// type does, and files of one type always answer identically (verified live before this was
     /// written). So a thousand marked photos cost one question, not a thousand.
     public static func candidates(
-        for paths: [String],
+        for items: [String],
         typeOf: (String) -> String?,
         applications: (String) -> [ApplicationRef],
         defaultApplication: (String) -> ApplicationRef?
     ) -> OpenWithCandidates {
-        guard let types = distinctTypes(of: paths, typeOf: typeOf) else { return .none }
+        guard let types = distinctTypes(of: items, typeOf: typeOf) else { return .none }
         guard let shared = intersect(types, applications: applications) else { return .none }
         let unanimous = unanimousDefault(
             across: types,
@@ -89,7 +92,7 @@ public enum OpenWithApplications {
         return OpenWithCandidates(defaultApplication: unanimous, others: others)
     }
 
-    /// The distinct types in `paths`, first-seen order — or `nil` when the selection is empty or
+    /// The distinct types in `items`, first-seen order — or `nil` when the selection is empty or
     /// contains an item with no type at all.
     ///
     /// An untypeable item collapses the whole answer rather than being skipped, and that is the
@@ -98,14 +101,14 @@ public enum OpenWithApplications {
     /// genuinely reports zero applications, so this only reaches the same answer sooner, without
     /// asking. (A file that vanished between listing and right-click lands here too.)
     private static func distinctTypes(
-        of paths: [String],
+        of items: [String],
         typeOf: (String) -> String?
     ) -> [String]? {
-        guard !paths.isEmpty else { return nil }
+        guard !items.isEmpty else { return nil }
         var types: [String] = []
         var seen: Set<String> = []
-        for path in paths {
-            guard let type = typeOf(path) else { return nil }
+        for item in items {
+            guard let type = typeOf(item) else { return nil }
             if seen.insert(type).inserted { types.append(type) }
         }
         return types

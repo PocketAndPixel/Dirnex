@@ -201,4 +201,60 @@ struct MaterializationPlanTests {
     func negativeSizeIsInexact() {
         #expect(plan([remote("mystery.bin", size: -1)]).totalsAreExact == false)
     }
+
+    // MARK: - Rows this gesture is not the one to move
+
+    /// A hand-off leaves a placeholder alone, so its bytes must not reach the decision: counted,
+    /// a 2 GB evicted file would raise a "download this from the server" dialog over a file that is
+    /// already on this disk and that nothing here is going to fetch.
+    @Test("dropping a source takes it out of every total a decision reads")
+    func excludingASourceTakesItOutOfTheTotals() {
+        let placeholder = entry(.local("/Users/oleg/evicted.raw"), size: 2048, isDataless: true)
+        let full = plan([placeholder, remote("far.bin", size: 512)])
+        let handOff = full.excluding(.cloudPlaceholder)
+
+        #expect(full.byteTotal == 2560)
+        #expect(handOff.byteTotal == 512)
+        #expect(handOff.requestCount == 1)
+        #expect(handOff.pending.map(\.source) == [.remote])
+    }
+
+    /// And the set it drops is the only thing it drops — a plan of nothing else needs nothing,
+    /// which is what keeps a hand-off over a folder of evicted files from asking anything at all.
+    @Test("a set of nothing but dropped rows needs nothing")
+    func excludingCanLeaveNothingPending() {
+        let placeholder = entry(.local("/Users/oleg/evicted.raw"), isDataless: true)
+        let result = plan([placeholder, local("here.txt")]).excluding(.cloudPlaceholder)
+
+        #expect(result.needsNothing)
+        #expect(result.totalsAreExact)
+    }
+
+    // MARK: - The rows a gesture may have to refuse
+
+    /// The same rows `totalsAreExact` reads, named rather than counted — a hand-off refuses them
+    /// and a pack stages their subtrees, so the plan says which they are and neither answer.
+    @Test("a folder that is not here is named, and one that is here is not")
+    func pendingDirectoriesAreTheOnesNotHere() {
+        let remoteFolder = entry(
+            VFSPath(backend: Self.sftp, path: "/srv/data"), kind: .directory, size: 4096
+        )
+        let memberFolder = entry(
+            VFSPath(backend: .archive(forArchiveAt: "/tmp/pkg.zip"), path: "/docs"),
+            kind: .directory
+        )
+        let localFolder = entry(.local("/Users/oleg/docs"), kind: .directory, size: 4096)
+        let result = plan([localFolder, remoteFolder, memberFolder, remote("far.bin")])
+
+        #expect(result.pendingDirectories.map(\.path) == [remoteFolder.path, memberFolder.path])
+    }
+
+    /// The ordinary marked set — files, and folders on this disk — names none, which is what keeps
+    /// a rule written on this from firing on every local gesture.
+    @Test("a set that is already here names no folder to refuse")
+    func pendingDirectoriesIsEmptyForALocalSet() {
+        let localFolder = entry(.local("/Users/oleg/docs"), kind: .directory, size: 4096)
+
+        #expect(plan([localFolder, local("a.txt")]).pendingDirectories.isEmpty)
+    }
 }

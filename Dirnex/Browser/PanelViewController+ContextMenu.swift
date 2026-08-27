@@ -267,12 +267,27 @@ extension PanelViewController {
     }
 
     /// The system's Share item, which brings its own submenu of services and its own icons.
-    /// Skipped entirely for rows that have no local URL to share (an archive member, an SFTP file)
-    /// rather than shown disabled — a "Share…" that can never light up is just noise in the menu.
+    ///
+    /// It can only be that item when every row is **already** a file on this disk: AppKit derives
+    /// the submenu from the items themselves, so there is nothing to build for a selection whose
+    /// bytes are still on a server. Such a selection gets the registry's own **Share…** command
+    /// instead, which fetches and then presents the picker (`shareSelection`) — one plain item where
+    /// the system would have nested a submenu, rather than the gesture disappearing inside an
+    /// archive the way it used to.
     private func addShareItem(to menu: NSMenu) {
-        let targets = handoffTargets()
-        guard !targets.isEmpty else { return }
-        menu.addItem(shareMenuItem(for: targets))
+        let rows = handoffEntries()
+        guard !rows.isEmpty else { return }
+        let local = handoffTargets()
+        if local.count == rows.count {
+            menu.addItem(shareMenuItem(for: local))
+        } else if let item = MainMenuBuilder.commandItem(for: "file.share") {
+            // The registry's own item, so the title is the one the menu bar and the ⌘K palette use
+            // and is translated once. Its key equivalent comes off for the reason every context-menu
+            // command's does — the menu shouldn't fire shortcuts while it is open.
+            item.keyEquivalent = ""
+            item.keyEquivalentModifierMask = []
+            menu.addItem(item)
+        }
         menu.addSeparator()
     }
 

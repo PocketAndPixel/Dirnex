@@ -28339,6 +28339,95 @@
         }
       }
     },
+    "Couldn’t share these items": {
+      "comment": "Alert title when files can't be downloaded or extracted for the share sheet.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Objekte konnten nicht geteilt werden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t share these items"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron compartir estos elementos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de partager ces éléments"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non è stato possibile condividere questi elementi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "これらの項目を共有できませんでした"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 항목을 공유할 수 없음"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kon deze onderdelen niet delen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można udostępnić tych elementów"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível compartilhar estes itens"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось поделиться этими объектами"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося поділитися цими об’єктами"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法共享这些项目"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法分享這些項目"
+          }
+        }
+      }
+    },
     "Couldn’t unlock the vault": {
       "comment": "Title of the alert shown when a vault could not be opened.",
       "localizations": {
@@ -32526,6 +32615,95 @@
         }
       }
     },
+    "Dirnex can’t tell in advance how much this will fetch, and it has to fetch all of it before it can go on.": {
+      "comment": "Body of the set confirmation when the totals can only be a floor.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex kann nicht im Voraus sagen, wie viel dabei geladen wird, und muss alles laden, bevor es weitergehen kann."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex can’t tell in advance how much this will fetch, and it has to fetch all of it before it can go on."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex no puede saber de antemano cuánto va a descargar, y tiene que descargarlo todo antes de poder continuar."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex ne peut pas savoir à l’avance quelle quantité sera téléchargée, et doit tout télécharger avant de continuer."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex non può sapere in anticipo quanto verrà scaricato e deve scaricare tutto prima di poter proseguire."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "どれだけダウンロードするかは事前に分かりません。続けるには、すべてを取得する必要があります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "얼마나 내려받게 될지 미리 알 수 없습니다. 계속하려면 전부 가져와야 합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex kan niet vooraf zeggen hoeveel hiervoor wordt opgehaald en moet alles ophalen voordat het verder kan."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex nie potrafi z góry określić, ile zostanie pobrane, i musi pobrać wszystko, zanim będzie mógł kontynuować."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Dirnex não tem como saber de antemão quanto será baixado, e precisa baixar tudo antes de poder continuar."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex не может заранее определить, сколько будет загружено, и должен загрузить всё, прежде чем продолжить."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex не може наперед визначити, скільки буде завантажено, і має завантажити все, перш ніж продовжити."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 无法预先知道这会下载多少内容，必须全部取回后才能继续。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 無法預先知道這會下載多少內容，必須全部取回後才能繼續。"
+          }
+        }
+      }
+    },
     "Dirnex could read all of iCloud Drive before, so its Full Disk Access has probably been reset.": {
       "comment": "FDA (iCloud) sheet: opening line when access that used to work has gone.",
       "localizations": {
@@ -34061,6 +34239,299 @@
           "stringUnit": {
             "state": "translated",
             "value": "下載 %@"
+          }
+        }
+      }
+    },
+    "Download %lld files from the server?": {
+      "comment": "Title of the confirmation before fetching a marked set from a server; %lld is the count.",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Datei vom Server laden?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Dateien vom Server laden?"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Download %lld file from the server?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Download %lld files from the server?"
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "¿Descargar %lld archivo del servidor?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "¿Descargar %lld archivos del servidor?"
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Télécharger %lld fichier depuis le serveur ?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Télécharger %lld fichiers depuis le serveur ?"
+                }
+              }
+            }
+          }
+        },
+        "it": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Scaricare %lld file dal server?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Scaricare %lld file dal server?"
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "サーバーから %lld 個のファイルをダウンロードしますか？"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "サーバーから %lld 個のファイルをダウンロードしますか？"
+                }
+              }
+            }
+          }
+        },
+        "ko": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "서버에서 파일 %lld개를 다운로드하시겠습니까?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "서버에서 파일 %lld개를 다운로드하시겠습니까?"
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld bestand van de server downloaden?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld bestanden van de server downloaden?"
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Pobrać %lld pliki z serwera?"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Pobrać %lld plików z serwera?"
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Pobrać %lld plik z serwera?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Pobrać %lld plików z serwera?"
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Baixar %lld arquivo do servidor?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Baixar %lld arquivos do servidor?"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Загрузить %lld файла с сервера?"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Загрузить %lld файлов с сервера?"
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Загрузить %lld файл с сервера?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Загрузить %lld файлов с сервера?"
+                }
+              }
+            }
+          }
+        },
+        "uk": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Завантажити %lld файли із сервера?"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Завантажити %lld файлів із сервера?"
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Завантажити %lld файл із сервера?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Завантажити %lld файлу із сервера?"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "要从服务器下载 %lld 个文件吗？"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "要从服务器下载 %lld 个文件吗？"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "要從伺服器下載 %lld 個檔案嗎？"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "要從伺服器下載 %lld 個檔案嗎？"
+                }
+              }
+            }
           }
         }
       }
@@ -37976,6 +38447,388 @@
           "stringUnit": {
             "state": "translated",
             "value": "副檔名："
+          }
+        }
+      }
+    },
+    "Extract %lld files from the archive?": {
+      "comment": "Title of the confirmation before extracting a marked set from an archive; %lld is the count.",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Datei aus dem Archiv entpacken?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Dateien aus dem Archiv entpacken?"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Extract %lld file from the archive?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Extract %lld files from the archive?"
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "¿Extraer %lld archivo del archivo comprimido?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "¿Extraer %lld archivos del archivo comprimido?"
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Extraire %lld fichier de l’archive ?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Extraire %lld fichiers de l’archive ?"
+                }
+              }
+            }
+          }
+        },
+        "it": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Estrarre %lld file dall’archivio?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Estrarre %lld file dall’archivio?"
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "アーカイブから %lld 個のファイルを展開しますか？"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "アーカイブから %lld 個のファイルを展開しますか？"
+                }
+              }
+            }
+          }
+        },
+        "ko": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "아카이브에서 파일 %lld개를 추출하시겠습니까?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "아카이브에서 파일 %lld개를 추출하시겠습니까?"
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld bestand uit het archief uitpakken?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld bestanden uit het archief uitpakken?"
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Wypakować %lld pliki z archiwum?"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Wypakować %lld plików z archiwum?"
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Wypakować %lld plik z archiwum?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Wypakować %lld plików z archiwum?"
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Extrair %lld arquivo do arquivo compactado?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Extrair %lld arquivos do arquivo compactado?"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Извлечь %lld файла из архива?"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Извлечь %lld файлов из архива?"
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Извлечь %lld файл из архива?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Извлечь %lld файлов из архива?"
+                }
+              }
+            }
+          }
+        },
+        "uk": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Видобути %lld файли з архіву?"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Видобути %lld файлів з архіву?"
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Видобути %lld файл з архіву?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Видобути %lld файлу з архіву?"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "要从压缩包中提取 %lld 个文件吗？"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "要从压缩包中提取 %lld 个文件吗？"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "要從封存檔中提取 %lld 個檔案嗎？"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "要從封存檔中提取 %lld 個檔案嗎？"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Extract “%@” from the archive?": {
+      "comment": "Title of the confirmation before extracting a large archive member; %@ is the name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ aus dem Archiv entpacken?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extract “%@” from the archive?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Extraer “%@” del archivo comprimido?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extraire «%@» de l’archive ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estrarre “%@” dall’archivio?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アーカイブから“%@”を展開しますか？"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아카이브에서 “%@”을(를) 추출하시겠습니까?"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” uit het archief uitpakken?"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wypakować „%@” z archiwum?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extrair “%@” do arquivo compactado?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Извлечь «%@» из архива?"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Видобути «%@» з архіву?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要从压缩包中提取“%@”吗？"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要從封存檔中提取「%@」嗎？"
           }
         }
       }
@@ -69301,6 +70154,95 @@
         }
       }
     },
+    "Some of the selected items couldn’t be prepared. Try again — they may have changed on the server since the list was read.": {
+      "comment": "Detail when a materialized set is short of files after the transfer reported success.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einige der ausgewählten Objekte konnten nicht bereitgestellt werden. Versuchen Sie es erneut — sie haben sich auf dem Server möglicherweise geändert, seit die Liste gelesen wurde."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Some of the selected items couldn’t be prepared. Try again — they may have changed on the server since the list was read."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Algunos de los elementos seleccionados no se pudieron preparar. Inténtalo de nuevo: puede que hayan cambiado en el servidor desde que se leyó la lista."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Certains des éléments sélectionnés n’ont pas pu être préparés. Réessayez : ils ont peut-être changé sur le serveur depuis la lecture de la liste."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alcuni degli elementi selezionati non sono stati preparati. Riprova: potrebbero essere cambiati sul server da quando l’elenco è stato letto."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択した項目の一部を準備できませんでした。一覧を読み込んだあとにサーバー側で変わった可能性があります。もう一度お試しください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 항목 중 일부를 준비하지 못했습니다. 목록을 읽은 뒤 서버에서 바뀌었을 수 있습니다. 다시 시도해 보세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sommige geselecteerde onderdelen konden niet worden klaargezet. Probeer het opnieuw — ze zijn op de server mogelijk gewijzigd sinds de lijst is gelezen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się przygotować części zaznaczonych elementów. Spróbuj ponownie — mogły się zmienić na serwerze od czasu odczytania listy."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alguns dos itens selecionados não puderam ser preparados. Tente de novo — eles podem ter mudado no servidor desde que a lista foi lida."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Некоторые выбранные объекты не удалось подготовить. Попробуйте ещё раз — возможно, они изменились на сервере с момента чтения списка."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Деякі вибрані об’єкти не вдалося підготувати. Спробуйте ще раз — можливо, вони змінилися на сервері відтоді, як було прочитано список."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "部分所选项目无法准备就绪。请重试——自读取列表以来，它们在服务器上可能已经改变。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "部分所選項目無法準備就緒。請重試——自讀取清單以來，它們在伺服器上可能已經改變。"
+          }
+        }
+      }
+    },
     "Some of these items also have access-control lists, which aren’t shown here. Open an item on its own to see and edit its list.": {
       "comment": "Info panel note when a multi-selection contains items that carry ACLs.",
       "localizations": {
@@ -78456,6 +79398,184 @@
           "stringUnit": {
             "state": "translated",
             "value": "這些權限並非全部：此項目還適用一個存取控制列表。請查看「共享」標籤頁。"
+          }
+        }
+      }
+    },
+    "They come to %@ in total, and Dirnex has to fetch them all first.": {
+      "comment": "Body of the set confirmation; %@ is a formatted size such as “84 MB”.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zusammen sind das %@, und Dirnex muss sie alle zuerst laden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "They come to %@ in total, and Dirnex has to fetch them all first."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En total ocupan %@, y Dirnex tiene que descargarlos todos primero."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ils font %@ au total, et Dirnex doit tous les télécharger d’abord."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In tutto occupano %@, e Dirnex deve scaricarli tutti prima."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "合計 %@ です。先にすべてを取得する必要があります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "모두 합쳐 %@입니다. 먼저 전부 가져와야 합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Samen zijn ze %@, en Dirnex moet ze eerst allemaal ophalen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Razem mają %@ i Dirnex musi najpierw pobrać je wszystkie."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Juntos eles têm %@, e o Dirnex precisa baixar todos primeiro."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В сумме это %@, и Dirnex должен сначала загрузить их все."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загалом це %@, і Dirnex має спершу завантажити їх усі."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "它们总共 %@，Dirnex 必须先全部取回。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "它們總共 %@，Dirnex 必須先全部取回。"
+          }
+        }
+      }
+    },
+    "They come to %@ in total. Each one is a separate download, so this can take far longer than that size suggests.": {
+      "comment": "Body of the set confirmation when the number of requests is what makes it worth asking; %@ is a formatted size such as “5 MB”.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zusammen sind das %@. Jede Datei ist ein eigener Download, daher kann das erheblich länger dauern, als diese Größe vermuten lässt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "They come to %@ in total. Each one is a separate download, so this can take far longer than that size suggests."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En total ocupan %@. Cada uno es una descarga aparte, así que esto puede tardar mucho más de lo que sugiere ese tamaño."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ils font %@ au total. Chacun est un téléchargement distinct, ce qui peut prendre bien plus de temps que cette taille ne le laisse penser."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In tutto occupano %@. Ognuno è un download a sé, quindi può richiedere molto più tempo di quanto quella dimensione suggerisca."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "合計 %@ です。1 件ずつ別々にダウンロードするため、このサイズから想像するよりずっと時間がかかることがあります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "모두 합쳐 %@입니다. 하나하나가 별도의 다운로드이므로 크기에서 짐작하는 것보다 훨씬 오래 걸릴 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Samen zijn ze %@. Elk bestand is een aparte download, dus dit kan veel langer duren dan die omvang doet vermoeden."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Razem mają %@. Każdy plik to osobne pobieranie, więc może to potrwać znacznie dłużej, niż sugeruje ten rozmiar."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Juntos eles têm %@. Cada um é um download separado, então isso pode demorar bem mais do que esse tamanho sugere."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В сумме это %@. Каждый файл загружается отдельно, поэтому это может занять гораздо больше времени, чем можно судить по размеру."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загалом це %@. Кожен файл завантажується окремо, тож це може тривати значно довше, ніж можна судити з розміру."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "它们总共 %@。每个文件都是一次单独的下载，因此耗时可能远超这个大小给人的印象。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "它們總共 %@。每個檔案都是一次單獨的下載，因此耗時可能遠超這個大小給人的印象。"
           }
         }
       }

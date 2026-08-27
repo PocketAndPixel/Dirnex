@@ -68,6 +68,15 @@ extension BrowserWindowController {
     private func finalizeCompletedJobs(in snapshot: QueueSnapshot) {
         for job in snapshot.jobs where job.status == .finished || job.status == .cancelled {
             guard finalizedJobs.insert(job.id).inserted else { continue }
+            // A materialize is the one kind that changes nothing either pane is showing: its
+            // destination is a temp root, so re-listing would spend a request per remote pane to
+            // redraw rows that cannot have moved. It reports through the gesture that queued it
+            // rather than through the copy/move wording below, which would call a failed download
+            // of forty objects "Couldn't move 40 items".
+            if case .materialize = job.kind {
+                deliverMaterializeReport(job.report ?? .empty, for: job.id)
+                continue
+            }
             refreshPanes()
             guard let report = job.report else { continue }
             // Journal whatever landed (even a canceled job's partial work) so Cmd+Z can

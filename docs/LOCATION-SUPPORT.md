@@ -229,7 +229,8 @@ hook (PLAN.md §M25, smaller than a milestone).
 | Syntax highlighting, Markdown, diagrams in preview | yes | yes | yes | yes | yes | yes | n/a | yes | yes |
 | Open in the default app (`⏎`) | yes | yes | yes, limited<sup>t</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | n/a | yes | yes |
 | Edit `F4`, with save written back | yes | yes | yes, limited<sup>v</sup> | yes | yes | yes | n/a | yes | yes |
-| Open With… / Share sheet | yes | yes | **no**<sup>rr</sup> | **no**<sup>rr</sup> | **no**<sup>rr</sup> | **no**<sup>rr</sup> | n/a | yes | yes |
+| Open With… / Share sheet | yes | yes | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | n/a | yes | yes |
+| Send to a **Service** | yes | yes | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | n/a | yes | yes |
 | Compare By Contents (`⌥F3`) | yes | yes | **no**<sup>rr</sup> | **no**<sup>rr</sup> | **no**<sup>rr</sup> | **no**<sup>rr</sup> | n/a | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> |
 | Synchronize Directories | yes | yes | **no**<sup>x</sup> | **no**<sup>x</sup> | **no**<sup>x</sup> | **no**<sup>x</sup> | n/a | n/a<sup>x</sup> | n/a<sup>x</sup> |
 | Browse *into* an archive file | yes | yes | yes | **no**<sup>y</sup> | **no**<sup>y</sup> | **no**<sup>y</sup> | n/a | yes | yes |
@@ -263,10 +264,24 @@ than browsing it. `ArchiveBackend.init(archiveOnDiskPath:)` needs a real path, s
 the shape — and writing into one is repack-then-upload. Not built (PLAN.md §M24 Slice 6).
 
 <sup>rr</sup> Every one of these refuses in one line — `backend == .local`, in
-`PanelViewController+OpenWith.swift`, `+Compare.swift` and their siblings — and none of them needs
+`PanelViewController+Compare.swift`, `+Checksum.swift` and their siblings — and none of them needs
 the file to be *local*, only to be **a file**. The fetch that would supply one has shipped since M21
 Slice 10 for a single row under the cursor; what these need is a marked *set*, downloaded with a
 progress bar and a Stop (PLAN.md §M24).
+
+<sup>yy</sup> The marked set is brought down first, as one queued job with a determinate bar, Stop
+and per-item failures (PLAN.md §M24 Slice 3). Two limits, both about what a hand-off *is*. A
+**folder** that is not on this disk is not a target — it stands for an unknown number of objects in
+an unknown number of requests, and copying a tree out is F5's job. And Open With draws its app list
+from the row's **name** rather than from a file, so a row with no extension offers nothing to choose
+from; the list is otherwise identical, and it appears *before* the download, so escaping out of it
+costs nothing. Share cannot do that — `NSSharingServicePicker` derives its services from the items —
+so Share fetches first and then presents.
+
+<sup>zz</sup> Services fills a pasteboard **synchronously**, inside the call AppKit makes as the menu
+opens, and there is nowhere in it to put a download — blocking the main thread on one is the failure
+M24 exists to prevent. A limit rather than a gap: the Services menu simply does not offer this pane
+until its rows are files on this disk.
 
 ## 4. Find Files (`⌥F7`)
 

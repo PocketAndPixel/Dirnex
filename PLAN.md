@@ -317,6 +317,61 @@ Core first, app untouched until (2), as usual. Each lands runnable.
 3. **Open With… and the Share sheet.** The cheapest of the seven: one file, one URL, and ⏎ already
    fetches exactly that. The only new question is what a *marked set* of remote rows means for Open
    With, which is the plan from (1) with a different verb after it.
+   **Landed 2026-08-27**, and the two verbs turned out not to be one gesture with one shape. **Open
+   With pops its menu before anything is downloaded**: a row that is not on this disk is typed by
+   its *name* rather than by a file, which is what LaunchServices types an ordinary file by anyway,
+   so the app list costs nothing and a user who presses Escape has paid nothing — the transfer
+   starts when they pick an application. **Share cannot do that**, because `NSSharingServicePicker`
+   derives its services, their icons and their order from the *items*; there is no list to show
+   before the files exist, so it fetches and then presents. Typing by name is deliberately *not* a
+   fallback: it applies to a non-local row whether or not its bytes happen to be cached, so the menu
+   cannot change depending on what some earlier preview downloaded, and a local row goes on reading
+   the real file — which is what preserves the existing rule that a file deleted between the listing
+   and the right-click offers nothing.
+   **Services is the one that stays local, and it is now a limit rather than a gap.** AppKit fills
+   the pasteboard **synchronously**, inside `writeSelection(to:types:)` as the menu opens, and there
+   is nowhere in that call to put a download — so `canSendToServices` is a second, narrower gate,
+   because asking the wider one would advertise the pane for a selection `writeSelection` then
+   declines to write, leaving Services items that do nothing.
+   Three things fell out of building the funnel (`PanelViewController+Materialize`), which Slices
+   4–6 inherit. A **cloud placeholder is handed over as its own path** and neither confirmed nor
+   fetched: those bytes are the file provider's when the receiving application reads them, exactly
+   as Finder does it — hence `MaterializationPlan.excluding(_:)`, since counting them would put a
+   *"download this from the server"* dialog in front of a file already on this disk. A **folder that
+   is not here is not a hand-off target** at all (`pendingDirectories`, the same rows that make the
+   totals a floor, read from the other side): it stands for an unknown number of objects in an
+   unknown number of requests, and copying a tree out is F5's. And a **short set is a failure**
+   rather than a smaller success — an application given three of the five files somebody marked has
+   been told something untrue — with the server's own reason used for the wording where there is
+   one, which is all `report.failures` is read for: what decides is whether every row *resolved*,
+   since a row that failed while an earlier copy of it is still current costs the user nothing.
+   The queue side needed one thing the other kinds did not: `MaterializeDeliveries`, because
+   `FileOperationQueue.enqueue` is an actor method and the job id the two halves share exists only
+   *after* the job has been accepted and could already have run — so the report and the gesture
+   waiting for it pair in whichever order they arrive. A `.materialize` job is also the one kind
+   that does **not** re-list the panes when it finishes: its destination is a temp root, so a
+   refresh would spend a request per remote pane to redraw rows that cannot have moved.
+   Controlled in seven directions, each failing only the tests that name it: refusing no folder,
+   weighing placeholders, dropping the report's error, handing a short set over anyway, typing a
+   non-local row as untypeable, losing a report that arrives before its gesture, and letting
+   Services ask the wider question.
+   **Verified live against a real `sshd`**, and the gesture that makes the whole chain drivable
+   headlessly is **Share** — it fetches *before* it presents, so `run operation "file.share"` runs
+   the plan, the decision, the queued job, the adoption and the delivery with no UI to click. Two
+   marked SFTP rows produced **two** `Accepted publickey` sessions in the server's own log and two
+   copies under `DirnexRemote`, each in its own directory under its real name with the right bytes.
+   The measurement that separates a cache hit from a gesture that did nothing is the sharp one:
+   deleting **one** of the two copies and repeating the gesture cost exactly **one** session and
+   brought back exactly that file, leaving the other untouched — "nothing changed" would have been
+   true of a dead gesture too. And `run operation "file.openWith"` over the same rows opened its
+   menu (the verb does not return: the menu runs a nested event loop) having moved **zero** bytes,
+   which is the asymmetry the slice was designed around, measured rather than argued.
+   Two things about the instrument are worth keeping. The pane's own **background remote poll**
+   makes a session *count* useless as evidence — it drifted by four over ten idle seconds — so the
+   measurement has to be the delta across the gesture, or better, whether any **bytes** landed,
+   which nothing but a fetch produces. And the cursor of a restored tab lands on the first row,
+   which sorting puts on the *folder* — so the first run measured the refusal rather than the
+   transfer, and the marked set had to be seeded (`markedPaths`) to reach the claim.
 4. **Compare By Contents and checksums.** ⌥F3 fetches both sides and hands `ByteComparator` two
    local files; a checksum run fetches the marked set and hands `ChecksumEngine` real paths.
    `ChecksumScope` and the manifest's *stored* names must stay the remote names, or a manifest

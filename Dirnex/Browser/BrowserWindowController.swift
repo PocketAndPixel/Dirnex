@@ -133,6 +133,9 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     /// Jobs already reacted to (panes re-listed, failures reported), so a repeat snapshot of
     /// the same finished job doesn't refresh twice. Cleared when the queue drains.
     var finalizedJobs: Set<OperationJobID> = []
+    /// Where a queued `.materialize` job's report meets the gesture that asked for it
+    /// (PLAN.md §M24 Slice 3) — see `BrowserWindowController+Materialize`.
+    let materializeDeliveries = MaterializeDeliveries()
     /// The last observed pause state, so the queue bar's button knows which way to toggle.
     var lastPaused = false
 

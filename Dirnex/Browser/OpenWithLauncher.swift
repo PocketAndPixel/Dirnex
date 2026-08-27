@@ -14,11 +14,28 @@ import UniformTypeIdentifiers
 /// thousand marked photos ask LaunchServices once.
 @MainActor
 enum OpenWithLauncher {
-    /// The applications that can open every one of `urls`.
-    static func candidates(for urls: [URL]) -> OpenWithCandidates {
-        OpenWithApplications.candidates(
-            for: urls.map(\.path),
-            typeOf: contentTypeIdentifier(ofFileAt:),
+    /// The applications that can open every one of `entries`.
+    ///
+    /// Takes **rows** rather than URLs since M24 Slice 3, because half of them may have no file on
+    /// this disk yet: Open With over a marked set on a server pops its menu *before* anything is
+    /// downloaded, so the user can press Escape without having paid for the bytes. The core is
+    /// already keyed on type identifiers rather than paths, so what changes is only where a type
+    /// comes from — see ``contentTypeIdentifier(of:)``.
+    static func candidates(for entries: [FileEntry]) -> OpenWithCandidates {
+        var typeByKey: [String: String] = [:]
+        var keys: [String] = []
+        for entry in entries {
+            // The row's full identity, backend included: two panes can be showing the same path on
+            // different backends, and the key's only job is to reach this row's own type.
+            let key = entry.path.description
+            keys.append(key)
+            if typeByKey[key] == nil, let type = contentTypeIdentifier(of: entry) {
+                typeByKey[key] = type
+            }
+        }
+        return OpenWithApplications.candidates(
+            for: keys,
+            typeOf: { typeByKey[$0] },
             applications: applications(forType:),
             defaultApplication: defaultApplication(forType:)
         )
@@ -61,6 +78,27 @@ enum OpenWithLauncher {
     }
 
     // MARK: - The LaunchServices probes the core is given
+
+    /// A row's uniform type identifier, from the **file** when there is one and from the **name**
+    /// when there is not.
+    ///
+    /// The split is not a fallback, and writing it as one would be a bug: a row that is not on this
+    /// disk is typed by its name *whether or not its bytes happen to be cached*, so the app list a
+    /// user sees does not change depending on what some earlier preview downloaded. A local row
+    /// keeps reading the real file, which is what preserves the rule below — a file deleted between
+    /// the listing and the right-click has no type, so nothing opens it — where an extension guess
+    /// would offer applications that then fail.
+    ///
+    /// An extension is also what LaunchServices types an ordinary file by in the common case, so
+    /// this is the same answer reached without the file; a remote row with no extension at all has
+    /// no type, and the menu says so rather than guessing.
+    private static func contentTypeIdentifier(of entry: FileEntry) -> String? {
+        guard entry.path.backend != .local else {
+            return contentTypeIdentifier(ofFileAt: entry.path.path)
+        }
+        let suffix = (entry.name as NSString).pathExtension
+        return suffix.isEmpty ? nil : UTType(filenameExtension: suffix)?.identifier
+    }
 
     /// A file's uniform type identifier, or `nil` when macOS can't type it — which is also what a
     /// file that has been deleted since the pane listed it answers. The core treats `nil` as "no

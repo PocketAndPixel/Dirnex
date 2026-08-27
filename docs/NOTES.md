@@ -66,6 +66,35 @@ at build time.
     under test reads, not how a person would get there**, and the unreachable half of a milestone is
     usually reachable after all.
 
+- **When a gesture ends in a menu you cannot click, look for its sibling that does not.** M24
+  Slice 3 shipped two verbs over one selection and only one of them is drivable headlessly: Open
+  With pops an `NSMenu` (a nested event loop — the AppleScript verb never returns), while **Share**
+  fetches *before* it presents, so `run operation "file.share"` runs the whole chain — plan,
+  confirmation decision, queued job, cache adoption, delivery — with nothing to click. Verified
+  2026-08-27 against a throwaway `sshd`: two marked SFTP rows gave **two** `Accepted publickey`
+  sessions and two copies under `DirnexRemote`, real names, right bytes. The same trick generalizes
+  — ask which of the gestures sharing a code path has the *fewest* UI steps after the part under
+  test, and drive that one.
+  - **A session count is not evidence while a background poll is running.** The pane's remote
+    refresh drifted the count by **four over ten idle seconds**, which swamps any single gesture, and
+    setting the floor to 0 did not visibly quiet it. Measure the **delta across the gesture**, or
+    better the thing only a fetch can produce: a file appearing under the temp root. That is what
+    made "the Open With menu costs nothing" a measurement (0 copies before, 0 after) rather than a
+    hopeful subtraction.
+  - **"Nothing changed" cannot tell a cache hit from a gesture that did nothing**, which is the trap
+    in the obvious second-run control. Delete **one** of the two copies and repeat: exactly one
+    session, exactly that file back, the other untouched. One deletion turns an ambiguous null result
+    into a positive one.
+  - **A restored tab's cursor lands on the first row, which sorting puts on the folder** — so the
+    first run measured the *refusal* of a remote directory instead of the transfer, and read as the
+    feature not working. Seed `markedPaths` in the persisted tab to reach a marked set at all; and
+    note that this made the refusal's own live check free, which is the half worth keeping.
+  - The seed is `Dirnex.tabs.<pane>` holding a `PersistedTab` whose `endpoint` is a
+    `ServerEndpoint.sftp` with `.key(identityFile:)` — no password, no Keychain, no prompt — and the
+    app reconnects at launch since session restore learned to (▸ Design lessons). Back the domain up
+    with `defaults export` first, and `ssh-keyscan` the throwaway host key into `known_hosts` or the
+    connect raises a trust dialog that wedges a headless run; put both back afterwards.
+
 - **For pixel and geometry work, probe the live view hierarchy — never eyeball a screenshot.**
   Measuring a captured screenshot by eye produced a *wrong* diagnosis twice in one session (a
   "13 pt gap" that was really 11, then an offset attributed to the wrong cause). The screenshot
@@ -151,6 +180,21 @@ at build time.
     shape the gate's `waitForStarted` had. When a wait must live in a test double, poll with
     `await Task.sleep`; the existing house rule under Testing said so already, for a different
     reason.
+- **A handle that only exists *after* the work has started cannot be used to register a completion,
+  and the race fails in the quiet direction.** `FileOperationQueue.enqueue` is an actor method that
+  returns the job id and starts the job in the same call, so a caller doing `let id = await
+  enqueue(…); completions[id] = handler` has a window in which the job can finish first — the report
+  arrives at an id nobody is waiting on, and the gesture behind it simply never hears back. Nothing
+  logs, nothing fails, and it is likeliest on the runs that matter least (a transfer refused on its
+  first request) and rarest on the ones you test with.
+  - **Pair the two halves instead of ordering them.** `MaterializeDeliveries` holds a waiting handler
+    *and* an arrived report, and whichever lands second fires — so there is no ordering to get right
+    at the call sites and no `await` anybody has to remember not to add. Twenty lines, and it is the
+    only shape here that does not depend on how fast the job is.
+  - It is worth one type rather than two dictionaries on the window controller: the pairing rule is
+    the thing to keep in one place, and split across two properties it becomes a rule two call sites
+    have to keep. (`BrowserWindowController` also sits near SwiftLint's body ceiling, which is the
+    lesser of the two reasons.)
 - **The app had the same bug 64 times, and the rule is that a `VFSBackend` call is *always* blocking
   — so `Task.detached` is never its home.** Audited 2026-08-20: 68 real `Task.detached` sites in the
   app against 5 `BlockingWork.run` ones, and 64 of the 68 blocked on a subprocess (19 — `bsdtar`,
@@ -367,6 +411,36 @@ at build time.
     timer fires no earlier, is what says when to look. Reverted, it now fails 3/3. The two other
     waits in the suite were put under the same treatment and each still failed 3/3, which is what
     bounds the audit: they are settled by work already in flight, not by a timer nobody has armed.
+- **A negative control over code that reports through a modal path *wedges* the run instead of
+  failing it, and inverting a guard is the easy way to write one by accident.** Measured 2026-08-27
+  while controlling M24 Slice 3's "a short set is a failure" rule: `presentOperationFailure` keeps
+  the `runModal()` fallback for a window-less pane — correctly, since a hand-off is a gesture
+  somebody made and is waiting on (▸ the who-is-waiting rule above) — so a control that makes *every*
+  delivery report puts an app-modal alert in front of a test host nobody is looking at. Both attempts
+  ran past five minutes and had to be killed; neither produced a failing assertion, and the second
+  looked like a slow build rather than a dialog.
+  - **The mistake is arithmetic, not judgement**: `guard urls.count == entries.count` inverted to
+    `guard urls.isEmpty` reads as "only refuse an empty set" and means "refuse every non-empty one".
+    Write a control as an **always-true** guard (`urls.count < 0`) rather than an inversion, so it
+    can only ever take the *permissive* branch — the direction that fails an assertion instead of
+    raising a dialog. Get the polarity right even then: `guard urls.count < 0` is always **false**
+    and therefore reports on every delivery, which is the same wedge again wearing the fix's
+    clothes — the always-true spelling is `>= 0`. Measured twice in one session, the second time
+    against a note already written about the first.
+  - **Size the control to the rule, not to the function.** The claim was about a *short* set, so a
+    control that also changes what a complete set does is measuring more than the rule and can reach
+    a path the tests never intended to exercise.
+  - **And check the control fires at all before believing it.** The first version of this one —
+    deleting the "report the failure" branch outright — left the suite **green**, because the
+    delivery's own completeness check already refused the short set; what the branch really changed
+    was the *sentence*. That is a finding about the code rather than about the control, and it is the
+    reason the reporting collapsed to one site: the server's own reason is used for the wording, and
+    what *decides* is whether every row resolved.
+- **A `git checkout` is not available to revert a control here, because the work is uncommitted** —
+  Oleg commits, so a control's cleanup has to copy the file aside and copy it back. Worth stating
+  because the reflex is `git checkout -- <dir>`, which in this repo throws the whole slice away
+  rather than the control. And a run killed by a timeout never reaches its own cleanup, so check the
+  file's state afterwards rather than assuming the script finished.
 - **Tearing a window down while a sheet it carried is still settling segfaults the test host, and
   the crash lands on a *later* test — one that may present no sheet at all.** This file's entry on a suite
   that presents real `NSAlert`s killing the runner (▸ AppKit, the `AlertKeyCatcher` tests) says it
@@ -1564,6 +1638,26 @@ at build time.
     is also what stops "it was green before" being read as evidence about the code rather than about
     the machine.
 
+- **LaunchServices is keyed by *type* and `NSSharingServicePicker` by *items*, so only one of the two
+  hand-off gestures can show its list before the files exist.** Open With's list is
+  `urlsForApplications(toOpen: UTType)` — already measured to answer identically to the per-URL
+  overload, which is why `OpenWithApplications` collapses a selection to its distinct types — so a
+  row whose bytes are on a server can be typed by its **name** and the menu drawn for nothing; the
+  transfer starts when an application is picked, and pressing Escape costs the user no bytes at all.
+  The share sheet has no such seam: the picker is *initialized with the items*, and which services
+  appear, their icons and their order are all derived from them, so Share can only fetch first and
+  present afterwards. Worth stating because the two read as one gesture — `handoffTargets` was
+  literally one helper serving both — and the asymmetry is in the API's keying rather than in
+  anything about the files.
+  - The corollary for a **context menu**: `standardShareMenuItem` cannot be built for a selection
+    that is not on disk yet, so such a selection gets the registry's own plain *Share…* command
+    instead of the system's nested submenu. One item where there would have been a submenu, rather
+    than the gesture vanishing the way it did inside an archive.
+  - **Type a row that is not here by its name whether or not its bytes are cached.** The tempting
+    spelling is a fallback — read the file, and if there is none use the extension — and it makes
+    the app list depend on what some earlier preview happened to download. It also quietly retires
+    an existing rule: a *local* file deleted between the listing and the right-click has no type and
+    must go on offering nothing, where an extension guess would offer applications that then fail.
 - **`NSWindow.occlusionState` is the only property that answers "is anybody looking at this pane",
   and `isVisible` is the one everybody reaches for first and is wrong for the commonest case.**
   Probed on macOS 26 against a real window while building the remote poll, which must stand down

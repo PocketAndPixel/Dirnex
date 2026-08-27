@@ -120,6 +120,25 @@ public struct MaterializationPlan: Sendable, Equatable {
         return .remote
     }
 
+    /// The same plan with every row of `source` dropped — for a gesture that is not the one to
+    /// move those bytes.
+    ///
+    /// Written for ``MaterializationSource/cloudPlaceholder``, which is the one case whose answer
+    /// genuinely differs by gesture. A hand-off gives another application the placeholder's own
+    /// path and the file provider materializes it when that application reads it, exactly as Finder
+    /// does — so those bytes are neither ours to confirm nor ours to move, and counting them would
+    /// put a dialog about a *download from a server* in front of a file that is already on this
+    /// disk. A compare or a checksum is the other side of it: `ByteComparator` refuses to read
+    /// through a placeholder rather than discovering one mid-sweep, so there the gesture does
+    /// materialize it and must weigh it.
+    ///
+    /// Only what a decision reads is affected — ``pending`` and the three totals over it. A caller
+    /// that iterates rows should iterate the set it was given rather than ``items``, since this is
+    /// the one place a plan stops standing for the whole of it.
+    public func excluding(_ source: MaterializationSource) -> MaterializationPlan {
+        MaterializationPlan(items: items.filter { $0.source != source })
+    }
+
     // MARK: - What it costs
 
     /// The rows that need something to happen first, in the order they were given.
@@ -163,6 +182,23 @@ public struct MaterializationPlan: Sendable, Equatable {
     /// exists to measure, and folding them in would make the one quantity the request rule is
     /// derived from mean something else.
     public var requestCount: Int { items.count { $0.source == .remote } }
+
+    /// The rows that need bytes and are **directories** — a folder that is not already on this
+    /// disk.
+    ///
+    /// A fact, deliberately, rather than a policy, because the gestures that read it disagree about
+    /// what it means. A hand-off refuses one outright: Open With and Share give another application
+    /// *files*, and a folder on a server is not one transfer that could stand in for one. A pack
+    /// stages the whole subtree instead, which is a recursive walk rather than a refusal. So the
+    /// plan says which rows they are and says nothing about what to do with them; a shared verdict
+    /// here would be one gesture's answer inherited by the next one that asked.
+    ///
+    /// It is the same rows that make ``totalsAreExact`` false — a directory entry's `byteSize` is
+    /// the directory file's own and never its subtree's — read from the other side: there the
+    /// question is what the confirmation may claim, here it is whether there is anything to confirm.
+    public var pendingDirectories: [FileEntry] {
+        pending.filter(\.entry.isDirectoryLike).map(\.entry)
+    }
 
     /// Whether ``byteTotal`` and ``requestCount`` are the real totals rather than floors.
     ///

@@ -58,4 +58,26 @@ final class StubPanelHost: PanelHost {
     func panelCursorDidChange(_ panel: PanelViewController) {}
     func panelDidNavigate(_ panel: PanelViewController) {}
     func panelRequestsVaultOpen(_ vault: VaultLocation, showingIn pane: PanelViewController) {}
+
+    /// The one requirement that records rather than shrugging, because it is the seam a whole
+    /// milestone's gestures run through: a test hands back `materializeReport` and asserts on what
+    /// was asked for. Nothing here transfers anything — `MaterializeRunner` is tested in the core
+    /// against a real backend, and what an app test needs to see is which rows the *gesture*
+    /// queued and what it then did with the answer.
+    private(set) var materializedEntries: [[FileEntry]] = []
+    /// What the queued job is said to have produced. `nil` withholds the answer entirely, which is
+    /// the shape of a transfer still running.
+    var materializeReport: OperationReport? = .empty
+
+    func materializeRemoteFiles(
+        _ entries: [FileEntry],
+        then: @escaping @MainActor (OperationReport) -> Void
+    ) {
+        materializedEntries.append(entries)
+        guard let materializeReport else { return }
+        // The real host files the copies before answering, and the funnel reads them back out of
+        // the cache — so a stub that skipped this would make every delivery look like a miss.
+        remoteFileCache.adopt(materializeReport.materialized ?? [])
+        then(materializeReport)
+    }
 }
