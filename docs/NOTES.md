@@ -516,6 +516,35 @@ at build time.
       test skipped**, on the same tree. It is the bounded-wait family already recorded above, and the
       baseline's 0-in-8 was a small sample rather than evidence of a regression — which is this
       file's own rule about baselines, met from the other side.
+  - **The fifth race was the *fixture's own pressure running out*, and the tell is that it fails in
+    the setup rather than in the claim.** `Expectation failed: aged` — the eviction the test
+    arranges never happening — about 1 full run in 16, measured 2026-08-27 on a changed tree and
+    reproduced 1-in-16 on a 16-run baseline of the unchanged one, so it is neither new nor anybody's
+    regression. `ageOutOfTheScanCaches` fired 24 `requestRefresh` calls **once, before the wait**,
+    and only a scan that *lands* evicts anything: logging every `store` and eviction of the suite's
+    own keys shows all 24 landing within tens of milliseconds — and with them the burst is spent.
+    Anything storing the directory afterwards (the debounced scan `quiesce`'s last pull leaves
+    behind, or the replay `DirectoryScanCache` schedules when a request arrives mid-scan) puts it
+    back at the recent end of an eight-slot LRU with no pressure left anywhere in the test, and the
+    wait expires against a fixture that has already spent everything it had.
+    - **What had been rescuing it was other suites**, which this test neither controls nor can rely
+      on: a store forced 500 ms after the burst was cleared again 3 runs of 3 by pressure the
+      fixture did not create. That is why the failure is rare and load-dependent rather than
+      systematic.
+    - **Fault injection is what reproduced it**, after **85** runs of the unmodified fixture caught
+      it 0 times. Store the directory once, the first time the wait observes it gone — one line
+      inside the predicate — and the burst version fails **3/3** with the reporter's own message.
+      Reach for injecting the race when the race will not come when called: at that rate every "it
+      passed" is no evidence at all, and 85 of them are still no evidence.
+    - **The fix is pressure in rounds**: each round mints keys that have never been seen (a repeat
+      only *moves* a key, it does not add an LRU slot) and then re-checks, so a late store is
+      answered by more pressure rather than by a longer wait. Same injection, 3/3 green. The
+      narrowness control is the product's own — reverting "a miss is not an answer" still fails the
+      test on both of its assertions, so the rounds did not buy the green run by making it vacuous.
+    - **An LRU whose eviction is driven by *stores* cannot be emptied by waiting**, which is the
+      shape worth carrying past this suite: a fixture that arranges an eviction is really arranging
+      a race between its own writes and everybody else's, and a burst fired before the wait has no
+      answer to a write that lands after it.
 
 - **`HeadBucket` goes on answering 200 for a bucket AWS has deleted — intermittently, and for longer
   than a test run — so any code that `stat`s before it creates can refuse a name that is not there.**

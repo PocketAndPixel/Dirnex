@@ -342,8 +342,11 @@ struct PanelPassiveRefreshTests {
             #expect(pane.tagSnapshot != nil, "the pane never adopted a cached tag snapshot")
         }
 
-        let aged = try await Self.ageOutOfTheScanCaches(directory, pane: pane)
-        #expect(aged, "the fixture's directory never aged out of the shared caches")
+        let stuck = try await Self.ageOutOfTheScanCaches(directory, pane: pane)
+        try #require(
+            stuck == nil,
+            "the fixture's directory never aged out of the shared caches: \(stuck ?? "")"
+        )
 
         pane.tableView.deselectAll(nil)
         Self.pullRefreshTail(pane)
@@ -362,35 +365,72 @@ struct PanelPassiveRefreshTests {
     }
 
     /// Push enough other directories through the shared caches to evict `directory` — what a fifth
-    /// open tab does to the app, arranged on purpose.
+    /// open tab does to the app, arranged on purpose. `nil` once it is gone; otherwise what was
+    /// found instead, for the assertion above to report.
     ///
-    /// Comfortably more than the cache's own limit, because this is not the only thing filling it:
-    /// every other suite's panes are storing their own keys into it at the same time, and each of
-    /// those pushes ours one place further along rather than holding it still. Real directories, so
-    /// what lands in the cache is what a real visit would put there.
+    /// Real directories, so what lands in the cache is what a real visit would put there.
     ///
-    /// Reports whether the eviction actually happened for whichever provider the pane will pull
-    /// from, so the assertion above cannot pass against a cache that never dropped anything.
+    /// **Pressure in rounds, not one burst before a wait — because a burst can be spent before the
+    /// thing it is evicting arrives.** `store` is what evicts, so only a scan that *lands* counts,
+    /// and 24 requests fired together land within tens of milliseconds. Anything that stores this
+    /// directory after that — the debounced scan `quiesce`'s last pull leaves behind, or the replay
+    /// `DirectoryScanCache` schedules when a request arrives mid-scan — puts it back at the most
+    /// recent end of an eight-slot LRU with no pressure left anywhere in the test to move it, and
+    /// the wait then expires against a fixture that had already spent everything it had. What
+    /// rescued it was store pressure from *other suites*' panes, which this test neither controls
+    /// nor can rely on: measured 2026-08-27, a store of this directory forced 500 ms after the
+    /// burst was evicted again 3 runs of 3 by nothing this fixture did. It reported as
+    /// `Expectation failed: aged` about one full run in sixteen — a fixture failure wearing a
+    /// product claim's message, on the suite that is documented as flaking for four other reasons.
+    ///
+    /// So each round mints keys that have never been seen (a repeat only moves one, it does not add
+    /// a slot), and a late store is followed by more pressure rather than by a longer wait. Four
+    /// rounds of the original 24 across the original 10 s: the first round is the burst this always
+    /// fired, and the rest exist only for the run that needed them.
+    ///
+    /// **The reproduction is a one-line fault injection, and it is what makes this a measurement.**
+    /// The flake is roughly 1 run in 16 and would not come when called — 85 runs of the unmodified
+    /// fixture caught it 0 times — so the race was arranged instead: store this directory once, the
+    /// first time the wait sees it gone. The burst version then fails **3 of 3** with the reported
+    /// message; this one passes 3 of 3 against the identical injection, because round 2 mints keys
+    /// the burst never had. Reverting the product's own fix (adopting a cache miss) still fails this
+    /// test on both of its assertions, which is what says the rounds did not make it vacuous.
     private static func ageOutOfTheScanCaches(
         _ directory: VFSPath,
         pane: PanelViewController
-    ) async throws -> Bool {
+    ) async throws -> String? {
         let ballast = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("dirnex-passive-ballast-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: ballast) }
-        for index in 0..<24 {
-            let child = ballast.appendingPathComponent("\(index)")
-            try FileManager.default.createDirectory(at: child, withIntermediateDirectories: true)
-            let path = VFSPath.local(child.path)
-            CloudSyncStatusProvider.shared.requestRefresh(for: path, entries: [])
-            FinderTagProvider.shared.requestRefresh(for: path, entries: [])
+        var minted = 0
+        for _ in 0..<4 {
+            for _ in 0..<24 {
+                let child = ballast.appendingPathComponent("\(minted)")
+                minted += 1
+                try FileManager.default.createDirectory(
+                    at: child, withIntermediateDirectories: true
+                )
+                let path = VFSPath.local(child.path)
+                CloudSyncStatusProvider.shared.requestRefresh(for: path, entries: [])
+                FinderTagProvider.shared.requestRefresh(for: path, entries: [])
+            }
+            if await settle(within: 2.5, until: { hasAgedOut(directory, pane: pane) }) { return nil }
         }
-        return await settle {
-            let syncGone = !pane.isSyncStatusVisible
-                || CloudSyncStatusProvider.shared.cachedSnapshot(for: directory) == nil
-            let tagsGone = !pane.areTagsVisible
-                || FinderTagProvider.shared.cachedSnapshot(for: directory) == nil
-            return syncGone && tagsGone
-        }
+        return "still cached after \(minted) other directories were scanned through it — "
+            + "sync visible \(pane.isSyncStatusVisible), still held "
+            + "\(CloudSyncStatusProvider.shared.cachedSnapshot(for: directory) != nil); "
+            + "tags visible \(pane.areTagsVisible), still held "
+            + "\(FinderTagProvider.shared.cachedSnapshot(for: directory) != nil)"
+    }
+
+    /// Whether neither provider *this pane pulls from* still holds `directory`. A provider the pane
+    /// will never read has nothing to evict, which is why each half is gated on its own visibility
+    /// — the test host runs against the developer's own preferences.
+    private static func hasAgedOut(_ directory: VFSPath, pane: PanelViewController) -> Bool {
+        let syncGone = !pane.isSyncStatusVisible
+            || CloudSyncStatusProvider.shared.cachedSnapshot(for: directory) == nil
+        let tagsGone = !pane.areTagsVisible
+            || FinderTagProvider.shared.cachedSnapshot(for: directory) == nil
+        return syncGone && tagsGone
     }
 }
