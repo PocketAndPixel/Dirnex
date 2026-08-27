@@ -72,6 +72,13 @@ final class EditedFileRegistry {
         }
     }
 
+    /// Whether a save landing on `temporaryURL` would be offered back — the third question about a
+    /// copy, beside starting and stopping. What ``watch(_:)`` refuses to duplicate and what
+    /// ``stopWatching(_:)`` clears, asked from outside.
+    func isWatching(_ temporaryURL: URL) -> Bool {
+        watchers[temporaryURL] != nil
+    }
+
     /// Stop watching a copy — used when an archive write-back has landed, so the freshly repacked
     /// archive's own re-extraction starts from a clean slate rather than inheriting a stale revision.
     ///

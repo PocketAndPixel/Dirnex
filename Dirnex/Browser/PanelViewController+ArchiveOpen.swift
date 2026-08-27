@@ -49,19 +49,17 @@ extension PanelViewController {
         guard let archivePath = entry.path.backend.archivePath, !entry.isDirectoryLike,
               let cache = host?.archivePreviewCache else { return }
         let member = ArchiveMember(archivePath: archivePath, innerPath: entry.path.path)
-        // The member's own directory inside the archive — where a write-back puts it back. Taken
-        // from the entry rather than from the pane, since the pane can navigate away mid-edit.
-        let innerDirectory = entry.path.parent?.path ?? "/"
-        let writable = isWritableArchiveMember(entry)
+        // Resolved *before* the extraction rather than inside its completion, so the answer is the
+        // one that was true when the user pressed the key — the pane can navigate away mid-edit
+        // (`PanelViewController+WriteBack`, which owns the rule this and F4-on-a-server share).
+        let destination = editDestination(for: entry)
 
         withArchivePassphrase(forArchiveAt: archivePath) { passphrase in
             try await cache.extractedURL(for: member, passphrase: passphrase)
         } onSuccess: { [weak self] url in
-            if writable {
+            if let destination {
                 self?.host?.editedFiles.watch(EditedFile(
-                    destination: .archiveMember(
-                        archivePath: archivePath, innerDirectory: innerDirectory
-                    ),
+                    destination: destination,
                     temporaryURL: url,
                     name: entry.name
                 ))

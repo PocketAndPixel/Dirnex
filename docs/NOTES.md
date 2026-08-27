@@ -66,6 +66,24 @@ at build time.
     under test reads, not how a person would get there**, and the unreachable half of a milestone is
     usually reachable after all.
 
+- **Mint by hand only what is under test; mint the scaffolding through the type's own encoder.** The
+  entry above says a probe payload has to be hand-written because the *reader* is what is being
+  measured — and the corollary is the half that saves time. A live run usually needs several stores
+  seeded, and only one of them is the subject: M24 Slice 5 seeded a persisted tab (whose endpoint was
+  minted through `JSONEncoder` on the core's own `StoredServerEndpoint`, first try) and the user-script
+  store (hand-written, and wrong — `UserScripts` encodes as `{"scripts": […]}` rather than as a bare
+  array, so the app read an empty store and the AppleScript verb answered *"is not a known Dirnex
+  operation"*, which reads as the feature being unwired rather than as the fixture being wrong). Ask
+  which store the claim is about; every other one is scaffolding and should be produced by the code
+  that reads it.
+  - **A throwaway that needs `DirnexCore` is a six-line `Package.swift`, not a `swiftc` invocation.**
+    SwiftPM leaves no library artifact to link against — `-L .build/…/debug -lDirnexCore` fails with
+    `library 'DirnexCore' not found`, and adding `-I Modules` first fails earlier on the
+    `CArchiveShim` module map. A scratch package with `.package(path: "…/DirnexCore")` and
+    `swift run` builds in seconds and gets the language mode right for free, which is the *other*
+    trap this file records about `swiftc` defaults (▸ Swift 6 and concurrency, the delegate-witness
+    probe compiled in Swift 5 mode).
+
 - **When a gesture ends in a menu you cannot click, look for its sibling that does not.** M24
   Slice 3 shipped two verbs over one selection and only one of them is drivable headlessly: Open
   With pops an `NSMenu` (a nested event loop — the AppleScript verb never returns), while **Share**

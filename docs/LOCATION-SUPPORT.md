@@ -266,12 +266,13 @@ zone-less and on the server's clock) and for S3 (no settable mtime), and always 
 than browsing it. `ArchiveBackend.init(archiveOnDiskPath:)` needs a real path, so fetch-then-mount is
 the shape — and writing into one is repack-then-upload. Not built (PLAN.md §M24 Slice 6).
 
-<sup>rr</sup> Every one of these refuses in one line — `backend == .local`, in
+<sup>rr</sup> Every one of these refused in one line — `backend == .local`, in
 `PanelViewController+UserScript.swift` and its siblings — and none of them needs the file to be
-*local*, only to be **a file**. The fetch that would supply one is the marked-set download M24
-Slice 2 made a queue job, with a determinate bar, a Stop and per-item failures; what is left for
-these rows is the gesture that hands the copies over (PLAN.md §M24 Slices 5–6). Open With and Share
-stopped refusing at Slice 3, and Compare By Contents and checksums at Slice 4.
+*local*, only to be **a file**. The fetch that supplies one is the marked-set download M24 Slice 2
+made a queue job, with a determinate bar, a Stop and per-item failures; what is left for these rows
+is the gesture that hands the copies over. Open With and Share stopped refusing at Slice 3, Compare
+By Contents and checksums at Slice 4, and user scripts at Slice 5; **Pack is the last of them**
+(PLAN.md §M24 Slice 6).
 
 <sup>yy</sup> The marked set is brought down first, as one queued job with a determinate bar, Stop
 and per-item failures (PLAN.md §M24 Slice 3). Two limits, both about what a hand-off *is*. A
@@ -335,7 +336,7 @@ child ~71 ms (PLAN.md §M25, smaller than a milestone).
 | Cloud sync badges | yes | yes | n/a | n/a | n/a | n/a | n/a | yes | yes |
 | Create / verify checksum files | yes | yes | verify only<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | n/a | no<sup>xx</sup> | no<sup>xx</sup> |
 | Open in Terminal | yes | yes | n/a | **no**<sup>gg</sup> | n/a | n/a | n/a | no | no |
-| Run a user script | yes | yes | **no**<sup>rr</sup> | **no**<sup>rr</sup> | **no**<sup>rr</sup> | **no**<sup>rr</sup> | no | no<sup>xx</sup> | no<sup>xx</sup> |
+| Run a user script | yes | yes | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | no<sup>aaa</sup> | yes, limited<sup>aaa</sup> | yes, limited<sup>aaa</sup> |
 | Pack `⌥F5` (create an archive) | yes | yes | n/a | **no**<sup>hh</sup> | **no**<sup>hh</sup> | **no**<sup>hh</sup> | n/a | **no** | no |
 | Encrypted archives / hidden member names | yes | yes | yes | no<sup>hh</sup> | no<sup>hh</sup> | no<sup>hh</sup> | n/a | no | no |
 | Create / unlock an encrypted vault | yes | yes | n/a | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a | no | n/a |
@@ -384,10 +385,24 @@ way to write them back short of a repack.
 thing by construction; `hdiutil` cannot attach one over SFTP, FTP or S3. Copying the image file to a
 server and back works today and is an ordinary transfer.
 
-<sup>xx</sup> Not the remote reason: a virtual listing has no directory of its own, and both of these
-need one — a manifest is written *beside* the files it covers, and a script is run *in* a working
-directory. The rows themselves are ordinary files, so the same gesture works from the folder they
-actually live in.
+<sup>xx</sup> Not the remote reason: a virtual listing has no directory of its own, and a manifest
+needs one — it is written *beside* the files it covers. The rows themselves are ordinary files, so
+the same gesture works from the folder they actually live in.
+
+<sup>aaa</sup> The marked set is brought down first, as one queued job with a determinate bar, Stop
+and per-item failures, and the script is handed the copies (PLAN.md §M24 Slice 5). What makes it
+more than a hand-off is the other direction: each copy is **watched**, so a script that rewrites its
+argument — `exiftool -overwrite_original`, `sips`, a formatter — has that save carried back to the
+server or repacked into the archive, through the machinery F4 already uses. Four limits, and none of
+them is about the transfer. A **folder** that is not on this disk is not a target, for the hand-off's
+own reason. A panel that is not a folder on this disk exports **no `DIRNEX_CURRENT_DIR`** — the
+process runs in the folder holding the first file it was handed, and a script can test for the
+variable exactly as it already tests for `DIRNEX_OTHER_DIR` — so a `combined` script with nothing
+marked, which acts on the directory rather than on files, refuses there; that is what makes a results
+tab and the Trash *limited* rather than a plain yes, and an **S3 account** pane a no, since its rows
+are buckets and a bucket is a folder. Anything the script *creates* is not carried anywhere: only the
+files it was handed are watched. And a member of a **nested** archive is handed over but not watched,
+for the reason F4 gives it — its own bytes are already a temp copy, so a repack has nowhere to land.
 
 ## 6. Transfer behaviour
 

@@ -23,8 +23,19 @@ public enum UserScriptRunMode: String, Sendable, Codable, CaseIterable {
 /// such ambiguity, which is why the paths ride in argv and this is only a courtesy for scripts that
 /// would rather read a variable.
 public enum UserScriptEnvironment {
-    /// The active panel's directory. Also the running process's working directory, so a bare
+    /// The active panel's directory, when the panel *is* a folder on this disk — so a bare
     /// `ls`/`git status` in the script refers to the folder the user is looking at.
+    ///
+    /// **Absent otherwise**, exactly as ``otherDirectory`` is absent when there is no second local
+    /// pane, and for the same reason: a panel showing a server, an archive or a results list has no
+    /// local folder to name, and the files such a panel hands a script are copies in a temp
+    /// directory (PLAN.md §M24 Slice 5). Naming that temp directory here would be a plausible
+    /// answer to *where is the user looking* that is not one; being absent lets a script branch on
+    /// `[ -n "$DIRNEX_CURRENT_DIR" ]` and is the same thing a cache miss is — "not known here",
+    /// never a stand-in.
+    ///
+    /// The process's working directory is a separate question with a separate answer, which is
+    /// always a real folder — see ``UserScriptContext/workingDirectory``.
     public static let currentDirectory = "DIRNEX_CURRENT_DIR"
     /// The *other* panel's directory — the copy/move destination in a dual-pane workflow. Absent
     /// when there is no second pane.
@@ -44,25 +55,55 @@ public struct UserScriptContext: Sendable, Hashable {
     /// cursor file when nothing is marked. May be empty (a `combined` script can still run against
     /// the current directory via the environment).
     public let selection: [String]
-    /// The active panel's directory: the process working directory and `DIRNEX_CURRENT_DIR`.
-    public let currentDirectory: String
+    /// The active panel's directory (`DIRNEX_CURRENT_DIR`), or `nil` when the panel is not a folder
+    /// on this disk — a server, an archive, or a results list.
+    ///
+    /// Optional since M24 Slice 5, when a script stopped needing its files to be local. What it
+    /// answers is *where is the user looking*, which has no local answer on such a panel; where the
+    /// process starts is ``workingDirectory``, which always has one.
+    public let currentDirectory: String?
     /// The inactive panel's directory (`DIRNEX_OTHER_DIR`), or `nil` when there is no second pane.
     public let otherDirectory: String?
 
-    public init(selection: [String], currentDirectory: String, otherDirectory: String? = nil) {
+    public init(
+        selection: [String],
+        currentDirectory: String?,
+        otherDirectory: String? = nil
+    ) {
         self.selection = selection
         self.currentDirectory = currentDirectory
         self.otherDirectory = otherDirectory
     }
 
-    /// The `DIRNEX_*` environment for this context (see `UserScriptEnvironment`). `otherDirectory`
-    /// is included only when present, so a script can test for it with `[ -n "$DIRNEX_OTHER_DIR" ]`.
+    /// Where the process starts: the panel's own folder when it has one, else the folder holding
+    /// the first file the script was handed.
+    ///
+    /// Derived here rather than stored, so "the panel's directory" and "somewhere real to run"
+    /// cannot be given two different answers by two callers — the drift this project keeps paying
+    /// for. The fallback is what a results tab has always done ("run from the first hit's folder so
+    /// relative work still has a home"), and it carries over unchanged to a panel whose rows arrive
+    /// as temp copies.
+    ///
+    /// `nil` only when there is neither — a panel that is not a folder on this disk with nothing
+    /// selected — which is a script with nowhere to run rather than one that should be launched
+    /// somewhere arbitrary. ``invocations(in:shell:)`` makes none.
+    public var workingDirectory: String? {
+        if let currentDirectory { return currentDirectory }
+        guard let first = selection.first else { return nil }
+        return (first as NSString).deletingLastPathComponent
+    }
+
+    /// The `DIRNEX_*` environment for this context (see `UserScriptEnvironment`). Both directories
+    /// are included only when present, so a script can test for either with
+    /// `[ -n "$DIRNEX_CURRENT_DIR" ]`.
     public func environment() -> [String: String] {
         var environment = [
-            UserScriptEnvironment.currentDirectory: currentDirectory,
             UserScriptEnvironment.selectionCount: String(selection.count),
             UserScriptEnvironment.selectedPaths: selection.joined(separator: "\n")
         ]
+        if let currentDirectory {
+            environment[UserScriptEnvironment.currentDirectory] = currentDirectory
+        }
         if let otherDirectory {
             environment[UserScriptEnvironment.otherDirectory] = otherDirectory
         }
@@ -83,7 +124,8 @@ public struct UserScriptInvocation: Sendable, Hashable {
     public let arguments: [String]
     /// The `DIRNEX_*` variables merged over the inherited environment by the launcher.
     public let environment: [String: String]
-    /// The active panel's directory — where the process starts.
+    /// Where the process starts — ``UserScriptContext/workingDirectory``, which is the panel's own
+    /// folder when it has one and the first handed file's folder when it does not.
     public let currentDirectoryPath: String
 
     public init(
@@ -166,7 +208,13 @@ public struct UserScript: Sendable, Hashable, Identifiable, Codable {
     /// The argument vector is `["-c", command, name] + files`: passing `name` as `$0` makes the
     /// shell's own diagnostics read `<name>: …` instead of `sh: …`, and — the load-bearing part —
     /// every file is its own element after it, so no path is ever spliced into `command` as text.
+    ///
+    /// A context with no ``UserScriptContext/workingDirectory`` yields **no** invocations: a panel
+    /// that is not a folder on this disk with nothing selected is a script with nowhere to run, and
+    /// launching it in whatever directory the process happened to be in would be a worse answer
+    /// than not launching it.
     public func invocations(in context: UserScriptContext, shell: String) -> [UserScriptInvocation] {
+        guard let workingDirectory = context.workingDirectory else { return [] }
         let environment = context.environment()
         switch runMode {
         case .combined:
@@ -174,13 +222,18 @@ public struct UserScript: Sendable, Hashable, Identifiable, Codable {
                 invocation(
                     files: context.selection,
                     environment: environment,
-                    context: context,
+                    workingDirectory: workingDirectory,
                     shell: shell
                 )
             ]
         case .perFile:
             return context.selection.map { file in
-                invocation(files: [file], environment: environment, context: context, shell: shell)
+                invocation(
+                    files: [file],
+                    environment: environment,
+                    workingDirectory: workingDirectory,
+                    shell: shell
+                )
             }
         }
     }
@@ -188,14 +241,14 @@ public struct UserScript: Sendable, Hashable, Identifiable, Codable {
     private func invocation(
         files: [String],
         environment: [String: String],
-        context: UserScriptContext,
+        workingDirectory: String,
         shell: String
     ) -> UserScriptInvocation {
         UserScriptInvocation(
             executablePath: shell,
             arguments: ["-c", command, name] + files,
             environment: environment,
-            currentDirectoryPath: context.currentDirectory
+            currentDirectoryPath: workingDirectory
         )
     }
 }

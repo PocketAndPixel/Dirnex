@@ -15,7 +15,8 @@ import DirnexCore
 /// responder to fill a pasteboard *synchronously*, from `writeSelection(to:types:)`, and there is
 /// nowhere in that call to put a download — blocking the main thread on one is the failure every
 /// other part of this milestone exists to prevent. So `handoffTargets` survives as the local-only
-/// subset, and it is what Services and user scripts read until Slice 5 gives scripts their own.
+/// subset, and Services is now the only thing that reads it: user scripts joined the fetching side
+/// at Slice 5.
 ///
 /// **The Open With menu appears before anything is downloaded.** A row that is not on this disk is
 /// typed by its *name* (`OpenWithLauncher.candidates(for:)`), so the app list costs nothing and a
@@ -31,8 +32,8 @@ import DirnexCore
 extension PanelViewController {
     // MARK: - Targets
 
-    /// The rows Open With and Share act on: the marked set, else the cursor row, with anything
-    /// nothing could turn into a file dropped.
+    /// The rows a hand-off acts on — Open With, Share and a user script: the marked set, else the
+    /// cursor row, with anything nothing could turn into a file dropped.
     ///
     /// What that drops is a **folder that is not on this disk** — a remote directory, or a directory
     /// member of an archive. Neither stands for one transfer or one extraction: a folder on a server
@@ -47,8 +48,7 @@ extension PanelViewController {
     }
 
     /// The subset that is **already** a file on this disk, as URLs — what a caller that cannot wait
-    /// for a download is left with. Services is the whole of that (see the type comment), and user
-    /// scripts read it until Slice 5.
+    /// for a download is left with. Services is the whole of that (see the type comment).
     func handoffTargets() -> [URL] {
         selectionTargets()
             .filter { $0.path.backend == .local }

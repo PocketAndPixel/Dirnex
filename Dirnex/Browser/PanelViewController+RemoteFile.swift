@@ -218,7 +218,7 @@ extension PanelViewController {
     /// failure the archive path already learned to avoid.
     func beginRemoteFileOpen(for entry: FileEntry) {
         fetchRemoteFile(entry, for: .open) { [weak self] url in
-            self?.watchRemoteEdit(of: entry, at: url)
+            self?.watchForWriteBack(of: entry, at: url)
             NSWorkspace.shared.open(url)
         } failureMessage: {
             String(
@@ -233,7 +233,7 @@ extension PanelViewController {
     /// found" reporting rather than growing a second copy of both.
     func beginRemoteFileEdit(for entry: FileEntry) {
         fetchRemoteFile(entry, for: .edit) { [weak self] url in
-            self?.watchRemoteEdit(of: entry, at: url)
+            self?.watchForWriteBack(of: entry, at: url)
             self?.openInEditor(.local(url.path))
         } failureMessage: {
             String(
@@ -374,19 +374,6 @@ extension PanelViewController {
     /// so with Quick View off the sheet is still the only thing that can report anything at all.
     private var showsRemoteFetchOnPreviewSurface: Bool {
         host?.isQuickViewEnabled == true && isActivePanel
-    }
-
-    /// Watch the downloaded copy so a save is offered back up to the server it came from.
-    ///
-    /// Registering the same copy twice is a no-op, so opening a file with ⏎ and then editing it with
-    /// F4 leaves one watcher on it rather than two questions on every save.
-    private func watchRemoteEdit(of entry: FileEntry, at url: URL) {
-        guard canEditRemoteFile(entry) else { return }
-        host?.editedFiles.watch(EditedFile(
-            destination: .remoteFile(entry.path),
-            temporaryURL: url,
-            name: entry.name
-        ))
     }
 }
 

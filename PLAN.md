@@ -444,6 +444,53 @@ Core first, app untouched until (2), as usual. Each lands runnable.
 5. **User scripts.** Hand the script real paths and let it run. The interesting half is a script
    that *edits* its argument: that is the `EditedFileRegistry` watch F4 already installs, so a save
    is offered back up rather than lost in a temp directory nobody will look in again.
+   **Landed 2026-08-27.** The write-back half was one function because it was *two and about to be
+   three*: F4-inside-an-archive and F4-on-a-server each built their own `EditedFile` behind their own
+   gate, and a script would have been the third spelling, written by somebody who had not read the
+   other two. `PanelViewController+WriteBack` is now the one place that answers *where does an edited
+   copy of this row go back to* — `nil` meaning **not watched** rather than not writable, which is
+   what keeps the nested-archive refusal F4 owns (it drops the write bits) from leaking into Open
+   With and a checksum, who read the same extraction and are not about to write.
+   **The fork that needed settling was not the files but the *directory*.** A script has one working
+   directory for the whole run and `DIRNEX_CURRENT_DIR` claimed to be "the active panel's directory",
+   which on a server, in an archive or in a results tab is a folder that does not exist — so the
+   variable is now **absent** there, exactly as `DIRNEX_OTHER_DIR` already is when there is no second
+   local pane, and a script branches on `[ -n "$DIRNEX_CURRENT_DIR" ]`. Naming the temp directory one
+   copy happens to sit in would have been a plausible answer to *where is the user looking* that is
+   not one — the same thing this repo says about a cache miss, which is "not known here" and never a
+   stand-in. Where the process *starts* is a separate question with a separate answer that is always
+   real (`UserScriptContext.workingDirectory`, derived rather than stored so the two cannot be given
+   different answers by two callers): the panel's folder when it has one, else the folder holding the
+   first file handed over — which is what a results tab had always done, now the *only* rule rather
+   than a second one. A context with neither makes **no invocations**, because a `combined` script
+   with nothing marked acts on a directory and there is none.
+   Two smaller things fell out. `localPanelDirectory` goes through **`writeDirectory`** rather than a
+   fresh `backend == .local`, which is the same question already answered once and gets the merged
+   iCloud listing right for free — its own path is synthetic while the folder underneath it is
+   perfectly real. And both panes' directories now go through that one property; the counterpart used
+   to be asked with its own inline comparison, which is one rule in two spellings.
+   Controlled in eight directions, each failing only the tests that name it and leaving Slice 3's
+   suite green: always exporting the panel variable, never falling back to the first file, always
+   having a working directory, the gate back to local-only, dropping the watch, watching every row
+   (which also fails the narrowness control that a local run watches nothing), dropping the pairing
+   guard, and reading `panel.path` instead of `writeDirectory`.
+   **Verified live against a throwaway `sshd`**, and the evidence is the server's own bytes. Two
+   marked SFTP rows through `run operation "userScript.ProbeRead"` reached the shell as
+   `…/DirnexRemote/<uuid>/alpha.txt` and `…/beta.txt` — each in its own directory under its real
+   name, holding the server's content — with `DIRNEX_CURRENT_DIR` printing **empty**, which is the
+   design decision measured rather than argued. Then `ProbeEdit`, appending a line to `"$1"`, left
+   **both files on the server** carrying that line: fetched, handed over, edited, noticed, uploaded,
+   with nothing to click. The control is the one that separates it from "any script run uploads" —
+   the read-only script ran again afterwards and the server's checksums did not move — and the
+   deletion control is the sharp one, since "nothing changed" would also be true of a dead gesture:
+   removing **one** copy and repeating brought back exactly that file, in a new directory, carrying
+   the server's *current* bytes including the edit the earlier run had uploaded, and left the other
+   untouched.
+   **The one thing it does not do is coordinate.** A script that rewrites forty remote files produces
+   forty independent write-backs, each re-`stat`ing and uploading on its own the way F4's single save
+   does — no combined bar, no Stop, no ordering. That is the shape M24 Slice 2 gave the *download*
+   direction and the upload direction has never had; it belongs with M25, which already owns what a
+   remote write carries.
 6. **Pack in both directions, and browsing a `.zip` on a server.** Both ends of ⌥F5 stage — build
    into temp, upload the archive — and browsing one is the mirror. This is the slice that needs the
    "the whole file is coming down" sentence, and the one where a *nested* archive stays out of
