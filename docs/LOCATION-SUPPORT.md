@@ -233,7 +233,7 @@ hook (PLAN.md §M25, smaller than a milestone).
 | Send to a **Service** | yes | yes | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | n/a | yes | yes |
 | Compare By Contents (`⌥F3`) | yes | yes | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | n/a | yes | yes |
 | Synchronize Directories | yes | yes | **no**<sup>x</sup> | **no**<sup>x</sup> | **no**<sup>x</sup> | **no**<sup>x</sup> | n/a | n/a<sup>x</sup> | n/a<sup>x</sup> |
-| Browse *into* an archive file | yes | yes | yes | **no**<sup>y</sup> | **no**<sup>y</sup> | **no**<sup>y</sup> | n/a | yes | yes |
+| Browse *into* an archive file | yes | yes | yes | read-only<sup>y</sup> | read-only<sup>y</sup> | read-only<sup>y</sup> | n/a | yes | yes |
 
 <sup>r</sup> The member is extracted to a temp file first; only the **cursor's** member is ever
 extracted, never a marked set (a subprocess per row). With M19's member filter this is
@@ -262,17 +262,22 @@ zone-less and on the server's clock) and for S3 (no settable mtime), and always 
 **size** would be honest on any of them and is simply not built; by *contents* becomes reachable once
 ⌥F3 can fetch two sides (PLAN.md §M25). A virtual listing has no directory to synchronize.
 
-<sup>y</sup> `⏎` on a `.zip` sitting on a server downloads it and hands it to the default app rather
-than browsing it. `ArchiveBackend.init(archiveOnDiskPath:)` needs a real path, so fetch-then-mount is
-the shape — and writing into one is repack-then-upload. Not built (PLAN.md §M24 Slice 6).
+<sup>y</sup> `ArchiveBackend.init(archiveOnDiskPath:)` needs a real path, so browsing an archive on a
+server is fetch-the-whole-file-then-mount — the mirror of packing *to* one, and the only navigation in
+Dirnex that says what it costs before it happens (PLAN.md §M24 Slice 6). It is the same confirmation
+every M24 gesture raises, so a small archive opens with no dialog and the bytes are shared with every
+later gesture over that row. The mount is **read-only**, exactly as a nested archive's is and for the
+same reason — its bytes are a temp copy, so a write would land there rather than in the archive on the
+server. Walking up at the archive root goes back to the *server's* directory and the breadcrumb names
+the server, never the extraction. Writing into one is repack-then-upload and is not built.
 
 <sup>rr</sup> Every one of these refused in one line — `backend == .local`, in
 `PanelViewController+UserScript.swift` and its siblings — and none of them needs the file to be
 *local*, only to be **a file**. The fetch that supplies one is the marked-set download M24 Slice 2
 made a queue job, with a determinate bar, a Stop and per-item failures; what is left for these rows
 is the gesture that hands the copies over. Open With and Share stopped refusing at Slice 3, Compare
-By Contents and checksums at Slice 4, and user scripts at Slice 5; **Pack is the last of them**
-(PLAN.md §M24 Slice 6).
+By Contents and checksums at Slice 4, user scripts at Slice 5, and Pack at Slice 6 — which was the
+last of them.
 
 <sup>yy</sup> The marked set is brought down first, as one queued job with a determinate bar, Stop
 and per-item failures (PLAN.md §M24 Slice 3). Two limits, both about what a hand-off *is*. A
@@ -337,8 +342,8 @@ child ~71 ms (PLAN.md §M25, smaller than a milestone).
 | Create / verify checksum files | yes | yes | verify only<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | n/a | no<sup>xx</sup> | no<sup>xx</sup> |
 | Open in Terminal | yes | yes | n/a | **no**<sup>gg</sup> | n/a | n/a | n/a | no | no |
 | Run a user script | yes | yes | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | no<sup>aaa</sup> | yes, limited<sup>aaa</sup> | yes, limited<sup>aaa</sup> |
-| Pack `⌥F5` (create an archive) | yes | yes | n/a | **no**<sup>hh</sup> | **no**<sup>hh</sup> | **no**<sup>hh</sup> | n/a | **no** | no |
-| Encrypted archives / hidden member names | yes | yes | yes | no<sup>hh</sup> | no<sup>hh</sup> | no<sup>hh</sup> | n/a | no | no |
+| Pack `⌥F5` (create an archive) | yes | yes | yes<sup>hh</sup> | yes, partially<sup>hh</sup> | yes, partially<sup>hh</sup> | yes, partially<sup>hh</sup> | n/a | yes, partially<sup>hh</sup> | yes |
+| Encrypted archives / hidden member names | yes | yes | yes | yes, partially<sup>hh</sup> | yes, partially<sup>hh</sup> | yes, partially<sup>hh</sup> | n/a | yes, partially<sup>hh</sup> | yes |
 | Create / unlock an encrypted vault | yes | yes | n/a | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a | no | n/a |
 | Saved connection in the sidebar | n/a | n/a | n/a | yes | yes | yes | yes | n/a | n/a |
 | Pin to Favorites / Places menu | yes | yes | no | yes, partially<sup>ii</sup> | yes, partially<sup>ii</sup> | yes, partially<sup>ii</sup> | yes, partially | no | n/a |
@@ -364,9 +369,22 @@ down. A row whose transfer failed is reported the same way, never as a mismatch.
 <sup>gg</sup> A local shell cannot `cd` to a server. An `ssh` session to the SFTP account's own
 host is a different feature and is not built.
 
-<sup>hh</sup> Both ends of a pack must be real local folders. Packing *to* or *from* a server is
-build-into-temp-then-upload, or fetch-then-build, through the staging path `RelayCopy` already uses —
-not built (PLAN.md §M24 Slice 6).
+<sup>hh</sup> Neither end has to be on this Mac (PLAN.md §M24 Slice 6). The **sources** are brought
+down first — the marked-set fetch note <sup>rr</sup> describes — and each one then names its own
+directory, so a set staged off a server, a browsed archive's members and a tree's marks at two depths
+all pack alike. The **destination** is asked `capabilities(for:)` on its own directory, so a writable
+bucket or SFTP folder takes the archive and a read-only one is refused before anything is written; an
+archive bound for a server is built in a temp directory and transferred, and the temp is swept
+whatever happens. Three limits. A **folder** that is not already here is refused, in the hand-off's
+words and for its reason — it stands for an unknown number of objects in an unknown number of
+requests, so copy it over with F5 and pack the copy. A **browsed archive cannot receive** one, because
+`ArchiveBackend` advertises `.read` alone and writing into an archive is a repack. And a *plain* pack
+to a server has no bar and no Stop for its upload: a plain pack has never been a queue job — that is
+the libarchive boundary §M19 drew, and it is the encrypted path alone that runs on the queue — so the
+upload is reported by the status line. Encrypting the same archive puts both halves on the bar.
+Both of the last two are ours to close rather than the protocol's, which is why these cells read
+*partially*: staging a remote subtree is F5's engine pointed at a temp directory, and a plain pack on
+the queue is a `bsdtar` job the queue does not yet have a kind for.
 
 <sup>ii</sup> A remote folder can be pinned from the menu, but the pin is not restored at launch
 and is not a drag target in the sidebar (PLAN.md §M8's deliberate omission). The **Servers** section

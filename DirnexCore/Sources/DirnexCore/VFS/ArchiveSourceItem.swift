@@ -90,13 +90,44 @@ public enum ArchiveSourceEnumerator {
         allowDataless: Bool = false,
         isCancelled: @escaping () -> Bool = { false }
     ) throws -> [ArchiveSourceItem] {
+        try items(
+            for: PackSource.all(inDirectory: directory, names: names),
+            allowDataless: allowDataless,
+            isCancelled: isCancelled
+        )
+    }
+
+    /// Every item under `sources`, each walked from **its own** directory, depth-first, parents
+    /// before children (PLAN.md §M24 Slice 6).
+    ///
+    /// The general form of the entry point above, and the one a pack over rows that are not in one
+    /// folder needs: a staged set is one directory per file, and a tree can mark rows at two
+    /// depths. What a source is called inside the archive is its own bare name whichever directory
+    /// it came from, so the recipient sees what the user marked and never where it was staged.
+    ///
+    /// Ordering is by **archive name**, as it always was — deterministic, so packing the same
+    /// selection twice produces the same entry order — rather than by the order the sources arrived
+    /// in, which for a staged set is the order a queue happened to finish transfers in.
+    ///
+    /// - Parameters:
+    ///   - sources: Where each item's bytes are and what it is called. A source whose file does not
+    ///     exist is skipped rather than failing the whole pack: a selection can go stale between
+    ///     the keystroke and the walk.
+    ///   - allowDataless: Pass `true` only after the user has agreed to the downloads — see the
+    ///     entry point above.
+    ///   - isCancelled: Polled per item; throws `CancellationError` when it fires.
+    public static func items(
+        for sources: [PackSource],
+        allowDataless: Bool = false,
+        isCancelled: @escaping () -> Bool = { false }
+    ) throws -> [ArchiveSourceItem] {
         let walk = Walk(allowDataless: allowDataless, isCancelled: isCancelled)
         var collected: [ArchiveSourceItem] = []
-        for name in names.sorted() {
+        for source in sources.sorted(by: { $0.name < $1.name }) {
             try append(
-                name: name,
-                onDiskPath: (directory as NSString).appendingPathComponent(name),
-                archivePath: name,
+                name: source.name,
+                onDiskPath: source.onDiskPath,
+                archivePath: source.name,
                 into: &collected,
                 walk: walk
             )

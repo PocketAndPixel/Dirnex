@@ -76,6 +76,12 @@ extension PanelViewController {
             // temp and open *that* with its default app, the Total Commander gesture. Read-only,
             // because nothing writes an edit back into the archive (PLAN.md §M4).
             beginArchiveMemberOpen(for: entry)
+        } else if let archive = remoteArchiveToBrowse(for: entry) {
+            // An archive on a server — fetch the whole file and browse the copy (PLAN.md §M24
+            // Slice 6). Before the plain remote branch below, which would hand the same `.zip` to
+            // Archive Utility instead: ⏎ on something folder-shaped means *go inside it*, and that
+            // it happens to be on a server is not a reason for the key to mean something else.
+            beginRemoteArchiveEntry(for: archive)
         } else if entry.path.backend.isRemoteConnection {
             // A file on a server, for the same reason and by the same route: download it to temp and
             // open *that*, registering the copy so a save is offered back up (PLAN.md §M21 Slice

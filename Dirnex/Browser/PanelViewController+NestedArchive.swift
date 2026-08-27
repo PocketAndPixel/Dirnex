@@ -12,6 +12,13 @@ import DirnexCore
 /// A nested mount is the extracted temp copy, so writing to it wouldn't reach the enclosing
 /// archive; `isNestedArchive` keeps it read-only this pass (writing back through nesting is a
 /// later item), matching how the app grays out unsupported ops (§M5 "capability degradation").
+///
+/// **An archive on a *server* is the same shape and shares the same registry** (PLAN.md §M24
+/// Slice 6, at the bottom of this file): its mount is a temp copy of the whole file, so walking up
+/// has to reach the server rather than the extraction, and writing to it would land in a temp file
+/// rather than in the archive the user is looking at. `isNestedArchive` reads `true` for it and
+/// means what it has always meant — *this mount's bytes are a copy of something that lives
+/// elsewhere* — which is why widening it was the fix rather than a second gate beside it.
 extension PanelViewController {
     /// The archive pane is browsing a nested mount (an archive-inside-an-archive extracted to
     /// temp), not a real on-disk archive — the gate that keeps its contents read-only.
@@ -49,10 +56,14 @@ extension PanelViewController {
         return host?.nestedArchiveRegistry.ancestry(ofMountAt: archivePath) ?? []
     }
 
-    /// The archive-root location for a nested archive extracted to `onDiskPath` — Enter navigates
-    /// here after the member lands on disk. (The sibling `archiveRoot(for:)` maps a *local* archive
-    /// file; a nested archive's on-disk path is the temp extraction, not the browsed entry's path.)
-    func nestedArchiveRoot(atOnDiskPath onDiskPath: String) -> VFSPath {
+    /// The archive-root location for a mount whose bytes are a **temp copy** at `onDiskPath` —
+    /// Enter navigates here once the copy has landed.
+    ///
+    /// Two kinds reach it and neither has an on-disk path of its own: a nested archive, whose bytes
+    /// are a member extracted from the enclosing one, and an archive on a server, whose bytes are
+    /// the whole file downloaded (PLAN.md §M24 Slice 6). The sibling `archiveRoot(for:)` is the
+    /// third case — a *local* archive file, which is already the path it is browsed from.
+    func stagedArchiveRoot(atOnDiskPath onDiskPath: String) -> VFSPath {
         VFSPath(backend: .archive(forArchiveAt: onDiskPath), path: "/")
     }
 
@@ -67,7 +78,7 @@ extension PanelViewController {
         // Re-entering an inner archive we already extracted this session reuses the temp file (and
         // its cached mount), matching how the preview cache avoids re-extracting the same member.
         if let existing = host?.nestedArchiveRegistry.reusableMount(forOrigin: origin) {
-            navigate(to: nestedArchiveRoot(atOnDiskPath: existing))
+            navigate(to: stagedArchiveRoot(atOnDiskPath: existing))
             return
         }
 
@@ -90,12 +101,59 @@ extension PanelViewController {
         } onSuccess: { [weak self] mountPath in
             guard let self else { return }
             host?.nestedArchiveRegistry.record(mountOnDiskPath: mountPath, origin: origin)
-            navigate(to: nestedArchiveRoot(atOnDiskPath: mountPath))
+            navigate(to: stagedArchiveRoot(atOnDiskPath: mountPath))
         } onFailure: { [weak self] error in
             self?.presentOperationFailure(
                 message: String(localized: "Couldn’t open the nested archive"),
                 detail: self?.describe(error) ?? ""
             )
+        }
+    }
+}
+
+/// Browsing an archive that lives on a **server** (PLAN.md §M24 Slice 6).
+///
+/// `ArchiveBackend.init(archiveOnDiskPath:)` needs a real path, so there is exactly one shape
+/// available: fetch the whole file, then mount the copy. That is the mirror of packing *to* a
+/// server, which builds the whole archive here and then uploads it — and it is why ⏎ on a `.zip`
+/// over SFTP is the one navigation in this app that has to say what it costs before it happens.
+/// Everywhere else ⏎ on a folder-shaped row is free.
+///
+/// **It is recorded as a mount whose bytes are a temp copy**, which is exactly what a nested archive
+/// is, so it reuses the registry above rather than growing a second one. Three things fall out of
+/// that and all three are what is wanted: walking up at the archive root goes back to the *server's*
+/// directory rather than to the extraction, the breadcrumb chain names the server, and the mount is
+/// **read-only** — `isNestedArchive` is the gate F8, F5-into and paste already draw, and a write to
+/// this copy would land in a temp file rather than in the archive on the server. Writing into one is
+/// repack-then-upload, which the pack half of this slice makes reachable and which is its own pass.
+extension PanelViewController {
+    /// Whether ⏎ on `entry` means "browse into this archive that is not on this disk".
+    ///
+    /// Asked of the **row**, never of the pane, so a search hit browses exactly as a listed row
+    /// does — the property four others in this app had to be corrected for (PLAN.md §M22 Slice 5).
+    func remoteArchiveToBrowse(for entry: FileEntry) -> FileEntry? {
+        guard entry.path.backend.isRemoteConnection, entry.kind == .file,
+              ArchiveType.isBrowsable(entry.name) else { return nil }
+        return entry
+    }
+
+    /// Fetch the whole archive, register where it came from, and browse into the copy.
+    ///
+    /// The confirmation is `MaterializationPlan`'s, through the same funnel every other M24 gesture
+    /// uses — so a small archive opens with no dialog, a large one names its size once, and the
+    /// bytes are reused by every later gesture over the same row. A second ⏎ on an archive already
+    /// fetched this session costs nothing at all: the plan reads the copy as `cached` and the mount
+    /// is the same file.
+    func beginRemoteArchiveEntry(for entry: FileEntry) {
+        materialize([entry], for: .browseArchive) {
+            String(
+                localized: "Couldn’t open this archive",
+                comment: "Alert title when an archive on a server can't be downloaded to browse it."
+            )
+        } then: { [weak self] urls in
+            guard let self, let url = urls.first else { return }
+            host?.nestedArchiveRegistry.record(mountOnDiskPath: url.path, origin: entry.path)
+            navigate(to: stagedArchiveRoot(atOnDiskPath: url.path))
         }
     }
 }

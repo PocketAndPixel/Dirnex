@@ -232,8 +232,8 @@ struct MaterializationPlanTests {
 
     // MARK: - The rows a gesture may have to refuse
 
-    /// The same rows `totalsAreExact` reads, named rather than counted — a hand-off refuses them
-    /// and a pack stages their subtrees, so the plan says which they are and neither answer.
+    /// The rows every gesture that reads this refuses by name — a hand-off, a compare, a checksum
+    /// and a pack — so the plan says which they are and none of the four answers here.
     @Test("a folder that is not here is named, and one that is here is not")
     func pendingDirectoriesAreTheOnesNotHere() {
         let remoteFolder = entry(
@@ -256,5 +256,38 @@ struct MaterializationPlanTests {
         let localFolder = entry(.local("/Users/oleg/docs"), kind: .directory, size: 4096)
 
         #expect(plan([localFolder, local("a.txt")]).pendingDirectories.isEmpty)
+    }
+
+    @Test("a local folder carrying the placeholder flag is not one of them")
+    func aDatalessLocalFolderIsNotRefused() {
+        // Some file providers set `SF_DATALESS` on directories as well as files, and listing one
+        // costs nothing — the provider materializes a *child* when something reads it. So it is an
+        // ordinary directory with a flag on it, not an unknown number of round trips, and refusing
+        // it would take Open With, a checksum and a pack away from a folder on somebody's Drive
+        // that all three handle. `ArchiveSourceEnumerator` already makes exactly this carve-out.
+        let folder = entry(
+            .local("/Users/oleg/Library/CloudStorage/GoogleDrive-x/My Drive"),
+            kind: .directory,
+            size: 4096,
+            isDataless: true
+        )
+        let result = plan([folder])
+
+        #expect(result.pendingDirectories.isEmpty)
+        // Classified as present, not as a placeholder: there are no bytes to fetch, so it is neither
+        // refused as a folder that is not here nor queued behind a download that cannot happen.
+        #expect(result.items.map(\.source) == [.present])
+        #expect(result.cloudMaterializations.isEmpty)
+        #expect(result.needsNothing)
+    }
+
+    @Test("a placeholder *file* is still weighed and still fetched")
+    func aDatalessLocalFileIsUnchanged() {
+        // The narrowness control: the carve-out above is about a directory, and nothing else moved.
+        let file = entry(.local("/Users/oleg/Drive/photo.raw"), size: 40_000_000, isDataless: true)
+        let result = plan([file])
+
+        #expect(result.cloudMaterializations.map(\.path) == [file.path])
+        #expect(result.byteTotal == 40_000_000)
     }
 }

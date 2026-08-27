@@ -30,7 +30,14 @@ final class StubPanelHost: PanelHost {
 
     func panelDidBecomeActive(_ panel: PanelViewController) {}
     func panelRequestsFocusSwitch(_ panel: PanelViewController) {}
-    func panelCounterpart(of panel: PanelViewController) -> PanelViewController? { nil }
+    /// The other pane, when a test needs one.
+    ///
+    /// `nil` by default and settable since M24 Slice 6, because ⌥F5 is the first gesture here whose
+    /// *destination* is the counterpart: every question it asks — can this folder receive an
+    /// archive, is it on this Mac — is about a pane this host has to be able to hand back.
+    var counterpart: PanelViewController?
+
+    func panelCounterpart(of panel: PanelViewController) -> PanelViewController? { counterpart }
     /// Every operation a gesture handed over, in order.
     ///
     /// Recorded rather than shrugged at since M24 Slice 4, because a checksum over rows that are

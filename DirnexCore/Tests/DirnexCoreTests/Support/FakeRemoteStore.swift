@@ -13,16 +13,25 @@ final class FakeRemoteStore: VFSBackend, @unchecked Sendable {
     static let backendID = VFSBackendID("test-store://host")
 
     private let lock = NSLock()
-    private var files: [String: String]
+    /// Bytes rather than text, because an archive uploaded here is a zip (PLAN.md §M24 Slice 6) and
+    /// a `String` round trip would quietly turn one into an empty file — the sort of fixture that
+    /// passes every assertion about *where* something landed and none about what it is.
+    private var files: [String: Data]
     private var refusedUploads: Set<String>
 
     init(_ files: [String: String], refusingUploadsTo refusedUploads: Set<String> = []) {
-        self.files = files
+        self.files = files.mapValues { Data($0.utf8) }
         self.refusedUploads = refusedUploads
     }
 
-    /// What is on the "server" now, including anything uploaded during the test.
-    var contents: [String: String] { lock.withLock { files } }
+    /// What is on the "server" now, including anything uploaded during the test. Non-text bytes
+    /// read back as an empty string, which is why a binary claim asks ``data(at:)`` instead.
+    var contents: [String: String] {
+        lock.withLock { files }.mapValues { String(bytes: $0, encoding: .utf8) ?? "" }
+    }
+
+    /// The exact bytes at `path`, or `nil` if nothing is there.
+    func data(at path: String) -> Data? { lock.withLock { files[path] } }
 
     var id: VFSBackendID { Self.backendID }
     var capabilities: VFSCapabilities { [.read, .write] }
@@ -35,7 +44,7 @@ final class FakeRemoteStore: VFSBackend, @unchecked Sendable {
             path: full,
             name: full.lastComponent,
             kind: kind,
-            byteSize: Int64(lock.withLock { files[path] }?.utf8.count ?? 0),
+            byteSize: Int64(lock.withLock { files[path] }?.count ?? 0),
             modificationDate: Date(timeIntervalSince1970: 1_700_000_000),
             creationDate: Date(timeIntervalSince1970: 1_600_000_000),
             isHidden: full.lastComponent.hasPrefix("."),
@@ -73,16 +82,15 @@ final class FakeRemoteStore: VFSBackend, @unchecked Sendable {
                 throw VFSError.permissionDenied(destination)
             }
             let data = try Data(contentsOf: URL(fileURLWithPath: source.path))
-            let text = String(bytes: data, encoding: .utf8) ?? ""
-            lock.withLock { files[destination.path] = text }
+            lock.withLock { files[destination.path] = data }
             progress(Int64(data.count))
             return
         }
         guard let contents = lock.withLock({ files[source.path] }) else {
             throw VFSError.notFound(source)
         }
-        try Data(contents.utf8).write(to: URL(fileURLWithPath: destination.path))
-        progress(Int64(contents.utf8.count))
+        try contents.write(to: URL(fileURLWithPath: destination.path))
+        progress(Int64(contents.count))
     }
 
     // MARK: - Deriving a tree from a flat keyspace

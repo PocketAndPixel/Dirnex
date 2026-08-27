@@ -198,6 +198,7 @@ public actor FileOperationQueue {
                 case .pack:
                     report = PackRunner.run(
                         operation,
+                        using: backend,
                         onProgress: { progressContinuation.yield($0) },
                         isCancelled: { control.checkpoint() }
                     )

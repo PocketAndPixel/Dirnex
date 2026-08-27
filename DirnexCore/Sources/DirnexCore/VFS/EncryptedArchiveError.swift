@@ -75,15 +75,6 @@ public enum EncryptedArchiveError: Error, Sendable, Equatable {
     /// There was nothing to put in the archive.
     case nothingToArchive
 
-    /// The job named a backend that is not the local disk.
-    ///
-    /// libarchive reads and writes real paths, so an encrypted pack of an SFTP or FTP directory is a
-    /// full download and re-upload — genuinely useful, and its own slice. Until then a non-local job
-    /// fails fast rather than half-working, exactly as `ChecksumError.needsLocalFile` does and for
-    /// the same reason: `PackRunner` is reachable by any caller that can build a `FileOperation`, so
-    /// the guard belongs at the runner and not only at the pane that normally refuses first.
-    case needsLocalFile
-
     /// The stable translation key token — the case name, spelled once, never derived.
     public var key: String {
         switch self {
@@ -97,7 +88,6 @@ public enum EncryptedArchiveError: Error, Sendable, Equatable {
         case .wouldDownloadPlaceholder: return "wouldDownloadPlaceholder"
         case .sourceChangedDuringPacking: return "sourceChangedDuringPacking"
         case .nothingToArchive: return "nothingToArchive"
-        case .needsLocalFile: return "needsLocalFile"
         }
     }
 }
@@ -150,8 +140,6 @@ public extension EncryptedArchiveError {
             return ("“%@” changed while it was being added, so the archive wasn’t created.", [name])
         case .nothingToArchive:
             return ("There’s nothing to put in the archive.", [])
-        case .needsLocalFile:
-            return ("Encrypted archives can only be made from files on this Mac.", [])
         }
     }
 
@@ -169,8 +157,7 @@ public extension EncryptedArchiveError {
             .entryNameNotUTF8(archive: ""),
             .wouldDownloadPlaceholder(name: ""),
             .sourceChangedDuringPacking(name: ""),
-            .nothingToArchive,
-            .needsLocalFile
+            .nothingToArchive
         ]
     }
 }

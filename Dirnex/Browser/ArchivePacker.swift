@@ -10,13 +10,12 @@ import Foundation
 /// not to a temp dir — the result *is* a user file, so there's nothing to purge. `bsdtar -c`
 /// overwrites any existing file, so the caller resolves a name collision before calling here.
 enum ArchivePacker {
-    /// Pack `sourceNames` (bare names under `sourceDirectory`) into a new archive at
-    /// `archiveOnDiskPath`, whose suffix selects the format — `format` says which one that is, so
-    /// the argv can decide whether a compression level is legal for it. Throws when `bsdtar` can't
-    /// run, exits non-zero, or produced no file. Blocks on `bsdtar`, so call it off-main.
+    /// Pack `sources` into a new archive at `archiveOnDiskPath`, whose suffix selects the format —
+    /// `format` says which one that is, so the argv can decide whether a compression level is legal
+    /// for it. Throws when `bsdtar` can't run, exits non-zero, or produced no file. Blocks on
+    /// `bsdtar`, so call it off-main.
     static func pack(
-        sourceNames: [String],
-        inDirectory sourceDirectory: String,
+        sources: [PackSource],
         toArchiveAt archiveOnDiskPath: String,
         format: ArchivePacking.Format,
         level: ArchivePacking.CompressionLevel
@@ -25,8 +24,7 @@ enum ArchivePacker {
         process.executableURL = URL(fileURLWithPath: "/usr/bin/bsdtar")
         process.arguments = ArchivePacking.packingArguments(
             archiveOnDiskPath: archiveOnDiskPath,
-            sourceDirectory: sourceDirectory,
-            sourceNames: sourceNames,
+            sources: sources,
             format: format,
             level: level
         )

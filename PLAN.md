@@ -495,6 +495,74 @@ Core first, app untouched until (2), as usual. Each lands runnable.
    into temp, upload the archive — and browsing one is the mirror. This is the slice that needs the
    "the whole file is coming down" sentence, and the one where a *nested* archive stays out of
    scope for the reason it always has: its bytes are already a temp copy.
+   **Landed 2026-08-27**, and the source half needed no staging directory at all — which was the
+   measurement that decided the design. `bsdtar` accepts `-C` **interleaved with the names** in
+   create mode (probed against libarchive 3.7.4: `-c -f out.zip -C /a alpha.txt -C /b beta.txt`
+   writes both members correctly), and `ArchiveSourceItem` has split the absolute `onDiskPath` from
+   the relative `archivePath` since M19 — so both writers already wanted a per-source directory and
+   only their entry points did not. ``PackSource`` is that pair, `-C` is emitted **only where the
+   directory changes**, and an ordinary pack's argv is byte-identical to what it always sent. No
+   hardlinks, no gathering, nobody's bytes copied twice.
+   **It fixes a bug nothing had reported: ⌥F5 in a *tree* has been wrong since trees shipped.** The
+   pack was handed `panel.path` plus bare names, so a marked row inside an expanded folder named a
+   file that is not in the pane's own directory — `bsdtar` failed, and the encrypted walk skipped
+   the missing name and wrote a **smaller archive without saying so**. The same fix covers it,
+   because the answer to *where are this row's bytes* is now asked of the row.
+   **A folder that is not already here is refused**, in the hand-off's own words and for its reason,
+   which is a *correction* to the claim `MaterializationPlan.pendingDirectories` carried from Slice
+   1 — it said a pack would stage the subtree. Written before any gesture read it, and wrong by the
+   time one did: all four that read it now refuse, staging a remote tree is F5's engine pointed at a
+   temp directory, and nobody has built that.
+   The **destination** is asked `capabilities(for:)` on its own directory rather than "is it on this
+   Mac", so a writable bucket takes the archive and a read-only one is refused before a byte is
+   written. `PackStaging` is the one definition of *where does the archive go* — nothing at all for
+   a local destination, and build-in-temp-then-transfer for a server, swept whatever happens — and
+   both pack paths use it, which is what stops the two from drifting. A refused upload comes home as
+   the backend's own `VFSError` about the archive's path rather than as an `EncryptedArchiveError`:
+   the write worked and the transfer did not, and those are different sentences. The upload's bytes
+   are **added** to the bar's total rather than replacing it, so it grows once at the transition and
+   runs on to the end — the two alternatives are a full bar parked for the length of a network
+   transfer, and an aggregate that walks backwards.
+   `EncryptedArchiveError.needsLocalFile` went with it, catalog entries and all: its own doc comment
+   said "until then a non-local job fails fast", and *then* is now.
+   **Browsing a `.zip` on a server reuses the nested-archive registry rather than growing a second
+   one**, because it is the same shape — a mount whose bytes are a temp copy — and three things fall
+   out of that which are exactly what is wanted: the way up goes back to the *server's* directory,
+   the breadcrumb names the server (the crumb builder had to learn that, or it drew
+   `Macintosh HD › private › tmp › DirnexRemote › <uuid>`), and the mount is **read-only**, since a
+   write would land in the temp copy rather than in the archive on the server. Repack-then-upload is
+   its own pass and is reachable now that the pack half exists.
+   Controlled in ten directions, each failing only the tests that name it: the folder refusal
+   dropped, the destination gate back to local-only, `canPackFromHere` back to local-only, sources
+   named from the row instead of the file, one leading `-C` for the whole set, staging disabled, the
+   ⏎ route removed, the crumbs rooted at the extraction again, a placeholder *directory* classified
+   as one, and the remote origin walked as an enclosing archive. The narrowness controls are the
+   half that matters most and all stayed green throughout: a **local** folder still packs, an
+   ordinary remote **file** still opens in its own application rather than being mounted, and the
+   nested and top-level crumb chains are untouched.
+   **Verified live against a throwaway `sshd`**, and unlike Slices 3–5 the gesture is *not* drivable
+   headlessly — ⌥F5 ends in the pack sheet, which is a nested question no AppleScript verb gets past.
+   So the live half is a checked-in suite gated on the same config file `SFTPLiveIntegrationTests`
+   uses (`PackLiveIntegrationTests`), driving the real `SFTPProcessTransport`, the real `bsdtar` and
+   the real mount. Two objects staged off the server into **two different directories** packed into
+   one archive whose members came back with the server's exact bytes, under the names the user
+   marked and with no trace of where they were staged; an encrypted archive built here landed on the
+   server, where **`bsdtar` — which is not ours — listed `payload.txt` in it and then demanded a
+   passphrase to extract it**, so it is a real zip and really encrypted; and a `.zip` on the server
+   came down whole and listed `one.txt`, `two.txt`. The independent read is the point in each case:
+   the upload is checked by a *fresh* download rather than by asking the writer what it wrote, which
+   is the trap Slice 10's own probe fell into one milestone ago.
+   **A stronger assertion found a bug three green runs had not**, and it is worth the sentence: the
+   crumb test first asserted a *suffix*, which is true of a trail carrying everything twice
+   (`… › srv › backup.zip › srv › backup.zip › docs`) — the remote origin was being walked as though
+   it were an enclosing archive, whose `path` is an archive-inner path where a server's is not. The
+   same run showed the root crumb reading "Macintosh HD", because the fixture's backend id was a
+   hand-built string `backendRootTitle` cannot parse, so the test had been measuring the fallback.
+   Both are fixed and both are now pinned by an equality over the whole list.
+   **The one thing it does not do is put a plain pack's upload on the queue.** A plain pack has never
+   been a queue job — that is the libarchive boundary §M19 drew, and it is the *encrypting* that
+   earns the queue — so a `.tar.gz` bound for a server is reported by the status line and has no bar
+   and no Stop for its transfer. Encrypting the same archive puts both halves on the bar.
 7. **Get Info, read-only, on a remote row.** The SFTP and FTP listings already carry mode, owner,
    group and modification date into `FileEntry`; `AttributesController` refuses to draw them. Read
    first and write in M25, because the two fail differently — a panel that shows a mode it cannot

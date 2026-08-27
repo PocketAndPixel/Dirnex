@@ -238,14 +238,30 @@ extension PathBarView {
     /// archive to that folder, the archive-name crumb re-enters its root, an inner crumb jumps
     /// within it — the same affordance the local path bar gives.
     func rebuildArchiveLabel(for path: VFSPath, ancestry: [VFSPath] = []) {
+        // The archive's own ancestors are what the trail is rooted at — the crumb row opens on
+        // "Macintosh HD" here exactly as a plain local path does — so the leading glyph names the
+        // *first* crumbs rather than the archive, which is the last of them. A remote archive roots
+        // at its server instead, and takes that server's glyph for the same reason.
+        let origin = Self.remoteContainer(in: ancestry)
         installCrumbs(
             Self.archiveCrumbs(for: path, ancestry: ancestry),
-            // The archive's own local ancestors are what the trail is rooted at — the crumb row
-            // opens on "Macintosh HD" here exactly as a plain local path does — so the leading
-            // glyph is the local one rather than an archive glyph, which would name the *last*
-            // crumbs instead of the first.
-            leadingSymbol: Self.rootSymbolName(for: .local("/"))
+            leadingSymbol: Self.rootSymbolName(for: origin ?? .local("/"))
         )
+    }
+
+    /// The **server** the outermost archive really lives on, when this mount is a copy of a file
+    /// that is not on this disk (PLAN.md §M24 Slice 6) — `nil` for every local and nested archive.
+    ///
+    /// It is `ancestry.first` and only ever that: `NestedArchiveMap.ancestry` stops walking the
+    /// moment an origin has no enclosing archive, so a non-archive origin can only be the outermost
+    /// one. Requiring a **root title** as well is what keeps the remote trail from being drawn for a
+    /// backend whose root has no name — there is nothing to call the first crumb then, and calling
+    /// it "Macintosh HD" would be a plain lie about where the file is. Every real remote connection
+    /// has one, which is what the branch above this already assumes.
+    static func remoteContainer(in ancestry: [VFSPath]) -> VFSPath? {
+        guard let origin = ancestry.first, !origin.backend.isArchive,
+              origin.backendRootTitle != nil else { return nil }
+        return origin
     }
 
     /// The crumb chain for a browsed archive, outermost local folder → current inner directory.
@@ -258,31 +274,48 @@ extension PathBarView {
     ///
     /// `static` and pure (no view state) so it's unit-testable without instantiating the view.
     static func archiveCrumbs(for path: VFSPath, ancestry: [VFSPath]) -> [Crumb] {
-        // The outermost archive's real on-disk path — the local file the whole chain roots at.
-        guard let outerOnDisk = ancestry.first?.backend.archivePath ?? path.backend.archivePath else {
+        // Where the outermost archive really lives, and what it is called there. A **remote**
+        // archive is browsed from a temp copy of the whole file (PLAN.md §M24 Slice 6), so its
+        // origin is on a server and `archivePath` answers `nil` for it — root the trail at the
+        // server, not at the extraction: the crumbs the user must be able to click their way back
+        // through are the ones the file actually came from, and `Macintosh HD › private › tmp ›
+        // DirnexRemote › <uuid>` is a directory nobody asked to see.
+        //
+        // **It is a container, never a *frame*.** Everything in `ancestry` after it is an enclosing
+        // archive whose `path` is an archive-inner path, which is what the loop below walks; a
+        // remote origin is a path on a server and walking it as a frame draws its components twice
+        // (`… › srv › backup.zip › srv › backup.zip › docs`). So it supplies the root trail and the
+        // outermost archive's *name*, and then steps out of the way.
+        let remoteOrigin = remoteContainer(in: ancestry)
+        let frames = remoteOrigin == nil ? ancestry : Array(ancestry.dropFirst())
+        guard let outerOnDisk = remoteOrigin?.path
+            ?? frames.first?.backend.archivePath
+            ?? path.backend.archivePath else {
             let name = (path.backend.archivePath as NSString?)?.lastPathComponent ?? "Archive"
             return [Crumb(title: name, target: path)]
         }
 
         // 1. The archive file's containing folders, so the trail reads as a full path before it
         //    crosses into the archive. Drop the file itself — it becomes the first archive crumb.
-        var crumbs = VFSPath.local(outerOnDisk).ancestorsFromRoot.dropLast().map { ancestor in
-            Crumb(title: ancestor.isRoot ? "Macintosh HD" : ancestor.lastComponent, target: ancestor)
+        let container = remoteOrigin ?? .local(outerOnDisk)
+        let rootTitle = remoteOrigin?.backendRootTitle ?? "Macintosh HD"
+        var crumbs = container.ancestorsFromRoot.dropLast().map { ancestor in
+            Crumb(title: ancestor.isRoot ? rootTitle : ancestor.lastComponent, target: ancestor)
         }
 
         // 2. Each archive in the chain, outermost → current.
-        let backends = ancestry.map(\.backend) + [path.backend]
+        let backends = frames.map(\.backend) + [path.backend]
         for (index, backend) in backends.enumerated() {
             // The archive-name crumb — its own filename, navigating to this archive's root.
             let name = index == 0
                 ? (outerOnDisk as NSString).lastPathComponent
-                : (ancestry[index - 1].path as NSString).lastPathComponent
+                : (frames[index - 1].path as NSString).lastPathComponent
             crumbs.append(Crumb(title: name, target: VFSPath(backend: backend, path: "/")))
 
             // The inner directories browsed within this archive: down to (but not including) the
             // nested-archive file for an outer frame, the full browsed location for the current one.
-            let isCurrentFrame = index == ancestry.count
-            let innerPath = isCurrentFrame ? path.path : ancestry[index].path
+            let isCurrentFrame = index == frames.count
+            let innerPath = isCurrentFrame ? path.path : frames[index].path
             var components = innerPath.split(separator: "/", omittingEmptySubsequences: true).map(
                 String.init
             )

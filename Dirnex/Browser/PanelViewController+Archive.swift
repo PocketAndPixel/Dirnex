@@ -40,7 +40,10 @@ extension PanelViewController {
             navigate(to: parent, focus: panel.path)
         } else if let origin = host?.nestedArchiveRegistry.origin(ofMountAt: archivePath),
                   let container = origin.parent {
-            // A nested mount — go back to the outer archive's inner directory, onto the member.
+            // A mount whose bytes are a temp copy — go back to wherever the file really lives,
+            // onto it. For a nested archive that is the outer archive's inner directory; for one on
+            // a server it is the server's own directory (PLAN.md §M24 Slice 6), which is exactly
+            // what keeps the temp extraction out of the user's way up.
             navigate(to: container, focus: origin)
         } else {
             // A top-level archive — exit to the containing local directory.

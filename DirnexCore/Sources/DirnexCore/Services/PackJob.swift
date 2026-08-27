@@ -16,16 +16,21 @@
 /// at all — libarchive's 7-Zip writer refuses `encryption`, and tar has no notion of it. A `format`
 /// field here would be a setting with one legal value and a way to ask for an illegal one.
 public struct PackJob: Sendable {
-    /// The directory ``names`` are relative to — the source pane's own directory, and what every
-    /// entry's archive path is spelled against.
-    public let sourceDirectory: VFSPath
+    /// What goes in, and where each one's bytes are on this disk.
+    ///
+    /// A ``PackSource`` rather than a directory plus bare names, because a pack's rows are no
+    /// longer one folder's worth (PLAN.md §M24 Slice 6): a set staged off a server is one directory
+    /// per file, and a tree can mark rows at two depths. The *name* is still bare, because that is
+    /// what the archive stores — a member called `docs/report.pdf` and not `/Users/…/docs/report.pdf`.
+    public let sources: [PackSource]
 
-    /// Bare names within ``sourceDirectory``. Bare rather than absolute because that is what the
-    /// archive stores: a member called `docs/report.pdf` and not `/Users/…/docs/report.pdf`.
-    public let names: [String]
-
-    /// Where the finished archive lands. Written under a temporary name beside itself and renamed
-    /// into place by the writer, so a canceled pack leaves nothing here.
+    /// Where the finished archive lands, on **any** backend that accepts uploads.
+    ///
+    /// A local destination is written under a temporary name beside itself and renamed into place
+    /// by the writer, so a canceled pack leaves nothing here. A destination on a server is built in
+    /// a temp directory and transferred afterwards — the shape `ChecksumCreateRun` already uses for
+    /// a manifest that belongs beside objects in a bucket, and the mirror of the download
+    /// `MaterializeRunner` performs in the other direction.
     public let archive: VFSPath
 
     /// Which cipher, or none. `.none` is representable so the type does not need a second shape for
@@ -51,8 +56,7 @@ public struct PackJob: Sendable {
     public let allowDataless: Bool
 
     public init(
-        sourceDirectory: VFSPath,
-        names: [String],
+        sources: [PackSource],
         archive: VFSPath,
         encryption: ArchiveEncryption,
         namePrivacy: ArchiveNamePrivacy = .visible,
@@ -60,8 +64,7 @@ public struct PackJob: Sendable {
         passphrase: ArchivePassphrase?,
         allowDataless: Bool = false
     ) {
-        self.sourceDirectory = sourceDirectory
-        self.names = names
+        self.sources = sources
         self.archive = archive
         self.encryption = encryption
         self.namePrivacy = namePrivacy
@@ -82,8 +85,7 @@ extension PackJob: Equatable {
     /// .Kind` is `Equatable`, so the queue can tell two jobs apart, and two jobs holding the *same*
     /// passphrase object are the same job.
     public static func == (lhs: PackJob, rhs: PackJob) -> Bool {
-        lhs.sourceDirectory == rhs.sourceDirectory
-            && lhs.names == rhs.names
+        lhs.sources == rhs.sources
             && lhs.archive == rhs.archive
             && lhs.encryption == rhs.encryption
             && lhs.namePrivacy == rhs.namePrivacy

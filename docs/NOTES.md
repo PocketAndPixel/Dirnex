@@ -84,6 +84,17 @@ at build time.
     trap this file records about `swiftc` defaults (▸ Swift 6 and concurrency, the delegate-witness
     probe compiled in Swift 5 mode).
 
+- **When a gesture ends in a *sheet*, no sibling helps and the honest instrument is a checked-in live
+  suite.** M24 Slice 3 got Share for free because it fetches before it presents, and Slices 4 and 5
+  each found a verb with nothing to click. ⌥F5 has neither: the pack sheet is the *first* thing it
+  does, everything under test happens after the Pack button, and `run operation "file.pack"` returns
+  with a sheet on screen and nothing else. Putting the download *before* the sheet would have made it
+  drivable and is the wrong product — a user who backs out of the name or the collision question must
+  have paid nothing. So the live half went into the app test target beside the suites that were
+  already there (`SFTPLiveIntegrationTests`'s config-file gate, so CI skips it), driving the real
+  transport, the real `bsdtar` and the real mount. That is *better* than a throwaway script and worth
+  reaching for sooner: it is repeatable, it is reviewed, and it does not evaporate when the shell
+  history does.
 - **When a gesture ends in a menu you cannot click, look for its sibling that does not.** M24
   Slice 3 shipped two verbs over one selection and only one of them is drivable headlessly: Open
   With pops an `NSMenu` (a nested event loop — the AppleScript verb never returns), while **Share**
@@ -492,6 +503,24 @@ at build time.
   - **The wall clock lies about which fix worked.** The crashing runs took 23 s against a 12 s
     baseline, which reads as "these tests are slow" and invites tuning the waits; the restarts were
     the whole difference, and with them gone the suite costs ~6 s.
+- **A fixture identifier that merely *looks* real answers `nil` to whatever parses it, and the test
+  then measures the fallback rather than the feature.** M24 Slice 6's crumb test used the hand-off
+  suites' `VFSBackendID("sftp://user@host")` — a plausible string, not one `SFTPLocation.backendID`
+  ever produces — so `backendRootTitle` could not parse it, returned `nil`, and the root crumb came
+  out as the `?? "Macintosh HD"` fallback. The first version of the test asserted only a *suffix* and
+  passed; strengthening it to the full list is what exposed both the wrong root title **and** a real
+  bug beneath it (the remote origin was being walked as though it were an enclosing archive, drawing
+  `… › srv › backup.zip › srv › backup.zip › docs` — a plausible-looking trail with everything twice).
+  Build the id through the type's own constructor (`.sftp(SFTPLocation(host:username:))`), which is
+  the same rule this file states for minting a probe's *scaffolding*, arriving in a unit test.
+  - **Three green runs said nothing, and eight said it eight times.** The bug was in every run from
+    the moment the stronger assertion existed; what had hidden it before was an assertion that could
+    not see it. Worth pairing with this file's warning about baselines: a run count answers *is this
+    flaky*, and only the assertion answers *is this right*.
+  - **Assert the whole list, not a suffix or a `contains`.** Both weaker forms are true of the
+    duplicated trail — the suffix matched and every individual crumb was a real place — which is the
+    shape of a wrong answer this project keeps meeting: plausible, ordered, and containing everything
+    it should, plus something it should not.
 - **A doc comment between `@MainActor` and `@Suite` discovers *zero tests*, and reports success.**
   Same run: the suite printed `✔ Suite "…" passed after 0.001 seconds` and the run summary read
   `Test run with 0 tests in 1 suite passed`, with no warning at build time and no error anywhere —
@@ -2808,6 +2837,21 @@ one, so all four columnar parsers — `bsdtar -tvf`, `sftp`'s `ls -la`, FTP's `L
   `MMM d HH:mm` names no seconds, so each parse stamps the row with the second and millisecond it
   ran at. Shared by all four columnar parsers (`bsdtar`, `sftp`, FTP `LIST`, and the `ssh` `find`
   walk) through `ColumnarListing.formatters(for:)`.
+- **`-C` may be interleaved with the names in create mode, so a set gathered from several
+  directories needs no staging directory at all.** Measured against libarchive 3.7.4 before any
+  Swift: `bsdtar -c -f out.zip --format zip -C /a alpha.txt -C /b beta.txt` exits 0 and writes both
+  members under their bare names. That is what a pack over rows staged off a server looks like —
+  `MaterializeRunner` gives every downloaded object its own directory so two objects called
+  `report.pdf` cannot collide — and it removed the whole design that was about to be built: no
+  gathering directory, no hardlink trick (and no cross-volume fallback for it), nobody's bytes
+  copied twice. Emit the flag **only where the directory changes** and an ordinary one-folder pack's
+  argv is byte-identical to what it always sent, which is the property that makes the general form
+  safe to adopt everywhere. Absolute directories always: a *relative* `-C` resolves against the
+  previous one, so a second one lands somewhere nobody named.
+  - The libarchive side needed nothing, which is worth checking before designing around either:
+    `ArchiveSourceItem` has split the absolute `onDiskPath` from the relative `archivePath` since
+    M19, so only the *entry point* (`items(inDirectory:names:)`) ever assumed one directory. Both
+    writers already wanted the general shape and neither could express it.
 - **`--options compression-level=N` must go in *unprefixed*.** A module prefix has to name the
   writer actually running (`zip:`, `gzip:`, `bzip2:`, `7zip:`), so one prefixed string breaks the
   moment the user picks another format — `bsdtar: Unknown module name: 'zip'`, exit 1, no archive.
@@ -5572,6 +5616,24 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     so in a return value and shows the user nothing, because announcing the absence of a protection
     nothing promised is worse than silence.
 
+- **An assumption about the *shape* of a selection, made when only one shape existed, is invisible
+  until the second one arrives — and it can be years.** ⌥F5 was handed `panel.path` plus bare names,
+  which is exactly true of a flat listing of a real folder and was the only thing a pane could show
+  when it was written. A **tree** can mark a row inside an expanded folder, so since trees shipped a
+  marked row at depth named a file that is not in the pane's own directory: `bsdtar` failed with
+  "Couldn't create the archive", and the *encrypted* path — whose walk skips a name that does not
+  exist, correctly, because a selection can go stale between the keystroke and the walk — wrote a
+  **smaller archive and said nothing**. Found while widening the same call site for M24 Slice 6, not
+  by anybody using it.
+  - **The tell is a pair of arguments that only travel together by luck**: a directory here and a
+    list of names there, where the honest unit is a *pair per row*. Every such split is a claim that
+    every row shares something, and the day a second row source appears (a tree, a results tab, a
+    staged download) the claim expires with nothing to catch it — the compiler sees a `String` and a
+    `[String]` either way, and the failing half is the one nobody tests, because the fixture that
+    exercises the feature is a flat folder.
+  - It is the projection-index lesson (▸ AppKit, a second row source is a second index space)
+    arriving at a *gesture* rather than at a row lookup, and it failed in the quieter of the two
+    directions: an out-of-range subscript crashes, and a missing name just packs less.
 - **A guard whose comment explains why it can never fire is the one to re-read when a backend widens
   a signal — and the *reason* it fires is exactly the operation it was reached for.**
   `UndoJournal.crossVolumeRestore` required both ends of a restore to share a name, saying so out

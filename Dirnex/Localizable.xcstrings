@@ -14286,6 +14286,95 @@
         }
       }
     },
+    "Can’t checksum a folder that isn’t on this Mac": {
+      "comment": "Create-checksum failure title when a selected folder is on a server or in an archive.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein Ordner, der nicht auf diesem Mac liegt, kann nicht geprüft werden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can’t checksum a folder that isn’t on this Mac"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se puede sumar una carpeta que no está en este Mac"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de calculer la somme d’un dossier absent de ce Mac"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non si può calcolare il checksum di una cartella che non è su questo Mac"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この Mac にないフォルダのチェックサムは計算できません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 Mac에 없는 폴더는 체크섬을 계산할 수 없음"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kan geen controlesom maken van een map die niet op deze Mac staat"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można obliczyć sumy kontrolnej folderu, którego nie ma na tym Macu"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não é possível somar uma pasta que não está neste Mac"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нельзя посчитать контрольную сумму папки, которой нет на этом Mac"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не можна обчислити контрольну суму теки, якої немає на цьому Mac"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法为不在这台 Mac 上的文件夹计算校验和"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法為不在這台 Mac 上的檔案夾計算總和檢查碼"
+          }
+        }
+      }
+    },
     "Can’t copy here": {
       "comment": "Copy failure title: destination can't receive files.",
       "localizations": {
@@ -15439,6 +15528,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "無法打開「%@」"
+          }
+        }
+      }
+    },
+    "Can’t pack a folder that isn’t on this Mac": {
+      "comment": "Pack failure title when a selected folder is on a server or in an archive.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein Ordner, der nicht auf diesem Mac liegt, kann nicht gepackt werden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can’t pack a folder that isn’t on this Mac"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se puede comprimir una carpeta que no está en este Mac"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de compresser un dossier absent de ce Mac"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non si può creare un archivio da una cartella che non è su questo Mac"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この Mac にないフォルダは圧縮できません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 Mac에 없는 폴더는 압축할 수 없음"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kan een map die niet op deze Mac staat niet inpakken"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można spakować folderu, którego nie ma na tym Macu"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não é possível compactar uma pasta que não está neste Mac"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нельзя упаковать папку, которой нет на этом Mac"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не можна запакувати теку, якої немає на цьому Mac"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法压缩不在这台 Mac 上的文件夹"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法壓縮不在這台 Mac 上的檔案夾"
           }
         }
       }
@@ -22836,6 +23014,184 @@
         }
       }
     },
+    "Couldn’t compare these files": {
+      "comment": "Alert title when the two files to compare can't be downloaded or extracted.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Dateien konnten nicht verglichen werden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t compare these files"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron comparar estos archivos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de comparer ces fichiers"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non è stato possibile confrontare questi file"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "これらのファイルを比較できませんでした"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 파일들을 비교할 수 없음"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kon deze bestanden niet vergelijken"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można porównać tych plików"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível comparar estes arquivos"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось сравнить эти файлы"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося порівняти ці файли"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法比较这些文件"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法比較這些檔案"
+          }
+        }
+      }
+    },
+    "Couldn’t compute these checksums": {
+      "comment": "Alert title when the selected items can't be downloaded or extracted for hashing.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Prüfsummen konnten nicht berechnet werden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t compute these checksums"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron calcular estas sumas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de calculer ces sommes"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non è stato possibile calcolare questi checksum"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "これらのチェックサムを計算できませんでした"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 체크섬을 계산할 수 없음"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kon deze controlesommen niet berekenen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można obliczyć tych sum kontrolnych"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível calcular estas somas"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось вычислить эти контрольные суммы"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося обчислити ці контрольні суми"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法计算这些校验和"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法計算這些總和檢查碼"
+          }
+        }
+      }
+    },
     "Couldn’t connect to “%@”.": {
       "comment": "Error when a server connection fails; %@ is the host name.",
       "localizations": {
@@ -26616,6 +26972,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "無法打開巢狀封存檔"
+          }
+        }
+      }
+    },
+    "Couldn’t open this archive": {
+      "comment": "Alert title when an archive on a server can't be downloaded to browse it.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Archiv konnte nicht geöffnet werden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t open this archive"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo abrir este archivo comprimido"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible d’ouvrir cette archive"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non è stato possibile aprire questo archivio"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このアーカイブを開けませんでした"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 아카이브를 열 수 없음"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kon dit archief niet openen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można otworzyć tego archiwum"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível abrir este arquivo compactado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось открыть этот архив"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося відкрити цей архів"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法打开此归档"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法打開此壓縮檔"
           }
         }
       }
@@ -53632,91 +54077,91 @@
         }
       }
     },
-    "Open a folder on disk in the other panel to hold the new archive.": {
-      "comment": "Alert body for the can't-pack-here case.",
+    "Open a folder that can be written to in the other panel to hold the new archive.": {
+      "comment": "Pack failure detail when the other panel cannot receive an archive.",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Öffnen Sie im anderen Bereich einen lokalen Ordner, um das neue Archiv dort zu speichern."
+            "value": "Öffne im anderen Panel einen beschreibbaren Ordner für das neue Archiv."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Open a folder on disk in the other panel to hold the new archive."
+            "value": "Open a folder that can be written to in the other panel to hold the new archive."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abre en el otro panel una carpeta del disco donde guardar el archivo comprimido nuevo."
+            "value": "Abre en el otro panel una carpeta en la que se pueda escribir para el nuevo archivo comprimido."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ouvrez un dossier sur le disque dans l’autre panneau pour stocker le nouveau fichier d’archive."
+            "value": "Ouvre dans l’autre panneau un dossier accessible en écriture pour la nouvelle archive."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apri una cartella sul disco nell’altro pannello per contenere il nuovo archivio."
+            "value": "Apri nell’altro pannello una cartella scrivibile per il nuovo archivio."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "新しいアーカイブの保存先として、ほかのパネルでディスク上のフォルダを開いてください。"
+            "value": "新しいアーカイブを置ける、書き込み可能なフォルダをもう一方のパネルで開いてください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "새 아카이브를 저장하려면 다른 패널에서 디스크의 폴더를 여십시오."
+            "value": "새 아카이브를 넣을 쓰기 가능한 폴더를 다른 패널에서 여십시오."
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Open een map op de schijf in het andere paneel om het nieuwe archief te bewaren."
+            "value": "Open in het andere paneel een map waarin geschreven kan worden voor het nieuwe archief."
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Otwórz folder na dysku w drugim panelu, aby zapisać nowe archiwum."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Откройте папку на диске в другой панели для нового архива."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Відкрийте папку на диску в іншій панелі, де буде новий архів."
+            "value": "Otwórz w drugim panelu folder z prawem zapisu na nowe archiwum."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abra uma pasta no disco no outro painel para guardar o novo arquivo compactado."
+            "value": "Abra no outro painel uma pasta gravável para o novo arquivo compactado."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Откройте в другой панели папку с правом записи для нового архива."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Відкрийте в іншій панелі теку з правом запису для нового архіву."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "在另一个面板中在磁盘上打开一个文件夹，以存储新压缩包。"
+            "value": "请在另一个面板中打开一个可写入的文件夹来存放新归档。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "在另一個面板打開磁碟上的檔案夾，以儲存新封存檔。"
+            "value": "請在另一個面板中打開一個可寫入的檔案夾來存放新壓縮檔。"
           }
         }
       }
@@ -55511,6 +55956,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "已打包「%@」 — %@"
+          }
+        }
+      }
+    },
+    "Packing “%@”…": {
+      "comment": "Status while an archive bound for a server is written locally; %@ is its name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ wird gepackt …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Packing “%@”…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprimiendo «%@»…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compression de «%@»…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Creazione di “%@”…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”を圧縮中…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” 압축 중…"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bezig met inpakken van “%@”…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pakowanie „%@”…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compactando “%@”…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Упаковка «%@»…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пакування «%@»…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在压缩“%@”…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在壓縮「%@」…"
           }
         }
       }
@@ -67662,6 +68196,95 @@
         }
       }
     },
+    "Sending “%@”…": {
+      "comment": "Status while a finished archive is uploaded to a server; %@ is its name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ wird gesendet …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sending “%@”…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviando «%@»…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Envoi de «%@»…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invio di “%@”…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”を送信中…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” 보내는 중…"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bezig met verzenden van “%@”…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wysyłanie „%@”…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviando “%@”…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отправка «%@»…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Надсилання «%@»…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在发送“%@”…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在傳送「%@」…"
+          }
+        }
+      }
+    },
     "Server": {
       "comment": "Accessibility label for a saved-server sidebar row's glyph.",
       "localizations": {
@@ -74502,6 +75125,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "封存檔可能損壞或項目可能遺失。"
+          }
+        }
+      }
+    },
+    "The checksum file has to be written beside the items it describes, so this needs somewhere that can be written to.": {
+      "comment": "Create-checksum failure detail: the manifest's own directory is read-only or is a virtual listing with no directory of its own.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Prüfsummendatei wird neben den beschriebenen Objekten abgelegt, also braucht das einen beschreibbaren Ort."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The checksum file has to be written beside the items it describes, so this needs somewhere that can be written to."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El archivo de sumas se escribe junto a los elementos que describe, así que hace falta un lugar en el que se pueda escribir."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le fichier de sommes s’écrit à côté des éléments qu’il décrit : il faut donc un emplacement accessible en écriture."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il file dei checksum va scritto accanto agli elementi che descrive, quindi serve un posto scrivibile."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "チェックサムファイルは対象と同じ場所に書き込まれるため、書き込み可能な場所が必要です。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "체크섬 파일은 설명하는 항목 옆에 기록되므로 쓰기 가능한 위치가 필요합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Het controlesombestand wordt naast de items geschreven die het beschrijft, dus is een beschrijfbare plek nodig."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plik sum kontrolnych zapisuje się obok opisywanych elementów, więc potrzebne jest miejsce z prawem zapisu."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O arquivo de somas é gravado junto aos itens que descreve, então é preciso um lugar gravável."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файл контрольных сумм пишется рядом с описываемыми объектами, поэтому нужно место с правом записи."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файл контрольних сум записується поруч з описуваними об’єктами, тому потрібне місце з правом запису."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "校验和文件会写在它所描述的项目旁边，因此需要一个可写入的位置。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "總和檢查碼檔案會寫在它所描述的項目旁邊，因此需要一個可寫入的位置。"
           }
         }
       }
@@ -88719,95 +89431,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "此通行密語無法開啟這個歸檔。"
-          }
-        }
-      }
-    },
-    "archive.encrypted.error.needsLocalFile": {
-      "comment": "Why an encrypted archive couldn’t be written or opened; DirnexCore data (EncryptedArchiveError), keyed by the case’s stable name. Shown under an alert title. ",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Verschlüsselte Archive lassen sich nur aus Dateien auf diesem Mac erstellen."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Encrypted archives can only be made from files on this Mac."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Los archivos comprimidos cifrados solo pueden crearse a partir de archivos de este Mac."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Les archives chiffrées ne peuvent être créées qu’à partir de fichiers présents sur ce Mac."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gli archivi cifrati si possono creare solo da file presenti su questo Mac."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "暗号化アーカイブは、このMac上のファイルからのみ作成できます。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "암호화 아카이브는 이 Mac에 있는 파일로만 만들 수 있습니다."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Versleutelde archieven kunnen alleen worden gemaakt van bestanden op deze Mac."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zaszyfrowane archiwa można tworzyć tylko z plików na tym Macu."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Зашифрованный архив можно создать только из файлов на этом Mac."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Зашифрований архів можна створити лише з файлів на цьому Mac."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Arquivos compactados criptografados só podem ser criados a partir de arquivos neste Mac."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "加密归档只能用这台 Mac 上的文件创建。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "加密歸檔只能用這台 Mac 上的檔案建立。"
           }
         }
       }
@@ -121080,6 +121703,184 @@
           "stringUnit": {
             "state": "translated",
             "value": "下次解鎖時，「%@」將不再顯示在 Finder 中。"
+          }
+        }
+      }
+    },
+    "“%@” would have to be downloaded in full first, and there is no way to tell in advance how much that is. Copy it over with F5 and checksum the copy.": {
+      "comment": "Create-checksum failure detail; %@ is the folder's name. F5 is the copy key.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ müsste zuerst vollständig geladen werden, und wie viel das ist, lässt sich vorher nicht sagen. Kopiere es mit F5 und prüfe die Kopie."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” would have to be downloaded in full first, and there is no way to tell in advance how much that is. Copy it over with F5 and checksum the copy."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» tendría que descargarse por completo primero, y no hay forma de saber de antemano cuánto es. Cópialo con F5 y suma la copia."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» devrait d’abord être téléchargé en entier, et rien ne permet de savoir à l’avance combien cela représente. Copie-le avec F5 et calcule la somme de la copie."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” andrebbe prima scaricato per intero, e non c’è modo di sapere in anticipo quanto sia. Copialo con F5 e calcola il checksum della copia."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”は先に丸ごとダウンロードする必要があり、その量は事前にわかりません。F5 でコピーしてから、そのコピーを計算してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”은(는) 먼저 전부 다운로드해야 하며, 그 양은 미리 알 수 없습니다. F5로 복사한 뒤 사본의 체크섬을 계산하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” zou eerst volledig gedownload moeten worden, en hoeveel dat is valt vooraf niet te zeggen. Kopieer het met F5 en bereken de controlesom van de kopie."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@” trzeba by najpierw pobrać w całości, a ile to jest, nie da się z góry stwierdzić. Skopiuj to klawiszem F5 i policz sumę kopii."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” teria que ser baixado por inteiro primeiro, e não há como saber de antemão quanto é. Copie com F5 e some a cópia."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» пришлось бы сначала загрузить целиком, а сколько это — заранее не узнать. Скопируйте клавишей F5 и посчитайте сумму копии."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» довелося б спершу завантажити повністю, а скільки це — заздалегідь не дізнатися. Скопіюйте клавішею F5 і обчисліть суму копії."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”需要先整个下载下来，而事先无法知道那有多少。请用 F5 复制过来，再对副本计算校验和。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」需要先整個下載下來，而事先無法知道那有多少。請用 F5 複製過來，再對副本計算總和檢查碼。"
+          }
+        }
+      }
+    },
+    "“%@” would have to be downloaded in full first, and there is no way to tell in advance how much that is. Copy it over with F5 and pack the copy.": {
+      "comment": "Pack failure detail; %@ is the folder's name. F5 is the copy key.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ müsste zuerst vollständig geladen werden, und wie viel das ist, lässt sich vorher nicht sagen. Kopiere es mit F5 und packe die Kopie."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” would have to be downloaded in full first, and there is no way to tell in advance how much that is. Copy it over with F5 and pack the copy."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» tendría que descargarse por completo primero, y no hay forma de saber de antemano cuánto es. Cópialo con F5 y comprime la copia."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» devrait d’abord être téléchargé en entier, et rien ne permet de savoir à l’avance combien cela représente. Copie-le avec F5 et compresse la copie."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” andrebbe prima scaricato per intero, e non c’è modo di sapere in anticipo quanto sia. Copialo con F5 e crea l’archivio dalla copia."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”は先に丸ごとダウンロードする必要があり、その量は事前にわかりません。F5 でコピーしてから、そのコピーを圧縮してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”은(는) 먼저 전부 다운로드해야 하며, 그 양은 미리 알 수 없습니다. F5로 복사한 뒤 사본을 압축하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” zou eerst volledig gedownload moeten worden, en hoeveel dat is valt vooraf niet te zeggen. Kopieer het met F5 en pak de kopie in."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@” trzeba by najpierw pobrać w całości, a ile to jest, nie da się z góry stwierdzić. Skopiuj to klawiszem F5 i spakuj kopię."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” teria que ser baixado por inteiro primeiro, e não há como saber de antemão quanto é. Copie com F5 e compacte a cópia."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» пришлось бы сначала загрузить целиком, а сколько это — заранее не узнать. Скопируйте клавишей F5 и упакуйте копию."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» довелося б спершу завантажити повністю, а скільки це — заздалегідь не дізнатися. Скопіюйте клавішею F5 і запакуйте копію."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”需要先整个下载下来，而事先无法知道那有多少。请用 F5 复制过来，再压缩副本。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」需要先整個下載下來，而事先無法知道那有多少。請用 F5 複製過來，再壓縮副本。"
           }
         }
       }

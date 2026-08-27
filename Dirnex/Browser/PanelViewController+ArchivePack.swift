@@ -5,10 +5,18 @@ import DirnexCore
 /// F5-with-archive-target"), the inverse of F5 copy-out from inside an archive.
 ///
 /// Packing isn't a cross-backend copy through `CopyEngine`; it writes one archive file directly.
-/// The marked/cursor items of this (real, local) pane are packed into the *other* pane's folder —
-/// the same default destination as F5. A small sheet picks the base name, container format and,
-/// for a zip, a passphrase; the new archive lands selected in the other pane, immediately browsable
-/// (its suffix is one `ArchiveType.isBrowsable` recognizes).
+/// The marked/cursor items of this pane are packed into the *other* pane's folder — the same default
+/// destination as F5. A small sheet picks the base name, container format and, for a zip, a
+/// passphrase; the new archive lands selected in the other pane, immediately browsable (its suffix is
+/// one `ArchiveType.isBrowsable` recognizes).
+///
+/// **Neither end has to be on this Mac** (PLAN.md §M24 Slice 6). The sources are brought down first
+/// through `PanelViewController+Materialize`, and each then names its **own** directory
+/// (``DirnexCore/PackSource``), because a staged set is one directory per file and a tree can mark
+/// rows at two depths; the destination is asked `capabilities(for:)` on its own directory, and an
+/// archive bound for a server is built in a temp directory and transferred (``DirnexCore/PackStaging``).
+/// The download happens after the sheet and after the collision question, so a user who backs out of
+/// either has paid nothing.
 ///
 /// **Two run paths, and the split is the libarchive boundary M19 drew** (PLAN.md §M19). An ordinary
 /// pack is one `bsdtar` spawn on a detached task, as it always was. An *encrypted* pack goes on the
@@ -21,11 +29,18 @@ extension PanelViewController {
         beginArchivePacking()
     }
 
-    /// Whether this pane can be a pack *source*: a real on-disk folder (not a read-only archive or
-    /// a virtual search-results listing), where every selected item shares one parent directory so
-    /// a single `bsdtar -C` covers them.
+    /// Whether this pane can be a pack *source* — which since M24 Slice 6 is a question about the
+    /// **rows**, not about the pane.
+    ///
+    /// It used to read `panel.path.backend == .local && !isVirtualDirectory`, on the reasoning that
+    /// `bsdtar` needs one `-C` over one real directory. Both halves of that have gone: every row is
+    /// brought down to a real file before the writer sees it (`PanelViewController+Materialize`),
+    /// and `PackSource` lets each one name its own directory, so a set that is not one folder's
+    /// worth — a staged download, a browsed archive's members, marks at two depths of a tree —
+    /// packs like any other. What is left is the only thing that was ever load-bearing: there has
+    /// to be something to pack.
     var canPackFromHere: Bool {
-        panel.path.backend == .local && !isVirtualDirectory
+        !selectionTargets().isEmpty
     }
 
     /// Validate the marked/cursor items, resolve the destination (the other pane), and raise the
@@ -34,18 +49,9 @@ extension PanelViewController {
         guard canPackFromHere else { return }
         let sources = selectionTargets()
         guard !sources.isEmpty, let destPane = host?.panelCounterpart(of: self) else { return }
+        guard destinationAcceptsArchive(destPane) else { return }
+        guard packableSources(sources) else { return }
 
-        // The archive is written straight into the other pane, so it must be a real writable folder.
-        guard destPane.panel.path.backend == .local,
-              destPane.backend.capabilities.contains(.write) else {
-            presentOperationFailure(
-                message: String(localized: "Can’t pack here"),
-                detail: String(
-                    localized: "Open a folder on disk in the other panel to hold the new archive."
-                )
-            )
-            return
-        }
         let defaults = PackAccessory.Defaults(
             baseName: ArchivePacking.defaultBaseName(
                 forSourceNames: sources.map(\.name),
@@ -53,6 +59,63 @@ extension PanelViewController {
             )
         )
         presentPackSheet(sources: sources, destinationPane: destPane, defaults: defaults)
+    }
+
+    /// Whether the other pane can receive the finished archive, reporting if it cannot.
+    ///
+    /// **The question is about the destination directory, not about this Mac** (M24 Slice 6). An
+    /// archive bound for a server is built in a temp directory and transferred, which is what makes
+    /// `capabilities(for:)` the right question asked of the right path: a writable bucket or SFTP
+    /// folder says yes, a browsed archive says no because `ArchiveBackend` advertises `.read` alone,
+    /// and a read-only bucket says no in advance rather than after the whole archive was written.
+    ///
+    /// `capabilities(for:)` rather than the backend-wide `capabilities`, which on a routing
+    /// `CompositeBackend` is always the *local* backend's — one question, two spellings, and the
+    /// compiler checks neither (docs/NOTES.md ▸ Design lessons).
+    private func destinationAcceptsArchive(_ destination: PanelViewController) -> Bool {
+        let directory = destination.panel.path
+        if !destination.isVirtualDirectory,
+           destination.backend.capabilities(for: directory).contains(.write) {
+            return true
+        }
+        presentOperationFailure(
+            message: String(localized: "Can’t pack here"),
+            detail: String(
+                localized: """
+                Open a folder that can be written to in the other panel to hold the new archive.
+                """,
+                comment: "Pack failure detail when the other panel cannot receive an archive."
+            )
+        )
+        return false
+    }
+
+    /// Whether every source can become a file, reporting the first that cannot.
+    ///
+    /// **A folder that is not already on this disk is refused**, in the hand-off's own words and
+    /// for its own reason: it stands for an unknown number of objects in an unknown number of
+    /// requests, which is exactly why `MaterializationPlan` names those rows rather than weighing
+    /// them. Bringing a whole remote tree down to pack it is F5 followed by ⌥F5, and both halves of
+    /// that already exist. A **local** folder is untouched and packs as it always has — that is the
+    /// ordinary ⌥F5 and the walk `ArchiveSourceEnumerator` was written for.
+    private func packableSources(_ sources: [FileEntry]) -> Bool {
+        guard let folder = materializationPlan(for: sources).pendingDirectories.first else {
+            return true
+        }
+        presentOperationFailure(
+            message: String(
+                localized: "Can’t pack a folder that isn’t on this Mac",
+                comment: "Pack failure title when a selected folder is on a server or in an archive."
+            ),
+            detail: String(
+                localized: """
+                “\(folder.name)” would have to be downloaded in full first, and there is no way to \
+                tell in advance how much that is. Copy it over with F5 and pack the copy.
+                """,
+                comment: "Pack failure detail; %@ is the folder's name. F5 is the copy key."
+            )
+        )
+        return false
     }
 
     // MARK: - Sheet
@@ -199,16 +262,15 @@ extension PanelViewController {
         passphrase: ArchivePassphrase?,
         destinationPane: PanelViewController
     ) {
-        let target = destinationPane.panel.path.appending(archiveName)
-        let run: () -> Void = { [weak self] in
-            self?.runPack(
-                sources: sources,
-                target: target,
-                defaults: defaults,
-                passphrase: passphrase,
-                destinationPane: destinationPane
-            )
-        }
+        let request = PackRequest(
+            sources: sources,
+            target: destinationPane.panel.path.appending(archiveName),
+            defaults: defaults,
+            passphrase: passphrase,
+            destinationPane: destinationPane
+        )
+        let target = request.target
+        let run: () -> Void = { [weak self] in self?.runPack(request) }
         guard (try? destinationPane.backend.stat(at: target)) != nil else {
             run()
             return
@@ -234,30 +296,64 @@ extension PanelViewController {
         }
     }
 
-    /// Send the pack down whichever of the two paths its cipher chose.
-    private func runPack(
-        sources: [FileEntry],
-        target: VFSPath,
-        defaults: PackAccessory.Defaults,
-        passphrase: ArchivePassphrase?,
-        destinationPane: PanelViewController
-    ) {
-        guard let passphrase, defaults.encryption.isEncrypted else {
-            runPlainPack(
-                sources: sources,
-                target: target,
-                format: defaults.format,
-                level: defaults.level,
-                destinationPane: destinationPane
+    /// Bring the sources down to real files and then send the pack down whichever of the two paths
+    /// its cipher chose.
+    ///
+    /// **The download happens here**, after the sheet and after the collision question — so a user
+    /// who backs out of either has paid nothing, and the one confirmation naming the total arrives
+    /// when the pack is otherwise settled. A set that is already on this disk reaches the writer
+    /// synchronously with no dialog and no job, which is every ordinary ⌥F5.
+    ///
+    /// **A marked cloud placeholder is fetched, like a compare's and a checksum's**, because the
+    /// engine behind this refuses to read through one rather than discovering it mid-walk — which is
+    /// M24's structural rule, and is what `EncryptedArchiveError.wouldDownloadPlaceholder`'s own
+    /// comment has said since it shipped ("a file the user pointed at may be downloaded on request,
+    /// but packing a *folder* is a tree sweep"). It is never *weighed*: `CloudDownloadPrompt` names
+    /// the file and its size and carries a Stop, so a confirmation in front of it would be a second
+    /// thing reporting one transfer. A placeholder the walk **discovers** inside a marked folder is
+    /// in no plan and still meets the engine's refusal, which is the half of that rule M14 wrote.
+    private func runPack(_ request: PackRequest) {
+        materialize(request.sources, for: .pack, includingPlaceholders: true) {
+            String(
+                localized: "Couldn’t create the archive",
+                comment: "Alert title when the files to be packed can't be downloaded or extracted."
             )
+        } then: { [weak self] urls in
+            self?.runPack(PanelViewController.packSources(for: urls), for: request)
+        }
+    }
+
+    /// Where each staged file is and what it is called, derived from the URL itself.
+    ///
+    /// **Both halves come from the same URL** rather than one from the URL and the name from the
+    /// row, so they cannot disagree about a file that is provably there: `MaterializeRunner` keeps a
+    /// downloaded object's real name inside its own directory and `ArchivePreviewCache` keeps an
+    /// extracted member's, but a *row's* name is not always a file name — the merged iCloud listing
+    /// draws an app's name over its `Documents` folder, which is the one row in this codebase where
+    /// the two differ.
+    ///
+    /// This is also what fixes ⌥F5 in a **tree**, which has been wrong since trees shipped: the
+    /// pack was handed `panel.path` plus bare names, so a marked row inside an expanded folder named
+    /// a file that is not in the pane's own directory — `bsdtar` failed, and the encrypted walk
+    /// skipped the missing name and wrote a smaller archive without saying so.
+    static func packSources(for urls: [URL]) -> [PackSource] {
+        urls.map {
+            PackSource(directory: $0.deletingLastPathComponent().path, name: $0.lastPathComponent)
+        }
+    }
+
+    private func runPack(_ packing: [PackSource], for request: PackRequest) {
+        let defaults = request.defaults
+        let target = request.target
+        guard let passphrase = request.passphrase, defaults.encryption.isEncrypted else {
+            runPlainPack(packing, for: request)
             return
         }
         host?.enqueue(
             FileOperation(
                 kind: .pack(
                     PackJob(
-                        sourceDirectory: panel.path,
-                        names: sources.map(\.name),
+                        sources: packing,
                         archive: target,
                         encryption: defaults.encryption,
                         namePrivacy: defaults.namePrivacy,
@@ -265,8 +361,8 @@ extension PanelViewController {
                         passphrase: passphrase
                     )
                 ),
-                sources: sources,
-                destinationDirectory: destinationPane.panel.path
+                sources: request.sources,
+                destinationDirectory: request.destinationPane.panel.path
             ),
             conflictPolicy: .fail,
             resolveConflict: nil,
@@ -282,30 +378,51 @@ extension PanelViewController {
 
     /// Spawn `bsdtar` off-main to create the archive, then re-list the destination pane with the
     /// new archive selected. On failure the partial file is already cleaned up by `ArchivePacker`.
-    private func runPlainPack(
-        sources: [FileEntry],
-        target: VFSPath,
-        format: ArchivePacking.Format,
-        level: ArchivePacking.CompressionLevel,
-        destinationPane: PanelViewController
-    ) {
-        let sourceNames = sources.map(\.name)
-        let sourceDirectory = panel.path.path
-        let archivePath = target.path
+    ///
+    /// **A destination on a server adds a transfer after the spawn**, through the same
+    /// ``DirnexCore/PackStaging`` the queued encrypted path uses — one definition of *where does the
+    /// archive go*, rather than two that drift. What this path does **not** get is a bar or a Stop
+    /// for that transfer: a plain pack has never been a queue job, because the whole reason the
+    /// encrypted one is one is that `bsdtar` cannot take a passphrase safely (PLAN.md §M19). So the
+    /// build is unreported here exactly as it always was, and the upload is reported by the status
+    /// line rather than by a bar. Encrypting the same archive puts both halves on the queue.
+    private func runPlainPack(_ packing: [PackSource], for request: PackRequest) {
+        let target = request.target
+        let format = request.defaults.format
+        let level = request.defaults.level
         Task {
             do {
+                let staging = try PackStaging(for: target)
+                defer { staging.clean() }
+                let backend = backend
+                let buildPath = staging.buildPath
+                if staging.needsDelivery { showTransientStatus(packingStatus(for: target)) }
                 try await BlockingWork.run {
                     Result {
                         try ArchivePacker.pack(
-                            sourceNames: sourceNames,
-                            inDirectory: sourceDirectory,
-                            toArchiveAt: archivePath,
+                            sources: packing,
+                            toArchiveAt: buildPath,
                             format: format,
                             level: level
                         )
                     }
                 }.get()
-                destinationPane.refreshCurrentDirectory(selecting: target)
+                if staging.needsDelivery {
+                    showTransientStatus(sendingStatus(for: target))
+                    let byteSize = staging.builtByteSize
+                    try await BlockingWork.run {
+                        Result {
+                            try staging.deliver(
+                                to: target,
+                                byteSize: byteSize,
+                                using: backend,
+                                onBytes: { _ in },
+                                isCancelled: { false }
+                            )
+                        }
+                    }.get()
+                }
+                request.destinationPane.refreshCurrentDirectory(selecting: target)
             } catch {
                 presentOperationFailure(
                     message: String(localized: "Couldn’t create the archive"),
@@ -314,4 +431,34 @@ extension PanelViewController {
             }
         }
     }
+
+    /// The status line while a server-bound archive is being written on this Mac.
+    private func packingStatus(for target: VFSPath) -> String {
+        String(
+            localized: "Packing “\(target.lastComponent)”…",
+            comment: "Status while an archive bound for a server is written locally; %@ is its name."
+        )
+    }
+
+    /// The status line while the finished archive is going up.
+    private func sendingStatus(for target: VFSPath) -> String {
+        String(
+            localized: "Sending “\(target.lastComponent)”…",
+            comment: "Status while a finished archive is uploaded to a server; %@ is its name."
+        )
+    }
+}
+
+/// Everything the pack sheet settled, carried as one value.
+///
+/// A struct rather than six arguments threaded through three functions, and the reason is not only
+/// SwiftLint's parameter ceiling: since M24 Slice 6 the run happens *after* a download, so these
+/// have to survive a round trip through a closure — and a parameter list that long is where the two
+/// halves of a pack quietly stop agreeing about which pane the archive is going into.
+private struct PackRequest {
+    let sources: [FileEntry]
+    let target: VFSPath
+    let defaults: PackAccessory.Defaults
+    let passphrase: ArchivePassphrase?
+    let destinationPane: PanelViewController
 }

@@ -113,7 +113,16 @@ public struct MaterializationPlan: Sendable, Equatable {
             // A dataless placeholder is the one local row whose bytes are not here. Asked before
             // anything else about a local path, because every other signal — the name, the size,
             // the dates — says the file is present and complete.
-            return entry.isDataless ? .cloudPlaceholder : .present
+            //
+            // **A dataless *directory* is present**, which is not a special case so much as the flag
+            // meaning something else on one: some providers set `SF_DATALESS` on directories too
+            // (docs/NOTES.md ▸ iCloud Drive), and a directory has no bytes anyone could fetch — what
+            // is lazy is each *child*, which the provider materializes when something reads it, and
+            // which arrives here as a row of its own. `ArchiveSourceEnumerator` already draws this
+            // line for the same reason, in the same words. Calling it a placeholder would put a
+            // *"download this first"* wait in front of a folder whose listing costs nothing, and put
+            // it in the set of folders the gestures reading ``pendingDirectories`` refuse outright.
+            return entry.isDataless && !entry.isDirectoryLike ? .cloudPlaceholder : .present
         }
         if isCached(entry) { return .cached }
         if entry.path.backend.isArchive { return .archiveMember }
@@ -186,16 +195,25 @@ public struct MaterializationPlan: Sendable, Equatable {
     /// The rows that need bytes and are **directories** — a folder that is not already on this
     /// disk.
     ///
-    /// A fact, deliberately, rather than a policy, because the gestures that read it disagree about
-    /// what it means. A hand-off refuses one outright: Open With and Share give another application
-    /// *files*, and a folder on a server is not one transfer that could stand in for one. A pack
-    /// stages the whole subtree instead, which is a recursive walk rather than a refusal. So the
-    /// plan says which rows they are and says nothing about what to do with them; a shared verdict
-    /// here would be one gesture's answer inherited by the next one that asked.
+    /// A fact, deliberately, rather than a policy, because it is the gesture that decides what to do
+    /// about it. Every gesture that has since read it refuses such a row outright and says so by
+    /// name — a hand-off, a compare, a checksum and a pack — because a folder on a server is not one
+    /// transfer that could stand in for one, and copying a tree out is F5's job. Staging the subtree
+    /// instead is reachable (F5's own engine pointed at a temp directory) and is nobody's yet; this
+    /// property is what a gesture that wanted it would build on, and a shared verdict here would be
+    /// one gesture's answer inherited by the next one that asked.
     ///
-    /// It is the same rows that make ``totalsAreExact`` false — a directory entry's `byteSize` is
-    /// the directory file's own and never its subtree's — read from the other side: there the
-    /// question is what the confirmation may claim, here it is whether there is anything to confirm.
+    /// The claim in the first version of this comment — that a pack stages the subtree — was written
+    /// before any gesture read it and was wrong when Slice 6 came to (PLAN.md §M24).
+    ///
+    /// A local `SF_DATALESS` **directory** is not one of them, and that falls out of
+    /// ``plan(for:isCached:)`` rather than being filtered here — a directory has no bytes to fetch,
+    /// so it never needed any.
+    ///
+    /// Otherwise it is the same rows that make ``totalsAreExact`` false — a directory entry's
+    /// `byteSize` is the directory file's own and never its subtree's — read from the other side:
+    /// there the question is what the confirmation may claim, here it is whether there is anything
+    /// to confirm.
     public var pendingDirectories: [FileEntry] {
         pending.filter(\.entry.isDirectoryLike).map(\.entry)
     }
