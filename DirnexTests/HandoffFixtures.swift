@@ -14,14 +14,26 @@ import Testing
 enum Handoff {
     static let remoteID = VFSBackendID("sftp://user@host")
 
-    /// A backend that lists nothing and stats nothing: every claim here is about the *gesture*, and
-    /// a pane that could really list would only add I/O nobody is asserting on.
+    /// A backend that lists what it is told to and stats nothing: every claim here is about the
+    /// *gesture*, so it answers only the two questions a gesture asks on its way to queueing.
+    ///
+    /// `listings` is what M24 Slice 4's verification walk needs — a manifest on a server has its
+    /// directory listed between the two transfers, and a stub that listed nothing would make every
+    /// such gesture claim nothing and queue immediately, which is the bug the tests exist to catch.
+    /// `readOnlyPaths` is the other half: `capabilities(for:)` is what decides whether a manifest
+    /// may be written where its names resolve from, and it must be answerable per *path*.
     struct StubBackend: VFSBackend {
         let id: VFSBackendID = .local
         let capabilities: VFSCapabilities = [.read, .write]
+        var listings: [VFSPath: [FileEntry]] = [:]
+        var readOnlyPaths: Set<VFSPath> = []
 
-        func listDirectory(at path: VFSPath) throws -> [FileEntry] { [] }
+        func listDirectory(at path: VFSPath) throws -> [FileEntry] { listings[path] ?? [] }
         func stat(at path: VFSPath) throws -> FileEntry { throw VFSError.notFound(path) }
+
+        func capabilities(for path: VFSPath) -> VFSCapabilities {
+            readOnlyPaths.contains(path) ? [.read] : capabilities
+        }
     }
 
     static func entry(
@@ -91,10 +103,13 @@ enum Handoff {
 /// binding it to `_` deallocates it before anything is asked of it, after which every test silently
 /// measures the no-host path instead of the one it named.
 @MainActor
-func hostedPane(showing entries: [FileEntry] = []) -> (PanelViewController, StubPanelHost) {
-    let directory = VFSPath.local("/tmp")
+func hostedPane(
+    showing entries: [FileEntry] = [],
+    at directory: VFSPath = .local("/tmp"),
+    backend: Handoff.StubBackend = Handoff.StubBackend()
+) -> (PanelViewController, StubPanelHost) {
     let pane = PanelViewController(
-        backend: Handoff.StubBackend(),
+        backend: backend,
         restoration: nil,
         defaultPath: directory,
         restorationKey: nil
@@ -118,7 +133,11 @@ func hostedPane(showing entries: [FileEntry] = []) -> (PanelViewController, Stub
 /// AppKit's own animation teardown, and the crash lands on a *later* test that presented no sheet at
 /// all (docs/NOTES.md ▸ Testing). A handful of retained windows costs nothing by comparison.
 @MainActor
-func windowedPane() -> WindowedPane {
+func windowedPane(
+    showing entries: [FileEntry] = [],
+    at directory: VFSPath = .local("/tmp"),
+    backend: Handoff.StubBackend = Handoff.StubBackend()
+) -> WindowedPane {
     let window = NSWindow(
         contentRect: NSRect(x: 0, y: 0, width: 480, height: 320),
         styleMask: [.titled, .closable],
@@ -126,7 +145,7 @@ func windowedPane() -> WindowedPane {
         defer: false
     )
     RetainedWindows.all.append(window)
-    let (pane, host) = hostedPane()
+    let (pane, host) = hostedPane(showing: entries, at: directory, backend: backend)
     window.contentViewController = pane
     pane.loadViewIfNeeded()
     return WindowedPane(pane: pane, host: host, window: window)
@@ -159,6 +178,26 @@ func sheetText(in window: NSWindow) -> [String] {
         stack.append(contentsOf: view.subviews)
     }
     return found
+}
+
+/// How many buttons the sheet is offering — the language-independent way to say *which* sheet is up.
+///
+/// A refusal offers one (OK) and every confirmation here offers two, and that distinction is the
+/// whole discriminator: a test that only asked whether *a* sheet appeared passed against a control
+/// that had removed the refusal entirely, because the sheet it then raised was the create sheet
+/// (found while controlling M24 Slice 4 — docs/NOTES.md ▸ Testing, "check the control fires").
+/// Counting rather than matching text, because the app test target inherits the developer's own
+/// `AppleLanguages` pin.
+@MainActor
+func sheetButtonCount(in window: NSWindow) -> Int {
+    guard let content = window.attachedSheet?.contentView else { return 0 }
+    var count = 0
+    var stack = [content]
+    while let view = stack.popLast() {
+        if view is NSButton { count += 1 }
+        stack.append(contentsOf: view.subviews)
+    }
+    return count
 }
 
 /// A main-actor box for what the funnel handed back — an `@escaping @MainActor` closure cannot

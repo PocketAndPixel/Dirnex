@@ -231,7 +231,7 @@ hook (PLAN.md §M25, smaller than a milestone).
 | Edit `F4`, with save written back | yes | yes | yes, limited<sup>v</sup> | yes | yes | yes | n/a | yes | yes |
 | Open With… / Share sheet | yes | yes | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | n/a | yes | yes |
 | Send to a **Service** | yes | yes | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | n/a | yes | yes |
-| Compare By Contents (`⌥F3`) | yes | yes | **no**<sup>rr</sup> | **no**<sup>rr</sup> | **no**<sup>rr</sup> | **no**<sup>rr</sup> | n/a | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> |
+| Compare By Contents (`⌥F3`) | yes | yes | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | n/a | yes | yes |
 | Synchronize Directories | yes | yes | **no**<sup>x</sup> | **no**<sup>x</sup> | **no**<sup>x</sup> | **no**<sup>x</sup> | n/a | n/a<sup>x</sup> | n/a<sup>x</sup> |
 | Browse *into* an archive file | yes | yes | yes | **no**<sup>y</sup> | **no**<sup>y</sup> | **no**<sup>y</sup> | n/a | yes | yes |
 
@@ -251,8 +251,11 @@ is ever fetched.
 <sup>v</sup> A member of a **writable** (top-level) archive only; saving repacks the archive,
 preserving encryption and hidden names. A nested archive's member cannot.
 
-<sup>w</sup> Only for hits that are real local files; two archive members or two server objects
-are not comparable — the same gate note <sup>rr</sup> describes, reached through a results tab.
+<sup>w</sup> Both sides are brought down first, as one queued job with a determinate bar and a Stop
+(PLAN.md §M24 Slice 4) — `ByteComparator` still only ever sees real local paths, and the diff tool is
+handed the copies, which keep their real names. Two limits, both about what the pair *is*: a folder
+has no contents to compare, and a diff tool has to be installed before anything is fetched (the tool
+question is asked first, so a Mac with none pays for no download).
 
 <sup>x</sup> Comparing by **timestamp** is deliberately refused for FTP (`LIST` stamps are year-less,
 zone-less and on the server's clock) and for S3 (no settable mtime), and always will be. Comparing by
@@ -264,10 +267,11 @@ than browsing it. `ArchiveBackend.init(archiveOnDiskPath:)` needs a real path, s
 the shape — and writing into one is repack-then-upload. Not built (PLAN.md §M24 Slice 6).
 
 <sup>rr</sup> Every one of these refuses in one line — `backend == .local`, in
-`PanelViewController+Compare.swift`, `+Checksum.swift` and their siblings — and none of them needs
-the file to be *local*, only to be **a file**. The fetch that would supply one has shipped since M21
-Slice 10 for a single row under the cursor; what these need is a marked *set*, downloaded with a
-progress bar and a Stop (PLAN.md §M24).
+`PanelViewController+UserScript.swift` and its siblings — and none of them needs the file to be
+*local*, only to be **a file**. The fetch that would supply one is the marked-set download M24
+Slice 2 made a queue job, with a determinate bar, a Stop and per-item failures; what is left for
+these rows is the gesture that hands the copies over (PLAN.md §M24 Slices 5–6). Open With and Share
+stopped refusing at Slice 3, and Compare By Contents and checksums at Slice 4.
 
 <sup>yy</sup> The marked set is brought down first, as one queued job with a determinate bar, Stop
 and per-item failures (PLAN.md §M24 Slice 3). Two limits, both about what a hand-off *is*. A
@@ -329,7 +333,7 @@ child ~71 ms (PLAN.md §M25, smaller than a milestone).
 | Privilege escalation for a root-only change | yes | yes | n/a | n/a | n/a | n/a | n/a | yes | yes |
 | Finder tags (`⌃T`, tag dots) | yes | yes | n/a | n/a | n/a | n/a | n/a | yes<sup>ee</sup> | yes<sup>ee</sup> |
 | Cloud sync badges | yes | yes | n/a | n/a | n/a | n/a | n/a | yes | yes |
-| Create / verify checksum files | yes | yes | **no**<sup>ff</sup> | **no**<sup>ff</sup> | **no**<sup>ff</sup> | **no**<sup>ff</sup> | n/a | no<sup>xx</sup> | no<sup>xx</sup> |
+| Create / verify checksum files | yes | yes | verify only<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | n/a | no<sup>xx</sup> | no<sup>xx</sup> |
 | Open in Terminal | yes | yes | n/a | **no**<sup>gg</sup> | n/a | n/a | n/a | no | no |
 | Run a user script | yes | yes | **no**<sup>rr</sup> | **no**<sup>rr</sup> | **no**<sup>rr</sup> | **no**<sup>rr</sup> | no | no<sup>xx</sup> | no<sup>xx</sup> |
 | Pack `⌥F5` (create an archive) | yes | yes | n/a | **no**<sup>hh</sup> | **no**<sup>hh</sup> | **no**<sup>hh</sup> | n/a | **no** | no |
@@ -344,7 +348,17 @@ file, so it carries a mode, an ACL and tags like any other.
 <sup>ff</sup> Neither `sftp` nor `curl` can hash server-side, so a remote checksum is a full
 download of everything in scope — the marked-set fetch note <sup>rr</sup> describes, with
 `ChecksumEngine` behind it and the manifest keeping the **remote** names rather than the temp ones
-(PLAN.md §M24 Slice 4).
+(PLAN.md §M24 Slice 4). **Verifying** is two-phase: the manifest comes down first, because nothing
+can know what else to fetch until it has been read, and the files it names come down after — so the
+one confirmation names the real total rather than a floor. **Creating** writes the manifest beside
+the objects it describes, which on a server is an upload, so it needs a writable destination: a
+read-only bucket greys the command out, and a browsed archive greys it out too, because writing into
+one is a repack (PLAN.md §M24 Slice 6). Two further limits, both about scope rather than protocol: a
+**folder** that is not already on this Mac is refused, since it stands for an unknown number of
+objects in an unknown number of requests — copy it over with F5 and checksum the copy — and a file
+the walk *discovers* by descending into a marked folder is still subject to the engine's own refusal,
+so an evicted placeholder found that way is reported as "not downloaded" rather than silently pulled
+down. A row whose transfer failed is reported the same way, never as a mismatch.
 
 <sup>gg</sup> A local shell cannot `cd` to a server. An `ssh` session to the SFTP account's own
 host is a different feature and is not built.

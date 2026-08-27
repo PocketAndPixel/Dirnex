@@ -12,6 +12,17 @@ extension PanelViewController {
     // MARK: - Menu / palette action (dispatched to the focused pane via the responder chain)
 
     /// Compare a pair of files: the two marked in this pane, else the two panes' cursor files.
+    ///
+    /// **Either side may be a row that is not on this disk** since M24 Slice 4 — a server object, an
+    /// archive member, an evicted cloud file — so the bytes come down first and the launcher below
+    /// goes on being handed two ordinary local paths. That is the milestone's structural rule from
+    /// the gesture's side: `ByteComparator` never learned to materialize anything, and the pair it
+    /// prescans is as local as it ever was.
+    ///
+    /// Placeholders are included because the comparator refuses to read through one — it is exactly
+    /// the row that would otherwise beachball the diff tool instead of us — and they are the one
+    /// source `materialize` fetches without weighing, since `CloudDownloadPrompt` is already their
+    /// progress surface.
     @objc func compareByContents(_ sender: Any?) {
         guard let (left, right) = comparablePair() else {
             presentOperationFailure(
@@ -29,7 +40,25 @@ extension PanelViewController {
             )
             return
         }
-        launchExternalDiff(comparing: left, with: right)
+        // Asked **before** anything is fetched, which is the whole reason it is asked twice: with
+        // no diff tool installed there is nothing to hand the bytes to, and a user who has none
+        // should not pay for a download to be told so. `launchExternalDiff` keeps its own guard for
+        // the Synchronize sheet, which reaches it without passing through here.
+        guard ExternalDiffLauncher.preferredTool() != nil else {
+            presentDiffFailure(.noToolInstalled)
+            return
+        }
+        materialize([left, right], for: .compare, includingPlaceholders: true) {
+            String(
+                localized: "Couldn’t compare these files",
+                comment: """
+                Alert title when the two files to compare can't be downloaded or extracted.
+                """
+            )
+        } then: { [weak self] urls in
+            guard urls.count == 2 else { return }
+            self?.launchExternalDiff(comparing: .local(urls[0].path), with: .local(urls[1].path))
+        }
     }
 
     /// The two files to compare, or `nil` when there is no usable pair.
@@ -47,12 +76,16 @@ extension PanelViewController {
     ///
     /// Internal rather than private so `CompareSelectionTests` can assert the *pair* — which two
     /// files, in which order — rather than only the `Bool` the menu gate exposes.
-    func comparablePair() -> (VFSPath, VFSPath)? {
+    ///
+    /// It answers with **entries** rather than paths since M24 Slice 4, because what the pair costs
+    /// to read is now part of the question: a row that is not on this disk has to be weighed and
+    /// fetched before `ByteComparator` may see it, and only the entry carries the size that decides.
+    func comparablePair() -> (FileEntry, FileEntry)? {
         let marked = selectionTargets()
         guard marked.count == 2 else { return comparableCursorPair() }
         // Display order, so the upper row is the left column — the in-pane reading of the
         // physical-left-pane rule below.
-        return Self.comparablePaths(marked[0], marked[1])
+        return Self.comparableEntries(marked[0], marked[1])
     }
 
     /// The cursor file in the left pane against the cursor file in the right.
@@ -62,11 +95,11 @@ extension PanelViewController {
     /// two columns by filename, and comparing `report.log` against `report.log` leaves the pane
     /// each column came from readable only in the path subtitle. Deriving the order from focus
     /// would silently transpose those columns depending on where the user last clicked.
-    private func comparableCursorPair() -> (VFSPath, VFSPath)? {
+    private func comparableCursorPair() -> (FileEntry, FileEntry)? {
         guard let window = host as? BrowserWindowController,
               let left = Self.cursorFile(of: window.leftPanel),
               let right = Self.cursorFile(of: window.rightPanel) else { return nil }
-        return Self.comparablePaths(left, right)
+        return Self.comparableEntries(left, right)
     }
 
     /// The entry under a pane's cursor, or `nil` on the synthetic `..` row — which keeps its own
@@ -76,20 +109,25 @@ extension PanelViewController {
         pane.cursorOnParentRow ? nil : pane.panel.currentEntry
     }
 
-    /// The pair of paths to hand the diff tool, or `nil` unless both entries are real regular files
-    /// on disk and are two *different* files (there is nothing to diff a path against itself).
-    private static func comparablePaths(
+    /// The pair to hand the diff tool, or `nil` unless both entries are regular files and are two
+    /// *different* files (there is nothing to diff a path against itself).
+    ///
+    /// **The `backend == .local` this used to require is gone** (M24 Slice 4). Nothing about
+    /// comparing two files needs either of them to be on this disk, only to *be a file*: the bytes
+    /// come down first and `ByteComparator` still only ever sees real local paths, which is the
+    /// milestone's one structural rule. What stays is `kind == .file`, because a folder has no
+    /// contents to compare and a server folder is not one transfer either.
+    private static func comparableEntries(
         _ left: FileEntry,
         _ right: FileEntry
-    ) -> (VFSPath, VFSPath)? {
+    ) -> (FileEntry, FileEntry)? {
         guard left.kind == .file, right.kind == .file,
-              left.path.backend == .local, right.path.backend == .local,
               left.path != right.path else { return nil }
-        return (left.path, right.path)
+        return (left, right)
     }
 
-    /// Whether Compare By Contents should be enabled: two real local files, marked here or under
-    /// the two panes' cursors.
+    /// Whether Compare By Contents should be enabled: two files, marked here or under the two
+    /// panes' cursors.
     var canCompareByContents: Bool { comparablePair() != nil }
 
     // MARK: - Launch
@@ -258,7 +296,11 @@ extension PanelViewController {
     /// (`presentAsMovableWindow`), not a sheet, so it is no longer this window's `attachedSheet` —
     /// and an alert hung on the browser window while that dialog is app-modal is one the user
     /// cannot click. The `attachedSheet` fallback still covers the `NSAlert`-based confirmations.
-    private var alertHostWindow: NSWindow? {
+    ///
+    /// Internal rather than private because Swift's `private` does not cross files and the
+    /// materialize funnel asks the same question (docs/NOTES.md ▸ Lint ceilings and file splitting).
+    /// One definition, so a second spelling cannot answer it differently.
+    var alertHostWindow: NSWindow? {
         NSApp.modalWindow ?? view.window?.attachedSheet ?? view.window
     }
 
@@ -284,7 +326,7 @@ extension PanelViewController {
         alert.beginSheetModal(for: sheet, completionHandler: nil)
     }
 
-    private func presentDiffFailure(_ failure: ExternalDiffLauncher.Failure) {
+    func presentDiffFailure(_ failure: ExternalDiffLauncher.Failure) {
         switch failure {
         case .noToolInstalled:
             presentOperationFailure(

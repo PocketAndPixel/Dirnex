@@ -75,10 +75,31 @@ public struct FileOperation: Sendable {
     /// unrepresentable rather than merely undocumented.
     public let renamedTo: String?
 
-    public init(kind: Kind, sources: [FileEntry], destinationDirectory: VFSPath) {
+    /// Which file on this disk stands for each row that was not already on it (PLAN.md §M24
+    /// Slice 4). Empty for every job over ordinary local files, which is the common case and the
+    /// default.
+    ///
+    /// A field on the operation rather than on a `Kind`'s payload, because it is one fact about how
+    /// this job **reads** bytes and not a fact about what the job *is*: a checksum, a user script
+    /// and a pack each want the same answer, and the kinds that move bytes themselves have no use
+    /// for it at all.
+    ///
+    /// It is deliberately not derived from ``sources``. A verification's rows are discovered by
+    /// walking the manifest's own directory, so the set that needs standing in for is not the set
+    /// the job was handed — and a map keyed to `sources` would be right only for whichever gesture
+    /// happened to be written first.
+    public let materialized: MaterializedPaths
+
+    public init(
+        kind: Kind,
+        sources: [FileEntry],
+        destinationDirectory: VFSPath,
+        materialized: MaterializedPaths = MaterializedPaths()
+    ) {
         self.kind = kind
         self.sources = sources
         self.destinationDirectory = destinationDirectory
+        self.materialized = materialized
         renamedTo = nil
     }
 
@@ -93,6 +114,7 @@ public struct FileOperation: Sendable {
         kind = .move
         sources = [source]
         destinationDirectory = directory
+        materialized = MaterializedPaths()
         renamedTo = newName
     }
 

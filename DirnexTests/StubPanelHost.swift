@@ -31,12 +31,23 @@ final class StubPanelHost: PanelHost {
     func panelDidBecomeActive(_ panel: PanelViewController) {}
     func panelRequestsFocusSwitch(_ panel: PanelViewController) {}
     func panelCounterpart(of panel: PanelViewController) -> PanelViewController? { nil }
+    /// Every operation a gesture handed over, in order.
+    ///
+    /// Recorded rather than shrugged at since M24 Slice 4, because a checksum over rows that are
+    /// not on this disk is a gesture whose whole answer is *what it queued*: the sources, and the
+    /// map of which local file stands for each of them. Nothing runs — `ChecksumRunner` is tested
+    /// in the core against a real backend — and what an app test can see is the hand-over.
+    private(set) var enqueued: [FileOperation] = []
+
     func enqueue(
         _ operation: FileOperation,
         conflictPolicy: ConflictPolicy,
         resolveConflict: (@Sendable (ConflictContext) -> ConflictResolution)?,
         onError: (@Sendable (OperationErrorContext) -> ErrorResolution)?
-    ) {}
+    ) {
+        enqueued.append(operation)
+    }
+
     func recordUndoableAction(_ record: UndoRecord) {}
     func recordSelectionChange(
         on pane: PanelViewController,
@@ -69,12 +80,20 @@ final class StubPanelHost: PanelHost {
     /// the shape of a transfer still running.
     var materializeReport: OperationReport? = .empty
 
+    /// Successive answers, for a gesture that fetches **more than once**. Verifying a manifest that
+    /// is not on this disk is two-phase by construction — nothing can know what else to fetch until
+    /// the manifest has been read — so a single answer would make the second phase hand back the
+    /// first phase's copies and hide the bug the test exists for. Falls through to
+    /// ``materializeReport`` once it is spent.
+    var materializeReports: [OperationReport] = []
+
     func materializeRemoteFiles(
         _ entries: [FileEntry],
         then: @escaping @MainActor (OperationReport) -> Void
     ) {
         materializedEntries.append(entries)
-        guard let materializeReport else { return }
+        let next = materializeReports.isEmpty ? materializeReport : materializeReports.removeFirst()
+        guard let materializeReport = next else { return }
         // The real host files the copies before answering, and the funnel reads them back out of
         // the cache — so a stub that skipped this would make every delivery look like a miss.
         remoteFileCache.adopt(materializeReport.materialized ?? [])

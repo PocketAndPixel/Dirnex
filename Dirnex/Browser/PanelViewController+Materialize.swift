@@ -16,11 +16,16 @@ import DirnexCore
 /// worse — weigh each one alone and start a transfer no single row ever justified. So
 /// `MaterializationPlan` states the totals and one confirmation names them.
 ///
-/// **A cloud placeholder is left exactly where it is**, which is a decision rather than an omission.
-/// Its bytes are the file provider's to fetch, when whoever we hand the path to reads it, and that
-/// is what Finder does with the same row — so they are neither ours to move nor ours to confirm
-/// (see ``DirnexCore/MaterializationPlan/excluding(_:)``). The gestures whose *engine* refuses to
-/// read through one — ⌥F3 and a checksum run — materialize it themselves first, as they already do.
+/// **What a cloud placeholder costs depends on who is about to read it**, which is why it is the
+/// one source the caller chooses about (`includingPlaceholders`). A *hand-off* leaves it exactly
+/// where it is: its bytes are the file provider's to fetch, when the receiving application reads
+/// the path, and that is what Finder does with the same row — so they are neither ours to move nor
+/// ours to confirm, and counting them would put a *"download this from the server"* dialog in front
+/// of a file that is already on this disk. A *compare* or a *checksum* is the other side of it,
+/// because `ByteComparator` and `ChecksumEngine` both refuse to read through one rather than
+/// discovering it mid-sweep: there the gesture materializes it, in place, through the same
+/// `CloudDownloadPrompt` ⏎ and F4 already use — and weighs it, since those bytes really are about
+/// to move.
 extension PanelViewController {
     // MARK: - What it will take
 
@@ -51,6 +56,26 @@ extension PanelViewController {
         return host?.remoteFileCache.cachedURL(for: entry)
     }
 
+    /// The map an engine reads this set back through — which file on this disk stands for each row
+    /// that is not one (PLAN.md §M24 Slice 4).
+    ///
+    /// Built from ``materializedURL(for:)`` rather than from a job's report, and it has to be: a row
+    /// the plan classified as already `cached` is never asked for, so it produces no
+    /// `MaterializedFile` and is nonetheless exactly as readable as the ones that were. A map built
+    /// from the report alone would report those as not downloaded.
+    ///
+    /// Local rows are left out entirely — ``DirnexCore/MaterializedPaths`` answers for them with
+    /// their own path, placeholder included, which is what keeps an ordinary local run from needing
+    /// a map at all.
+    func materializedPaths(for entries: [FileEntry]) -> MaterializedPaths {
+        var localPaths: [VFSPath: String] = [:]
+        for entry in entries where entry.path.backend != .local {
+            guard let url = materializedURL(for: entry) else { continue }
+            localPaths[entry.path] = url.path
+        }
+        return MaterializedPaths(localPaths)
+    }
+
     /// `entry` as an archive member, or `nil` when it does not live in one.
     static func archiveMember(for entry: FileEntry) -> ArchiveMember? {
         guard let archivePath = entry.path.backend.archivePath else { return nil }
@@ -70,15 +95,30 @@ extension PanelViewController {
     /// `failureMessage` is the caller's own wording, evaluated only if something goes wrong — the
     /// same shape `fetchRemoteFile` uses, and for the same reason: "couldn't hand these to another
     /// app" is not "couldn't compare these".
+    ///
+    /// `includingPlaceholders` says whether an evicted cloud row is this gesture's to fetch — see
+    /// the type comment. `false` is the hand-off answer and the default, because it is the one that
+    /// costs the user nothing. It changes what is *fetched* and never what is *confirmed*: those
+    /// bytes have a surface of their own already.
     func materialize(
         _ entries: [FileEntry],
         for purpose: RemoteFetchPurpose,
+        includingPlaceholders: Bool = false,
         failureMessage: @escaping () -> String,
         then proceed: @escaping @MainActor ([URL]) -> Void
     ) {
         guard !entries.isEmpty else { return }
-        let plan = materializationPlan(for: entries).excluding(.cloudPlaceholder)
-        guard !plan.needsNothing else {
+        let whole = materializationPlan(for: entries)
+        // **A placeholder is fetched but never weighed**, whichever gesture is fetching it, and the
+        // asymmetry is deliberate: `CloudDownloadPrompt` already names the file and its size and
+        // carries a Stop, so a confirmation in front of it would be a second thing reporting one
+        // transfer — the shape a user reported against Quick View and this project has written down
+        // since (docs/NOTES.md ▸ Design lessons). It would also have to lie about where the bytes
+        // are coming from: a plan with no `requestCount` says "from the archive", which a file
+        // provider's own file is not.
+        let weighed = whole.excluding(.cloudPlaceholder)
+        let work = includingPlaceholders ? whole : weighed
+        guard !work.needsNothing else {
             // The ordinary marked set of local files: no dialog, no job, no branch anybody has to
             // remember. Synchronous, so a gesture over local rows behaves exactly as it did before
             // this funnel existed.
@@ -86,15 +126,15 @@ extension PanelViewController {
             return
         }
         switch RemoteFetchPolicy.decision(
-            for: plan,
+            for: weighed,
             purpose: purpose,
             previewLimit: AppPreferences.shared.quickViewFetchLimit
         ) {
         case .fetch:
-            run(plan, over: entries, failureMessage: failureMessage, then: proceed)
+            run(work, over: entries, failureMessage: failureMessage, then: proceed)
         case .confirm:
-            confirm(plan) { [weak self] in
-                self?.run(plan, over: entries, failureMessage: failureMessage, then: proceed)
+            confirm(weighed) { [weak self] in
+                self?.run(work, over: entries, failureMessage: failureMessage, then: proceed)
             }
         case .decline:
             // Unreachable, and named rather than defaulted for the reason `RemoteFetchPrompt` names
@@ -105,9 +145,13 @@ extension PanelViewController {
         }
     }
 
-    /// Extract first, then download — so every question this gesture has to ask is asked before the
-    /// slow part starts. An encrypted archive raises a passphrase prompt; a transfer raises nothing
-    /// once it is running.
+    /// Extract, then ask the file provider, then download — so every question this gesture has to
+    /// ask is asked before the slow part starts. An encrypted archive raises a passphrase prompt; a
+    /// placeholder and a transfer both raise nothing once they are running.
+    ///
+    /// The three stages are sequential rather than concurrent, which is `CloudDownloadPrompt`'s own
+    /// argument one layer out: one surface at a time is what a user can read, and stopping any of
+    /// them abandons the whole gesture by construction, because `proceed` simply never runs.
     private func run(
         _ plan: MaterializationPlan,
         over entries: [FileEntry],
@@ -116,31 +160,66 @@ extension PanelViewController {
     ) {
         extractMembers(plan.archiveExtractions) { [weak self] in
             guard let self else { return }
-            guard !plan.remoteFetches.isEmpty else {
-                deliver(entries, failureMessage: failureMessage, then: proceed)
-                return
-            }
-            host?.materializeRemoteFiles(plan.remoteFetches) { [weak self] report in
+            downloadPlaceholders(plan.cloudMaterializations) { [weak self] in
                 guard let self else { return }
-                // A stopped transfer is the user's own answer, already on screen in the queue bar:
-                // nothing to report and nothing to proceed with.
-                guard !report.wasCancelled else { return }
-                // The runner carries on past a failed row and names it, leaving the decision here —
-                // and the decision is made by what is *resolvable*, not by the failure count. A row
-                // that failed while an earlier copy of it is still current costs the user nothing,
-                // and refusing there would report a problem over a set that is all present. What
-                // the failure is for is the **sentence**: the server's own reason beats "some of
-                // these couldn't be prepared" whenever there is one.
-                deliver(
-                    entries,
-                    failure: report.failures.first?.error,
-                    failureMessage: failureMessage,
-                    then: proceed
-                )
+                fetchRemotely(plan, over: entries, failureMessage: failureMessage, then: proceed)
             }
         } onFailure: { [weak self] error in
             guard let self else { return }
             presentOperationFailure(message: failureMessage(), detail: describe(error))
+        }
+    }
+
+    /// Ask the file provider for every evicted row, in place.
+    ///
+    /// The bytes land at the path the row already names, so there is nothing to record and nothing
+    /// to put in a map — which is the whole reason ``DirnexCore/MaterializedPaths`` answers for a
+    /// local path with its own. Empty for every gesture that left placeholders alone, where this
+    /// costs one call and no `stat` at all.
+    private func downloadPlaceholders(
+        _ entries: [FileEntry],
+        then proceed: @escaping @MainActor () -> Void
+    ) {
+        guard !entries.isEmpty else {
+            proceed()
+            return
+        }
+        CloudDownloadPrompt.materialize(
+            entries.map(\.path),
+            using: backend,
+            over: alertHostWindow,
+            then: proceed
+        )
+    }
+
+    /// The last stage: whatever is still on a server, as one queued job.
+    private func fetchRemotely(
+        _ plan: MaterializationPlan,
+        over entries: [FileEntry],
+        failureMessage: @escaping () -> String,
+        then proceed: @escaping @MainActor ([URL]) -> Void
+    ) {
+        guard !plan.remoteFetches.isEmpty else {
+            deliver(entries, failureMessage: failureMessage, then: proceed)
+            return
+        }
+        host?.materializeRemoteFiles(plan.remoteFetches) { [weak self] report in
+            guard let self else { return }
+            // A stopped transfer is the user's own answer, already on screen in the queue bar:
+            // nothing to report and nothing to proceed with.
+            guard !report.wasCancelled else { return }
+            // The runner carries on past a failed row and names it, leaving the decision here —
+            // and the decision is made by what is *resolvable*, not by the failure count. A row
+            // that failed while an earlier copy of it is still current costs the user nothing,
+            // and refusing there would report a problem over a set that is all present. What
+            // the failure is for is the **sentence**: the server's own reason beats "some of
+            // these couldn't be prepared" whenever there is one.
+            deliver(
+                entries,
+                failure: report.failures.first?.error,
+                failureMessage: failureMessage,
+                then: proceed
+            )
         }
     }
 

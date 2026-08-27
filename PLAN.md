@@ -376,6 +376,71 @@ Core first, app untouched until (2), as usual. Each lands runnable.
    local files; a checksum run fetches the marked set and hands `ChecksumEngine` real paths.
    `ChecksumScope` and the manifest's *stored* names must stay the remote names, or a manifest
    written beside a bucket's objects names temp directories.
+   **Landed 2026-08-27.** The name-versus-bytes split turned out to be **one line**, because
+   `ChecksumWalkedFile` had carried the two apart since M14 — a manifest-relative *name* and the
+   *entry* whose bytes are read — and only the byte-reading site had ever conflated them. So
+   ``MaterializedPaths`` is consulted in `ChecksumRunContext.digest` and nowhere else: the engine is
+   handed a temp copy while the progress label, the failure path and the manifest's own spelling go
+   on naming the object on the server. A row with no stand-in is
+   ``ChecksumEntryStatus/notDownloaded`` — the answer an evicted cloud placeholder already gave,
+   which is the same fact about a different provider — and it is *reported* rather than thrown, so it
+   cannot be `try?`-ed out of a manifest that would then verify clean while covering less than it
+   claims. A **local path stands for itself**, placeholder included, which is what keeps every
+   ordinary run reaching the identical code with an empty map.
+   **The manifest is written beside the objects it describes, so a bucket's checksum is an upload.**
+   That is forced rather than chosen: every format spells its names relative to the checksum file's
+   own location, so there is no third option where the names still resolve. It needed no new policy —
+   `capabilities(for:)` asked of the **manifest's own directory** already answers per backend, so a
+   writable bucket says yes, a read-only one says no, and a browsed archive refuses itself because
+   `ArchiveBackend` advertises `.read` alone. And there is deliberately **no pre-flight guard on the
+   manifest's backend**: the sentence a user reads should be the one the thing that declined actually
+   said, which is what made `ChecksumRunContext.recordFailure` stop normalizing a `VFSError` through
+   an errno — that had been flattening every backend's own refusal to `.io`, a code nobody can look
+   up standing in for "the bucket is read-only".
+   **Verifying is two-phase, because nothing can know what to fetch until the manifest has been
+   read** — and that is what forced the walk out into ``ChecksumVerifyScope``, shared by the gesture
+   that weighs the set and the run that hashes it. Two spellings of *which files does this manifest
+   claim* would fail in the quiet direction: every file the gesture failed to predict comes back "not
+   downloaded" while sitting right in front of the user. The walk between the phases costs listings
+   and no transfers, so by the time anything is downloaded the total is exact rather than a floor. A
+   **local** manifest short-circuits before phase one and is byte-identical to what M14 shipped,
+   which is what keeps the common case free of a second directory walk.
+   Three things fell out. A **placeholder is fetched but never weighed**, whichever gesture is
+   fetching it: `CloudDownloadPrompt` already names the file and its size and carries a Stop, so a
+   confirmation in front of it is one reporter too many for one transfer — and it would have to lie
+   about where the bytes come from, since a plan with no `requestCount` says "from the archive".
+   A **folder that is not already here is refused**, in the hand-off's own words and for its own
+   reason. And M14's rule — *a file somebody pointed at downloads, a tree sweep refuses* — is
+   unchanged but widened to the set the user actually **marked**, where before only a lone selected
+   file qualified; a file the runner *discovers* by descending into a marked folder is in no plan and
+   still meets the engine's refusal.
+   Compare needed the pair itself to change shape: the `backend == .local` gate lived in
+   `comparablePaths`, so it had to answer with **entries** — what the pair costs to read is now part
+   of the question, and only an entry carries the size that decides.
+   Controlled in nine directions, each failing only the tests that name it: reading the row's own
+   path instead of the stand-in, writing the manifest locally whatever its backend, flattening the
+   backend's refusal through an errno, claiming the whole walk rather than the intersection, queueing
+   a create with no map, refusing no folder, asking the pane's path instead of the manifest's, never
+   going two-phase, and Compare's local gate restored.
+   **One control was vacuous and had to be fixed before it meant anything** — the folder refusal
+   asserted only that *a* sheet appeared, which passed against a build that refused nothing, because
+   the sheet it then raised was the *create* sheet. Counting the sheet's buttons is the
+   language-independent discriminator (one for a refusal, three for the create sheet, whose accessory
+   carries a popup).
+   **Verified live against a throwaway `sshd`**, and the evidence is the files rather than a session
+   count, which the pane's own background poll makes useless. `run operation "file.checksumVerify"`
+   over a manifest on the server landed **three** copies under `DirnexRemote` — `files.md5` first,
+   then `a.bin` and `b.bin`, each in its own directory under its real name with the right bytes —
+   which is the two-phase gesture with nothing to click. The measurement that separates it from a
+   cache hit is the sharp one: deleting **one** copy and repeating brought back exactly that file and
+   left the other two untouched. `run operation "file.compareByContents"` over two marked SFTP rows
+   fetched both and opened FileMerge on them. Creating a manifest on a server is the half that is
+   **not** reachable headlessly — the gesture ends in a sheet, so the upload is covered by the core
+   suite against a receiving backend rather than by a live run, which is the same asymmetry Slice 3
+   recorded between Share and Open With.
+   The live run is also what caught a flaw the suite could not: Compare fetched **before** asking
+   whether a diff tool was installed, so a user with none would have paid for a download to be told
+   so. The tool question now comes first.
 5. **User scripts.** Hand the script real paths and let it run. The interesting half is a script
    that *edits* its argument: that is the `EditedFileRegistry` watch F4 already installs, so a save
    is offered back up rather than lost in a temp directory nobody will look in again.

@@ -14,6 +14,9 @@ final class ChecksumRunContext {
 
     let job: ChecksumJob
     let backend: any VFSBackend
+    /// Which file on this disk stands for each row — empty for the ordinary local run
+    /// (``MaterializedPaths``).
+    let materialized: MaterializedPaths
     let isCancelled: @Sendable () -> Bool
 
     private let onProgress: @Sendable (OperationProgress) -> Void
@@ -29,11 +32,13 @@ final class ChecksumRunContext {
     init(
         job: ChecksumJob,
         backend: any VFSBackend,
+        materialized: MaterializedPaths = MaterializedPaths(),
         onProgress: @escaping @Sendable (OperationProgress) -> Void,
         isCancelled: @escaping @Sendable () -> Bool
     ) {
         self.job = job
         self.backend = backend
+        self.materialized = materialized
         self.onProgress = onProgress
         self.isCancelled = isCancelled
     }
@@ -52,13 +57,25 @@ final class ChecksumRunContext {
     /// A failure still advances the tally by the file's stated size. The walk already counted those
     /// bytes into the total, so leaving them out would strand the bar short of the end on a run that
     /// genuinely finished — which reads as a hang.
+    ///
+    /// **The bytes come from the stand-in and every other fact comes from the row.** That split is
+    /// the whole of M24 Slice 4 on this side of the boundary: `ChecksumEngine` is handed a temp copy
+    /// while the progress label, the failure path and the manifest's own name go on naming the
+    /// object on the server. A row with no stand-in is ``ChecksumDigestOutcome/notDownloaded`` — the
+    /// same answer an evicted placeholder gives, which is the same thing said about a different
+    /// provider, and it is reported rather than thrown so it cannot be `try?`-ed out of a manifest.
     func digest(of entry: FileEntry, using algorithm: ChecksumAlgorithm) -> ChecksumDigestOutcome {
         currentItem = entry.path
         let before = completedBytes
         emitProgress(force: true)
+        guard let readable = materialized.localPath(for: entry.path) else {
+            completedBytes = before + max(0, entry.byteSize)
+            emitProgress(force: true)
+            return .notDownloaded
+        }
         do {
             let digests = try ChecksumEngine.digests(
-                of: entry.path,
+                of: readable,
                 using: [algorithm],
                 // Both closures are non-escaping and run inside this call, so they capture `self`
                 // strongly: a `[weak self]` here would be nil-at-birth and silently stop reporting.
@@ -101,11 +118,18 @@ final class ChecksumRunContext {
         return wasCancelled
     }
 
+    /// Record one path's failure, keeping whatever the thing that refused actually said.
+    ///
+    /// A `VFSError` is passed through — it is already the backend's own reason, in the server's
+    /// words where there are any, and normalizing it through an errno would flatten every one of
+    /// them to `.io`. Only a Cocoa or POSIX error, which can only have come from the file manager,
+    /// needs deriving. (`MaterializeRunner`'s own spelling, and it started mattering here the day a
+    /// manifest could be written to somewhere that answers back — M24 Slice 4.)
     func recordFailure(_ path: VFSPath, _ error: any Error) {
         failures.append(
             OperationItemFailure(
                 path: path,
-                error: VFSError.fromErrno(errno(from: error), path: path)
+                error: (error as? VFSError) ?? .fromErrno(errno(from: error), path: path)
             )
         )
     }
@@ -179,10 +203,4 @@ enum ChecksumDigestOutcome {
         case .notDownloaded: return .notDownloaded
         }
     }
-}
-
-/// One file the walk found, with the relative name a manifest would spell it by.
-struct ChecksumWalkedFile {
-    let name: String
-    let entry: FileEntry
 }

@@ -7,10 +7,18 @@
 /// same queue bar. Hashing a 50 GB file is ~25 s of SHA-256 and ~100 s of CRC32; a modal sheet over
 /// that is the thing PLAN.md §1 forbids.
 ///
-/// **Local only.** Neither `sftp` nor `curl` can hash server-side, so a remote checksum is a full
-/// download — genuinely useful, and its own slice, because it needs a streaming read neither remote
-/// backend exposes yet. Until then a non-local job fails fast with ``ChecksumError/needsLocalFile``
-/// rather than half-working.
+/// **Hashing still only ever reads this disk; the rows need not be on it** (PLAN.md §M24 Slice 4).
+/// Neither `sftp` nor `curl` can hash server-side, so a remote checksum is a full download — and
+/// the download is the *gesture's*, which is the milestone's one structural rule. What reaches here
+/// is `operation.materialized`: which file on this disk stands for each row, so the manifest keeps
+/// the server's own names while `ChecksumEngine` is handed real paths. A row with no stand-in is
+/// reported as ``ChecksumEntryStatus/notDownloaded`` rather than failing the job, which is the same
+/// answer an evicted cloud placeholder already gave.
+///
+/// There is deliberately **no pre-flight guard on the manifest's own backend**. A `.create` into a
+/// bucket is an upload the backend performs and a browsed archive refuses in its own words, which
+/// beats a sentence invented here; a `.verify` with no copy of its manifest answers
+/// ``ChecksumError/needsLocalFile`` from the run that noticed, one file along.
 ///
 /// The two modes live in `ChecksumCreateRun` and `ChecksumVerifyRun`, over the shared
 /// `ChecksumRunContext` that owns the byte tally and the one call that touches bytes. Split by
@@ -37,12 +45,10 @@ public enum ChecksumRunner {
         let context = ChecksumRunContext(
             job: job,
             backend: backend,
+            materialized: operation.materialized,
             onProgress: onProgress,
             isCancelled: isCancelled
         )
-        guard job.manifest.backend == .local else {
-            return context.report(outcome: .failed(.needsLocalFile))
-        }
         switch job {
         case let .create(manifest, algorithm):
             return ChecksumCreateRun(context: context)

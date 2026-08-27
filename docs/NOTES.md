@@ -436,6 +436,22 @@ at build time.
     was the *sentence*. That is a finding about the code rather than about the control, and it is the
     reason the reporting collapsed to one site: the server's own reason is used for the wording, and
     what *decides* is whether every row resolved.
+- **"A sheet appeared" is not an assertion, because the thing a refusal replaces is also a sheet.**
+  M24 Slice 4's control on "a folder that is not on this disk is refused" left the suite **green**
+  with the guard neutered — the test asked only `attachedSheet != nil`, and with nothing refused the
+  gesture went on to raise the *create* sheet, which satisfies it exactly as well. Nothing about the
+  run looked wrong: the two other assertions (`enqueued.isEmpty`, `materializedEntries.isEmpty`) are
+  true of both branches too, because a confirmation sheet queues nothing until somebody clicks it. So
+  all three passed in both directions and the test was measuring nothing at all.
+  - **Count the sheet's buttons.** A refusal offers one (OK) and every confirmation here offers two
+    or more — three for the create sheet, whose accessory carries a popup — which is a structural
+    discriminator and, unlike matching the title text, survives the app test target inheriting the
+    developer's own `AppleLanguages` pin (▸ Localization). `sheetButtonCount(in:)` is the helper.
+  - The general shape is worth more than the sheet: **a control has to change the observable, not
+    merely the code path**, and an observable shared by the branch under test and the branch it falls
+    through to is not one. Ask what the *other* branch does before believing a negative wait or a
+    presence check — here the alternative branch's first act was to present something of the same
+    kind.
 - **A `git checkout` is not available to revert a control here, because the work is uncommitted** —
   Oleg commits, so a control's cleanup has to copy the file aside and copy it back. Worth stating
   because the reflex is `git checkout -- <dir>`, which in this repo throws the whole slice away
@@ -5354,6 +5370,44 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     FTP `LIST` stamp is still year-less, zone-less and on the server's clock, which is why it is
     recorded here (▸ curl) rather than only in a type.
 
+- **When a gesture gains a *fetch* stage, every precondition it used to check afterwards has to move
+  in front of it — and no test can see that it did not.** M24 Slice 4 put a download in front of ⌥F3,
+  and `launchExternalDiff`'s own first act is "is a diff tool installed?", which is now asked *after*
+  the bytes have been paid for: a Mac with no FileMerge, Kaleidoscope or BBEdit would download two
+  files in order to be told there is nothing to open them with. Every suite was green — the tool
+  question still gets asked and still reports correctly, just too late — and the ordering is
+  invisible in the diff, because the two halves live in different functions and neither changed.
+  Caught by setting up the live run and asking what it would do on a machine without the tool.
+  - The audit is cheap once named: **read the callee's guards and ask which of them are questions
+    about *this Mac* rather than about the files**. Those are the ones that were free before and are
+    not any more. Here it was one call to one function, so asking it twice costs nothing and drifts
+    nowhere — the other caller (the Synchronize sheet) reaches the launcher without passing through
+    the gesture, so its own guard has to stay regardless.
+- **A `VFSError` is already the answer, so normalizing it through an errno is how a server's own
+  reason becomes `.io`.** `ChecksumRunContext.recordFailure` ran every failure through
+  `VFSError.fromErrno`, which is right for a Cocoa or POSIX error — those can only have come from the
+  file manager — and flattens a backend's refusal to a code nobody can look up. It cost nothing while
+  the only thing that could fail was a local `Data.write`; it started mattering the day a manifest
+  could be written somewhere that answers back, and what a user would have read in place of "the
+  bucket is read-only" was an `.io` with a numeric code. `(error as? VFSError) ?? .fromErrno(…)` is
+  the whole fix, and it is `MaterializeRunner`'s own spelling. Worth grepping for wherever an error
+  crosses from a backend into a report: the tell is a call to `fromErrno` with no `as? VFSError`
+  ahead of it.
+- **A gesture that has to work out what a run will do must call the run's own function, not a second
+  copy of it — and two phases is when that stops being optional.** Verifying a checksum manifest that
+  is not on this disk cannot know what to fetch until the manifest has been read, so the *gesture*
+  works out the claimed set in order to weigh and confirm it and the *run* works it out again in
+  order to hash it. Written twice, they fail in the quiet direction: every file the gesture failed to
+  predict is not fetched and comes back "not downloaded", for a file sitting right in front of the
+  user, with nothing logged and every request having succeeded. `ChecksumVerifyScope.resolve` is
+  therefore one function taking its listing as a closure, called once per phase — which also made it
+  testable against literals, where it had been private inside a run that needed a temp tree.
+  - **Keep the cheap phase cheap and the common case out of it entirely.** The manifest is kilobytes,
+    so phase one is under every row of the size table and asks nothing; the walk between the phases
+    costs listings and no transfers, so by the time anything is downloaded the total is exact rather
+    than a floor. And a **local** manifest short-circuits before phase one, because its walk is
+    rooted at its own parent and nothing there can need fetching — which is what keeps the ordinary
+    gesture free of the second directory walk the two-phase shape would otherwise add to it.
 - **A protocol doc comment is a claim, and an untested one drifts exactly like a duplicated
   predicate — except nothing at all checks it, not even a linter.** `VFSBackend.moveItem` promised
   "Throws `.alreadyExists` if `destination` is occupied" from M2 until 2026-08-23, and **no backend
