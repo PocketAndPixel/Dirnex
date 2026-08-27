@@ -49,6 +49,34 @@ extension PanelViewController {
         updateChrome()
     }
 
+    /// What a stood-down restored tab says on the status line.
+    ///
+    /// Kept short on purpose: the line truncates its **tail** silently, and the tail of an
+    /// explanatory sentence is the explanation (docs/NOTES.md ▸ Localization). Measured against the
+    /// pane's own width in every shipped catalog before being written this way.
+    private static func sentence(for reason: TabOfflineReason) -> String {
+        switch reason {
+        case .serversNotContactedUnasked:
+            return String(
+                localized: "Not connected — servers aren’t contacted unasked",
+                comment: """
+                Pane status line for a restored server tab left disconnected because Settings ▸ \
+                Panels is set to never contact a server unasked (a refresh interval of 0).
+                """
+            )
+        case .credentialMissing:
+            return String(
+                localized: "Not connected — sign in again from the sidebar",
+                comment: """
+                Pane status line for a restored server tab whose password is no longer in the \
+                Keychain, so it cannot reconnect on its own.
+                """
+            )
+        case let .listingFailed(sentence):
+            return sentence
+        }
+    }
+
     /// How long a transient message holds the status line — long enough to read a short sentence,
     /// short enough that it never reads as the pane's permanent state.
     private static let transientStatusDuration: TimeInterval = 4
@@ -58,6 +86,11 @@ extension PanelViewController {
     /// synthetic `..` row is never counted — it isn't part of `panel`.
     private func statusText() -> String {
         if let transientStatus { return transientStatus }
+        // A restored tab that could not be brought back has nothing to count and an alert would be
+        // wrong (nobody asked for the load), so its reason holds the line until it lists — which is
+        // also the only thing on screen that says the empty pane is not an empty folder. Above the
+        // counts and below a transient message, since a message is something that just happened.
+        if let offline = tabs[activeTabIndex].offlineReason { return Self.sentence(for: offline) }
         let total = panel.count
         let marked = panel.selectionCount
         let counts: String

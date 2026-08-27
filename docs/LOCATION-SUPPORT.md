@@ -1,7 +1,7 @@
 # What works where
 
 Every user-facing capability against every kind of location Dirnex can open, as of
-**2026-08-26** (M0–M22 shipped, M23 landed, plus the post-M19 passes). The purpose is the
+**2026-08-27** (M0–M22 shipped, M23 landed, plus the post-M19 passes). The purpose is the
 parity question: *where does working on a server still feel unlike working on the disk, and which
 of those gaps are ours to close?*
 
@@ -67,12 +67,22 @@ watched live. It is still a virtual container: no size bars, no pack, no Open in
 | Size visualization bars (`⌃B`) | yes | yes | no | no | no | no | no | no | no |
 | Git status column, `.gitignore`-aware sizes | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
 | Appears in Recents | yes | yes | no | no | no | no | no | n/a | n/a |
-| Reopens at launch / in a saved workspace | yes | yes | no | no | no | no | no | n/a | n/a |
+| Reopens at launch / in a saved workspace | yes | yes | yes | yes, limited<sup>g</sup> | yes, limited<sup>g</sup> | yes, limited<sup>g</sup> | yes, limited<sup>g</sup> | n/a | n/a |
 
 <sup>a</sup> Entering a bucket row is a **connect**, not a listing: `S3AccountBackend` is depth 0
 by design (everything below a bucket is the bucket backend). It carries the region-301 correction
 and the path-style retry, so it usually just works — but the first entry can raise a connect
 sheet where a folder never would.
+
+<sup>g</sup> The tab comes back and re-opens its connection when it is first shown — the active
+one at launch, the others when you switch to them, so a window of five server tabs contacts one
+server rather than five. Two things it will not do on its own, both deliberate. A connection whose
+secret is no longer in the Keychain cannot be re-established unattended, so the tab returns saying
+so and one gesture (any navigation, or the sidebar row) signs it back in. And with Settings ▸
+Panels set to **0 — never contact a server unasked** — the relaunch itself opens nothing: the tabs
+are all there and the first gesture connects them. A *nested* archive is the one location that
+cannot come back at all: its bytes are a temp extraction of a member of the enclosing archive, so
+the file it was mounted from is gone by the next launch.
 
 <sup>b</sup> A virtual listing draws a label, not a walkable crumb trail — there is no directory
 to walk to.
@@ -334,18 +344,26 @@ now re-lists itself while it is on screen, so a file somebody else added appears
 "yes, limited" rather than a plain yes — §1's note <sup>f</sup> says what the three limits are and
 why each is deliberate — because a poll is not a notification, and nothing can make it one.
 
-1. **Session restore and workspaces drop remote tabs.** Quit with four bucket tabs open and they
-   are gone. The saved connection survives in the sidebar; the *place* does not.
-2. **Archives are local-only in every direction.** A `.zip` on a server cannot be browsed, and
+**Session restore and workspaces dropping remote tabs** headed it next and is closed too: quit with
+four bucket tabs open and they come back, as does a browsed `.zip`. A tab now writes down *where to
+reconnect* rather than only which account it was on — the coordinates and the auth method, never a
+secret, which is what a saved server already keeps as plain JSON — so a server connected once from
+the Connect sheet and never saved comes back as readily as a named one, and deleting a sidebar row
+does not silently close your tabs. The connection is re-opened by the navigation that first wants
+it, so restoring costs one server per pane rather than one per tab. It stays a "yes, limited"
+because of the two things §1's note <sup>g</sup> names: a secret that has left the Keychain, and
+the user's own "never contact a server unasked".
+
+1. **Archives are local-only in every direction.** A `.zip` on a server cannot be browsed, and
    nothing can be packed to or from one — even though the staging path that would do it already
    exists for `RelayCopy`.
-3. **Checksums, Compare By Contents, Synchronize and user scripts are local-only.** All four are
+2. **Checksums, Compare By Contents, Synchronize and user scripts are local-only.** All four are
    "download, then run the local implementation"; none is built.
-4. **Permissions and symlinks are not preserved on an SFTP/FTP copy.** `chmod` and `ln -s` are
+3. **Permissions and symlinks are not preserved on an SFTP/FTP copy.** `chmod` and `ln -s` are
    both available over SFTP; nothing consumes them.
-5. **Open With / Share are dead remotely.** Both need a local URL, which the remote fetch path
+4. **Open With / Share are dead remotely.** Both need a local URL, which the remote fetch path
    already knows how to produce.
-6. **No Trash anywhere remote**, so every remote delete is permanent and unreversible. This is
+5. **No Trash anywhere remote**, so every remote delete is permanent and unreversible. This is
    honest about the protocols, but a Dirnex-managed `.dirnex-trash` prefix would be a real
    improvement over a confirmation dialog.
 

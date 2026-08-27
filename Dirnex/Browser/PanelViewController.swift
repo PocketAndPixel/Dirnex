@@ -409,7 +409,9 @@ final class PanelViewController: NSViewController {
         observeDirectorySizeChanges()
         observeSizeVizDisplayModePreference()
         observeRemoteRefreshConditions()
-        activateTab()
+        // The one activation nobody asked for: a restored tab is being opened because the app is
+        // starting, not because anyone pressed anything. See `activateTab(unasked:)`.
+        activateTab(unasked: true)
     }
 
     /// The pane has a window, so "is anybody looking" has an answer for the first time — at

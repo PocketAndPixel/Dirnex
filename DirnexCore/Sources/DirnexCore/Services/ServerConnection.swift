@@ -324,3 +324,22 @@ public struct ServerConnections: Sendable, Equatable, Codable {
         try container.encode(connections, forKey: .connections)
     }
 }
+
+public extension ServerEndpoint {
+    /// The ``VFSBackendID`` a pane standing on this endpoint carries — the join between a saved
+    /// place and a `VFSPath`, and what lets a restored tab say *which* connection it is waiting for.
+    ///
+    /// `nil` for **SMB**, and that is not an omission: SMB rides the OS mounter, so a share is an
+    /// ordinary `/Volumes/…` tree and a pane on it is `.local`. There is no backend to name, which
+    /// is also why an unmounted share is a restore problem of a completely different shape (a local
+    /// path that is not there) rather than a connection to re-establish.
+    var backendID: VFSBackendID? {
+        switch self {
+        case let .sftp(location, _): return location.backendID
+        case let .ftp(location, _, _): return location.backendID
+        case let .s3(location): return location.backendID
+        case let .s3Account(account): return account.backendID
+        case .smb: return nil
+        }
+    }
+}

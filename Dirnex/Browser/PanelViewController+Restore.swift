@@ -23,13 +23,7 @@ extension PanelViewController {
     /// `BrowserWindowController.persistTabState`.
     func persistState() {
         guard let restorationKey else { return }
-        // A tab standing in an unlocked vault is not written down (PLAN.md §M19 / `VaultPrivacy`).
-        // Two reasons, and either would do: this file's own fields — the directory, the cursor's
-        // file name, the marked names, the expanded folders — are a list of what is in the vault,
-        // stored in the clear and outliving the lock; and a tab pointing into a volume that only
-        // exists while unlocked cannot be restored anyway, which is the case `PersistedPane` already
-        // falls back to Home for. Dropping every tab is therefore a legal state, not a hole.
-        let kept = tabs.filter { !VaultMounts.shared.contains($0.panel.path) }
+        let kept = tabs.filter { isWorthPersisting($0) }
         let activeIndex = tabs.indices.contains(activeTabIndex)
             ? kept.firstIndex(where: { $0 === tabs[activeTabIndex] }) ?? 0
             : 0
@@ -46,13 +40,48 @@ extension PanelViewController {
                 cursorOnParent: tab.cursorOnParentRow,
                 markedPaths: tab.panel.selection.isEmpty
                     ? nil
-                    : tab.panel.selection.map { restoreAnchor(for: $0, in: tab) }.sorted()
+                    : tab.panel.selection.map { restoreAnchor(for: $0, in: tab) }.sorted(),
+                endpoint: reconnectEndpoint(for: tab)
             )
         }
         TabPersistence.save(
             PersistedPane(tabs: persisted, activeIndex: activeIndex),
             paneKey: restorationKey
         )
+    }
+
+    /// Whether this tab is one to write down at all.
+    ///
+    /// Two exclusions, and they are exclusions for opposite reasons. A tab standing in an **unlocked
+    /// vault** is withheld on privacy grounds (PLAN.md §M19 / `VaultPrivacy`): this file's own fields
+    /// — the directory, the cursor's file name, the marked names, the expanded folders — are a list
+    /// of what is in the vault, stored in the clear and outliving the lock; and a tab pointing into a
+    /// volume that only exists while unlocked could not be restored anyway. Dropping every tab is
+    /// therefore a legal state, not a hole.
+    ///
+    /// A tab inside a **nested archive** is withheld because it cannot come back: its "archive" is a
+    /// temp extraction of a member of the enclosing archive, so the file its backend names is gone by
+    /// the next launch — and the registry that knows it came out of somewhere else is session-scoped,
+    /// so a temp file that happened to survive would browse as a top-level archive with a broken way
+    /// out. Refused here rather than at the restore, where the only evidence left is a path under
+    /// `NSTemporaryDirectory()` — which is a guess, not a fact.
+    private func isWorthPersisting(_ tab: PanelTab) -> Bool {
+        guard !VaultMounts.shared.contains(tab.panel.path) else { return false }
+        guard let archivePath = tab.panel.path.backend.archivePath else { return true }
+        return !(host?.nestedArchiveRegistry.isNestedMount(archivePath) ?? false)
+    }
+
+    /// Where this tab would have to reconnect to list again, for a tab on a connected account.
+    ///
+    /// Asked of the pane's own `CompositeBackend`, which is the one thing that knows what a live
+    /// connection was *made with* — a `VFSBackendID` carries the descriptor and not the auth method.
+    /// The fallback to the tab's own pending endpoint is what keeps an inactive restored tab from
+    /// being lost on the second quit: it has never been activated, so nothing has registered a
+    /// connection for it, and reading only the composite would write it back down with no way home.
+    func reconnectEndpoint(for tab: PanelTab) -> ServerEndpoint? {
+        guard tab.panel.path.backend.isRemoteConnection else { return nil }
+        let live = (backend as? CompositeBackend)?.endpoint(for: tab.panel.path.backend)
+        return live ?? tab.pendingConnection
     }
 
     /// How one entry is named on disk: its path relative to the tab's root — a bare leaf name for a
@@ -172,8 +201,18 @@ extension PanelViewController {
         return (restored, min(max(restoration?.activeIndex ?? 0, 0), restored.count - 1))
     }
 
-    /// Rebuild tabs from a persisted pane, dropping any whose directory has since
-    /// vanished so a relaunch never opens onto a dead path or an error sheet.
+    /// Rebuild tabs from a persisted pane, dropping any whose *place* no longer exists so a relaunch
+    /// never opens onto a dead path or an error sheet.
+    ///
+    /// It used to keep only the tabs it could list with no preparation — `.local`, and the directory
+    /// still there — which meant a browsed `.zip` and every connected server were dropped: quit with
+    /// four bucket tabs open and they were gone, while the saved connection sat in the sidebar
+    /// (docs/LOCATION-SUPPORT.md ▸ "Session restore and workspaces drop remote tabs"). What decides
+    /// now is `TabRestorePolicy`, which answers what each tab *needs* — a directory, an archive file,
+    /// or a connection — and this supplies the one thing a pure rule cannot: whether the disk agrees.
+    /// A connection is not established here; it is recorded on the tab and opened by the navigation
+    /// that first wants it (`PanelViewController+Reconnect`), so a pane restoring five server tabs
+    /// contacts nothing until one of them is on screen.
     static func restoredTabs(from restoration: PersistedPane?) -> [PanelTab] {
         guard let restoration else { return [] }
         // Show-hidden is a single app-wide toggle, so every restored tab adopts it — the same
@@ -181,16 +220,19 @@ extension PanelViewController {
         let showHidden = AppPreferences.shared.showHidden
         return restoration.tabs.compactMap { persisted in
             let path = persisted.vfsPath
-            var isDirectory: ObjCBool = false
-            guard path.backend == .local,
-                  FileManager.default.fileExists(atPath: path.path, isDirectory: &isDirectory),
-                  isDirectory.boolValue else { return nil }
+            guard let requirement = TabRestorePolicy.requirement(
+                for: path,
+                endpoint: persisted.serverEndpoint
+            ), canRestore(requirement, at: path) else { return nil }
             let tab = PanelTab(
                 path: path,
                 sort: persisted.fileSort,
                 showHidden: showHidden,
                 columns: persisted.columns
             )
+            // Recorded, never opened: the first navigation into this tab registers it, and only if
+            // somebody is asking (`RemoteRefreshPolicy.contactsServersUnasked`).
+            if case let .connection(endpoint) = requirement { tab.pendingConnection = endpoint }
             // The shape the tab was last left in (PLAN.md §M15) — restored, unlike the session-
             // scoped per-tab modes, because coming back to a tree as a flat list reads as loss.
             tab.viewMode = persisted.panelViewMode
@@ -203,6 +245,35 @@ extension PanelViewController {
             tab.pendingCursorOnParent = persisted.cursorOnParent ?? false
             tab.pendingMarkPaths = persisted.markedPaths
             return tab
+        }
+    }
+
+    /// Whether the disk agrees with what `requirement` asks for — the impure half of the decision,
+    /// kept apart from the rule so the rule stays a pure value the core can test.
+    ///
+    /// The archive case checks a **different path** from the tab's own, and that is the whole point
+    /// of the requirement carrying one: a tab three folders into a zip has a path (`/docs/api`) that
+    /// exists nowhere, so stat-ing the tab's path would drop every archive tab but a root's. It must
+    /// also be a *file* — a directory sitting where an archive used to be is not one, and mounting it
+    /// would spawn `bsdtar` at launch to learn that.
+    ///
+    /// A connection asks the disk nothing. Whether the server answers is the listing's question, and
+    /// it is not one that can be settled without contacting it — which is exactly what a restore has
+    /// not been asked to do yet.
+    static func canRestore(_ requirement: TabRestoreRequirement, at path: VFSPath) -> Bool {
+        var isDirectory: ObjCBool = false
+        switch requirement {
+        case .directoryOnDisk:
+            let exists = FileManager.default.fileExists(
+                atPath: path.path,
+                isDirectory: &isDirectory
+            )
+            return exists && isDirectory.boolValue
+        case let .archiveOnDisk(archive):
+            let exists = FileManager.default.fileExists(atPath: archive, isDirectory: &isDirectory)
+            return exists && !isDirectory.boolValue
+        case .connection:
+            return true
         }
     }
 }

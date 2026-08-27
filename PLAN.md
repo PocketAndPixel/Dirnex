@@ -178,6 +178,33 @@ local `sshd`; the run is what caught the catch-up bug that no headless test coul
 After M19, NOTES.md ▸ AppKit). It stays a **"yes, limited"** in that document rather than a plain
 yes: a poll is not a notification, and nothing can make it one.
 
+**The next gap on that list — "session restore and workspaces drop remote tabs" — closed
+2026-08-27.** Quit with four bucket tabs open and they come back, as does a browsed `.zip`; a saved
+workspace carries its server tabs the same way. What was missing was never the *place* — a persisted
+tab has always stored the account's descriptor — but the way back to it: a `VFSBackendID` says
+nothing about the auth method or an FTPS certificate the user trusted, so the tab was dropped rather
+than restored dead. `PersistedTab` and `WorkspaceTab` now carry the ``ServerEndpoint`` itself, which
+holds no secret (``ServerConnection``'s own argument for its JSON) and is independent of the sidebar,
+so a one-off connect restores and deleting a saved row does not close anybody's tabs.
+
+Three things decided the shape. **Registering a connection costs no round trip** — it is a credential
+plus coordinates, and the network happens in the listing that follows — so the reconnect is
+synchronous and needs none of the connect flow's corrections (a restored bucket's path is already
+the one an earlier connect settled on). **The seam is `navigate`, not `activateTab`,** so switching
+to a tab, clicking a crumb, ⌘L and back/forward are all one definition of "open this place again" —
+which is also what gives a tab that came back disconnected a way out with no new UI. And the launch
+activation is marked **unasked**, which decides two things and only for it: whether a server may be
+contacted (Settings ▸ Panels promises a floor of 0 means never, in so many words) and whether a
+failure is worth an alert (nobody is waiting for the answer, so the pane says it instead).
+`TabRestorePolicy` owns which tabs come back and what each needs first — a directory, an archive
+file, or a connection — with the app supplying only whether the disk agrees.
+
+Verified against a throwaway local `sshd` plus a real `.zip`, with the **server's own log** as the
+independent judge: at the default floor the restored tab reconnected at launch and its cursor came
+back on a file that exists only on the server, while the archive tab's came back on one that exists
+only inside the zip; at floor 0 the same launch put **0 bytes** in that log and one Go Up gesture
+put a connection in it. See docs/NOTES.md ▸ Design lessons.
+
 M19's last loose end — **a member filter for an encrypted archive** — **closed 2026-08-25**. The
 encrypted route extracted the whole archive however little was asked for, so opening one member of a
 600 MB archive decrypted all of it; ``ArchiveMemberFilter`` now selects what is placed and every

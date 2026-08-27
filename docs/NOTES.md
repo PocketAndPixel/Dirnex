@@ -5095,6 +5095,67 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
 
 ## Design lessons that generalize
 
+- **A place a tab can be restored to is not the same as a place it can be *reopened* to, and the
+  difference is a field nobody was storing.** Session restore kept exactly the tabs it could list with
+  no preparation — `backend == .local`, directory still there — so a browsed `.zip` and every
+  connected server were dropped, while the saved connection sat in the sidebar looking fine
+  (docs/LOCATION-SUPPORT.md's first ranked gap). The *place* had always been persisted: a
+  `PersistedTab` carries the account's full descriptor. What it could not carry was the **way back**
+  — a `VFSBackendID` is host, user, port and region, and says nothing about the auth method or an
+  FTPS certificate the user chose to trust. The tab was therefore not restorable *from itself*, and
+  the fix is a field, not a mechanism.
+  - **Registering a remote connection costs no round trip**, which is the measurement that decided
+    the whole design and is the opposite of what "reconnect" suggests. `CompositeBackend.connectSFTP`
+    / `connectFTP` / `connectS3` build a transport object and file it under a descriptor; the network
+    happens in the *listing* that follows. So a restore is synchronous, needs none of the connect
+    flow's own machinery (the region-301 correction and the path-style retry have nothing left to
+    correct — a restored bucket's path is already the one an earlier connect settled on), and the two
+    failures separate cleanly: a connection that cannot be **registered** has no secret, and one that
+    registers and then cannot **list** has a server problem. Check what a "connection" actually costs
+    before designing around it.
+  - **Put the seam in `navigate`, not in the activation.** Every way back into a tab — switching to
+    it, clicking a crumb, ⌘L, back/forward — is a navigation, so one definition of "open this place
+    again" covers the launch path and every gesture at once. It is also what gives a tab that came
+    back *disconnected* a way out with no new UI, which is otherwise a real design problem: the state
+    is reachable and nothing in the app would connect it.
+  - **A relaunch is unasked, however true it is that the user left the tab open** — and Settings ▸
+    Panels promises in so many words that a refresh floor of 0 means *"never contact a server
+    unasked"*. Until a restored tab could reopen a connection, the poll was the only thing that
+    reached a server unasked, so the promise and the timer were the same rule; they are not any more.
+    One flag on the launch activation decides both halves of what that costs — whether a server may
+    be contacted, and whether a failed listing is worth an alert (the "who is waiting?" rule ▸ Testing,
+    arriving one step earlier, before a listing is even attempted). Every other caller leaves it false,
+    which is what keeps 0 meaning "unasked" rather than "never".
+  - **The endpoint has to *be* the path's backend, and comparing them costs a string.** A persisted
+    tab is JSON in a defaults domain: its path and its endpoint are two fields, and a store that was
+    hand-edited or half-migrated would otherwise connect to one server and list a path belonging to
+    another — a plausible listing under the wrong name, which is the quiet direction.
+  - **A `Codable` enum with associated values inside a persisted *array* is a session-emptying bug
+    waiting for the next case.** This file already records that trap for `PersistedTab.viewMode`,
+    where a raw string was chosen for it; an endpoint cannot be a raw string. A pane's tabs are one
+    JSON blob, so one element that refuses to decode takes **every tab beside it** — the day a new
+    protocol ships, a build that has it and a build that has not would empty each other's sessions.
+    `StoredServerEndpoint` decodes to `nil` rather than throwing.
+  - **Refuse what cannot come back on the way *down*, where the fact is still known.** A tab inside a
+    **nested** archive is mounted from a temp extraction of a member of the enclosing one, and the
+    registry that knows where it came from is session-scoped — so at restore time the only evidence
+    left is a path under `NSTemporaryDirectory()`, which is a guess. At persist time it is a lookup.
+  - **The independent judge is the server's own log, and it answers a *negative* as cleanly as a
+    positive.** Verified against a throwaway local `sshd` (▸ The SSH exec channel — one is a
+    generated host key and a config file away): seeded a session with `defaults write`, ran the
+    binary from a shell, and read `sshd -E`. At the default floor the restored tab reconnected at
+    launch and its cursor came back on a file that exists only on the server; at floor 0 the same
+    launch left the log **0 bytes** and one scripted Go Up put an `Accepted publickey` in it. A byte
+    count is what makes "contacted nothing" a measurement rather than a screenshot nobody can take.
+    - **A throwaway server on a port you have used before fails preauth**, because `~/.ssh/known_hosts`
+      still pins the *previous* throwaway's host key — and the app's own error then reads as a broken
+      feature rather than as a stale pin. `ssh-keygen -R "[127.0.0.1]:<port>"` first, and reproduce
+      the app's exact `sftp` argv from a shell before suspecting the code.
+    - **`AppPreferences` keys are `Dirnex.pref.*`, not `Dirnex.*`.** A probe that seeded the wrong one
+      read the *default* floor back and reported the promise broken; the tell was the value logged by
+      the code under test disagreeing with `defaults read`. The tabs are `Dirnex.tabs.<pane>` and are
+      **not** prefixed, which is what makes the mistake easy — one probe, two key conventions.
+
 - **When two remotes *can* talk to each other, the question is whether one can *name* the other —
   and getting that wrong fails by succeeding.** S3 copies between its own buckets with
   `x-amz-copy-source`, so staging those bytes through this machine would move them twice to produce

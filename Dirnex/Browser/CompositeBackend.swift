@@ -21,22 +21,22 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
     /// was read from so a path that has since been given a *different* archive re-reads instead of
     /// answering from the old one's table of contents. Guarded by `lock` because listing runs
     /// on detached tasks — two panes can mount the same archive concurrently.
-    private let lock = NSLock()
+    let lock = NSLock()
     private var mounted: [String: Mount] = [:]
     /// Live SFTP connections keyed by the account descriptor (`sftp://user@host:port`). A connection
     /// is established by the Connect-to-Server flow (`connectSFTP`) before a pane navigates onto it;
     /// each holds a `Process`-driven transport, so listing an SFTP pane routes here (PLAN.md §M5
     /// "browse … through the standard queue"). Guarded by `lock` like the archive mounts.
-    private var sftpConnections: [String: SFTPBackend] = [:]
+    var sftpConnections: [String: SFTPBackend] = [:]
     /// Live FTP/FTPS connections keyed by the account descriptor (`ftpes://user@host:port`). The
     /// same shape as `sftpConnections` and for the same reasons — established by the connect flow
     /// before a pane navigates onto it, guarded by `lock` because listing runs on detached tasks.
-    private var ftpConnections: [String: FTPBackend] = [:]
+    var ftpConnections: [String: FTPBackend] = [:]
     /// Live S3 connections keyed by the bucket descriptor (`s3://<key id>@<host>:<port>/…`). The
     /// same shape as the other two, with one difference worth naming: there is no session to keep
     /// alive — every request re-signs — so a "connection" here is the credential plus the endpoint,
     /// held so a pane can keep listing without asking the Keychain on every page.
-    private var s3Connections: [String: S3Backend] = [:]
+    var s3Connections: [String: S3Backend] = [:]
     /// Live S3 *account* connections keyed by the account descriptor (`s3a://<key id>@<host>:…`) —
     /// a pane listing an endpoint's buckets rather than one bucket's objects (PLAN.md §M21 Slice 9).
     ///
@@ -45,105 +45,23 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
     /// different protocols. Registering an account leaves every connected bucket exactly as it was,
     /// which is what makes walking out of a bucket into its account — and back down into another —
     /// two independent connections rather than one being replaced.
-    private var s3AccountConnections: [String: S3AccountBackend] = [:]
+    var s3AccountConnections: [String: S3AccountBackend] = [:]
+    /// What each live connection was established *with*, keyed by the same descriptor its backend
+    /// is — the coordinates and the auth method, never the secret.
+    ///
+    /// A backend knows its own `location`, which is the descriptor and no more; the **auth method**
+    /// and an FTPS pin are the caller's and were dropped on the floor once a connection existed. So
+    /// this is where a pane goes to answer "what would it take to open this again", which is what
+    /// session restore and a saved workspace have to write down (docs/LOCATION-SUPPORT.md ▸
+    /// "Session restore and workspaces drop remote tabs").
+    ///
+    /// It lives here rather than in the pane because the pane is not the only thing that connects:
+    /// entering a bucket from an account, and *expanding* one in a tree, both establish a
+    /// connection the pane never saw a form for. One memory, filled where the registration happens.
+    var endpoints: [String: ServerEndpoint] = [:]
 
     init(local: LocalBackend) {
         self.local = local
-    }
-
-    /// Establish (or replace) an SFTP connection for `location`, returning its backend so the caller
-    /// can test it (list the home directory) before navigating a pane onto it. `authentication` is a
-    /// key file or a password; for password auth `password` is the plaintext the transport feeds to
-    /// `sftp` out-of-band (held only in memory for the connection's lifetime, mirrored into the
-    /// Keychain separately). An identity-file path is a reference, not a secret, so it is safe to
-    /// retain either way.
-    @discardableResult
-    func connectSFTP(
-        location: SFTPLocation,
-        authentication: SFTPAuthentication,
-        password: String? = nil
-    ) -> SFTPBackend {
-        let transport = SFTPProcessTransport(
-            location: location,
-            authentication: authentication,
-            password: password
-        )
-        let backend = SFTPBackend(location: location, transport: transport)
-        lock.lock()
-        defer { lock.unlock() }
-        sftpConnections[location.descriptor] = backend
-        return backend
-    }
-
-    /// Establish (or replace) an FTP connection for `location`, returning its backend so the caller
-    /// can test it before navigating a pane onto it. `password` is the plaintext the transport feeds
-    /// to `curl` on stdin (held only in memory for the connection's lifetime, mirrored into the
-    /// Keychain separately); `trustedPublicKey` is the certificate pin the user accepted, which is a
-    /// public key digest rather than a secret.
-    @discardableResult
-    func connectFTP(
-        location: FTPLocation,
-        authentication: FTPAuthentication,
-        password: String = "",
-        trustedPublicKey: String? = nil
-    ) -> FTPBackend {
-        let transport = FTPCurlTransport(
-            location: location,
-            authentication: authentication,
-            password: password,
-            trustedPublicKey: trustedPublicKey
-        )
-        let backend = FTPBackend(location: location, transport: transport)
-        lock.lock()
-        defer { lock.unlock() }
-        ftpConnections[location.descriptor] = backend
-        return backend
-    }
-
-    /// Establish (or replace) an S3 connection for `location`, returning its backend so the caller
-    /// can test it (list the bucket root) before navigating a pane onto it. `secretAccessKey` is
-    /// the plaintext the transport feeds to `curl` on stdin (held only in memory for the
-    /// connection's lifetime, mirrored into the Keychain separately); the *access key id* is not a
-    /// secret and rides in the location itself.
-    @discardableResult
-    func connectS3(location: S3Location, secretAccessKey: String) -> S3Backend {
-        let transport = S3CurlTransport(location: location, secretAccessKey: secretAccessKey)
-        return register(s3: S3Backend(location: location, transport: transport))
-    }
-
-    /// Install an already-built bucket backend under its own descriptor — `connectS3` without the
-    /// `curl` transport.
-    ///
-    /// The split exists because **the routing is what breaks silently while running it needs a
-    /// network**: a copy that reaches the wrong backend, or a hint that stops at this class, reports
-    /// nothing at all (docs/HISTORY.md ▸ After M19, and the `subtreeListing` shape docs/NOTES.md records). A backend
-    /// over a fake transport is how those are asserted headlessly. Nothing in the app calls it.
-    @discardableResult
-    func register(s3 backend: S3Backend) -> S3Backend {
-        lock.lock()
-        defer { lock.unlock() }
-        s3Connections[backend.location.descriptor] = backend
-        return backend
-    }
-
-    /// Establish (or replace) a connection to a whole S3 account, returning its backend so the
-    /// caller can test it (list the buckets) before navigating a pane onto it. `secretAccessKey` is
-    /// the plaintext the transport feeds to `curl` on stdin, exactly as the bucket connection's is.
-    ///
-    /// An account is a *second* root and never the only one, which is why this sits beside
-    /// `connectS3` rather than replacing it: a key scoped to one bucket cannot make this call at
-    /// all, and the bucket-rooted connection it does use is untouched by any of this.
-    @discardableResult
-    func connectS3Account(account: S3Account, secretAccessKey: String) -> S3AccountBackend {
-        let transport = S3AccountCurlTransport(
-            account: account,
-            secretAccessKey: secretAccessKey
-        )
-        let backend = S3AccountBackend(account: account, transport: transport)
-        lock.lock()
-        defer { lock.unlock() }
-        s3AccountConnections[account.descriptor] = backend
-        return backend
     }
 
     /// Drop the cached mount for the archive at `archivePath`, so its next list/stat re-reads it
@@ -298,21 +216,6 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         throw VFSError.unsupported(.noBackendForPath(path: "\(path)"))
     }
 
-    private func connectedS3Account(for backendID: VFSBackendID) throws -> S3AccountBackend {
-        guard let backend = s3AccountBackend(for: backendID) else {
-            throw VFSError.unsupported(.serverNotConnected(server: "\(backendID)"))
-        }
-        return backend
-    }
-
-    /// The connected S3 account backend for `backendID`, or `nil` when there's no live connection —
-    /// the non-throwing lookup `capabilities(for:)` needs (it must never throw and must stay cheap).
-    private func s3AccountBackend(for backendID: VFSBackendID) -> S3AccountBackend? {
-        lock.lock()
-        defer { lock.unlock() }
-        return s3AccountConnections[backendID.rawValue]
-    }
-
     /// The connected backend that can attach a **precondition** to a write at `path`, or `nil` when
     /// nothing here can (PLAN.md §M21 Slice 18).
     ///
@@ -328,54 +231,6 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
     func conditionalWriter(for path: VFSPath) -> S3Backend? {
         guard path.backend.isS3 else { return nil }
         return s3Backend(for: path.backend)
-    }
-
-    private func connectedS3(for backendID: VFSBackendID) throws -> S3Backend {
-        guard let backend = s3Backend(for: backendID) else {
-            throw VFSError.unsupported(.serverNotConnected(server: "\(backendID)"))
-        }
-        return backend
-    }
-
-    /// The connected S3 backend for `backendID`, or `nil` when there's no live connection — the
-    /// non-throwing lookup `capabilities(for:)` needs (it must never throw and must stay cheap).
-    ///
-    /// Internal rather than private for `CompositeBackend+Transfer`'s cross-bucket route, which
-    /// asks the same question of the *destination* (Swift's `private` does not cross files).
-    func s3Backend(for backendID: VFSBackendID) -> S3Backend? {
-        lock.lock()
-        defer { lock.unlock() }
-        return s3Connections[backendID.rawValue]
-    }
-
-    private func connectedFTP(for backendID: VFSBackendID) throws -> FTPBackend {
-        guard let backend = ftpBackend(for: backendID) else {
-            throw VFSError.unsupported(.serverNotConnected(server: "\(backendID)"))
-        }
-        return backend
-    }
-
-    /// The connected FTP backend for `backendID`, or `nil` when there's no live connection — the
-    /// non-throwing lookup `capabilities(for:)` needs (it must never throw and must stay cheap).
-    private func ftpBackend(for backendID: VFSBackendID) -> FTPBackend? {
-        lock.lock()
-        defer { lock.unlock() }
-        return ftpConnections[backendID.rawValue]
-    }
-
-    private func connectedSFTP(for backendID: VFSBackendID) throws -> SFTPBackend {
-        guard let backend = sftpBackend(for: backendID) else {
-            throw VFSError.unsupported(.serverNotConnected(server: "\(backendID)"))
-        }
-        return backend
-    }
-
-    /// The connected SFTP backend for `backendID`, or `nil` when there's no live connection — the
-    /// non-throwing lookup `capabilities(for:)` needs (it must never throw and must stay cheap).
-    private func sftpBackend(for backendID: VFSBackendID) -> SFTPBackend? {
-        lock.lock()
-        defer { lock.unlock() }
-        return sftpConnections[backendID.rawValue]
     }
 
     /// One mounted archive and the file it was read from.

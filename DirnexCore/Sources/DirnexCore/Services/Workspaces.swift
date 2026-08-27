@@ -1,17 +1,35 @@
 import Foundation
 
-/// One tab saved inside a workspace pane: the directory it shows and how it's sorted
-/// (PLAN.md §M3 "Workspaces: save/restore both panels with all tabs"). Deliberately lighter
-/// than the app's `PersistedTab` — column geometry is a per-tab view nicety the app restores
-/// to its default rather than a part of a named workspace's identity.
+/// One tab saved inside a workspace pane: the directory it shows, how it's sorted, and — when it
+/// shows a connected account — where to reconnect (PLAN.md §M3 "Workspaces: save/restore both
+/// panels with all tabs"). Deliberately lighter than the app's `PersistedTab` — column geometry is
+/// a per-tab view nicety the app restores to its default rather than a part of a named workspace's
+/// identity.
+///
+/// The endpoint is not view state and is not a nicety: without it a workspace saved on a server is
+/// a workspace that opens somewhere else, which is the whole of what
+/// docs/LOCATION-SUPPORT.md ▸ "Session restore and workspaces drop remote tabs" is about. It holds
+/// no secret — the coordinates and the auth *method*, exactly as ``ServerConnection`` argues is safe
+/// as plain JSON — and a workspace is more explicitly the user's than a session is: they named it.
 public struct WorkspaceTab: Sendable, Equatable, Codable {
     public let path: VFSPath
     public let sort: FileSort
+    /// Where to reconnect before this tab can list, for a tab on a connected account; absent for
+    /// every local one. Read it through ``serverEndpoint``.
+    public let endpoint: StoredServerEndpoint?
 
-    public init(path: VFSPath, sort: FileSort = .default) {
+    public init(path: VFSPath, sort: FileSort = .default, endpoint: ServerEndpoint? = nil) {
         self.path = path
         self.sort = sort
+        // `map`, so a local tab writes no field at all rather than a null — and so a `nil` read back
+        // out of one of these can only ever mean "stored, and unreadable by this build".
+        self.endpoint = endpoint.map(StoredServerEndpoint.init)
     }
+
+    /// The endpoint to reconnect, or `nil` for a local tab — and for one whose stored endpoint this
+    /// build cannot read, which ``StoredServerEndpoint`` deliberately degrades to rather than
+    /// throwing the whole workspace away.
+    public var serverEndpoint: ServerEndpoint? { endpoint?.endpoint }
 }
 
 /// One pane's saved state within a workspace: its ordered tabs and which one was active.

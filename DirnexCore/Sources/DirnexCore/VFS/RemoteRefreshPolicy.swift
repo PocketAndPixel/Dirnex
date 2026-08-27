@@ -134,8 +134,10 @@ public enum RemoteRefreshPolicy {
         backend: VFSBackendID
     ) -> TimeInterval? {
         guard polls(backend) else { return nil }
+        // Asked through `contactsServersUnasked` rather than by comparing to zero, so the poll and
+        // session restore cannot drift into two readings of the one number Settings shows.
+        guard contactsServersUnasked(floor: floor) else { return nil }
         let floor = clampedFloor(floor)
-        guard floor > 0 else { return nil }
         guard let duration, duration.isFinite, duration > 0 else { return floor }
         return max(floor, duration / dutyCycle)
     }

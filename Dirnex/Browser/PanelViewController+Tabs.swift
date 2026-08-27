@@ -14,7 +14,13 @@ extension PanelViewController {
     /// restored from disk) is loaded from scratch; a tab we're returning to renders its
     /// stored cursor/marks/filter instantly, then refreshes in the background so it is
     /// current after having been unwatched while inactive.
-    func activateTab() {
+    ///
+    /// `unasked` is passed only by `viewDidLoad`, which is the one activation nobody performed: it
+    /// travels to `navigate`, where it decides whether a restored server tab may open its connection
+    /// and whether a failed listing is worth an alert. Every other caller here is a gesture — opening,
+    /// closing or switching a tab, or applying a workspace — so a tab that came back disconnected
+    /// connects the moment somebody switches to it.
+    func activateTab(unasked: Bool = false) {
         // The one funnel every tab change goes through — switching, closing, restoring — so a
         // server-side size walk started in the tab being left is abandoned here rather than at each
         // caller (PLAN.md §M21 Slice 11). Harmless on the first activation, when nothing is in
@@ -39,7 +45,7 @@ extension PanelViewController {
             // them off must not inherit the outgoing tab's column.
             updateSizeVisualization()
         } else {
-            navigate(to: panel.path)
+            navigate(to: panel.path, unasked: unasked)
         }
         // Re-point the remote poll at whichever tab is now on screen. It cannot ride
         // `refreshActiveDirectory` the way the FSEvents watcher does: that returns early for exactly

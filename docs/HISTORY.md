@@ -12464,3 +12464,48 @@ inside a writable archive. A **nested** archive stays read-only, since its bytes
 temp copy. (Its other loose end, PLAN.md §6's derived-data clause,
 closed on 08-09 too — measuring the three leaks it named found none of them real and found a fourth
 that was ours, so it was fixed rather than documented: §M19 ▸ Follow-up above.)
+
+**Session restore and workspaces keeping remote tabs — the next gap on
+[LOCATION-SUPPORT.md](LOCATION-SUPPORT.md)'s ranked list — landed 2026-08-27.** Quit with four bucket
+tabs open and they came back as one Home tab; so did a browsed `.zip`. The place had always been
+written down (a `PersistedTab` carries the account's whole descriptor); what was missing was the way
+*back* to it, since a `VFSBackendID` is host, user, port and region and says nothing about the auth
+method or an FTPS certificate somebody trusted. So the fix is a field rather than a mechanism:
+`PersistedTab` and `WorkspaceTab` carry the ``ServerEndpoint``, which holds no secret — the argument
+``ServerConnection`` already makes for its own JSON — and is deliberately independent of the sidebar,
+so a server connected once from the Connect sheet restores as readily as a named one and deleting a
+saved row does not close anybody's tabs.
+
+Three measurements shaped it rather than confirming it. **Registering a connection costs no round
+trip** — `connectSFTP`/`connectFTP`/`connectS3` build a transport and file it under a descriptor,
+and the network is in the listing that follows — so the reconnect is synchronous, needs none of the
+connect flow's corrections (a restored bucket's path is already the one an earlier connect settled
+on), and separates its two failures: no secret to register with, versus a server that will not
+answer. **The seam is `navigate`, not `activateTab`**, so switching to a tab, clicking a crumb, ⌘L
+and back/forward are one definition of "open this place again" — which is also what gives a tab that
+came back disconnected a way out with no new UI. And the launch activation is marked **unasked**,
+deciding two things and only for it: whether a server may be contacted at all, since Settings ▸
+Panels promises in so many words that a floor of 0 means *never contact a server unasked* and a
+relaunch is unasked however true it is that the tab was left open; and whether a failed listing is
+worth an alert, which by the "who is waiting?" rule it is not — the pane says it on the status line
+instead, measured at **273 pt English / 301.5 pt French** worst case against a 542 pt pane.
+
+`TabRestorePolicy` is the pure half: what each tab *needs* first — a directory, an archive **file**
+(never the tab's own path, which for a tab three folders into a zip exists nowhere), or a connection
+— with the app supplying only whether the disk agrees. It refuses a remote path whose stored endpoint
+is not that path's backend, since the two are separate fields of hand-editable JSON and the failure
+would be a plausible listing under the wrong name. A tab inside a **nested** archive is refused on the
+way *down*, where the fact is still known: its file is a temp extraction and the registry that knows
+so is session-scoped. `StoredServerEndpoint` degrades an unreadable endpoint to `nil` rather than
+throwing, because a pane's tabs are one JSON array and a throw would empty the pane rather than drop
+a tab — the trap `PersistedTab.viewMode` avoided with a raw string, on a value that cannot be one.
+
+Verified against a throwaway local `sshd` and a real `.zip`, with the **server's own log** as the
+independent judge. At the default floor the restored SFTP tab reconnected at launch and came back with
+its cursor on a file that exists only on the server, while the archive tab's came back on one that
+exists only inside the zip — a cursor `persistState` can only write if the listing actually landed. At
+floor 0 the same launch left that log **0 bytes**, and one scripted Go Up put an `Accepted publickey`
+in it: the promise and its escape hatch, measured on one running app. `CompositeBackend` gained an
+endpoint memory and, with it, a split — `CompositeBackend+Connect.swift` now owns *a connection
+existing* while the original owns which backend a path belongs to, by concept rather than by the
+twelve lines that were left under the file ceiling.

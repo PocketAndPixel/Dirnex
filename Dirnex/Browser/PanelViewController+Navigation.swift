@@ -210,7 +210,23 @@ extension PanelViewController {
     /// back/forward history (PLAN.md §M3) unless `recordHistory` is `false` — the flag
     /// back/forward/jump navigation passes so walking the trail doesn't append to it.
     /// Internal so `PanelViewController+Tabs` can load a freshly opened tab.
-    func navigate(to path: VFSPath, focus child: VFSPath? = nil, recordHistory: Bool = true) {
+    ///
+    /// `unasked` marks the **one** navigation nobody performed: the launch activation of a restored
+    /// tab. It decides two things and only for that case — whether a restored server tab may open
+    /// its connection (Settings ▸ Panels promises a floor of 0 means "never contact a server
+    /// unasked"), and whether a failure is worth an alert (`presentLoadFailure`'s own rule: with
+    /// nobody waiting for the answer, the pane is where it goes). Every gesture leaves it `false`,
+    /// which is what gives a tab that came back disconnected a way out — clicking it, clicking a
+    /// crumb, ⌘L, back/forward all connect.
+    func navigate(
+        to path: VFSPath,
+        focus child: VFSPath? = nil,
+        recordHistory: Bool = true,
+        unasked: Bool = false
+    ) {
+        // A refusal here has already rendered the pane and invalidated whatever was in flight, so
+        // there is nothing left for this navigation to do.
+        guard canListAfterReconnecting(to: path, unasked: unasked) else { return }
         loadToken += 1
         // Whatever this pane was paying a server to measure, it has stopped looking at. A local
         // walk is untracked and deliberately survives — see `PanelViewController+Sizing`.
@@ -274,6 +290,8 @@ extension PanelViewController {
                 // for every other navigation.
                 applyPendingRestore(toTab: tabIndex)
                 tabs[tabIndex].hasLoaded = true
+                // Whatever the pane was explaining is now answered by the rows themselves.
+                tabs[tabIndex].offlineReason = nil
                 if wasResults { tabs[tabIndex].clearResultsIdentity() }
                 if wasVirtual {
                     // Leaving a virtual results pane for a real directory starts a fresh trail —
@@ -297,7 +315,13 @@ extension PanelViewController {
                 host?.panelDidNavigate(self)
             } catch {
                 guard token == loadToken else { return }
-                presentLoadFailure(error, path: path)
+                // An unasked load is a restore, and a restore has nobody waiting for its answer —
+                // so it reports on the pane rather than over a window that may still be coming up.
+                if unasked {
+                    recordRestoreFailure(error, in: tabs[tabIndex])
+                } else {
+                    presentLoadFailure(error, path: path)
+                }
             }
         }
     }

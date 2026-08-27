@@ -140,6 +140,27 @@ final class PanelTab {
         mergedSources = []
     }
 
+    /// The account this **restored** tab has to reconnect before it can list, for a tab that came
+    /// back on a connected server (docs/LOCATION-SUPPORT.md ▸ "Session restore and workspaces drop
+    /// remote tabs"). `nil` for every local and archive tab, and for one whose connection is
+    /// already live.
+    ///
+    /// Kept after a successful reconnect rather than consumed, and that is deliberate: it costs
+    /// nothing (`CompositeBackend.isConnected` short-circuits ahead of it) and it is what the next
+    /// `persistState` writes back down for a tab the user never activated — otherwise a session
+    /// with five server tabs, of which one was looked at, would come back with one.
+    var pendingConnection: ServerEndpoint?
+    /// Why this tab is showing nothing, drawn on the status line until it lists — set only when a
+    /// **restored** tab could not be brought back and the app therefore has nobody to tell.
+    ///
+    /// A restore is a load the app performs on its own schedule, so the load-failure sheet is
+    /// withheld for it: nobody is waiting for the answer, and an alert over a window that is still
+    /// coming up is the shape docs/NOTES.md calls out as the one to withhold rather than relocate.
+    /// The pane is where it can be seen, and it is not transient — a sentence that clears itself
+    /// after four seconds would be gone before the window finished opening. Cleared by the load
+    /// that succeeds, so re-entering the tab and connecting removes it with nothing to reset.
+    var offlineReason: TabOfflineReason?
+
     /// Whether this tab still has a restored cursor or marks waiting to be anchored.
     var hasPendingRestore: Bool {
         pendingCursorPath != nil || pendingCursorOnParent || pendingMarkPaths != nil
