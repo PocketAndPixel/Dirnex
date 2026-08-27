@@ -23,6 +23,9 @@ enum SFTPListingParser {
         let byteSize: Int64
         let modificationDate: Date
         let permissions: UInt16
+        /// Owner and group as the *server* spelled them — see ``FileEntry/ownerName``.
+        let ownerName: String
+        let groupName: String
         let symlinkDestination: String?
     }
 
@@ -51,6 +54,8 @@ enum SFTPListingParser {
             byteSize: row.byteSize,
             modificationDate: row.modificationDate,
             permissions: row.permissions,
+            ownerName: row.ownerName,
+            groupName: row.groupName,
             symlinkDestination: row.symlinkDestination.map(lastComponent(of:))
         )
     }

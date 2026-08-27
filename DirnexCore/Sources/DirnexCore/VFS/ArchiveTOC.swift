@@ -19,6 +19,16 @@ public struct ArchiveTOC: Sendable, Equatable {
         public let kind: FileEntry.Kind
         public let byteSize: Int64
         public let modificationDate: Date
+        /// The member's stored mode, or `nil` for a directory this parser had to **synthesize**
+        /// because the archive omitted its entry — there is no row to read a mode from.
+        public let permissions: UInt16?
+        /// Owner and group as `bsdtar` printed them, or `nil` for a synthesized directory.
+        ///
+        /// Note these change *shape* with the archive format rather than with the tool: a tar stores
+        /// `uname`/`gname` and prints `oleg   wheel`, while a zip stores neither and falls back to
+        /// the bare numbers `501    0`. Text either way — see ``FileEntry/ownerName``.
+        public let ownerName: String?
+        public let groupName: String?
         public let symlinkDestination: String?
 
         public init(
@@ -26,12 +36,18 @@ public struct ArchiveTOC: Sendable, Equatable {
             kind: FileEntry.Kind,
             byteSize: Int64,
             modificationDate: Date,
+            permissions: UInt16? = nil,
+            ownerName: String? = nil,
+            groupName: String? = nil,
             symlinkDestination: String? = nil
         ) {
             self.name = name
             self.kind = kind
             self.byteSize = byteSize
             self.modificationDate = modificationDate
+            self.permissions = permissions
+            self.ownerName = ownerName
+            self.groupName = groupName
             self.symlinkDestination = symlinkDestination
         }
     }

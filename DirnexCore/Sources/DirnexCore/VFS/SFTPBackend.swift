@@ -350,6 +350,8 @@ public struct SFTPBackend: RemoteTransportBackend {
             creationDate: parsed.modificationDate,
             isHidden: name.hasPrefix("."),
             permissions: parsed.permissions,
+            ownerName: parsed.ownerName,
+            groupName: parsed.groupName,
             inode: 0,
             symlinkDestination: parsed.symlinkDestination,
             // `sftp` doesn't resolve a symlink's target; report a nominal file target so it renders

@@ -28,14 +28,40 @@ public struct FileEntry: Sendable, Hashable, Identifiable {
     public let creationDate: Date
     /// Dotfile, or carrying the `UF_HIDDEN` BSD flag.
     public let isHidden: Bool
-    /// POSIX permission bits (`mode & 0o777`).
-    public let permissions: UInt16
+    /// POSIX permission bits (`mode & 0o777`), or `nil` where the source reported none.
+    ///
+    /// Optional because a mode is a fact some backends simply do not have, and `0` cannot stand in
+    /// for its absence: `chmod 000` is a legal mode, so a sentinel would make an unreadable file
+    /// indistinguishable from an object store that has no modes at all. `sftp`'s `ls -la` and FTP's
+    /// Unix `LIST` report a real one; S3 and FTP's DOS/IIS dialect report nothing.
+    ///
+    /// It was a non-optional `UInt16` until M24 Slice 7, and those two backends synthesized
+    /// `0o755`/`0o644` for it — under a comment explaining that `0` "would render every remote row
+    /// as unreadable in the permissions column". There is no permissions column: the panel draws
+    /// `name`, `size` and `date`. So the invented value was harmless for exactly as long as nothing
+    /// displayed it, and Get Info is the reader that would have — drawing a mode the server never
+    /// reported, in the one surface whose whole job is to say what is true.
+    public let permissions: UInt16?
     /// Owning user id (`st_uid`). Free on a local listing — the `stat` already read it — and the
     /// value the attributes panel and `AttributePrivilege` need to answer "do I own this file?"
     /// (PLAN.md §M14 Slice 3). Zero for a backend with no POSIX ownership (archives, remotes).
     public let ownerID: UInt32
     /// Owning group id (`st_gid`); same provenance as ``ownerID``.
     public let groupID: UInt32
+    /// The owning user exactly as the **source** spelled it, or `nil` where it reported none.
+    ///
+    /// A string rather than an id, and deliberately never resolved. `sftp`'s `ls -la` and FTP's Unix
+    /// `LIST` print a *name* (`oleg     staff`); `bsdtar -tvf` prints a name for a tar and a bare
+    /// number for a zip, which stores no owner names — so even one tool's answer changes shape with
+    /// the format, with nothing in the column saying which it is. What they share is that the text
+    /// means something on *that* machine and nothing on this one.
+    ///
+    /// Which is why it does not feed ``ownerID``. Resolving a server's `501` through this Mac's
+    /// `getpwuid` would draw the local account of the person reading the panel over a file belonging
+    /// to a stranger — a plausible answer to a question nobody asked.
+    public let ownerName: String?
+    /// The owning group as the source spelled it; same provenance and same caveats as ``ownerName``.
+    public let groupName: String?
     /// The raw BSD file flags word (`st_flags`) — the same read that already yields ``isHidden`` and
     /// ``isDataless``. Kept whole here so the attributes panel can show and edit the individual flags
     /// (Finder's "Locked" is `UF_IMMUTABLE`) without a second `stat`. Zero where a backend has none.
@@ -85,9 +111,11 @@ public struct FileEntry: Sendable, Hashable, Identifiable {
         modificationDate: Date,
         creationDate: Date,
         isHidden: Bool,
-        permissions: UInt16,
+        permissions: UInt16?,
         ownerID: UInt32 = 0,
         groupID: UInt32 = 0,
+        ownerName: String? = nil,
+        groupName: String? = nil,
         flags: UInt32 = 0,
         inode: UInt64,
         symlinkDestination: String? = nil,
@@ -105,6 +133,8 @@ public struct FileEntry: Sendable, Hashable, Identifiable {
         self.permissions = permissions
         self.ownerID = ownerID
         self.groupID = groupID
+        self.ownerName = ownerName
+        self.groupName = groupName
         self.flags = flags
         self.inode = inode
         self.symlinkDestination = symlinkDestination
@@ -185,10 +215,16 @@ public struct FileEntry: Sendable, Hashable, Identifiable {
             creationDate: creationDate,
             isHidden: isHidden,
             permissions: permissions,
+            ownerID: ownerID,
+            groupID: groupID,
+            ownerName: ownerName,
+            groupName: groupName,
+            flags: flags,
             inode: inode,
             symlinkDestination: symlinkDestination,
             symlinkTargetKind: symlinkTargetKind,
-            isDataless: isDataless
+            isDataless: isDataless,
+            entityTag: entityTag
         )
     }
 }

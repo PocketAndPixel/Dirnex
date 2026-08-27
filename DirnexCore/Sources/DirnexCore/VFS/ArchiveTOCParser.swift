@@ -26,6 +26,9 @@ enum ArchiveTOCParser {
         let kind: FileEntry.Kind
         let byteSize: Int64
         let modificationDate: Date
+        let permissions: UInt16?
+        let ownerName: String
+        let groupName: String
         let symlinkDestination: String?
     }
 
@@ -51,6 +54,9 @@ enum ArchiveTOCParser {
                 kind: raw.kind,
                 byteSize: raw.byteSize,
                 modificationDate: raw.modificationDate,
+                permissions: raw.permissions,
+                ownerName: raw.ownerName,
+                groupName: raw.groupName,
                 symlinkDestination: raw.symlinkDestination
             )
             synthesizeAncestors(of: raw.components, into: &nodeByPath, directories: &isDirectory)
@@ -102,7 +108,10 @@ enum ArchiveTOCParser {
                     name: entry.name,
                     kind: .directory,
                     byteSize: entry.byteSize,
-                    modificationDate: entry.modificationDate
+                    modificationDate: entry.modificationDate,
+                    permissions: entry.permissions,
+                    ownerName: entry.ownerName,
+                    groupName: entry.groupName
                 )
             } else {
                 resolved = entry
@@ -152,6 +161,15 @@ enum ArchiveTOCParser {
             kind: kind,
             byteSize: byteSize,
             modificationDate: date,
+            // Only when column 0 really is a mode field. This parser deliberately accepts *any*
+            // first column where `ColumnarListing.unixRow` requires one, so an unrecognized column
+            // has to answer `nil` rather than the `0` the bit reader would return — `0o000` is a
+            // legal mode, and reporting it would invent an unreadable file.
+            permissions: ColumnarListing.isModeField(columns[0])
+                ? ColumnarListing.permissions(fromMode: columns[0])
+                : nil,
+            ownerName: String(columns[2]),
+            groupName: String(columns[3]),
             symlinkDestination: symlinkDestination
         )
     }

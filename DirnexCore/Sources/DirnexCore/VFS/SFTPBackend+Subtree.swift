@@ -80,6 +80,8 @@ public extension SFTPBackend {
             creationDate: row.modificationDate,
             isHidden: name.hasPrefix("."),
             permissions: row.permissions,
+            ownerName: row.ownerName,
+            groupName: row.groupName,
             inode: 0,
             symlinkDestination: row.symlinkDestination,
             symlinkTargetKind: row.kind == .symlink ? .file : nil

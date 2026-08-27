@@ -334,7 +334,7 @@ child ~71 ms (PLAN.md §M25, smaller than a milestone).
 
 | Functionality | Local | Cloud mount | Archive | SFTP | FTP | S3 | S3 acct | Results | Trash |
 |---|---|---|---|---|---|---|---|---|---|
-| Get Info: permissions, flags, dates | yes | yes | **no**<sup>tt</sup> | **no**<sup>tt</sup> | **no**<sup>tt</sup> | n/a | n/a | yes<sup>ee</sup> | yes<sup>ee</sup> |
+| Get Info: permissions, flags, dates | yes | yes | read-only<sup>tt</sup> | read-only<sup>tt</sup> | read-only<sup>tt</sup> | read-only<sup>tt</sup> | read-only<sup>tt</sup> | yes<sup>ee</sup> | yes<sup>ee</sup> |
 | Get Info: ACLs, extended attributes | yes | yes | n/a | n/a | n/a | n/a | n/a | yes<sup>ee</sup> | yes<sup>ee</sup> |
 | Privilege escalation for a root-only change | yes | yes | n/a | n/a | n/a | n/a | n/a | yes | yes |
 | Finder tags (`⌃T`, tag dots) | yes | yes | n/a | n/a | n/a | n/a | n/a | yes<sup>ee</sup> | yes<sup>ee</sup> |
@@ -393,11 +393,21 @@ about the auth method — which is exactly the gap `PersistedTab` closed by carr
 `StoredServerEndpoint`, so the same fix one type along is what would make the pin reconnect (PLAN.md
 §M25, smaller than a milestone).
 
-<sup>tt</sup> The SFTP and FTP listings already carry mode, owner, group and modification date into
-`FileEntry`; the panel refuses to draw them. Reading them is PLAN.md §M24 Slice 7 and *editing* them
-is §M25, because the two fail differently — a panel showing a mode it cannot change is honest, and
-one offering a change it cannot make is not. An archive member has attributes in its header and no
-way to write them back short of a repack.
+<sup>tt</sup> Read-only since M24 Slice 7: a row that is not on this Mac opens
+`RemoteAttributesController`, which states **what the listing actually reported** and nothing else.
+*Editing* is §M25, because the two fail differently — a panel showing a mode it cannot change is
+honest, and one offering a change it cannot make is not.
+
+What each backend reports differs, and the panel says so rather than filling a gap: `sftp`'s
+`ls -la` and FTP's Unix `LIST` carry a real mode plus an owner and group **as the server spelled
+them** (text, never resolved against this Mac's `getpwuid`); an archive carries whatever `bsdtar`
+prints, which is names for a tar and bare numbers for a zip, and nothing at all for a directory the
+archive omitted; and S3 and FTP's DOS/IIS dialect report **no mode, owner or group whatsoever**, so
+those rows are absent and a note explains why. `FileEntry.permissions` is optional for exactly this
+reason — the two backends with no mode used to synthesize `0o755`/`0o644`, which was invisible only
+because nothing drew it. No remote listing carries an ACL, an extended attribute, an access time or
+a birth time, so those are limits rather than gaps. A marked set that is not all local is refused,
+because the bulk panel is an editor.
 
 <sup>uu</sup> A vault is an encrypted disk image that macOS mounts as a volume, so it is a *local*
 thing by construction; `hdiutil` cannot attach one over SFTP, FTP or S3. Copying the image file to a

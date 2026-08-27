@@ -203,7 +203,10 @@ public enum S3ListingParser {
             modificationDate: modified,
             creationDate: modified,
             isHidden: name.hasPrefix("."),
-            permissions: kind == .directory ? 0o755 : 0o644,
+            // S3 has no POSIX metadata whatever: no mode, no owner, no group. This answered
+            // `0o755`/`0o644` until M24 Slice 7, which was invisible while nothing displayed it and
+            // would have had Get Info state a mode Amazon never reported.
+            permissions: nil,
             ownerID: 0,
             groupID: 0,
             flags: 0,

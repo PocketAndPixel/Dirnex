@@ -41,6 +41,18 @@ at build time.
 
 ## Live verification
 
+- **A tab seeded with `defaults write -string` is silently not restored, because `TabPersistence`
+  reads `data(forKey:)`.** The pane falls back to Home, the app looks perfectly healthy, and nothing
+  logs — so the gesture under test runs against a *local* row and reports whatever a local row does.
+  Seed with `-data <hex>` (`python3 -c "print(open(f,'rb').read().hex())"`). Cost two runs on M24
+  Slice 7, and the tell was a **false witness**: the throwaway server's log showed sessions, which
+  were the probe's own earlier `sftp` calls rather than the app's — this file's own rule that a
+  session count is not evidence, met from the other side. Read the pane's *backend* instead, which
+  one `NSLog` in the gesture answers outright.
+  - Order matters as much as the encoding: **Dirnex rewrites its session on quit**, so a seed written
+    while the app is still running, or before a quit that has not finished, is overwritten by the
+    state being torn down. Quit, wait for the process to be gone, *then* seed, then launch.
+
 - **Fully quit a running Dirnex before relaunching.** `open` re-focuses the stale process, so
   new menu items and behavior silently don't appear. A Debug build's code lives in
   `Dirnex.debug.dylib`, not the thin executable — grep the dylib to confirm new code actually
@@ -2777,6 +2789,32 @@ against a fake.
     (`ProcessWaitingReapTests`, whose negative control fails that one test at 63 ms and leaves its
     three narrowness controls green).
 
+### Owner, group and mode in a columnar listing
+
+The same four parsers that share the date reader share these columns, and all three fields are
+less trustworthy than they look. Measured 2026-08-27/28 against a live `sshd` and libarchive 3.7.4.
+
+- **Owner and group are opaque text whose *type* changes with the format, not with the tool.**
+  `sftp`'s `ls -la` and FTP's Unix `LIST` print **names** (`oleg     staff`); the SSH `find` walk runs
+  `ls -ldn` and prints **numbers**; and `bsdtar -tvf` prints names for a **tar** and bare numbers for a
+  **zip**, because a zip stores no owner names — same tool, same file, two shapes, with nothing in the
+  row saying which. So the only honest model is a `String` (``FileEntry/ownerName``), and it must
+  never feed a numeric `ownerID`: resolving a server's `501` through this Mac's `getpwuid` draws the
+  local account of whoever is reading over a file belonging to a stranger, which is a plausible answer
+  to a question nobody asked. FTP's DOS/IIS dialect has no such columns at all.
+- **`ls(1)` overloads each class's execute column, so reading the glyph as a plain execute bit is
+  lossy in four cases.** `s` is set-uid *and* execute, `S` is set-uid *without* it, and the other
+  class spells the sticky bit `t`/`T` the same way. Harmless while nothing draws a remote mode;
+  a `rwsr-xr-x` binary shown as `rwxr-xr-x` disclaims the one bit anybody inspects a remote binary
+  for. `POSIXPermissions` already stores and renders all twelve bits, so being exact costs a lookup
+  table. Verified against the OS: the parser fed a real server's bytes now agrees with this Mac's own
+  `lstat` on every file, `setuid.bin` at **4755** and a sticky directory at **1777** included — and
+  the old reader disagrees on exactly those two, which is what makes the agreement evidence.
+- **`bsdtar -tvf` prints a real mode and `ArchiveTOCParser` used only the leading kind character**,
+  so a browsed archive answered an invented `0o755`/`0o644` while the real one sat in column 0. A
+  directory the archive *omitted* has no row at all and is synthesized, so it honestly has no mode —
+  which is the same distinction the whole slice rests on, arriving inside one backend.
+
 ### Parsing a year-less timestamp
 
 Every tool here prints a recent entry's date without a year (`MMM d HH:mm`) and an old one with
@@ -5266,6 +5304,27 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   pipelines satisfy both gates automatically, so this is a local-verification problem only.
 
 ## Design lessons that generalize
+
+- **A stand-in justified by a reader that does not exist is a bug waiting for its first reader, and
+  it is invisible until that reader arrives.** S3 and FTP's DOS/IIS dialect both synthesized
+  `0o755`/`0o644` for items that have no POSIX mode, each under a comment saying `0` "would render
+  every remote row as unreadable in the permissions column" — and the pane's columns are `name`,
+  `size` and `date`. There has never been a permissions column. The invented value was therefore
+  *correct-looking and unread* for two milestones, and the pass that finally displayed a remote mode
+  (M24 Slice 7's Get Info) would have presented it as the server's own word.
+  - **The tell is a comment that justifies a value by naming where it is drawn.** Grep for the
+    reader; if it does not exist, the value is unmeasured rather than safe. It is the mirror of this
+    file's other recurring shape — a check or a fix that lives only in prose — with the prose here
+    describing a *consumer* rather than a rule.
+  - **The fix is to make absence representable, and an `Optional` is what forces the next reader to
+    decide.** A sentinel could not work: `0` is a legal mode (`chmod 000`), so it cannot mean "not
+    reported" without making an unreadable file indistinguishable from an object store. Optional cost
+    almost nothing here — the only production reader was one pass-through, because the packer takes
+    its mode from a real `stat` — which is worth measuring before assuming the blast radius is why
+    the sentinel was chosen.
+  - **A field with no answer must be *absent* from a panel, not blank and not defaulted** — and it
+    then needs a sentence saying so, or a short panel reads as one that failed to load rather than as
+    a fact about the server.
 
 - **A place a tab can be restored to is not the same as a place it can be *reopened* to, and the
   difference is a field nobody was storing.** Session restore kept exactly the tabs it could list with

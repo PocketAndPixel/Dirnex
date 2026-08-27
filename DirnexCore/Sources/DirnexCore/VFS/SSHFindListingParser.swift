@@ -39,6 +39,10 @@ enum SSHFindListingParser {
         let byteSize: Int64
         let modificationDate: Date
         let permissions: UInt16
+        /// Owner and group as printed — **numeric** here, because the walk runs `ls -ldn` to avoid a
+        /// passwd lookup per row. Text either way; see ``FileEntry/ownerName``.
+        let ownerName: String
+        let groupName: String
         let symlinkDestination: String?
     }
 
@@ -82,6 +86,8 @@ enum SSHFindListingParser {
                 byteSize: row.byteSize,
                 modificationDate: row.modificationDate,
                 permissions: row.permissions,
+                ownerName: row.ownerName,
+                groupName: row.groupName,
                 symlinkDestination: row.symlinkDestination
             ))
         }

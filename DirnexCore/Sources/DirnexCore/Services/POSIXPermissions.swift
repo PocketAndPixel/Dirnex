@@ -4,9 +4,11 @@ import Foundation
 /// sticky bit — modeled so the attributes panel can toggle one checkbox without hand-masking, and
 /// so a `chmod` is expressed against a whole word rather than a literal (PLAN.md §M14 Slice 3).
 ///
-/// `FileEntry.permissions` keeps only the low nine bits (`mode & 0o777`) for the row's rendering;
-/// this type carries all twelve because the editor has to be able to show and change set-uid/gid and
-/// the sticky bit, which the row does not display.
+/// ``FileEntry/permissions`` carries the same twelve bits, or `nil` where the source reported no
+/// mode at all. It kept only the low nine until M24 Slice 7, which was enough while its one reader
+/// was a row that does not draw permissions — Get Info on a remote item reads it directly, and a
+/// set-uid binary whose `s` had been flattened to `x` would be a panel disclaiming the one bit
+/// anybody inspects a remote binary for.
 public struct POSIXPermissions: Sendable, Hashable, Codable {
     /// The classes a permission bit belongs to.
     public enum Class: Sendable, CaseIterable { case owner, group, other }

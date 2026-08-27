@@ -47,10 +47,31 @@ struct ColumnarListingTests {
         #expect(ColumnarListing.permissions(fromMode: "-rwxrwxrwx") == 0o777)
     }
 
-    @Test("a set-uid/sticky character counts as the bit being set")
-    func specialBitsCountAsSet() {
-        #expect(ColumnarListing.permissions(fromMode: "-rwsr-xr-x") == 0o755)
-        #expect(ColumnarListing.permissions(fromMode: "drwxrwxrwt") == 0o777)
+    /// `ls(1)` overloads each class's execute column, so the glyph carries two bits at once. This
+    /// used to flatten all four spellings to a plain execute bit, which was invisible while nothing
+    /// drew a remote mode; M24 Slice 7's Get Info draws it, and `rwsr-xr-x` shown as `rwxr-xr-x`
+    /// disclaims the one bit anybody inspects a remote binary for.
+    @Test("set-uid, set-gid and sticky are read exactly, execute bit and all")
+    func specialBitsAreExact() {
+        // Lowercase: the special bit *and* execute.
+        #expect(ColumnarListing.permissions(fromMode: "-rwsr-xr-x") == 0o4755)
+        #expect(ColumnarListing.permissions(fromMode: "-rwxr-sr-x") == 0o2755)
+        #expect(ColumnarListing.permissions(fromMode: "drwxrwxrwt") == 0o1777)
+        // Uppercase: the special bit *without* execute — the case the old reader could not express
+        // at all, since it inferred execute from the glyph being non-`-`.
+        #expect(ColumnarListing.permissions(fromMode: "-rwSr--r--") == 0o4644)
+        #expect(ColumnarListing.permissions(fromMode: "-rw-r-Sr--") == 0o2644)
+        #expect(ColumnarListing.permissions(fromMode: "drwxrwxrwT") == 0o1776)
+        // All three at once, to prove they are independent rather than one shared slot.
+        #expect(ColumnarListing.permissions(fromMode: "-rwsrwsrwt") == 0o7777)
+    }
+
+    /// The narrowness control: an ordinary mode must gain nothing from the special-bit pass.
+    @Test("a mode with no special glyph is unchanged by the special-bit pass")
+    func ordinaryModesGainNothing() {
+        for field in ["-rw-r--r--", "drwxr-xr-x", "-rwxrwxrwx", "----------"] {
+            #expect(ColumnarListing.permissions(fromMode: field[...]) & 0o7000 == 0)
+        }
     }
 
     @Test("a too-short mode field yields no bits rather than reading past its end")

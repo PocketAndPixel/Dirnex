@@ -85,7 +85,9 @@ public struct FTPBackend: RemoteTransportBackend {
             modificationDate: FileEntry.unknownDate,
             creationDate: FileEntry.unknownDate,
             isHidden: false,
-            permissions: 0o755,
+            // Nothing is asked of the server for a root, so nothing about it has been reported —
+            // including its mode. `0o755` here was a guess with no row behind it.
+            permissions: nil,
             inode: 0,
             symlinkDestination: nil,
             symlinkTargetKind: nil
@@ -360,6 +362,8 @@ public struct FTPBackend: RemoteTransportBackend {
             creationDate: parsed.modificationDate,
             isHidden: name.hasPrefix("."),
             permissions: parsed.permissions,
+            ownerName: parsed.ownerName,
+            groupName: parsed.groupName,
             inode: 0,
             symlinkDestination: parsed.symlinkDestination,
             // The target's kind is not knowable without another round trip; report a nominal file

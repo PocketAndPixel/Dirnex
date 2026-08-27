@@ -67,7 +67,12 @@ public struct ArchiveBackend: VFSBackend {
             modificationDate: entry.modificationDate,
             creationDate: entry.modificationDate,
             isHidden: entry.name.hasPrefix("."),
-            permissions: entry.kind == .directory ? 0o755 : 0o644,
+            // What the archive stored, and `nil` for a directory whose entry the archive omitted
+            // and this parser synthesized. Invented `0o755`/`0o644` until M24 Slice 7, while
+            // `bsdtar -tvf` had been printing the real mode in column 0 all along.
+            permissions: entry.permissions,
+            ownerName: entry.ownerName,
+            groupName: entry.groupName,
             inode: 0,
             symlinkDestination: entry.symlinkDestination,
             // A symlink inside a browsed archive isn't resolved (its target may be another

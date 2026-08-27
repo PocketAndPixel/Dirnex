@@ -40,9 +40,24 @@ enum ColumnarListing {
         return "-dlbcsp".contains(first)
     }
 
-    /// Map the 9 permission characters (`rwxr-xr-x`) to POSIX mode bits. `s`/`S`/`t`/`T` (setuid,
-    /// setgid, sticky) are treated as a set bit — permissions from a remote listing are cosmetic
-    /// (row display), never enforced, so the approximation is harmless.
+    /// One class's execute column, and the special bit `ls(1)` overlays onto the same character.
+    private struct SpecialBitSlot {
+        let index: Int
+        let execute: UInt16
+        let flag: UInt16
+    }
+
+    /// Map the 9 permission characters (`rwxr-xr-x`) to a full `mode & 0o7777` word, `s`/`S`/`t`/`T`
+    /// included.
+    ///
+    /// The three execute positions are overloaded by `ls(1)`: `s` is set-uid *and* execute, `S` is
+    /// set-uid *without* it, and the other class spells the sticky bit `t`/`T` the same way. Reading
+    /// any of the four as a plain execute bit was harmless while this fed nothing but a row that does
+    /// not draw permissions; Get Info draws them, and a `rwsr-xr-x` binary rendered `rwxr-xr-x` is a
+    /// panel quietly disclaiming the one bit anybody inspects a remote binary *for*.
+    ///
+    /// ``POSIXPermissions`` already stores and renders all twelve bits, so being exact here costs a
+    /// lookup table and buys back a fact rather than an approximation.
     static func permissions(fromMode modeField: Substring) -> UInt16 {
         let characters = Array(modeField)
         guard characters.count >= 10 else { return 0 }
@@ -50,6 +65,20 @@ enum ColumnarListing {
         var bits: UInt16 = 0
         for (offset, weight) in weights.enumerated() where characters[offset + 1] != "-" {
             bits |= weight
+        }
+        // The execute column of each class, and the special bit its glyph also stands for. A struct
+        // rather than a 3-tuple, which SwiftLint's `large_tuple` forbids.
+        let special = [
+            SpecialBitSlot(index: 3, execute: 0o100, flag: 0o4000),
+            SpecialBitSlot(index: 6, execute: 0o010, flag: 0o2000),
+            SpecialBitSlot(index: 9, execute: 0o001, flag: 0o1000)
+        ]
+        for slot in special {
+            switch characters[slot.index] {
+            case "s", "t": bits |= slot.flag | slot.execute
+            case "S", "T": bits |= slot.flag; bits &= ~slot.execute
+            default: break
+            }
         }
         return bits
     }
@@ -138,6 +167,18 @@ enum ColumnarListing {
         let byteSize: Int64
         let modificationDate: Date
         let permissions: UInt16
+        /// Columns 2 and 3 — the owner and group **as the source spelled them**, verbatim.
+        ///
+        /// Read as text and never as an id, because that is what the column is: `sftp` and FTP's
+        /// Unix dialect print a name (`oleg     staff`), while `bsdtar -tvf` prints a name for a tar
+        /// and a bare number for a zip, which stores no owner names. Nothing in the row distinguishes
+        /// the two, and neither spelling means anything on this Mac — see ``FileEntry/ownerName``.
+        ///
+        /// They were read and dropped on the floor until M24 Slice 7, which is why every remote
+        /// `FileEntry` carried `ownerID == 0`: the information had been arriving in the same line as
+        /// the mode all along and only the struct stopped short of it.
+        let ownerName: String
+        let groupName: String
         /// The name field with any ` -> target` suffix removed, otherwise verbatim.
         let name: String
         /// The symlink target as printed, or `nil` for anything not a symlink carrying one.
@@ -185,6 +226,8 @@ enum ColumnarListing {
                 from: "\(columns[5]) \(columns[6]) \(columns[7])", formatters: formatters
             ),
             permissions: permissions(fromMode: columns[0]),
+            ownerName: String(columns[2]),
+            groupName: String(columns[3]),
             name: name,
             symlinkDestination: symlinkDestination
         )

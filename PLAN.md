@@ -567,6 +567,63 @@ Core first, app untouched until (2), as usual. Each lands runnable.
    group and modification date into `FileEntry`; `AttributesController` refuses to draw them. Read
    first and write in M25, because the two fail differently — a panel that shows a mode it cannot
    change is honest, and one that offers a change it cannot make is not.
+   **Landed 2026-08-28, and the premise above was half wrong — which is what the slice turned out to
+   be about.** Probed before any Swift: the listings carry mode and date, and **owner and group were
+   read and thrown away** — `ColumnarListing.unixRow` reads columns 0 and 4–7 and skipped 2 and 3, so
+   every remote `FileEntry` carried `ownerID == 0` while the answer had been arriving in the same line
+   as the mode since M5. And they are **names**, not ids (`oleg     staff`), which is why they could
+   never have gone into `ownerID`: `AttributesSnapshot` resolves an id through this Mac's `getpwuid`,
+   so a server's `501` would have drawn the local account of whoever is reading the panel over a file
+   belonging to a stranger.
+   **The finding that decided the design is that two backends *invented* a mode.** S3 and FTP's
+   DOS/IIS dialect both answered `0o755`/`0o644`, each under a comment explaining that `0` "would
+   render every remote row as unreadable in the permissions column" — and the columns are `name`,
+   `size` and `date`. There is no permissions column, and there never was: the fabrication was
+   harmless for exactly as long as nothing displayed it, and this slice is the reader that would have
+   drawn it as the server's own word. So `FileEntry.permissions` is now **optional**, because `0`
+   cannot stand in for the absence — `chmod 000` is a legal mode — and the compiler is what stops the
+   next display site inheriting a stand-in. The blast radius was one pass-through: `ArchiveSourceItem`
+   takes its mode from a real `stat`, so packing never read it.
+   Two things came out of it that the slice did not predict. The mode reader was **approximate** —
+   `s`/`S`/`t`/`T` were all read as a plain execute bit, which is fine for a row that draws no
+   permissions and wrong in a panel whose job is to state a fact, so a `rwsr-xr-x` binary would have
+   been disclaimed as `rwxr-xr-x`; it is exact now, and `POSIXPermissions` already stored and rendered
+   all twelve bits. And the **archive** was throwing its mode away too, using only the leading kind
+   character while `bsdtar -tvf` printed the real one in the same column — with the owner arriving as
+   *names* for a tar and *bare numbers* for a zip, which stores none, so even one tool's answer changes
+   shape with the format.
+   **A separate read-only panel rather than the four-tab one degraded**, because three of its four
+   tabs would have had nothing to say: no remote listing carries an ACL, an extended attribute, an
+   access time or a birth time. `RemoteAttributesController` is built on one rule — *a field with no
+   answer is absent, never blank and never a stand-in* — with notes that explain the absence, so a
+   short panel reads as a fact about the server rather than as a panel that failed to load. Which
+   rows it will draw is a pure `fields(for:)`, and which panel a selection deserves is a pure
+   `AttributesRoute`, so both are testable with nothing presented — a real window in the test host
+   makes it do real pane work and destabilizes its neighbours (docs/NOTES.md ▸ Testing).
+   The routing is **per row, not per pane**, which is the shape §M24 Slice 6 had already paid for in
+   the pack sources: a results tab holds hits from anywhere and a tree draws several directories at
+   once. That retired the `!isVirtualDirectory` gate in favour of `nameMatchesPath`, which is the
+   honest form of it — the old one refused every ordinary file standing beside iCloud's app rows, and
+   every hit in a results tab, for the sake of a handful of synthetic ones. A **mixed** marked set is
+   now refused rather than served short: the bulk panel is an editor, and the old local-only filter
+   quietly opened it over the local subset, editing fewer items than the user marked.
+   Controlled in nine directions, each failing only the tests that name it: S3 and the DOS dialect
+   inventing a mode again, the archive dropping its mode, `UnixRow` dropping owner and group, the
+   local-only filter back in `attributesTargets`, the route ignoring the backend, the panel drawing a
+   permissions row unconditionally — plus two narrowness controls that stayed green throughout (an
+   ordinary mode gains no special bits, and no entry produces an empty panel).
+   **Verified live against a throwaway `sshd`, with the OS as the independent judge.** The real
+   parser fed the real bytes a real server printed agreed with this Mac's own `lstat` on all six
+   files, including `setuid.bin` at **4755** and a sticky directory at **1777** — the two the old
+   approximating reader flattened to 0755 and 0777, which is the control that makes the agreement
+   evidence rather than a coincidence. Then the whole gesture in the built app, restored onto that
+   server: `targets=1` on a remote row (the old filter would have made it 0), the panel opened, and
+   it drew `mode=4755 owner=oleg group=wheel` — the server's own words, end to end.
+   One thing about the instrument is worth keeping: `TabPersistence` reads `data(forKey:)`, so a tab
+   seeded with `defaults write -string` is silently **not restored** and the pane falls back to Home.
+   It cost two runs, and the tell was a false one — the server's log showed sessions that were the
+   probe's own earlier `sftp` calls, which is this file's own warning that a session count is not
+   evidence, met from the other side. Seed with `-data <hex>`.
 
 **Deliberately not in scope.** Content-grep and tag search on a server, both withheld at M22 for
 the reason that has not changed — no remote backend can answer either without reading every file.
