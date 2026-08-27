@@ -201,6 +201,13 @@ public actor FileOperationQueue {
                         onProgress: { progressContinuation.yield($0) },
                         isCancelled: { control.checkpoint() }
                     )
+                case .materialize:
+                    report = MaterializeRunner.run(
+                        operation,
+                        using: backend,
+                        onProgress: { progressContinuation.yield($0) },
+                        isCancelled: { control.checkpoint() }
+                    )
                 }
                 progressContinuation.finish()
                 return report

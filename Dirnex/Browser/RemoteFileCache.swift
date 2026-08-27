@@ -88,6 +88,31 @@ final class RemoteFileCache {
     /// behind, since the editor still holds that same file and a second save must be compared
     /// against what *we* just wrote rather than against what was there before.
     func rebaseline(_ path: VFSPath, to revision: RemoteFileRevision, url: URL) {
+        record(path, url: url, revision: revision)
+    }
+
+    /// Take in the copies a queued `.materialize` job landed (PLAN.md §M24 Slice 2).
+    ///
+    /// The job runs in `DirnexCore`, which cannot see this object at all — so a bulk fetch produces
+    /// `MaterializedFile` values and the window hands them here, rather than the runner growing a
+    /// store of its own. That is the whole of "the cache stays the store": there is one dictionary,
+    /// one staleness rule, and every way in goes through ``record(_:url:revision:)``.
+    ///
+    /// Adopting is what makes the second gesture over the same rows free — mark four objects, run a
+    /// checksum, then ⌥F3 two of them, and only the first run transfers anything.
+    func adopt(_ files: [MaterializedFile]) {
+        for file in files {
+            record(
+                file.source,
+                url: URL(fileURLWithPath: file.localPath),
+                revision: file.revision
+            )
+        }
+    }
+
+    /// The one way an entry is filled. Private so that "no second way to be filled" is a property of
+    /// the type rather than a rule three call sites have to keep.
+    private func record(_ path: VFSPath, url: URL, revision: RemoteFileRevision) {
         fetched[path] = Entry(url: url, revision: revision)
     }
 
@@ -110,43 +135,29 @@ final class RemoteFileCache {
         isCancelled: @escaping @Sendable () -> Bool
     ) async throws -> URL {
         if let held = cached(for: entry) { return held.url }
-        let directory = Self.temporaryRoot
-            .appendingPathComponent(UUID().uuidString, isDirectory: true)
-        let destination = directory.appendingPathComponent(entry.name)
-        let source = entry.path
+        let root = Self.temporaryRoot
 
+        // One definition of "fetch this row", shared with the queued bulk job: `MaterializeRunner`
+        // owns the transfer, the directory-per-file layout and the rule that a failed attempt takes
+        // its whole directory with it. What is left here is where the answer is *stored*.
+        //
         // `BlockingWork.run` is deliberately non-throwing (its body is a synchronous engine that
         // reports rather than throws), so the transfer's error rides back as a `Result`.
-        let outcome = await BlockingWork.run { () -> Result<Void, any Error> in
+        let outcome = await BlockingWork.run { () -> Result<MaterializedFile, any Error> in
             Result {
-                try FileManager.default.createDirectory(
-                    at: directory, withIntermediateDirectories: true
-                )
-                var moved: Int64 = 0
-                try backend.copyFile(
-                    at: source,
-                    to: .local(destination.path),
-                    // The listing that produced this entry already measured it, which is what lets
-                    // a remote backend split the transfer without paying for a size probe first
-                    // (docs/HISTORY.md ▸ After M19) — and this is the path a preview takes, where that probe would
-                    // be a whole extra round trip on every small file.
-                    expectedSize: entry.byteSize,
-                    progress: { chunk in
-                        moved += chunk
-                        progress(moved)
-                    },
+                try MaterializeRunner.materialize(
+                    entry,
+                    intoDirectory: root.path,
+                    using: backend,
+                    onBytes: progress,
                     isCancelled: isCancelled
                 )
             }
         }
-        do {
-            try outcome.get()
-        } catch {
-            try? FileManager.default.removeItem(at: directory)
-            throw error
-        }
-        fetched[source] = Entry(url: destination, revision: RemoteFileRevision(entry))
-        return destination
+        let file = try outcome.get()
+        let url = URL(fileURLWithPath: file.localPath)
+        record(file.source, url: url, revision: file.revision)
+        return url
     }
 
     // MARK: - The fetch nobody pressed a key for

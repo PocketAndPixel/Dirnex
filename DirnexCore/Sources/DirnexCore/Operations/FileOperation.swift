@@ -41,6 +41,19 @@ public struct FileOperation: Sendable {
         /// Like `.checksum` and `.attributes` it produces no `outcomes` — there is nothing to move,
         /// so nothing to undo — and its answer rides home on ``OperationReport/pack``.
         case pack(PackJob)
+        /// Pull a set of rows that are not on this disk down to real paths, so a gesture that only
+        /// speaks in paths can run over them (PLAN.md §M24 Slice 2).
+        ///
+        /// Moves bytes like a copy and is deliberately **not** one: its destination is a temp root,
+        /// so it produces no `outcomes` and there is nothing to undo — reversing it would mean
+        /// putting back a copy the user never saw. That is also why it is not expressed as a `.copy`
+        /// into that root, which `UndoJournal` would dutifully record as a transfer.
+        ///
+        /// No payload, unlike the three kinds above it: `destinationDirectory` already means "where
+        /// this job puts things", and the only other thing the runner needs — which rows — is
+        /// `sources`. What the set is *for* stays with the gesture, along with the decision, made
+        /// before anything was queued, that the total was worth spending (`MaterializationPlan`).
+        case materialize
     }
 
     public let kind: Kind
@@ -286,6 +299,15 @@ public struct OperationReport: Sendable, Equatable {
     /// path the window already watches for a job reaching a terminal state.
     public let pack: PackOutcome?
 
+    /// Where a `.materialize` job's bytes landed, one entry per row that made it. `nil` for every
+    /// other kind, and **empty for a materialize that landed nothing** — the two are different
+    /// answers and a caller reading the copies has to be able to tell them apart.
+    ///
+    /// No outcome wrapper, unlike its three neighbours, because there is nothing else to say: the
+    /// failures ride on ``failures`` where every other kind's per-path failures already do, and a
+    /// struct holding one array would be a type whose only field is the answer.
+    public let materialized: [MaterializedFile]?
+
     public init(
         completedItems: Int,
         completedBytes: Int64,
@@ -295,7 +317,8 @@ public struct OperationReport: Sendable, Equatable {
         outcomes: [OperationItemOutcome] = [],
         checksum: ChecksumOutcome? = nil,
         attributeApply: AttributeApplyOutcome? = nil,
-        pack: PackOutcome? = nil
+        pack: PackOutcome? = nil,
+        materialized: [MaterializedFile]? = nil
     ) {
         self.completedItems = completedItems
         self.completedBytes = completedBytes
@@ -306,6 +329,7 @@ public struct OperationReport: Sendable, Equatable {
         self.checksum = checksum
         self.attributeApply = attributeApply
         self.pack = pack
+        self.materialized = materialized
     }
 
     public var succeeded: Bool { failures.isEmpty && !wasCancelled }

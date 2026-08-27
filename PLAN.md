@@ -272,10 +272,48 @@ Core first, app untouched until (2), as usual. Each lands runnable.
    over the threshold a given purpose confirms at. `RemoteFetchPurpose` grows the cases these
    gestures need, so each one's threshold is a line in the existing table rather than a constant at
    a call site. Pure, tested, additive; no app rebuild.
+   **Landed 2026-08-27**, and three things came out of building it that the slice did not predict.
+   `MaterializationSource` has **five** cases rather than two, because the reasons a row is not yet a
+   readable path cost different amounts and are paid by different people — a remote transfer is ours
+   and S3 bills it, an evicted `SF_DATALESS` placeholder is a wait the file provider owns, and an
+   archive member is neither. The placeholder case is the one that had to be there: its name, size
+   and dates are all real, so nothing but that flag separates it from a file that is genuinely here,
+   and it is exactly the row a plan built on `backend == .local` would have called present. Second,
+   the decision needed a **second rule, not a second table**: `unaskedRequestLimit` (20) is derived
+   from the measured 0.512–0.519 s to first byte for a *small* S3 object, because 10 000 objects of
+   500 bytes is 5 MB — under every row of the size table — and about **83 minutes**, which a policy
+   expressed in bytes is structurally blind to. Third, all six new purposes sit on the existing
+   open/edit row deliberately: they are the same commitment ⏎ carries, and six constants a few
+   megabytes apart would each mean *approximately* 64 MiB and drift on the first visit anybody paid
+   to one of them. The cases exist anyway, because `threshold(for:previewLimit:)` switches
+   exhaustively — which is what stops the next gesture reaching a number by inheriting one.
+   Both directions are controlled: removing the request rule fails only the four tests about it and
+   leaves the "few requests still start" control green, and over-correcting to always-confirm fails
+   exactly the five that say a local, cached or small set must never ask.
 2. **Bulk materialize as a queue job.** An N-file fetch is a `FileOperation`, which buys the
    determinate bar, Stop, per-item failure reporting and the pause/resume the queue already has —
    and stops a second copy of the transfer loop existing. `RemoteFileCache` stays the *store* and
    gains no second way to be filled.
+   **Landed 2026-08-27.** `FileOperation.Kind.materialize` joins `.checksum`, `.attributes` and
+   `.pack` as a kind that produces **no `outcomes`**, which is how "nothing here is undoable" is a
+   property rather than a rule — `UndoJournal` has nothing to build a record from, and reversing a
+   download into a temp directory is not a thing to offer. That is also why it is not expressed as a
+   `.copy` into that root, which the journal would dutifully record as a transfer; it needs no
+   payload either, since `destinationDirectory` already means "where this job puts things" and
+   `sources` is which rows.
+   The loop **keeps going past a failure** and names the row, because that is right for a checksum
+   over forty objects and wrong for ⌥F3 — so the decision belongs to the gesture reading
+   `report.failures`, not to the runner. Two things came out of writing it. `MaterializeRunner
+   .materialize` is now the **one definition of "fetch this row"**, called by the queued loop *and*
+   by `RemoteFileCache.fetch`, so the directory-per-file layout (two objects called `report.pdf` from
+   different prefixes) and the leaves-nothing-behind rule have one home rather than two. And the
+   cache gained one private `record` that `fetch`, `rebaseline` and the new `adopt` all go through,
+   which is what makes "no second way to be filled" a property of the type instead of a rule three
+   call sites keep — the runner produces `MaterializedFile` values and the window adopts them,
+   because `DirnexCore` cannot see a `@MainActor` window-scoped cache at all.
+   Controlled in four directions: one shared directory instead of one per file, a failed transfer
+   keeping its partial, the loop stopping at the first failure, and the queue never dispatching the
+   kind — each fails only the tests that name it.
 3. **Open With… and the Share sheet.** The cheapest of the seven: one file, one URL, and ⏎ already
    fetches exactly that. The only new question is what a *marked set* of remote rows means for Open
    With, which is the plan from (1) with a different verb after it.

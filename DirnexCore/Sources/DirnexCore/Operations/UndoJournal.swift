@@ -169,7 +169,10 @@ public extension UndoRecord {
         switch kind {
         case .copy: label = .copy
         case .move: label = .move
-        case .checksum, .attributes, .pack: return nil
+        // `.materialize` joins the three that produce no `outcomes`, and for the strongest of the
+        // four reasons: the others changed something the user cannot see back; this one moved bytes
+        // into a temp directory and changed nothing at all.
+        case .checksum, .attributes, .pack, .materialize: return nil
         }
         var steps: [UndoStep] = []
         var nonReversible = 0

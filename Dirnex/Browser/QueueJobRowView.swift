@@ -204,6 +204,11 @@ final class QueueJobRowView: NSView {
                 localized: "Encrypt \(name)",
                 comment: "Queue row label; %@ is the file being added to an encrypted archive."
             )
+        case .materialize:
+            return String(
+                localized: "Download \(name)",
+                comment: "Queue row label; %@ is the remote file being downloaded."
+            )
         }
     }
 
@@ -233,6 +238,11 @@ final class QueueJobRowView: NSView {
             return String(
                 localized: "Encrypt…",
                 comment: "Queue row label for an encrypted-archive job with no current item yet."
+            )
+        case .materialize:
+            return String(
+                localized: "Download…",
+                comment: "Queue row label for a remote-download job with no current item yet."
             )
         }
     }

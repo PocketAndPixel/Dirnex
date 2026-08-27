@@ -48,6 +48,14 @@ extension QueueBarView {
                 localized: "Encrypting \(name)",
                 comment: "Queue-bar status; %@ is the file being added to an encrypted archive."
             )
+        case .materialize:
+            // "Downloading" rather than naming the gesture that asked: one job can stand behind a
+            // compare, a checksum or a script, and what the user needs told is that bytes are
+            // coming over a network — which is the part that takes the time and the part Stop ends.
+            return String(
+                localized: "Downloading \(name)",
+                comment: "Queue-bar status; %@ is the remote file being downloaded."
+            )
         }
     }
 
@@ -77,6 +85,15 @@ extension QueueBarView {
             return String(
                 localized: "Encrypting…",
                 comment: "Queue-bar status while an encrypted archive is being prepared."
+            )
+        case .materialize:
+            return String(
+                // The same key the cloud sync badge uses, so the comment is repeated verbatim:
+                // `String(localized:comment:)` takes a `StaticString`, and two sites keying one
+                // string with different comments hand the translator whichever `xcstringstool`
+                // happened to keep (docs/NOTES.md ▸ Localization).
+                localized: "Downloading…",
+                comment: "Cloud sync badge tooltip: the file is being fetched from the provider."
             )
         }
     }

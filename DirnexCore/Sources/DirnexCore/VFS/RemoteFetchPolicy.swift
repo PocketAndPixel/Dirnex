@@ -1,15 +1,22 @@
 import Foundation
 
 /// Why a remote file's bytes are about to be pulled down — one case per gesture that can ask for
-/// them (PLAN.md §M21 Slice 10).
+/// them (PLAN.md §M21 Slice 10, widened to a set of files at §M24 Slice 1).
 ///
-/// Three of the four are a **key somebody pressed**. The fourth, ``cursorPreview``, is the preview
-/// mode following the cursor with no key pressed for *this* file, and it is the one that changes what
-/// a refusal may look like: there is nobody standing at a keystroke to answer a dialog, so an
+/// All but one are a **key somebody pressed**. The exception, ``cursorPreview``, is the preview mode
+/// following the cursor with no key pressed for *this* file, and it is the one that changes what a
+/// refusal may look like: there is nobody standing at a keystroke to answer a dialog, so an
 /// automatic fetch that is too big must stand down silently rather than ask (see
 /// ``RemoteFetchDecision/decline``). Same fork as Quick View's JavaScript switch and
 /// Enter-vs-Unlock — "is this safe" and "should this happen unasked" are different questions — with
 /// the size table answering the first and ``isAutomatic`` the second.
+///
+/// **A case per gesture, even where several share a row of the table.** Most of M24's do, and the
+/// cases exist anyway for the one thing a shared constant cannot buy: `threshold(for:previewLimit:)`
+/// switches exhaustively, so the next gesture that learns to fetch cannot reach a number by
+/// inheriting one — somebody has to put it in a row and say which argument it belongs to. That is
+/// the whole mechanism keeping "a new gesture is a line in the table" from becoming "a new gesture
+/// is a constant at its call site", which is what this table was extracted to prevent.
 public enum RemoteFetchPurpose: Sendable, Equatable, CaseIterable {
     /// The preview surface following the cursor, at any Quick View size or in the ⌘Y panel: nobody
     /// pressed a key for *this* file, the mode being on is the standing request.
@@ -20,6 +27,31 @@ public enum RemoteFetchPurpose: Sendable, Equatable, CaseIterable {
     case open
     /// F4 on a remote row: open it in the text editor, and offer to write the save back.
     case edit
+    /// Open With… or the Share sheet over the selection: hand these files to another application.
+    ///
+    /// One case for both verbs, because they are one act — `handoffTargets` is literally one helper
+    /// serving both — and the question the size decides is the same either way: this much is coming
+    /// down before anything happens. That Share then pushes the bytes somewhere else again is a fact
+    /// about what the *other* application does with them.
+    case handOff
+    /// ⌥F3 Compare By Contents: two files, read end to end, and the verdict is all that is kept.
+    case compare
+    /// A checksum run over the marked set — created or verified.
+    case checksum
+    /// A user script, over whatever the user marked.
+    case userScript
+    /// ⌥F5 Pack, where the *sources* are not on this disk and have to be staged before `bsdtar`
+    /// can see them.
+    case pack
+    /// Entering an archive that lives on a server: `ArchiveBackend` needs a real path, so browsing
+    /// one is fetch-the-whole-file-then-mount.
+    ///
+    /// The gesture is ⏎, which everywhere else in this app means *navigate* and has never cost
+    /// anything — so this is the case whose confirmation has to say that the whole file is coming
+    /// down, in those words. It shares the explicit row rather than taking a lower number of its
+    /// own: the sentence is what makes the gesture honest, and lowering the *threshold* instead
+    /// would quietly widen what the Settings preview limit governs (see the table below).
+    case browseArchive
 
     /// Whether this fetch happens without anybody having pressed a key for the file in question.
     ///
@@ -49,9 +81,9 @@ public enum RemoteFetchDecision: Sendable, Equatable {
 /// A table rather than a constant at a call site, for the reason the multipart threshold is one:
 /// these are **policy numbers, not measurements**, and policy numbers buried at the place they are
 /// used get copied, drift apart, and can never be re-measured because nobody can find them all.
-/// Three gestures reach this, and the sizes at which each stops being a reasonable thing to do
-/// unasked are genuinely different — so the table is the feature, and the numbers in it are the
-/// part expected to move.
+/// Ten gestures reach this and they land on two rows, because the thing that actually varies is not
+/// the gesture but how *committed* it is — so the table is the feature, the rows are the arguments,
+/// and the numbers in them are the part expected to move.
 ///
 /// What the thresholds are arguing, in the order they were chosen:
 ///
@@ -65,6 +97,14 @@ public enum RemoteFetchDecision: Sendable, Equatable {
 /// - **Edit is not lower than open** even though a text editor suffers on a large file sooner than
 ///   Preview does, because the file the user pressed F4 on is one they intend to *change*, and
 ///   confirming that is a dialog in front of the work rather than in front of a look.
+///
+/// - **Everything M24 added sits on the open/edit row**, and that is a decision rather than a
+///   default. Hand off, compare, checksum, a user script, a pack and browsing a remote archive are
+///   all "somebody pressed a key naming these files", which is the same commitment ⏎ and F4 carry;
+///   six new constants a few megabytes apart would each mean *approximately* 64 MiB and would drift
+///   apart on the first visit anybody paid to one of them. Where those gestures genuinely differ
+///   from ⏎ is not in how much is worth moving but in **how many things** are moving, and that is
+///   ``unaskedRequestLimit`` — a second rule, not a second table.
 ///
 /// The unknown-size row is the one that is not a number at all, and is the least arguable: not
 /// knowing how much is about to be pulled is exactly when to ask.
@@ -112,7 +152,9 @@ public enum RemoteFetchPolicy {
         // Never below the preview limit: a user who has said a 300 MB preview is fine has answered
         // the smaller question too, and confirming an *open* they would not be asked about for a
         // mere look is the ordering this table exists to keep straight.
-        case .open, .edit: max(64 * 1024 * 1024, limit)
+        case .open, .edit,
+             .handOff, .compare, .checksum, .userScript, .pack, .browseArchive:
+            max(64 * 1024 * 1024, limit)
         }
     }
 
@@ -133,5 +175,55 @@ public enum RemoteFetchPolicy {
         let refusal: RemoteFetchDecision = purpose.isAutomatic ? .decline : .confirm
         guard let byteSize, byteSize >= 0 else { return refusal }
         return byteSize <= threshold(for: purpose, previewLimit: previewLimit) ? .fetch : refusal
+    }
+
+    // MARK: - A set of files rather than one
+
+    /// How many separate remote fetches may happen before the count alone is worth confirming.
+    ///
+    /// **A count as well as a size, because the two can disagree completely and the size cannot see
+    /// it.** Every remote fetch is a fresh `curl` or `sftp` invocation with its own connect,
+    /// handshake and authentication — measured at **0.512–0.519 s to first byte for a small S3
+    /// object**, of which almost none is the bytes (docs/NOTES.md ▸ curl for S3). So 10 000 objects
+    /// of 500 bytes each is 5 MB, under every row of the table above, and **83 minutes**. A rule
+    /// expressed in bytes is structurally blind to that, and it fails in the quiet direction: the
+    /// gesture starts, nothing is wrong, and it does not come back.
+    ///
+    /// Twenty is where the measured floor adds up to about ten seconds, which is roughly where a
+    /// gesture stops feeling like a gesture. One number for every purpose, deliberately: the floor
+    /// is a property of the *link*, not of what the user meant by pressing the key, so a per-purpose
+    /// count would be six spellings of one measurement.
+    ///
+    /// It is not a cap. Over it the answer is ``RemoteFetchDecision/confirm`` — the plan names the
+    /// count and the total and the user says yes — for the same reason nothing else in this table
+    /// refuses outright.
+    public static let unaskedRequestLimit = 20
+
+    /// Whether `plan`'s outstanding work may just start, or has to be named to the user first.
+    ///
+    /// Three rules, in the order they can each be the only thing that fires:
+    ///
+    /// 1. **Inexact totals refuse.** ``MaterializationPlan/totalsAreExact`` is `false` when
+    ///    something in the set cannot stand for its own cost — a remote directory, whose subtree is
+    ///    unknown, or a size a listing did not understand. This is the unknown-size row of the table
+    ///    above arriving over a set, and it is the least arguable rule here for the same reason.
+    /// 2. **Too many round trips refuse**, by ``unaskedRequestLimit``, whatever they weigh.
+    /// 3. **Too many bytes refuse**, by ``threshold(for:previewLimit:)``.
+    ///
+    /// A plan that needs nothing needs no special case: it weighs zero bytes in zero requests and is
+    /// exact, so it falls through all three to ``RemoteFetchDecision/fetch``. That matters more than
+    /// it looks — the ordinary use of every gesture M24 touches is a marked set of plain local files,
+    /// and it must reach the engine without a dialog and without a branch anybody has to remember.
+    public static func decision(
+        for plan: MaterializationPlan,
+        purpose: RemoteFetchPurpose,
+        previewLimit: Int64
+    ) -> RemoteFetchDecision {
+        let refusal: RemoteFetchDecision = purpose.isAutomatic ? .decline : .confirm
+        guard plan.totalsAreExact else { return refusal }
+        guard plan.requestCount <= unaskedRequestLimit else { return refusal }
+        return plan.byteTotal <= threshold(for: purpose, previewLimit: previewLimit)
+            ? .fetch
+            : refusal
     }
 }
