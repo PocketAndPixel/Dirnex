@@ -47,15 +47,84 @@ public enum SFTPBatchCommand {
     /// The batch line that downloads a remote file to a local path: `get "remote" "local"`, or
     /// `get -a "remote" "local"` to **resume** — `sftp` seeks to the local file's current length and
     /// fetches only the remainder, instead of restarting from zero.
-    public static func download(_ remotePath: String, to localPath: String, resume: Bool = false) -> String {
-        "get \(resume ? "-a " : "")\(quote(remotePath)) \(quote(localPath))"
+    ///
+    /// `preserve` adds **`-p`**, which was measured against a real server rather than read off
+    /// `sftp(1)`: it carries the low nine permission bits and *both* timestamps exactly — the man
+    /// page promises only "permissions and access times", and the modification time comes too — and
+    /// it silently drops set-uid, set-gid and the sticky bit. Those need ``changeMode(_:to:)``
+    /// after the fact, which is why a caller asks ``RemoteMetadataPlan`` what a transfer needs
+    /// rather than reaching for this flag directly.
+    public static func download(
+        _ remotePath: String,
+        to localPath: String,
+        resume: Bool = false,
+        preserve: Bool = false
+    ) -> String {
+        "get \(flags(resume: resume, preserve: preserve))\(quote(remotePath)) \(quote(localPath))"
     }
 
     /// The batch line that uploads a local file to a remote path: `put "local" "remote"`, or
     /// `put -a "local" "remote"` to **resume** — `sftp` seeks past the remote file's current length
     /// and sends only the remainder.
-    public static func upload(_ localPath: String, to remotePath: String, resume: Bool = false) -> String {
-        "put \(resume ? "-a " : "")\(quote(localPath)) \(quote(remotePath))"
+    ///
+    /// `preserve` adds **`-p`**, with exactly the reach and the blind spot
+    /// ``download(_:to:resume:preserve:)`` documents — measured in this direction too.
+    public static func upload(
+        _ localPath: String,
+        to remotePath: String,
+        resume: Bool = false,
+        preserve: Bool = false
+    ) -> String {
+        "put \(flags(resume: resume, preserve: preserve))\(quote(localPath)) \(quote(remotePath))"
+    }
+
+    /// The batch line that sets a remote item's mode: `chmod 4755 "…"`.
+    ///
+    /// The **only** route to the three special bits, which `-p` drops in both directions even though
+    /// the server puts them on the wire — measured, `chmod 4755` really does produce `-rwsr-xr-x`.
+    /// The mode is rendered as up to four octal digits, which is what `sftp`'s parser reads.
+    ///
+    /// `onSymbolicLink` sends **`-h`**, acting on a link rather than its target. Verified both ways:
+    /// with `-h` the link's own mode changed and its target was untouched, and without it the target
+    /// changed and the link was untouched.
+    public static func changeMode(
+        _ remotePath: String,
+        to permissions: POSIXPermissions,
+        onSymbolicLink: Bool = false
+    ) -> String {
+        "chmod \(onSymbolicLink ? "-h " : "")\(String(permissions.rawValue, radix: 8)) \(quote(remotePath))"
+    }
+
+    /// The batch line that sets a remote item's owner: `chown 501 "…"`.
+    ///
+    /// Refused for an unprivileged account changing an owner it does not already have — exit 1 and
+    /// `remote setstat "…": Permission denied`, which is the ordinary answer rather than a
+    /// misconfiguration, so a caller must expect it rather than treat it as a broken connection.
+    public static func changeOwner(
+        _ remotePath: String,
+        to ownerID: UInt32,
+        onSymbolicLink: Bool = false
+    ) -> String {
+        "chown \(onSymbolicLink ? "-h " : "")\(ownerID) \(quote(remotePath))"
+    }
+
+    /// The batch line that sets a remote item's group: `chgrp 20 "…"`.
+    ///
+    /// Succeeds where the account belongs to the target group and is refused otherwise, exactly as
+    /// the local `chgrp` is (docs/NOTES.md ▸ ACLs and file attributes).
+    public static func changeGroup(
+        _ remotePath: String,
+        to groupID: UInt32,
+        onSymbolicLink: Bool = false
+    ) -> String {
+        "chgrp \(onSymbolicLink ? "-h " : "")\(groupID) \(quote(remotePath))"
+    }
+
+    /// The `-a`/`-p` flag run shared by `get` and `put`, with its trailing space, so the two verbs
+    /// cannot disagree about spelling or order.
+    private static func flags(resume: Bool, preserve: Bool) -> String {
+        let letters = (resume ? "a" : "") + (preserve ? "p" : "")
+        return letters.isEmpty ? "" : "-\(letters) "
     }
 
     /// The batch line that prints the remote working directory (`pwd`), used to discover the home

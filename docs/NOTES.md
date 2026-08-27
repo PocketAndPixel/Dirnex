@@ -2991,6 +2991,63 @@ one, so all four columnar parsers — `bsdtar -tvf`, `sftp`'s `ls -la`, FTP's `L
   caveats with it. Measured 2026-08-24; the whole feature turns on it, and it is one command to
   re-check when the system `curl` next moves.
 
+- **`sftp` *does* have a server-side copy verb, and this file said twice that it did not.** Probed
+  2026-08-28 against a real `sshd` (OpenSSH 10.2p1): the server advertises **`copy-data revision 1`**
+  and `sftp`'s `cp`/`copy` is genuinely server-side — **64 MiB in 0.08 s** for the whole session,
+  connect, authentication and all, with the two files SHA-256 identical. So a duplicate inside one
+  SFTP account need not be a download and an upload through this Mac, which is what `RelayCopy`'s own
+  doc comment and this file's FTP entry both assumed it must be. `RelayCopy` stays the fallback: it
+  is still the only mechanism for a pair of ends on *different* backends, which no server-side verb
+  can address.
+  - **Detection is the client's own sentence, not a probe.** A server without the extension makes
+    `sftp` print **`Server does not support copy-data extension`**, and a `cp` that fails for any
+    other reason exits **1** with the reason on stderr (a missing source gives
+    `stat remote: No such file or directory`). So it degrades **per connection** exactly as M22's
+    exec-channel search walk does — attempt it, latch the refusal for that connection, fall back —
+    and there is nothing to ask a server in advance.
+  - **`cp` preserves the low nine permission bits and drops the special ones**, like `-p` below, so a
+    server-side duplicate of a `rwsr-xr-x` binary is `rwxr-xr-x`. The corrective `chmod` is the same
+    one the `-p` entry needs, which is the argument for having one place that finishes a copy's mode
+    rather than two.
+
+- **`get -p` / `put -p` carry *both* timestamps exactly and silently drop every special mode bit —
+  which is the opposite of the man page on one point and beyond it on the other.** `sftp(1)` says
+  `-p` preserves "full file permissions and access times". Measured 2026-08-28 in both directions:
+  the **modification** time is carried exactly (the man page does not promise it), the **access**
+  time is too, and the low nine permission bits are exact — while **setuid, setgid and sticky are
+  dropped**, on a mode the server itself puts on the wire (`ls -la` prints `-rwsr-xr-x` and
+  `-rw-r--r-T`). The client masks them off; the protocol does not.
+  - **Plain `get`/`put` carries the mode only approximately**, which is worth knowing because it
+    looks like it works: the umask applies and a download's local `open` forces owner-write, so
+    `0777` arrives as `0755` and `0444` as `0644`, while `0600`, `0640`, `0700` and `0754` all
+    survive untouched. A probe that happens to pick one of the second group measures a preservation
+    that is not there.
+  - **The measurement inverts if the source has been read once already, and that is the probe's own
+    doing.** The first run here reported that `-p` did *not* carry the access time — because the
+    preceding no-`-p` `get` had bumped the **source's** atime to now, so `-p` copied a "now" that was
+    perfectly faithful. Reset the source's times immediately before each run and read *both* sides
+    afterwards, or the instrument manufactures the answer (▸ the WebKit sandbox probe, and "verify a
+    probe before spending someone else's time on it").
+  - **The explicit `chmod` batch verb is strictly more capable than `-p`**, which decides the design
+    rather than merely padding it: `chmod 4755` over the wire really does produce `-rwsr-xr-x`. So a
+    mode carrying special bits needs one corrective `chmod` after the transfer, and only then — an
+    ordinary mode costs nothing extra.
+  - `chmod`, `chown` and `chgrp` all take **`-h`**, and it works on both sides of the question:
+    `chmod -h 700` on a symlink changed the *link* (`120755` → `120700`) and left its target alone,
+    while the same command without `-h` changed the *target* and left the link. `chgrp` to a group
+    the account belongs to succeeds; `chown` to another uid is refused with exit 1 and
+    `remote setstat "…": Permission denied` — the ordinary unprivileged answer, not a misconfiguration.
+
+- **A symlink's target is unreadable over `sftp` and readable over the exec channel, so it degrades
+  per connection exactly as the search walk does.** Confirmed 2026-08-28: `ls -la` of a *directory*
+  prints the kind (`l`) and no ` -> target`, and `ls -la` of the **link itself follows it** — it
+  reports the target's mode and size, which is the same trap this file already records for classifying
+  an item before a recursive delete. There is no `readlink` in the batch language. Over `ssh`,
+  `/usr/bin/env readlink` returns the raw text (`plain.txt`, `/etc/hosts`, `../nowhere` — relative,
+  absolute and dangling alike), so an account confined by `ForceCommand internal-sftp` cannot read one
+  at all. The honest answer where it cannot be read is to keep refusing: `CopyEngine` passes
+  `entry.symlinkDestination ?? ""`, so a copy that proceeded anyway would write `ln -s "" link`.
+
 #### The SSH exec channel (M22's server-side search)
 
 `ssh <host> <command>` is the *other* thing an SSH connection can do, and Dirnex uses it for exactly
@@ -3132,6 +3189,22 @@ off a man page.
   FTP side). `MLSD` would fix it and **`curl` cannot send it** — only `LIST` and `NLST`. A per-file
   `-I` does give an exact, zone-anchored `Last-Modified`, so it is a stat-one-item path, never a
   listing path.
+  - **The coarse stamp belongs to `LIST`, not to FTP** — which matters because the obvious reading
+    is that an FTP timestamp is approximate *by protocol* and therefore unfixable in both
+    directions. Probed 2026-08-28 against a real server: `MDTM` reads back `20180607080910` and
+    **`MFMT` writes** the same, both **exact to the second and anchored to UTC** (RFC 3659) —
+    verified by setting a time through `MFMT` and reading the local truth back, `1528358950`, on a
+    host whose own offset is `+0300`, so a timezone error could not have hidden. Both ride
+    ``-Q``, so they need no new transport. What is genuinely coarse is the *listing*, and what is
+    genuinely absent is a symlink verb.
+  - **`SITE CHMOD` carries the mode** the same way (`100754` → `100600`, measured). Neither verb is
+    guaranteed by any server, so both degrade per connection like `sftp`'s `copy-data`.
+  - **Every `-Q` refusal is `curl` exit 21, and the reply code is what separates the two cases that
+    need different sentences**: an unsupported verb answers **500** (`SITE UTIME` and a bogus verb
+    both did) and a file problem **550** (`MFMT` on a missing name). That is exactly the
+    last-4xx/5xx-token reading `FTPTransportError.classify` already does for exit 21, so a server
+    that has never heard of `MFMT` is distinguishable from one refusing the file — without which
+    "this server cannot keep timestamps" and "that file is not there" would be one sentence.
 - **`curl`'s progress meter is a bar, not an accountant**: measured at ~1 update/second, rounded to
   `k`/`M` (`339k`). Exact counts come from `-w` at the end.
   - **It is also the only observable an upload has, so `-sS` silences the one verb that needs it.**

@@ -358,6 +358,45 @@ public enum FTPQuoteCommand {
         [try command("RNFR", source), try command("RNTO", destination)]
     }
 
+    /// The command that sets a remote item's mode: `SITE CHMOD 754 path`.
+    ///
+    /// `SITE` commands are by definition per-server, so this is an extension a server need not
+    /// implement and the refusal has to be handled rather than prevented — an unimplemented verb
+    /// answers **500** where a file problem answers **550**, which is the distinction that keeps
+    /// "this server cannot keep modes" and "that file is not there" from becoming one sentence.
+    public static func changeMode(_ remotePath: String, to permissions: POSIXPermissions) throws -> String {
+        try command("SITE CHMOD \(String(permissions.rawValue, radix: 8))", remotePath)
+    }
+
+    /// The command that sets a remote item's modification time: `MFMT 20180607080910 path`.
+    ///
+    /// **Exact to the second and anchored to UTC**, which is RFC 3659 and was verified against a
+    /// real server rather than assumed — the coarse, year-less, zone-less stamp FTP is known for
+    /// belongs to `LIST` alone. So an FTP transfer can carry a modification time exactly even though
+    /// a listing cannot report one, which is the asymmetry that makes this worth sending.
+    ///
+    /// There is no counterpart for an access time: `SITE UTIME` is answered `500` here.
+    public static func setModificationTime(_ remotePath: String, to date: Date) throws -> String {
+        try command("MFMT \(timestamp(date))", remotePath)
+    }
+
+    /// `MFMT`'s `YYYYMMDDHHMMSS`, always in UTC. Built with an explicit POSIX locale and zone rather
+    /// than a default-configured formatter, so the wire format cannot follow whoever is running the
+    /// app (docs/NOTES.md ▸ Localization).
+    static func timestamp(_ date: Date) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let parts = calendar.dateComponents(
+            [.year, .month, .day, .hour, .minute, .second],
+            from: date
+        )
+        return String(
+            format: "%04d%02d%02d%02d%02d%02d",
+            parts.year ?? 0, parts.month ?? 0, parts.day ?? 0,
+            parts.hour ?? 0, parts.minute ?? 0, parts.second ?? 0
+        )
+    }
+
     /// A verb and its raw path argument, rejecting anything that could inject a second command.
     static func command(_ verb: String, _ remotePath: String) throws -> String {
         guard isSafe(remotePath) else { throw UnsafePath(path: remotePath) }

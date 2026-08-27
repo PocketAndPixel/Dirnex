@@ -639,34 +639,46 @@ than the local one it stands in for.
 **A copy that carries more than bytes.** `VFSBackend.copyMetadata` defaults to a no-op and SFTP and
 FTP both take the default, so a mode and a timestamp are dropped on every transfer with nothing said.
 Extended attributes and ACLs are out of scope in both directions — neither protocol carries them, and
-that is a limit rather than a gap. What the protocol *does* offer is more than "wire up `chmod`":
-`sftp(1)` on this Mac (OpenSSH 10.2p1) documents verbs nothing here consumes, and every line below is
-a **probe to run before any Swift** rather than a fact yet, because a man page is not a server.
+that is a limit rather than a gap. What the protocol *does* offer is more than "wire up `chmod`", and **the five lines below were
+probed 2026-08-28 against a real `sshd` (OpenSSH 10.2p1) and a real FTP server** before any Swift,
+because a man page is not a server. Three of them changed the design and one is a correction this
+repo owed itself; the detail is in docs/NOTES.md.
 
-- **`get -p` / `put -p`** says it copies "full file permissions and access times" — a flag on the two
-  verbs `SFTPCommands.download`/`upload` already build, rather than a `chmod` pass after the fact.
-  Whether it carries the *modification* time as well as the access time is exactly the sort of thing
-  the man page's wording will not settle; measure it against a real `sshd`.
-- **`chmod`, `chown` and `chgrp`** are batch commands, each taking `-h` to act on a symlink rather
-  than its target — the fallback if `-p` under-delivers, and the only route for a *directory* the
-  engine recreated by hand.
-- **`copy` / `cp` is a server-side copy**, gated on the server implementing the `copy-data`
-  extension. If a server advertises it, a duplicate inside one SFTP account stops being a download
-  and an upload through this Mac. That contradicts a claim this repo has written down twice — that
-  neither remote protocol has a copy verb, which is `RelayCopy`'s own doc comment and a line in
-  docs/NOTES.md — so the probe settles a **correction**, and `RelayCopy` stays the fallback for
-  every server that does not offer it.
-- **Symlinks are asymmetric and only one half is missing.** `SFTPBackend.createSymbolicLink` ships
-  and `CopyEngine` already calls it, so a link can be *written*. What cannot be read is its target:
-  `sftp`'s `ls -la` prints the kind (`l`) and no ` -> target`, so `symlinkDestination` is `nil` and
-  a copy would write `ln -s "" link`. There is no `readlink` in the batch language, so the target
-  comes from the SSH **exec** channel — which M22 already established, and which an
-  `sftp`-only account (`ForceCommand internal-sftp`) does not have. So this degrades per connection
-  exactly as the search walk does, and the honest answer where it cannot be read is to keep
-  refusing rather than to write an empty link.
-- **FTP** has no symlink verb at all and its `LIST` stamps are year- and zone-less, so its share of
-  this is the mode alone, through `-Q` quote commands. `MFMT` for a modification time is worth one
-  probe and nothing more; it is an extension, not a verb.
+- **`get -p` / `put -p` carry more than the man page promises and less than it implies.** Measured
+  in both directions: the low nine permission bits and **both** timestamps arrive exactly — it says
+  "permissions and access times" and the *modification* time comes too — while **set-uid, set-gid
+  and the sticky bit are silently dropped**, on a mode the server itself puts on the wire (`ls -la`
+  prints `-rwsr-xr-x`). Plain `get`/`put` carries the mode only approximately: the umask applies
+  and a download's local `open` forces owner-write, so `0777` lands as `0755` and `0444` as `0644`
+  while `0600`, `0640`, `0700` and `0754` all survive untouched — so a probe that happens to pick
+  one of the second group measures a preservation that is not there.
+- **`chmod` is therefore strictly more capable than `-p`, not merely its fallback**: `chmod 4755`
+  over the wire really does produce `-rwsr-xr-x`. A mode carrying special bits costs one extra
+  round trip and an ordinary mode costs none. `chmod`, `chown` and `chgrp` all take **`-h`**,
+  verified in both directions — with it the *link* changed and its target did not, without it the
+  target changed and the link did not. `chown` to another uid is refused unprivileged (exit 1,
+  `remote setstat "…": Permission denied`), which is the ordinary answer rather than a fault.
+- **`copy`/`cp` exists, is genuinely server-side, and settles the correction.** OpenSSH advertises
+  **`copy-data revision 1`**, and it duplicated **64 MiB in 0.08 s** — the whole session, connect
+  and authentication included — with the two files SHA-256 identical. A server without it makes the
+  client print its own **`Server does not support copy-data extension`**, so it degrades per
+  connection exactly as M22's exec walk does, and `RelayCopy` stays the only mechanism for a pair
+  of ends on *different* backends. `cp` preserves the low nine bits and drops the special ones, so
+  it needs the same corrective `chmod` as `-p` — one place that finishes a copy's mode, not two.
+- **A symlink's target is unreadable over `sftp` and readable over the exec channel**, as
+  predicted. `ls -la` of a directory prints the kind and no ` -> target`, and `ls -la` of the link
+  **follows it**, reporting the target's mode and size — the same trap this repo already records
+  for classifying an item before a recursive delete. `readlink` over `ssh` returns the raw text for
+  relative, absolute and dangling links alike, so this degrades per connection and an `sftp`-only
+  account keeps today's refusal. `CopyEngine` passes `entry.symlinkDestination ?? ""`, so
+  proceeding without a target would write `ln -s "" link`.
+- **FTP is richer than "the mode alone", and that assumption was wrong.** `SITE CHMOD` carries the
+  mode, and **`MFMT` writes an exact, UTC-anchored modification time** (RFC 3659) which `MDTM`
+  reads back — round-tripped against the local truth on a host at `+0300`, so a timezone error
+  could not have hidden. The coarse, year-less, zone-less stamp belongs to **`LIST`**, not to the
+  protocol. Every `-Q` refusal is `curl` exit 21 with the reply code separating the two cases that
+  need different sentences: **500** for an unimplemented verb, **550** for a file problem — already
+  what `FTPTransportError.classify` reads.
 
 **Get Info's write half, and Synchronize on a side with no exact clock.** M24 draws a remote row's
 mode and dates; this makes them editable through the same verbs above, with the same per-connection
@@ -682,6 +694,60 @@ managed `.dirnex-trash/` prefix, a rename into it, and a sidecar naming the orig
 folder's `.DS_Store` carries `ptbL`/`ptbN` — is a **format commitment that outlives the code**, so
 it is §7's open question rather than a slice, and the milestone does not start on it before it is
 answered.
+
+#### Slices
+
+Core first, then the app, as usual. Each lands runnable, and each degrades **per connection at run
+time** rather than by asking a server in advance — none of these capabilities can be queried, so
+the shape is M22's: attempt the verb, read the refusal, remember it for that connection, and leave
+the old behaviour standing where it cannot be established.
+
+1. **The metadata carry, in the core.** ``RemoteMetadataPlan`` decides what one transfer must do to
+   carry its source's mode and times, and — the half that matters — what it will *lose*, so a
+   caller can say so instead of approximating. `SFTPBatchCommand` grows `-p` on both transfer verbs
+   and the `chmod`/`chown`/`chgrp` builders (each with `-h`); `FTPQuoteCommand` grows `SITE CHMOD`
+   and `MFMT`. Pure, tested, additive; no app rebuild.
+   **Landed 2026-08-28.** The rule needed **two capabilities, not one flag**, because `-p` and
+   `chmod` are not fallbacks for each other: `-p` is exact for the nine bits and both timestamps
+   and cannot express a special bit, while `chmod` expresses all twelve and knows nothing about
+   time. So an ordinary mode rides `-p` alone and costs exactly what it always did, only a mode
+   carrying set-uid, set-gid or the sticky bit pays for the corrective round trip, and an account
+   that has refused `chmod` keeps the nine bits and **reports the loss** rather than claiming the
+   mode.
+   **A `nil` mode is not a loss**, which is the distinction the whole type turns on and the one a
+   sentinel would have destroyed: S3 and FTP's DOS/IIS dialect report no mode at all, so folding
+   "absent" together with "dropped" would make every S3 copy claim damage it did not do — the same
+   fact ``FileEntry/permissions`` became optional for one milestone earlier. The access time gets
+   the same treatment for the same reason, and reading a file over `sftp` **bumps the source's own
+   atime to now**, so even a carried access time is a copy of a value the act of copying has
+   changed.
+   Controlled in four directions, each failing only the tests that name it: the corrective `chmod`
+   dropped (three failures, one per special bit), an absent mode reported as a loss, `MFMT` written
+   in the local zone rather than UTC — which produced `20180607110910` against a truth of
+   `…080910`, the exact three-hour error that would have reached a server silently and only for
+   some users — and the over-correction of sending a `chmod` for every mode, which fails the
+   narrowness control that an ordinary transfer is byte-identical to what it always sent.
+   **Verified live against the same `sshd` and FTP server**, and the point is that nothing was
+   hand-typed: a throwaway package built against `DirnexCore` emitted the batch lines and the
+   server executed *those*, so what was measured is the builder rather than agreement between two
+   things we wrote. A set-uid source came down **104755** carrying its exact mtime, the `-h` line
+   left the link at `700` and its target untouched at `644`, and the generated `SITE CHMOD`/`MFMT`
+   pair moved a real FTP file to `100754` and `1528358950`. The narrowness control is what makes
+   that evidence: a plain `get` of the same source gives **100755** and a mtime of *now*.
+2. **Wiring the carry through the transports**, so `copyFile` in both directions asks the plan what
+   it needs and the app reports what a copy could not keep. This is where the per-connection latch
+   lands, and where `copyMetadata` — today a no-op default the engine calls only for a directory it
+   recreated by hand — stops being a no-op for SFTP and FTP.
+3. **Server-side `copy`.** A duplicate inside one SFTP account stops being a download and an upload
+   through this Mac, latched per connection on the client's own refusal, with `RelayCopy` unchanged
+   beneath it. `RelayCopy`'s doc comment and docs/NOTES.md both said no remote protocol has a copy
+   verb; this slice is where that correction lands in the code rather than only in the notes.
+4. **Symlink targets over the exec channel**, degrading exactly as M22's search walk does, so a
+   link is copied faithfully on an account that has one and goes on being refused on an account
+   that does not.
+5. **Get Info's write half**, on the verbs slices 1–2 establish, and **Synchronize by size** — the
+   comparison that is honest on a side with no exact clock, which comparing by *contents* now
+   joins, since M24 Slice 4 taught ⌥F3 to fetch both sides at a price the plan can state up front.
 
 #### Smaller than a milestone
 
