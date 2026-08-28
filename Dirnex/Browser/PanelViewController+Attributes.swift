@@ -22,9 +22,42 @@ extension PanelViewController {
         switch AttributesRoute.decide(for: targets) {
         case .single: showSingleAttributes(first)
         case .multiple: showMultipleAttributes(targets)
-        case .remote: presentAsMovableWindow(RemoteAttributesController(entry: first))
+        case .remote: showRemoteAttributes(first)
         case .bulkUnavailable: presentBulkNotAvailable()
         }
+    }
+
+    // MARK: - A row that is not on this Mac
+
+    /// The read-only panel M24 Slice 7 shipped, with whatever this connection will let the user
+    /// change (PLAN.md §M25 Slice 5).
+    ///
+    /// The capability question is asked of the **backend for this row's path**, not of the pane's:
+    /// a results tab holds hits from anywhere and a tree draws several connections at once, which is
+    /// the per-row rule `AttributesRoute` already settled for the read half. Asking the pane instead
+    /// would offer a control from the wrong account, or withhold one from the right account.
+    private func showRemoteAttributes(_ entry: FileEntry) {
+        let controller = RemoteAttributesController(
+            entry: entry,
+            backend: backend,
+            editability: remoteEditability(for: entry)
+        )
+        controller.onApplied = { [weak self] in self?.refreshCurrentDirectory() }
+        presentAsMovableWindow(controller)
+    }
+
+    /// What the panel over `entry` will let the user change.
+    ///
+    /// Split from `showRemoteAttributes` for the reason `AttributesRoute` is split from presenting a
+    /// panel: this is the part worth pinning, and a test that presents a real window in the test
+    /// host makes it do real pane work and destabilizes its neighbours (docs/NOTES.md ▸ Testing). It
+    /// is also the one line a regression would fail silently — a pane that always answered
+    /// `.readOnly` would show every remote panel exactly as M24 shipped it, with nothing to see.
+    func remoteEditability(for entry: FileEntry) -> RemoteAttributeEditability {
+        RemoteAttributeEditability.decide(
+            for: entry,
+            capabilities: backend.editableMetadata(at: entry.path)
+        )
     }
 
     // MARK: - Single item

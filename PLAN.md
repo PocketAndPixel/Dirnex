@@ -887,11 +887,67 @@ the old behaviour standing where it cannot be established.
    `unixRow` grew a `splitsLinkTarget` seam so only this dialect opts out; the control reproduces the
    old reading exactly (`name: "a"`, target `"b"`) and fails only the one test that names it, and the
    live run now reads `a -> b` end to end against a real server.
-5. **Get Info's write half**, on the verbs slices 1–2 establish, **the sentence that says what a
-   copy could not keep** — Slice 2 accumulates the loss and leaves choosing its surface here — and
-   **Synchronize by size** — the
-   comparison that is honest on a side with no exact clock, which comparing by *contents* now
-   joins, since M24 Slice 4 taught ⌥F3 to fetch both sides at a price the plan can state up front.
+5. **Get Info's write half**, on the verbs slices 1–2 establish. Landed as **5a** below; the two
+   halves it was bundled with are 5b and 5c, split on Oleg's call because each is a pass of its own.
+   **Landed 2026-08-28.** The probe overturned the design the slice opened with, and it is the
+   milestone's own subject arriving one layer further in.
+   **`sftp`'s `chmod` reports success for a mode the server did not store.** Measured against a real
+   `sshd`: `chmod 2755` on a file whose group the account is not a member of exits **0**, prints
+   **nothing**, and leaves `100755` — set-group-ID silently gone. It is POSIX's rule for `chmod(2)`
+   rather than OpenSSH's choice, so it is true of every server, and the control is what makes it a
+   fact about the write rather than about this one: the identical command on a file in a group the
+   account *is* in stores `102755`, same session, same binary. Set-uid and sticky are unaffected, so
+   a probe testing either reports a preservation that is only two-thirds there.
+   So a panel that reported "saved" on a clean exit would be doing exactly what this milestone exists
+   to prevent, and **Save ends in a re-read** (``RemoteAttributeVerdict``): what is on screen
+   afterwards is what the item carries, never what was sent. A gesture the user made can afford one
+   round trip where the bulk carry cannot — which is why Slice 2 pays nothing per file and this pays
+   once. The asymmetry that keeps it honest is that the **mode** is verifiable this way and a
+   **timestamp is not**: a remote `stat` is a listing row, minute-resolution over `sftp` and
+   zone-less over FTP's `LIST`, so judging a written time against one would report a false refusal
+   for an exact `MFMT` — an hour off for every user in a different zone from their server.
+   **What is offered is decided per connection and per row**, both gates and both necessary: the
+   listing must have reported the field (a control for a mode the server never named would invent
+   its own starting value) and the account must still honour the verb. That makes it a mode over
+   SFTP, a mode **and** a modification time over FTP — the richer protocol here, which inverts the
+   expectation the rest of this milestone sets — and nothing over an object store or an archive.
+   **Owner and group are deliberately absent, and the probe is why**: `chown`/`chgrp` take a numeric
+   id while `sftp`'s `ls -la` prints *names*, so a panel built on a listing has nothing to send — and
+   a remote `chgrp` clears set-uid and set-gid as a side effect (`106755` → `100755`, exit 0, nothing
+   printed), so offering it would need both the missing id and the ordering rule
+   ``AttributeChangePlan`` already encodes locally.
+   **Not undoable, and the panel says so.** ⌘Z reverses an attribute change through
+   `FileAttributeIO`'s syscalls, a local-only executor; a backend-driven undo step is its own piece
+   of work. §6 is explicit that a non-reversible operation is marked rather than silently dropped,
+   and the note is that mark.
+   Controlled in seven directions, each failing only the tests that name it: the read-back removed
+   (which reports the silent downgrade as a success — the shipped bug), the timestamp judged against
+   the listing that reads it back, the change ignoring what the connection can do, editability
+   ignoring whether the listing reported the field, the composite's forward dropped, the pane always
+   answering read-only, and the save believing the clean exit.
+   **Two of those controls were inert on first writing and that is the finding worth keeping.**
+   Every panel test built the controller directly, so a pane that opened *every* remote panel
+   read-only left them all green — the pane's own decision had to be split out
+   (`remoteEditability(for:)`) before anything could see it; and the silent-downgrade test asserted
+   the redraw rather than the report, which is true under both branches, so the panel had to hold
+   what the last Save achieved (`lastVerdict`) before a control could move it. A control that does
+   not fire is not a passing control.
+   **Verified live twice over**: a checked-in suite driving the real `SFTPProcessTransport` against a
+   throwaway `sshd` (16 real sessions in one run, counted in the server's own log), and then the
+   built app on a restored SFTP tab — the panel drew 9 mode boxes and 3 special bits with no date
+   control, ticking set-GID enabled Save and produced `2755`, and the verdict came back
+   `refused=[permissions] landed=755`. The narrowness half ran in the same shape with only the
+   file's group changed: `refused=[] complete=1 landed=2755`, and the file on disk `-rwxr-sr-x`.
+6. **The sentence that says what a copy could not keep** — Slice 2 accumulates the loss
+   (`RemoteMetadataSupport.loss`) and left choosing its surface here. Oleg's call: a **status line
+   after the job**, non-modal, because the routine case is not rare — the server-side `cp` route
+   drops the modification time on *every* same-account SFTP duplicate, so anything modal would fire
+   constantly. It owes the ▸ Localization budget check, since that label truncates its own tail in
+   silence at ~542 pt.
+7. **Synchronize by size** — the comparison that is honest on a side with no exact clock, which
+   comparing by *contents* now joins, since M24 Slice 4 taught ⌥F3 to fetch both sides at a price
+   the plan can state up front. Note that Synchronize is gated `backend == .local` on **both** panes
+   today (`PanelViewController.canSync`), so this slice widens a gate before it adds a comparison.
 
 #### Smaller than a milestone
 

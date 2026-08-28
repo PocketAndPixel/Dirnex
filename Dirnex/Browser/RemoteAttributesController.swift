@@ -19,17 +19,70 @@ import DirnexCore
 /// this panel is the reader that would have drawn it as the server's own word (see
 /// ``FileEntry/permissions``, now optional for exactly this reason).
 ///
-/// Read-only, and that is the whole slice: a panel that shows a mode it cannot change is honest,
-/// and one that offers a change it cannot make is not. Writing is M25's.
+/// Read-only when it must be, editable where the connection can take a change (PLAN.md §M25
+/// Slice 5). The rule is the same one the read half is built on, applied to controls instead of
+/// rows: a field is offered only where the listing reported it **and** this account still honours
+/// the verb — a mode over SFTP, a mode and a modification time over FTP, nothing over an object
+/// store or an archive. What Save then reports is what the item reads as afterwards, never what was
+/// sent, because a clean answer from the server is not proof the write landed
+/// (``RemoteAttributeVerdict``).
 @MainActor
 final class RemoteAttributesController: NSViewController {
     /// Internal rather than private: Swift's `private` does not cross files, and the notes and
     /// footer live in `RemoteAttributesController+Notes` to keep both files under SwiftLint's
     /// `file_length` and `type_body_length` ceilings (docs/NOTES.md ▸ Lint ceilings).
-    let entry: FileEntry
+    private(set) var entry: FileEntry
+    /// The backend that owns this **row**, which a routing backend answers per path — a results tab
+    /// holds hits from anywhere and a tree draws several connections at once.
+    let backend: any VFSBackend
+    /// What this connection will take, asked once when the panel opens. A server that refuses a verb
+    /// mid-session is not chased: the control stays live and Save reports the refusal, which is the
+    /// same answer the user would get from a fresh panel one moment later.
+    let editability: RemoteAttributeEditability
+    /// Re-list the pane after a change lands, so the row on screen agrees with the server.
+    var onApplied: (() -> Void)?
 
-    init(entry: FileEntry) {
+    /// One `rwx` checkbox and the bit it stands for.
+    struct ModeBox {
+        let box: NSButton
+        let cls: POSIXPermissions.Class
+        let access: POSIXPermissions.Access
+    }
+
+    /// Which of the three bits a transfer's preserve flag silently drops.
+    enum SpecialBit { case setUserID, setGroupID, sticky }
+
+    struct SpecialBox {
+        let box: NSButton
+        let bit: SpecialBit
+    }
+
+    var modeBoxes: [ModeBox] = []
+    var specialBoxes: [SpecialBox] = []
+    var modificationPicker: NSDatePicker?
+    /// The value the picker was *given*, not the entry's. `NSDatePicker` resolves to whole seconds
+    /// and a real timestamp does not, so comparing against the entry would light Save up with
+    /// nothing edited (docs/NOTES.md ▸ ACLs and file attributes).
+    var pickerBaseline: Date?
+    var modeValueField: NSTextField?
+    var saveButton: NSButton?
+    /// What the last Save achieved, or `nil` before one. Held rather than passed straight to an
+    /// alert because it is the panel's own state — and because "the server did less than was asked"
+    /// has to be assertable without presenting a sheet, which a test host cannot do without
+    /// destabilizing its neighbours (docs/NOTES.md ▸ Testing).
+    ///
+    /// Plain `var` for the reason this whole type's stored properties are: Swift's `private` does not
+    /// cross files, and the save flow lives in `RemoteAttributesController+Save`.
+    var lastVerdict: RemoteAttributeVerdict?
+
+    init(
+        entry: FileEntry,
+        backend: any VFSBackend,
+        editability: RemoteAttributeEditability = .readOnly
+    ) {
         self.entry = entry
+        self.backend = backend
+        self.editability = editability
         super.init(nibName: nil, bundle: nil)
         title = DialogTitle.ofCommand("file.attributes")
     }
@@ -185,24 +238,9 @@ final class RemoteAttributesController: NSViewController {
         // and `unknownDate` is a real answer from several backends (an S3 folder is a common prefix
         // rather than an object, so it has no `LastModified` at all).
         case .modified:
-            AttributeRow.make(
-                label: String(
-                    localized: "Modified:",
-                    comment: "Info panel field label: last content modification (st_mtime)."
-                ),
-                value: AttributeFormatting.date(entry.modificationDate)
-            )
+            makeModifiedRow()
         case .permissions:
-            AttributeRow.make(
-                label: String(
-                    localized: "Permissions:",
-                    comment: "Info panel field label: the POSIX mode bits."
-                ),
-                value: AttributeFormatting.modeDescription(
-                    POSIXPermissions(rawValue: entry.permissions ?? 0)
-                ),
-                monospaced: true
-            )
+            makePermissionsRow()
         // Text, exactly as the source spelled it, and never resolved against this Mac — see
         // `FileEntry.ownerName`. A server's `501` put through `getpwuid` here would draw the local
         // account of whoever is reading the panel over a file belonging to a stranger.
@@ -232,5 +270,73 @@ final class RemoteAttributesController: NSViewController {
                 monospaced: true
             )
         }
+    }
+
+    /// The mode, as a live grid where this connection takes a `chmod` and as the read-only line M24
+    /// shipped where it does not.
+    private func makePermissionsRow() -> NSView {
+        let label = String(
+            localized: "Permissions:",
+            comment: "Info panel field label: the POSIX mode bits."
+        )
+        guard editability.allows(.permissions) else {
+            return AttributeRow.make(
+                label: label,
+                value: AttributeFormatting.modeDescription(
+                    POSIXPermissions(rawValue: entry.permissions ?? 0)
+                ),
+                monospaced: true
+            )
+        }
+        let echo = AttributeRow.valueField(
+            AttributeFormatting.modeDescription(POSIXPermissions(rawValue: entry.permissions ?? 0)),
+            monospaced: true
+        )
+        modeValueField = echo
+        let stack = NSStackView(views: [echo, makeModeEditor()])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 8
+        return AttributeRow.make(label: label, view: stack)
+    }
+
+    private func makeModifiedRow() -> NSView {
+        let label = String(
+            localized: "Modified:",
+            comment: "Info panel field label: last content modification (st_mtime)."
+        )
+        guard editability.allows(.modificationTime) else {
+            return AttributeRow.make(
+                label: label,
+                value: AttributeFormatting.date(entry.modificationDate)
+            )
+        }
+        return AttributeRow.make(label: label, view: makeDateEditor())
+    }
+
+    /// Rebuild the whole body around a freshly-read entry, after a change landed.
+    ///
+    /// A rebuild rather than a patch because the panel's *shape* can change with the value: a mode
+    /// that has stopped being reported takes its row with it, and the notes are derived from what
+    /// the entry carries. Retaining the controls and updating them in place would be a second
+    /// definition of what this panel shows.
+    ///
+    /// **Replacing `view` really does redraw the window**, which is worth stating because the
+    /// natural worry is that it does not — `NSWindow.contentViewController` looks like it takes the
+    /// view once. Probed: the window follows the swap (`contentView === view` after, with the new
+    /// object) **and** re-sizes to the new content's height, so a panel that loses a row does not
+    /// leave blank space. Without that, the note this panel prints after a partial save — "the panel
+    /// now shows what the item actually carries" — would be a claim about state nobody can see.
+    func reload(with landed: FileEntry) {
+        entry = landed
+        modeBoxes = []
+        specialBoxes = []
+        modificationPicker = nil
+        pickerBaseline = nil
+        modeValueField = nil
+        saveButton = nil
+        view = NSView()
+        loadView()
+        view.needsLayout = true
     }
 }

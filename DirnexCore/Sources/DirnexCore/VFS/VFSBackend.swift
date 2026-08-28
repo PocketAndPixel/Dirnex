@@ -304,6 +304,41 @@ public protocol VFSBackend: Sendable {
         sourceMetadata: RemoteSourceMetadata?
     ) throws
 
+    /// Which of a remote item's fields Get Info may **change** on this connection (PLAN.md §M25
+    /// Slice 5).
+    ///
+    /// Asked of the backend rather than derived from the protocol, because it is a fact about one
+    /// *account*: a server that has refused `SITE CHMOD` once has answered for every later file, and
+    /// `RemoteMetadataSupport` is where that answer is remembered. Reading it here is what lets the
+    /// panel offer a control only where pressing Save can do something — the alternative being a
+    /// control that looks live and is refused every time.
+    ///
+    /// It takes a path because a routing backend answers for whoever owns the row, not for itself:
+    /// a results tab holds hits from anywhere and a tree draws several connections at once, which is
+    /// the per-row rule `AttributesRoute` already settled for the read half.
+    ///
+    /// The default is empty — nothing is editable — so a backend that has not implemented the write
+    /// verbs shows exactly the read-only panel M24 Slice 7 shipped.
+    func editableMetadata(at path: VFSPath) -> RemoteMetadataCapabilities
+
+    /// Write an item's mode or modification time, answering the steps that did not take.
+    ///
+    /// It **answers** rather than throwing for a refused step, the same rule
+    /// ``RemoteWriteTransport/applyMetadata(_:to:)`` follows: a server that will not keep a mode has
+    /// not failed the operation, and a caller has to be able to tell "the connection broke" from
+    /// "the server said no" in order to word either one. Throwing stays for the connection itself.
+    ///
+    /// Note what the answer is *not*: proof that everything else landed. A clean answer here is
+    /// necessary and not sufficient, because `sftp`'s `chmod` reports success for a mode the server
+    /// did not store — so the caller weighs it against a re-read (``RemoteAttributeVerdict``).
+    ///
+    /// The default refuses, naming the item, so a backend with no write verbs cannot silently report
+    /// a change it never made.
+    func applyMetadata(
+        _ steps: [RemoteMetadataStep],
+        at path: VFSPath
+    ) throws -> [RemoteMetadataRefusal]
+
     /// Fill in the symlink **targets** of whichever of `entries` arrived without one, for a backend
     /// that can learn them at a price a *listing* should not pay (PLAN.md §M25 Slice 4).
     ///
@@ -357,107 +392,4 @@ public protocol VFSBackend: Sendable {
     /// `nil`, which the queue reads as "one indistinguishable volume", so a backend that
     /// opts out simply has all its jobs serialized (the safe choice).
     func volumeIdentifier(for path: VFSPath) -> String?
-}
-
-public extension VFSBackend {
-    func capabilities(for path: VFSPath) -> VFSCapabilities {
-        capabilities // a single-backend implementation is uniform across all its paths
-    }
-
-    func subtreeListing(at path: VFSPath, isCancelled: () -> Bool) throws -> VFSSubtreeListing? {
-        nil // no shortcut here — the caller walks
-    }
-
-    func createDirectory(at path: VFSPath) throws {
-        throw VFSError.unsupported(.createDirectory)
-    }
-
-    func createFile(at path: VFSPath) throws {
-        throw VFSError.unsupported(.createFile)
-    }
-
-    func moveItem(at source: VFSPath, to destination: VFSPath) throws {
-        throw VFSError.unsupported(.moveItem)
-    }
-
-    func removeItem(at path: VFSPath) throws {
-        throw VFSError.unsupported(.removeItem)
-    }
-
-    @discardableResult
-    func trashItem(at path: VFSPath) throws -> VFSPath? {
-        throw VFSError.unsupported(.trash)
-    }
-
-    func cloneItem(at source: VFSPath, to destination: VFSPath) throws -> Bool {
-        false // no copy-on-write here — the engine falls back to a chunked copy
-    }
-
-    func copyFile(
-        at source: VFSPath,
-        to destination: VFSPath,
-        progress: (Int64) -> Void,
-        isCancelled: () -> Bool
-    ) throws {
-        throw VFSError.unsupported(.copyFile)
-    }
-
-    func copyFile(
-        at source: VFSPath,
-        to destination: VFSPath,
-        expectedSize: Int64?,
-        progress: (Int64) -> Void,
-        isCancelled: () -> Bool
-    ) throws {
-        // The hint is an optimization, so a backend that has no use for it copies exactly as before.
-        try copyFile(at: source, to: destination, progress: progress, isCancelled: isCancelled)
-    }
-
-    func copyFile(
-        at source: VFSPath,
-        to destination: VFSPath,
-        hint: CopySourceHint,
-        progress: (Int64) -> Void,
-        isCancelled: () -> Bool
-    ) throws {
-        // Dropping the metadata half *is* the old behaviour: a backend that cannot carry it copies
-        // the bytes and nothing else, exactly as it always did.
-        try copyFile(
-            at: source,
-            to: destination,
-            expectedSize: hint.expectedSize,
-            progress: progress,
-            isCancelled: isCancelled
-        )
-    }
-
-    func createSymbolicLink(at destination: VFSPath, withDestination target: String) throws {
-        throw VFSError.unsupported(.symbolicLink)
-    }
-
-    func copyMetadata(at source: VFSPath, to destination: VFSPath) throws {
-        // Backends without metadata to preserve need do nothing.
-    }
-
-    func copyMetadata(
-        at source: VFSPath,
-        to destination: VFSPath,
-        sourceMetadata _: RemoteSourceMetadata?
-    ) throws {
-        // Ignoring the hint is the old behaviour, and it is honest: a backend that does not use it
-        // is one that was not carrying metadata in the first place.
-        try copyMetadata(at: source, to: destination)
-    }
-
-    func mayAttemptInternalCopy(from _: VFSPath, to _: VFSPath) -> Bool {
-        false // no verb to try, so nothing to be refused
-    }
-
-    func resolvingSymlinkTargets(in entries: [FileEntry]) -> [FileEntry] {
-        entries // this backend's listing already said whatever it knows
-    }
-
-    func volumeIdentifier(for path: VFSPath) -> String? {
-        nil // "one indistinguishable volume" — the queue serializes such a backend's jobs
-    }
 }

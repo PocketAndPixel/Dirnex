@@ -238,3 +238,63 @@ struct CompositeBackendTests {
         }
     }
 }
+
+/// The routing of Get Info's **write** half (PLAN.md §M25 Slice 5).
+///
+/// Its own suite because what it pins is not a capability but a **forward**, and a missing forward
+/// here has no symptom at all: the composite would inherit `VFSBackend`'s default, every remote
+/// panel would come up read-only, and nothing would log, fail or look wrong. That is the shape M22
+/// Slice 3 shipped once — `subtreeListing` routed nowhere, so every search silently took the slow
+/// path and only the bill said so.
+///
+/// Registering a connection costs no round trip: `connectSFTP` builds a transport and files it under
+/// a descriptor, and the network does not happen until a listing. So this needs no server.
+@Suite("CompositeBackend ▸ remote attribute writing")
+struct CompositeBackendMetadataRoutingTests {
+    private let location = SFTPLocation(host: "srv.example", username: "oleg")
+
+    private func connected() -> (CompositeBackend, VFSPath) {
+        let composite = CompositeBackend(local: LocalBackend())
+        composite.connectSFTP(location: location, authentication: .key(identityFile: "/dev/null"))
+        return (composite, VFSPath(backend: .sftp(location), path: "/home/oleg/a.txt"))
+    }
+
+    @Test("a connected SFTP row's editable fields come from its own connection")
+    func routesToTheOwningConnection() {
+        // `.changeMode` is SFTP's answer and `[]` is the inherited default, so the two are
+        // distinguishable — which is what makes this a test of the forward rather than of a shape
+        // both branches happen to share.
+        let (composite, path) = connected()
+        #expect(composite.editableMetadata(at: path) == .changeMode)
+    }
+
+    /// The narrowness control. Answering for everything would be as wrong as answering for nothing:
+    /// a local row takes the full editing panel and must never be routed here, and an archive member
+    /// has no verb at all.
+    @Test("a local row and an archive member offer nothing")
+    func nonRemoteRowsOfferNothing() {
+        let (composite, _) = connected()
+        #expect(composite.editableMetadata(at: .local("/tmp/a.txt")).isEmpty)
+        #expect(composite.editableMetadata(
+            at: VFSPath(backend: .archive(forArchiveAt: "/tmp/t.zip"), path: "/a.txt")
+        ).isEmpty)
+    }
+
+    @Test("a path on no connection offers nothing rather than raising")
+    func unconnectedPathIsQuiet() {
+        // An unreachable connection is a reason to show the read-only panel, not to refuse to
+        // describe the row — Get Info's read half must keep working when its write half cannot.
+        let composite = CompositeBackend(local: LocalBackend())
+        let path = VFSPath(backend: .sftp(location), path: "/home/oleg/a.txt")
+        #expect(composite.editableMetadata(at: path).isEmpty)
+    }
+
+    @Test("a write on no connection is refused rather than silently doing nothing")
+    func unconnectedWriteThrows() {
+        let composite = CompositeBackend(local: LocalBackend())
+        let path = VFSPath(backend: .sftp(location), path: "/home/oleg/a.txt")
+        #expect(throws: (any Error).self) {
+            try composite.applyMetadata([.setMode(POSIXPermissions(rawValue: 0o644))], at: path)
+        }
+    }
+}

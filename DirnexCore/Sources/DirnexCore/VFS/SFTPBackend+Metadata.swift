@@ -55,6 +55,30 @@ public extension SFTPBackend {
     }
 }
 
+public extension SFTPBackend {
+    /// What Get Info may change on this account (PLAN.md §M25 Slice 5).
+    ///
+    /// `changeMode` and nothing else, less whatever this connection has since refused. There is no
+    /// modification time here and that is the protocol rather than an omission: `sftp`'s batch
+    /// language has no verb that sets one — `help` lists `chmod`, `chown` and `chgrp` and stops —
+    /// so an SFTP row's date is readable and not writable, where an FTP row's is both.
+    func editableMetadata(at path: VFSPath) -> RemoteMetadataCapabilities {
+        guard path.backend == id else { return [] }
+        return metadata.capabilities.intersection(.changeMode)
+    }
+
+    /// Write one item's mode. One batch, one connection, and the refusal is answered rather than
+    /// thrown — a server that will not keep a mode has not broken anything.
+    func applyMetadata(
+        _ steps: [RemoteMetadataStep],
+        at path: VFSPath
+    ) throws -> [RemoteMetadataRefusal] {
+        try requireOwnBackend(path)
+        guard !steps.isEmpty else { return [] }
+        return try mapErrors(path) { try transport.applyMetadata(steps, to: path.path) }
+    }
+}
+
 extension SFTPBackend {
     /// Weigh what a transfer's metadata steps did, and record it against this connection.
     ///

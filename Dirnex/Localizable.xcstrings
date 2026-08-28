@@ -8234,6 +8234,95 @@
         }
       }
     },
+    "A change made here is sent to the server straight away and cannot be undone with Command-Z. What the panel shows after saving is what the server stored, which is not always what was asked for.": {
+      "comment": "Info panel note: a remote attribute change is immediate and not undoable.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A change made here is sent to the server straight away and cannot be undone with Command-Z. What the panel shows after saving is what the server stored, which is not always what was asked for."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine hier vorgenommene Änderung wird sofort an den Server gesendet und lässt sich nicht mit Befehl-Z widerrufen. Nach dem Sichern zeigt das Fenster, was der Server gespeichert hat – das ist nicht immer das, was angefordert wurde."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un cambio hecho aquí se envía al servidor de inmediato y no se puede deshacer con Comando-Z. Tras guardar, el panel muestra lo que el servidor almacenó, que no siempre es lo que se pidió."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une modification faite ici est envoyée immédiatement au serveur et ne peut pas être annulée avec Commande-Z. Après l’enregistrement, la fenêtre affiche ce que le serveur a enregistré, ce qui n’est pas toujours ce qui a été demandé."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una modifica fatta qui viene inviata subito al server e non può essere annullata con Comando-Z. Dopo il salvataggio il pannello mostra ciò che il server ha memorizzato, che non è sempre quanto richiesto."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ここでの変更はすぐにサーバーへ送信され、Command-Z では取り消せません。保存後にパネルが示すのはサーバーが実際に保存した内容で、要求した内容とは限りません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "여기서 변경한 내용은 즉시 서버로 전송되며 Command-Z로 실행 취소할 수 없습니다. 저장 후 패널에 표시되는 것은 서버가 저장한 내용이며, 요청한 내용과 항상 같지는 않습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Een wijziging die je hier maakt, wordt meteen naar de server gestuurd en kan niet ongedaan worden gemaakt met Command-Z. Wat het paneel na het bewaren toont, is wat de server heeft opgeslagen — dat is niet altijd wat er gevraagd is."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zmiana wprowadzona tutaj jest natychmiast wysyłana na serwer i nie można jej cofnąć przy użyciu Command-Z. Po zapisaniu panel pokazuje to, co zapisał serwer, a nie zawsze to, o co poproszono."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uma alteração feita aqui é enviada ao servidor imediatamente e não pode ser desfeita com Command-Z. Após salvar, o painel mostra o que o servidor armazenou, que nem sempre é o que foi pedido."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Изменение, сделанное здесь, сразу отправляется на сервер и не отменяется по Command-Z. После сохранения панель показывает то, что сохранил сервер, а это не всегда то, о чём просили."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зміна, зроблена тут, одразу надсилається на сервер і не скасовується через Command-Z. Після збереження панель показує те, що зберіг сервер, а це не завжди те, про що просили."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在此所做的更改会立即发送到服务器，且无法用 Command-Z 撤销。存储后面板显示的是服务器实际保存的内容，未必是所请求的内容。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在此所做的更改會立即傳送到伺服器，且無法用 Command-Z 還原。儲存後面板顯示的是伺服器實際儲存的內容，未必是所請求的內容。"
+          }
+        }
+      }
+    },
     "A dash means the selected items disagree on that setting. Leave it to keep each item’s own value; tick or clear it to set it on all of them.": {
       "comment": "Info panel note explaining the tri-state (mixed) checkboxes.",
       "localizations": {
@@ -8319,6 +8408,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "短橫線表示所選項目在該設定上不一致。保持不變可保留各項目自己的值；勾選或取消勾選則會套用到所有項目。"
+          }
+        }
+      }
+    },
+    "A listing from a server or an archive carries no access-control list, no extended attributes, and no created or last-opened date, so those are not shown at all.": {
+      "comment": "Info panel note: what a non-local listing cannot report.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A listing from a server or an archive carries no access-control list, no extended attributes, and no created or last-opened date, so those are not shown at all."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Auflistung von einem Server oder aus einem Archiv enthält keine Zugriffssteuerungsliste, keine erweiterten Attribute und kein Erstellungs- oder Zugriffsdatum – diese werden daher gar nicht angezeigt."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un listado de un servidor o de un archivo comprimido no incluye lista de control de acceso, atributos extendidos ni fecha de creación o de último acceso, por lo que no se muestran."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une liste provenant d’un serveur ou d’une archive ne contient ni liste de contrôle d’accès, ni attributs étendus, ni date de création ou de dernière ouverture : ces informations ne sont donc pas affichées."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un elenco da un server o da un archivio non contiene liste di controllo degli accessi, attributi estesi né date di creazione o di ultimo accesso, quindi non vengono mostrati."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバーやアーカイブの一覧にはアクセス制御リスト、拡張属性、作成日や最後に開いた日付が含まれないため、これらは表示されません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버나 아카이브의 목록에는 접근 제어 목록, 확장 속성, 생성일이나 마지막 열어본 날짜가 없으므로 표시되지 않습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Een lijst van een server of uit een archief bevat geen toegangsbeheerlijst, geen uitgebreide kenmerken en geen aanmaak- of laatst geopende datum; die worden dus niet getoond."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lista z serwera lub archiwum nie zawiera listy kontroli dostępu, atrybutów rozszerzonych ani daty utworzenia czy ostatniego otwarcia, więc nie są one pokazywane."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uma listagem de um servidor ou de um arquivo compactado não traz lista de controle de acesso, atributos estendidos nem data de criação ou de última abertura, portanto elas não são exibidas."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Листинг с сервера или из архива не содержит списка контроля доступа, расширенных атрибутов и дат создания и последнего открытия, поэтому они не показываются."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Лістинг із сервера або з архіву не містить списку контролю доступу, розширених атрибутів і дат створення та останнього відкриття, тому вони не показуються."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "来自服务器或归档的列表不包含访问控制列表、扩展属性以及创建或最近打开日期，因此不予显示。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "來自伺服器或封存檔的列表不包含存取控制列表、延伸屬性以及建立或最近開啟日期，因此不予顯示。"
           }
         }
       }
@@ -49451,6 +49629,95 @@
         }
       }
     },
+    "Neither the permissions nor the modification time were stored as asked. The panel now shows what the item actually carries.": {
+      "comment": "Remote Get Info: neither field was stored.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neither the permissions nor the modification time were stored as asked. The panel now shows what the item actually carries."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weder die Rechte noch das Änderungsdatum wurden wie gewünscht gespeichert. Das Fenster zeigt jetzt, was das Objekt tatsächlich trägt."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ni los permisos ni la fecha de modificación se guardaron como se pidió. El panel muestra ahora lo que el ítem tiene realmente."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ni les autorisations ni la date de modification n’ont été enregistrées comme demandé. La fenêtre affiche maintenant ce que l’élément porte réellement."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Né i permessi né la data di modifica sono stati memorizzati come richiesto. Il pannello mostra ora ciò che l’elemento ha davvero."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アクセス権も変更日時も要求どおりには保存されませんでした。パネルは現在、項目が実際に持つ値を表示しています。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "권한과 수정 시각 모두 요청대로 저장되지 않았습니다. 패널은 이제 항목이 실제로 가진 값을 표시합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch de rechten, noch de wijzigingsdatum zijn opgeslagen zoals gevraagd. Het paneel toont nu wat het onderdeel werkelijk heeft."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ani uprawnienia, ani data modyfikacji nie zostały zapisane zgodnie z żądaniem. Panel pokazuje teraz to, co element faktycznie ma."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nem as permissões nem a data de modificação foram armazenadas como pedido. O painel agora mostra o que o item realmente tem."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ни права, ни дата изменения не были сохранены так, как запрошено. Панель показывает то, что объект несёт на самом деле."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ані права, ані дату зміни не збережено так, як запитано. Панель показує те, що об’єкт має насправді."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "权限和修改时间均未按要求保存。面板现在显示该项目实际具有的内容。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "權限和修改時間均未按要求儲存。面板現在顯示該項目實際具有的內容。"
+          }
+        }
+      }
+    },
     "New (copying in)": {
       "comment": "Conflict card header for the incoming, copied item.",
       "localizations": {
@@ -52471,6 +52738,184 @@
           "stringUnit": {
             "state": "translated",
             "value": "尚無項目"
+          }
+        }
+      }
+    },
+    "Nothing on this panel can be changed, because this listing did not report a field the server would let you set.": {
+      "comment": "Info panel note: the connection could write, but the listing reported nothing to write.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing on this panel can be changed, because this listing did not report a field the server would let you set."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In diesem Fenster kann nichts geändert werden, weil diese Auflistung kein Feld gemeldet hat, das der Server setzen ließe."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se puede cambiar nada en este panel porque este listado no informó de ningún campo que el servidor permita establecer."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rien ne peut être modifié dans cette fenêtre : cette liste n’a signalé aucun champ que le serveur permettrait de définir."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In questo pannello non si può modificare nulla, perché questo elenco non ha riportato alcun campo che il server consenta di impostare."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このパネルでは何も変更できません。この一覧には、サーバーが設定を許可する項目が含まれていません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 패널에서는 아무것도 변경할 수 없습니다. 이 목록에는 서버가 설정을 허용하는 필드가 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In dit paneel kan niets worden gewijzigd, omdat deze lijst geen veld heeft gemeld dat de server laat instellen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "W tym panelu nie można nic zmienić, ponieważ ta lista nie zawiera pola, które serwer pozwoliłby ustawić."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada neste painel pode ser alterado, porque esta listagem não informou nenhum campo que o servidor permita definir."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В этой панели ничего нельзя изменить: в листинге нет поля, которое сервер позволил бы задать."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У цій панелі нічого не можна змінити: у лістингу немає поля, яке сервер дозволив би задати."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此面板中的内容无法更改，因为该列表未报告服务器允许设置的任何字段。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此面板中的內容無法更改，因為該列表未回報伺服器允許設定的任何欄位。"
+          }
+        }
+      }
+    },
+    "Nothing on this panel can be changed. This item is not on a connection that offers a way to change it.": {
+      "comment": "Info panel note: this backend has no verb for changing attributes.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing on this panel can be changed. This item is not on a connection that offers a way to change it."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In diesem Fenster kann nichts geändert werden. Dieses Objekt liegt nicht auf einer Verbindung, die eine Änderung anbietet."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se puede cambiar nada en este panel. Este ítem no está en una conexión que permita cambiarlo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rien ne peut être modifié dans cette fenêtre. Cet élément ne se trouve pas sur une connexion qui permette de le modifier."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In questo pannello non si può modificare nulla. Questo elemento non si trova su una connessione che offra un modo per cambiarlo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このパネルでは何も変更できません。この項目は変更手段を提供する接続上にありません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 패널에서는 아무것도 변경할 수 없습니다. 이 항목은 변경 수단을 제공하는 연결에 있지 않습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In dit paneel kan niets worden gewijzigd. Dit onderdeel staat niet op een verbinding die dat mogelijk maakt."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "W tym panelu nie można nic zmienić. Ten element nie znajduje się na połączeniu, które to umożliwia."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada neste painel pode ser alterado. Este item não está em uma conexão que ofereça uma forma de alterá-lo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В этой панели ничего нельзя изменить: объект находится не на том соединении, которое это позволяет."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У цій панелі нічого не можна змінити: об’єкт розташований не на тому з’єднанні, яке це дозволяє."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此面板中的内容无法更改。该项目所在的连接不提供更改方式。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此面板中的內容無法更改。該項目所在的連線不提供更改方式。"
           }
         }
       }
@@ -68998,6 +69443,184 @@
         }
       }
     },
+    "Set GID": {
+      "comment": "Mode bit: run as the file's group.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set GID"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set-GID"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set GID"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set GID"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set GID"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set GID"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set GID"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set GID"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set GID"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set GID"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set GID"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set GID"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set GID"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set GID"
+          }
+        }
+      }
+    },
+    "Set UID": {
+      "comment": "Mode bit: run as the file's owner.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set UID"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set-UID"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set UID"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set UID"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set UID"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set UID"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set UID"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set UID"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set UID"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set UID"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set UID"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set UID"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set UID"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set UID"
+          }
+        }
+      }
+    },
     "Set-GID": {
       "comment": "Mode special bit 2000, as a checkbox label.",
       "localizations": {
@@ -75574,6 +76197,95 @@
         }
       }
     },
+    "The change was not stored as asked.": {
+      "comment": "Remote Get Info: a refusal with no field named.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The change was not stored as asked."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Änderung wurde nicht wie gewünscht gespeichert."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El cambio no se guardó como se pidió."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La modification n’a pas été enregistrée comme demandé."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La modifica non è stata memorizzata come richiesto."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "変更は要求どおりには保存されませんでした。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "변경 사항이 요청대로 저장되지 않았습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De wijziging is niet opgeslagen zoals gevraagd."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zmiana nie została zapisana zgodnie z żądaniem."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A alteração não foi armazenada como pedido."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Изменение не сохранено так, как запрошено."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зміну не збережено так, як запитано."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更改未按要求保存。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更改未按要求儲存。"
+          }
+        }
+      }
+    },
     "The checksum file has to be written beside the items it describes, so this needs somewhere that can be written to.": {
       "comment": "Create-checksum failure detail: the manifest's own directory is read-only or is a virtual listing with no directory of its own.",
       "localizations": {
@@ -77088,6 +77800,95 @@
         }
       }
     },
+    "The modification time was not stored. This server refused the command that sets one.": {
+      "comment": "Remote Get Info: the modification time was refused.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The modification time was not stored. This server refused the command that sets one."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Änderungsdatum wurde nicht gespeichert. Dieser Server hat den Befehl dafür abgelehnt."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La fecha de modificación no se guardó. Este servidor rechazó el comando que la establece."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La date de modification n’a pas été enregistrée. Ce serveur a refusé la commande qui la définit."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La data di modifica non è stata memorizzata. Questo server ha rifiutato il comando che la imposta."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "変更日時は保存されませんでした。このサーバーは、それを設定するコマンドを拒否しました。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "수정 시각이 저장되지 않았습니다. 이 서버는 해당 명령을 거부했습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De wijzigingsdatum is niet opgeslagen. Deze server heeft het commando daarvoor geweigerd."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Data modyfikacji nie została zapisana. Ten serwer odrzucił polecenie, które ją ustawia."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A data de modificação não foi armazenada. Este servidor recusou o comando que a define."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Дата изменения не сохранена: сервер отклонил команду, которая её задаёт."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Дату зміни не збережено: сервер відхилив команду, яка її задає."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修改时间未保存。此服务器拒绝了设置它的命令。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修改時間未儲存。此伺服器拒絕了設定它的指令。"
+          }
+        }
+      }
+    },
     "The multiple-item panel edits permissions, flags and dates, and an item that is not on this Mac cannot be edited yet. Clear the selection to see one item on its own.": {
       "comment": "Get Info failure detail for a non-local multi-selection.",
       "localizations": {
@@ -77529,6 +78330,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "面板顯示相同的檔案夾"
+          }
+        }
+      }
+    },
+    "The permissions were not stored as asked — a server drops the set-group-ID bit for an account that is not in the item’s group, and may refuse a change outright. The panel now shows the mode the item actually carries.": {
+      "comment": "Remote Get Info: the mode was refused or silently changed.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The permissions were not stored as asked — a server drops the set-group-ID bit for an account that is not in the item’s group, and may refuse a change outright. The panel now shows the mode the item actually carries."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Rechte wurden nicht wie gewünscht gespeichert – ein Server verwirft das Set-GID-Bit für einen Account, der nicht zur Gruppe des Objekts gehört, und kann eine Änderung auch ganz ablehnen. Das Fenster zeigt jetzt die Rechte, die das Objekt tatsächlich trägt."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los permisos no se guardaron como se pidió: un servidor descarta el bit set-GID para una cuenta que no pertenece al grupo del ítem, y puede rechazar el cambio por completo. El panel muestra ahora los permisos que el ítem tiene realmente."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les autorisations n’ont pas été enregistrées comme demandé : un serveur supprime le bit set-GID pour un compte qui n’appartient pas au groupe de l’élément, et peut aussi refuser la modification. La fenêtre affiche maintenant les autorisations réelles de l’élément."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I permessi non sono stati memorizzati come richiesto: un server scarta il bit set-GID per un account che non appartiene al gruppo dell’elemento e può rifiutare del tutto la modifica. Il pannello mostra ora i permessi che l’elemento ha davvero."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アクセス権は要求どおりに保存されませんでした。サーバーは、項目のグループに属していないアカウントに対して set-GID ビットを落とし、変更自体を拒否することもあります。パネルは現在、項目が実際に持つアクセス権を表示しています。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "권한이 요청대로 저장되지 않았습니다. 서버는 항목의 그룹에 속하지 않은 계정에 대해 set-GID 비트를 제거하며, 변경을 아예 거부할 수도 있습니다. 패널은 이제 항목이 실제로 가진 권한을 표시합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De rechten zijn niet opgeslagen zoals gevraagd — een server laat het set-GID-bit vallen voor een account dat niet in de groep van het onderdeel zit, en kan een wijziging ook helemaal weigeren. Het paneel toont nu de rechten die het onderdeel werkelijk heeft."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uprawnienia nie zostały zapisane zgodnie z żądaniem — serwer usuwa bit set-GID dla konta, które nie należy do grupy elementu, i może całkiem odmówić zmiany. Panel pokazuje teraz uprawnienia, które element faktycznie ma."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As permissões não foram armazenadas como pedido — um servidor descarta o bit set-GID para uma conta que não está no grupo do item e pode recusar a alteração por completo. O painel agora mostra as permissões que o item realmente tem."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Права не были сохранены так, как запрошено: сервер сбрасывает бит set-GID для учётной записи, не входящей в группу объекта, и может вовсе отказать в изменении. Панель показывает права, которые объект несёт на самом деле."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Права не збережено так, як запитано: сервер скидає біт set-GID для облікового запису, який не входить до групи об’єкта, і може взагалі відмовити у зміні. Панель показує права, які об’єкт має насправді."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "权限未按要求保存——对于不属于该项目所属组的账户，服务器会丢弃 set-GID 位，也可能直接拒绝更改。面板现在显示该项目实际具有的权限。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "權限未按要求儲存——對於不屬於該項目所屬群組的帳號，伺服器會捨棄 set-GID 位元，也可能直接拒絕更改。面板現在顯示該項目實際具有的權限。"
           }
         }
       }
@@ -78152,6 +79042,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "無法連線到伺服器。請檢查主機名稱和連接埠。"
+          }
+        }
+      }
+    },
+    "The server didn’t make every change to “%@”": {
+      "comment": "Remote Get Info: the server stored less than was asked; %@ is the item's name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server didn’t make every change to “%@”"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server hat nicht alle Änderungen an „%@“ vorgenommen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El servidor no aplicó todos los cambios a «%@»"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le serveur n’a pas appliqué toutes les modifications à « %@ »"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il server non ha applicato tutte le modifiche a “%@”"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバーは「%@」のすべての変更を反映しませんでした"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버가 ‘%@’의 모든 변경 사항을 적용하지 않았습니다"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De server heeft niet alle wijzigingen in ‘%@’ doorgevoerd"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serwer nie wprowadził wszystkich zmian w „%@”"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O servidor não aplicou todas as alterações em “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер применил не все изменения к «%@»"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер застосував не всі зміни до «%@»"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器未对“%@”做出全部更改"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伺服器未對「%@」做出全部更改"
           }
         }
       }
@@ -117477,6 +118456,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "只有管理者才能更改「%@」。"
+          }
+        }
+      }
+    },
+    "vfs.unsupported.attributeChangeNeedsConnection": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown when Get Info is asked to change a remote item whose backend has no verb for it. %@ is the item name.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” can’t be changed from here. Its server doesn’t offer that."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ kann von hier aus nicht geändert werden. Der Server bietet das nicht an."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» no se puede cambiar desde aquí. Su servidor no lo permite."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« %@ » ne peut pas être modifié d’ici : son serveur ne le propose pas."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” non può essere modificato da qui. Il suo server non lo consente."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」はここからは変更できません。サーバーがその機能を提供していません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‘%@’은(는) 여기서 변경할 수 없습니다. 해당 서버가 이를 지원하지 않습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‘%@’ kan hiervandaan niet worden gewijzigd. De server biedt dat niet aan."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@” nie może zostać zmieniony stąd. Serwer tego nie oferuje."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” não pode ser alterado daqui. O servidor não oferece isso."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» нельзя изменить отсюда: сервер этого не поддерживает."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» не можна змінити звідси: сервер цього не підтримує."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法在此更改“%@”。其服务器不提供该功能。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法在此更改「%@」。其伺服器不提供該功能。"
           }
         }
       }

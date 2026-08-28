@@ -33,11 +33,11 @@ extension RemoteAttributesController {
         notes.append(AttributeRow.note(String(
             localized: """
             A listing from a server or an archive carries no access-control list, no extended \
-            attributes, and no created or last-opened date, so those are not shown at all. Nothing \
-            on this panel can be changed.
+            attributes, and no created or last-opened date, so those are not shown at all.
             """,
-            comment: "Info panel note: what a non-local listing cannot report, and that it is read-only."
+            comment: "Info panel note: what a non-local listing cannot report."
         )))
+        notes.append(AttributeRow.note(editability.isReadOnly ? readOnlyNote() : notUndoableNote()))
         return [AttributeRow.separator()] + notes
     }
 
@@ -74,21 +74,91 @@ extension RemoteAttributesController {
         }
     }
 
-    /// Done alone. There is deliberately no Cancel: nothing here is editable, so there is nothing to
-    /// discard, and a second button would imply otherwise.
+    /// Why nothing here can be changed — stated only when that is true of *this* row.
+    ///
+    /// Three reasons and they are not interchangeable, so the sentence names the one that applies:
+    /// an archive member and an object are on a backend with no such verb at all, a row whose
+    /// listing reported no mode has nothing to change, and an account that answered "no such
+    /// command" has withdrawn the offer for the rest of the connection. A single "read-only" would
+    /// leave a user on a perfectly capable SFTP account with no idea why.
+    private func readOnlyNote() -> String {
+        guard backend.editableMetadata(at: entry.path).isEmpty == false else {
+            return String(
+                localized: """
+                Nothing on this panel can be changed. This item is not on a connection that offers a \
+                way to change it.
+                """,
+                comment: "Info panel note: this backend has no verb for changing attributes."
+            )
+        }
+        return String(
+            localized: """
+            Nothing on this panel can be changed, because this listing did not report a field the \
+            server would let you set.
+            """,
+            comment: "Info panel note: the connection could write, but the listing reported nothing to write."
+        )
+    }
+
+    /// The asymmetry with the local panel, stated rather than left to be discovered.
+    ///
+    /// ⌘Z reverses a local attribute change through `FileAttributeIO`'s syscalls, which no server
+    /// speaks; a backend-driven undo step is its own piece of work and is not in this pass. PLAN.md
+    /// §6 is explicit that an operation which cannot be reversed is marked and never silently
+    /// dropped, and this is that mark.
+    private func notUndoableNote() -> String {
+        String(
+            localized: """
+            A change made here is sent to the server straight away and cannot be undone with \
+            Command-Z. What the panel shows after saving is what the server stored, which is not \
+            always what was asked for.
+            """,
+            comment: "Info panel note: a remote attribute change is immediate and not undoable."
+        )
+    }
+
+    /// Done alone while nothing is editable — there is nothing to discard, and a second button would
+    /// imply otherwise. Cancel and Save once something is.
     func makeFooter() -> NSView {
         let spacer = NSView()
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
 
-        let done = NSButton(
-            title: String(localized: "Done", comment: "Button that closes a results sheet."),
+        guard !editability.isReadOnly else {
+            let done = NSButton(
+                title: String(localized: "Done", comment: "Button that closes a results sheet."),
+                target: self,
+                action: #selector(closeFromFooter(_:))
+            )
+            done.bezelStyle = .rounded
+            done.keyEquivalent = "\r"
+            return footerRow([spacer, done])
+        }
+
+        let cancel = NSButton(
+            title: String(localized: "Cancel", comment: "Button that dismisses a dialog unchanged."),
             target: self,
             action: #selector(closeFromFooter(_:))
         )
-        done.bezelStyle = .rounded
-        done.keyEquivalent = "\r"
+        cancel.bezelStyle = .rounded
+        cancel.keyEquivalent = "\u{1b}"
 
-        let footer = NSStackView(views: [spacer, done])
+        let save = NSButton(
+            title: String(localized: "Save", comment: "Button that commits an info panel's edits."),
+            target: self,
+            action: #selector(save(_:))
+        )
+        save.bezelStyle = .rounded
+        save.keyEquivalent = "\r"
+        // Nothing edited yet, so there is nothing to send — and an enabled Save over an unchanged
+        // panel would spend a round trip to write a mode the item already has.
+        save.isEnabled = false
+        saveButton = save
+
+        return footerRow([spacer, cancel, save])
+    }
+
+    private func footerRow(_ views: [NSView]) -> NSView {
+        let footer = NSStackView(views: views)
         footer.orientation = .horizontal
         footer.spacing = 10
         footer.widthAnchor.constraint(

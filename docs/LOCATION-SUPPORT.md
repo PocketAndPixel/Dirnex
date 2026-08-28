@@ -377,7 +377,7 @@ child ~71 ms (PLAN.md §M25, smaller than a milestone).
 
 | Functionality | Local | Cloud mount | Archive | SFTP | FTP | S3 | S3 acct | Results | Trash |
 |---|---|---|---|---|---|---|---|---|---|
-| Get Info: permissions, flags, dates | yes | yes | read-only<sup>tt</sup> | read-only<sup>tt</sup> | read-only<sup>tt</sup> | read-only<sup>tt</sup> | read-only<sup>tt</sup> | yes<sup>ee</sup> | yes<sup>ee</sup> |
+| Get Info: permissions, flags, dates | yes | yes | read-only<sup>tt</sup> | mode editable<sup>tt</sup> | mode + date editable<sup>tt</sup> | read-only<sup>tt</sup> | read-only<sup>tt</sup> | yes<sup>ee</sup> | yes<sup>ee</sup> |
 | Get Info: ACLs, extended attributes | yes | yes | n/a | n/a | n/a | n/a | n/a | yes<sup>ee</sup> | yes<sup>ee</sup> |
 | Privilege escalation for a root-only change | yes | yes | n/a | n/a | n/a | n/a | n/a | yes | yes |
 | Finder tags (`⌃T`, tag dots) | yes | yes | n/a | n/a | n/a | n/a | n/a | yes<sup>ee</sup> | yes<sup>ee</sup> |
@@ -451,6 +451,18 @@ reason — the two backends with no mode used to synthesize `0o755`/`0o644`, whi
 because nothing drew it. No remote listing carries an ACL, an extended attribute, an access time or
 a birth time, so those are limits rather than gaps. A marked set that is not all local is refused,
 because the bulk panel is an editor.
+
+**Writing** (PLAN.md §M25 Slice 5a) is narrower than reading and is decided per connection: SFTP
+offers the **mode** and no date, because `sftp`'s batch language has no verb that sets a time at all;
+FTP offers **both**, because `SITE CHMOD` carries a mode and `MFMT` writes an exact UTC-anchored
+modification time — the one place FTP is the richer protocol. An account that answers "no such
+command" has the control withdrawn for the rest of that connection. Owner and group are offered
+**nowhere**: `chown`/`chgrp` need a numeric id and `sftp`'s `ls -la` prints names, and a remote
+`chgrp` clears set-uid and set-gid as a side effect. A saved change is **read back**, and the panel
+redraws from what the item carries rather than from what was sent — `sftp`'s `chmod` reports success
+for a mode the server did not store, measured (docs/NOTES.md ▸ sftp / ssh). It is **not undoable**,
+which the panel states: ⌘Z reverses an attribute change through local syscalls, and a backend-driven
+undo step is not built.
 
 <sup>uu</sup> A vault is an encrypted disk image that macOS mounts as a volume, so it is a *local*
 thing by construction; `hdiutil` cannot attach one over SFTP, FTP or S3. Copying the image file to a

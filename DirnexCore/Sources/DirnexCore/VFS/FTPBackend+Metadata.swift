@@ -41,6 +41,46 @@ extension FTPBackend {
         }
     }
 
+    /// What Get Info may change on this account (PLAN.md §M25 Slice 5).
+    ///
+    /// Both fields, less whatever this server has answered **500** to. FTP is the richer protocol
+    /// here, which inverts the expectation the rest of this backend sets: `SITE CHMOD` carries a
+    /// mode and `MFMT` writes an exact, UTC-anchored modification time (RFC 3659), so an FTP row's
+    /// date is editable where an SFTP row's is not.
+    public func editableMetadata(at path: VFSPath) -> RemoteMetadataCapabilities {
+        guard path.backend == id else { return [] }
+        return metadata.capabilities.intersection([.changeMode, .setModificationTime])
+    }
+
+    /// Write one item's mode or modification time, in one invocation of its own.
+    ///
+    /// Its own invocation for the reason the carry's is (PLAN.md §M25 Slice 2): a quote command
+    /// riding alongside anything else is refused as `curl` exit 21 with only the *last* reply code
+    /// readable, so the two answers that need different treatment — 500, a verb this server lacks,
+    /// and 550, that file's own problem — could not be told apart.
+    ///
+    /// A **500 latches**, because it is a fact about the account rather than about the file, and the
+    /// panel reads that back through ``editableMetadata(at:)`` on its next open: a server asked once
+    /// for a verb it does not have stops being offered the control.
+    public func applyMetadata(
+        _ steps: [RemoteMetadataStep],
+        at path: VFSPath
+    ) throws -> [RemoteMetadataRefusal] {
+        try requireOwnBackend(path)
+        guard !steps.isEmpty else { return [] }
+        let refusals = try mapErrors(path) { try transport.applyMetadata(steps, to: path.path) }
+        // Latch only where the refusal is unambiguous, which is the same narrowness the carry needs:
+        // `curl` stops at the first failed quote command, so a run of two steps reports *a* refusal
+        // without saying which — and latching both would withdraw a control for a verb the server
+        // honours. With one step there is nothing to confuse.
+        if steps.count == 1, refusals.contains(where: isUnimplemented) {
+            metadata.recordUnsupported(
+                steps.capabilitiesUsed
+            )
+        }
+        return refusals
+    }
+
     /// Finish a download on this machine. Free — the destination is local, so `chmod` and `utimes`
     /// do all of it and the wire's own limits have no bearing.
     func carryOntoLocal(_ hint: RemoteSourceMetadata?, at localPath: String) {
@@ -89,12 +129,17 @@ extension FTPBackend {
     }
 }
 
-extension RemoteMetadataPlan {
-    /// The capabilities this plan's steps exercised — what to stop attempting when the server
-    /// answers that it has no such verb.
+extension Collection<RemoteMetadataStep> {
+    /// The capabilities these steps exercised — what to stop attempting when the server answers that
+    /// it has no such verb.
+    ///
+    /// On the steps rather than on the plan, because the two callers hold different things: a
+    /// *carry* has a plan, and Get Info's write half has a bare list of steps it built from a panel
+    /// (PLAN.md §M25 Slice 5). Asking the list is what keeps them from being two spellings of the
+    /// same mapping, which is the shape of bug this project keeps finding.
     var capabilitiesUsed: RemoteMetadataCapabilities {
         var used: RemoteMetadataCapabilities = []
-        for step in steps {
+        for step in self {
             switch step {
             case .preserveDuringTransfer: used.insert(.preserveFlag)
             case .setMode: used.insert(.changeMode)
@@ -103,4 +148,8 @@ extension RemoteMetadataPlan {
         }
         return used
     }
+}
+
+extension RemoteMetadataPlan {
+    var capabilitiesUsed: RemoteMetadataCapabilities { steps.capabilitiesUsed }
 }

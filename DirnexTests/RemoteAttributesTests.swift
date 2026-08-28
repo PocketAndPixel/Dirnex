@@ -240,7 +240,7 @@ struct RemoteAttributesTests {
             remote("latest", kind: .symlink, symlinkDestination: "notes.txt"),
             remote("dir", kind: .directory)
         ] {
-            let controller = RemoteAttributesController(entry: entry)
+            let controller = RemoteAttributesController(entry: entry, backend: LocalBackend())
             controller.loadViewIfNeeded()
             #expect(controller.view.subviews.isEmpty == false)
         }

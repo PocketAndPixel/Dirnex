@@ -96,6 +96,15 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
     /// A recursive apply was pointed at something that is not on this disk. Mode bits, a BSD flags
     /// word and an ACL are things a real inode has; an archive member and a server listing have none.
     case attributesNeedLocalItem(name: String)
+    /// Get Info was asked to change an item that is not on this Mac, through a backend with no verb
+    /// for it (PLAN.md §M25 Slice 5).
+    ///
+    /// Distinct from ``attributesNeedLocalItem(name:)``, which is about a *recursive* apply over a
+    /// tree: this one is a single remote row whose backend — an archive, an object store, a
+    /// connection that has refused the verb — cannot write what was asked. The panel does not offer
+    /// the control in that state, so reaching here means something changed between the panel opening
+    /// and Save; naming the item is what makes that legible instead of a bare failure.
+    case attributeChangeNeedsConnection(name: String)
     /// The file is larger than the object store can hold at all — S3's ceiling is 5 TiB, which no
     /// number of parts moves.
     ///
@@ -216,6 +225,7 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
         case .attributeRestoreNeedsAdministrator: return "attributeRestoreNeedsAdministrator"
         case .attributeChangeNeedsAdministrator: return "attributeChangeNeedsAdministrator"
         case .attributesNeedLocalItem: return "attributesNeedLocalItem"
+        case .attributeChangeNeedsConnection: return "attributeChangeNeedsConnection"
         case .objectTooLargeForStore: return "objectTooLargeForStore"
         case .bucketNotEmpty: return "bucketNotEmpty"
         case .bucketNameNotValid: return "bucketNameNotValid"
@@ -308,6 +318,8 @@ public extension VFSUnsupportedReason {
             return ("Only an administrator can change “%@”.", [name])
         case let .attributesNeedLocalItem(name):
             return ("“%@” isn’t on this Mac, so it has no permissions to change.", [name])
+        case let .attributeChangeNeedsConnection(name):
+            return ("“%@” can’t be changed from here. Its server doesn’t offer that.", [name])
         case let .objectTooLargeForStore(name):
             return ("“%@” is too large for this storage service to hold.", [name])
         case let .bucketNotEmpty(name):
@@ -399,6 +411,7 @@ public extension VFSUnsupportedReason {
             .attributeRestoreNeedsAdministrator(name: ""),
             .attributeChangeNeedsAdministrator(name: ""),
             .attributesNeedLocalItem(name: ""),
+            .attributeChangeNeedsConnection(name: ""),
             .objectTooLargeForStore(name: ""),
             .bucketNotEmpty(name: ""),
             .bucketNameNotValid(name: ""),

@@ -958,6 +958,14 @@ at build time.
     each of the six here had exactly one caller, whose body moves into a `Task { @MainActor in … }`.
     Keep `selectText(nil)` on an accessory field: `initialFirstResponder` gives it *focus*, and only
     that selects the prefilled text, which is the whole ergonomics of a rename prompt.
+- **Replacing an `NSViewController`'s `view` after it is presented redraws the window, height
+  included** — `NSWindow.contentViewController` follows the swap rather than having taken the view
+  once. Probed on macOS 26 in both directions: after assigning a fresh view, `window.contentView` is
+  the **new** object, and a content view constrained 400 pt tall replaced by a 180 pt one moves the
+  window frame from 432 to 212. Worth recording because the natural assumption is the opposite, and
+  it is what makes "rebuild the panel from what the server actually stored" a redraw rather than a
+  change to state nobody can see (`RemoteAttributesController.reload`).
+
 - **`NSTitlebarAccessoryViewController` clips to its container's fixed frame.** A hardcoded
   width sized for three glyphs laid a fourth one out fine, with `isHidden == false`, and it was
   simply invisible. Derive each accessory container's width from what it holds, and pin each row
@@ -3158,6 +3166,35 @@ one, so all four columnar parsers — `bsdtar -tvf`, `sftp`'s `ls -la`, FTP's `L
     while the same command without `-h` changed the *target* and left the link. `chgrp` to a group
     the account belongs to succeeds; `chown` to another uid is refused with exit 1 and
     `remote setstat "…": Permission denied` — the ordinary unprivileged answer, not a misconfiguration.
+
+- **`sftp`'s `chmod` reports success for a mode the server did not store, and the only evidence is a
+  read-back.** Measured 2026-08-28 against a real `sshd`: `chmod 2755` on a file whose group the
+  account is **not** a member of exits **0**, prints **nothing** on stderr, and leaves the file at
+  `100755` — set-group-ID silently gone. It is POSIX's rule for `chmod(2)` (a non-member cannot set
+  S_ISGID) rather than OpenSSH's choice, so it is true of every server, and from a client the run is
+  indistinguishable from one that worked.
+  - **The control is what makes it a fact about the *write* rather than about the server**, and it
+    costs one line: the identical command on a file in a group the account *is* in stores `102755`.
+    Both runs, same session, same binary. Without it the natural reading is "this server refuses
+    set-gid", which is wrong and would have sent the fix somewhere else.
+  - Set-uid and sticky are **not** affected — `4755` → `104755` and `1755` → `101755` — so a probe
+    that happens to test either reports a preservation that is only two-thirds there. This is the
+    same shape as the `get -p` measurement one entry along, and the same trap: the bits do not
+    travel together.
+  - **What follows for the product is that a gesture which writes a mode must read it back and report
+    what the item *carries*, never what it sent** (`RemoteAttributeVerdict`). A gesture the user made
+    and is waiting on can afford the round trip; the bulk *carry* deliberately cannot, which is why
+    Slice 2 pays nothing per file and Get Info pays once. Note the asymmetry that keeps the check
+    honest: the **mode** is verifiable this way and a **timestamp is not**, because a remote `stat`
+    here is a listing row — `ls -la` is minute-resolution and FTP's `LIST` is zone-less on the
+    server's clock — so comparing a written time against one would report a false refusal for an
+    exact `MFMT`, an hour off for every user in a different zone from their server.
+  - **A remote `chgrp` clears set-uid and set-gid as a side effect**, exactly as the local `chown(2)`
+    does (measured: `106755` → `100755`, exit 0, nothing printed) — so the ordering rule
+    ``AttributeChangePlan`` already encodes locally (group before mode) applies unchanged over the
+    wire. It is also half of why owner and group are **not** offered in a remote Get Info: the other
+    half is that `chown`/`chgrp` take a **numeric id** and `sftp`'s own `ls -la` prints *names*, so a
+    panel built on a listing has nothing to send.
 
 - **A symlink's target is unreadable over `sftp` and readable over the exec channel, so it degrades
   per connection exactly as the search walk does.** Confirmed 2026-08-28: `ls -la` of a *directory*

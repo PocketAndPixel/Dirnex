@@ -226,6 +226,27 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         }
     }
 
+    /// Which of a remote row's fields Get Info may change — answered by whoever owns the **row**
+    /// (PLAN.md §M25 Slice 5).
+    ///
+    /// Routed per path rather than per pane for the reason `AttributesRoute` already is: a results
+    /// tab holds hits from anywhere, a tree draws several connections at once, and an expanded
+    /// bucket in an account pane draws rows on a different backend from the one the pane is on.
+    ///
+    /// A path with no backend answers "nothing is editable" rather than raising: an unreachable
+    /// connection is a reason to show the read-only panel, not to refuse to describe the row at all.
+    func editableMetadata(at path: VFSPath) -> RemoteMetadataCapabilities {
+        guard let owner = try? backend(for: path) else { return [] }
+        return owner.editableMetadata(at: path)
+    }
+
+    func applyMetadata(
+        _ steps: [RemoteMetadataStep],
+        at path: VFSPath
+    ) throws -> [RemoteMetadataRefusal] {
+        try backend(for: path).applyMetadata(steps, at: path)
+    }
+
     func copyMetadata(at source: VFSPath, to destination: VFSPath) throws {
         try copyMetadata(at: source, to: destination, sourceMetadata: nil)
     }
