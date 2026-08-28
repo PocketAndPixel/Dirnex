@@ -385,6 +385,29 @@ private struct WalkOnlySFTPBackend: VFSBackend {
 }
 
 /// Reads the live-SFTP test coordinates from a well-known JSON file; `nil` disables the suite.
+///
+/// **The account must tolerate a burst of concurrent connections**, which is a precondition of the
+/// *harness* rather than of anything under test, and the one that costs hours when it is not met.
+/// Swift Testing runs these six suites in parallel and every `VFSBackend` verb here is a fresh
+/// `sftp` or `ssh` process — measured 2026-08-28, **250 logins for 24 tests**, roughly ten per
+/// test — so a stock OpenSSH server refuses part of the burst under `MaxStartups`, whose default
+/// `10:30:100` begins randomly dropping at **ten** concurrent *unauthenticated* connections.
+///
+/// What that looks like is somebody else's bug: the refusal surfaces as
+/// `.io(path:, code: 5)` or `.failure("kex_exchange_identification: read: Connection reset by
+/// peer")` raised from whichever helper happened to be connecting, so it names a feature that
+/// works — and every suite passes when run alone, which reads as flakiness rather than as a
+/// budget. Measured on a throwaway server, one variable: `10:30:100` → **10 failures**,
+/// `1000:30:2000` → **0**, with the server's own log (`drop connection #11 … Maxstartups`) as the
+/// judge rather than any return value.
+///
+/// Note the spelling, which is its own trap: a bare `MaxStartups 500` sets only the *ceiling* and
+/// leaves the drop threshold at 10 (`sshd -T` reads back `10:30:500`), so it looks applied and
+/// halves the failures instead of removing them. The lever is the **first** field of the triple.
+///
+/// So point this at a server you control — a throwaway `sshd` needs only a generated host key and
+/// `MaxStartups 1000:30:2000`. Nothing else has to be prepared on it: every fixture these suites
+/// need is minted by the test that needs it.
 enum SFTPLiveEnvironment {
     struct Config {
         let location: SFTPLocation

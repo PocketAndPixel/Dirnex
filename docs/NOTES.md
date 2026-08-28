@@ -805,6 +805,44 @@ at build time.
     with a sentinel filed is the other half — `s3BucketConnectRequest` reads the account secret from
     the Keychain, so a green run proves the item really was overwritten during the run and restored
     afterwards, rather than never having been touched.
+- **A parallel live suite can exhaust the *server's* connection budget, and that is shared external
+  state nobody thinks of as state.** Six SFTP live suites run in parallel and every `VFSBackend` verb
+  is a fresh `sftp`/`ssh` process — measured 2026-08-28, **250 logins for 24 tests** — so a stock
+  OpenSSH server refuses part of the burst under `MaxStartups`, which by default (`10:30:100`) begins
+  randomly dropping at **ten** concurrent *unauthenticated* connections. It fails as somebody else's
+  bug: the refusal surfaces as `.io(code: 5)` or `kex_exchange_identification: read: Connection reset
+  by peer` from whichever helper was connecting, so it names a feature that works, and every suite
+  passes alone.
+  - **The server's own log is the judge, and it says so outright** — `drop connection #11 …
+    Maxstartups` — which is what turns "these live tests are flaky" into one measurement. One
+    variable, three runs: `10:30:100` → **10 failures**, `1000:30:2000` → **0**, same tree.
+  - **`.serialized` across the suites would have hidden it, and that is the trap worth naming.** The
+    entry above says to reach for the trait *on the merits* (shared external state); the reflex here
+    is to reach for it because the run is red, and it would have "worked" by keeping the burst under
+    a limit nobody had measured — leaving the real precondition undiscovered and the suites serialized
+    for no stated reason. Fix the budget, not the concurrency.
+  - **The spelling is its own trap**: a bare `MaxStartups 500` sets only the *ceiling* and leaves the
+    threshold at 10 (`sshd -T` reads back `10:30:500`), so it looks applied and merely **halves** the
+    failures — 10 → 6, still 3 drops. The lever is the **first** field of the triple. Read the setting
+    back with `sshd -T` rather than trusting the file.
+  - The neighbouring product fact, unfixed and worth knowing: a throttled or connection-capped server
+    reaches the user as `.io(code: 5)` too — a number nobody can look up — where the stderr naming
+    `kex_exchange_identification` is sitting right there. The same shape ▸ curl for S3 records for a
+    generic 403 telling the user to grant Full Disk Access.
+- **An unstated *fixture* precondition in a live suite fails as a broken feature, and the tell is a
+  `stat` nothing in the suite ever created.** `PackLiveIntegrationTests` assumed `alpha.txt`,
+  `beta.txt` and a `backup.zip` holding exactly two members were already sitting at `remotePath`,
+  where every sibling suite mints its own fixtures under a UUID-named subtree — so against a server
+  nobody had hand-prepared it failed `.notFound(…/alpha.txt)`, which reads as a broken pack. Fixed
+  2026-08-28 by provisioning both, and the control is sharp: the pre-fix version fails 2 of its 3
+  tests on a fresh server while the third — already self-contained — passes in **both** directions,
+  which is the narrowness half.
+  - **The same test verified a remote file by reading it locally.** It compared the archive member
+    against `String(contentsOfFile: config.remotePath + "/alpha.txt")` — a *local* read of a *server*
+    path, which holds only while the server is this Mac and throws against any real account. The
+    honest comparison is against the payload the test itself uploaded. Note this half is invisible to
+    a loopback harness (the path exists locally either way), so it was fixed by reading rather than by
+    measurement, and it is the reason a live suite pointed only at `127.0.0.1` is not a live suite.
 - **A cancellation test whose fake finishes inside the same turn cannot see cancellation at all, and
   every assertion in it passes against a scheduler that never cancels anything.** Measured on the
   Quick View auto-fetch: with `cancelAutomaticFetch` neutered to a bare `pending = nil`, the whole

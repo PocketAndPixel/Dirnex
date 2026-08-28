@@ -19,6 +19,8 @@ import Testing
 /// what it wrote, and the **browse** half by listing the mount.
 ///
 /// Gated on the same config file as `SFTPLiveIntegrationTests`, which is what keeps it out of CI.
+/// Every fixture it needs is minted by the test that needs it, so the account only has to be
+/// reachable and writable — nothing has to be hand-placed on it first.
 @Suite("Pack live integration", .serialized, .enabled(if: SFTPLiveEnvironment.current != nil))
 struct PackLiveIntegrationTests {
     private func backend() throws -> (SFTPBackend, SFTPLiveEnvironment.Config) {
@@ -37,6 +39,42 @@ struct PackLiveIntegrationTests {
         return url
     }
 
+    /// Mints the two source objects this suite packs, in a scratch subtree of their own.
+    ///
+    /// They used to be *assumed* to sit at `remotePath` — an unstated precondition, so against a
+    /// server nobody had hand-prepared the `stat` threw and the failure read as a broken pack
+    /// rather than as a missing fixture. Minting them here also keeps the suite independent of its
+    /// neighbours, which every sibling live suite already achieves with a UUID-named subtree.
+    ///
+    /// Returns the payloads as well as the directory, because the archive has to be checked
+    /// against the bytes that were uploaded rather than against anything read back over the same
+    /// transport that wrote them.
+    private func provisionSources(
+        _ backend: SFTPBackend, _ config: SFTPLiveEnvironment.Config
+    ) throws -> (directory: VFSPath, payloads: [String: String]) {
+        let base = VFSPath(backend: config.location.backendID, path: config.remotePath)
+        let directory = base.appending("dirnex-pack-src-\(UUID().uuidString)")
+        try backend.createDirectory(at: directory)
+
+        let staging = try scratch()
+        defer { try? FileManager.default.removeItem(at: staging) }
+
+        var payloads: [String: String] = [:]
+        for name in ["alpha.txt", "beta.txt"] {
+            let payload = "\(name) for the live pack probe \(UUID().uuidString)"
+            let local = staging.appendingPathComponent(name)
+            try Data(payload.utf8).write(to: local)
+            try backend.copyFile(
+                at: .local(local.path),
+                to: directory.appending(name),
+                progress: { _ in },
+                isCancelled: { false }
+            )
+            payloads[name] = payload
+        }
+        return (directory, payloads)
+    }
+
     // MARK: - Sources on a server
 
     @Test("two objects staged from a server pack into one archive, each from its own directory")
@@ -47,17 +85,14 @@ struct PackLiveIntegrationTests {
             let (backend, config) = try backend()
             let staging = try scratch()
             defer { try? FileManager.default.removeItem(at: staging) }
+            let (remoteDirectory, payloads) = try provisionSources(backend, config)
+            defer { try? backend.removeItem(at: remoteDirectory) }
 
             // Exactly the layout `MaterializeRunner` produces: one directory per object, keeping
             // its real name — which is what makes `bsdtar -C` per source necessary at all.
             var sources: [PackSource] = []
             for name in ["alpha.txt", "beta.txt"] {
-                let entry = try backend.stat(
-                    at: VFSPath(
-                        backend: config.location.backendID,
-                        path: (config.remotePath as NSString).appendingPathComponent(name)
-                    )
-                )
+                let entry = try backend.stat(at: remoteDirectory.appending(name))
                 let file = try MaterializeRunner.materialize(
                     entry, intoDirectory: staging.path, using: backend
                 )
@@ -84,28 +119,17 @@ struct PackLiveIntegrationTests {
             )
             #expect(extraction.extractedPaths.count == 2)
             let out = URL(fileURLWithPath: extraction.extractedPaths[0]).deletingLastPathComponent()
-            #expect(
-                try String(
-                    contentsOfFile: out.appendingPathComponent("alpha.txt").path,
-                    encoding: .utf8
+            // Against the payloads that were uploaded, never against a local file at the *remote*
+            // path: the old spelling read `config.remotePath` through `String(contentsOfFile:)`,
+            // which is a local read of a server path and so only ever held while the server was
+            // this Mac. Against a genuinely remote account it threw, failing a pack that worked.
+            for name in ["alpha.txt", "beta.txt"] {
+                #expect(
+                    try String(
+                        contentsOfFile: out.appendingPathComponent(name).path, encoding: .utf8
+                    ) == payloads[name]
                 )
-                    == String(
-                        contentsOfFile: (config.remotePath as NSString)
-                            .appendingPathComponent("alpha.txt"),
-                        encoding: .utf8
-                    )
-            )
-            #expect(
-                try String(
-                    contentsOfFile: out.appendingPathComponent("beta.txt").path,
-                    encoding: .utf8
-                )
-                    == String(
-                        contentsOfFile: (config.remotePath as NSString)
-                            .appendingPathComponent("beta.txt"),
-                        encoding: .utf8
-                    )
-            )
+            }
         }
     }
 
@@ -191,10 +215,38 @@ struct PackLiveIntegrationTests {
             let staging = try scratch()
             defer { try? FileManager.default.removeItem(at: staging) }
 
+            // Built here and uploaded, rather than assumed to be on the server: a hand-placed
+            // `backup.zip` holding exactly these two members is an unstated precondition, and its
+            // absence fails as a broken browse.
+            let members = staging.appendingPathComponent("members", isDirectory: true)
+            try FileManager.default.createDirectory(at: members, withIntermediateDirectories: true)
+            for name in ["one.txt", "two.txt"] {
+                try Data("\(name) in the live browse probe".utf8)
+                    .write(to: members.appendingPathComponent(name))
+            }
+            let built = staging.appendingPathComponent("backup.zip").path
+            try ArchivePacker.pack(
+                sources: ["one.txt", "two.txt"].map {
+                    PackSource(directory: members.path, name: $0)
+                },
+                toArchiveAt: built,
+                format: .zip,
+                level: .normal
+            )
+
+            let archiveName = "dirnex-pack-browse-\(UUID().uuidString.prefix(8)).zip"
             let remote = VFSPath(
                 backend: config.location.backendID,
-                path: (config.remotePath as NSString).appendingPathComponent("backup.zip")
+                path: (config.remotePath as NSString).appendingPathComponent(archiveName)
             )
+            try backend.copyFile(
+                at: .local(built),
+                to: remote,
+                progress: { _ in },
+                isCancelled: { false }
+            )
+            defer { try? backend.removeItem(at: remote) }
+
             let file = try MaterializeRunner.materialize(
                 try backend.stat(at: remote), intoDirectory: staging.path, using: backend
             )
