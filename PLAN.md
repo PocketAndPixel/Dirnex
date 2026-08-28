@@ -794,6 +794,41 @@ the old behaviour standing where it cannot be established.
    through this Mac, latched per connection on the client's own refusal, with `RelayCopy` unchanged
    beneath it. `RelayCopy`'s doc comment and docs/NOTES.md both said no remote protocol has a copy
    verb; this slice is where that correction lands in the code rather than only in the notes.
+   **Landed 2026-08-28.** The probe found one thing the earlier pass had not measured and it decided
+   the slice: **`cp` carries no timestamp at all.** With an *old* source the copy comes back stamped
+   `now` where the relay's `get -p`/`put -p` reproduces 2018 exactly, in the same run against the
+   same server — and `sftp`'s batch language has no verb that sets a time. So the fast path is the
+   **less faithful** one, which inverts what "server-side" suggests, and the trade was Oleg's to make
+   rather than mine: `cp` at 0.09 s for 64 MiB against 0.5 s staged over *loopback* (and zero bytes
+   on the wire against two copies of the file over a real link), with the modification time counted
+   as **dropped** through the accumulator Slice 2 built. That is what separates this from the failure
+   the milestone exists to prevent — the speed is bought with a report, not with silence.
+   The mode is carried whole, and the corrective `chmod` is sent for an *ordinary* mode too, which is
+   a second measurement rather than caution: an occupied destination is overwritten **in place** and
+   keeps its own mode (`100600` stayed `100600` while its bytes became the source's). `cp` is regular
+   files only and follows a symlink; neither reaches `CopyEngine`, which walks a tree itself.
+   **The refusal is a *fact about the account*, so it latches and nothing else does.** The route is
+   `.serverSide` rather than `.direct` — the shape S3's cross-bucket copy already had, an attempt
+   with `RelayCopy` behind it — because a server either advertises `copy-data` or does not and
+   nothing asks in advance. `VFSCapabilities.internalCopy` deliberately stays absent: a promise the
+   next server can withdraw is not a capability, so it is a method (`mayAttemptInternalCopy`) that
+   goes false after one refusal and costs every later copy nothing.
+   Six controls, each failing only the tests that name it: the plan built **with** the preserve flag
+   (which claims a modification time it never wrote — `dropped → []`, `loss → nil`, the exact silent
+   failure), latching on any failure rather than the client's own sentence, the matcher shortened
+   from OpenSSH's whole sentence to the token `copy-data` (which a file *called* `copy-data.txt`
+   would then trip), reporting no progress at all, and the router sending the pair back to staging.
+   **Verified live against a real `sshd`, and against one built to refuse.** `sftp-server -P copy-data`
+   bans the request, so a server without the extension is reachable on this Mac on demand rather than
+   waited for: there the account-level suite reports `.unsupported(.remoteToRemoteCopy)` — the right
+   answer — and the *route* test still lands the file, which is the degradation end to end. On an
+   ordinary server the same route test passes unchanged, which is why it asserts what holds on both
+   and never which route ran.
+   **The first live control was inert and that is the finding worth keeping.** Removing the
+   corrective `chmod` left the live suite green, because a plan built with `-p` still emits a `chmod`
+   for a *special* bit — so the test that named the fix could not see it. The discriminating case is
+   the **occupied destination**, and adding it made the same control fail on demand. A green live run
+   with the fix removed is not a passing control; it is a test measuring something else.
 4. **Symlink targets over the exec channel**, degrading exactly as M22's search walk does, so a
    link is copied faithfully on an account that has one and goes on being refused on an account
    that does not.

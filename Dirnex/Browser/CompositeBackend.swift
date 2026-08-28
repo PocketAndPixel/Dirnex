@@ -236,6 +236,20 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         throw VFSError.unsupported(.noBackendForPath(path: "\(path)"))
     }
 
+    /// Whether the backend that owns both ends would attempt a server-side duplicate, forwarded to
+    /// it (PLAN.md §M25 Slice 3).
+    ///
+    /// Forwarded rather than inherited for the reason this file has already paid for twice: the app
+    /// holds a composite, so a seam whose default is "do it the old way" answers `false` for every
+    /// pane and reports **nothing at all** — same rows, same bytes, and every same-account SFTP copy
+    /// quietly staged through this disk. `transferRoute` asks the concrete backend and so does not
+    /// need this; anything else holding a pane's backend does, and there is no signal the day one
+    /// appears. Unconnected or unroutable ends answer `false`, which is the old behaviour.
+    func mayAttemptInternalCopy(from source: VFSPath, to destination: VFSPath) -> Bool {
+        guard let owner = try? backend(for: source) else { return false }
+        return owner.mayAttemptInternalCopy(from: source, to: destination)
+    }
+
     /// The connected backend that can attach a **precondition** to a write at `path`, or `nil` when
     /// nothing here can (PLAN.md §M21 Slice 18).
     ///

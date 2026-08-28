@@ -46,7 +46,7 @@ public extension SFTPBackend {
             // No transfer to ride on, so the mode goes as its own batch line and the times have no
             // route at all — `sftp`'s batch language has no verb that sets one, which is why
             // `RemoteMetadataCapabilities.sftp` omits it and the plan counts it dropped.
-            let carry = hint.plan(with: metadata.capabilities.subtracting(.preserveFlag))
+            let carry = metadata.planWithoutTransferFlag(for: hint)
             let refusals = try mapErrors(destination) {
                 try transport.applyMetadata(carry.steps, to: destination.path)
             }

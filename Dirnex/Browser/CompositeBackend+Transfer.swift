@@ -9,9 +9,11 @@ import Foundation
 /// serving both ends, one serving an upload or a download, or **neither** — two remote accounts,
 /// where the bytes have to come through this machine because nothing else can carry them.
 ///
-/// One pair sits between those: **two S3 buckets on the same service**, which the service itself
-/// will copy between (`x-amz-copy-source`) and which staging would move twice for nothing. That is
-/// the route with a fallback rather than a promise — see ``TransferRoute/serverSide(_:)``.
+/// Two pairs sit between those, and they share a shape: **two S3 buckets on the same service**,
+/// which the service itself will copy between (`x-amz-copy-source`), and **one SFTP account**, whose
+/// server will duplicate a file for us if it offers OpenSSH's `copy-data` extension. Staging either
+/// would move every byte twice for nothing, and neither can be promised in advance — so both take
+/// the route with a fallback, see ``TransferRoute/serverSide(_:)``.
 extension CompositeBackend {
     func copyFile(
         at source: VFSPath,
@@ -142,13 +144,15 @@ extension CompositeBackend {
         /// One backend can do the whole thing: a local copy, an upload, a download, or S3's
         /// server-side duplicate **inside one bucket**.
         case direct(any VFSBackend)
-        /// The service copies between two of its own buckets and the bytes never come here — with
-        /// the staged route behind it, because this is the one route that can be refused for
-        /// reasons neither side can see in advance. S3 caps `CopyObject` at 5 GiB (above it the
-        /// service wants `UploadPartCopy`, which is not built), an S3-compatible endpoint need not
-        /// offer a cross-bucket copy at all, and a bucket policy can allow the read through one
-        /// connection and not through the other. Every one of those is recoverable by moving the
-        /// bytes ourselves, so a failure here degrades instead of reporting.
+        /// The server copies the file itself and the bytes never come here — with the staged route
+        /// behind it, because this is the one route that can be refused for reasons neither side can
+        /// see in advance. Two buckets on one S3 service: the service caps `CopyObject` at 5 GiB
+        /// (above it it wants `UploadPartCopy`, which is not built), an S3-compatible endpoint need
+        /// not offer a cross-bucket copy at all, and a bucket policy can allow the read through one
+        /// connection and not through the other. One SFTP account: `copy-data` is an extension a
+        /// server advertises or does not, and nothing asks in advance. Every one of those is
+        /// recoverable by moving the bytes ourselves, so a failure here degrades instead of
+        /// reporting.
         case serverSide(any VFSBackend)
         /// Nothing can, so the bytes are staged on this disk between a download and an upload
         /// (``RelayCopy``).
@@ -165,6 +169,14 @@ extension CompositeBackend {
         if source.backend == destination.backend {
             let owner = try backend(for: source)
             if owner.capabilities(for: source).contains(.internalCopy) { return .direct(owner) }
+            // One account that *may* be able to duplicate a file itself, which is SFTP: OpenSSH's
+            // `copy-data` extension is a real server-side `cp` and a server need not advertise it,
+            // so this is an attempt rather than a promise and takes the route that has a fallback.
+            // After one refusal the backend answers `false` here and every later copy is staged with
+            // no wasted round trip (PLAN.md §M25 Slice 3).
+            if owner.mayAttemptInternalCopy(from: source, to: destination) {
+                return .serverSide(owner)
+            }
         }
         // Two buckets, one service: S3 reads the source itself, so staging would carry every byte
         // twice to produce a request it would have made anyway. What decides it is a name being
@@ -178,9 +190,9 @@ extension CompositeBackend {
             return .direct(try backend(for: destination))
         }
         if destination.backend == .local { return .direct(try backend(for: source)) }
-        // Two remote accounts — or one account with no copy verb of its own, which is SFTP and FTP
-        // even when both ends are the same server. Neither backend can reach the other, so the
-        // bytes come through here.
+        // Two remote accounts — or one account with no copy verb of its own, which is FTP even when
+        // both ends are the same server, and SFTP once this connection has refused one. Neither
+        // backend can reach the other, so the bytes come through here.
         if source.backend.isRemoteConnection, destination.backend.acceptsUploads {
             return .staged(
                 source: try backend(for: source),

@@ -248,8 +248,13 @@ extension SFTPBackendTests {
         #expect(reported == 64)
     }
 
-    @Test("copyFile refuses a remote-to-remote transfer it can't express")
+    @Test("copyFile refuses a same-account copy the server cannot perform, staging nothing itself")
     func copyFileRemoteToRemoteUnsupported() {
+        // The fake's default is a server with no `copy-data` extension, which is the state this
+        // backend was in for its whole life before M25 Slice 3. It still refuses, and it still
+        // refuses *without* moving bytes: the relay through this disk belongs to the caller holding
+        // both ends, and a backend quietly doing it here would be a second definition of the route
+        // (``RelayCopy``, ``SFTPServerSideCopyTests``).
         let transport = FakeSFTPTransport()
         #expect(throws: (any Error).self) {
             try backend(transport).copyFile(

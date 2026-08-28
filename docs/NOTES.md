@@ -3059,6 +3059,39 @@ one, so all four columnar parsers — `bsdtar -tvf`, `sftp`'s `ls -la`, FTP's `L
     server-side duplicate of a `rwsr-xr-x` binary is `rwxr-xr-x`. The corrective `chmod` is the same
     one the `-p` entry needs, which is the argument for having one place that finishes a copy's mode
     rather than two.
+  - **It carries no timestamp at all, and that is the price of the whole route.** Re-measured
+    2026-08-28 with an *old* source (2018): `cp` stamps the copy with **now**, while the relay it
+    replaces — `get -p` then `put -p` — reproduces the source's mtime exactly, in the same run
+    against the same server. `sftp`'s batch language has no verb that sets a time (`help` lists
+    `chmod`, `chown` and `chgrp` and nothing else), so the fast path is the *less* faithful one and
+    the honest answer is to count the time as dropped rather than to pretend. It is also the
+    measurement a first pass will get backwards: a source created moments ago has an mtime of "now"
+    already, so a probe that does not choose an old timestamp reports a carry that is not there.
+  - **An occupied destination is overwritten *in place* and keeps its own mode** — `100600` stayed
+    `100600` while its bytes became the source's. So the corrective `chmod` is worth sending for an
+    *ordinary* mode too and not only for a special bit, which is the one live case that can tell the
+    two plans apart: a set-uid mode gets its `chmod` under either rule, so a test using one measures
+    nothing about that decision.
+  - **It is regular files only and it follows a symlink.** `cp` of a directory is
+    `Cannot copy non-regular file: …` at exit 1, and `cp` of a link copies the *target's* bytes into
+    a plain file. Neither reaches `CopyEngine`, which walks a tree itself and recreates a link with
+    `ln -s` — and both would matter to anything that did not.
+  - **A server that refuses it can be built rather than waited for**: `sftp-server -P copy-data`
+    bans the request, so the server stops advertising it and the client answers
+    `Server does not support copy-data extension` on **stderr**, exit 1, with nothing created. That
+    is what makes the whole degradation — the refusal, the latch, the fallback — reachable on one
+    Mac, in a live test, on demand. `-P` is the same lever for any other extension.
+  - **The `-` prefix works on `cp` too**, so a refused copy mid-batch exits 0 with the sentence still
+    on stderr — which matters for the *interactive* (password-auth) path, where a failed command
+    exits zero regardless: OpenSSH's sentence matches none of `detect(stderr:)`'s prefixes (it opens
+    "Server does not…"), so without an explicit check a refused copy reads as a copy that happened.
+    That is the quiet direction, and it is the one no key-auth test can see.
+  - **`ssh <host> cp -p` over the exec channel carries everything** — mode *and* both times, 0.07 s
+    for the same 64 MiB — and was deliberately not taken. It depends on the exec channel an
+    `sftp`-only account does not have, and `runCommand` returns no exit status by design (M22: a
+    status cannot classify an exec answer), so proving the copy happened would cost a verifying
+    `stat` — a round trip on the one route whose whole point is not spending one. Worth knowing it
+    exists before anyone re-derives it.
 
 - **`get -p` / `put -p` carry *both* timestamps exactly and silently drop every special mode bit —
   which is the opposite of the man page on one point and beyond it on the other.** `sftp(1)` says

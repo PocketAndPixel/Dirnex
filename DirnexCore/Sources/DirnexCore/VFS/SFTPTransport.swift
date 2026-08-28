@@ -175,10 +175,50 @@ public protocol SFTPTransport: RemoteWriteTransport {
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> RemoteTransferOutcome
+
+    /// Duplicate one remote file to another path **on the same account, server-side** — the bytes
+    /// never cross this machine (PLAN.md §M25 Slice 3).
+    ///
+    /// `sftp`'s `cp`, over OpenSSH's `copy-data` extension. It is the one verb here whose absence is
+    /// ordinary rather than exceptional: the client refuses on its own after reading what the server
+    /// advertised, so it must be **attempted** and the refusal read — nothing can ask in advance.
+    /// That refusal arrives as ``SFTPTransportError/copyExtensionUnavailable`` and the backend
+    /// latches it for the connection, then stages the copy through this disk as it always did.
+    ///
+    /// `plan.followUp` rides the **same batch**, allowed to fail, for both of the reasons the
+    /// transfer verbs already document: a second invocation would be a fresh connect, key exchange
+    /// and authentication, and a refused `chmod` must not fail a copy whose bytes have landed. It is
+    /// wanted even for an ordinary mode here, unlike on a transfer — measured 2026-08-28, `cp` onto
+    /// an **occupied** destination overwrites the bytes and leaves that file's *own* mode standing.
+    ///
+    /// Answers the metadata steps that did not take, exactly as the transfer verbs do; the copy
+    /// itself either happened or threw. Note what it can never carry: `cp` stamps the copy with
+    /// *now*, and this language has no verb that sets a time, so a plan built for this route counts
+    /// the modification time as dropped and the caller reports it.
+    ///
+    /// The default **throws** rather than forwarding, which is the test this project applies before
+    /// letting a default stand in: staging is not something a transport can do, and answering
+    /// success would report a duplicate that does not exist. Throwing the same refusal a server
+    /// without the extension gives sends the caller down the route it already has.
+    func copyRemoteFile(
+        _ source: String,
+        to destination: String,
+        carrying plan: RemoteMetadataPlan,
+        isCancelled: () -> Bool
+    ) throws -> [RemoteMetadataRefusal]
 }
 
 public extension SFTPTransport {
     func runCommand(_ command: String, isCancelled: () -> Bool) throws -> String? { nil }
+
+    func copyRemoteFile(
+        _: String,
+        to _: String,
+        carrying _: RemoteMetadataPlan,
+        isCancelled _: () -> Bool
+    ) throws -> [RemoteMetadataRefusal] {
+        throw SFTPTransportError.copyExtensionUnavailable
+    }
 
     @discardableResult
     func download(
@@ -253,6 +293,21 @@ public enum SFTPTransportError: Error, Sendable, Equatable {
     /// reconnect. Usually a reinstalled or replaced server, but it *can* be a man-in-the-middle — so
     /// it's a distinct case that drives a warning, never a silent retry.
     case hostKeyChanged(SFTPHostKeyChange)
+    /// The server does not offer OpenSSH's `copy-data` extension, so it cannot duplicate a file
+    /// without the bytes crossing this machine — `sftp`'s own
+    /// `Server does not support copy-data extension`, printed by the *client* after reading what the
+    /// server advertised.
+    ///
+    /// Its own case rather than a ``failure(_:)`` because it is the one refusal here that is a fact
+    /// about the **account** rather than about the two paths: it is true of every file, so a backend
+    /// latches it for the connection (``ServerSideCopySupport``) and stages the rest of that
+    /// session's copies instead. Matching a case is also what keeps that decision off a sentence —
+    /// the alternative is each caller re-deriving the string, which is how a re-worded message
+    /// silently costs every copy its fast path.
+    ///
+    /// Reproduced on demand with `sftp-server -P copy-data`, which is how an old or restricted
+    /// server behaves: exit 1, that line on stderr, and **nothing created**.
+    case copyExtensionUnavailable
     /// Any other failure — a dropped connection, an auth failure, an unexpected error — carrying
     /// the server's own text, verbatim.
     ///
@@ -272,6 +327,7 @@ public enum SFTPTransportError: Error, Sendable, Equatable {
         if let change = SFTPHostKeyChange.parse(stderr: stderr) {
             return .hostKeyChanged(change)
         }
+        if mentionsMissingCopyExtension(stderr) { return .copyExtensionUnavailable }
         let text = stderr.lowercased()
         // Permission denied is checked first: a failed key-auth attempt prints both an
         // "identity file … no such file" warning *and* "Permission denied", and the latter is the
@@ -298,6 +354,12 @@ public enum SFTPTransportError: Error, Sendable, Equatable {
         if let change = SFTPHostKeyChange.parse(stderr: stderr) {
             return .hostKeyChanged(change)
         }
+        // Checked here and not only in `classify` because this is the direction where missing it is
+        // silent: an interactive session exits **zero** on a failed command, so a `cp` the client
+        // refused would otherwise be read as a copy that happened. None of the prefixes below
+        // matches OpenSSH's sentence — it starts "Server does not…" — so without this line the
+        // account would report a duplicate it never made.
+        if mentionsMissingCopyExtension(stderr) { return .copyExtensionUnavailable }
         let lowered = stderr.lowercased()
         if lowered.contains("permission denied") { return .permissionDenied }
         if lowered.contains("not found") || lowered.contains("no such file") { return .notFound }
@@ -311,6 +373,16 @@ public enum SFTPTransportError: Error, Sendable, Equatable {
             }
         }
         return nil
+    }
+
+    /// Whether this stderr is the client saying the server has no `copy-data` extension.
+    ///
+    /// Matched as OpenSSH's **whole sentence**, read out of `/usr/bin/sftp` rather than paraphrased.
+    /// The tempting shorter match is the distinctive token `copy-data`, and it is wrong in the
+    /// expensive direction: a remote path may contain those characters, so a failed `rm` of a file
+    /// somebody called `copy-data.txt` would answer yes and latch a capability the server has.
+    private static func mentionsMissingCopyExtension(_ stderr: String) -> Bool {
+        stderr.lowercased().contains("server does not support copy-data extension")
     }
 }
 

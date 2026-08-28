@@ -28,6 +28,31 @@ public enum SFTPBatchCommand {
         "rename \(quote(source)) \(quote(destination))"
     }
 
+    /// The batch line that duplicates a remote file **on the server**: `cp "src" "dst"`.
+    ///
+    /// OpenSSH's `copy-data` extension, which the server either advertises or does not — verified
+    /// 2026-08-28 against a real `sshd` (`Server supports extension "copy-data" revision 1`), where
+    /// it duplicated 64 MiB in 0.09 s against 0.5 s for the same file staged down and back up over
+    /// loopback, and with nothing at all on the wire in between.
+    ///
+    /// Four things it does that a caller has to know, all measured rather than read off `sftp(1)`,
+    /// which says only "Copy remote file":
+    /// - It carries the **low nine permission bits** and drops set-uid, set-gid and the sticky bit —
+    ///   `104755` came back `100755` — so it needs the same corrective ``changeMode(_:to:)`` that
+    ///   `-p` does, and gets it in this same batch.
+    /// - It carries **no timestamp at all**: the copy is stamped *now*, where `get -p`/`put -p`
+    ///   reproduce both exactly. There is no verb in this language that sets a time, so a plan built
+    ///   for this route must count the modification time as **dropped** rather than pretend.
+    /// - An **occupied destination is overwritten in place** and keeps its *own* mode, which is what
+    ///   makes the corrective `chmod` worth sending for an ordinary mode too and not only for a
+    ///   special bit.
+    /// - It is **regular files only** (`Cannot copy non-regular file: …`, exit 1) and it **follows a
+    ///   symlink**, copying the target's bytes. Neither matters to `CopyEngine`, which walks a tree
+    ///   itself and recreates a link with `ln -s`, and both would matter to anything that did not.
+    public static func copy(_ source: String, to destination: String) -> String {
+        "cp \(quote(source)) \(quote(destination))"
+    }
+
     /// The batch line that removes a remote file or symlink: `rm "…"`.
     public static func removeFile(_ remotePath: String) -> String {
         "rm \(quote(remotePath))"

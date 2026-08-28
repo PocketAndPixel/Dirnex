@@ -118,6 +118,225 @@ struct SFTPMetadataCarryLiveTests {
 }
 
 /// The same claims over FTP, where every carried fact is an explicit command rather than a flag.
+/// What the server does with a same-account duplicate, on an account that **offers OpenSSH's
+/// `copy-data` extension** (PLAN.md §M25 Slice 3).
+///
+/// That precondition is in the suite's name because it cannot be asked in advance — the client
+/// refuses on its own after reading what the server advertised, so the only way to learn it is to
+/// send `cp`. Pointed at an account without it (reproduce one with `sftp-server -P copy-data`) every
+/// test here fails with `.unsupported(.remoteToRemoteCopy)`, which is the *right* answer and not a
+/// broken feature: it is what sends the pane's own backend to ``RelayCopy`` instead, and
+/// ``SFTPServerSideCopyRouteLiveTests`` is the suite that holds on either kind of server.
+@Suite(
+    "Server-side copy ▸ live (an account offering copy-data)",
+    .enabled(if: SFTPLiveEnvironment.current != nil)
+)
+struct SFTPServerSideCopyLiveTests {
+    private func makeBackend() throws -> (SFTPBackend, SFTPLiveEnvironment.Config) {
+        let config = try #require(SFTPLiveEnvironment.current)
+        let transport = SFTPProcessTransport(
+            location: config.location,
+            authentication: .key(identityFile: config.identityFile)
+        )
+        return (SFTPBackend(location: config.location, transport: transport), config)
+    }
+
+    @Test("a duplicate inside one account is copied by the server, with its full mode")
+    func serverSideCopyCarriesTheMode() async throws {
+        try await offCooperativePool {
+            let (backend, config) = try makeBackend()
+            let source = try LiveCarrySource(mode: 0o4755)
+            let first = VFSPath(
+                backend: .sftp(config.location),
+                path: config.remotePath + "/dirnex-cp-src-\(UUID().uuidString).bin"
+            )
+            let second = first.parent!.appending("dirnex-cp-dst-\(UUID().uuidString).bin")
+            defer {
+                try? backend.removeItem(at: first)
+                try? backend.removeItem(at: second)
+            }
+            try backend.copyFile(
+                at: .local(source.path),
+                to: first,
+                hint: CopySourceHint(metadata: source.entry),
+                progress: { _ in },
+                isCancelled: { false }
+            )
+
+            let listed = try backend.stat(at: first)
+            var reported: Int64 = 0
+            try backend.copyFile(
+                at: first,
+                to: second,
+                // Exactly what the pane's own `CopyEngine` hands down: the entry it just listed.
+                hint: CopySourceHint(listed),
+                progress: { reported += $0 },
+                isCancelled: { false }
+            )
+
+            let landed = try backend.stat(at: second)
+            // `cp` brings the nine bits; the corrective `chmod` — a second line in the *same* batch —
+            // brings the set-uid bit it drops, exactly as `-p` needs.
+            #expect(landed.permissions == 0o4755)
+            #expect(landed.byteSize == listed.byteSize)
+            #expect(reported == listed.byteSize)
+        }
+    }
+
+    @Test("copying onto an occupied name takes the source's mode, not the file that was there")
+    func serverSideCopyOverwritesTheDestinationsOwnMode() async throws {
+        try await offCooperativePool {
+            let (backend, config) = try makeBackend()
+            let source = try LiveCarrySource(mode: 0o640)
+            let occupant = try LiveCarrySource(mode: 0o600)
+            let first = VFSPath(
+                backend: .sftp(config.location),
+                path: config.remotePath + "/dirnex-cp-occ-src-\(UUID().uuidString).bin"
+            )
+            let second = first.parent!.appending("dirnex-cp-occ-dst-\(UUID().uuidString).bin")
+            defer {
+                try? backend.removeItem(at: first)
+                try? backend.removeItem(at: second)
+            }
+            for (local, remote) in [(source, first), (occupant, second)] {
+                try backend.copyFile(
+                    at: .local(local.path),
+                    to: remote,
+                    hint: CopySourceHint(metadata: local.entry),
+                    progress: { _ in },
+                    isCancelled: { false }
+                )
+            }
+            #expect(try backend.stat(at: second).permissions == 0o600)
+
+            try backend.copyFile(
+                at: first,
+                to: second,
+                hint: CopySourceHint(try backend.stat(at: first)),
+                progress: { _ in },
+                isCancelled: { false }
+            )
+
+            // The measurement this case exists for: `cp` **overwrites in place** and leaves the
+            // destination's own mode standing (a bare `cp` here really does leave `100600`), so the
+            // corrective `chmod` is worth sending for an ordinary mode too and not only for a
+            // special bit. It is also the only live case that can tell the two plans apart — a mode
+            // carrying set-uid gets its `chmod` under either rule, so a test using one measures
+            // nothing about this decision.
+            #expect(try backend.stat(at: second).permissions == 0o640)
+        }
+    }
+
+    @Test("the server-side copy loses the modification time, and says so rather than claiming it")
+    func serverSideCopyReportsTheLostTime() async throws {
+        try await offCooperativePool {
+            let (backend, config) = try makeBackend()
+            let source = try LiveCarrySource(mode: 0o644)
+            let first = VFSPath(
+                backend: .sftp(config.location),
+                path: config.remotePath + "/dirnex-cp-time-\(UUID().uuidString).bin"
+            )
+            let second = first.parent!.appending("dirnex-cp-time2-\(UUID().uuidString).bin")
+            defer {
+                try? backend.removeItem(at: first)
+                try? backend.removeItem(at: second)
+            }
+            try backend.copyFile(
+                at: .local(source.path),
+                to: first,
+                hint: CopySourceHint(metadata: source.entry),
+                progress: { _ in },
+                isCancelled: { false }
+            )
+            let listed = try backend.stat(at: first)
+            try backend.copyFile(
+                at: first,
+                to: second,
+                hint: CopySourceHint(listed),
+                progress: { _ in },
+                isCancelled: { false }
+            )
+
+            // The trade this route buys its speed with, measured on the server rather than argued:
+            // `cp` stamps the copy with *now*, a week away from the source, and `sftp`'s batch
+            // language has no verb that could put it back.
+            let landed = try backend.stat(at: second)
+            #expect(landed.modificationDate.timeIntervalSince(source.modificationTime) > 6 * 86_400)
+            // The narrowness control, and it is what makes the line above evidence about `cp`
+            // rather than about the fixture: the *upload* that put this file on the server carried
+            // the same source's time exactly, minutes ago, over the same connection.
+            #expect(abs(listed.modificationDate.timeIntervalSince(source.modificationTime)) < 60)
+            // That the connection also *records* the loss is pinned headlessly, where the
+            // accumulator is reachable — `SFTPServerSideCopyTests`, with the plan-with-`-p` control
+            // that makes a silent claim fail. It is internal to the core, so this target cannot see
+            // it, and inventing a public accessor for one assertion is the API-with-no-reader trap
+            // this project has paid for before.
+        }
+    }
+}
+
+/// The route a same-account duplicate takes, through the **pane's own backend** rather than the
+/// account's (PLAN.md §M25 Slice 3).
+///
+/// One claim, and it is deliberately the one that holds on *either* kind of server: the duplicate
+/// lands, with the right bytes and the right mode, whether the account offers OpenSSH's `copy-data`
+/// extension or the composite has to stage it through this disk. Run it against a server started
+/// with `sftp-server -P copy-data` and it exercises the fallback; run it against an ordinary one and
+/// it exercises the fast path. Nothing here asserts *which*, because a test that did would fail on
+/// half the servers this feature exists to work on.
+///
+/// What tells them apart, for anyone verifying by hand, is the **modification time**: the staged
+/// route carries it exactly (`get -p`/`put -p`) and `cp` stamps the copy with *now*.
+@Suite("Server-side copy route ▸ live", .enabled(if: SFTPLiveEnvironment.current != nil))
+struct SFTPServerSideCopyRouteLiveTests {
+    @Test("a duplicate lands whichever route the account turns out to support")
+    func duplicateLandsEitherWay() async throws {
+        try await offCooperativePool {
+            let config = try #require(SFTPLiveEnvironment.current)
+            let composite = CompositeBackend(local: LocalBackend())
+            let account = composite.connectSFTP(
+                location: config.location,
+                authentication: .key(identityFile: config.identityFile)
+            )
+            let source = try LiveCarrySource(mode: 0o640)
+            let first = VFSPath(
+                backend: .sftp(config.location),
+                path: config.remotePath + "/dirnex-route-src-\(UUID().uuidString).bin"
+            )
+            let second = first.parent!.appending("dirnex-route-dst-\(UUID().uuidString).bin")
+            defer {
+                try? account.removeItem(at: first)
+                try? account.removeItem(at: second)
+            }
+            try composite.copyFile(
+                at: .local(source.path),
+                to: first,
+                hint: CopySourceHint(metadata: source.entry),
+                progress: { _ in },
+                isCancelled: { false }
+            )
+
+            let listed = try account.stat(at: first)
+            var reported: Int64 = 0
+            try composite.copyFile(
+                at: first,
+                to: second,
+                hint: CopySourceHint(listed),
+                progress: { reported += $0 },
+                isCancelled: { false }
+            )
+
+            let landed = try account.stat(at: second)
+            #expect(landed.byteSize == listed.byteSize)
+            #expect(landed.permissions == 0o640)
+            // The count the queue's bar rests on, and it is the same number on both routes: a staged
+            // copy reports each leg at half weight and tops up, and a server-side one reports the
+            // file once. Either way it is the file's size and never twice it.
+            #expect(reported == listed.byteSize)
+        }
+    }
+}
+
 @Suite("Remote metadata carry ▸ live FTP", .enabled(if: FTPLiveEnvironment.current != nil))
 struct FTPMetadataCarryLiveTests {
     private func makeBackend() throws -> (FTPBackend, FTPLiveEnvironment.Config) {

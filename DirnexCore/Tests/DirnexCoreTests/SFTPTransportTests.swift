@@ -42,6 +42,14 @@ struct SFTPTransportTests {
         #expect(SFTPBatchCommand.upload("/tmp/f", to: "/remote/f") == "put \"/tmp/f\" \"/remote/f\"")
     }
 
+    @Test("cp names both paths in order, quoted like every other two-argument verb")
+    func copyQuotesBothPaths() {
+        #expect(
+            SFTPBatchCommand.copy("/home/oleg/a b.txt", to: "/home/oleg/c.txt")
+                == "cp \"/home/oleg/a b.txt\" \"/home/oleg/c.txt\""
+        )
+    }
+
     @Test("resume adds -a to get/put so a partial transfer picks up instead of restarting")
     func transferVerbsResumeWithDashA() {
         #expect(
@@ -81,6 +89,28 @@ struct SFTPTransportTests {
         oleg@mac: Permission denied (publickey,password).
         """
         #expect(SFTPTransportError.classify(stderr: stderr) == .permissionDenied)
+    }
+
+    @Test("the client's own copy-data refusal classifies as its own case, not as a failure")
+    func classifyMissingCopyExtension() {
+        // OpenSSH's exact sentence, read out of `/usr/bin/sftp` and reproduced against a server
+        // started with `sftp-server -P copy-data`. Its own case because it is a fact about the
+        // *account* — true of every file — which a backend latches for the connection.
+        #expect(
+            SFTPTransportError.classify(stderr: "Server does not support copy-data extension\n")
+                == .copyExtensionUnavailable
+        )
+    }
+
+    @Test("a path that merely contains copy-data is not read as the server lacking it")
+    func classifyDoesNotMatchAPathNamedCopyData() {
+        // The tempting short match is the distinctive token, and it is wrong in the expensive
+        // direction: a failed operation on somebody's `copy-data.txt` would latch a capability the
+        // server has, costing every later copy on that connection its fast path.
+        #expect(
+            SFTPTransportError.classify(stderr: "Couldn't delete file: /srv/copy-data.txt\n")
+                == .failure("Couldn't delete file: /srv/copy-data.txt")
+        )
     }
 
     @Test("any other stderr is surfaced verbatim as a failure")
@@ -203,6 +233,18 @@ struct SFTPTransportTests {
         #expect(SFTPTransportError.detect(stderr: "Welcome to the SFTP service") == nil)
         let hostKeyNote = "Warning: Permanently added 'host' (ED25519) to the list of known hosts."
         #expect(SFTPTransportError.detect(stderr: hostKeyNote) == nil)
+    }
+
+    @Test("detect catches the copy-data refusal, which exits zero under password auth")
+    func detectMissingCopyExtension() {
+        // The direction where missing it is silent. An interactive session exits **zero** on a
+        // failed command, so a `cp` the client refused would otherwise read as a copy that happened
+        // — and OpenSSH's sentence matches none of the prefixes below it, since it opens "Server
+        // does not…".
+        #expect(
+            SFTPTransportError.detect(stderr: "Server does not support copy-data extension\n")
+                == .copyExtensionUnavailable
+        )
     }
 
     @Test("detect maps interactive command failures that exited zero")

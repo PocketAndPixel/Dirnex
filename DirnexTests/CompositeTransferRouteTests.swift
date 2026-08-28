@@ -96,17 +96,53 @@ struct CompositeTransferRouteTests {
         #expect(try route(s3("/a.jpg"), sftp(Self.alpha, "/home/u/a.jpg")) == expected)
     }
 
-    /// The case that looks like it should be direct and is not: SFTP has no copy verb at all, so
-    /// duplicating a file *within one account* has no more expression there than one between two.
-    /// This is the pair a router keyed on "same backend id" would hand straight back to a backend
-    /// that refuses it.
-    @Test("a duplicate inside one SFTP account is staged too")
-    func sameAccountWithoutACopyVerbIsStaged() throws {
+    // MARK: - One account, one server-side copy
+
+    /// The pair that changed at M25 Slice 3, and the one whose failure has no symptom: OpenSSH's
+    /// `copy-data` extension is a real server-side `cp` — 64 MiB in 0.09 s against 0.5 s staged over
+    /// *loopback* — so a router that went on staging this would produce identical files, identical
+    /// rows and a milestone that is inert with every test still green.
+    ///
+    /// It is `serverSide` rather than `direct` because it can be refused: a server need not
+    /// advertise the extension and nothing asks in advance, so the route has to carry a fallback.
+    @Test("a duplicate inside one SFTP account is offered to the server")
+    func sameAccountIsServerSide() throws {
         backend.connectSFTP(location: Self.alpha, authentication: .key(identityFile: "/tmp/key"))
         let account = VFSBackendID.sftp(Self.alpha)
         #expect(
-            try route(sftp(Self.alpha, "/a/x"), sftp(Self.alpha, "/b/x"))
-                == "staged \(account) → \(account)"
+            try route(sftp(Self.alpha, "/a/x"), sftp(Self.alpha, "/b/x")) == "serverSide \(account)"
+        )
+    }
+
+    /// The composite forwards the question rather than inheriting the `false` default — the seam
+    /// whose failure is silent, since a pane holds a composite and every same-account copy would
+    /// quietly go on being staged.
+    @Test("the composite answers for the account that owns both ends")
+    func compositeForwardsTheAttemptQuestion() {
+        backend.connectSFTP(location: Self.alpha, authentication: .key(identityFile: "/tmp/key"))
+        #expect(backend.mayAttemptInternalCopy(
+            from: sftp(Self.alpha, "/a/x"),
+            to: sftp(Self.alpha, "/b/x")
+        ))
+        // The narrowness control: a pair the account does not own, and a backend with no such verb.
+        #expect(
+            !backend.mayAttemptInternalCopy(from: sftp(Self.alpha, "/a/x"), to: .local("/tmp/x"))
+        )
+        #expect(!backend.mayAttemptInternalCopy(from: .local("/tmp/a"), to: .local("/tmp/b")))
+    }
+
+    /// FTP is the control that keeps "same account" from becoming the rule: `curl` has a download
+    /// and an upload and no copy verb of any kind, so this pair is still staged.
+    @Test("a duplicate inside one FTP account is still staged")
+    func sameFTPAccountIsStaged() throws {
+        let ftp = FTPLocation(host: "ftp.example", username: "u")
+        backend.connectFTP(location: ftp, authentication: .password, password: "p")
+        let account = VFSBackendID.ftp(ftp)
+        #expect(
+            try route(
+                VFSPath(backend: account, path: "/a/x"),
+                VFSPath(backend: account, path: "/b/x")
+            ) == "staged \(account) → \(account)"
         )
     }
 

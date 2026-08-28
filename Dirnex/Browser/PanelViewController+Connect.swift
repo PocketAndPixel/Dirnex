@@ -289,18 +289,27 @@ extension PanelViewController {
                 localized: "The server’s host key has changed (new fingerprint \(change.fingerprint)).",
                 comment: "SFTP connect failure detail; %@ is the new host-key fingerprint."
             )
+        case .copyExtensionUnavailable:
+            // Unreachable from a connect, and answered rather than asserted: only `cp` produces it
+            // and the probe here is a `pwd`. It gets the same generic sentence an empty failure
+            // does, because a wording of its own would put a string no user can reach in front of
+            // fourteen translators.
+            return Self.unexplainedServerError
         case let .failure(message):
             // The server's own words when it said anything; ours when it said nothing, since
             // `classify` leaves the payload empty rather than authoring an untranslatable
             // sentence in the core (PLAN.md §M12 Slice 11).
-            return message.isEmpty
-                ? String(
-                    localized: "The SFTP server reported an error.",
-                    comment: "SFTP connect failure detail when the server gave no reason."
-                )
-                : message
+            return message.isEmpty ? Self.unexplainedServerError : message
         }
     }
+
+    /// What a connect failure says when the server gave no reason of its own. One constant because
+    /// two sites need it and `String(localized:comment:)` takes a `StaticString`, so a shared comment
+    /// would have to be repeated verbatim to key the same entry (docs/NOTES.md ▸ Localization).
+    private static let unexplainedServerError = String(
+        localized: "The SFTP server reported an error.",
+        comment: "SFTP connect failure detail when the server gave no reason."
+    )
 
     // MARK: - Host key changed
 

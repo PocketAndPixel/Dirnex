@@ -38,6 +38,11 @@ public struct SFTPBackend: RemoteTransportBackend {
     /// ``segmentation`` is: the backend is copied freely, and a fact about the *server* must not be
     /// copied away with it (``RemoteMetadataSupport``).
     let metadata: RemoteMetadataSupport
+    /// What this connection has learned about copying a file **server-side** — a reference held by a
+    /// value type for the same reason ``segmentation`` and ``metadata`` are: the backend is copied
+    /// freely, and what it knows about the *server* must not be copied away with it
+    /// (``ServerSideCopySupport``).
+    let serverSideCopy = ServerSideCopySupport()
 
     public init(location: SFTPLocation, transport: any SFTPTransport) {
         self.location = location
@@ -101,14 +106,18 @@ public struct SFTPBackend: RemoteTransportBackend {
         ) }
     }
 
-    /// Copy one file's bytes between this remote account and the local disk — a **download**
-    /// (remote source → local destination, via `get`) or an **upload** (local source → remote
-    /// destination, via `put`). The whole file transfers as one `sftp` command, and `isCancelled` is
-    /// honored inside it as well as at the file boundary (the queue's pause/cancel still acts
-    /// between files). A copy that is neither direction — between two accounts, or *within* this
-    /// one, since SFTP has no copy verb at all — has no `sftp` expression and is refused here. It
-    /// is not refused to the user: a caller holding both ends stages such a copy through this disk
-    /// (``RelayCopy``), which is what the app's composite backend does with that pair.
+    /// Copy one file's bytes — a **download** (remote source → local destination, via `get`), an
+    /// **upload** (local source → remote destination, via `put`), or a **duplicate within this
+    /// account**, which the server performs itself (`cp`, PLAN.md §M25 Slice 3). The whole file
+    /// transfers as one `sftp` command, and `isCancelled` is honored inside it as well as at the
+    /// file boundary (the queue's pause/cancel still acts between files).
+    ///
+    /// Only a pair of ends on **two different** accounts is refused here, and it is not refused to
+    /// the user: a caller holding both connections stages such a copy through this disk
+    /// (``RelayCopy``), which is what the app's composite backend does with that pair. The
+    /// same-account case is refused too once this connection has shown it cannot copy server-side,
+    /// which puts it back on exactly that route — see
+    /// ``mayAttemptInternalCopy(from:to:)``.
     ///
     /// **`progress` reports as a download runs and only at the end of an upload, and the asymmetry
     /// is `sftp`'s rather than a decision.** A download's destination is a file on this machine, so
@@ -214,11 +223,29 @@ public struct SFTPBackend: RemoteTransportBackend {
                 progress: streamed,
                 isCancelled: isCancelled
             )
+        } else if source.backend == id, destination.backend == id {
+            transferred = try copyWithinAccount(
+                from: source,
+                to: destination,
+                hint: hint,
+                isCancelled: isCancelled
+            )
         } else {
             throw VFSError.unsupported(.remoteToRemoteCopy)
         }
         if isCancelled() { throw CancellationError() }
         if let remainder = tally.remainder(against: transferred) { progress(remainder) }
+    }
+
+    /// Whether ``copyFile(at:to:hint:progress:isCancelled:)`` should be handed a pair of ends that
+    /// are both on this account — true until this connection has shown it cannot copy server-side.
+    ///
+    /// It answers for the *router*, which needs to know before it calls: a `true` here is an
+    /// invitation to try, and a caller acting on it owes a fallback, because the refusal cannot be
+    /// anticipated (``ServerSideCopySupport``). After one refusal this goes false for the life of
+    /// the connection and every later copy is staged with no wasted round trip.
+    public func mayAttemptInternalCopy(from source: VFSPath, to destination: VFSPath) -> Bool {
+        source.backend == id && destination.backend == id && !serverSideCopy.isRefused
     }
 
     /// What a download may carry: everything the local disk can take, plus `get -p` when this
@@ -279,7 +306,12 @@ public struct SFTPBackend: RemoteTransportBackend {
             case .permissionDenied: throw VFSError.permissionDenied(path)
             // A changed host key surfaces on the connect probe (handled by the app's re-trust flow),
             // not here; if one ever reaches a deeper op it maps to a generic I/O error like .failure.
-            case .hostKeyChanged, .failure: throw VFSError.io(path: path, code: EIO)
+            // `copyExtensionUnavailable` is intercepted by `copyWithinAccount` before it can arrive
+            // here — it is a route to fall back from, not a failure to report — and reaching this
+            // point at all would mean some other verb produced it, where a generic I/O error is the
+            // honest answer.
+            case .copyExtensionUnavailable, .hostKeyChanged, .failure:
+                throw VFSError.io(path: path, code: EIO)
             }
         }
     }

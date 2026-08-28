@@ -1,11 +1,11 @@
 import Foundation
 
 /// How an SFTP copy actually moves its bytes: whether a download is split, whether either direction
-/// resumes, and where the metadata carry attaches to each.
+/// resumes, whether the bytes need to move at all, and where the metadata carry attaches to each.
 ///
 /// Split from `SFTPBackend.swift` when it reached SwiftLint's `type_body_length` — by concept rather
 /// than by shaving lines, which is the house rule. There, what the backend *is* and the verbs it
-/// answers; here, the one verb with two directions and a choice to make in each.
+/// answers; here, the one verb with three directions and a choice to make in each.
 extension SFTPBackend {
     /// Uploads at or below this size skip resume detection: re-sending a small file is cheaper than
     /// the extra remote `stat` round trip that finding a resumable partial would cost. (Downloads
@@ -128,6 +128,67 @@ extension SFTPBackend {
         // decision rather than being read again here, where the file has since grown.
         guard let existingLocal else { return outcome.bytes }
         return max(0, outcome.bytes - existingLocal)
+    }
+
+    /// Duplicate one file **inside this account**, with the server moving the bytes and nothing
+    /// crossing this machine (PLAN.md §M25 Slice 3).
+    ///
+    /// Measured 2026-08-28 against a real `sshd`: 64 MiB in **0.09 s** for the whole session —
+    /// connect, authentication and all — against **0.5 s** for the same file staged down and back up
+    /// over *loopback*, where the relay is flattered by there being no network. Over a real link the
+    /// comparison is not a ratio: one route sends the file twice and the other sends none of it.
+    ///
+    /// **What it cannot carry is the modification time**, and saying so is the point rather than a
+    /// caveat. `cp` stamps the copy with *now* — measured, an mtime of 2018 came back as the moment
+    /// of the copy — and `sftp`'s batch language has no verb that sets a time, so the plan built
+    /// here counts it dropped and ``RemoteMetadataSupport`` accumulates it. The relay this replaces
+    /// carried it exactly (`get -p`/`put -p`), so the trade is real and deliberate: it is bought
+    /// with a report rather than with silence, which is what separates this milestone's answer from
+    /// the failure it exists to prevent.
+    ///
+    /// The mode is carried in full. `cp` brings the low nine bits and drops the three special ones,
+    /// so the corrective `chmod` rides the same batch — and unlike a transfer it is sent for an
+    /// *ordinary* mode too, because an occupied destination is overwritten in place and keeps its
+    /// own mode (both measured; ``SFTPBatchCommand/copy(_:to:)``).
+    ///
+    /// A refusal is read here rather than reported: only ``SFTPTransportError/copyExtensionUnavailable``
+    /// is a fact about the account, so it latches and the copy becomes the `.unsupported` this
+    /// method has always thrown — which is what sends the router back to ``RelayCopy`` with the old
+    /// behaviour standing. Everything else (a missing source, an unwritable destination) is that
+    /// operation's own failure and is mapped like any other.
+    func copyWithinAccount(
+        from source: VFSPath,
+        to destination: VFSPath,
+        hint: CopySourceHint,
+        isCancelled: () -> Bool
+    ) throws -> Int64 {
+        guard !serverSideCopy.isRefused else { throw VFSError.unsupported(.remoteToRemoteCopy) }
+        let carry = hint.metadata.map { metadata.planWithoutTransferFlag(for: $0) }
+            ?? .carryingNothing
+        // The destination names the failure: this is a write, and the source was listed a moment ago
+        // by the caller that holds its entry. `cp` does distinguish the two on the wire
+        // (`stat remote:` against `remote open(`) and the shared classifier does not, so one of them
+        // has to be chosen rather than derived.
+        let refusals = try mapErrors(destination) {
+            do {
+                return try transport.copyRemoteFile(
+                    source.path,
+                    to: destination.path,
+                    carrying: carry,
+                    isCancelled: isCancelled
+                )
+            } catch SFTPTransportError.copyExtensionUnavailable {
+                serverSideCopy.recordUnsupported()
+                throw VFSError.unsupported(.remoteToRemoteCopy)
+            }
+        }
+        record(RemoteTransferOutcome(bytes: 0, refusals: refusals), against: carry)
+        // Nothing moved through here, so there is no delta to have counted — and the queue's
+        // denominator is the file's size, so a copy that reported nothing would leave the bar short
+        // by exactly one file. The hint is what the caller's own listing already read; without one
+        // the landed file is asked, which costs the round trip this route otherwise saves and is
+        // paid only by a caller that had nothing to hand down.
+        return hint.expectedSize ?? remoteFileSize(destination)
     }
 
     /// Upload `localPath` to `remote`, resuming from a remote partial when one is a proper prefix.

@@ -23,12 +23,19 @@ public struct VFSCapabilities: OptionSet, Sendable, Hashable {
     /// inside this backend — the local disk's ordinary copy, and S3's server-side
     /// `x-amz-copy-source`, where the bytes never leave the service.
     ///
-    /// It is not implied by `.write`, and the difference is the whole reason it has a name. SFTP
-    /// and FTP are writable and have no copy verb at all: their `copyFile` is an *upload* or a
-    /// *download*, so duplicating a file within one account — never mind between two accounts —
-    /// has to be staged through this disk (``RelayCopy``). A router asking "who can move these
-    /// bytes" needs that answer per backend, and the alternative is spelling the backends out at
-    /// the one site that asks, which is this project's most repeated bug.
+    /// It is not implied by `.write`, and the difference is the whole reason it has a name. FTP is
+    /// writable and has no copy verb at all: its `copyFile` is an *upload* or a *download*, so
+    /// duplicating a file within one account — never mind between two accounts — has to be staged
+    /// through this disk (``RelayCopy``). A router asking "who can move these bytes" needs that
+    /// answer per backend, and the alternative is spelling the backends out at the one site that
+    /// asks, which is this project's most repeated bug.
+    ///
+    /// **SFTP is the case this bit deliberately does not cover, and it is why
+    /// ``VFSBackend/mayAttemptInternalCopy(from:to:)`` exists beside it.** OpenSSH's `copy-data`
+    /// extension gives `sftp` a real server-side `cp` — measured, 64 MiB in 0.09 s with nothing on
+    /// the wire — but a server need not advertise it and no request asks whether it has. A promise
+    /// that can be withdrawn by the next server is not a capability; it is an attempt with a
+    /// fallback.
     public static let internalCopy = VFSCapabilities(rawValue: 1 << 6)
 
     /// The delete path a panel should take on a backend with these capabilities — the
@@ -297,6 +304,21 @@ public protocol VFSBackend: Sendable {
         sourceMetadata: RemoteSourceMetadata?
     ) throws
 
+    /// Whether a copy with **both ends inside this backend** is worth attempting here, even though
+    /// the attempt may be refused (PLAN.md §M25 Slice 3).
+    ///
+    /// Not the same question as ``VFSCapabilities/internalCopy``, and the difference is the whole
+    /// reason it is a method rather than another bit. A capability is a *promise* a router acts on
+    /// with no fallback; this is an *attempt* whose refusal is a fact about one server that nothing
+    /// can ask in advance — OpenSSH's `copy-data` extension is either advertised or it is not, and
+    /// the only way to learn which is to send `cp` and read what comes back. So a router that gets
+    /// `true` here must be ready to move the bytes itself (``RelayCopy``), and a backend that
+    /// answers `true` must latch the refusal so the next file does not pay to find out again.
+    ///
+    /// The default is `false`: a backend that has no such verb is asked nothing and behaves exactly
+    /// as it always did.
+    func mayAttemptInternalCopy(from source: VFSPath, to destination: VFSPath) -> Bool
+
     /// A stable identifier for the physical volume `path` resides on, or `nil` when the
     /// backend can't tell its volumes apart. The M2 operation queue schedules by this:
     /// jobs that share a volume run serially (so two transfers don't thrash one disk
@@ -399,6 +421,10 @@ public extension VFSBackend {
         // Ignoring the hint is the old behaviour, and it is honest: a backend that does not use it
         // is one that was not carrying metadata in the first place.
         try copyMetadata(at: source, to: destination)
+    }
+
+    func mayAttemptInternalCopy(from _: VFSPath, to _: VFSPath) -> Bool {
+        false // no verb to try, so nothing to be refused
     }
 
     func volumeIdentifier(for path: VFSPath) -> String? {

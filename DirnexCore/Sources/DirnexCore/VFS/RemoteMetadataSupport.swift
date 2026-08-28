@@ -72,6 +72,18 @@ public final class RemoteMetadataSupport: @unchecked Sendable {
         source.plan(with: capabilities)
     }
 
+    /// The plan for carrying `source` where there is **no transfer verb to ride on** — a directory
+    /// the engine recreated by hand, or a server-side `cp`.
+    ///
+    /// The preserve flag belongs to `get`/`put` and to nothing else, so a route without one has to
+    /// subtract it or the plan claims a carry that has no mechanism. Its own method rather than the
+    /// subtraction written out at each site, because the two callers cannot see each other and the
+    /// consequence of one of them forgetting is a copy that reports a modification time it never
+    /// wrote — this milestone's whole subject.
+    public func planWithoutTransferFlag(for source: RemoteSourceMetadata) -> RemoteMetadataPlan {
+        source.plan(with: capabilities.subtracting(.preserveFlag))
+    }
+
     /// Record that the server answered **"I do not implement that verb"** — FTP's reply **500**, the
     /// one refusal that is a fact about the account rather than about a file.
     ///

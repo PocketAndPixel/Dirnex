@@ -108,6 +108,36 @@ final class FakeSFTPTransport: SFTPTransport, @unchecked Sendable {
         return RemoteTransferOutcome(bytes: bytes, refusals: metadataRefusals)
     }
 
+    /// Whether this double's server offers OpenSSH's `copy-data` extension. **Off by default**, the
+    /// state every transport that predates the verb is in: `copyRemoteFile` then throws the same
+    /// refusal a real server without it produces, which is what the backend latches and the router
+    /// stages around.
+    var supportsServerSideCopy = false
+    /// Every server-side copy this double was asked for, with the plan riding it — the observable
+    /// that separates *the route ran* from *the file ended up right*, which no fake can answer.
+    private(set) var serverSideCopies: [RecordedServerSideCopy] = []
+
+    struct RecordedServerSideCopy {
+        let source: String
+        let destination: String
+        let carry: RemoteMetadataPlan
+    }
+
+    func copyRemoteFile(
+        _ source: String,
+        to destination: String,
+        carrying plan: RemoteMetadataPlan,
+        isCancelled: () -> Bool
+    ) throws -> [RemoteMetadataRefusal] {
+        if isCancelled() { cancelledTransfers.append(source); throw CancellationError() }
+        guard supportsServerSideCopy else { throw SFTPTransportError.copyExtensionUnavailable }
+        if let error { throw error }
+        serverSideCopies.append(
+            RecordedServerSideCopy(source: source, destination: destination, carry: plan)
+        )
+        return metadataRefusals
+    }
+
     func applyMetadata(
         _ steps: [RemoteMetadataStep],
         to remotePath: String

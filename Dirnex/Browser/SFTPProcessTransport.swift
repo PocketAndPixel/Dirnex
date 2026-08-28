@@ -186,6 +186,32 @@ struct SFTPProcessTransport: SFTPTransport {
         return RemoteTransferOutcome(bytes: localFileSize(localPath), refusals: result.refusals)
     }
 
+    /// Duplicate one remote file **on the server**, with the corrective `chmod` in the same batch
+    /// (PLAN.md §M25 Slice 3).
+    ///
+    /// `cp` is OpenSSH's `copy-data` extension, and the client refuses it on its own when the server
+    /// did not advertise one — `Server does not support copy-data extension`, which
+    /// ``SFTPTransportError`` classifies into its own case so the backend can latch it for the
+    /// connection rather than re-deriving a sentence. Reproduced on demand with
+    /// `sftp-server -P copy-data`: exit 1, that line on stderr, nothing created.
+    ///
+    /// The follow-up rides this batch allowed to fail, exactly as a transfer's does and for the same
+    /// measured reason: a refused `chmod` must not turn a duplicate that exists into a failure.
+    func copyRemoteFile(
+        _ source: String,
+        to destination: String,
+        carrying plan: RemoteMetadataPlan,
+        isCancelled: () -> Bool
+    ) throws -> [RemoteMetadataRefusal] {
+        try runCarrying(
+            batch: SFTPBatchCommand.batch(
+                [SFTPBatchCommand.copy(source, to: destination)]
+                    + SFTPBatchCommand.metadataFollowUp(plan.followUp, on: destination)
+            ),
+            isCancelled: isCancelled
+        ).refusals
+    }
+
     /// Apply metadata with no transfer to ride on — the directory `copyMetadata` finishes.
     func applyMetadata(
         _ steps: [RemoteMetadataStep],

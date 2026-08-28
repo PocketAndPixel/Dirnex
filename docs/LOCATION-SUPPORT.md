@@ -136,6 +136,7 @@ the file it was mounted from is gone by the next launch.
 | Copy `F5` (destination) | yes | yes | yes, limited<sup>g</sup> | yes | yes | yes | no<sup>h</sup> | n/a | n/a |
 | Move `F6` | yes | yes | no<sup>g</sup> | yes | yes | yes, limited<sup>i</sup> | no<sup>h</sup> | yes | yes |
 | Copy between two different accounts | yes | yes | — | yes | yes | yes | — | — | — |
+| Copy **inside one account**, without the bytes crossing this Mac | n/a | n/a | n/a | yes, limited<sup>bbb</sup> | **no**<sup>bbb</sup> | yes | — | — | — |
 | Copy / paste `⌘C` `⌘V` | yes | yes | yes<sup>j</sup> | yes | yes | yes | no<sup>h</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> |
 | Drag and drop, inside Dirnex | yes | yes | yes, partially<sup>j</sup> | yes | yes | yes | no<sup>h</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> |
 | Drag **out** to Finder and other apps | yes | yes | **no**<sup>j</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | no<sup>h</sup> | yes, partially<sup>k</sup> | yes |
@@ -228,6 +229,26 @@ refused to keep anything.
 S3 remains `n/a`: it has no settable mtime, no permissions and no symlinks at all (PLAN.md §M21), and
 a row that reports no mode is *absent* rather than dropped — the distinction the whole carry turns
 on, since folding the two together would make every S3 copy claim damage it did not do.
+
+<sup>bbb</sup> A duplicate within one SFTP account is the **server's** work: OpenSSH's `copy-data`
+extension gives `sftp` a real `cp` — measured against a real `sshd`, 64 MiB in **0.09 s** for the
+whole session against 0.5 s to stage the same file down and back up over *loopback*, where the relay
+is flattered by there being no network. It is "limited" because a server need not advertise the
+extension and nothing can ask in advance: the client refuses on its own
+(`Server does not support copy-data extension`, reproducible with `sftp-server -P copy-data`), the
+refusal is latched for the connection, and every later copy is staged through this disk exactly as it
+always was (PLAN.md §M25 Slice 3).
+
+What it costs is the **modification time**, and it is reported rather than quietly dropped: `cp`
+stamps the copy with *now*, and `sftp`'s batch language has no verb that could set one — so this is
+the one route where the staged fallback is *more* faithful than the fast path. The mode is carried in
+full, including the special bits `cp` drops, by the corrective `chmod` riding the same batch. That
+`chmod` is sent for an ordinary mode too, because an occupied destination is overwritten **in place**
+and keeps its own mode.
+
+FTP has no copy verb of any kind — `curl` offers a download and an upload — so a duplicate inside one
+account is staged, whatever the two paths are. S3 duplicates inside a bucket, and between two buckets
+the same key and service can name unambiguously, with `x-amz-copy-source`.
 
 <sup>pp</sup> Only the **read** half is missing, and only over SFTP: `SFTPBackend.createSymbolicLink`
 ships and `CopyEngine` calls it, so a link can be written — but `sftp`'s `ls -la` prints the kind

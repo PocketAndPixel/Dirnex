@@ -3,13 +3,19 @@ import Foundation
 /// Copies one file between two backends that can each only talk to **this machine**, by staging the
 /// bytes on disk: download from the source, upload to the destination, delete the staged copy.
 ///
-/// It exists because "copy" is not one operation on every backend. SFTP and FTP have no copy verb
-/// at all — `sftp` offers `get` and `put`, `curl` a download and an upload — so their
+/// It exists because "copy" is not one operation on every backend. FTP has no copy verb at all —
+/// `curl` offers a download and an upload — so its
 /// ``VFSBackend/copyFile(at:to:progress:isCancelled:)`` is a *direction* rather than a duplication,
-/// and both refuse a pair of ends that does not include the local disk. That refusal is honest at
-/// the backend (neither one has ever heard of the other), and it reached the user as a dead end:
-/// F5 from a bucket to a server, and even a duplicate **within one SFTP account**, failed per file
-/// with "Copying directly between remote locations isn't supported".
+/// and it refuses a pair of ends that does not include the local disk. That refusal is honest at the
+/// backend (neither one has ever heard of the other), and it reached the user as a dead end: F5 from
+/// a bucket to a server failed per file with "Copying directly between remote locations isn't
+/// supported".
+///
+/// **SFTP's same-account duplicate is no longer one of those**, and correcting that is part of what
+/// this type is for: OpenSSH's `copy-data` extension gives `sftp` a genuine server-side `cp`
+/// (PLAN.md §M25 Slice 3), so a duplicate within one account is the server's work and not this
+/// disk's. A server that does not advertise it lands back here — which is the whole reason the
+/// route above it is an attempt with a fallback rather than a promise.
 ///
 /// Two ends and one staging file is the whole mechanism, and it is deliberately not a backend's:
 /// only something holding *both* connections can run it, which in the app is the pane's composite
