@@ -15,18 +15,6 @@ import Foundation
 // snapshot; exact content equality is delegated to an injected comparator (defaulting to
 // `ByteComparator.localFilesEqual`) so the engine needs no file-read primitive of its own.
 
-// MARK: - Comparison method
-
-/// How two same-named files are judged equal.
-public enum SyncComparison: Sendable, Equatable {
-    /// Equal when byte sizes match *and* modification times agree within the tolerance.
-    /// Fast — reads no file contents — but blind to an edit that preserved size and mtime.
-    case sizeAndDate
-    /// Equal only when the bytes are identical (via the content comparator). Exact, but
-    /// reads both files; still short-circuits on a size mismatch.
-    case content
-}
-
 // MARK: - Status
 
 /// Where one item stands between the two trees — the classification a diff row shows.
@@ -183,13 +171,30 @@ public enum DirectorySync {
         ) }
     ) throws -> [SyncEntry] {
         var results: [SyncEntry] = []
+        // Asked once per side, before anything is walked: a backend with a subtree shortcut answers
+        // the whole tree in one request and the walk below is served from that instead of listing a
+        // directory at a time. A backend without one answers `nil` and nothing changes (``SyncSide``).
+        let leftSide = try SyncSide.gather(under: left, using: leftBackend, isCancelled: isCancelled)
+        let rightSide = try SyncSide.gather(
+            under: right,
+            using: rightBackend,
+            isCancelled: isCancelled
+        )
         // Work stack of directory pairs that both exist, plus their shared relative prefix.
         var stack = [DirectoryPair(left: left, right: right, prefix: "")]
 
         while let node = stack.popLast() {
             if isCancelled() { throw CancellationError() }
-            let leftByName = try childrenByName(of: node.left, using: leftBackend)
-            let rightByName = try childrenByName(of: node.right, using: rightBackend)
+            let leftByName = try leftSide.children(
+                at: node.left,
+                relative: node.prefix,
+                using: leftBackend
+            )
+            let rightByName = try rightSide.children(
+                at: node.right,
+                relative: node.prefix,
+                using: rightBackend
+            )
 
             for name in Set(leftByName.keys).union(rightByName.keys) {
                 let relative = node.prefix.isEmpty ? name : node.prefix + "/" + name
@@ -318,6 +323,8 @@ public enum DirectorySync {
     ) throws -> SyncStatus {
         let equal: Bool
         switch comparison {
+        case .size:
+            equal = left.byteSize == right.byteSize
         case .sizeAndDate:
             equal = left.byteSize == right.byteSize
                 && abs(left.modificationDate.timeIntervalSince(right.modificationDate)) <= tolerance
@@ -334,6 +341,10 @@ public enum DirectorySync {
             }
         }
         if equal { return .identical }
+        // A comparison that does not believe the clock must not rank with it either: `.differ` is
+        // "these are not the same and nothing here can say which came later", which the mirror
+        // directions still act on and the bidirectional one correctly refuses to guess at.
+        guard comparison.usesModificationDates else { return .differ }
         return newerSide(left, right, tolerance: tolerance)
     }
 
@@ -343,14 +354,6 @@ public enum DirectorySync {
         if delta > tolerance { return .leftNewer }
         if delta < -tolerance { return .rightNewer }
         return .differ
-    }
-
-    private static func childrenByName(
-        of directory: VFSPath,
-        using backend: some VFSBackend
-    ) throws -> [String: FileEntry] {
-        let entries = try backend.listDirectory(at: directory)
-        return Dictionary(entries.map { ($0.name, $0) }, uniquingKeysWith: { first, _ in first })
     }
 
     // MARK: - Action derivation

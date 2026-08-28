@@ -3885,6 +3885,287 @@
         }
       }
     },
+    "%lld items can’t be deleted where they are and will be left alone.": {
+      "comment": "Sync delete confirmation body naming items on a read-only side, which the run will skip; %lld is their number. Plural.",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Objekt kann dort nicht gelöscht werden und bleibt unverändert."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Objekte können dort nicht gelöscht werden und bleiben unverändert."
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld item can’t be deleted where it is and will be left alone."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld items can’t be deleted where they are and will be left alone."
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld ítem no se puede eliminar donde está y se dejará como está."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld ítems no se pueden eliminar donde están y se dejarán como están."
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld élément ne peut pas être supprimé à cet endroit et restera inchangé."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld éléments ne peuvent pas être supprimés à cet endroit et resteront inchangés."
+                }
+              }
+            }
+          }
+        },
+        "it": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld elemento non può essere eliminato dove si trova e resterà invariato."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld elementi non possono essere eliminati dove si trovano e resteranno invariati."
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld項目は現在の場所では削除できないため、そのまま残されます。"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld項目は現在の場所では削除できないため、そのまま残されます。"
+                }
+              }
+            }
+          }
+        },
+        "ko": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld개 항목은 현재 위치에서 삭제할 수 없으므로 그대로 둡니다."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld개 항목은 현재 위치에서 삭제할 수 없으므로 그대로 둡니다."
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld onderdeel kan daar niet worden verwijderd en blijft ongewijzigd."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld onderdelen kunnen daar niet worden verwijderd en blijven ongewijzigd."
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld rzeczy nie można usunąć w tym miejscu i pozostanie bez zmian."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld rzeczy nie można usunąć w tym miejscu i pozostaną bez zmian."
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld item não pode ser excluído onde está e será mantido."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld itens não podem ser excluídos onde estão e serão mantidos."
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld объект нельзя удалить в этом месте — он останется без изменений."
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld объекта нельзя удалить в этом месте — они останутся без изменений."
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld объектов нельзя удалить в этом месте — они останутся без изменений."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld объектов нельзя удалить в этом месте — они останутся без изменений."
+                }
+              }
+            }
+          }
+        },
+        "uk": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld об’єкт не можна видалити в цьому місці — він залишиться без змін."
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld об’єкти не можна видалити в цьому місці — вони залишаться без змін."
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld об’єктів не можна видалити в цьому місці — вони залишаться без змін."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld об’єктів не можна видалити в цьому місці — вони залишаться без змін."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 个项目无法在当前位置删除，将保持不变。"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 个项目无法在当前位置删除，将保持不变。"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 個項目無法在目前位置刪除，將維持不變。"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 個項目無法在目前位置刪除，將維持不變。"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld items couldn’t be changed: %@": {
       "comment": "Recursive apply failure line; %1$lld is the count, %2$@ the first reason.",
       "localizations": {
@@ -5434,6 +5715,568 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "%lld 個項目覆蓋了現有檔案，無法復原。"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld items will be deleted for good — there’s no Trash on a server.": {
+      "comment": "Sync delete confirmation body naming the irreversible half; %lld is the number of items on a side with no Trash, which is every remote account. Plural.",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Objekt wird endgültig gelöscht – auf einem Server gibt es keinen Papierkorb."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Objekte werden endgültig gelöscht – auf einem Server gibt es keinen Papierkorb."
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld item will be deleted for good — there’s no Trash on a server."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld items will be deleted for good — there’s no Trash on a server."
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld ítem se eliminará definitivamente: en un servidor no hay papelera."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld ítems se eliminarán definitivamente: en un servidor no hay papelera."
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld élément sera définitivement supprimé : il n’y a pas de corbeille sur un serveur."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld éléments seront définitivement supprimés : il n’y a pas de corbeille sur un serveur."
+                }
+              }
+            }
+          }
+        },
+        "it": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld elemento verrà eliminato definitivamente: su un server non c’è Cestino."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld elementi verranno eliminati definitivamente: su un server non c’è Cestino."
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld項目は完全に削除されます。サーバにはゴミ箱がありません。"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld項目は完全に削除されます。サーバにはゴミ箱がありません。"
+                }
+              }
+            }
+          }
+        },
+        "ko": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld개 항목이 완전히 삭제됩니다. 서버에는 휴지통이 없습니다."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld개 항목이 완전히 삭제됩니다. 서버에는 휴지통이 없습니다."
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld onderdeel wordt definitief verwijderd — een server heeft geen prullenmand."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld onderdelen worden definitief verwijderd — een server heeft geen prullenmand."
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld rzecz zostanie usunięta na zawsze — serwer nie ma Kosza."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld rzeczy zostanie usuniętych na zawsze — serwer nie ma Kosza."
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld item será excluído definitivamente — não há Lixo em um servidor."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld itens serão excluídos definitivamente — não há Lixo em um servidor."
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld объект будет удалён безвозвратно — на сервере нет Корзины."
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld объекта будут удалены безвозвратно — на сервере нет Корзины."
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld объектов будут удалены безвозвратно — на сервере нет Корзины."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld объектов будут удалены безвозвратно — на сервере нет Корзины."
+                }
+              }
+            }
+          }
+        },
+        "uk": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld об’єкт буде видалено назавжди — на сервері немає Смітника."
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld об’єкти буде видалено назавжди — на сервері немає Смітника."
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld об’єктів буде видалено назавжди — на сервері немає Смітника."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld об’єктів буде видалено назавжди — на сервері немає Смітника."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 个项目将被永久删除——服务器上没有废纸篓。"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 个项目将被永久删除——服务器上没有废纸篓。"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 個項目將被永久刪除——伺服器上沒有垃圾桶。"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 個項目將被永久刪除——伺服器上沒有垃圾桶。"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld items will go to the Trash.": {
+      "comment": "Sync delete confirmation body, first half of a mixed run; %lld is the number of items on a side that has a Trash. Plural.",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Objekt wandert in den Papierkorb."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Objekte wandern in den Papierkorb."
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld item will go to the Trash."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld items will go to the Trash."
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld ítem irá a la papelera."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld ítems irán a la papelera."
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld élément ira dans la corbeille."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld éléments iront dans la corbeille."
+                }
+              }
+            }
+          }
+        },
+        "it": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld elemento andrà nel Cestino."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld elementi andranno nel Cestino."
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld項目はゴミ箱に移動されます。"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld項目はゴミ箱に移動されます。"
+                }
+              }
+            }
+          }
+        },
+        "ko": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld개 항목이 휴지통으로 이동됩니다."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld개 항목이 휴지통으로 이동됩니다."
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld onderdeel gaat naar de prullenmand."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld onderdelen gaan naar de prullenmand."
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld rzecz trafi do Kosza."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld rzeczy trafi do Kosza."
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld item irá para o Lixo."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld itens irão para o Lixo."
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld объект попадёт в Корзину."
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld объекта попадут в Корзину."
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld объектов попадут в Корзину."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld объектов попадут в Корзину."
+                }
+              }
+            }
+          }
+        },
+        "uk": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld об’єкт потрапить у Смітник."
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld об’єкти потраплять у Смітник."
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld об’єктів потраплять у Смітник."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld об’єктів потраплять у Смітник."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 个项目将移到废纸篓。"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 个项目将移到废纸篓。"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 個項目將移至垃圾桶。"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 個項目將移至垃圾桶。"
                 }
               }
             }
@@ -13663,91 +14506,91 @@
         }
       }
     },
-    "Both panels must show a real folder on disk.": {
-      "comment": "Sync failure detail: both panels must be local folders.",
+    "Both panels must show a real folder — on this Mac or on a server you’re connected to.": {
+      "comment": "Sync failure detail naming what a panel has to be showing. Widened at M25 Slice 5c, when a side stopped having to be on this disk.",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Beide Bereiche müssen einen lokalen Ordner anzeigen."
+            "value": "Beide Fenster müssen einen echten Ordner zeigen – auf diesem Mac oder auf einem verbundenen Server."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Both panels must show a real folder on disk."
+            "value": "Both panels must show a real folder — on this Mac or on a server you’re connected to."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ambos paneles deben mostrar una carpeta real en el disco."
+            "value": "Ambos paneles deben mostrar una carpeta real, en este Mac o en un servidor conectado."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Les deux panneaux doivent afficher un dossier réel sur le disque."
+            "value": "Les deux panneaux doivent afficher un vrai dossier, sur ce Mac ou sur un serveur connecté."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Entrambi i pannelli devono mostrare una cartella reale sul disco."
+            "value": "Entrambi i pannelli devono mostrare una cartella reale, su questo Mac o su un server connesso."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "両方のパネルにディスク上の実フォルダを表示する必要があります。"
+            "value": "両方のパネルで、このMacまたは接続中のサーバ上の実際のフォルダを表示してください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "두 패널 모두 디스크의 실제 폴더를 표시해야 합니다."
+            "value": "두 패널 모두 이 Mac 또는 연결된 서버의 실제 폴더를 표시해야 합니다."
           }
         },
         "nl": {
           "stringUnit": {
-            "value": "Beide panelen moeten een echte map op de schijf laten zien.",
-            "state": "translated"
+            "state": "translated",
+            "value": "Beide panelen moeten een echte map tonen — op deze Mac of op een verbonden server."
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Oba panele muszą pokazywać prawdziwy folder na dysku."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Обе панели должны показывать реальную папку на диске."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Обидві панелі мають показувати реальну папку на диску."
+            "value": "Oba panele muszą pokazywać rzeczywisty folder — na tym Macu lub na połączonym serwerze."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Os dois painéis precisam mostrar uma pasta real no disco."
+            "value": "Ambos os painéis devem mostrar uma pasta real — neste Mac ou em um servidor conectado."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В обеих панелях должна быть открыта настоящая папка — на этом Mac или на подключённом сервере."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В обох панелях має бути відкрита справжня папка — на цьому Mac або на під’єднаному сервері."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "两个面板都必须显示磁盘上的真实文件夹。"
+            "value": "两个面板都必须显示真实的文件夹——本机上的或已连接服务器上的。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "兩個面板都必須顯示磁碟上的真實檔案夾。"
+            "value": "兩個面板都必須顯示真實的檔案夾——本機上的或已連線伺服器上的。"
           }
         }
       }
@@ -50705,6 +51548,95 @@
         }
       }
     },
+    "Neither panel can be changed, so there is nothing to reconcile.": {
+      "comment": "Sync failure detail when both sides are read-only — two read-only buckets, say — so no direction could write anything.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keines der beiden Fenster lässt sich ändern, es gibt also nichts abzugleichen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neither panel can be changed, so there is nothing to reconcile."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ninguno de los dos paneles se puede modificar, así que no hay nada que sincronizar."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun des deux panneaux ne peut être modifié : il n’y a rien à synchroniser."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuno dei due pannelli può essere modificato, quindi non c’è nulla da sincronizzare."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "どちらのパネルも変更できないため、同期する対象がありません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "두 패널 모두 변경할 수 없으므로 동기화할 대상이 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen van beide panelen kan worden gewijzigd, dus er valt niets te synchroniseren."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Żadnego z paneli nie można zmienić, więc nie ma czego uzgadniać."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhum dos painéis pode ser alterado, portanto não há nada a sincronizar."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ни одну из панелей нельзя изменить — синхронизировать нечего."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Жодну з панелей не можна змінити — синхронізувати нічого."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "两个面板都无法更改，因此没有需要同步的内容。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "兩個面板都無法更改，因此沒有需要同步的內容。"
+          }
+        }
+      }
+    },
     "Neither the permissions nor the modification time were stored as asked. The panel now shows what the item actually carries.": {
       "comment": "Remote Get Info: neither field was stored.",
       "localizations": {
@@ -74945,6 +75877,287 @@
         }
       }
     },
+    "Synchronizing will delete %lld items.": {
+      "comment": "Sync delete confirmation title where the two sides disagree about what a delete does, so the body names both halves. %lld is the total number of items. Plural.",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Beim Synchronisieren wird %lld Objekt gelöscht."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Beim Synchronisieren werden %lld Objekte gelöscht."
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Synchronizing will delete %lld item."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Synchronizing will delete %lld items."
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "La sincronización eliminará %lld ítem."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "La sincronización eliminará %lld ítems."
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "La synchronisation supprimera %lld élément."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "La synchronisation supprimera %lld éléments."
+                }
+              }
+            }
+          }
+        },
+        "it": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "La sincronizzazione eliminerà %lld elemento."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "La sincronizzazione eliminerà %lld elementi."
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "同期により%lld項目が削除されます。"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "同期により%lld項目が削除されます。"
+                }
+              }
+            }
+          }
+        },
+        "ko": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "동기화하면 %lld개 항목이 삭제됩니다."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "동기화하면 %lld개 항목이 삭제됩니다."
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Synchroniseren verwijdert %lld onderdeel."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Synchroniseren verwijdert %lld onderdelen."
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Synchronizacja usunie %lld rzecz."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Synchronizacja usunie %lld rzeczy."
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "A sincronização excluirá %lld item."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "A sincronização excluirá %lld itens."
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Синхронизация удалит %lld объект."
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Синхронизация удалит %lld объекта."
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Синхронизация удалит %lld объектов."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Синхронизация удалит %lld объектов."
+                }
+              }
+            }
+          }
+        },
+        "uk": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Синхронізація видалить %lld об’єкт."
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Синхронізація видалить %lld об’єкти."
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Синхронізація видалить %lld об’єктів."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Синхронізація видалить %lld об’єктів."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "同步会删除 %lld 个项目。"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "同步会删除 %lld 个项目。"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "同步會刪除 %lld 個項目。"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "同步會刪除 %lld 個項目。"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Synchronizing will move %lld items to the Trash.": {
       "comment": "Sync delete confirmation title; %lld is the number of items. Plural.",
       "localizations": {
@@ -75219,6 +76432,287 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "同步會將 %lld 個項目移至垃圾桶。"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Synchronizing will permanently delete %lld items.": {
+      "comment": "Sync delete confirmation title where no side has a Trash — every remote account, and a local volume that keeps none. %lld is the number of items. Plural.",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Beim Synchronisieren wird %lld Objekt endgültig gelöscht."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Beim Synchronisieren werden %lld Objekte endgültig gelöscht."
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Synchronizing will permanently delete %lld item."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Synchronizing will permanently delete %lld items."
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "La sincronización eliminará definitivamente %lld ítem."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "La sincronización eliminará definitivamente %lld ítems."
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "La synchronisation supprimera définitivement %lld élément."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "La synchronisation supprimera définitivement %lld éléments."
+                }
+              }
+            }
+          }
+        },
+        "it": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "La sincronizzazione eliminerà definitivamente %lld elemento."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "La sincronizzazione eliminerà definitivamente %lld elementi."
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "同期により%lld項目が完全に削除されます。"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "同期により%lld項目が完全に削除されます。"
+                }
+              }
+            }
+          }
+        },
+        "ko": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "동기화하면 %lld개 항목이 완전히 삭제됩니다."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "동기화하면 %lld개 항목이 완전히 삭제됩니다."
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Synchroniseren verwijdert %lld onderdeel definitief."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Synchroniseren verwijdert %lld onderdelen definitief."
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Synchronizacja trwale usunie %lld rzecz."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Synchronizacja trwale usunie %lld rzeczy."
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "A sincronização excluirá definitivamente %lld item."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "A sincronização excluirá definitivamente %lld itens."
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Синхронизация безвозвратно удалит %lld объект."
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Синхронизация безвозвратно удалит %lld объекта."
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Синхронизация безвозвратно удалит %lld объектов."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Синхронизация безвозвратно удалит %lld объектов."
+                }
+              }
+            }
+          }
+        },
+        "uk": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Синхронізація назавжди видалить %lld об’єкт."
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Синхронізація назавжди видалить %lld об’єкти."
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Синхронізація назавжди видалить %lld об’єктів."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Синхронізація назавжди видалить %lld об’єктів."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "同步会永久删除 %lld 个项目。"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "同步会永久删除 %lld 个项目。"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "同步會永久刪除 %lld 個項目。"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "同步會永久刪除 %lld 個項目。"
                 }
               }
             }

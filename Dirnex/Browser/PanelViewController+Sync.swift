@@ -23,11 +23,17 @@ extension PanelViewController {
             presentOperationFailure(
                 message: String(
                     localized: "Can’t synchronize",
-                    comment: "Sync failure title: a panel isn't a real local folder."
+                    comment: "Sync failure title: a panel isn't a real folder."
                 ),
                 detail: String(
-                    localized: "Both panels must show a real folder on disk.",
-                    comment: "Sync failure detail: both panels must be local folders."
+                    localized: """
+                    Both panels must show a real folder — on this Mac or on a server you’re \
+                    connected to.
+                    """,
+                    comment: """
+                    Sync failure detail naming what a panel has to be showing. Widened at M25 \
+                    Slice 5c, when a side stopped having to be on this disk.
+                    """
                 )
             )
             return
@@ -48,10 +54,35 @@ extension PanelViewController {
             return
         }
 
+        // Both sides read-only leaves nothing a sync could do. Said here rather than by opening a
+        // sheet whose every direction is missing, which reads as a broken control.
+        let directions = SyncDirection.available(
+            leftAcceptsChanges: Self.acceptsChanges(left),
+            rightAcceptsChanges: Self.acceptsChanges(right)
+        )
+        guard !directions.isEmpty else {
+            presentOperationFailure(
+                message: String(
+                    localized: "Can’t synchronize",
+                    comment: "Sync failure title: a panel isn't a real folder."
+                ),
+                detail: String(
+                    localized: "Neither panel can be changed, so there is nothing to reconcile.",
+                    comment: """
+                    Sync failure detail when both sides are read-only — two read-only buckets, say \
+                    — so no direction could write anything.
+                    """
+                )
+            )
+            return
+        }
+
         let controller = SyncDirectoriesController(
             leftDir: leftDir,
             rightDir: rightDir,
-            backend: backend
+            backend: backend,
+            comparisons: SyncComparison.available(between: leftDir.backend, and: rightDir.backend),
+            directions: directions
         )
         controller.onApply = { [weak self] decisions in
             self?.confirmAndApplySync(decisions, leftDir: leftDir, rightDir: rightDir)
@@ -62,10 +93,41 @@ extension PanelViewController {
         presentAsMovableWindow(controller)
     }
 
-    /// A pane can take part in a sync when it shows a real, readable on-disk folder — never a
-    /// virtual search-results or archive listing.
+    /// A pane can take part in a sync when it shows a **real, re-listable, readable directory** —
+    /// this disk or a connected account, never a virtual listing and never an archive.
+    ///
+    /// The `backend == .local` this used to require went at M25 Slice 5c. Nothing about walking two
+    /// trees and reconciling them needs either side to be on this disk: the comparison already takes
+    /// two backends, the copies already run through the queue, and what a *delete* means on each
+    /// side is now asked per path rather than assumed (``SyncDeletePlan``). What replaces it is the
+    /// narrower thing that was always meant — a place whose directories can be listed again.
+    ///
+    /// Two exclusions carry their own reasons. An **S3 account** pane is `isRemoteConnection` and is
+    /// not a folder: its rows are buckets, and there is no verb for putting a file in an account
+    /// (``VFSBackendID/acceptsUploads``). An **archive** is left out because a sync deletes, and
+    /// deleting a member rewrites the whole container with nothing the journal can undo — a stated
+    /// limit rather than a missing branch (PLAN.md §M25, smaller than a milestone).
+    ///
+    /// Asked with `capabilities(for:)` rather than `capabilities`: the pane holds a
+    /// `CompositeBackend`, whose backend-wide set is the *local* backend's whatever the pane is
+    /// showing, so the shorter spelling answered for this disk on every remote pane (docs/NOTES.md
+    /// ▸ Design lessons, the fifth of that family).
     static func canSync(_ pane: PanelViewController) -> Bool {
-        pane.panel.path.backend == .local && pane.backend.capabilities.contains(.read)
+        let path = pane.panel.path
+        guard path.backend == .local || path.backend.isRemoteConnection else { return false }
+        guard !path.backend.isS3Account else { return false }
+        return pane.backend.capabilities(for: path).contains(.read)
+    }
+
+    /// Whether this side can be *changed* — whether a copy can land there and a delete can happen.
+    ///
+    /// Both halves are needed and they answer different questions: `receivesFiles` is about the
+    /// backend having an upload primitive at all, and `.write` is about this particular location
+    /// permitting one. It feeds ``SyncDirection/available(leftAcceptsChanges:rightAcceptsChanges:)``,
+    /// so a read-only side loses the directions that would write to it and keeps the ones that read.
+    static func acceptsChanges(_ pane: PanelViewController) -> Bool {
+        let path = pane.panel.path
+        return path.backend.receivesFiles && pane.backend.capabilities(for: path).contains(.write)
     }
 
     /// Whether Synchronize Directories should be enabled: two real local folders, and not the
@@ -80,26 +142,31 @@ extension PanelViewController {
     // MARK: - Apply
 
     /// Confirm any deletions (a mirror can remove files), then run the checked decisions.
+    ///
+    /// **What a delete means is now asked per path**, because the two sides can be two backends and
+    /// only one of them may have a Trash. Until M25 Slice 5c both were on this disk and one sentence
+    /// covered them — *"…will move N items to the Trash. You can restore them from the Trash later."*
+    /// — which is a straight lie about a server, where `deleteStrategy` degrades to `.permanent` and
+    /// the files are gone. It is the worst-placed lie available: it is the sentence somebody reads
+    /// *while deciding*. ``SyncDeletePlan`` splits the counts, and a mixed run — a local pane against
+    /// an account, which is the ordinary shape — says both halves.
     private func confirmAndApplySync(
         _ decisions: [SyncDirectoriesController.Decision],
         leftDir: VFSPath,
         rightDir: VFSPath
     ) {
-        let deletions = decisions.count { $0.action == .deleteLeft || $0.action == .deleteRight }
-        guard deletions > 0 else {
-            applySync(decisions, leftDir: leftDir, rightDir: rightDir)
+        let backend = backend
+        let plan = SyncDeletePlan(paths: Self.deleteTargets(in: decisions)) {
+            backend.capabilities(for: $0).deleteStrategy
+        }
+        guard !plan.isEmpty else {
+            applySync(decisions, deleting: plan, leftDir: leftDir, rightDir: rightDir)
             return
         }
         let alert = NSAlert()
-        alert.alertStyle = .warning
-        alert.messageText = String(
-            localized: "Synchronizing will move \(deletions) items to the Trash.",
-            comment: "Sync delete confirmation title; %lld is the number of items. Plural."
-        )
-        alert.informativeText = String(
-            localized: "You can restore them from the Trash later.",
-            comment: "Sync delete confirmation body."
-        )
+        alert.alertStyle = plan.permanent.isEmpty ? .warning : .critical
+        alert.messageText = Self.deleteConfirmationTitle(for: plan)
+        alert.informativeText = Self.deleteConfirmationBody(for: plan)
         alert.addButton(withTitle: String(
             localized: "Synchronize",
             comment: "Confirm button of the sync delete prompt and the sync sheet."
@@ -108,7 +175,7 @@ extension PanelViewController {
         alert.enableEscapeToCancel()
         let apply: (NSApplication.ModalResponse) -> Void = { [weak self] response in
             guard response == .alertFirstButtonReturn else { return }
-            self?.applySync(decisions, leftDir: leftDir, rightDir: rightDir)
+            self?.applySync(decisions, deleting: plan, leftDir: leftDir, rightDir: rightDir)
         }
         if let window = view.window {
             alert.beginSheetModal(for: window, completionHandler: apply)
@@ -117,15 +184,107 @@ extension PanelViewController {
         }
     }
 
+    /// The paths a set of decisions will delete, in row order.
+    ///
+    /// One derivation, read by the confirmation *and* by the run, so the sentence cannot count a
+    /// different set from the one that is deleted — the trap this project keeps meeting whenever a
+    /// gesture works out what a run will do and the run works it out again (docs/NOTES.md).
+    ///
+    /// Internal and static so a test can assert the sentence over a set of decisions without a pane.
+    static func deleteTargets(in decisions: [SyncDirectoriesController.Decision]) -> [VFSPath] {
+        decisions.compactMap { decision in
+            switch decision.action {
+            case .deleteLeft: decision.entry.left?.path
+            case .deleteRight: decision.entry.right?.path
+            default: nil
+            }
+        }
+    }
+
+    /// The question, which names the count and — where it differs — what will happen to it.
+    ///
+    /// The Trash-only wording keeps its original key, so the fourteen translations it already has
+    /// survive a change that is not about them.
+    static func deleteConfirmationTitle(for plan: SyncDeletePlan) -> String {
+        if plan.permanent.isEmpty {
+            return String(
+                localized: "Synchronizing will move \(plan.toTrash.count) items to the Trash.",
+                comment: "Sync delete confirmation title; %lld is the number of items. Plural."
+            )
+        }
+        if plan.toTrash.isEmpty {
+            return String(
+                localized: "Synchronizing will permanently delete \(plan.permanent.count) items.",
+                comment: """
+                Sync delete confirmation title where no side has a Trash — every remote account, \
+                and a local volume that keeps none. %lld is the number of items. Plural.
+                """
+            )
+        }
+        return String(
+            localized: "Synchronizing will delete \(plan.count) items.",
+            comment: """
+            Sync delete confirmation title where the two sides disagree about what a delete does, \
+            so the body names both halves. %lld is the total number of items. Plural.
+            """
+        )
+    }
+
+    /// What happens to them, one sentence per outcome.
+    ///
+    /// Each sentence carries **one** count, deliberately: a String Catalog can vary a plural on a
+    /// single argument with no `substitutions` machinery, and a translator reading three short
+    /// sentences can reorder them for their own language where one three-count sentence would pin
+    /// the order (docs/NOTES.md ▸ Localization).
+    static func deleteConfirmationBody(for plan: SyncDeletePlan) -> String {
+        var sentences: [String] = []
+        if !plan.toTrash.isEmpty, plan.permanent.isEmpty {
+            sentences.append(String(
+                localized: "You can restore them from the Trash later.",
+                comment: "Sync delete confirmation body."
+            ))
+        } else if !plan.toTrash.isEmpty {
+            sentences.append(String(
+                localized: "\(plan.toTrash.count) items will go to the Trash.",
+                comment: """
+                Sync delete confirmation body, first half of a mixed run; %lld is the number of \
+                items on a side that has a Trash. Plural.
+                """
+            ))
+        }
+        if !plan.permanent.isEmpty {
+            sentences.append(String(
+                localized: "\(plan.permanent.count) items will be deleted for good — there’s no Trash on a server.",
+                comment: """
+                Sync delete confirmation body naming the irreversible half; %lld is the number of \
+                items on a side with no Trash, which is every remote account. Plural.
+                """
+            ))
+        }
+        if !plan.unsupported.isEmpty {
+            sentences.append(String(
+                localized: "\(plan.unsupported.count) items can’t be deleted where they are and will be left alone.",
+                comment: """
+                Sync delete confirmation body naming items on a read-only side, which the run will \
+                skip; %lld is their number. Plural.
+                """
+            ))
+        }
+        return sentences.joined(separator: " ")
+    }
+
+    /// Run the checked decisions. `plan` is the one the confirmation counted, handed over rather
+    /// than re-derived: the sentence somebody agreed to and the deletions that follow it must be the
+    /// same set, and passing it is the only version of that a later edit cannot break.
     private func applySync(
         _ decisions: [SyncDirectoriesController.Decision],
+        deleting plan: SyncDeletePlan,
         leftDir: VFSPath,
         rightDir: VFSPath
     ) {
         // Batch copies by destination directory so each folder is one queue job (multiple
         // sources → one FileOperation), and collect delete paths for a single Trash pass.
         var copyGroups: [VFSPath: [FileEntry]] = [:]
-        var deletePaths: [VFSPath] = []
         for decision in decisions {
             switch decision.action {
             case .copyToRight:
@@ -144,18 +303,14 @@ extension PanelViewController {
                     )
                     copyGroups[dest, default: []].append(source)
                 }
-            case .deleteRight:
-                if let entry = decision.entry.right { deletePaths.append(entry.path) }
-            case .deleteLeft:
-                if let entry = decision.entry.left { deletePaths.append(entry.path) }
-            case .none, .conflict:
-                break
+            case .deleteLeft, .deleteRight, .none, .conflict:
+                break // deletes come from `deleteTargets(in:)`, the one derivation the sheet counted
             }
         }
         for (destination, sources) in copyGroups {
             submitSyncCopy(sources: sources, destination: destination)
         }
-        if !deletePaths.isEmpty { runSyncDeletes(deletePaths) }
+        if !plan.isEmpty { runSyncDeletes(plan) }
     }
 
     /// The directory a copy of the item at `relativePath` lands in, under `root`. The relative
@@ -185,31 +340,44 @@ extension PanelViewController {
         )
     }
 
-    /// Move the sync's delete targets to the Trash off the main thread, journal them as one undo
-    /// record, and re-list both panes. Trash (not permanent delete) keeps a mirror recoverable.
+    /// Run the sync's deletions off the main thread, journal what can be undone, and re-list both
+    /// panes.
     ///
-    /// **A volume that keeps no Trash refuses each of them, and that used to be silent.** The
+    /// **Two passes, because the plan can hold two kinds.** ``DeletePass`` takes one `permanent`
+    /// flag for a whole batch, and since M25 Slice 5c a sync's two sides can be two backends: the
+    /// local one keeps a Trash and no remote account does. Guessing one flag for a mixed set would
+    /// either try to trash a server file (which fails) or delete a local one for good (which is
+    /// worse), so the split is made in ``SyncDeletePlan`` before anything is asked and each half is
+    /// run as what it is. `plan.unsupported` is deliberately not run — those items were named in the
+    /// confirmation and nothing here can touch them.
+    ///
+    /// **A local volume that keeps no Trash refuses at run time, and that used to be silent.** The
     /// deletes ran through a `try?`, so on a network share (``LocalBackend/trashFailure(_:path:)``,
-    /// reported 2026-08-25) the sync finished claiming it had removed files that were still there —
-    /// and the confirmation it had shown up front promised the Trash by name. The refusal cannot be
-    /// anticipated (there is no pre-check; see the same doc comment), so it is collected across the
-    /// whole run and asked about **once**, at the end: a batch may span hundreds of items, and
-    /// stopping at each one to ask is not a question, it is an obstacle.
+    /// reported 2026-08-25) the sync finished claiming it had removed files that were still there.
+    /// That refusal cannot be anticipated — there is no pre-check, unlike a remote account's, whose
+    /// answer is known from its capabilities — so it is collected across the whole run and asked
+    /// about **once**, at the end: a batch may span hundreds of items, and stopping at each one to
+    /// ask is not a question, it is an obstacle.
     ///
     /// Asking afterwards costs nothing, because a refusal moves nothing — every refused item is
-    /// exactly where it was when the sheet goes up.
-    ///
-    /// `permanent` is how the answer comes back in: the same pass, deleting for good. It can raise
-    /// no second question, since `removeItem` consults no Trash (``DeletePass/Outcome``).
+    /// exactly where it was when the sheet goes up. The answer comes back as a plan holding only
+    /// `permanent`, which can raise no second question: `removeItem` consults no Trash
+    /// (``DeletePass/Outcome``).
     ///
     /// Internal rather than private so the Trash-less path can be driven directly: reaching it
     /// through the sheet would mean presenting a movable window in the test host, which wedges
     /// the run rather than failing it (docs/NOTES.md ▸ Testing).
-    func runSyncDeletes(_ paths: [VFSPath], permanent: Bool = false) {
+    func runSyncDeletes(_ plan: SyncDeletePlan) {
         let backend = backend
         Task {
-            let outcome = await BlockingWork.run {
-                DeletePass.run(paths, using: backend, permanent: permanent)
+            let outcome = await BlockingWork.run { () -> DeletePass.Outcome in
+                let trashed = DeletePass.run(plan.toTrash, using: backend, permanent: false)
+                let erased = DeletePass.run(plan.permanent, using: backend, permanent: true)
+                return DeletePass.Outcome(
+                    failures: trashed.failures + erased.failures,
+                    restorations: trashed.restorations,
+                    refused: trashed.refused
+                )
             }
             if let record = UndoRecord.trash(outcome.restorations.map { ($0.original, $0.trashed) }) {
                 host?.recordUndoableAction(record)
@@ -221,11 +389,11 @@ extension PanelViewController {
             // Reported rather than swallowed: a sync that could not remove an item has left the two
             // sides unequal, which is the one thing the operation exists to fix.
             if !outcome.failures.isEmpty {
-                presentDeletionFailures(outcome.failures, permanent: permanent)
+                presentDeletionFailures(outcome.failures, permanent: plan.toTrash.isEmpty)
             }
             // Last, so the sheet the user must answer is in front of any report (as in `runDelete`).
             offerPermanentDelete(forVolumeWithoutTrash: outcome.refused) { [weak self] refused in
-                self?.runSyncDeletes(refused, permanent: true)
+                self?.runSyncDeletes(SyncDeletePlan(permanent: refused))
             }
         }
     }

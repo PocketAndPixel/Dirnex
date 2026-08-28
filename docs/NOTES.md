@@ -2876,6 +2876,35 @@ Every tool here prints a recent entry's date without a year (`MMM d HH:mm`) and 
 one, so all four columnar parsers — `bsdtar -tvf`, `sftp`'s `ls -la`, FTP's `LIST`, and M22's
 `ssh … find … -exec ls -ldn` — share one date reader, `ColumnarListing`.
 
+- **A listing's stamp is too coarse to compare two *files* with, and SFTP is the case this file had
+  assumed went the other way.** Measured 2026-08-28 against a real `sshd`: `ls -la` prints
+  `Aug 20 11:33` for a file whose true mtime is `11:33:37` — the **seconds are gone** — and
+  `Dec 20  2025` for one older than about six months, where the time of day is gone entirely and the
+  parse lands at local midnight, **41 617 s** from the truth. So a directory sync comparing a local
+  side against an SFTP one by date reports a difference for fifty-nine of every sixty recent files
+  and for every old one, on files nothing has touched. The exec channel's `ls -ldn` carries the
+  identical stamp, so gathering the tree faster does not make it finer.
+  - **Two sides of the *same* coarse dialect are no better, and that is the half that reads as
+    safe.** Two files thirty seconds apart both list as the same minute, so a mirror calls them
+    identical and skips the one that changed — the quiet direction, where one coarse side merely
+    over-reports. `SyncComparison.available(between:and:)` therefore needs the clock on **both**
+    sides, and only the local disk has one.
+  - **It is a different question from the deleted `hasApproximateTimestamps`**, which asked whether
+    two readings of *one* file could be compared and answered FTP alone. Two files, two listings and
+    possibly two protocols is stricter, and SFTP passes the old test and fails this one — which is
+    why the predicate came back under a new name (``VFSBackendID/hasComparableModificationTimes``)
+    rather than being resurrected.
+  - **S3 is the case that is exact and still wrong**, and it is worth keeping separate from the
+    coarse ones: `LastModified` is a real ISO-8601 timestamp to the second, and it is when the object
+    was *written* rather than when its contents last changed, with no verb that sets it. A file
+    uploaded today from a 2018 source reads as today, forever. One predicate answers the caller's
+    question for both reasons; the reasons do not merge.
+  - **The transfer is exact and the read-back is not**, which is what makes this a *listing* fact
+    rather than a protocol one: `put -p` carries both timestamps to the second (▸ sftp / ssh), and
+    the `ls -la` that reads them back rounds. A live test that stamps a file, uploads it and compares
+    the two is measuring the reader, so anchor the stamp's seconds — with an arbitrary "now" a run
+    landing near `:00` sees the listing agree and passes for the wrong reason about once in thirty.
+
 - **`DateFormatter.defaultDate` supplies *every* component the format does not name, not just the
   one you set it for — and a year-less format names no seconds.** So `defaultDate = Date()` stamps
   each parse with the second and millisecond it happened to run at, and **parsing one unchanged row
@@ -3258,6 +3287,25 @@ one thing: having the server walk its own tree with `find` instead of paying a c
 directory. All measured 2026-08-16 against a real `sshd` (a non-root one on a high port — Remote
 Login need not be switched on, and `/usr/sbin/sshd -f <config>` with a generated host key just
 works, which makes this whole family probeable on any Mac).
+
+- **A second consumer arrived at M25 and the arithmetic held: a directory *sync* is a listing per
+  directory too.** Re-measured 2026-08-28 on the same kind of throwaway server, seventeen
+  directories: **1010 ms** as separate `sftp` invocations (59 ms each) against **76 ms** for one
+  exec walk. So `DirectorySync` gathers each side through
+  ``VFSBackend/subtreeListing(at:isCancelled:)`` before it walks, and a backend without one answers
+  `nil` and nothing changes. Worth stating because the seam was built for *search* and reads as
+  search's: what it really encodes is "everything under here", which two features now want.
+  - **A capped answer must fall back to the walk, not be used and not refuse.** SFTP stops at a row
+    limit it chose and says so (``VFSSubtreeListing/isComplete``); a search may present a truncated
+    result and a **sync may not**, because a mirror over a subtree that stopped early deletes the
+    other side's matching files. Measured with a control: using a capped listing anyway, on a fixture
+    whose difference sits at depth two, reports **zero rows** — "these folders are already in sync"
+    about a tree it only saw the top of. Slower and right beats faster and destructive.
+  - **The degradation is reachable on one Mac, on demand**, which is what makes it testable rather
+    than argued: `ForceCommand internal-sftp` in the server's config removes the exec channel, and
+    the same live suite then passes every test through the per-directory walk while the shortcut
+    answers `nil`. Run it in both configurations — a live test that only ever meets one kind of
+    account has measured one branch.
 
 - **The saving is the *connection*, not the walk, and it is enormous even at zero latency.** Over
   501 directories on loopback: **98 ms** for one exec against **34.3 s** as separate `sftp`

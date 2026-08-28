@@ -282,7 +282,7 @@ hook (PLAN.md §M25, smaller than a milestone).
 | Open With… / Share sheet | yes | yes | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | n/a | yes | yes |
 | Send to a **Service** | yes | yes | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | n/a | yes | yes |
 | Compare By Contents (`⌥F3`) | yes | yes | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | n/a | yes | yes |
-| Synchronize Directories | yes | yes | **no**<sup>x</sup> | **no**<sup>x</sup> | **no**<sup>x</sup> | **no**<sup>x</sup> | n/a | n/a<sup>x</sup> | n/a<sup>x</sup> |
+| Synchronize Directories | yes | yes | **no**<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | n/a | n/a<sup>x</sup> | n/a<sup>x</sup> |
 | Browse *into* an archive file | yes | yes | yes | read-only<sup>y</sup> | read-only<sup>y</sup> | read-only<sup>y</sup> | n/a | yes | yes |
 
 <sup>r</sup> The member is extracted to a temp file first; only the **cursor's** member is ever
@@ -307,10 +307,25 @@ handed the copies, which keep their real names. Two limits, both about what the 
 has no contents to compare, and a diff tool has to be installed before anything is fetched (the tool
 question is asked first, so a Mac with none pays for no download).
 
-<sup>x</sup> Comparing by **timestamp** is deliberately refused for FTP (`LIST` stamps are year-less,
-zone-less and on the server's clock) and for S3 (no settable mtime), and always will be. Comparing by
-**size** would be honest on any of them and is simply not built; by *contents* becomes reachable once
-⌥F3 can fetch two sides (PLAN.md §M25). A virtual listing has no directory to synchronize.
+<sup>x</sup> A side stopped having to be on this disk at PLAN.md §M25 Slice 5c, and what it gains is
+comparison by **size**, which is honest anywhere. Comparing by **timestamp** is withdrawn the moment
+either side is remote, and for three different reasons: `sftp`'s `ls -la` drops the seconds and, past
+about six months, the whole time of day (measured 41 617 s from the truth); FTP's `LIST` stamp is
+year-less, zone-less and on the server's clock; and S3's `LastModified` is exact and is the *upload*
+time, which nothing can set. Two sides of one coarse dialect are no better — two files thirty seconds
+apart list as the same minute, so a mirror would skip the one that changed. Comparing by **contents**
+is still local-only: `ByteComparator` reads real paths, so a remote content sync is a fetch per
+candidate pair at a price a plan has to state up front, which is its own slice.
+
+Three more things follow from the widening. The scan asks each side for its whole subtree first
+(`VFSBackend.subtreeListing`), so a server walks its own tree in one command instead of a connection
+per directory — 76 ms against 1010 ms for seventeen directories on loopback — and an account with no
+exec channel falls back to the walk. A **delete** says what it will really do: no remote backend has
+a Trash, so those items are named as permanent up front rather than promised the Trash and quietly
+erased. And a direction whose destination cannot receive files is withdrawn rather than offered and
+failed inside the queue. An **archive** stays refused because a sync deletes and deleting a member
+rewrites the container with nothing the journal can undo; an S3 **account** pane is a connection and
+not a folder; a virtual listing has no directory to synchronize.
 
 <sup>y</sup> `ArchiveBackend.init(archiveOnDiskPath:)` needs a real path, so browsing an archive on a
 server is fetch-the-whole-file-then-mount — the mirror of packing *to* one, and the only navigation in

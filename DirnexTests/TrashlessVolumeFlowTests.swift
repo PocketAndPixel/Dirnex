@@ -104,7 +104,7 @@ struct TrashlessVolumeFlowTests {
         let pane = TrashlessProbe.pane(with: backend, in: window)
         let path = TrashlessProbe.file("stale.txt").path
 
-        pane.runSyncDeletes([path])
+        pane.runSyncDeletes(SyncDeletePlan(toTrash: [path]))
 
         await settle { window.attachedSheet != nil }
         let sheet = try #require(window.attachedSheet, "the offer never appeared")
@@ -127,7 +127,7 @@ struct TrashlessVolumeFlowTests {
         let pane = TrashlessProbe.pane(with: backend, in: window)
         let paths = ["a.txt", "b.txt", "c.txt"].map { TrashlessProbe.file($0).path }
 
-        pane.runSyncDeletes(paths)
+        pane.runSyncDeletes(SyncDeletePlan(toTrash: paths))
 
         await settle { window.attachedSheet != nil }
         let sheet = try #require(window.attachedSheet, "the offer never appeared")
@@ -151,7 +151,7 @@ struct TrashlessVolumeFlowTests {
         let backend = RefusingBackend(refusal: .permissionDenied)
         let pane = TrashlessProbe.pane(with: backend, in: window)
 
-        pane.runSyncDeletes([TrashlessProbe.file("stale.txt").path])
+        pane.runSyncDeletes(SyncDeletePlan(toTrash: [TrashlessProbe.file("stale.txt").path]))
 
         await settle { window.attachedSheet != nil }
         let sheet = try #require(window.attachedSheet, "the failure was never reported")
@@ -171,7 +171,7 @@ struct TrashlessVolumeFlowTests {
         let backend = RefusingBackend(refusal: .trashesNormally)
         let pane = TrashlessProbe.pane(with: backend, in: window)
 
-        pane.runSyncDeletes([TrashlessProbe.file("stale.txt").path])
+        pane.runSyncDeletes(SyncDeletePlan(toTrash: [TrashlessProbe.file("stale.txt").path]))
 
         await hold(until: { window.attachedSheet != nil })
         #expect(window.attachedSheet == nil)

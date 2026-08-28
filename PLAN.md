@@ -983,6 +983,54 @@ the old behaviour standing where it cannot be established.
    comparing by *contents* now joins, since M24 Slice 4 taught ⌥F3 to fetch both sides at a price
    the plan can state up front. Note that Synchronize is gated `backend == .local` on **both** panes
    today (`PanelViewController.canSync`), so this slice widens a gate before it adds a comparison.
+   **Landed 2026-08-28 as 5c**, less the contents half, which is a slice of its own on Oleg's call:
+   comparing contents across a server is a fetch per candidate pair inside a scan that has no
+   progress bar and no Stop today, and doing both at once would have made each one's evidence
+   weaker.
+   **The probe overturned the sentence this slice was written around.** It says timestamp comparison
+   is refused "for FTP and S3 and always will be", which names two of the three: measured against a
+   real `sshd`, **SFTP's listing is coarse too**. `ls -la` prints `Aug 20 11:33` for a file whose
+   true mtime is `11:33:37` — the seconds are gone — and `Dec 20  2025` for one older than about six
+   months, where the time of day goes entirely and the parse lands at local midnight, **41 617 s**
+   from the truth. Against the two-second tolerance that reports a difference for fifty-nine of every
+   sixty recent files and for every old one. The half that reads as safe and is not: **two sides of
+   the same dialect are no better**, since two files thirty seconds apart both list as the same
+   minute, so a mirror calls them identical and skips the one that changed. So the rule is a clock on
+   **both** sides, and only the local disk has one — a predicate under a new name rather than the
+   deleted `hasApproximateTimestamps`, which asked the narrower question (two readings of *one* file)
+   and answered FTP alone.
+   **The scan is a connection per directory, and the seam to fix it already existed.** Seventeen
+   directories cost **1010 ms** as separate `sftp` invocations against **76 ms** for one exec walk on
+   loopback, so a side is gathered through `VFSBackend.subtreeListing` — M22's search seam, which
+   turns out to encode "everything under here" rather than anything about searching — and a backend
+   without one answers `nil` and the walk is unchanged. The hazard it brings is the whole of its
+   design: a **capped** answer falls back to the walk rather than being used, because a mirror over a
+   subtree that stopped early deletes the other side's matching files. The control is sharp — using a
+   capped listing anyway reports **zero rows** for a tree whose difference sits at depth two, which
+   is "already in sync" about the top of it.
+   **And the sentence the sheet showed before deleting anything was a lie about a server.** It
+   promised the Trash unconditionally — true while both sides were on this disk, and false the moment
+   one is an account, where no backend implements `trashItem` and the files are gone. It is the
+   worst-placed lie available, since it is what somebody reads *while deciding*. `SyncDeletePlan`
+   splits the counts by each path's own `deleteStrategy`, a mixed run says both halves in sentences
+   carrying one count each (so every plural stays expressible without the `substitutions` machinery),
+   and the run is two `DeletePass` passes rather than one guessed flag. A read-only side's items are
+   a third bucket: named, and counted nowhere.
+   Controlled in six directions, each failing only the tests that name it: the clockless comparison
+   ranking by the stamp after all (which answers `.leftNewer` — what a bidirectional sync would act
+   on), a capped subtree used anyway, a prefetched side falling through to a listing, the gate back
+   at `backend == .local`, the gate asking `capabilities` instead of `capabilities(for:)`, and the
+   one sentence promising the Trash for every run.
+   **Verified live three ways.** A checked-in suite (`SyncLiveIntegrationTests`) drives the real
+   `SFTPProcessTransport` against a throwaway `sshd`: a local tree and the server's compare across
+   two backends, the equal files are omitted, the differing one is `.differ` and deliberately not
+   ranked — and the same pair compared *by date* reports a difference in a file nothing has touched,
+   which is the withdrawal's own justification measured rather than asserted. Then the same suite
+   against a server built to refuse (`ForceCommand internal-sftp`): the shortcut answers `nil` and
+   every other test passes through the walk, which is the degradation end to end. Then the built app
+   on a restored SFTP tab, where the server's log is the judge: the gesture produced **one** exec
+   session against **zero** for eight idle seconds — and the control, the gate reverted, produced
+   **zero** for the same gesture on the same seeded session while the pane went on listing.
 
 #### Smaller than a milestone
 

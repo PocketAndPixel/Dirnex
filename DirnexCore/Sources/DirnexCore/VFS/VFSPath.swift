@@ -121,6 +121,39 @@ public struct VFSBackendID: RawRepresentable, Sendable, Hashable, CustomStringCo
     /// whatever real location came back.
     public var receivesFiles: Bool { self == .local || acceptsUploads }
 
+    /// Whether a modification time from this backend's **listing** can be compared against one
+    /// from another listing — the question a directory sync asks before it offers to compare by
+    /// date at all (PLAN.md §M25 Slice 5c).
+    ///
+    /// The local disk alone, and each of the others fails for its own reason. Two of them were
+    /// measured against a real `sshd` on 2026-08-28 rather than read off a man page, because the
+    /// SFTP answer is the one this project had assumed went the other way:
+    ///
+    /// - **SFTP** lists through `ls -la`, which prints `Aug 20 11:33` for a file whose true mtime is
+    ///   `11:33:37` — the **seconds are gone** — and `Dec 20  2025` for one older than about six
+    ///   months, where the time of day is gone entirely and the parse lands at local midnight
+    ///   (measured 41 617 s from the truth). Against ``DirectorySync/defaultTolerance`` that reports
+    ///   a difference for fifty-nine of every sixty recent files and for every old one. The exec
+    ///   channel's `ls -ldn` carries the identical stamp, so gathering the tree faster does not make
+    ///   it finer.
+    /// - **FTP**'s `LIST` is not standardized: its stamp is year-less for recent files, carries no
+    ///   time zone, and is on the *server's* clock (docs/NOTES.md ▸ curl).
+    /// - **S3** is the case that is exact and still wrong. `LastModified` is a real ISO-8601
+    ///   timestamp to the second — and it is when the object was **written**, not when its contents
+    ///   were last changed, and there is no verb that sets it. A file uploaded today from a 2018
+    ///   source reads as today, forever.
+    /// - **An archive** is read through `bsdtar -tvf`, which shares the year-less columnar stamp all
+    ///   four of this project's listing parsers read (``ColumnarListing``).
+    ///
+    /// It is asked of a **sync side**, which is always a real re-listable directory, so the virtual
+    /// containers are not among the answers above: their entries carry real `.local` paths and would
+    /// be perfectly comparable, but a listing with no directory of its own is refused a step earlier.
+    ///
+    /// Distinct from the deleted `hasApproximateTimestamps`, which asked a narrower question — may
+    /// two readings of *one* file be compared — and answered FTP alone. Two files, two listings and
+    /// possibly two protocols is a stricter test, and SFTP passes the old one and fails this.
+    public var hasComparableModificationTimes: Bool { self == .local }
+
     public var description: String { rawValue }
 }
 
