@@ -938,12 +938,47 @@ the old behaviour standing where it cannot be established.
    control, ticking set-GID enabled Save and produced `2755`, and the verdict came back
    `refused=[permissions] landed=755`. The narrowness half ran in the same shape with only the
    file's group changed: `refused=[] complete=1 landed=2755`, and the file on disk `-rwxr-sr-x`.
-6. **The sentence that says what a copy could not keep** — Slice 2 accumulates the loss
-   (`RemoteMetadataSupport.loss`) and left choosing its surface here. Oleg's call: a **status line
-   after the job**, non-modal, because the routine case is not rare — the server-side `cp` route
-   drops the modification time on *every* same-account SFTP duplicate, so anything modal would fire
-   constantly. It owes the ▸ Localization budget check, since that label truncates its own tail in
-   silence at ~542 pt.
+6. **The sentence that says what a copy could not keep** — Slice 2 accumulates the loss and left
+   choosing its surface here. Oleg's call: a **status line after the job**, non-modal, because the
+   routine case is not rare — the server-side `cp` route drops the modification time on *every*
+   same-account SFTP duplicate, so anything modal would fire constantly.
+   **Landed 2026-08-28 as 5b.** The surface was the decided part; the *window* was not, and it is
+   what the slice is really about. Slice 2's accumulator spans a **connection's whole life**, which
+   is the right expiry for a fact about a server and the wrong one for a sentence about a copy — read
+   directly it would tell a user about their previous transfer every time. So the answer is a
+   **difference of two readings** (``RemoteMetadataTally``, sampled by `CopyEngine` at each end and
+   subtracted), which is also why the draining `takeLoss()` Slice 2 wrote and deleted stays deleted:
+   a drain has to be called exactly once by exactly one caller and nothing says so, where two
+   readings can be taken by anybody in any order.
+   **Counts per aspect, not a set**, and that is the load-bearing detail: a set difference cannot
+   tell "lost again" from "lost earlier", so a connection that ever dropped a mode would go on
+   reporting it for the rest of its life. And the reading is **per path**, because a job with ends on
+   two accounts must add up *those* two while a job running concurrently on a third must not be
+   counted into it — the queue serializes jobs sharing an account, not jobs on different ones.
+   The wording collapses the core's four aspects into the two families a user can act on
+   (permissions, dates); the carry needs the finer distinction and a reader cannot use it. Measured
+   across all fourteen catalogs before being written: widest **363 pt** against the status line's
+   **542 pt** budget, and unlike M21 Slice 11's give-up message this one interpolates no file name,
+   so its length is bounded. Plural variations in every language, Slavic `one/few/many/other`
+   included.
+   Controlled in six directions, each failing only the tests that name it: the report giving the
+   connection's whole life instead of the job's delta, a set-shaped difference, no clamp across a
+   reconnection, one sentence for every loss, the special bits falling out of the permissions family,
+   and a skipped item's landing guessed from its source.
+   **The forward shipped missing, and only the live run found it.** `CompositeBackend` never
+   forwarded `metadataTally(at:)`, so it inherited `VFSBackend`'s `.zero`, every job's delta was
+   zero, and every copy looked lossless — with both full suites green and nothing logged. That is the
+   M22 `subtreeListing` failure exactly, one milestone later, in a session that had *already* written
+   a routing test for the sibling verb for that very reason. The regression test is the interesting
+   part: a healthy connection's tally and a missing forward's are **both zero**, so the discriminator
+   had to be a fake transport declaring *no* capabilities, which makes every transfer through it
+   record a loss.
+   **Verified live against a real `sshd`, with a narrowness control in the same shape.** A
+   same-account duplicate of a file stamped 2018 landed stamped *now* — the `cp` route carrying no
+   timestamp, as Slice 3 measured — and the pane read
+   `Copied — the modification time wasn't kept on 1 item`, the singular plural form chosen correctly.
+   The same build, same gesture, two local panes: the copy kept 2018 **exactly** and produced **zero**
+   status lines.
 7. **Synchronize by size** — the comparison that is honest on a side with no exact clock, which
    comparing by *contents* now joins, since M24 Slice 4 taught ⌥F3 to fetch both sides at a price
    the plan can state up front. Note that Synchronize is gated `backend == .local` on **both** panes

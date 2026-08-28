@@ -304,6 +304,24 @@ public protocol VFSBackend: Sendable {
         sourceMetadata: RemoteSourceMetadata?
     ) throws
 
+    /// What this backend's connection has failed to carry so far, for the path's account (PLAN.md
+    /// §M25 Slice 5b).
+    ///
+    /// A **running count**, not an event: a caller learns what one job lost by reading this before
+    /// and after and subtracting (``RemoteMetadataTally/since(_:)``). That shape rather than a drain
+    /// because a drain has to be called exactly once by exactly one caller and nothing enforces it,
+    /// where two readings can be taken by anybody in any order.
+    ///
+    /// It takes a path for the same reason ``editableMetadata(at:)`` does — a routing backend
+    /// answers for whoever owns the row — and it matters more here: a job with ends on two accounts
+    /// must add up *those* accounts' deltas, and a job running concurrently on a third must not be
+    /// counted into it. A single process-wide reading would do exactly that, and it would fail in
+    /// the quiet direction: one copy reporting another's loss.
+    ///
+    /// The default is zero, which is the true answer for the local disk, an archive and an object
+    /// store alike — none of them can lose a mode or a date on the way.
+    func metadataTally(at path: VFSPath) -> RemoteMetadataTally
+
     /// Which of a remote item's fields Get Info may **change** on this connection (PLAN.md §M25
     /// Slice 5).
     ///

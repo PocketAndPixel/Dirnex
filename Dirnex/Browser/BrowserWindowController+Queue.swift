@@ -103,6 +103,14 @@ extension BrowserWindowController {
                 presentPackOutcome(of: report)
                 continue
             }
+            // What the copy could not carry besides bytes (PLAN.md §M25 Slice 5b). Said on the
+            // status line and never in a dialog, and said whether or not the job also failed: the
+            // two are different facts — a job can move every byte of every file and still have
+            // dropped their modification times, which is what a same-account SFTP duplicate does by
+            // construction.
+            if let loss = report.metadataLoss {
+                presentMetadataLoss(loss, of: report)
+            }
             if !report.failures.isEmpty {
                 reportFailures(report, kind: job.kind)
             }

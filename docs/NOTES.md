@@ -5901,6 +5901,22 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   - **The narrowness control is the other half and is not optional**: a forward that answered for
     *everything* passes the routing test and breaks every other search. Assert that the local disk
     still reports `nil`.
+  - **It happened again, in the same shape, one milestone later — in a session that had already
+    written a routing test for the sibling verb because of this very entry.** M25 Slice 5b added
+    `VFSBackend.metadataTally(at:)` (what a connection has failed to carry, read before and after a
+    job and subtracted) and `CompositeBackend` never forwarded it, so it inherited the `.zero`
+    default: every job's delta was zero, every copy looked lossless, and the status line the whole
+    slice exists for simply never appeared. Both full suites green, both linters clean, nothing
+    logged. Only a live run against a real server found it, and only because the *expected* sentence
+    was known in advance.
+  - **The reason the obvious regression test does not exist is worth more than the bug**: a healthy
+    connection's tally is zero and a missing forward's is zero, so **no fixture built on a working
+    connection can tell them apart**. The discriminator has to be a connection that has *already*
+    lost something — here a fake transport declaring **no** metadata capabilities, so every transfer
+    through it records a loss. Generalizes to any seam whose good answer is also its default: the
+    test needs a state the default cannot produce, and if the default is "nothing", that state is
+    "something went wrong earlier".
+
 - **A shortcut that replaces a walk has to reproduce what the walk *inferred*, not just what the
   source hands back.** A delimiter-less `ListObjectsV2` returns no `CommonPrefixes` whatsoever — S3
   is a flat keyspace, and the folder rows a directory listing shows are the *server* grouping keys

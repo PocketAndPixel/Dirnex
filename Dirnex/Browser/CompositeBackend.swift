@@ -226,6 +226,20 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         }
     }
 
+    /// What the account owning `path` has failed to carry so far (PLAN.md §M25 Slice 5b).
+    ///
+    /// Routed per path like everything else here, and it matters more than usual: `CopyEngine` reads
+    /// this for each of a job's ends and subtracts, so an answer that folded every connection
+    /// together would report one transfer's loss on another's job — quietly, since both numbers look
+    /// plausible.
+    ///
+    /// A path with no backend answers zero rather than raising: a connection that has gone is one
+    /// nothing more can be lost on, and a report is not worth failing a job over.
+    func metadataTally(at path: VFSPath) -> RemoteMetadataTally {
+        guard let owner = try? backend(for: path) else { return .zero }
+        return owner.metadataTally(at: path)
+    }
+
     /// Which of a remote row's fields Get Info may change — answered by whoever owns the **row**
     /// (PLAN.md §M25 Slice 5).
     ///

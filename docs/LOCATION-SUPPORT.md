@@ -230,6 +230,13 @@ S3 remains `n/a`: it has no settable mtime, no permissions and no symlinks at al
 a row that reports no mode is *absent* rather than dropped — the distinction the whole carry turns
 on, since folding the two together would make every S3 copy claim damage it did not do.
 
+**What a copy could not keep is said on the status line under the pane** (PLAN.md §M25 Slice 5b),
+never in a dialog, and it is a per-*job* answer rather than a per-connection one — the connection's
+accumulator spans its whole life, so reporting that would name the previous transfer every time. The
+routine case is why it is not modal: a duplicate **inside one SFTP account** takes the server-side
+`cp` route, which carries no timestamp at all, so every such copy drops the modification time by
+construction and says so. A local copy carries everything and says nothing.
+
 <sup>bbb</sup> A duplicate within one SFTP account is the **server's** work: OpenSSH's `copy-data`
 extension gives `sftp` a real `cp` — measured against a real `sshd`, 64 MiB in **0.09 s** for the
 whole session against 0.5 s to stage the same file down and back up over *loopback*, where the relay

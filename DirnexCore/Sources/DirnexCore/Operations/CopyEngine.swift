@@ -75,6 +75,19 @@ private final class CopyRun {
     private var skipped: [VFSPath] = []
     private var failures: [OperationItemFailure] = []
     private var outcomes: [OperationItemOutcome] = []
+    /// What each account this job touches had already failed to carry when the job started
+    /// (PLAN.md §M25 Slice 5b).
+    ///
+    /// Taken once, up front, because the answer this job owes is a **difference**: the accumulator
+    /// on a connection spans that connection's whole life, and a user told "the modification times
+    /// weren't kept" after their second transfer must not be being told about their first.
+    ///
+    /// Keyed per backend rather than summed into one number, and that is what keeps it correct under
+    /// the queue's own scheduling: jobs on *one* account serialize (they share a volume bucket), but
+    /// a job on account A runs happily beside one on account B — so a single process-wide reading
+    /// would fold B's losses into A's report. Quietly, and in the direction this milestone exists to
+    /// avoid.
+    private var startingTallies: [VFSBackendID: RemoteMetadataTally] = [:]
 
     init(
         operation: FileOperation,
@@ -95,6 +108,7 @@ private final class CopyRun {
     }
 
     func execute() -> OperationReport {
+        startingTallies = metadataTallies()
         let sized = preScan()
         totalBytes = sized.reduce(0) { $0 + $1.bytes }
         emit(current: nil, force: true)
@@ -336,8 +350,38 @@ private final class CopyRun {
             skipped: skipped,
             failures: failures,
             wasCancelled: canceled,
-            outcomes: outcomes
+            outcomes: outcomes,
+            metadataLoss: metadataLoss()
         )
+    }
+
+    /// Every account this job touches, and what it had already lost.
+    ///
+    /// The *distinct* backends of the sources and the destination — a relay has two and an ordinary
+    /// copy one, and asking each once is what makes reading it cheap: the tally is a lock and a
+    /// dictionary copy, never a round trip.
+    private func metadataTallies() -> [VFSBackendID: RemoteMetadataTally] {
+        var paths = operation.sources.map(\.path)
+        paths.append(operation.destinationDirectory)
+        var tallies: [VFSBackendID: RemoteMetadataTally] = [:]
+        for path in paths where tallies[path.backend] == nil {
+            tallies[path.backend] = backend.metadataTally(at: path)
+        }
+        return tallies
+    }
+
+    /// What **this run** could not carry, or `nil` when it carried everything — the good case, and
+    /// the one every local copy takes for free.
+    ///
+    /// Each account's delta, added up. A backend that appeared only at the end (nothing does today,
+    /// but a route that reached a third connection would) is measured against `.zero`, which counts
+    /// its whole tally — the safe direction, since the alternative is dropping a loss on the floor.
+    private func metadataLoss() -> RemoteMetadataLoss? {
+        var total = RemoteMetadataTally.zero
+        for (id, ending) in metadataTallies() {
+            total = total.adding(ending.since(startingTallies[id] ?? .zero))
+        }
+        return total.loss
     }
 }
 

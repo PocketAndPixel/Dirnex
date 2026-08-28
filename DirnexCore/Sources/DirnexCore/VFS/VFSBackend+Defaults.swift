@@ -104,6 +104,10 @@ public extension VFSBackend {
         false // no verb to try, so nothing to be refused
     }
 
+    func metadataTally(at _: VFSPath) -> RemoteMetadataTally {
+        .zero // nothing here crosses a wire, so nothing can be dropped on the way
+    }
+
     func editableMetadata(at _: VFSPath) -> RemoteMetadataCapabilities {
         [] // no write verbs, so the panel over this backend's rows stays read-only
     }

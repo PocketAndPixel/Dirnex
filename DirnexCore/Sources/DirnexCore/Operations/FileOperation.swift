@@ -321,6 +321,21 @@ public struct OperationReport: Sendable, Equatable {
     /// path the window already watches for a job reaching a terminal state.
     public let pack: PackOutcome?
 
+    /// What this job could not carry besides bytes, or `nil` when it carried everything it was asked
+    /// to — which is every local copy and the great majority of remote ones (PLAN.md §M25 Slice 5b).
+    ///
+    /// A **per-job** answer, not a per-connection one: it is the difference between what each
+    /// account this job touched had already failed to carry when the job started and what it has
+    /// failed to carry now. The distinction is the whole point — the accumulator behind it spans a
+    /// connection's whole life, so reporting *that* would tell a user about their previous transfer
+    /// every time.
+    ///
+    /// It rides home on the report for the reason `checksum`, `pack` and `materialized` do: the
+    /// queue's snapshot stream is the one path the window already watches for a job reaching a
+    /// terminal state, and a second result channel would be a second place for a finished job to be
+    /// missed.
+    public let metadataLoss: RemoteMetadataLoss?
+
     /// Where a `.materialize` job's bytes landed, one entry per row that made it. `nil` for every
     /// other kind, and **empty for a materialize that landed nothing** — the two are different
     /// answers and a caller reading the copies has to be able to tell them apart.
@@ -340,7 +355,8 @@ public struct OperationReport: Sendable, Equatable {
         checksum: ChecksumOutcome? = nil,
         attributeApply: AttributeApplyOutcome? = nil,
         pack: PackOutcome? = nil,
-        materialized: [MaterializedFile]? = nil
+        materialized: [MaterializedFile]? = nil,
+        metadataLoss: RemoteMetadataLoss? = nil
     ) {
         self.completedItems = completedItems
         self.completedBytes = completedBytes
@@ -352,6 +368,7 @@ public struct OperationReport: Sendable, Equatable {
         self.attributeApply = attributeApply
         self.pack = pack
         self.materialized = materialized
+        self.metadataLoss = metadataLoss
     }
 
     public var succeeded: Bool { failures.isEmpty && !wasCancelled }

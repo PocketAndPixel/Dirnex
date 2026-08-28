@@ -56,6 +56,15 @@ public extension SFTPBackend {
 }
 
 public extension SFTPBackend {
+    /// What this connection has failed to carry so far (PLAN.md §M25 Slice 5b).
+    ///
+    /// A running count read before and after a job and subtracted, never drained — see
+    /// ``RemoteMetadataTally``. Zero for a path on another account, so a routing backend adding up
+    /// two ends never counts a third connection's losses into this one's.
+    func metadataTally(at path: VFSPath) -> RemoteMetadataTally {
+        path.backend == id ? metadata.tally : .zero
+    }
+
     /// What Get Info may change on this account (PLAN.md §M25 Slice 5).
     ///
     /// `changeMode` and nothing else, less whatever this connection has since refused. There is no

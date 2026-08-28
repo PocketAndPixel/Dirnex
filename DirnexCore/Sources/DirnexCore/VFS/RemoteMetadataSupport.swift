@@ -45,6 +45,11 @@ public final class RemoteMetadataSupport: @unchecked Sendable {
     private var refused: RemoteMetadataCapabilities = []
     private var lostAspects: Set<RemoteMetadataAspect> = []
     private var affectedItems = 0
+    /// How many items lost each aspect. Kept beside the set rather than derived from it, because a
+    /// **count** is the only shape that subtracts: "what did this job lose" is the difference of two
+    /// readings, and a set cannot tell an aspect lost again from one already lost (▸
+    /// ``RemoteMetadataTally``).
+    private var aspectCounts: [RemoteMetadataAspect: Int] = [:]
 
     /// - Parameter offering: what this transport can be asked to do before anything has been
     ///   refused — ``RemoteMetadataCapabilities/sftp`` or ``RemoteMetadataCapabilities/ftp`` for the
@@ -106,19 +111,31 @@ public final class RemoteMetadataSupport: @unchecked Sendable {
         lock.lock()
         lostAspects.formUnion(dropped)
         affectedItems += 1
+        for aspect in dropped { aspectCounts[aspect, default: 0] += 1 }
         lock.unlock()
     }
 
-    /// What this connection has failed to carry so far, or `nil` when it has carried everything it
-    /// was asked to — which is the good case and the common one.
+    /// This connection's running count, for a caller that wants to know what **one run** lost rather
+    /// than what the connection has lost since it opened (PLAN.md §M25 Slice 5b).
     ///
-    /// **Nothing on screen reads this yet**, and saying so is part of the design rather than a
-    /// caveat: the accumulator is what makes a loss *knowable*, and choosing where a user is told
-    /// about it — a status line, the operation report, Get Info — is its own decision (PLAN.md §M25
-    /// Slice 5). What it must not become meanwhile is a value justified by a reader that does not
-    /// exist, so it is deliberately the smallest thing the tests can hold: aspects and a count.
-    /// A draining `takeLoss()` was written alongside it and deleted for exactly that reason — the
-    /// run boundary it existed to mark belongs to whoever ends up doing the reporting.
+    /// Read before and after a job and subtract (``RemoteMetadataTally/since(_:)``). A reading rather
+    /// than a drain, so any number of callers can take one without arranging who goes first — which
+    /// is the whole reason the draining `takeLoss()` written in Slice 2 was deleted instead of kept:
+    /// a drain has to be called exactly once by exactly one caller, and nothing says so.
+    public var tally: RemoteMetadataTally {
+        lock.lock()
+        defer { lock.unlock() }
+        return RemoteMetadataTally(itemCount: affectedItems, perAspect: aspectCounts)
+    }
+
+    /// What this connection has failed to carry **since it opened**, or `nil` when it has carried
+    /// everything it was asked to — which is the good case and the common one.
+    ///
+    /// The connection's whole life, deliberately, and therefore *not* what a copy's report says: a
+    /// user told "the modification times weren't kept" after their second transfer must not be being
+    /// told about their first. A per-run answer is ``tally`` read twice and subtracted. This one is
+    /// the right shape for a question about the **account** — what Get Info's panel would say about
+    /// a server, rather than what a job says about itself.
     public var loss: RemoteMetadataLoss? {
         lock.lock()
         defer { lock.unlock() }
