@@ -8323,6 +8323,95 @@
         }
       }
     },
+    "A listing from a server or an archive carries no access-control list, no extended attributes, and no created or last-opened date, so those are not shown at all. Nothing on this panel can be changed.": {
+      "comment": "Info panel note: what a non-local listing cannot report, and that it is read-only.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Auflistung von einem Server oder aus einem Archiv enthält keine Zugriffssteuerungsliste, keine erweiterten Attribute und kein Erstellungs- oder Zuletzt-geöffnet-Datum, daher werden sie gar nicht angezeigt. Hier lässt sich nichts ändern."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A listing from a server or an archive carries no access-control list, no extended attributes, and no created or last-opened date, so those are not shown at all. Nothing on this panel can be changed."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un listado de un servidor o de un archivo comprimido no lleva lista de control de acceso, ni atributos extendidos, ni fecha de creación o de última apertura, así que no se muestran en absoluto. Aquí no se puede cambiar nada."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un listing provenant d’un serveur ou d’une archive ne comporte ni liste de contrôle d’accès, ni attributs étendus, ni date de création ou de dernière ouverture : ces informations ne sont donc pas affichées du tout. Rien ne peut être modifié ici."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un elenco proveniente da un server o da un archivio non contiene elenco di controllo accessi, attributi estesi né data di creazione o di ultima apertura, quindi non vengono mostrati affatto. Qui non si può modificare nulla."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバやアーカイブの一覧にはアクセス制御リスト・拡張属性・作成日や最後に開いた日が含まれないため、それらはまったく表示されません。ここでは何も変更できません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버나 아카이브의 목록에는 접근 제어 목록, 확장 속성, 생성일이나 마지막 연 날짜가 없으므로 아예 표시되지 않습니다. 여기서는 아무것도 변경할 수 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Een overzicht van een server of uit een archief bevat geen toegangsbeheerlijst, geen uitgebreide kenmerken en geen aanmaak- of laatst-geopenddatum, dus die worden helemaal niet getoond. Hier kan niets worden gewijzigd."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lista z serwera lub z archiwum nie zawiera listy kontroli dostępu, atrybutów rozszerzonych ani daty utworzenia czy ostatniego otwarcia, więc w ogóle nie są pokazywane. Tutaj nie można niczego zmienić."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uma listagem de um servidor ou de um arquivo compactado não traz lista de controle de acesso, atributos estendidos nem data de criação ou de última abertura, então essas informações não são mostradas. Aqui nada pode ser alterado."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В списке с сервера или из архива нет ни списка контроля доступа, ни расширенных атрибутов, ни даты создания или последнего открытия, поэтому они вообще не показываются. Здесь ничего нельзя изменить."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У списку із сервера чи з архіву немає ні списку контролю доступу, ні розширених атрибутів, ні дати створення чи останнього відкриття, тому вони взагалі не показуються. Тут нічого не можна змінити."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "来自服务器或归档文件的列表不包含访问控制列表、扩展属性，也没有创建日期或最后打开日期，因此这些内容根本不会显示。这里无法更改任何内容。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "來自伺服器或封存檔的列表不包含存取控制列表、延伸屬性，也沒有建立日期或最後開啟日期，因此這些內容根本不會顯示。這裡無法更改任何內容。"
+          }
+        }
+      }
+    },
     "A saved search named “%@” already exists. Replace it?": {
       "comment": "Save-search overwrite confirmation body; %@ is the saved-search name.",
       "localizations": {
@@ -37828,6 +37917,95 @@
         }
       }
     },
+    "Entity tag:": {
+      "comment": "Info panel field label: the server's ETag for a stored object.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entity-Tag:"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entity tag:"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tag de entidad:"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Étiquette d’entité :"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tag di entità:"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エンティティタグ:"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "엔티티 태그:"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entiteitstag:"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Znacznik encji:"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tag de entidade:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тег сущности:"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тег сутності:"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "实体标签："
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "實體標籤："
+          }
+        }
+      }
+    },
     "Entries apply in the order shown — macOS takes the first one that decides, so a Deny above an Allow wins.": {
       "comment": "ACL table footnote explaining that entry order is meaningful.",
       "localizations": {
@@ -39452,6 +39630,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "FTP"
+          }
+        }
+      }
+    },
+    "FTP reports a modification time with no time zone, and with no year for a recent file — on the server’s own clock. Treat it as approximate.": {
+      "comment": "Info panel note: an FTP LIST timestamp is not exact.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FTP meldet eine Änderungszeit ohne Zeitzone und bei einer aktuellen Datei ohne Jahr — nach der Uhr des Servers. Die Angabe ist daher nur ungefähr."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FTP reports a modification time with no time zone, and with no year for a recent file — on the server’s own clock. Treat it as approximate."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FTP informa de una hora de modificación sin zona horaria y, en un archivo reciente, sin año — según el reloj del propio servidor. Tómala como aproximada."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FTP indique une heure de modification sans fuseau horaire, et sans année pour un fichier récent — d’après l’horloge du serveur lui-même. Considérez-la comme approximative."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FTP riporta un’ora di modifica senza fuso orario e, per un file recente, senza anno — secondo l’orologio del server stesso. Consideralo un valore approssimativo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FTP が返す変更時刻にはタイムゾーンがなく、最近のファイルでは年もありません。しかもサーバ自身の時計に基づく値です。おおよその目安として扱ってください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FTP는 시간대 없이, 최근 파일이라면 연도도 없이 수정 시각을 알려주며, 그것도 서버 자체의 시계 기준입니다. 대략적인 값으로 보십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FTP meldt een wijzigingstijd zonder tijdzone, en zonder jaar bij een recent bestand — volgens de klok van de server zelf. Beschouw die als bij benadering."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FTP podaje czas modyfikacji bez strefy czasowej, a dla niedawnego pliku także bez roku — według zegara samego serwera. Traktuj go jako przybliżony."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O FTP informa uma hora de modificação sem fuso horário e, para um arquivo recente, sem ano — pelo relógio do próprio servidor. Considere-a aproximada."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FTP сообщает время изменения без часового пояса, а для недавнего файла — и без года, причём по часам самого сервера. Считайте его приблизительным."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FTP повідомляє час зміни без часового поясу, а для нещодавнього файлу — і без року, ще й за годинником самого сервера. Вважайте його приблизним."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FTP 报告的修改时间不含时区，最近的文件还不含年份，而且用的是服务器自己的时钟。请将其视为近似值。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FTP 回報的修改時間不含時區，最近的檔案還不含年份，而且用的是伺服器自己的時鐘。請將其視為近似值。"
           }
         }
       }
@@ -42210,6 +42477,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "通用"
+          }
+        }
+      }
+    },
+    "Get Info describes one item at a time here": {
+      "comment": "Get Info failure title for a multi-selection that is not all local.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Informationen zeigen hier jeweils nur ein Objekt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get Info describes one item at a time here"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aquí la información se muestra de un ítem cada vez"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ici, les informations ne décrivent qu’un élément à la fois"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qui le informazioni descrivono un elemento alla volta"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ここでは 1 項目ずつしか情報を表示できません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "여기서는 한 번에 한 항목의 정보만 표시합니다"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hier toont info één object tegelijk"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tutaj informacje dotyczą jednego elementu naraz"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aqui as informações descrevem um item por vez"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Здесь свойства показываются только для одного объекта"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тут властивості показуються лише для одного об’єкта"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这里的简介一次只能描述一个项目"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "這裡的簡介一次只能描述一個項目"
           }
         }
       }
@@ -59367,6 +59723,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "請將游標移到這台 Mac 上的檔案或檔案夾上。權限、旗標和存取控制列表直接從磁碟讀取，因此伺服器或封存檔沒有可顯示的內容。"
+          }
+        }
+      }
+    },
+    "Put the cursor on a file or folder. The parent row and the app folders in the merged iCloud Drive listing are the only rows Get Info cannot describe.": {
+      "comment": "Get Info failure detail; names the rows that have nothing to describe.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Setze den Cursor auf eine Datei oder einen Ordner. Nur die Zeile für den übergeordneten Ordner und die App-Ordner in der zusammengeführten iCloud-Drive-Auflistung lassen sich nicht beschreiben."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Put the cursor on a file or folder. The parent row and the app folders in the merged iCloud Drive listing are the only rows Get Info cannot describe."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coloca el cursor sobre un archivo o una carpeta. La fila de la carpeta superior y las carpetas de apps del listado combinado de iCloud Drive son las únicas filas de las que no se puede mostrar información."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Placez le curseur sur un fichier ou un dossier. La ligne du dossier parent et les dossiers d’apps du listing iCloud Drive fusionné sont les seules lignes dont les informations ne peuvent pas être affichées."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posiziona il cursore su un file o una cartella. La riga della cartella superiore e le cartelle delle app nell’elenco unificato di iCloud Drive sono le uniche righe di cui non è possibile mostrare le informazioni."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルまたはフォルダにカーソルを合わせてください。情報を表示できないのは、親フォルダの行と、統合された iCloud Drive 一覧にあるアプリのフォルダだけです。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일이나 폴더 위에 커서를 두십시오. 정보를 표시할 수 없는 행은 상위 폴더 행과 통합된 iCloud Drive 목록의 앱 폴더뿐입니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zet de cursor op een bestand of map. Alleen de rij van de bovenliggende map en de app-mappen in het samengevoegde iCloud Drive-overzicht kunnen niet worden beschreven."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ustaw kursor na pliku lub folderze. Tylko wiersz folderu nadrzędnego i foldery aplikacji na połączonej liście iCloud Drive nie mogą zostać opisane."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coloque o cursor sobre um arquivo ou pasta. A linha da pasta superior e as pastas de apps na listagem combinada do iCloud Drive são as únicas linhas cujas informações não podem ser mostradas."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Наведите курсор на файл или папку. Свойства нельзя показать только для строки родительской папки и для папок приложений в объединённом списке iCloud Drive."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Наведіть курсор на файл або теку. Властивості не можна показати лише для рядка батьківської теки та для тек програм в об’єднаному списку iCloud Drive."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请将光标移到文件或文件夹上。只有上级文件夹行和合并的 iCloud Drive 列表中的 App 文件夹无法显示简介。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "請將游標移到檔案或檔案夾上。只有上層檔案夾列和合併的 iCloud 雲碟列表中的 App 檔案夾無法顯示簡介。"
           }
         }
       }
@@ -76643,6 +77088,95 @@
         }
       }
     },
+    "The multiple-item panel edits permissions, flags and dates, and an item that is not on this Mac cannot be edited yet. Clear the selection to see one item on its own.": {
+      "comment": "Get Info failure detail for a non-local multi-selection.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Bereich für mehrere Objekte bearbeitet Rechte, Markierungen und Daten, und ein Objekt, das nicht auf diesem Mac liegt, lässt sich noch nicht bearbeiten. Hebe die Auswahl auf, um ein einzelnes Objekt zu sehen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The multiple-item panel edits permissions, flags and dates, and an item that is not on this Mac cannot be edited yet. Clear the selection to see one item on its own."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El panel de varios ítems edita permisos, indicadores y fechas, y un ítem que no está en este Mac todavía no se puede editar. Deselecciona todo para ver un solo ítem."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le panneau multi-éléments modifie les autorisations, les indicateurs et les dates, et un élément qui n’est pas sur ce Mac ne peut pas encore être modifié. Désélectionnez tout pour afficher un seul élément."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il pannello per più elementi modifica autorizzazioni, contrassegni e date, e un elemento che non si trova su questo Mac non è ancora modificabile. Annulla la selezione per vedere un singolo elemento."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "複数項目のパネルはアクセス権・フラグ・日付を編集しますが、この Mac にない項目はまだ編集できません。選択を解除すると、単一の項目を表示できます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "여러 항목 패널은 권한, 플래그, 날짜를 편집하는데, 이 Mac에 없는 항목은 아직 편집할 수 없습니다. 선택을 해제하면 항목 하나를 따로 볼 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Het paneel voor meerdere objecten bewerkt rechten, vlaggen en datums, en een object dat niet op deze Mac staat, kan nog niet worden bewerkt. Hef de selectie op om één object apart te bekijken."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Panel wielu elementów edytuje uprawnienia, flagi i daty, a elementu, którego nie ma na tym Macu, nie można jeszcze edytować. Wyczyść zaznaczenie, aby zobaczyć pojedynczy element."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O painel de vários itens edita permissões, sinalizadores e datas, e um item que não está neste Mac ainda não pode ser editado. Limpe a seleção para ver um item sozinho."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Панель нескольких объектов редактирует права, флаги и даты, а объект не на этом Mac пока изменить нельзя. Снимите выделение, чтобы посмотреть один объект отдельно."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Панель кількох об’єктів редагує права, прапорці та дати, а об’єкт не на цьому Mac поки що змінити не можна. Зніміть позначення, щоб переглянути один об’єкт окремо."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "多项目面板用于编辑权限、标志和日期，而不在这台 Mac 上的项目暂时无法编辑。清除选择即可单独查看一个项目。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "多項目面板用於編輯權限、旗標和日期，而不在這台 Mac 上的項目暫時無法編輯。清除選取即可單獨查看一個項目。"
+          }
+        }
+      }
+    },
     "The old host key couldn’t be removed automatically. Remove it from %@ and try connecting again.": {
       "comment": "Known-hosts update failure detail; %@ is the known_hosts file path.",
       "localizations": {
@@ -77707,6 +78241,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "伺服器未告知此檔案的大小。Dirnex 必須先下載它才能顯示。"
+          }
+        }
+      }
+    },
+    "The server doesn’t support that command.": {
+      "comment": "FTP connect failure detail: the server answered reply 500 or 502, meaning it does not implement the command that was sent.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server unterstützt diesen Befehl nicht."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server doesn’t support that command."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El servidor no admite ese comando."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le serveur ne prend pas en charge cette commande."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il server non supporta quel comando."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバはそのコマンドに対応していません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버가 해당 명령을 지원하지 않습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De server ondersteunt die opdracht niet."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serwer nie obsługuje tego polecenia."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O servidor não suporta esse comando."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер не поддерживает эту команду."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер не підтримує цю команду."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器不支持该命令。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伺服器不支援該指令。"
           }
         }
       }
@@ -81445,6 +82068,273 @@
           "stringUnit": {
             "state": "translated",
             "value": "此金鑰無法列出儲存桶 — 請輸入名稱"
+          }
+        }
+      }
+    },
+    "This listing reports no owner or group for the item.": {
+      "comment": "Info panel note when a listing carries a mode but no owner.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Auflistung meldet für das Objekt weder Eigentümer noch Gruppe."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This listing reports no owner or group for the item."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este listado no informa del propietario ni del grupo del ítem."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce listing n’indique ni propriétaire ni groupe pour cet élément."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo elenco non riporta né proprietario né gruppo per l’elemento."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この一覧には、項目の所有者もグループも含まれていません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 목록은 항목의 소유자나 그룹을 알려주지 않습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dit overzicht meldt geen eigenaar of groep voor het object."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta lista nie podaje właściciela ani grupy tego elementu."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta listagem não informa proprietário nem grupo do item."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В этом списке нет ни владельца, ни группы объекта."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У цьому списку немає ні власника, ні групи об’єкта."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此列表未报告该项目的所有者或群组。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此列表未回報該項目的擁有者或群組。"
+          }
+        }
+      }
+    },
+    "This listing reports no permissions for the item.": {
+      "comment": "Info panel note when a listing carries an owner but no mode.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Auflistung meldet für das Objekt keine Zugriffsrechte."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This listing reports no permissions for the item."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este listado no informa de los permisos del ítem."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce listing n’indique aucune autorisation pour cet élément."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo elenco non riporta autorizzazioni per l’elemento."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この一覧には、項目のアクセス権が含まれていません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 목록은 항목의 권한을 알려주지 않습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dit overzicht meldt geen rechten voor het object."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta lista nie podaje uprawnień tego elementu."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta listagem não informa as permissões do item."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В этом списке нет прав доступа объекта."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У цьому списку немає прав доступу об’єкта."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此列表未报告该项目的权限。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此列表未回報該項目的權限。"
+          }
+        }
+      }
+    },
+    "This listing reports no permissions, owner or group. An object store has none to report, and an IIS-style FTP listing prints no such columns — so nothing is missing from the item itself.": {
+      "comment": "Info panel note when a listing carries no mode, owner or group at all.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Auflistung meldet weder Zugriffsrechte noch Eigentümer oder Gruppe. Ein Objektspeicher hat davon nichts zu melden, und eine FTP-Auflistung im IIS-Stil gibt solche Spalten gar nicht aus — dem Objekt selbst fehlt also nichts."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This listing reports no permissions, owner or group. An object store has none to report, and an IIS-style FTP listing prints no such columns — so nothing is missing from the item itself."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este listado no informa de permisos, propietario ni grupo. Un almacén de objetos no tiene ninguno que informar, y un listado FTP al estilo de IIS no imprime esas columnas, así que al ítem en sí no le falta nada."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce listing n’indique ni autorisations, ni propriétaire, ni groupe. Un stockage objet n’en a aucun à indiquer, et un listing FTP de type IIS n’affiche pas ces colonnes — il ne manque donc rien à l’élément lui-même."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo elenco non riporta autorizzazioni, proprietario né gruppo. Un archivio a oggetti non ne ha da riportare e un elenco FTP in stile IIS non stampa quelle colonne — quindi all’elemento stesso non manca nulla."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この一覧にはアクセス権も所有者もグループも含まれていません。オブジェクトストレージにはそれらが存在せず、IIS 形式の FTP 一覧はそうした列を出力しません。項目そのものに欠けているものはありません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 목록은 권한, 소유자, 그룹을 알려주지 않습니다. 오브젝트 스토리지에는 알려줄 것이 없고, IIS 방식의 FTP 목록은 그런 열을 출력하지 않습니다. 항목 자체에 빠진 것은 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dit overzicht meldt geen rechten, eigenaar of groep. Een objectopslag heeft die niet te melden en een FTP-overzicht in IIS-stijl drukt zulke kolommen niet af — er ontbreekt dus niets aan het object zelf."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta lista nie podaje uprawnień, właściciela ani grupy. Magazyn obiektów nie ma czego podać, a lista FTP w stylu IIS nie wypisuje takich kolumn — samemu elementowi niczego więc nie brakuje."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta listagem não informa permissões, proprietário nem grupo. Um armazenamento de objetos não tem nenhum a informar, e uma listagem FTP no estilo IIS não imprime essas colunas — então não falta nada ao item em si."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В этом списке нет ни прав доступа, ни владельца, ни группы. Объектному хранилищу нечего сообщать, а FTP-список в стиле IIS таких столбцов не выводит — так что с самим объектом всё в порядке."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У цьому списку немає ні прав доступу, ні власника, ні групи. Об’єктному сховищу нічого повідомляти, а FTP-список у стилі IIS таких стовпців не виводить — тож із самим об’єктом усе гаразд."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此列表未报告权限、所有者或群组。对象存储本就没有这些内容，IIS 风格的 FTP 列表也不会打印这些列——因此项目本身并没有缺少什么。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此列表未回報權限、擁有者或群組。物件儲存本就沒有這些內容，IIS 風格的 FTP 列表也不會列出這些欄——因此項目本身並沒有缺少什麼。"
           }
         }
       }
