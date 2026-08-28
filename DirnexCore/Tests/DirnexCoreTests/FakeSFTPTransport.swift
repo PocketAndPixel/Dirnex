@@ -57,6 +57,65 @@ final class FakeSFTPTransport: SFTPTransport, @unchecked Sendable {
     /// therefore the default rather than a convenience.
     var streamedProgress: [Int64] = []
 
+    // MARK: - Metadata carry (PLAN.md §M25 Slice 2)
+
+    /// What this double claims it can carry. **`[]` by default**, which is the whole point: a
+    /// transport that has not implemented the carry must make the backend plan nothing and *report*
+    /// the loss rather than claim a mode it never wrote. Every test written before this milestone
+    /// therefore keeps measuring exactly what it always did.
+    var metadataCapabilities: RemoteMetadataCapabilities = []
+    /// The plan each transfer was handed, in call order — the observable that says whether the
+    /// backend asked for the carry at all, as opposed to whether the file ended up right.
+    private(set) var carriedPlans: [RemoteMetadataPlan] = []
+    /// Steps handed to ``applyMetadata(_:to:)``, with the path they were aimed at.
+    private(set) var appliedMetadata: [(path: String, steps: [RemoteMetadataStep])] = []
+    /// What every metadata step will answer. Empty is "it all arrived".
+    var metadataRefusals: [RemoteMetadataRefusal] = []
+
+    func download(
+        _ remotePath: String,
+        to localPath: String,
+        options: RemoteTransferOptions,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> RemoteTransferOutcome {
+        carriedPlans.append(options.carry)
+        let bytes = try download(
+            remotePath,
+            to: localPath,
+            resume: options.resume,
+            progress: progress,
+            isCancelled: isCancelled
+        )
+        return RemoteTransferOutcome(bytes: bytes, refusals: metadataRefusals)
+    }
+
+    func upload(
+        _ localPath: String,
+        to remotePath: String,
+        options: RemoteTransferOptions,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> RemoteTransferOutcome {
+        carriedPlans.append(options.carry)
+        let bytes = try upload(
+            localPath,
+            to: remotePath,
+            resume: options.resume,
+            progress: progress,
+            isCancelled: isCancelled
+        )
+        return RemoteTransferOutcome(bytes: bytes, refusals: metadataRefusals)
+    }
+
+    func applyMetadata(
+        _ steps: [RemoteMetadataStep],
+        to remotePath: String
+    ) throws -> [RemoteMetadataRefusal] {
+        appliedMetadata.append((path: remotePath, steps: steps))
+        return metadataRefusals
+    }
+
     func listDirectory(_ remotePath: String) throws -> String {
         if let error { throw error }
         return listings[remotePath] ?? ""

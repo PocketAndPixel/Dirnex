@@ -32,6 +32,54 @@ public protocol RemoteWriteTransport: Sendable {
 
     /// Remove one **empty** directory. Neither protocol has a recursive delete.
     func removeDirectory(_ remotePath: String) throws
+
+    /// What this transport can be asked to do about carrying a source's mode and times.
+    ///
+    /// **The default is empty, and that is the safe answer rather than a broken one.** A plan built
+    /// against `[]` asks for nothing and *reports the loss*, so a transport that has not implemented
+    /// the carry — including every test double written before it existed — makes copies that behave
+    /// exactly as they always did and say so, instead of claiming a mode they never wrote. This
+    /// milestone's whole subject is the opposite failure (PLAN.md §M25).
+    ///
+    /// Declaring a capability is therefore an obligation: a transport that reports
+    /// ``RemoteMetadataCapabilities/preserveFlag`` must implement the preserving transfer verbs, and
+    /// one that reports ``RemoteMetadataCapabilities/changeMode`` must implement ``applyMetadata(_:to:)``.
+    /// Nothing in the compiler checks that, so both are pinned by tests against the real transports.
+    var metadataCapabilities: RemoteMetadataCapabilities { get }
+
+    /// Apply metadata steps to an item that has already landed, answering the steps that did not
+    /// take — `nil`/empty when everything arrived.
+    ///
+    /// **This is FTP's shape, and SFTP deliberately does not use it.** Over SFTP the follow-up rides
+    /// the transfer's own batch, so calling here would spend a second connection (71 ms measured on
+    /// loopback, a real handshake over a network) for a `chmod` that could have been one more line.
+    /// Over FTP the opposite is true: a quote command sent alongside the transfer is refused as
+    /// `curl` exit 21, which fails the whole invocation *after* the bytes have landed — a successful
+    /// upload reported as a failed copy — so the steps must run on their own, where the reply code
+    /// attributes the refusal exactly.
+    ///
+    /// It **answers** rather than throwing, because a refused step is not a failed operation: the
+    /// bytes are there and the file is right. Throwing is reserved for the connection itself going
+    /// wrong.
+    ///
+    /// The default answers "everything was refused as unimplemented" for any step it is handed,
+    /// which pairs with the empty ``metadataCapabilities`` above: a transport that declared nothing
+    /// is never asked, and one that declared something and forgot to implement this reports a loss
+    /// rather than inventing a success.
+    func applyMetadata(_ steps: [RemoteMetadataStep], to remotePath: String) throws -> [
+        RemoteMetadataRefusal
+    ]
+}
+
+public extension RemoteWriteTransport {
+    var metadataCapabilities: RemoteMetadataCapabilities { [] }
+
+    func applyMetadata(
+        _ steps: [RemoteMetadataStep],
+        to remotePath: String
+    ) throws -> [RemoteMetadataRefusal] {
+        steps.isEmpty ? [] : [.verbUnimplemented("")]
+    }
 }
 
 /// A `VFSBackend` that mutates one remote account through a ``RemoteWriteTransport``.

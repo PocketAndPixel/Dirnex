@@ -24,10 +24,18 @@ public struct FTPBackend: RemoteTransportBackend {
     /// held by a value type on purpose: the backend is copied freely, and what it knows about the
     /// *server* must not be copied away with it (``SegmentedDownloadSupport``).
     let segmentation = SegmentedDownloadSupport()
+    /// What this connection has learned about carrying a source's mode and times, and what it has
+    /// failed to carry so far — held by reference for the reason ``segmentation`` is, so a fact
+    /// about the *server* is not copied away with this value type (``RemoteMetadataSupport``).
+    let metadata: RemoteMetadataSupport
 
     public init(location: FTPLocation, transport: any FTPTransport) {
         self.location = location
         self.transport = transport
+        // What the *transport* declares, never what FTP could do in principle: a transport that has
+        // not implemented the carry reports `[]`, so every plan asks for nothing and reports the
+        // loss instead of claiming a mode it never wrote (PLAN.md §M25).
+        metadata = RemoteMetadataSupport(offering: transport.metadataCapabilities)
     }
 
     public var id: VFSBackendID { .ftp(location) }
@@ -159,6 +167,34 @@ public struct FTPBackend: RemoteTransportBackend {
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws {
+        try copyFile(
+            at: source,
+            to: destination,
+            hint: CopySourceHint(expectedSize: expectedSize),
+            progress: progress,
+            isCancelled: isCancelled
+        )
+    }
+
+    /// The same copy, also carrying the source's mode and modification time (PLAN.md §M25 Slice 2).
+    ///
+    /// FTP has no preserve flag, so **everything** rides on explicit steps after the bytes land —
+    /// and where they land decides what is possible. A download finishes on this machine with plain
+    /// syscalls, so it can carry the whole hint; an upload has to ask the server, where `SITE CHMOD`
+    /// and `MFMT` are extensions it need not implement.
+    ///
+    /// An upload's steps run as **their own invocation**, which is measured rather than tidy: a
+    /// quote command sent alongside the transfer is refused as `curl` exit 21, failing the whole
+    /// invocation after the bytes have already landed — a successful upload reported as a failed
+    /// copy. On its own, the reply code attributes the refusal exactly (500 for a verb this server
+    /// lacks, 550 for that file's own problem).
+    public func copyFile(
+        at source: VFSPath,
+        to destination: VFSPath,
+        hint: CopySourceHint,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws {
         if isCancelled() { throw CancellationError() }
         var tally = TransferProgressTally()
         let streamed = { (delta: Int64) in
@@ -172,11 +208,12 @@ public struct FTPBackend: RemoteTransportBackend {
                     remotePath: source.path,
                     localPath: destination.path,
                     source: source,
-                    expectedSize: expectedSize
+                    expectedSize: hint.expectedSize
                 ),
                 progress: streamed,
                 isCancelled: isCancelled
             )
+            carryOntoLocal(hint.metadata, at: destination.path)
         } else if source.backend == .local, destination.backend == id {
             transferred = try uploadFile(
                 fromLocal: source.path,
@@ -184,6 +221,7 @@ public struct FTPBackend: RemoteTransportBackend {
                 progress: streamed,
                 isCancelled: isCancelled
             )
+            try carryOntoRemote(hint.metadata ?? .ofLocalFile(source.path), at: destination)
         } else {
             throw VFSError.unsupported(.remoteToRemoteCopy)
         }
@@ -331,7 +369,7 @@ public struct FTPBackend: RemoteTransportBackend {
             // one down here means a server changed behavior mid-session, which is an I/O failure
             // from this layer's point of view.
             case .certificateUntrusted, .certificateChanged, .unreachable, .timedOut,
-                 .tlsNotAvailable, .tlsRequired, .failure:
+                 .tlsNotAvailable, .tlsRequired, .commandNotImplemented, .failure:
                 throw VFSError.io(path: path, code: EIO)
             }
         } catch let error as FTPQuoteCommand.UnsafePath {

@@ -23,6 +23,40 @@ extension SFTPProcessTransport {
         progress: (Int64) -> Void = { _ in },
         isCancelled: () -> Bool = { false }
     ) throws -> String {
+        try runCarrying(
+            batch: command,
+            tolerateChannelHold: tolerateChannelHold,
+            watching: source,
+            progress: progress,
+            isCancelled: isCancelled
+        ).output
+    }
+
+    /// The same run, also answering which **metadata steps** the server refused (PLAN.md §M25
+    /// Slice 2).
+    ///
+    /// A metadata refusal must never be read as the transfer's failure, and `sftp` makes that easy
+    /// to get wrong in two directions at once — measured 2026-08-28 against a real `sshd`:
+    ///
+    /// - `SFTPTransportError.detect(stderr:)` scans the whole stream for `permission denied` and
+    ///   `no such file` before anything else, so a `chmod` refused after a `put` whose bytes had
+    ///   already landed turned a perfectly good transfer into `.permissionDenied`. Hence the split
+    ///   (``SFTPMetadataStderr``) ahead of every classification.
+    /// - A batch **aborts on the first failed command and exits 1**, which is why the follow-up
+    ///   lines are sent allowed-to-fail. The transfer's own `-p` cannot be: a failed `put` has to
+    ///   stay a failed copy. So an exit code whose stderr is **nothing but** metadata refusals is
+    ///   read as a transfer that worked and metadata that did not — the alternative is reporting a
+    ///   file that is sitting there, correct, as a failure.
+    ///
+    /// Splitting unconditionally is safe because only a carrying batch can produce those lines at
+    /// all: on every other run the remainder is byte-identical to what the classifier always saw.
+    func runCarrying(
+        batch command: String,
+        tolerateChannelHold: Bool = false,
+        watching source: TransferProgressWatch.Source = .none,
+        progress: (Int64) -> Void = { _ in },
+        isCancelled: () -> Bool = { false }
+    ) throws -> (output: String, refusals: [RemoteMetadataRefusal]) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/sftp")
         process.arguments = SFTPProcessArguments.batch(
@@ -48,25 +82,38 @@ extension SFTPProcessTransport {
             if tolerateChannelHold {
                 // The server replied but never closed the channel; the reply is complete, so hand it
                 // back (only the single-line connect probe opts in — a multi-row listing must not be
-                // read partially, hence the throw below).
-                return captured.standardOutput
+                // read partially, hence the throw below). Nothing that opts in carries metadata
+                // steps, so there is nothing to report about them.
+                return (captured.standardOutput, [])
             }
             throw SFTPTransportError.failure(String(
                 localized: "The SFTP server stopped responding.",
                 comment: "SFTP failure: the server held the channel open past the timeout."
             ))
         }
+        let split = SFTPMetadataStderr.separate(stderr: captured.standardError)
+        // `sftp` names the failing path and not the failing attribute, so which aspect went missing
+        // is the backend's to work out from the plan it built; what reaches here is only that a step
+        // was refused, in the remote's own words.
+        let refusals = split.lines.map { RemoteMetadataRefusal.itemRefused($0) }
+
         if captured.terminationStatus != 0 {
-            throw SFTPTransportError.classify(stderr: captured.standardError)
+            // An exit explained *entirely* by metadata refusals is not a failed transfer: the bytes
+            // are on the server and the file is right.
+            guard split.remainder.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  !refusals.isEmpty else {
+                throw SFTPTransportError.classify(stderr: split.remainder)
+            }
+            return (captured.standardOutput, refusals)
         }
         // An interactive (password) session exits zero even on a failed command, so its errors live
         // only in stderr — scan for them; key auth's `-b -` already fails non-zero above.
         if isPasswordAuthentication, let error = SFTPTransportError.detect(
-            stderr: captured.standardError
+            stderr: split.remainder
         ) {
             throw error
         }
-        return captured.standardOutput
+        return (captured.standardOutput, refusals)
     }
 
     /// Run one `ssh` exec channel and return its stdout, whatever the server made of the command.

@@ -265,15 +265,24 @@ private final class CopyRun {
             for child in children {
                 try copyManual(child, to: target.appending(child.name))
             }
-            try? backend.copyMetadata(at: entry.path, to: target)
+            // The listing already read the mode and the date, so carrying them costs nothing here
+            // and saves a remote backend a round trip it would otherwise have to spend asking
+            // (PLAN.md §M25 Slice 2).
+            try? backend.copyMetadata(
+                at: entry.path,
+                to: target,
+                sourceMetadata: RemoteSourceMetadata(entry)
+            )
         case .file, .other:
             try backend.copyFile(
                 at: entry.path,
                 to: target,
-                // The listing already measured it, so handing the size over costs nothing and is
-                // what lets a remote backend decide to split the transfer (docs/HISTORY.md ▸ After M19). A backend
-                // with no use for it copies exactly as before.
-                expectedSize: entry.byteSize,
+                // The listing already read all of it, so the hint costs nothing: the size is what
+                // lets a remote backend split the transfer (docs/HISTORY.md ▸ After M19), and the mode and date are
+                // what make carrying them free in *both* directions (PLAN.md §M25 Slice 2) — an
+                // upload's source is local, and a download's would otherwise cost a whole connection
+                // to ask about. A backend with no use for either copies exactly as before.
+                hint: CopySourceHint(entry),
                 progress: { [self] delta in
                     completedBytes += delta
                     emit(current: entry.path, force: false)

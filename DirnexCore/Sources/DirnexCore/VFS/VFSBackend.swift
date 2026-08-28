@@ -253,6 +253,27 @@ public protocol VFSBackend: Sendable {
         isCancelled: () -> Bool
     ) throws
 
+    /// The same copy, also told what the source's **metadata** was, so a backend that can carry a
+    /// mode and a modification time across the wire does not have to go and ask (PLAN.md §M25).
+    ///
+    /// Additive for the same reason `expectedSize` was, and it earns its place the same way: the
+    /// caller already holds the answer. A download's source is remote, so learning its mode costs a
+    /// whole connection — 71 ms against a loopback `sshd`, a real TCP + SSH handshake over a network
+    /// — while every caller that copies a file has the `FileEntry` a listing produced. With the hint
+    /// **both directions are free**: an upload reads its local source, and a download applies the
+    /// listing's own answer to the local destination with plain syscalls.
+    ///
+    /// The forwarding default drops the hint, which is honest rather than merely convenient: a
+    /// backend that ignores it is precisely a backend that does not carry metadata, so the copy
+    /// behaves exactly as it did before and nothing claims otherwise.
+    func copyFile(
+        at source: VFSPath,
+        to destination: VFSPath,
+        hint: CopySourceHint,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws
+
     /// Recreate a symbolic link at `destination` pointing at the raw (unresolved) target
     /// text `target`. Copying a symlink duplicates the link itself, never the file it
     /// points at (matching `clonefile`/`cp -R` semantics).
@@ -263,6 +284,18 @@ public protocol VFSBackend: Sendable {
     /// the engine had to recreate by hand on the cross-volume fallback path. The default
     /// is a no-op so a backend that doesn't track metadata compiles untouched.
     func copyMetadata(at source: VFSPath, to destination: VFSPath) throws
+
+    /// The same, told what the source carried — so a remote backend finishing a directory it
+    /// recreated by hand does not spend a round trip asking (PLAN.md §M25 Slice 2).
+    ///
+    /// The engine calls this holding the very `FileEntry` it listed, so the hint is free where a
+    /// `stat` would be a whole connection. Additive with a forwarding default, exactly as
+    /// ``copyFile(at:to:expectedSize:sourceMetadata:progress:isCancelled:)`` is.
+    func copyMetadata(
+        at source: VFSPath,
+        to destination: VFSPath,
+        sourceMetadata: RemoteSourceMetadata?
+    ) throws
 
     /// A stable identifier for the physical volume `path` resides on, or `nil` when the
     /// backend can't tell its volumes apart. The M2 operation queue schedules by this:
@@ -332,12 +365,40 @@ public extension VFSBackend {
         try copyFile(at: source, to: destination, progress: progress, isCancelled: isCancelled)
     }
 
+    func copyFile(
+        at source: VFSPath,
+        to destination: VFSPath,
+        hint: CopySourceHint,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws {
+        // Dropping the metadata half *is* the old behaviour: a backend that cannot carry it copies
+        // the bytes and nothing else, exactly as it always did.
+        try copyFile(
+            at: source,
+            to: destination,
+            expectedSize: hint.expectedSize,
+            progress: progress,
+            isCancelled: isCancelled
+        )
+    }
+
     func createSymbolicLink(at destination: VFSPath, withDestination target: String) throws {
         throw VFSError.unsupported(.symbolicLink)
     }
 
     func copyMetadata(at source: VFSPath, to destination: VFSPath) throws {
         // Backends without metadata to preserve need do nothing.
+    }
+
+    func copyMetadata(
+        at source: VFSPath,
+        to destination: VFSPath,
+        sourceMetadata _: RemoteSourceMetadata?
+    ) throws {
+        // Ignoring the hint is the old behaviour, and it is honest: a backend that does not use it
+        // is one that was not carrying metadata in the first place.
+        try copyMetadata(at: source, to: destination)
     }
 
     func volumeIdentifier(for path: VFSPath) -> String? {

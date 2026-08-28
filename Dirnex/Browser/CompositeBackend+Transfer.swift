@@ -49,12 +49,36 @@ extension CompositeBackend {
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws {
+        try copyFile(
+            at: source,
+            to: destination,
+            hint: CopySourceHint(expectedSize: expectedSize),
+            progress: progress,
+            isCancelled: isCancelled
+        )
+    }
+
+    /// The same routing, also carrying what the source's listing said about its mode and times
+    /// (PLAN.md §M25 Slice 2).
+    ///
+    /// **Forwarding it has the same no-symptom failure the size hint does**, and this file already
+    /// carries that lesson: the app holds a composite, so a hint that stopped here would leave every
+    /// remote copy silently dropping a mode and a timestamp — same rows, same bytes, and a
+    /// destination that quietly disagrees with its source. The whole milestone would be inert with
+    /// every test still green, which is why what a test has to separate is *routed* from *answered*.
+    func copyFile(
+        at source: VFSPath,
+        to destination: VFSPath,
+        hint: CopySourceHint,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws {
         switch try transferRoute(from: source, to: destination) {
         case let .direct(mover):
             try mover.copyFile(
                 at: source,
                 to: destination,
-                expectedSize: expectedSize,
+                hint: hint,
                 progress: progress,
                 isCancelled: isCancelled
             )
@@ -63,7 +87,7 @@ extension CompositeBackend {
                 try mover.copyFile(
                     at: source,
                     to: destination,
-                    expectedSize: expectedSize,
+                    hint: hint,
                     progress: progress,
                     isCancelled: isCancelled
                 )
@@ -78,7 +102,7 @@ extension CompositeBackend {
                 try stage(
                     source,
                     to: destination,
-                    expectedSize: expectedSize,
+                    hint: hint,
                     progress: progress,
                     isCancelled: isCancelled
                 )
@@ -88,7 +112,7 @@ extension CompositeBackend {
                 from: .init(source, on: sourceBackend),
                 to: .init(destination, on: destinationBackend),
                 stagingRoot: Self.relayStagingRoot,
-                expectedSize: expectedSize,
+                hint: hint,
                 progress: progress,
                 isCancelled: isCancelled
             )
@@ -99,7 +123,7 @@ extension CompositeBackend {
     private func stage(
         _ source: VFSPath,
         to destination: VFSPath,
-        expectedSize: Int64?,
+        hint: CopySourceHint,
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws {
@@ -107,7 +131,7 @@ extension CompositeBackend {
             from: .init(source, on: try backend(for: source)),
             to: .init(destination, on: try backend(for: destination)),
             stagingRoot: Self.relayStagingRoot,
-            expectedSize: expectedSize,
+            hint: hint,
             progress: progress,
             isCancelled: isCancelled
         )

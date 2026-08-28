@@ -193,7 +193,27 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
     }
 
     func copyMetadata(at source: VFSPath, to destination: VFSPath) throws {
-        try backend(for: source).copyMetadata(at: source, to: destination)
+        try copyMetadata(at: source, to: destination, sourceMetadata: nil)
+    }
+
+    /// The same, carrying what the listing already read — so a remote backend finishing a directory
+    /// it recreated by hand spends no round trip asking (PLAN.md §M25 Slice 2).
+    ///
+    /// It routes on the **destination**, unlike its older spelling: the metadata is being *written*,
+    /// and for a download that write lands on this machine while the source is the remote one. The
+    /// source-routed version answered from the wrong backend for every download, which was invisible
+    /// while the whole thing was a no-op.
+    func copyMetadata(
+        at source: VFSPath,
+        to destination: VFSPath,
+        sourceMetadata: RemoteSourceMetadata?
+    ) throws {
+        let owner = destination.backend == .local ? source : destination
+        try backend(for: owner).copyMetadata(
+            at: source,
+            to: destination,
+            sourceMetadata: sourceMetadata
+        )
     }
 
     func volumeIdentifier(for path: VFSPath) -> String? {

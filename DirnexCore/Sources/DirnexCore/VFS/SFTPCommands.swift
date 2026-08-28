@@ -120,6 +120,48 @@ public enum SFTPBatchCommand {
         "chgrp \(onSymbolicLink ? "-h " : "")\(groupID) \(quote(remotePath))"
     }
 
+    /// The same line, marked **allowed to fail**: `sftp`'s `-` prefix, which lets a batch carry on
+    /// past a command the server refuses.
+    ///
+    /// This is what makes a metadata step safe to send alongside a transfer, and it was measured
+    /// rather than assumed (2026-08-28, against a real `sshd`). Under `-b`, a batch **aborts on the
+    /// first failed command and exits 1** — so a `chmod` refused after a `put` that had already
+    /// landed its bytes made `sftp` exit 1, which a caller reads as a failed copy: a successful
+    /// transfer reported as a failure, on a file that is perfectly fine. With the prefix the same
+    /// run exits 0, the bytes are still there, and the refusal is **still printed to stderr**, which
+    /// is the half that keeps the loss reportable rather than merely swallowed.
+    ///
+    /// A step that *succeeds* prints nothing at all (measured: stderr exactly 0 bytes), so the
+    /// prefix costs the ordinary transfer nothing and a non-empty stderr is itself the signal.
+    public static func allowedToFail(_ line: String) -> String { "-\(line)" }
+
+    /// Several lines as one `sftp -b -` script. `sftp` reads one command per line, so a transfer and
+    /// its metadata follow-up ride **one connection** — which is the whole reason to build a batch
+    /// rather than issue two: a second invocation is a fresh TCP connect, key exchange and
+    /// authentication, measured at **71 ms** against a loopback server and a real round trip over a
+    /// network.
+    public static func batch(_ lines: [String]) -> String { lines.joined(separator: "\n") }
+
+    /// The follow-up lines that finish a transfer's metadata carry, each allowed to fail.
+    ///
+    /// Only ``RemoteMetadataStep/setMode(_:)`` is expressible over SFTP: the batch language has no
+    /// verb that sets a time, which is why ``RemoteMetadataCapabilities/sftp`` omits
+    /// ``RemoteMetadataCapabilities/setModificationTime`` and a plan built against it never asks for
+    /// one. A step this protocol cannot spell is skipped rather than approximated — the plan has
+    /// already counted it as dropped.
+    public static func metadataFollowUp(
+        _ steps: [RemoteMetadataStep],
+        on remotePath: String,
+        onSymbolicLink: Bool = false
+    ) -> [String] {
+        steps.compactMap { step in
+            guard case let .setMode(mode) = step else { return nil }
+            return allowedToFail(
+                changeMode(remotePath, to: mode, onSymbolicLink: onSymbolicLink)
+            )
+        }
+    }
+
     /// The `-a`/`-p` flag run shared by `get` and `put`, with its trailing space, so the two verbs
     /// cannot disagree about spelling or order.
     private static func flags(resume: Bool, preserve: Bool) -> String {

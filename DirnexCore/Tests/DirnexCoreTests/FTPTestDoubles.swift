@@ -184,6 +184,26 @@ final class FakeFTPTransport: FTPTransport, @unchecked Sendable {
         return transferBytes
     }
 
+    // MARK: - Metadata carry (PLAN.md §M25 Slice 2)
+
+    /// What this double claims it can carry. **`[]` by default** — a transport that has not
+    /// implemented the carry must make the backend plan nothing and *report* the loss, never claim a
+    /// mode it did not write, so every test predating this milestone measures what it always did.
+    var metadataCapabilities: RemoteMetadataCapabilities = []
+    /// Steps handed to ``applyMetadata(_:to:)``, with the path they were aimed at — the observable
+    /// for "the upload asked the server to keep this", which no assertion about the file can make.
+    private(set) var appliedMetadata: [(path: String, steps: [RemoteMetadataStep])] = []
+    /// What every metadata step will answer. Empty is "it all arrived".
+    var metadataRefusals: [RemoteMetadataRefusal] = []
+
+    func applyMetadata(
+        _ steps: [RemoteMetadataStep],
+        to remotePath: String
+    ) throws -> [RemoteMetadataRefusal] {
+        appliedMetadata.append((path: remotePath, steps: steps))
+        return metadataRefusals
+    }
+
     func fileSize(_ remotePath: String) throws -> Int64 {
         if let error { throw error }
         fileSizeQueries.append(remotePath)

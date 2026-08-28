@@ -380,6 +380,36 @@ public enum FTPQuoteCommand {
         try command("MFMT \(timestamp(date))", remotePath)
     }
 
+    /// The commands that carry a transfer's metadata, in the order they must be sent.
+    ///
+    /// **These ride their own `curl`, after the transfer, and that is a measurement rather than a
+    /// preference.** A quote command sent alongside the transfer is refused as `curl` **exit 21**,
+    /// which fails the whole invocation *after* the bytes have landed — a successful upload reported
+    /// as a failed copy (2026-08-28, against a real FTP server: 16 bytes up, exit 21). `curl`'s
+    /// continue-on-failure prefix avoids that and costs the attribution: `%{http_code}` reports only
+    /// the **last** reply, so a refused `SITE CHMOD` behind a good `MFMT` is invisible, and a
+    /// connection can never learn which verb it lacks. Sent on their own the answer is exact — exit
+    /// 21 with reply **500** is *this server has no such verb* and worth latching, **550** is *that
+    /// file's problem* and is not, which is the split ``FTPTransportError/classify(exitCode:stderr:)``
+    /// already reads.
+    ///
+    /// One invocation carries both, so a file pays at most one extra login rather than one per step;
+    /// `curl` stops at the first refusal, which is what attributes it.
+    ///
+    /// A step this protocol cannot spell is skipped rather than approximated — FTP has no verb for an
+    /// access time (`SITE UTIME` is answered 500 here), and the plan has already counted it dropped.
+    public static func metadataSteps(_ steps: [RemoteMetadataStep], on remotePath: String) throws -> [
+        String
+    ] {
+        try steps.compactMap { step in
+            switch step {
+            case let .setMode(mode): return try changeMode(remotePath, to: mode)
+            case let .setModificationTime(date): return try setModificationTime(remotePath, to: date)
+            case .preserveDuringTransfer: return nil // no such flag on this wire
+            }
+        }
+    }
+
     /// `MFMT`'s `YYYYMMDDHHMMSS`, always in UTC. Built with an explicit POSIX locale and zone rather
     /// than a default-configured formatter, so the wire format cannot follow whoever is running the
     /// app (docs/NOTES.md ▸ Localization).

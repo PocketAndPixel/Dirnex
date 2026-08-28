@@ -126,6 +126,67 @@ struct FTPCurlTransport: FTPTransport {
         try quote(try FTPQuoteCommand.rename(source, to: destination), near: parentOf(source))
     }
 
+    // MARK: - Metadata carry (PLAN.md §M25 Slice 2)
+
+    /// What an FTP account can be asked before anything has been refused. There is no preserve flag
+    /// on this wire, so both are extensions the server need not implement — `SITE CHMOD` is by
+    /// definition per-server, and `MFMT` is RFC 3659 rather than RFC 959.
+    ///
+    /// `MFMT` is the one thing FTP has that SFTP does not: an **exact, UTC-anchored** modification
+    /// time, round-tripped live against the local truth on a host at +0300 so a zone error could not
+    /// have hidden. The coarse, year-less, zone-less stamp FTP is known for belongs to `LIST`, not
+    /// to the protocol.
+    var metadataCapabilities: RemoteMetadataCapabilities { .ftp }
+
+    /// Apply metadata steps in **their own invocation**, after the transfer.
+    ///
+    /// Measured 2026-08-28 against a real server, and it is the reason this is not folded into the
+    /// upload: a quote command sent alongside the transfer is refused as `curl` **exit 21**, which
+    /// fails the whole invocation *after* the bytes have landed — 16 bytes up, exit 21, a successful
+    /// upload reported as a failed copy. `curl`'s continue-on-failure prefix avoids that and costs
+    /// the attribution, since `%{http_code}` reports only the last reply. On its own the answer is
+    /// exact: exit 21 with reply **500** is a verb this server does not have, **550** is that file's
+    /// own problem, and `FTPTransportError.classify` already reads the difference.
+    ///
+    /// A refusal is **answered, not thrown**: the bytes are there and the file is right, so a server
+    /// that will not keep a mode has not failed the copy.
+    func applyMetadata(
+        _ steps: [RemoteMetadataStep],
+        to remotePath: String
+    ) throws -> [RemoteMetadataRefusal] {
+        let commands = try FTPQuoteCommand.metadataSteps(steps, on: remotePath)
+        guard !commands.isEmpty else { return [] }
+        do {
+            try quote(commands, near: parentOf(remotePath))
+            return []
+        } catch let error as FTPTransportError {
+            guard let refusal = Self.metadataRefusal(from: error) else { throw error }
+            return [refusal]
+        }
+    }
+
+    /// Read a refused quote command as the two answers that need different treatment, or `nil` when
+    /// the failure was not about the command at all — a dropped connection or a refused login is the
+    /// transfer's problem and must keep travelling as one.
+    ///
+    /// The split is the reply code's, which is why the core grew
+    /// ``FTPTransportError/commandNotImplemented`` for it: reply **500** is a verb this server does
+    /// not have — true of every file, so it latches — while **550** is that file's own problem and
+    /// says nothing about the next one. Collapsed together, a carry would either stop attempting a
+    /// verb the server honours or never learn about one it lacks.
+    private static func metadataRefusal(from error: FTPTransportError) -> RemoteMetadataRefusal? {
+        switch error {
+        case .commandNotImplemented:
+            return .verbUnimplemented("")
+        case let .failure(text):
+            return .itemRefused(text)
+        case .notFound, .permissionDenied:
+            return .itemRefused("")
+        default:
+            return nil
+        }
+    }
+
     /// Run raw FTP commands. The URL only says where to connect and must not itself transfer, so it
     /// points at a directory — the *parent* of the item being acted on, which is guaranteed to exist
     /// (the item's own path may not, or may be about to stop existing).

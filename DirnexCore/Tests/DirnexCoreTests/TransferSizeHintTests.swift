@@ -50,7 +50,7 @@ struct TransferSizeHintTests {
             from: .init(VFSPath(backend: RecordingBackend.remoteID, path: "/pub/a.bin"), on: source),
             to: .init(VFSPath(backend: destination.id, path: "/in/a.bin"), on: destination),
             stagingRoot: tree.root,
-            expectedSize: 4096,
+            hint: CopySourceHint(expectedSize: 4096),
             progress: { _ in },
             isCancelled: { false }
         )

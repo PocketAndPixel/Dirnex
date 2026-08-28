@@ -150,7 +150,7 @@ the file it was mounted from is gone by the next launch.
 | Undo `⌘Z` | yes | yes | no<sup>qq</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially | yes | no |
 | Background queue, progress bar, Stop | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 | Per-file conflict dialog | yes | yes | yes | yes | yes | yes | n/a | yes | yes |
-| Preserve permissions / dates / xattrs on copy | yes | yes | yes, limited | **no**<sup>q</sup> | **no**<sup>q</sup> | n/a<sup>q</sup> | n/a | yes | yes |
+| Preserve permissions / dates / xattrs on copy | yes | yes | yes, limited | yes, limited<sup>q</sup> | yes, limited<sup>q</sup> | n/a<sup>q</sup> | n/a | yes | yes |
 | Copy a symlink as a symlink | yes | yes | yes | **no**<sup>pp</sup> | n/a<sup>pp</sup> | n/a | n/a | yes | yes |
 | APFS clone fast path | yes | yes | n/a | n/a | n/a | n/a | n/a | yes | yes |
 
@@ -205,10 +205,29 @@ Box — those origins are opaque provider references with no path in them.
 undo remotely. A **permanent delete is not reversible anywhere** — which is every remote delete,
 since no remote backend has a Trash.
 
-<sup>q</sup> `copyMetadata` is a no-op on the remote backends. S3 has no settable mtime, no
-permissions and no symlinks at all (PLAN.md §M21); SFTP and FTP could carry more than they do, and
-`sftp`'s own `get -p` / `put -p`, `chmod`, `chown` and `chgrp` are the verbs that would (PLAN.md
-§M25). Over FTP it is the mode alone, through `-Q` quote commands.
+<sup>q</sup> **The mode and the modification time are carried in both directions; extended
+attributes and ACLs are not, and cannot be** — neither protocol has anywhere to put them, which is a
+limit rather than a gap (PLAN.md §M25 Slice 2). What each side manages differs, and what it *cannot*
+manage is reported rather than passed over in silence, which is the half that matters: a copy that
+quietly drops a mode is indistinguishable from one that kept it until somebody inspects the
+destination.
+
+Over **SFTP** an upload rides `put -p`, which carries the nine `rwx` bits and both timestamps exactly
+and silently drops set-uid, set-gid and the sticky bit; a mode holding one of those adds a corrective
+`chmod` as a second line in the **same** batch, so it costs no extra connection. There is no batch
+verb that sets a time, so an SFTP upload's mtime rides `-p` or not at all. Over **FTP** there is no
+preserve flag: the mode goes as `SITE CHMOD` and the time as `MFMT`, which is exact and UTC-anchored
+(RFC 3659) — the coarse, year-less stamp FTP is known for belongs to `LIST`, not to the protocol.
+Both are extensions a server need not implement, and a refusal is latched per connection so no later
+file pays to find out again.
+
+A **download** is bounded by neither, because it lands on this machine: `chmod` and `utimes` always
+work, so it carries whatever the source's listing reported even on a connection whose server has
+refused to keep anything.
+
+S3 remains `n/a`: it has no settable mtime, no permissions and no symlinks at all (PLAN.md §M21), and
+a row that reports no mode is *absent* rather than dropped — the distinction the whole carry turns
+on, since folding the two together would make every S3 copy claim damage it did not do.
 
 <sup>pp</sup> Only the **read** half is missing, and only over SFTP: `SFTPBackend.createSymbolicLink`
 ships and `CopyEngine` calls it, so a link can be written — but `sftp`'s `ls -la` prints the kind

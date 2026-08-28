@@ -62,7 +62,7 @@ public enum RelayCopy {
         from source: Endpoint,
         to destination: Endpoint,
         stagingRoot: URL,
-        expectedSize: Int64? = nil,
+        hint: CopySourceHint = .none,
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws {
@@ -90,7 +90,7 @@ public enum RelayCopy {
             // The download leg is an ordinary download and gets the same hint one would — a relayed
             // copy out of a bucket should be split like any other (docs/HISTORY.md ▸ After M19). The *upload* leg
             // reads the staged file's own size, which cannot be stale, so it needs nothing.
-            expectedSize: expectedSize,
+            hint: hint,
             progress: { delta in
                 downloaded += delta
                 report()
@@ -102,6 +102,11 @@ public enum RelayCopy {
         try destination.backend.copyFile(
             at: .local(staged.path),
             to: destination.path,
+            // The *original* source's metadata, which is what makes a relay carry it at all: the
+            // upload leg would otherwise send the staging directory's own mode and the moment it was
+            // written — metadata about this machine's scratch space rather than about the file. The
+            // size half is dropped because the staged file's own is exact (PLAN.md §M25).
+            hint: CopySourceHint(metadata: hint.metadata),
             progress: { delta in
                 uploaded += delta
                 report()

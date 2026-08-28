@@ -374,6 +374,15 @@ at build time.
     `NSApp.currentEvent` and any `.shared` read taken mid-decision, and it always fails in the
     reassuring direction — the control passes.
 
+- **An assertion inside `offCooperativePool` is filed under `Test «unknown»` while the test it came
+  from still prints a tick — so a live suite's ✔ is not evidence.** The helper runs its body on a
+  `DispatchQueue` thread, outside any task (which is the whole point — ▸ Swift 6 and concurrency),
+  and Swift Testing tracks the current test in a task-local, so a failed `#expect` there has nothing
+  to attribute itself to. Measured 2026-08-28: two live carry tests reported ✔ with their real
+  failures listed separately as `«unknown»`, and only the run summary's issue count disagreed. **Read
+  the issue count, not the ticks**, on any suite whose bodies block off the pool — and note the
+  failure is reported, merely misattributed, so a run that says "0 issues" is still trustworthy.
+
 - **A bounded wait that gives up *silently* reports the wrong thing when it expires, and "it passes
   alone" is the tell.** These suites polled a fixed count of 50 × 50 ms and then simply fell through
   to the assertion, so a starved run failed as `attachedSheet → nil → nil` — a dead button, not a
@@ -2849,6 +2858,19 @@ one, so all four columnar parsers — `bsdtar -tvf`, `sftp`'s `ls -la`, FTP's `L
     rather than for equality, so noise of up to 60 s could exceed it — but a sync between a local
     side and an SFTP one is comparing a second-resolution mtime against a minute-resolution stamp
     regardless, which is its own approximation and not this bug's.
+  - **A listing cannot verify a carried timestamp, and a test that tries fails by a suspiciously
+    round number.** Both directions were paid for in wrong assertions on 2026-08-28 while checking
+    that a copy carries its source's mtime, and in both the *write* was exact and the **read-back**
+    was the limit. Over SFTP a remote `stat` is `ls -la`, which drops the time of day for a file
+    older than about six months: a 2018 fixture failed by **40150 s**, which is 11:09:10 — the
+    source's own time of day, the parse having landed at local midnight. Over FTP the `LIST` stamp is
+    zone-less on the *server's* clock, so the same assertion failed by **10800 s**, this machine's
+    own +0300. A round failure — an exact zone offset, or exactly a file's time of day — is the tell
+    that the instrument is the listing rather than the code.
+    - What works is to size the tolerance to the *reader*: a **recent** fixture (so `ls` still prints
+      a time) asserted to the minute over SFTP, and a whole day over FTP, which still separates the
+      two answers that matter — a carried time lands within one zone offset of the source, and an
+      uncarried one is the moment the transfer ran.
   - **The test has to be a property, because the obvious test passes on the broken code by luck.**
     "Parse the same row twice and compare" was written first and measured useless: two
     `formatters(for:)` calls a few microseconds apart can land on the same anchor, so the broken
@@ -2950,6 +2972,34 @@ one, so all four columnar parsers — `bsdtar -tvf`, `sftp`'s `ls -la`, FTP's `L
   the output gave it away. Any harness driving these two tools wants an assertion on
   `usage: sftp` / `usage: ssh` in stderr, not just a nonzero-exit check — the exit code is 1, which
   is also what a real failed command gives.
+
+- **Under `sftp -b`, a batch aborts on the first failed command and exits 1 — so a metadata step
+  sent after a transfer reports a *successful* copy as a failure.** Measured 2026-08-28: a `put`
+  followed by a `chmod` the server refuses leaves the bytes on the server, correct and complete, and
+  exits **1**, which every caller reads as a failed transfer. `sftp`'s **`-` prefix** ("allowed to
+  fail") is the exact fix — the same run exits 0, the file is still there, and the refusal is **still
+  printed to stderr**, which is the half that keeps the loss reportable rather than merely swallowed.
+  A step that *succeeds* prints nothing at all (stderr exactly 0 bytes), so the prefix costs the
+  ordinary transfer nothing and a non-empty stderr is itself the signal. It works in interactive
+  (password-auth) mode too, where the batch would not have aborted anyway.
+  - **Riding the same batch is worth the care, because the alternative is a connection.** `sftp`
+    reads one command per line, so a transfer and its follow-up are one session; a second invocation
+    is a fresh TCP connect, key exchange and authentication, measured at **71 ms** against a loopback
+    server and a real round trip over a network.
+  - **A metadata refusal must never reach the transfer's classifier, and it has a family in each
+    direction.** `SFTPTransportError.detect(stderr:)` scans the *whole* stream for `permission
+    denied` and `no such file` before anything else, so one refused `chmod` turns a completed copy
+    into `.permissionDenied` — and in interactive mode, where a failed command exits 0, that is the
+    only thing the caller has to go on. The strings are OpenSSH's own, read out of `/usr/bin/sftp`
+    rather than guessed: **`remote setstat "%s": %s`** for the remote side (`put -p`, `chmod`,
+    `chown`, `chgrp`) and **`local chmod "%s"`**, **`local chmod directory "%s"`**, **`local set
+    times "%s"`**, **`local set times on "%s"`** for what `get -p` cannot do on this machine. The
+    local family is the easy one to miss and fails identically: a finished *download* classified as
+    denied. Anchor the match at the **start of a line** — matching a substring is the bug, since it
+    cannot tell whose failure it found.
+  - The corollary for the exit code: an exit whose stderr is **nothing but** metadata refusals is a
+    transfer that worked. The transfer's own `-p` cannot be `-`-prefixed (a failed `put` has to stay
+    a failed copy), so that rule is what covers a `put -p` whose `setstat` the server refuses.
 
 - **There is no way to create a file exclusively over `sftp`, and all three candidates fail
   differently.** Measured 2026-08-23 against a real `sshd` while building ⇧F4's remote route, because
@@ -3233,6 +3283,26 @@ off a man page.
     unreachable host still yields the header and two zero rows before `curl: (7) …`). So on a
     transfer invocation there is always a row after the header, and the structural rule above always
     has something to key on.
+- **A `-Q` command refused after a transfer fails the whole invocation — and `curl`'s
+  continue-on-failure prefix buys that back only by destroying the attribution.** Measured
+  2026-08-28: an upload carrying a post-transfer quote command the server refuses reports **16 bytes
+  up and exit 21**, so a successful upload is a failed copy. Prefixing avoids the exit and then
+  `%{http_code}` reports only the **last** reply, so a refused `SITE CHMOD` sitting behind a good
+  `MFMT` is invisible and a connection can never learn which verb it lacks. Sent in an invocation of
+  their own the answer is exact — exit 21 with **500** is a verb this server does not implement,
+  **550** is that file's own problem — which is the split `FTPTransportError.classify` reads and the
+  only one a per-connection latch can rest on.
+  - **The prefix order is `-*`, not `*-`, and the wrong one fails silently.** `-` marks the command
+    as post-transfer and `*` as allowed-to-fail, and `curl` reads them in that order: traced on the
+    wire, `*-SITE CHMOD …` sends the literal **`-SITE CHMOD …`** *before* the transfer, is answered
+    **500 Command "-SITE" not understood**, and still **exits 0** — the mode never applied, on a run
+    reporting complete success. `-*SITE CHMOD …` sends `SITE CHMOD` after `STOR` and works. Trace the
+    control channel rather than reading the exit code; curl's own documentation phrases the asterisk
+    as "prefix the command", which is what makes the wrong order the natural one to write.
+  - `%{http_code}` on an FTP invocation is the **last reply code**, not the transfer's — a plain
+    upload carrying two quote commands reported `213` (MFMT's) rather than 226. Anything reading it
+    as the transfer's status has to account for the quote commands changing it.
+
 - **An FTPS data connection can return zero bytes and exit 18 on this `curl`** when TLS 1.3 is
   negotiated; `--tlsv1.2 --tls-max 1.2` fixes it, on both SSL backends. Apply it as a **retry after
   exit 18**, not up front — forcing every server to 1.2 is a real downgrade for the ones that do 1.3

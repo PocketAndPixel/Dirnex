@@ -124,6 +124,78 @@ struct SFTPProcessTransport: SFTPTransport {
         return localFileSize(localPath)
     }
 
+    // MARK: - Metadata carry (PLAN.md §M25 Slice 2)
+
+    /// What an OpenSSH account can be asked before anything has been refused: `-p` on the transfer
+    /// verbs, and an explicit `chmod`. There is no batch verb that sets a time, which is why
+    /// ``RemoteMetadataCapabilities/sftp`` omits it — an SFTP upload carries a modification time
+    /// only through `-p`, and never on its own.
+    ///
+    /// Declaring this is an obligation to implement the carrying verbs below; the empty default is
+    /// what keeps a transport that has not done so honest.
+    var metadataCapabilities: RemoteMetadataCapabilities { .sftp }
+
+    /// The download, carrying what the plan asks — **one connection**, because `sftp` reads one
+    /// command per line and a second invocation would be a fresh TCP connect, key exchange and
+    /// authentication (71 ms measured on loopback, a real round trip over a network).
+    @discardableResult
+    func download(
+        _ remotePath: String,
+        to localPath: String,
+        options: RemoteTransferOptions,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> RemoteTransferOutcome {
+        // Only the flag rides the wire: a download's follow-up steps act on the *local* file, so
+        // sending them as batch lines would aim them at the server's copy. The backend applies them.
+        let result = try runCarrying(
+            batch: SFTPBatchCommand.download(
+                remotePath,
+                to: localPath,
+                resume: options.resume,
+                preserve: options.carry.usesPreserveFlag
+            ),
+            watching: .destinationFile(path: localPath),
+            progress: progress,
+            isCancelled: isCancelled
+        )
+        return RemoteTransferOutcome(bytes: localFileSize(localPath), refusals: result.refusals)
+    }
+
+    /// The upload, carrying what the plan asks: `put -p` for the nine bits and both timestamps, plus
+    /// an allowed-to-fail `chmod` for the three special bits `-p` silently drops.
+    @discardableResult
+    func upload(
+        _ localPath: String,
+        to remotePath: String,
+        options: RemoteTransferOptions,
+        progress _: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> RemoteTransferOutcome {
+        let result = try runCarrying(
+            batch: SFTPBatchCommand.batch(
+                [SFTPBatchCommand.upload(
+                    localPath,
+                    to: remotePath,
+                    resume: options.resume,
+                    preserve: options.carry.usesPreserveFlag
+                )] + SFTPBatchCommand.metadataFollowUp(options.carry.followUp, on: remotePath)
+            ),
+            isCancelled: isCancelled
+        )
+        return RemoteTransferOutcome(bytes: localFileSize(localPath), refusals: result.refusals)
+    }
+
+    /// Apply metadata with no transfer to ride on — the directory `copyMetadata` finishes.
+    func applyMetadata(
+        _ steps: [RemoteMetadataStep],
+        to remotePath: String
+    ) throws -> [RemoteMetadataRefusal] {
+        let lines = SFTPBatchCommand.metadataFollowUp(steps, on: remotePath)
+        guard !lines.isEmpty else { return [] }
+        return try runCarrying(batch: SFTPBatchCommand.batch(lines)).refusals
+    }
+
     /// Run one command on the server's own shell over an SSH **exec** channel — the search
     /// shortcut's route (PLAN.md §M22 Slice 4), and the one verb here that does not speak SFTP.
     ///

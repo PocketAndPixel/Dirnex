@@ -138,10 +138,81 @@ public protocol SFTPTransport: RemoteWriteTransport {
     /// The default answers `nil`, so a transport that has no use for this — and every existing test
     /// double — inherits "there is no shortcut here" and the caller walks.
     func runCommand(_ command: String, isCancelled: () -> Bool) throws -> String?
+
+    /// The same download, carrying the source's metadata as `plan` describes it.
+    ///
+    /// **One invocation, not two.** `sftp` reads one command per line, so `-p` rides the `get`
+    /// itself and any follow-up `chmod` is another line in the same batch — where a second call
+    /// would be a fresh TCP connect, key exchange and authentication, measured at **71 ms** against
+    /// a loopback server and a real round trip over a network.
+    ///
+    /// The follow-up lines are sent **allowed to fail** (`sftp`'s `-` prefix), which is what keeps a
+    /// refused `chmod` from failing a transfer whose bytes already landed: measured 2026-08-28, a
+    /// plain batch aborts on the first failed command and exits 1, so without the prefix a
+    /// successful copy is reported as a failure. With it the run exits 0 and the refusal still
+    /// reaches stderr, which is what makes the loss reportable rather than merely swallowed.
+    ///
+    /// Additive, and its default **forwards while carrying nothing** — honest only because a
+    /// transport that has not implemented it also reports no ``RemoteWriteTransport/metadataCapabilities``,
+    /// so the plan it is handed is empty and the two paths produce the identical file.
+    @discardableResult
+    func download(
+        _ remotePath: String,
+        to localPath: String,
+        options: RemoteTransferOptions,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> RemoteTransferOutcome
+
+    /// The same upload, carrying the source's metadata as `plan` describes it — with exactly the
+    /// batch shape and the allowed-to-fail rule ``download(_:to:resume:carrying:progress:isCancelled:)``
+    /// documents, measured in this direction too.
+    @discardableResult
+    func upload(
+        _ localPath: String,
+        to remotePath: String,
+        options: RemoteTransferOptions,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> RemoteTransferOutcome
 }
 
 public extension SFTPTransport {
     func runCommand(_ command: String, isCancelled: () -> Bool) throws -> String? { nil }
+
+    @discardableResult
+    func download(
+        _ remotePath: String,
+        to localPath: String,
+        options: RemoteTransferOptions,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> RemoteTransferOutcome {
+        RemoteTransferOutcome(bytes: try download(
+            remotePath,
+            to: localPath,
+            resume: options.resume,
+            progress: progress,
+            isCancelled: isCancelled
+        ))
+    }
+
+    @discardableResult
+    func upload(
+        _ localPath: String,
+        to remotePath: String,
+        options: RemoteTransferOptions,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> RemoteTransferOutcome {
+        RemoteTransferOutcome(bytes: try upload(
+            localPath,
+            to: remotePath,
+            resume: options.resume,
+            progress: progress,
+            isCancelled: isCancelled
+        ))
+    }
 
     /// The additive half of ``downloadSegments(_:of:to:progress:isCancelled:)``: a transport that
     /// predates segmented downloads keeps compiling and keeps working.

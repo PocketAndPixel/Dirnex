@@ -332,6 +332,14 @@ extension PanelViewController {
                 localized: "The remote path wasn’t found.",
                 comment: "FTP connect failure detail: the remote path does not exist."
             )
+        case .commandNotImplemented:
+            return String(
+                localized: "The server doesn’t support that command.",
+                comment: """
+                FTP connect failure detail: the server answered reply 500 or 502, \
+                meaning it does not implement the command that was sent.
+                """
+            )
         case .permissionDenied:
             return String(
                 localized: "The server refused access to that path.",

@@ -181,6 +181,19 @@ public enum FTPTransportError: Error, Sendable, Equatable {
     /// the password is ever weighed. Distinct from ``loginDenied``: the credentials may be
     /// perfect; the fix is to switch to FTPS, not to re-check the user name and password.
     case tlsRequired
+    /// The server does not implement the command — reply **500** ("syntax error, command
+    /// unrecognized") or **502** ("command not implemented").
+    ///
+    /// Its own case because it is the one refusal that is a fact about the **account** rather than
+    /// about a file, which is exactly the split a per-connection latch rests on: a verb this server
+    /// lacks is true of every file on it and worth remembering, where 550 is that file's own problem
+    /// and says nothing about the next one (PLAN.md §M25). Folded into ``notFound`` — where it used
+    /// to land, through `replyCodeMeaning`'s default — the two are indistinguishable, and a metadata
+    /// carry would either latch on a file's refusal or never latch at all.
+    ///
+    /// Reachable in practice only from a `-Q` command, since the verbs a listing or a transfer uses
+    /// are RFC 959's and no server is without them.
+    case commandNotImplemented
     /// Anything else, carrying `curl`'s own text verbatim.
     ///
     /// **Empty when there was nothing to say**, deliberately — this is the tool's words, not ours,
@@ -234,6 +247,9 @@ public enum FTPTransportError: Error, Sendable, Equatable {
     /// sends the user to check the wrong thing.
     private static func replyCodeMeaning(in stderr: String) -> FTPTransportError {
         switch ftpReplyCode(in: stderr) {
+        // 500/502 is the server saying it has no such verb — measured as the answer to a
+        // `SITE UTIME` no server here offers.
+        case 500, 502: return .commandNotImplemented
         case 530: return .loginDenied
         case 532, 552: return .permissionDenied
         // 553 is "file name not allowed" — a write the server rejected on the name itself.

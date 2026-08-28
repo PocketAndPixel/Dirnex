@@ -738,6 +738,58 @@ the old behaviour standing where it cannot be established.
    it needs and the app reports what a copy could not keep. This is where the per-connection latch
    lands, and where `copyMetadata` — today a no-op default the engine calls only for a directory it
    recreated by hand — stops being a no-op for SFTP and FTP.
+   **Landed 2026-08-28.** Four things were measured against the real `sshd` and a real FTP server
+   before any Swift, and three of them changed the shape.
+   **A refused follow-up must not fail a transfer whose bytes have landed.** Under `sftp -b` a batch
+   **aborts on the first failed command and exits 1**, so a `chmod` refused after a `put` reported a
+   perfectly good copy as a failure; `sftp`'s `-` prefix fixes it exactly — exit 0, the bytes still
+   there, and the refusal **still on stderr**, which is what keeps the loss reportable rather than
+   merely swallowed. A step that succeeds prints nothing at all (measured: stderr exactly 0 bytes),
+   so the ordinary transfer is untouched. The same hazard over FTP is worse: a quote command sent
+   alongside the transfer is refused as `curl` **exit 21** *after* the upload, and `curl`'s
+   continue-on-failure prefix avoids that only by destroying the attribution — `%{http_code}` reports
+   the **last** reply, so a refused `SITE CHMOD` behind a good `MFMT` is invisible. Hence FTP's steps
+   run in one invocation of their own, where reply **500** (a verb this server lacks, so latch it)
+   and **550** (that file's problem, so do not) separate cleanly. `curl`'s prefix order is its own
+   trap and fails silently: `*-CMD` sends the literal `-SITE …` **before** the transfer, is answered
+   500, and still exits 0 — the mode never applied, on a run reporting complete success.
+   **A metadata refusal must never be read as the transfer's failure**, which is the bug the split
+   (`SFTPMetadataStderr`) exists for: `detect(stderr:)` scans the whole stream for `permission
+   denied` and `no such file` first, so a refused `chmod` turned a completed copy into
+   `.permissionDenied`. It has a family in **each** direction, both read out of `/usr/bin/sftp`
+   rather than guessed — `remote setstat "…"` from `put -p`/`chmod`, and `local chmod` / `local set
+   times` from `get -p`, the latter equally able to make a finished download classify as denied.
+   **The capabilities describe the *destination*, not the wire.** A download lands on this machine,
+   where `chmod` and `utimes` always work, so it carries everything the hint holds even on a
+   connection whose server has refused to keep anything — reading the wire's limits into that
+   direction would drop a time the disk was perfectly able to take and blame the protocol for it.
+   That asymmetry is also what makes both directions **free**: the hint (`CopySourceHint`) comes from
+   the listing `CopyEngine` already made, where asking would be a whole connection — 71 ms against a
+   loopback `sshd`, a real handshake over a network.
+   Controlled in five directions, each failing only the tests that name it: the corrective `chmod`
+   dropped, a download reading the wire's capabilities, latching a refusal `curl` cannot attribute,
+   a transport's declared capabilities defaulting to SFTP's rather than to nothing, and a refusal
+   recorded as no loss at all. Two of the controls were **inert on first writing** and that is the
+   finding worth keeping: `.ftp` and `.localDestination` happen to be the same set, so the download
+   test discriminated nothing until the connection was latched first; and the fake *declares* its
+   capabilities, so it shadows the protocol default the test was aimed at.
+   **Verified live end to end**, through the real `SFTPProcessTransport` and `FTPCurlTransport`
+   rather than any double: a set-uid source landed **04755** with its exact mtime, an FTP upload
+   landed **0754** with an exact `MFMT` time, and a `chmod` at a path that is not there came back as
+   an *answer* rather than a thrown failure. The controls are what make that evidence — with the
+   corrective `chmod` removed the same server reports **0755**, and with FTP's step invocation
+   removed the mode is the umask's and the time is the moment the upload ran.
+   Two limits of the read-back were paid for in wrong assertions first, and both are the *listing's*
+   rather than the carry's: `ls -la` drops the time of day for a file older than about six months, so
+   a 2018 fixture failed by exactly its own time of day; and an FTP `LIST` stamp is zone-less on the
+   server's clock, so the same assertion failed by exactly this machine's +0300.
+   **What is deliberately not here is the sentence a user reads.** The loss is accumulated per
+   connection (`RemoteMetadataSupport.loss`, aspects and a count) and nothing on screen consults it
+   yet: where it belongs — a status line, the operation report, Get Info — is a surface decision that
+   travels with Slice 5's Get Info write half rather than one to settle in the transports. A draining
+   `takeLoss()` was written alongside the accumulator and deleted, because the run boundary it marked
+   is the reporting caller's to define and this repo has paid before for API justified by a reader
+   that does not exist.
 3. **Server-side `copy`.** A duplicate inside one SFTP account stops being a download and an upload
    through this Mac, latched per connection on the client's own refusal, with `RelayCopy` unchanged
    beneath it. `RelayCopy`'s doc comment and docs/NOTES.md both said no remote protocol has a copy
@@ -745,7 +797,9 @@ the old behaviour standing where it cannot be established.
 4. **Symlink targets over the exec channel**, degrading exactly as M22's search walk does, so a
    link is copied faithfully on an account that has one and goes on being refused on an account
    that does not.
-5. **Get Info's write half**, on the verbs slices 1–2 establish, and **Synchronize by size** — the
+5. **Get Info's write half**, on the verbs slices 1–2 establish, **the sentence that says what a
+   copy could not keep** — Slice 2 accumulates the loss and leaves choosing its surface here — and
+   **Synchronize by size** — the
    comparison that is honest on a side with no exact clock, which comparing by *contents* now
    joins, since M24 Slice 4 taught ⌥F3 to fetch both sides at a price the plan can state up front.
 
