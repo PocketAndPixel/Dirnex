@@ -119796,6 +119796,95 @@
         }
       }
     },
+    "vfs.unsupported.symbolicLinkTargetUnreadable": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Link „%@“ kann nicht kopiert werden — dieser Server gibt sein Ziel nicht preis."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can’t copy the link “%@” — this server can’t say what it points at."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se puede copiar el enlace «%@»: este servidor no indica a qué apunta."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de copier le lien « %@ » : ce serveur n’indique pas sa cible."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile copiare il collegamento “%@”: questo server non indica a cosa punta."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リンク「%@」をコピーできません。このサーバーはリンク先を返しません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "링크 “%@”을(를) 복사할 수 없습니다. 이 서버는 대상 경로를 알려주지 않습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De koppeling ‘%@’ kan niet worden gekopieerd — deze server geeft niet aan waarnaar hij verwijst."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można skopiować dowiązania „%@” — ten serwer nie podaje jego celu."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось скопировать ссылку «%@» — этот сервер не сообщает, куда она указывает."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося скопіювати посилання «%@» — цей сервер не повідомляє, куди воно вказує."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não é possível copiar o link “%@” — este servidor não informa para onde ele aponta."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法拷贝链接“%@”——此服务器不会说明它指向何处。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法拷貝連結「%@」——此伺服器不會說明它指向何處。"
+          }
+        }
+      }
+    },
     "vfs.unsupported.tagsNeedLocalFile": {
       "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure.",
       "localizations": {

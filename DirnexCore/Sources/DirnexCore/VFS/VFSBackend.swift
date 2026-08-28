@@ -304,6 +304,32 @@ public protocol VFSBackend: Sendable {
         sourceMetadata: RemoteSourceMetadata?
     ) throws
 
+    /// Fill in the symlink **targets** of whichever of `entries` arrived without one, for a backend
+    /// that can learn them at a price a *listing* should not pay (PLAN.md §M25 Slice 4).
+    ///
+    /// A listing carries a target wherever reading it is free — the local disk `readlink`s as part
+    /// of its `stat`, an archive's table of contents prints one, FTP's `LIST` prints one — and
+    /// `sftp`'s does not, because the protocol has no verb for it. Over SFTP the answer costs a
+    /// whole SSH exec channel, which is 77 ms against a *loopback* server and a real round trip over
+    /// a network, so making every browse pay it to render a column almost nobody reads would be the
+    /// wrong trade. Asking here instead means only an operation that has to **recreate** a link pays,
+    /// and only when there is one.
+    ///
+    /// It takes a batch and not a path for the reason the price is what it is: the cost measured is
+    /// the connection, not the row — twelve links in one command cost 79 ms against 77 ms for one —
+    /// so a per-path seam would turn a directory of links into a directory of round trips. Callers
+    /// should hand over everything they are about to walk.
+    ///
+    /// **It cannot fail**, and that is deliberate: a backend that could not find out returns the
+    /// entries it was given, still carrying `nil`, and the caller refuses that item on its own terms
+    /// (``VFSUnsupportedReason/symbolicLinkTargetUnreadable(name:)``). An account with no exec
+    /// channel is a healthy account, so this degrades the way §M22's search walk does rather than
+    /// raising anything.
+    ///
+    /// The default returns `entries` untouched, so every backend whose listing already answers —
+    /// which is all of them but SFTP — behaves exactly as it always did.
+    func resolvingSymlinkTargets(in entries: [FileEntry]) -> [FileEntry]
+
     /// Whether a copy with **both ends inside this backend** is worth attempting here, even though
     /// the attempt may be refused (PLAN.md §M25 Slice 3).
     ///
@@ -425,6 +451,10 @@ public extension VFSBackend {
 
     func mayAttemptInternalCopy(from _: VFSPath, to _: VFSPath) -> Bool {
         false // no verb to try, so nothing to be refused
+    }
+
+    func resolvingSymlinkTargets(in entries: [FileEntry]) -> [FileEntry] {
+        entries // this backend's listing already said whatever it knows
     }
 
     func volumeIdentifier(for path: VFSPath) -> String? {

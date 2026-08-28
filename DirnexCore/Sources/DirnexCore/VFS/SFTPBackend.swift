@@ -43,6 +43,11 @@ public struct SFTPBackend: RemoteTransportBackend {
     /// freely, and what it knows about the *server* must not be copied away with it
     /// (``ServerSideCopySupport``).
     let serverSideCopy = ServerSideCopySupport()
+    /// What this connection has learned about reading a symlink's **target** over the exec channel —
+    /// a reference held by a value type for the same reason the three above are: the backend is
+    /// copied freely, and what it knows about the *server* must not be copied away with it
+    /// (``LinkTargetSupport``).
+    let links = LinkTargetSupport()
 
     public init(location: SFTPLocation, transport: any SFTPTransport) {
         self.location = location

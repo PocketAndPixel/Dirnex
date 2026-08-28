@@ -152,7 +152,7 @@ the file it was mounted from is gone by the next launch.
 | Background queue, progress bar, Stop | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 | Per-file conflict dialog | yes | yes | yes | yes | yes | yes | n/a | yes | yes |
 | Preserve permissions / dates / xattrs on copy | yes | yes | yes, limited | yes, limited<sup>q</sup> | yes, limited<sup>q</sup> | n/a<sup>q</sup> | n/a | yes | yes |
-| Copy a symlink as a symlink | yes | yes | yes | **no**<sup>pp</sup> | n/a<sup>pp</sup> | n/a | n/a | yes | yes |
+| Copy a symlink as a symlink | yes | yes | yes | yes, limited<sup>pp</sup> | n/a<sup>pp</sup> | n/a | n/a | yes | yes |
 | APFS clone fast path | yes | yes | n/a | n/a | n/a | n/a | n/a | yes | yes |
 
 <sup>g</sup> `F5` **out of** an archive extracts the marked members into the other pane (which
@@ -250,11 +250,14 @@ FTP has no copy verb of any kind — `curl` offers a download and an upload — 
 account is staged, whatever the two paths are. S3 duplicates inside a bucket, and between two buckets
 the same key and service can name unambiguously, with `x-amz-copy-source`.
 
-<sup>pp</sup> Only the **read** half is missing, and only over SFTP: `SFTPBackend.createSymbolicLink`
-ships and `CopyEngine` calls it, so a link can be written — but `sftp`'s `ls -la` prints the kind
-(`l`) with no ` -> target`, and the batch language has no `readlink`, so the target would have to
-come from the SSH exec channel an `sftp`-only account does not have (PLAN.md §M25). Writing an empty
-link instead is the failure being refused. FTP has no symlink verb at all.
+<sup>pp</sup> Over SFTP the target is read from the SSH **exec** channel, so it works on an account
+that has one and is refused by name on an account that does not (PLAN.md §M25 Slice 4). `sftp`'s own
+`ls -la` prints the kind (`l`) with no ` -> target` and the batch language has no `readlink`, so
+there is nothing in the protocol to fall back on — an account confined by `ForceCommand
+internal-sftp` therefore keeps saying it cannot copy that link rather than writing a broken one.
+It degrades per connection, like §M22's search walk: one exec answers a whole directory of links
+(77 ms on loopback, the same for one link or twelve), and a refusal is remembered for that
+connection. FTP has no symlink verb at all.
 
 <sup>qq</sup> Deleting a member **rewrites the container**, and the journal has nowhere to put the
 bytes that left. Reversing it means keeping them, which is a storage decision rather than a missing

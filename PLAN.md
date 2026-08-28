@@ -832,6 +832,61 @@ the old behaviour standing where it cannot be established.
 4. **Symlink targets over the exec channel**, degrading exactly as M22's search walk does, so a
    link is copied faithfully on an account that has one and goes on being refused on an account
    that does not.
+   **Landed 2026-08-28.** The probe overturned the verb the slice was written around and found the
+   bug to be worse than the plan recorded, and both are corrections this repo owed itself.
+   **`readlink` is the obvious verb and loses on all three counts that matter**, each measured
+   against a real `sshd`: it cannot be **authenticated** — `runCommand` hands back stdout and no exit
+   status, and an `sftp`-only account answers exec with prose *on stdout*, so a bare reader would
+   recreate the link pointing at an English sentence; it cannot be **batched** — with several
+   operands it prints one line per *successful* one and silently skips failures (three arguments,
+   two lines), so a reader zipping outputs to inputs gives one link another's target, which is worse
+   than having none; and it cannot be **framed**, since a target may contain a newline. `ls -ldn`
+   answers all three: every row echoes the path it describes and carries a mode field, so prose
+   cannot pass, and its **size column is the target's byte length**, which is what says where the
+   target starts. The cost is the *connection* and not the row — 77 ms for one link, 79 ms for
+   twelve — so the seam takes a **batch**, and the engine resolves a directory's children in one go.
+   **A first-arrow split is wrong in both directions, and the size column is the only thing that
+   knows.** ` -> ` is four ordinary characters a name and a target may each contain: a link *named*
+   `a -> b` pointing at `c` prints `…/a -> b -> c`, where the shipped reading answers `b -> c`. Nine
+   adversarial targets were checked against the server — two with newlines, one a tab, one a trailing
+   space, one containing ` -> ` and one ending in it — and the column equalled the true byte length
+   every time, which is POSIX's definition of a symlink's size rather than one `ls`'s habit. The
+   shared lexer takes the size when it fits and falls back to the first arrow otherwise, so it can
+   only ever *sharpen* a target; the exec parser additionally **requires** the match and drops what
+   it cannot verify, because there the alternative is a real link pointing somewhere nobody wrote.
+   **The correction: the failure this slice prevents was a crash, not a broken link.** This file and
+   docs/NOTES.md both recorded that proceeding with no target "would write `ln -s "" link`" — true of
+   the *syscall* (`symlink("")` returns 0 and leaves a 0-byte dangling link, measured) and true over
+   SFTP, and **not** true of a download, which is the common direction: `LocalBackend` puts the target
+   through `fileSystemRepresentation`, which raises `NSInvalidArgumentException` for the empty string
+   — an Objective-C exception nothing can catch, so copying a folder of links off a server terminated
+   the process. Two independent fixes, and the controls show they are independent: the engine now
+   refuses a `nil` target by name, and `LocalBackend` passes an **empty** one to `symlink(2)` directly
+   so a link that really does point at nothing stays copyable. That distinction — absent is not empty
+   — is Slice 1's rule about a `nil` mode arriving one type along.
+   Controlled in six directions, each failing only the tests that name it: the size column ignored,
+   the refusal removed (which reports `succeeded → true` over a broken link — the shipped bug), the
+   latch fired on any unanswered path rather than on no answer at all, the parser accepting a target
+   the size contradicts (which hands over the truncated `weird`), the children resolved one at a time,
+   and the empty-target guard removed — the last terminating the host with the exact exception, which
+   is the control saying what kind of bug it is.
+   **Verified live against a throwaway `sshd`**, through the real `SFTPProcessTransport` and the real
+   `CompositeBackend`: the server's own links come back with the targets it was given, a dangling one
+   keeps its text, a target containing ` -> ` survives, and a downloaded folder of links lands as
+   links pointing where the server's do. The live control is what makes that evidence — with the exec
+   read removed the same run fails all three tests and the copy comes back
+   `symbolicLinkTargetUnreadable(name: "abs")`, which is the degradation end to end rather than a
+   silent empty link.
+   **And one bug found a layer earlier, fixed on Oleg's call because the fix deletes shipped
+   behaviour**: `SFTPListingParser` split a name at ` -> ` as well, so a link *named* `a -> b` was
+   listed under the shorter name `a` before anything asked about a target — a wrong **file name**,
+   which a copy then writes to disk, and one the size column cannot rescue because the coincidence is
+   exact (size 1, trailing `b`). `sftp`'s own `ls` provably never prints a target (re-measured against
+   OpenSSH 10.2), so every arrow it emits belongs to a name and the split was answering a dialect this
+   parser is never fed — its "compatibility with a plain shell `ls -la`" test was pinning a fiction.
+   `unixRow` grew a `splitsLinkTarget` seam so only this dialect opts out; the control reproduces the
+   old reading exactly (`name: "a"`, target `"b"`) and fails only the one test that names it, and the
+   live run now reads `a -> b` end to end against a real server.
 5. **Get Info's write half**, on the verbs slices 1–2 establish, **the sentence that says what a
    copy could not keep** — Slice 2 accumulates the loss and leaves choosing its surface here — and
    **Synchronize by size** — the

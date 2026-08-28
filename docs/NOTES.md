@@ -3128,8 +3128,53 @@ one, so all four columnar parsers — `bsdtar -tvf`, `sftp`'s `ls -la`, FTP's `L
   an item before a recursive delete. There is no `readlink` in the batch language. Over `ssh`,
   `/usr/bin/env readlink` returns the raw text (`plain.txt`, `/etc/hosts`, `../nowhere` — relative,
   absolute and dangling alike), so an account confined by `ForceCommand internal-sftp` cannot read one
-  at all. The honest answer where it cannot be read is to keep refusing: `CopyEngine` passes
-  `entry.symlinkDestination ?? ""`, so a copy that proceeded anyway would write `ln -s "" link`.
+  at all. The honest answer where it cannot be read is to keep refusing.
+  - **Correction, 2026-08-28: proceeding without a target was a *crash*, not a broken link.** This
+    entry (and PLAN.md, twice) said `CopyEngine`'s `entry.symlinkDestination ?? ""` "would write
+    `ln -s "" link`". That is true of the **syscall** — `symlink("")` returns 0 on macOS and leaves a
+    0-byte dangling link, measured — and true of the SFTP side, and false of a **download**, which is
+    the direction anybody actually meets: `LocalBackend` puts the target through
+    `fileSystemRepresentation`, which raises `NSInvalidArgumentException` for the empty string
+    (*"Cannot form file system representation of empty string"*). Nothing in Swift catches an
+    Objective-C exception, so copying a folder of links off a server **terminated the process**. The
+    two halves are independent and both are fixed: the engine refuses a `nil` target by name, and
+    `LocalBackend` hands an **empty** one to `symlink(2)` directly so a link that genuinely points at
+    nothing is still copyable. Worth keeping as a shape: *a syscall's tolerance says nothing about
+    the wrapper's* — the note was written from `symlink(2)`'s manual and the wrapper was never asked.
+  - **`readlink` is the wrong verb over the exec channel, on three counts, and `ls -ldn` answers all
+    three.** It cannot be **authenticated**: `runCommand` returns stdout and deliberately no exit
+    status, and an `sftp`-only account replies with prose *on stdout*, so a bare `readlink` reader
+    recreates the link pointing at "This service allows sftp connections only." It cannot be
+    **batched**: with several operands it prints one line per *successful* one and silently skips the
+    failures (measured — three arguments, two lines), so zipping outputs to inputs gives one link
+    another link's target, which is worse than having none. And it cannot be **framed**, since a
+    target may contain a newline. An `ls -ldn` row echoes the path it describes and carries a mode
+    field, so prose cannot pass and correspondence rides in the data rather than in the order.
+  - **A symlink row's size column is its target's byte length, and it is the only thing that can
+    frame the target.** ` -> ` is four ordinary characters that a name *and* a target may contain:
+    a link **named** `a -> b` pointing at `c` prints `…/a -> b -> c`, where splitting at the first
+    arrow answers `b -> c` — a plausible wrong target, which for a copy is a real link pointing
+    somewhere nobody wrote. Checked against nine adversarial targets on a real server (two containing
+    newlines, one a tab, one a trailing space, one containing ` -> `, one ending in it): the column
+    equalled the true byte length **every time**, which is POSIX's definition of a symlink's size
+    rather than a habit of one `ls`. `ColumnarListing.linkTarget` takes the separator whose suffix is
+    exactly that many bytes and falls back to the first arrow, so it can only sharpen a target;
+    the exec-channel parser additionally *requires* the match and drops what it cannot verify.
+  - **The cost is the connection, not the row**, so the seam takes a batch: one exec is **77 ms**
+    against a loopback `sshd` and reading **twelve** links costs **79 ms**. A per-path API would
+    compile, read correctly, and turn a directory of links into a directory of handshakes — which is
+    why `VFSBackend.resolvingSymlinkTargets(in:)` is plural and `CompositeBackend` groups by backend
+    before routing.
+  - **`sftp`'s own `ls -la` never prints a target, so every arrow it emits belongs to a name** —
+    re-measured against OpenSSH 10.2, where a plain link shows none. `SFTPListingParser` nonetheless
+    splits at ` -> ` "for compatibility with a plain shell `ls -la`" it is never fed, so a link named
+    `a -> b` was listed under the shorter name `a`: a wrong **filename** on copy, which the size rule
+    cannot save because the coincidence is exact (suffix `b` is 1 byte and the link's size is 1).
+    Fixed by giving `unixRow` a `splitsLinkTarget` seam that only this dialect turns off — the
+    other three still split, since `bsdtar`, FTP's `LIST` and the exec walk all really do print
+    targets. The test that had pinned the old behaviour was pinning a fiction ("compatibility with a
+    plain shell `ls -la`", output this parser is never handed), which is the tell worth keeping: a
+    test named for a *hypothetical* caller is one to check against the real one before trusting it.
 
 #### The SSH exec channel (M22's server-side search)
 

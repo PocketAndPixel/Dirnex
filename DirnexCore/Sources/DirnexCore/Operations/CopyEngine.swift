@@ -114,7 +114,10 @@ private final class CopyRun {
     /// the directory sizer for subtrees. A source we can't size counts as 0 rather than
     /// aborting the whole operation.
     private func preScan() -> [(entry: FileEntry, bytes: Int64)] {
-        operation.sources.map { entry in
+        // A marked symlink may have arrived from a listing that could not say what it points at, and
+        // recreating it needs that text. Asking here costs nothing when there are no links and one
+        // round trip when there are (PLAN.md §M25 Slice 4).
+        backend.resolvingSymlinkTargets(in: operation.sources).map { entry in
             let bytes: Int64
             if entry.kind == .directory {
                 bytes = (
@@ -254,14 +257,28 @@ private final class CopyRun {
         switch entry.kind {
         case .symlink:
             // Duplicate the link itself, never its target — preserved even when dangling.
-            try backend.createSymbolicLink(
-                at: target,
-                withDestination: entry.symlinkDestination ?? ""
-            )
+            //
+            // A `nil` target is **refused**, and the distinction from an *empty* one is the whole
+            // rule: empty is a link somebody really made (`symlink("")` succeeds on macOS — measured,
+            // it returns 0 and leaves a 0-byte dangling link), while `nil` means this listing could
+            // not read the target at all. `sftp`'s `ls` never prints one, so before §M25 Slice 4
+            // every remote link copied as `ln -s ""` — a broken link reported as a successful copy,
+            // which is the quiet failure this milestone exists to prevent. Where the exec channel can
+            // answer, `resolvingSymlinkTargets` has already filled it in; where it cannot, this says
+            // so. The same distinction §M25 Slice 1 draws for a `nil` mode: absent is not empty.
+            guard let destination = entry.symlinkDestination else {
+                throw VFSError.unsupported(.symbolicLinkTargetUnreadable(name: entry.name))
+            }
+            try backend.createSymbolicLink(at: target, withDestination: destination)
             completedBytes += entry.byteSize
         case .directory:
             try backend.createDirectory(at: target)
-            let children = (try? backend.listDirectory(at: entry.path)) ?? []
+            // Resolved as a batch, because the cost of learning a target is the *connection*
+            // rather than the row — twelve links in one exec measured 79 ms against 77 ms for one —
+            // so asking per child would turn a directory of links into a directory of round trips.
+            let children = backend.resolvingSymlinkTargets(
+                in: (try? backend.listDirectory(at: entry.path)) ?? []
+            )
             for child in children {
                 try copyManual(child, to: target.appending(child.name))
             }

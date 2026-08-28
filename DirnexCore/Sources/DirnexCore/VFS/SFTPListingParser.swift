@@ -11,8 +11,9 @@ import Foundation
 /// - The link-count column is `?` (`sftp` doesn't report it) — harmless, it isn't used.
 /// - Names are printed as **full paths** (because `ls -la <abs>` echoes the argument), so every
 ///   name is reduced to its last path component. A POSIX name can't contain `/`, so this is exact.
-/// - Symlink **targets are not shown** (no ` -> target`), so `symlinkDestination` is `nil`; the
-///   ` -> ` split is still handled for compatibility with a plain `ls -la` over a shell.
+/// - Symlink **targets are not shown** (no ` -> target`), so `symlinkDestination` is always `nil`
+///   here — the target comes from the SSH exec channel instead (``SSHReadLinkCommand``), and where
+///   there is none the copy refuses rather than guessing (PLAN.md §M25 Slice 4).
 /// - The `.`/`..` self and parent rows are **kept** here; `SFTPBackend` drops them when listing but
 ///   uses the `.` row (the directory's own stat) to stat a directory.
 enum SFTPListingParser {
@@ -47,7 +48,16 @@ enum SFTPListingParser {
     /// the columns, the ` -> ` split, the `sftp>` prompt echo and error lines the guards reject —
     /// is `ColumnarListing.unixRow`'s.
     private static func parseLine(_ line: Substring, formatters: [DateFormatter]) -> Entry? {
-        guard let row = ColumnarListing.unixRow(line, formatters: formatters) else { return nil }
+        // **No ` -> ` split in this dialect**, which is a correctness rule and not a shortcut.
+        // `sftp`'s `ls -la` provably never prints a target (re-measured 2026-08-28 against OpenSSH
+        // 10.2), so every arrow it emits is part of a *name* — and splitting at one listed a link
+        // named `a -> b` under the name `a`, which a copy then writes to disk. The split used to be
+        // kept "for compatibility with a plain shell `ls -la`", output this parser is never handed:
+        // `SFTPTransport.listDirectory` is documented as the batch client's own. Nothing is lost,
+        // because a target that a listing cannot carry is exactly what the exec channel supplies.
+        guard let row = ColumnarListing.unixRow(
+            line, formatters: formatters, splitsLinkTarget: false
+        ) else { return nil }
         return Entry(
             name: lastComponent(of: row.name),
             kind: row.kind,
@@ -56,7 +66,9 @@ enum SFTPListingParser {
             permissions: row.permissions,
             ownerName: row.ownerName,
             groupName: row.groupName,
-            symlinkDestination: row.symlinkDestination.map(lastComponent(of:))
+            // Always `nil` — see the rule above; the field stays on `Entry` because the backend's
+            // shared construction reads it and the exec channel fills it in later.
+            symlinkDestination: row.symlinkDestination
         )
     }
 

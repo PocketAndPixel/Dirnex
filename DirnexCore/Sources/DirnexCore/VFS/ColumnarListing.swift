@@ -196,19 +196,34 @@ enum ColumnarListing {
     /// The count and mode-field guards are what reject every line that is not a row: the interactive
     /// `sftp>` prompt echo, `sftp`'s error text, and FTP's `total 8` header.
     ///
+    /// `splitsLinkTarget` is what a dialect that **never prints a target** turns off, and it is not a
+    /// tidiness switch: ` -> ` is four ordinary characters a *name* may contain, so in such a dialect
+    /// every arrow belongs to the name and splitting at one lists the link under a shorter one — a
+    /// wrong file name, which a copy then writes. `sftp`'s batch `ls -la` is that dialect (measured
+    /// against OpenSSH 10.2: a plain link prints no target at all), and the size column cannot
+    /// rescue it, because the coincidence is exact — a link named `a -> b` has size 1 and a 1-byte
+    /// trailing `b`.
+    ///
     /// `ArchiveTOCParser` deliberately does **not** come through here. `bsdtar -tvf` prints the same
     /// shape, but that parser accepts any first column rather than requiring a mode field, and reads
     /// an unrecognized mode as a file where these two read it as `.other` — a difference in what a
     /// line means, not in how it is lexed, so folding it in would change which archives parse.
-    static func unixRow(_ line: Substring, formatters: [DateFormatter]) -> UnixRow? {
+    static func unixRow(
+        _ line: Substring,
+        formatters: [DateFormatter],
+        splitsLinkTarget: Bool = true
+    ) -> UnixRow? {
         let columns = line.split(separator: " ", omittingEmptySubsequences: true)
         guard columns.count >= 9, isModeField(columns[0]), let modeChar = columns[0].first,
               var name = nameField(in: line, afterColumns: 8) else { return nil }
 
+        let byteSize = Int64(columns[4]) ?? 0
+
         var symlinkDestination: String?
-        if modeChar == "l", let range = name.range(of: " -> ") {
-            symlinkDestination = String(name[range.upperBound...])
-            name = String(name[..<range.lowerBound])
+        if splitsLinkTarget, modeChar == "l",
+           let split = linkTarget(in: name, targetLength: byteSize) {
+            symlinkDestination = split.target
+            name = split.name
         }
 
         let kind: FileEntry.Kind
@@ -221,7 +236,7 @@ enum ColumnarListing {
 
         return UnixRow(
             kind: kind,
-            byteSize: Int64(columns[4]) ?? 0,
+            byteSize: byteSize,
             modificationDate: date(
                 from: "\(columns[5]) \(columns[6]) \(columns[7])", formatters: formatters
             ),
@@ -231,5 +246,42 @@ enum ColumnarListing {
             name: name,
             symlinkDestination: symlinkDestination
         )
+    }
+
+    /// Split a symlink row's name field into the link's own name and the target it points at,
+    /// using the **size column** — which for a symlink is the byte length of its target — to decide
+    /// which ` -> ` is the separator.
+    ///
+    /// A bare "split at the first ` -> `" is what shipped until M25 Slice 4, and it is wrong in both
+    /// directions because ` -> ` is four perfectly ordinary characters that a *name* and a *target*
+    /// may each contain. Measured against a real server on 2026-08-28: a link named `a -> b` that
+    /// points at `c` prints `… 1 …/a -> b -> c`, where the first-arrow reading answers `b -> c` —
+    /// a plausible wrong target, which for a copy means recreating the link pointing somewhere the
+    /// user never wrote. The size column settles it with no guessing: `1` can only be `c`.
+    ///
+    /// So the rule is *the separator whose suffix is exactly the size column's many bytes*, taken
+    /// left to right. It was checked against nine adversarial targets on that run — two containing
+    /// newlines, one a tab, one a trailing space, one containing ` -> ` and one ending in it — and
+    /// the column equalled the target's true byte length in every case, which is POSIX's definition
+    /// of a symlink's size rather than a habit of one `ls`.
+    ///
+    /// When no separator satisfies the size — a server whose dialect reports something else in that
+    /// column, or a target the line-oriented reader has already cut short at an embedded newline —
+    /// this falls back to the first arrow, which is exactly what shipped before. That keeps the rule
+    /// strictly additive: it can sharpen a target, never lose one that used to parse.
+    ///
+    /// Returns `nil` when the field carries no ` -> ` at all, which is every non-symlink row and a
+    /// symlink row from a dialect that prints no target (`sftp`'s own `ls -la`, notably).
+    static func linkTarget(in field: String, targetLength: Int64) -> (name: String, target: String)? {
+        var searched = field.startIndex..<field.endIndex
+        var first: (name: String, target: String)?
+        while let separator = field.range(of: " -> ", range: searched) {
+            let candidate = field[separator.upperBound...]
+            let split = (name: String(field[..<separator.lowerBound]), target: String(candidate))
+            if first == nil { first = split }
+            if Int64(candidate.utf8.count) == targetLength { return split }
+            searched = separator.upperBound..<field.endIndex
+        }
+        return first
     }
 }

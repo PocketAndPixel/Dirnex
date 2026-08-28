@@ -120,13 +120,30 @@ struct SFTPListingParserTests {
         #expect(entries["acldir"]?.kind == .directory)
     }
 
-    @Test("still handles a ' -> target' from a plain shell ls -la")
-    func shellSymlinkTarget() {
-        // A plain `ls -la` over a shell (not sftp) does print the target; keep supporting it.
-        let listing = "lrwxrwxrwx 1 oleg staff 7 Jul 10 16:19 latest -> notes.txt"
+    /// The dialect rule, and it replaced its own opposite (PLAN.md §M25 Slice 4). `sftp`'s `ls -la`
+    /// provably never prints a ` -> target` — re-measured 2026-08-28 against OpenSSH 10.2 — so an
+    /// arrow in this output is part of a **name**, and the split that used to be kept "for
+    /// compatibility with a plain shell `ls -la`" listed a link named `a -> b` under the name `a`.
+    /// A copy writes that name to disk, so the old reading was a wrong file rather than a wrong
+    /// label. The target is supplied by the exec channel instead, or the copy refuses.
+    @Test("an arrow in a name is part of the name, because this dialect prints no targets")
+    func arrowInANameIsNotASeparator() {
+        // A real row for a link named `a -> b` pointing at `c`: the size column is its target's
+        // length (1), which is exactly the trailing `b` — so nothing in the row can rescue a split.
+        let listing = "lrwxr-xr-x    ? oleg     staff           1 Jul 10 16:19 /home/oleg/a -> b"
+        let link = byName(listing)["a -> b"]
+        #expect(link?.kind == .symlink)
+        #expect(link?.symlinkDestination == nil)
+        // The narrowness control: the shorter name the old split invented is not there.
+        #expect(byName(listing)["a"] == nil)
+    }
+
+    @Test("an ordinary link carries no target either, and keeps its whole name")
+    func ordinaryLinkCarriesNoTarget() {
+        let listing = "lrwxr-xr-x    ? oleg     staff           9 Jul 10 16:19 /home/oleg/latest"
         let link = byName(listing)["latest"]
         #expect(link?.kind == .symlink)
-        #expect(link?.symlinkDestination == "notes.txt")
+        #expect(link?.symlinkDestination == nil)
     }
 
     @Test("ignores the sftp prompt echo, blank lines, and error text")

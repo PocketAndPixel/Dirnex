@@ -143,6 +143,36 @@ public struct FileEntry: Sendable, Hashable, Identifiable {
         self.entityTag = entityTag
     }
 
+    /// The same entry, now knowing what its symlink points at.
+    ///
+    /// A listing that could not read a target leaves `symlinkDestination` `nil`, and over SFTP that
+    /// is every link, because the protocol has no verb for it. Learning one later costs a whole SSH
+    /// exec channel, so it happens where a caller is about to **recreate** the link rather than in
+    /// the listing (``VFSBackend/resolvingSymlinkTargets(in:)``) — and this is how the answer gets
+    /// back onto the entry that was already read.
+    public func withSymlinkDestination(_ destination: String) -> FileEntry {
+        FileEntry(
+            path: path,
+            name: name,
+            kind: kind,
+            byteSize: byteSize,
+            modificationDate: modificationDate,
+            creationDate: creationDate,
+            isHidden: isHidden,
+            permissions: permissions,
+            ownerID: ownerID,
+            groupID: groupID,
+            ownerName: ownerName,
+            groupName: groupName,
+            flags: flags,
+            inode: inode,
+            symlinkDestination: destination,
+            symlinkTargetKind: symlinkTargetKind,
+            isDataless: isDataless,
+            entityTag: entityTag
+        )
+    }
+
     public var id: VFSPath { path }
 
     public var isDirectory: Bool { kind == .directory }

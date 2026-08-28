@@ -192,6 +192,40 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         try backend(for: destination).createSymbolicLink(at: destination, withDestination: target)
     }
 
+    /// Fill in the symlink targets a listing could not carry, routed to whichever backend owns each
+    /// entry (PLAN.md §M25 Slice 4).
+    ///
+    /// **Grouped by backend rather than resolved one at a time**, because the price this seam exists
+    /// to control is a *round trip*: over SFTP an answer costs a whole SSH exec channel, 77 ms
+    /// against a loopback server and the same whether it names one link or twelve. Routing per entry
+    /// would compile, read correctly and quietly turn a directory of links into a directory of
+    /// handshakes.
+    ///
+    /// One batch really can span backends: a results tab holds hits from anywhere, and a tree draws
+    /// several directories at once — the same shape §M24 Slice 6 paid for in the pack sources. The
+    /// grouping is stable, so entries come back in the order they arrived.
+    func resolvingSymlinkTargets(in entries: [FileEntry]) -> [FileEntry] {
+        let unresolved = entries.filter { $0.kind == .symlink && $0.symlinkDestination == nil }
+        guard !unresolved.isEmpty else { return entries }
+
+        var targets: [VFSPath: String] = [:]
+        for group in Dictionary(grouping: unresolved, by: \.path.backend).values {
+            // A backend that cannot even be reached — an archive that will not mount, a connection
+            // that is gone — simply answers nothing, because this seam does not throw: an entry
+            // whose target stays unknown is refused later by the one caller that needs it, with a
+            // sentence naming the link. Raising here would fail the whole copy over a link.
+            guard let owner = try? backend(for: group[0].path) else { continue }
+            for resolved in owner.resolvingSymlinkTargets(in: group) {
+                if let target = resolved.symlinkDestination { targets[resolved.path] = target }
+            }
+        }
+
+        return entries.map { entry in
+            guard let target = targets[entry.path] else { return entry }
+            return entry.withSymlinkDestination(target)
+        }
+    }
+
     func copyMetadata(at source: VFSPath, to destination: VFSPath) throws {
         try copyMetadata(at: source, to: destination, sourceMetadata: nil)
     }

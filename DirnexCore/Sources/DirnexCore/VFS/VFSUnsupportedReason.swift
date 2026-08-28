@@ -47,6 +47,19 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
     /// longer what the user meets on F5 — kept, rather than deleted, because the backend's own
     /// contract is unchanged and answering `.copyFile`'s vaguer sentence instead would say less.
     case remoteToRemoteCopy
+    /// A symbolic link could not be copied because this connection cannot say what it points at.
+    ///
+    /// `sftp` has no verb that reads a link's target — its `ls -la` prints no ` -> target`, and
+    /// `ls -la` of the link *follows* it — so the target comes from the SSH **exec** channel, which
+    /// an account confined to the `sftp` subsystem does not have (PLAN.md §M25 Slice 4). Where it
+    /// cannot be read the copy is refused rather than approximated, because `CopyEngine` recreates a
+    /// link from that text and `symlink(2)` **accepts an empty target** on macOS — measured: it
+    /// returns 0 and leaves a 0-byte dangling link. So the alternative to this sentence is a copy
+    /// that reports success and silently produces a broken link.
+    ///
+    /// It is per item and never per operation: the rest of a tree copies normally, and the report
+    /// names the links that did not.
+    case symbolicLinkTargetUnreadable(name: String)
     /// A path handed to the wrong backend. `connection` is the location's descriptor.
     case pathOutsideConnection(path: String, connection: String)
     /// A path handed to an archive backend that does not own it.
@@ -191,6 +204,7 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
         case .symbolicLink: return "symbolicLink"
         case .deleteConnectionRoot: return "deleteConnectionRoot"
         case .remoteToRemoteCopy: return "remoteToRemoteCopy"
+        case .symbolicLinkTargetUnreadable: return "symbolicLinkTargetUnreadable"
         case .pathOutsideConnection: return "pathOutsideConnection"
         case .pathOutsideArchive: return "pathOutsideArchive"
         case .alreadyInTrash: return "alreadyInTrash"
@@ -264,6 +278,8 @@ public extension VFSUnsupportedReason {
             return ("Can’t delete the connection root.", [])
         case .remoteToRemoteCopy:
             return ("Copying directly between remote locations isn’t supported.", [])
+        case let .symbolicLinkTargetUnreadable(name):
+            return ("Can’t copy the link “%@” — this server can’t say what it points at.", [name])
         case let .pathOutsideConnection(path, connection):
             return ("Path %@ does not belong to %@.", [path, connection])
         case let .pathOutsideArchive(path, archive):
@@ -371,6 +387,7 @@ public extension VFSUnsupportedReason {
             .symbolicLink,
             .deleteConnectionRoot,
             .remoteToRemoteCopy,
+            .symbolicLinkTargetUnreadable(name: ""),
             .pathOutsideConnection(path: "", connection: ""),
             .pathOutsideArchive(path: "", archive: ""),
             .alreadyInTrash(name: ""),
