@@ -40,6 +40,9 @@ struct SyncLiveIntegrationTests {
             withIntermediateDirectories: true
         )
         try Data("same".utf8).write(to: localRoot.appendingPathComponent("top.txt"))
+        // Same length, different bytes — the pair *only* a content comparison can tell apart, and
+        // the reason the mode is worth its downloads (M25 Slice 5d).
+        try Data("aaaaa".utf8).write(to: localRoot.appendingPathComponent("same-size.bin"))
         try Data("same".utf8).write(to: localRoot.appendingPathComponent("docs/guide.md"))
         try Data("the local body".utf8).write(to: localRoot.appendingPathComponent("docs/note.txt"))
         try Data("here only".utf8).write(to: localRoot.appendingPathComponent("only-here.txt"))
@@ -50,6 +53,7 @@ struct SyncLiveIntegrationTests {
         try backend.createDirectory(at: remoteRoot.appending("docs"))
         for (relative, body) in [
             ("top.txt", "same"),
+            ("same-size.bin", "bbbbb"),
             ("docs/guide.md", "same"),
             ("docs/note.txt", "a body of another length entirely"),
             ("only-there.txt", "there only")
@@ -157,6 +161,8 @@ struct SyncLiveIntegrationTests {
                 comparison: .size
             )
 
+            // `same-size.bin` is deliberately absent: by size the two are equal, which is exactly
+            // what the content test below goes on to disagree with.
             #expect(results.map(\.relativePath).sorted()
                 == ["docs/note.txt", "only-here.txt", "only-there.txt"])
             let byPath = Dictionary(uniqueKeysWithValues: results.map { ($0.relativePath, $0) })
@@ -245,6 +251,92 @@ struct SyncLiveIntegrationTests {
             // And the honest comparison is not simply blind: the file that really differs is found
             // by both, so "compare by size" has not quietly become "compare nothing".
             #expect(bySize.contains { $0.relativePath == "docs/note.txt" })
+        }
+    }
+
+    // MARK: - Comparing contents across two backends (M25 Slice 5d)
+
+    /// The whole of Slice 5d against a real server, in the order the sheet runs it: walk once,
+    /// name the pairs whose bytes decide the answer, fetch **those** through the real transport,
+    /// and re-answer the same rows with the copies that arrived.
+    ///
+    /// The claim no cheaper comparison can make is `same-size.bin`: five bytes on both sides and
+    /// different bytes, so a size scan calls it identical and only reading it disagrees. And the
+    /// claim that keeps it affordable is what is *not* fetched — the pair whose sizes already
+    /// differ, the one-sided files, and the folder are in no candidate set and cost no transfer.
+    @Test(
+        "a content comparison across two backends finds what size cannot, and fetches only what it reads"
+    )
+    func comparesContentsAcrossTwoBackends() async throws {
+        try await offCooperativePool {
+            let fixture = try fixture()
+            defer { cleanUp(fixture) }
+            let localRoot = VFSPath.local(fixture.localRoot.path)
+
+            // Phase one: one walk, every row, classified by size.
+            let surveyed = try DirectorySync.survey(
+                left: localRoot,
+                right: fixture.remoteRoot,
+                leftBackend: LocalBackend(),
+                rightBackend: fixture.backend
+            )
+            let candidates = DirectorySync.contentCandidates(in: surveyed)
+            #expect(
+                candidates.map(\.relativePath).sorted() == [
+                    "docs/guide.md",
+                    "same-size.bin",
+                    "top.txt"
+                ],
+                "only the same-size regular-file pairs are worth reading"
+            )
+
+            // Phase two: fetch the server's half of each candidate, exactly as the gesture does,
+            // and hand the comparison the map rather than the objects on the server.
+            let staging = fixture.localRoot.appendingPathComponent("staged", isDirectory: true)
+            try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
+            var localPaths: [VFSPath: String] = [:]
+            for candidate in candidates {
+                let remote = try #require(candidate.right)
+                // One directory per row, for the reason `MaterializeRunner` gives: two candidates
+                // can share a name from two prefixes.
+                let directory = staging.appendingPathComponent(UUID().uuidString, isDirectory: true)
+                try FileManager.default.createDirectory(
+                    at: directory,
+                    withIntermediateDirectories: true
+                )
+                let copy = directory.appendingPathComponent(remote.name)
+                try fixture.backend.copyFile(
+                    at: remote.path,
+                    to: .local(copy.path),
+                    progress: { _ in },
+                    isCancelled: { false }
+                )
+                localPaths[remote.path] = copy.path
+            }
+
+            let rows = try DirectorySync.recompare(
+                surveyed,
+                between: localRoot.backend,
+                and: fixture.remoteRoot.backend,
+                comparison: .content,
+                contentsEqual: { left, right in
+                    let paths = MaterializedPaths(localPaths)
+                    return try ByteComparator.localFilesEqual(
+                        try #require(paths.localPath(for: left)),
+                        try #require(paths.localPath(for: right))
+                    )
+                }
+            )
+
+            #expect(rows.map(\.relativePath).sorted()
+                == ["docs/note.txt", "only-here.txt", "same-size.bin", "only-there.txt"].sorted())
+            let byPath = Dictionary(uniqueKeysWithValues: rows.map { ($0.relativePath, $0.status) })
+            // The row size could not see, found by its bytes — and still not ranked, because
+            // neither listing keeps a clock that could say which came later.
+            #expect(byPath["same-size.bin"] == .differ)
+            // The narrowness half: the pairs that really are byte-identical were read and dropped.
+            #expect(!rows.contains { $0.relativePath == "top.txt" })
+            #expect(!rows.contains { $0.relativePath == "docs/guide.md" })
         }
     }
 }

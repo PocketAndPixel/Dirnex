@@ -151,6 +151,15 @@ at build time.
     the ink the same distance apart. Nothing catches this but looking at the two side by side.
 - **A screenshot only verifies what you actually look at.** A bug once sat visible in a pass's
   own verification shots and went unnoticed.
+- **An app-modal window runs the run loop in `.modalPanel`, so a `Timer.scheduledTimer` scheduled
+  under it never fires.** `scheduledTimer` adds to `.default` only. Measured 2026-08-29 while driving
+  the Synchronize sheet, which is `presentAsMovableWindow` and therefore app-modal: a 2 s probe timer
+  simply never ran, twice, and read as the code under test doing nothing. `Timer(timeInterval:…)` plus
+  `RunLoop.main.add(_, forMode: .common)` fires. The neighbouring fact from the same run: `tell
+  application "Dirnex" to quit` is **refused** while such a window is up, so a script that quits,
+  re-seeds and relaunches silently drives the *old* instance — `pkill` and wait for the process to be
+  gone.
+
 - **Synthetic Escape is not delivered into the app** during computer-use — it is swallowed
   before the responder chain *and* before a raw `NSEvent` local keyDown monitor. Any
   Escape-driven behavior needs a physical key press to verify. Letters arrive as `keyCode = 0`
@@ -374,13 +383,30 @@ at build time.
     `NSApp.currentEvent` and any `.shared` read taken mid-decision, and it always fails in the
     reassuring direction — the control passes.
 
+- **A wait on a value the code under test sets *before* doing the work is a wait on nothing, and it
+  makes a control read as inert.** The Synchronize sheet assigns its comparison synchronously on the
+  way in and only then derives the rows, so `settleUntil { sheet.comparison == .content }` is
+  satisfied in the same turn the picker was clicked — and a control that made the sheet re-*walk*
+  both trees passed, because the listing count was read before any walk could land. Waiting instead
+  on the thing that *ends* the work (`!isScanning`) failed it on demand. The general form is worth
+  more than the case: **ask what the predicate would be true of in the broken build**, not only what
+  it is true of in the fixed one, and prefer an observable the work **produces** over one the gesture
+  merely records. Same family as the sheet-transient entry below and its mirror image — there the
+  observable was destroyed too soon, here it existed too early.
+  - The cruder way a control reads as inert cost a run in the same session: **the control's own edit
+    did not match the file it was aimed at**, because swiftformat had rewrapped exactly those lines.
+    A `replace` whose target never occurs reverts nothing and reports a pass, so assert the match
+    rather than trusting the edit you meant to make.
+
 - **An assertion inside `offCooperativePool` is filed under `Test «unknown»` while the test it came
   from still prints a tick — so a live suite's ✔ is not evidence.** The helper runs its body on a
   `DispatchQueue` thread, outside any task (which is the whole point — ▸ Swift 6 and concurrency),
   and Swift Testing tracks the current test in a task-local, so a failed `#expect` there has nothing
   to attribute itself to. Measured 2026-08-28: two live carry tests reported ✔ with their real
-  failures listed separately as `«unknown»`, and only the run summary's issue count disagreed. **Read
-  the issue count, not the ticks**, on any suite whose bodies block off the pool — and note the
+  failures listed separately as `«unknown»`, and only the run summary's issue count disagreed. A grep
+  filtering on the test *name* is therefore blind to it — `✘ Test "` does not match
+  `✘ Test «unknown»`, so a live control fires and reads as inert. **Read the issue count, not the
+  ticks**, on any suite whose bodies block off the pool — and note the
   failure is reported, merely misattributed, so a run that says "0 issues" is still trustworthy.
 
 - **A bounded wait that gives up *silently* reports the wrong thing when it expires, and "it passes
@@ -503,7 +529,11 @@ at build time.
     presence check — here the alternative branch's first act was to present something of the same
     kind.
 - **A `git checkout` is not available to revert a control here, because the work is uncommitted** —
-  Oleg commits, so a control's cleanup has to copy the file aside and copy it back. Worth stating
+  Oleg commits, so a control's cleanup has to copy the file aside and copy it back. Done anyway
+  2026-08-29, and what made it recoverable is worth the sentence: the copy taken aside was of the
+  file **with the control applied**, so the slice's work was still in it and only the control's own
+  edit had to be undone. Copy aside *after* applying a control as well as before, or the reflex that
+  throws the work away throws away the only copy of it too. Worth stating
   because the reflex is `git checkout -- <dir>`, which in this repo throws the whole slice away
   rather than the control. And a run killed by a timeout never reaches its own cleanup, so check the
   file's state afterwards rather than assuming the script finished.
@@ -542,6 +572,12 @@ at build time.
     duplicated trail — the suffix matched and every individual crumb was a real place — which is the
     shape of a wrong answer this project keeps meeting: plausible, ordered, and containing everything
     it should, plus something it should not.
+- **`-only-testing:` naming a single Swift Testing function can select nothing, and reports
+  success.** Measured 2026-08-29: `-only-testing:Target/SuiteName/functionName` ran **0 tests in 1
+  suite** and printed a tick — the same "green run that ran nothing" as the entry below, reached
+  through a different door (a filter matching no test rather than a macro attaching to none). The
+  tell is the same and is the only one there is: the **count** in the run summary.
+
 - **A doc comment between `@MainActor` and `@Suite` discovers *zero tests*, and reports success.**
   Same run: the suite printed `✔ Suite "…" passed after 0.001 seconds` and the run summary read
   `Test run with 0 tests in 1 suite passed`, with no warning at build time and no error anywhere —

@@ -236,7 +236,17 @@ struct RemotePreviewFetchTests {
     /// so the budget only decides how much scheduling delay the test absorbs before reporting a
     /// failure that is really the machine's. Waiting a delay *out* is ``hold(until:)`` instead.
     @discardableResult
-    private func settle(within seconds: Double = 10, until isDone: () -> Bool) async -> Bool {
+    /// Thirty seconds rather than ten, measured 2026-08-29 rather than guessed: with a live SFTP
+    /// server configured the sibling live suites hold the main actor for seconds at a time, and
+    /// `onSettled` is delivered there — so a **fake** backend's instant copy was reported outside a
+    /// 10 s budget in 4 full runs of 6, against 1 of 6 with those suites skipped. It reads as this
+    /// feature being broken and is scheduling delay.
+    ///
+    /// Free to widen, and that is the whole reason it may be: this is a wait **for** something, so a
+    /// satisfied predicate returns on the next 25 ms poll and the budget only sets how much delay is
+    /// absorbed before the code gets the blame. ``hold(until:)`` below is the opposite kind — its
+    /// length *is* the claim — and must not follow it (docs/NOTES.md ▸ Testing).
+    private func settle(within seconds: Double = 30, until isDone: () -> Bool) async -> Bool {
         let deadline = Date().addingTimeInterval(seconds)
         while Date() < deadline {
             if isDone() { return true }

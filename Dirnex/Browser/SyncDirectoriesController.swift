@@ -36,12 +36,41 @@ final class SyncDirectoriesController: NSViewController {
     /// Invoked to open two files in an external diff tool (Compare Contents…). The controller is a
     /// pure view; the panel owns process launching and error UI.
     var onCompare: ((VFSPath, VFSPath) -> Void)?
+    /// Invoked to bring a content comparison's candidate pairs down to real files on this disk, and
+    /// answered with the map an engine reads them back through — or `nil` when nothing came down.
+    ///
+    /// The controller stays a pure view, exactly as it does for ``onCompare``: weighing a set,
+    /// confirming it, queueing the transfer and reporting a failure are all the panel's, and what
+    /// crosses back is the one thing a comparison needs (PLAN.md §M25 Slice 5d). `nil` is an
+    /// ordinary answer rather than an error — the user declined the download, or stopped it — and
+    /// the sheet returns to the comparison it was showing.
+    var onPrepareContents: (
+        ([FileEntry], @escaping @MainActor (MaterializedPaths?) -> Void) -> Void
+    )?
 
     var direction: SyncDirection
+    /// The comparison currently **applied** — never the one a picker click is still asking for.
+    /// A content comparison can be declined at its download confirmation, and until it is answered
+    /// the sheet is still showing this one (`SyncDirectoriesController+Scan`).
     var comparison: SyncComparison
+    /// Every row the walk produced, classified by size and including the identical ones — the raw
+    /// material each comparison is derived from (``DirnexCore/DirectorySync/survey(left:right:leftBackend:rightBackend:isCancelled:)``).
+    ///
+    /// Held because the walk is the expensive half and a comparison is a question about the *same*
+    /// snapshot: over a server it is a connection per directory, or one exec walk, or a billed
+    /// request. Switching the picker therefore re-derives rather than re-reading, which is also what
+    /// makes the content phase possible at all — the pairs it fetched and the pairs it then reads
+    /// have to be one list rather than two walks apart.
+    var scanned: [SyncEntry] = []
     var rows: [Row] = []
     var isScanning = false
+    /// Whether the scan is waiting on a download rather than reading folders — the two look the
+    /// same from here and cost wildly different amounts of the user's time.
+    var isDownloadingContents = false
     var scanError: String?
+    /// Stop, for the sheet's own scan: set when the sheet goes away and polled by the walk and the
+    /// byte reads, both of which run off the main actor.
+    let scanControl = SyncScanControl()
 
     /// One diff row: the comparison entry, its current action under the chosen direction, and
     /// whether the user has it checked for the run.
@@ -116,8 +145,7 @@ final class SyncDirectoriesController: NSViewController {
 
     @objc func comparisonChanged(_ sender: NSSegmentedControl) {
         guard comparisons.indices.contains(sender.selectedSegment) else { return }
-        comparison = comparisons[sender.selectedSegment]
-        startScan()
+        applyComparison(comparisons[sender.selectedSegment])
     }
 
     /// Re-derive every row's action for the new direction and reset the check state to that
@@ -162,6 +190,13 @@ final class SyncDirectoriesController: NSViewController {
         onCompare?(left, right)
     }
 
+    /// A scan outlives the sheet unless somebody stops it, and a content one can be reading
+    /// gigabytes. Here rather than in `cancel(_:)` so the window's own close button counts too.
+    override func viewDidDisappear() {
+        super.viewDidDisappear()
+        scanControl.stop()
+    }
+
     @objc func cancel(_ sender: Any?) {
         dismiss(sender)
     }
@@ -204,43 +239,5 @@ final class SyncDirectoriesController: NSViewController {
             return (path.path as NSString).abbreviatingWithTildeInPath
         }
         return path.isRoot ? root : "\(root)\(path.path)"
-    }
-
-    static func title(for direction: SyncDirection) -> String {
-        switch direction {
-        case .leftToRight:
-            String(
-                localized: "Left → Right",
-                comment: "Sync direction: mirror the left folder onto the right."
-            )
-        case .bidirectional:
-            String(localized: "Both Directions", comment: "Sync direction: reconcile both folders.")
-        case .rightToLeft:
-            String(
-                localized: "Right → Left",
-                comment: "Sync direction: mirror the right folder onto the left."
-            )
-        }
-    }
-
-    static func title(for comparison: SyncComparison) -> String {
-        switch comparison {
-        case .size:
-            // The comment is the file-list column header's, repeated **verbatim**: it is the same
-            // key, and two sites commenting one key differently hand the translator whichever
-            // `xcstringstool` kept (docs/NOTES.md ▸ Localization). Why size-only is the honest
-            // comparison on a server belongs in ``SyncComparison/size``, not in a translator note.
-            String(
-                localized: "Size",
-                comment: "File-list column header: the file's size."
-            )
-        case .sizeAndDate:
-            String(
-                localized: "Size & Date",
-                comment: "Sync comparison method: compare by size and modification date."
-            )
-        case .content:
-            String(localized: "Content", comment: "Sync comparison method: compare byte-for-byte.")
-        }
     }
 }

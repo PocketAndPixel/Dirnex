@@ -179,10 +179,55 @@ extension SyncDirectoriesController {
         syncButton.target = self
         syncButton.action = #selector(apply(_:))
 
+        // The label is the arranged view that gives way when the row is short of room. Everything
+        // in this footer resists compression equally by default, so without this the stack squeezes
+        // whichever it likes — and a crushed *button* is a control nobody can read, where a
+        // truncated status still says most of what it said and keeps the rest in its tooltip
+        // (docs/NOTES.md ▸ Localization, the same fix the sync sheet's controls row needed).
+        statusLabel.lineBreakMode = .byTruncatingTail
+        statusLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         let footer = NSStackView(views: [statusLabel, spacer(width: 0), cancelButton, syncButton])
         footer.orientation = .horizontal
         footer.spacing = 10
         footer.widthAnchor.constraint(equalToConstant: 680).isActive = true
         return footer
+    }
+
+    static func title(for direction: SyncDirection) -> String {
+        switch direction {
+        case .leftToRight:
+            String(
+                localized: "Left → Right",
+                comment: "Sync direction: mirror the left folder onto the right."
+            )
+        case .bidirectional:
+            String(localized: "Both Directions", comment: "Sync direction: reconcile both folders.")
+        case .rightToLeft:
+            String(
+                localized: "Right → Left",
+                comment: "Sync direction: mirror the right folder onto the left."
+            )
+        }
+    }
+
+    static func title(for comparison: SyncComparison) -> String {
+        switch comparison {
+        case .size:
+            // The comment is the file-list column header's, repeated **verbatim**: it is the same
+            // key, and two sites commenting one key differently hand the translator whichever
+            // `xcstringstool` kept (docs/NOTES.md ▸ Localization). Why size-only is the honest
+            // comparison on a server belongs in ``SyncComparison/size``, not in a translator note.
+            String(
+                localized: "Size",
+                comment: "File-list column header: the file's size."
+            )
+        case .sizeAndDate:
+            String(
+                localized: "Size & Date",
+                comment: "Sync comparison method: compare by size and modification date."
+            )
+        case .content:
+            String(localized: "Content", comment: "Sync comparison method: compare byte-for-byte.")
+        }
     }
 }

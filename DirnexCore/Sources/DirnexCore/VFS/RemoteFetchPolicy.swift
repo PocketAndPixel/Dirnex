@@ -36,6 +36,16 @@ public enum RemoteFetchPurpose: Sendable, Equatable, CaseIterable {
     case handOff
     /// ⌥F3 Compare By Contents: two files, read end to end, and the verdict is all that is kept.
     case compare
+    /// The Synchronize sheet comparing two trees by contents: every same-size pair the walk found,
+    /// on whichever side is not on this disk.
+    ///
+    /// Its own case rather than ``compare``'s, though it shares that row of the table, because the
+    /// two differ in the one dimension a size threshold cannot see: ⌥F3 is two files somebody put
+    /// under the cursors and this is however many pairs two trees happen to hold. What answers that
+    /// is ``RemoteFetchPolicy/unaskedRequestLimit``, which every purpose already shares — so what
+    /// the separate case buys is that the number was *chosen* for this gesture rather than
+    /// inherited by whoever wrote the call site.
+    case syncContents
     /// A checksum run over the marked set — created or verified.
     case checksum
     /// A user script, over whatever the user marked.
@@ -100,9 +110,10 @@ public enum RemoteFetchDecision: Sendable, Equatable {
 ///
 /// - **Everything M24 added sits on the open/edit row**, and that is a decision rather than a
 ///   default. Hand off, compare, checksum, a user script, a pack and browsing a remote archive are
-///   all "somebody pressed a key naming these files", which is the same commitment ⏎ and F4 carry;
-///   six new constants a few megabytes apart would each mean *approximately* 64 MiB and would drift
-///   apart on the first visit anybody paid to one of them. Where those gestures genuinely differ
+///   all "somebody pressed a key naming these files", which is the same commitment ⏎ and F4 carry —
+///   and M25's content sync joined them for the same reason. Six new constants a few megabytes apart
+///   would each mean *approximately* 64 MiB and would drift apart on the first visit anybody paid to
+///   one of them. Where those gestures genuinely differ
 ///   from ⏎ is not in how much is worth moving but in **how many things** are moving, and that is
 ///   ``unaskedRequestLimit`` — a second rule, not a second table.
 ///
@@ -153,7 +164,7 @@ public enum RemoteFetchPolicy {
         // the smaller question too, and confirming an *open* they would not be asked about for a
         // mere look is the ordering this table exists to keep straight.
         case .open, .edit,
-             .handOff, .compare, .checksum, .userScript, .pack, .browseArchive:
+             .handOff, .compare, .syncContents, .checksum, .userScript, .pack, .browseArchive:
             max(64 * 1024 * 1024, limit)
         }
     }

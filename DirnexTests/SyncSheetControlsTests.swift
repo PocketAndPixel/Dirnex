@@ -42,12 +42,19 @@ struct SyncSheetControlsTests {
     /// The claim the whole comparison rule exists for: a server's listing carries no modification
     /// time worth comparing, so the control must not offer to compare by one — and the sheet has to
     /// open on a comparison it does offer.
-    @Test("a remote side leaves only the size comparison, and opens on it")
-    func remoteSideOffersSizeOnly() {
+    ///
+    /// Comparing *contents* survives, and since M25 Slice 5d it is offered over a remote pair too:
+    /// bytes are bytes, and what used to withdraw it was that the engine had nothing local to hand
+    /// its comparator. So the control keeps two segments, and neither of them is the date.
+    @Test("a remote side loses the date comparison and keeps size and contents")
+    func remoteSideLosesOnlyTheDateComparison() {
         let remote = VFSPath(backend: .sftp(Self.sftp), path: "/srv/backup")
         let sheet = Self.sheet(left: .local("/a"), right: remote)
-        #expect(sheet.comparisonControl.segmentCount == 1)
+        #expect(sheet.comparisons == [.size, .content])
+        #expect(sheet.comparisonControl.segmentCount == 2)
+        // Opens on size: the strongest *cheap* one, never the one that reads every file.
         #expect(sheet.comparisonControl.selectedSegment == 0)
+        #expect(sheet.comparison == .size)
     }
 
     /// A read-only side is a fine thing to mirror *from*, so what is withdrawn is the direction that

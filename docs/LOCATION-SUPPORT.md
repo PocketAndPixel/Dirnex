@@ -313,9 +313,18 @@ either side is remote, and for three different reasons: `sftp`'s `ls -la` drops 
 about six months, the whole time of day (measured 41 617 s from the truth); FTP's `LIST` stamp is
 year-less, zone-less and on the server's clock; and S3's `LastModified` is exact and is the *upload*
 time, which nothing can set. Two sides of one coarse dialect are no better — two files thirty seconds
-apart list as the same minute, so a mirror would skip the one that changed. Comparing by **contents**
-is still local-only: `ByteComparator` reads real paths, so a remote content sync is a fetch per
-candidate pair at a price a plan has to state up front, which is its own slice.
+apart list as the same minute, so a mirror would skip the one that changed.
+
+Comparing by **contents** works anywhere since §M25 Slice 5d, and it is the one comparison a coarse
+listing cannot make dishonest — bytes are bytes. The scan is two phases over **one** walk: the walk
+classifies every row by size, the pairs whose bytes decide the answer are named from that (both sides
+present, both regular files, the same size), and *those* are fetched as one queued job with a
+determinate bar and a Stop before anything is read. So the confirmation names the real total, a pair
+a size mismatch already settled costs no transfer, and `ByteComparator` still only ever sees real
+local paths. Two things it does **not** buy: a difference it finds is still never ranked newer or
+older, because reading bytes says nothing about which came later and the clock is the same unusable
+stamp; and an evicted cloud placeholder is refused rather than downloaded, because a tree sweep is
+not a file anybody pointed at and its bytes cannot be weighed before they are asked for.
 
 Three more things follow from the widening. The scan asks each side for its whole subtree first
 (`VFSBackend.subtreeListing`), so a server walks its own tree in one command instead of a connection

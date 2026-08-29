@@ -77,6 +77,28 @@ extension PanelViewController {
             return
         }
 
+        presentAsMovableWindow(makeSyncController(
+            leftDir: leftDir,
+            rightDir: rightDir,
+            directions: directions
+        ))
+    }
+
+    /// Build the sheet and hand it every closure it needs, with nothing presented.
+    ///
+    /// A separate step from presenting it because **a closure the panel forgets to install is a
+    /// feature that silently does nothing**, and this project has shipped that twice already —
+    /// M22's `subtreeListing` and M25 Slice 5b's `metadataTally`, each a forward `CompositeBackend`
+    /// never made, each invisible to both green suites. A missing `onPrepareContents` here has the
+    /// same shape: the sheet falls back to comparing with an empty map, which for a remote pair
+    /// fails as *"The folders couldn't be compared"* — a sentence about the folders, over a wiring
+    /// mistake. Reaching this through `beginSync` would mean presenting an app-modal window in the
+    /// test host, so the seam is where the test can stand.
+    func makeSyncController(
+        leftDir: VFSPath,
+        rightDir: VFSPath,
+        directions: [SyncDirection]
+    ) -> SyncDirectoriesController {
         let controller = SyncDirectoriesController(
             leftDir: leftDir,
             rightDir: rightDir,
@@ -90,7 +112,49 @@ extension PanelViewController {
         controller.onCompare = { [weak self] left, right in
             self?.launchExternalDiff(comparing: left, with: right)
         }
-        presentAsMovableWindow(controller)
+        controller.onPrepareContents = { [weak self] entries, answer in
+            self?.prepareSyncContents(entries, then: answer)
+        }
+        return controller
+    }
+
+    /// Bring a content comparison's candidate pairs down to real files and answer with the map the
+    /// engine reads them back through (PLAN.md §M25 Slice 5d).
+    ///
+    /// The same funnel every other M24 gesture goes through, so the plan, the confirmation naming
+    /// the total, the queued transfer with its bar and its Stop, and the report of a short set are
+    /// all the ones that already exist — this adds a verb after them and no second way to fetch.
+    ///
+    /// **Placeholders are deliberately left alone** (`includingPlaceholders: false`), which is the
+    /// one place this differs from ⌥F3 over the same bytes. An evicted cloud file cannot be *weighed*
+    /// — `MaterializationPlan` excludes it, because `CloudDownloadPrompt` is its own progress surface
+    /// — so fetching every one a tree walk discovered would be an unbounded download with no total in
+    /// front of it. That is M14's rule unchanged: a file somebody pointed at downloads, a tree sweep
+    /// refuses. `ByteComparator` then names the first one it meets and the sheet says so.
+    ///
+    /// The map is rebuilt from the window's caches rather than from the URLs handed back, exactly as
+    /// the checksum run does: a row the plan found already cached is never fetched and is just as
+    /// readable, so a map built from what moved would report it as not downloaded.
+    /// Internal rather than private so the wiring can be driven directly: reaching it through the
+    /// sheet would mean a test supplying its own `onPrepareContents`, which stands exactly where
+    /// this code does and would prove nothing about it.
+    func prepareSyncContents(
+        _ entries: [FileEntry],
+        then answer: @escaping @MainActor (MaterializedPaths?) -> Void
+    ) {
+        materialize(entries, for: .syncContents) {
+            String(
+                localized: "Couldn’t compare these folders",
+                comment: """
+                Alert title when the files a content comparison has to read can't be downloaded or \
+                extracted.
+                """
+            )
+        } onAbandon: {
+            answer(nil)
+        } then: { [weak self] _ in
+            answer(self?.materializedPaths(for: entries) ?? MaterializedPaths())
+        }
     }
 
     /// A pane can take part in a sync when it shows a **real, re-listable, readable directory** —

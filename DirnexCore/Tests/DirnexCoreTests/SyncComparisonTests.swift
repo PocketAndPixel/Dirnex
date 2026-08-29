@@ -27,10 +27,10 @@ struct SyncComparisonAvailabilityTests {
 
     @Test("one remote side withdraws the date comparison, whichever side it is")
     func oneRemoteSideWithdrawsDates() {
-        #expect(SyncComparison.available(between: .local, and: sftp) == [.size])
-        #expect(SyncComparison.available(between: sftp, and: .local) == [.size])
-        #expect(SyncComparison.available(between: .local, and: ftp) == [.size])
-        #expect(SyncComparison.available(between: .local, and: s3) == [.size])
+        #expect(SyncComparison.available(between: .local, and: sftp) == [.size, .content])
+        #expect(SyncComparison.available(between: sftp, and: .local) == [.size, .content])
+        #expect(SyncComparison.available(between: .local, and: ftp) == [.size, .content])
+        #expect(SyncComparison.available(between: .local, and: s3) == [.size, .content])
     }
 
     /// The case that is easy to get wrong by reading "coarse" as "coarse in a different way": two
@@ -39,17 +39,36 @@ struct SyncComparisonAvailabilityTests {
     /// the one that changed. Measured against a real `sshd` (docs/NOTES.md ▸ sftp / ssh).
     @Test("two sides of the same coarse dialect are still not comparable by date")
     func twoCoarseSidesAreStillNotComparable() {
-        #expect(SyncComparison.available(between: sftp, and: sftp) == [.size])
-        #expect(SyncComparison.available(between: ftp, and: ftp) == [.size])
+        #expect(SyncComparison.available(between: sftp, and: sftp) == [.size, .content])
+        #expect(SyncComparison.available(between: ftp, and: ftp) == [.size, .content])
     }
 
-    @Test("contents is offered only when both sides are on this disk")
-    func contentsNeedsTwoLocalSides() {
+    /// The rule M25 Slice 5d inverted: comparing bytes was withdrawn from a remote pair because the
+    /// engine had nothing local to hand its comparator, not because the answer would have been
+    /// dishonest — and once the gesture fetches every candidate pair first, bytes are bytes.
+    @Test("contents is offered over every pair, whichever side is not on this disk")
+    func contentsIsOfferedEverywhere() {
         #expect(SyncComparison.available(between: .local, and: .local).contains(.content))
         for remote in [sftp, ftp, s3, VFSBackendID.archive(forArchiveAt: "/tmp/a.zip")] {
-            #expect(!SyncComparison.available(between: .local, and: remote).contains(.content))
-            #expect(!SyncComparison.available(between: remote, and: .local).contains(.content))
+            #expect(SyncComparison.available(between: .local, and: remote).contains(.content))
+            #expect(SyncComparison.available(between: remote, and: .local).contains(.content))
+            #expect(SyncComparison.available(between: remote, and: remote).contains(.content))
         }
+    }
+
+    /// What did *not* widen with it, and the half a content scan over a coarse pair could silently
+    /// get wrong: reading bytes settles whether two files are equal and says nothing about which is
+    /// newer, so the ranking still rests on the clock — and over a remote listing the clock is the
+    /// same unusable stamp ``SyncComparison/sizeAndDate`` was withdrawn for.
+    @Test("comparing contents does not buy back a clock the listings do not have")
+    func contentDoesNotBelieveACoarseClock() {
+        #expect(SyncComparison.content.believesModificationDates(between: .local, and: .local))
+        #expect(!SyncComparison.content.believesModificationDates(between: .local, and: sftp))
+        #expect(!SyncComparison.content.believesModificationDates(between: sftp, and: .local))
+        #expect(!SyncComparison.content.believesModificationDates(between: sftp, and: sftp))
+        // The comparison that never consults the clock cannot start doing so because both sides
+        // happen to keep a good one.
+        #expect(!SyncComparison.size.believesModificationDates(between: .local, and: .local))
     }
 
     @Test("the opening comparison is the strongest cheap one available")

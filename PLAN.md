@@ -983,10 +983,11 @@ the old behaviour standing where it cannot be established.
    comparing by *contents* now joins, since M24 Slice 4 taught ⌥F3 to fetch both sides at a price
    the plan can state up front. Note that Synchronize is gated `backend == .local` on **both** panes
    today (`PanelViewController.canSync`), so this slice widens a gate before it adds a comparison.
-   **Landed 2026-08-28 as 5c**, less the contents half, which is a slice of its own on Oleg's call:
-   comparing contents across a server is a fetch per candidate pair inside a scan that has no
-   progress bar and no Stop today, and doing both at once would have made each one's evidence
-   weaker.
+   **Landed 2026-08-28 as 5c**, less the contents half, which was a slice of its own on Oleg's call:
+   comparing contents across a server is a fetch per candidate pair inside a scan that had no
+   progress bar and no Stop, and doing both at once would have made each one's evidence weaker. That
+   half landed as **5d** below, and the deferral's own reason is what its shape answers — the fetch
+   is a queued job, which has both by construction, and the scan gained a Stop of its own.
    **The probe overturned the sentence this slice was written around.** It says timestamp comparison
    is refused "for FTP and S3 and always will be", which names two of the three: measured against a
    real `sshd`, **SFTP's listing is coarse too**. `ls -la` prints `Aug 20 11:33` for a file whose
@@ -1031,6 +1032,86 @@ the old behaviour standing where it cannot be established.
    on a restored SFTP tab, where the server's log is the judge: the gesture produced **one** exec
    session against **zero** for eight idle seconds — and the control, the gate reverted, produced
    **zero** for the same gesture on the same seeded session while the pane went on listing.
+8. **Synchronize by contents, on a side that is not local** — the half 5c deferred, landed as
+   **5d 2026-08-29**. Comparing bytes was never dishonest over a server; it was **unbuilt**, because
+   the engine reads through an injected comparator that only ever sees real local paths. So the rule
+   `SyncComparison.available` applied — both sides on this disk — was a fact about the code rather
+   than about the answer, and what replaces it is a fetch the user is shown the price of.
+   **Two phases over one walk, which is the shape and the whole economy.** Nothing can know which
+   files a content comparison will read until both trees have been walked, so the scan walks once
+   (``DirectorySync.survey`` — classify by size, keep the identical rows), names the pairs whose
+   bytes decide the answer (``contentCandidates`` — both sides present, both regular files, same
+   size), hands *those* to the M24 funnel to be weighed, confirmed and fetched, and re-answers the
+   same rows (``recompare``) with the copies that arrived. One walk rather than the two checksum
+   verification had to settle for: the rows **are** the plan, so the set the confirmation counted
+   and the set the comparison reads cannot drift. It also made switching the picker free — a
+   comparison is a question about the same snapshot, and over a server re-walking is a connection
+   per directory for rows nothing has moved.
+   **The clock rule had to split in two, and that is the bug this slice would otherwise have
+   shipped.** Reading bytes settles *whether* two files are equal and says nothing about which came
+   later, so `.content` still ranks by the stamp — and it can now span a pair whose listings have
+   none. `usesModificationDates` is a fact about the comparison; whether the clock may be *believed*
+   is a fact about the **pair** (`believesModificationDates(between:and:)`), derived inside `compare`
+   from the two roots it already holds so no caller can get it wrong. Its second half is the
+   fallback: what a content scan cannot read — a symlink, a special file — falls back to **size
+   alone** over a coarse pair, or every link in the tree reports a difference on every scan.
+   **An evicted cloud placeholder is refused, not fetched**, which is the one place this differs from
+   ⌥F3 over the same bytes. A placeholder cannot be *weighed* — `MaterializationPlan` excludes it,
+   since `CloudDownloadPrompt` is its own progress surface — so fetching every one a tree walk
+   discovered would be an unbounded download with no total in front of it. M14's rule unchanged: a
+   file somebody pointed at downloads, a tree sweep refuses. A remote row is the opposite case and is
+   why the slice exists — it is not a file at all until it is fetched, and what it costs is exact.
+   The funnel grew the one thing it lacked: `onAbandon`, because a declined download has to reach a
+   caller that is **showing** something. Every other M24 gesture leaves nothing behind when it does
+   not happen; the sheet asks while displaying a comparison, so a decline puts the picker back rather
+   than leaving it saying "Downloading files to compare…" for the session. The sheet's scan also
+   gained the Stop it never had, tied to the sheet going away — which is the other half of what made
+   this a slice of its own, the fetch itself having the queue's bar and Stop by construction.
+   Controlled in eleven directions, each failing only the tests that name it: five in the core (the
+   pair's clock ignored when ranking, the content fallback reading a date it cannot believe, the
+   survey dropping its identical rows, every both-sides row a candidate, structural rows re-derived)
+   and six in the app (the fetch asked for every row, a comparison change re-walking, a stopped
+   transfer telling the sheet nothing, the comparison applied before the download is answered, the
+   map built from what moved rather than from what is readable, the pass reading the rows' own paths).
+   **Two controls were inert on first writing and both are the finding worth keeping.** The
+   re-walk control passed because the test waited on `comparison`, which is assigned *synchronously*
+   on the way in — so it was satisfied long before any walk landed, and the listing count was read
+   too early. A wait on a value the code under test sets before doing the work is a wait on nothing.
+   And a control's own edit did not match the file it was aimed at, so it reverted nothing and
+   reported a pass; the text has to be checked, not assumed.
+   **Verified live against a throwaway `sshd`**, through the real `SFTPProcessTransport`: a local
+   tree against the server's, walked once, three candidates fetched, and `same-size.bin` — five bytes
+   on both sides and different bytes — reported as a difference no size or date comparison can see,
+   still deliberately unranked, with the byte-identical pairs read and dropped. Both live controls
+   fire on demand (no pair ever read, and the survey dropping its identical rows: 6 issues each
+   against a green baseline), and the server's own log prices the candidate rule at **98 sessions
+   against 99** when every both-sides row is treated as a candidate — one extra login for the one
+   pair a size mismatch had already settled.
+   One thing about reading that run is worth keeping: an assertion inside `offCooperativePool` is
+   filed under **`Test «unknown»`** while its test still prints a tick, so a grep for `✘ Test "`
+   matches nothing and the control reads as inert. The run summary's **issue count** is the
+   instrument. The same shape one door along: `-only-testing:` naming a single Swift Testing function
+   selected **0 tests** and reported success — again, read the count, not the verdict.
+   **And the gesture itself in the built app**, on two seeded local panes: `run operation
+   "file.syncDirectories"` surveys four rows and names two candidates, `Size & Date` draws
+   `only-left.txt` and `sizes.txt` — and `pair.txt`, five bytes on both sides with the same mtime and
+   different bytes, is **invisible** to it. The content pass finds exactly that row, while
+   `twin.txt`, byte-identical, stays omitted: the claim and its narrowness control in one run. Two
+   things about driving it are worth keeping — the sheet is app-**modal**, so `quit` is refused and a
+   `Timer.scheduledTimer` never fires (a `.default`-mode timer is not serviced in `.modalPanel`; add
+   it to `RunLoop.main` in `.common`), and the panel's segmented control cannot be reached from
+   AppleScript at all, which is why the picker had to be poked by a temporary action.
+   **The live suite then destabilised a neighbour, and the bisect is the reason that is a sentence
+   rather than a suspicion.** With a live server configured the app suite failed **4 full runs of
+   6**, always in `RemotePreviewFetchTests` — a suite docs/NOTES.md already records as starving on a
+   busy main actor. Skipping *this slice's* three suites gave 1 of 6; skipping only the **live** one
+   gave 1 of 6 as well, so the load is five live tests holding the main actor for seconds at a time
+   and not anything the headless additions do. The repair is the one that entry licenses: a wait
+   **for** something is free to be generous, so its 10 s budget became 30 s — a satisfied predicate
+   returns on the next poll, and the budget only decides how much scheduling delay is absorbed
+   before the code gets the blame. Re-measured: **1 in 6**, the tree's own baseline, with no test of
+   this slice's among the failures. Its `hold(until:)` neighbour is deliberately untouched: there
+   the length *is* the claim.
 
 #### Smaller than a milestone
 

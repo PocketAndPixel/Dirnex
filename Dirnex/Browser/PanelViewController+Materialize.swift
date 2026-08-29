@@ -100,14 +100,30 @@ extension PanelViewController {
     /// the type comment. `false` is the hand-off answer and the default, because it is the one that
     /// costs the user nothing. It changes what is *fetched* and never what is *confirmed*: those
     /// bytes have a surface of their own already.
+    ///
+    /// `onAbandon` runs on every path that does **not** reach `proceed` — declined, stopped, or
+    /// failed — and is for a caller that has put something on screen and has to take it back down.
+    /// Most gestures need none of it: a hand-off that does not happen leaves nothing behind, and
+    /// this funnel has already said why. The Synchronize sheet does, because it asks *while showing
+    /// a comparison*, and a declined download must return it to the one it was showing rather than
+    /// leave it saying "Comparing folders…" for the rest of the session (PLAN.md §M25 Slice 5d).
+    ///
+    /// One exit is deliberately not covered and cannot be: a **stopped placeholder download**.
+    /// `CloudDownloadPrompt` reports a Stop to nobody — it simply never calls its continuation — so
+    /// there is nothing here to observe. It is unreachable for a caller passing
+    /// `includingPlaceholders: false`, where that stage has nothing to do.
     func materialize(
         _ entries: [FileEntry],
         for purpose: RemoteFetchPurpose,
         includingPlaceholders: Bool = false,
         failureMessage: @escaping () -> String,
+        onAbandon: (@MainActor () -> Void)? = nil,
         then proceed: @escaping @MainActor ([URL]) -> Void
     ) {
-        guard !entries.isEmpty else { return }
+        guard !entries.isEmpty else {
+            onAbandon?()
+            return
+        }
         let whole = materializationPlan(for: entries)
         // **A placeholder is fetched but never weighed**, whichever gesture is fetching it, and the
         // asymmetry is deliberate: `CloudDownloadPrompt` already names the file and its size and
@@ -122,7 +138,12 @@ extension PanelViewController {
             // The ordinary marked set of local files: no dialog, no job, no branch anybody has to
             // remember. Synchronous, so a gesture over local rows behaves exactly as it did before
             // this funnel existed.
-            deliver(entries, failureMessage: failureMessage, then: proceed)
+            deliver(
+                entries,
+                failureMessage: failureMessage,
+                onAbandon: onAbandon,
+                then: proceed
+            )
             return
         }
         switch RemoteFetchPolicy.decision(
@@ -131,17 +152,34 @@ extension PanelViewController {
             previewLimit: AppPreferences.shared.quickViewFetchLimit
         ) {
         case .fetch:
-            run(work, over: entries, failureMessage: failureMessage, then: proceed)
+            run(
+                work,
+                over: entries,
+                failureMessage: failureMessage,
+                onAbandon: onAbandon,
+                then: proceed
+            )
         case .confirm:
-            confirm(weighed) { [weak self] in
-                self?.run(work, over: entries, failureMessage: failureMessage, then: proceed)
+            confirm(weighed) { [weak self] accepted in
+                guard accepted else {
+                    onAbandon?()
+                    return
+                }
+                self?.run(
+                    work,
+                    over: entries,
+                    failureMessage: failureMessage,
+                    onAbandon: onAbandon,
+                    then: proceed
+                )
             }
         case .decline:
             // Unreachable, and named rather than defaulted for the reason `RemoteFetchPrompt` names
             // it: only `.cursorPreview` declines, it is the one purpose with nobody standing at a
             // key to answer, and it never arrives as a set. A future automatic gesture routed here
-            // fails at the compiler instead of silently inheriting a confirmation.
-            break
+            // fails at the compiler instead of silently inheriting a confirmation — and it answers
+            // `onAbandon` on the way out, since nothing was fetched and nothing will proceed.
+            onAbandon?()
         }
     }
 
@@ -156,17 +194,25 @@ extension PanelViewController {
         _ plan: MaterializationPlan,
         over entries: [FileEntry],
         failureMessage: @escaping () -> String,
+        onAbandon: (@MainActor () -> Void)?,
         then proceed: @escaping @MainActor ([URL]) -> Void
     ) {
         extractMembers(plan.archiveExtractions) { [weak self] in
             guard let self else { return }
             downloadPlaceholders(plan.cloudMaterializations) { [weak self] in
                 guard let self else { return }
-                fetchRemotely(plan, over: entries, failureMessage: failureMessage, then: proceed)
+                fetchRemotely(
+                    plan,
+                    over: entries,
+                    failureMessage: failureMessage,
+                    onAbandon: onAbandon,
+                    then: proceed
+                )
             }
         } onFailure: { [weak self] error in
             guard let self else { return }
             presentOperationFailure(message: failureMessage(), detail: describe(error))
+            onAbandon?()
         }
     }
 
@@ -197,17 +243,26 @@ extension PanelViewController {
         _ plan: MaterializationPlan,
         over entries: [FileEntry],
         failureMessage: @escaping () -> String,
+        onAbandon: (@MainActor () -> Void)?,
         then proceed: @escaping @MainActor ([URL]) -> Void
     ) {
         guard !plan.remoteFetches.isEmpty else {
-            deliver(entries, failureMessage: failureMessage, then: proceed)
+            deliver(
+                entries,
+                failureMessage: failureMessage,
+                onAbandon: onAbandon,
+                then: proceed
+            )
             return
         }
         host?.materializeRemoteFiles(plan.remoteFetches) { [weak self] report in
             guard let self else { return }
             // A stopped transfer is the user's own answer, already on screen in the queue bar:
             // nothing to report and nothing to proceed with.
-            guard !report.wasCancelled else { return }
+            guard !report.wasCancelled else {
+                onAbandon?()
+                return
+            }
             // The runner carries on past a failed row and names it, leaving the decision here —
             // and the decision is made by what is *resolvable*, not by the failure count. A row
             // that failed while an earlier copy of it is still current costs the user nothing,
@@ -218,6 +273,7 @@ extension PanelViewController {
                 entries,
                 failure: report.failures.first?.error,
                 failureMessage: failureMessage,
+                onAbandon: onAbandon,
                 then: proceed
             )
         }
@@ -237,6 +293,7 @@ extension PanelViewController {
         _ entries: [FileEntry],
         failure: (any Error)? = nil,
         failureMessage: @escaping () -> String,
+        onAbandon: (@MainActor () -> Void)?,
         then proceed: @escaping @MainActor ([URL]) -> Void
     ) {
         let urls = entries.compactMap { materializedURL(for: $0) }
@@ -254,6 +311,7 @@ extension PanelViewController {
                     """
                 )
             )
+            onAbandon?()
             return
         }
         proceed(urls)
@@ -316,7 +374,12 @@ extension PanelViewController {
     /// reason that rule exists. Ten thousand objects of 500 bytes weigh 5 MB and take about 83
     /// minutes (docs/NOTES.md ▸ curl for S3), so a dialog that named only the size would look
     /// absurd on exactly the set it was raised to protect.
-    private func confirm(_ plan: MaterializationPlan, then proceed: @escaping @MainActor () -> Void) {
+    /// Answers `true` when the user agreed and `false` on every other ending, so a caller with
+    /// something on screen can take it back down — see `onAbandon` above.
+    private func confirm(
+        _ plan: MaterializationPlan,
+        then decided: @escaping @MainActor (Bool) -> Void
+    ) {
         let alert = NSAlert()
         alert.messageText = materializationTitle(for: plan)
         alert.informativeText = materializationDetail(for: plan)
@@ -332,8 +395,7 @@ extension PanelViewController {
         // reason: `beginSheetModal` returns at once and the alert retains the *closure*, so a weak
         // capture would leave Download doing nothing at all (reported by a user 2026-08-19).
         let apply: (NSApplication.ModalResponse) -> Void = { response in
-            guard response == .alertFirstButtonReturn else { return }
-            proceed()
+            decided(response == .alertFirstButtonReturn)
         }
         if let window = view.window {
             alert.beginSheetModal(for: window, completionHandler: apply)
