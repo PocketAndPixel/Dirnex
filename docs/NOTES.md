@@ -3023,6 +3023,30 @@ one, so all four columnar parsers — `bsdtar -tvf`, `sftp`'s `ls -la`, FTP's `L
     `ArchiveSourceItem` has split the absolute `onDiskPath` from the relative `archivePath` since
     M19, so only the *entry point* (`items(inDirectory:names:)`) ever assumed one directory. Both
     writers already wanted the general shape and neither could express it.
+- **`bsdtar` answers **SIGINFO** with exact input-byte progress, on a pipe, and that is the only
+  progress it will ever give you.** It prints nothing on its own and no flag turns one on — but
+  signalled, it writes two lines to stderr and carries on with its exit status untouched. Measured
+  2026-08-30 against libarchive 3.7.4 over 229 MB:
+
+      In: 3 files, 42894848 bytes; Out: 32440320 bytes, compression 24%
+      Current: file11.dat (15990784/20000000 bytes)
+
+  - **It works over a real pipe, not just a terminal**, which is what makes it usable from a spawned
+    process at all — the exact opposite of `sftp`'s meter, which OpenSSH draws only for a foreground
+    process group on a controlling terminal and which therefore cannot be had by an app in any
+    configuration (▸ sftp / ssh). Two signals mid-run left the pack at exit 0.
+  - **Read `In:` bytes, never `Out:`.** The input side is the quantity a walk can measure *before* the
+    pack starts, so a numerator and a denominator that are the same kind of thing; the archive's own
+    growth has no denominator until the compression ratio is known, which is at the end.
+  - **SIGTERM stops it promptly and leaves a partial archive**, which must be swept — a half-written
+    archive is worse than none, because it opens. Measured: cancel at 0.50 s returned at 0.51 s with
+    52 MB of partial removed.
+  - The cost is one ask per signal, so poll rather than signal per turn: `ProcessWaiting.wait`'s
+    100 ms loop signalling every fourth turn is ~2.5 asks a second, which is more than a bar can show.
+    Keep only the tail of the stderr buffer — a long pack is asked thousands of times and only the
+    newest sample is ever wanted — and cut it on a line boundary, since the parser's own rule is that
+    a half-arrived line is not a sample.
+
 - **`--options compression-level=N` must go in *unprefixed*.** A module prefix has to name the
   writer actually running (`zip:`, `gzip:`, `bzip2:`, `7zip:`), so one prefixed string breaks the
   moment the user picks another format — `bsdtar: Unknown module name: 'zip'`, exit 1, no archive.
@@ -3046,6 +3070,15 @@ one, so all four columnar parsers — `bsdtar -tvf`, `sftp`'s `ls -la`, FTP's `L
     libarchive's per-format defaults are not all 6, and the default is what "normal" means.
 
 ### sftp / ssh
+
+- **Copying a *tree* off a server needs a **routing** backend; copying one file does not — and the
+  difference fails before a byte moves.** `CopyEngine` creates directories and writes files on the
+  **destination** side, so handed a bare `SFTPBackend` it refuses the local temp path with
+  `pathOutsideConnection`; a one-file fetch is a single `copyFile` the remote backend answers itself
+  and never notices. The app always holds a `CompositeBackend`, so this is a *harness* trap rather
+  than a product one — measured 2026-08-30, when a live test of folder staging failed naming a temp
+  directory nobody had asked about, which reads as a broken fetch rather than as a fake that is one
+  backend short.
 
 - **`sftp` batch `ls -la` is not GNU `ls -l`**: the link-count column is `?`, names are printed
   as full paths (reduce to last component), symlink targets are not shown, and there is **no

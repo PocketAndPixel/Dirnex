@@ -30,12 +30,19 @@ struct PackMaterializeTests {
 
     // MARK: - Which sources may be packed
 
-    @Test("a folder on a server is refused by name rather than silently left out")
-    func remoteFolderIsRefused() async throws {
-        // The hand-off's rule, in the hand-off's words: a folder that is not here stands for an
-        // unknown number of objects in an unknown number of requests, which is why the plan names
-        // those rows rather than weighing them. Leaving it out instead would produce an archive
-        // short of what the user marked and say nothing about it.
+    @Test("a folder on a server is staged rather than refused")
+    func remoteFolderIsStaged() async throws {
+        // **This test used to assert the opposite**, and the sentence it pinned was the hand-off's:
+        // a folder that is not here stands for an unknown number of objects in an unknown number of
+        // requests, so ⌥F5 refused it and told the user to copy it over with F5 and pack the copy.
+        // That advice *is* the implementation — `MaterializeRunner` hands the folder to
+        // `CopyEngine`, which has walked remote trees since M5 — so since 2026-08-30 the gesture
+        // does it instead of recommending it (PLAN.md §4 ▸ *Smaller than a milestone*).
+        //
+        // What has **not** changed is what the user is told beforehand: a plan holding a folder is
+        // not exact, so the confirmation says Dirnex cannot tell in advance how much this will
+        // fetch. That is `MaterializationPlan.totalsAreExact`, and it was written for this case
+        // before anything could stage one.
         let folder = Handoff.remote("/srv/photos", kind: .directory)
         let (source, _) = panes(
             showing: [folder],
@@ -46,13 +53,15 @@ struct PackMaterializeTests {
         source.pane.beginArchivePacking()
         try await settleUntil { source.window.attachedSheet != nil }
 
-        // One button is a refusal; the pack sheet offers Pack, Cancel and its accessory's popups.
-        // Counting rather than matching text, since the test target inherits the developer's own
-        // `AppleLanguages` pin (docs/NOTES.md ▸ Testing).
-        #expect(sheetButtonCount(in: source.window) == 1)
-        #expect(sheetText(in: source.window).contains { $0.contains("photos") })
+        // The pack sheet, not a refusal: it offers Pack, Cancel and its accessory's popups, where a
+        // refusal offers one OK. Counting rather than matching text, since the test target inherits
+        // the developer's own `AppleLanguages` pin (docs/NOTES.md ▸ Testing).
+        #expect(sheetButtonCount(in: source.window) > 1)
+        // That the folder then really is *staged and packed* cannot be seen from here: everything
+        // after the Pack button is behind a sheet nothing headless can answer, which is the same
+        // wall M24 Slice 6 met. It is measured in `PackLiveIntegrationTests` against a real server
+        // and a real `bsdtar` (docs/NOTES.md ▸ Live verification).
         #expect(source.host.enqueued.isEmpty)
-        #expect(source.host.materializedEntries.isEmpty)
     }
 
     @Test("a folder that is already on this Mac still packs, as it always has")

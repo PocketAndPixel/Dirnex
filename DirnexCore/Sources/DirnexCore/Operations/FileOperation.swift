@@ -41,6 +41,19 @@ public struct FileOperation: Sendable {
         /// Like `.checksum` and `.attributes` it produces no `outcomes` — there is nothing to move,
         /// so nothing to undo — and its answer rides home on ``OperationReport/pack``.
         case pack(PackJob)
+        /// Write an **unencrypted** archive from the sources — every format `bsdtar` knows
+        /// (PLAN.md §4 ▸ *Smaller than a milestone*).
+        ///
+        /// A second kind rather than a field on ``pack(_:)`` because the two write through
+        /// different machinery: libarchive linked into this process, which can take a passphrase
+        /// and can only write zip, against a `bsdtar` spawn, which can write every format and
+        /// cannot be handed a passphrase safely. ``PlainPackJob`` says the rest.
+        ///
+        /// It came to the queue on 2026-08-30, two milestones after its encrypted twin, and for the
+        /// half of the work the split never covered: a pack bound for a server has an upload, and
+        /// the upload had no bar and no Stop. Like `.pack` it produces no `outcomes` and rides its
+        /// answer home on ``OperationReport/pack``.
+        case plainPack(PlainPackJob)
         /// Pull a set of rows that are not on this disk down to real paths, so a gesture that only
         /// speaks in paths can run over them (PLAN.md §M24 Slice 2).
         ///

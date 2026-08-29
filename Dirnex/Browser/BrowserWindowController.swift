@@ -166,7 +166,7 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         // to a lazily-mounted read-only `ArchiveBackend`) while every local path still runs
         // through `LocalBackend` unchanged — including the shared queue and undo journal.
         let backend = CompositeBackend(local: LocalBackend())
-        queue = FileOperationQueue(backend: backend)
+        queue = FileOperationQueue(backend: backend, plainPackWriter: ArchivePacker())
         undoController = UndoController(backend: backend)
         let home = VFSPath.local(NSHomeDirectory())
         // Each pane restores its own tabs from the last session, keyed by side — unless the

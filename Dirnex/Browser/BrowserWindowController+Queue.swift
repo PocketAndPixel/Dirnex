@@ -103,6 +103,15 @@ extension BrowserWindowController {
                 presentPackOutcome(of: report)
                 continue
             }
+            // A **plain** pack reports its success the same way and its failures the ordinary way,
+            // which is why it does not `continue` here. Its writer is `bsdtar` rather than
+            // libarchive, so what goes wrong is a `VFSError` about the archive's path — the tool
+            // missing, the write refused, the upload declined — and those belong in the failure
+            // alert below rather than in a vocabulary invented for the encrypted path.
+            if case .plainPack = job.kind {
+                presentPackOutcome(of: report)
+            }
+            sweepStagedTrees(of: job.kind)
             // What the copy could not carry besides bytes (PLAN.md §M25 Slice 5b). Said on the
             // status line and never in a dialog, and said whether or not the job also failed: the
             // two are different facts — a job can move every byte of every file and still have
@@ -114,6 +123,40 @@ extension BrowserWindowController {
             if !report.failures.isEmpty {
                 reportFailures(report, kind: job.kind)
             }
+        }
+    }
+
+    /// Remove any **staged subtree** a finished pack was reading.
+    ///
+    /// A folder that is not on this disk is brought down whole before it can be packed (PLAN.md §4 ▸
+    /// *Smaller than a milestone*), and unlike a staged *file* it is deliberately not adopted into
+    /// `RemoteFileCache` — a tree cannot be checked for staleness by a size and a date, and it can be
+    /// gigabytes. So nothing else would ever remove it: the cache clears its root at **launch**,
+    /// which for a copy nobody may reuse is a whole session of somebody's disk.
+    ///
+    /// The job carries the answer, so this needs no bookkeeping and no id to pair against: a source
+    /// that is a **directory** *and* sits under the fetch root is one this app staged, where a local
+    /// folder the user packed is a directory somewhere else entirely and a staged file is a file.
+    private func sweepStagedTrees(of kind: FileOperation.Kind) {
+        let sources: [PackSource]
+        switch kind {
+        case let .pack(job): sources = job.sources
+        case let .plainPack(job): sources = job.sources
+        default: return
+        }
+        let root = RemoteFileCache.temporaryRoot.standardizedFileURL.path
+        for source in sources {
+            let path = URL(fileURLWithPath: source.onDiskPath).standardizedFileURL.path
+            var isDirectory: ObjCBool = false
+            guard path.hasPrefix(root + "/"),
+                  FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory),
+                  isDirectory.boolValue else { continue }
+            // The holder above it, not the tree itself: `MaterializeRunner` gives every source a
+            // directory of its own so two folders called `docs` from two accounts cannot collide,
+            // and leaving the empty holder behind would be the same leak one level up.
+            try? FileManager.default.removeItem(
+                at: URL(fileURLWithPath: path).deletingLastPathComponent()
+            )
         }
     }
 
@@ -129,7 +172,16 @@ extension BrowserWindowController {
         let name = report.failures[0].path.lastComponent
         let count = report.failures.count
         let single = count == 1
-        if case .checksum = kind {
+        if case .plainPack = kind {
+            // One sentence whatever went wrong, because a pack has exactly one product: there is
+            // no list of items here, and the archive either landed or did not. Without this the
+            // `else` below would call it a failed *move*, which is this project's own warning
+            // about a fallback branch being the most misleading option available.
+            alert.messageText = String(
+                localized: "Couldn’t create the archive “\(name)”",
+                comment: "Pack failure title; %@ is the archive's name."
+            )
+        } else if case .checksum = kind {
             // A checksum's only failure path is the manifest file itself — it moves nothing, so
             // there is never a list of items here, and `presentChecksumOutcome` has already said
             // what the job produced.

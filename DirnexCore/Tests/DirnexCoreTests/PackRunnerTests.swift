@@ -411,6 +411,9 @@ struct PackRunnerRemoteDestinationTests {
 }
 
 /// A tiny mutex for values the progress callback writes from the writer's own thread.
+
+/// A value two threads may touch, for a test that collects what a `@Sendable` progress closure
+/// reported.
 private final class Locked<Value>: @unchecked Sendable {
     private var value: Value
     private let lock = NSLock()

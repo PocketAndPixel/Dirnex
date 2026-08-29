@@ -120,20 +120,17 @@ public enum PackRunner {
         // Measured on the file that exists, before it is delivered and before the staging directory
         // is swept: a remote destination cannot be `stat`ed without another round trip, and the
         // number is only ever a status line.
-        let delivery = Delivery(
+        let delivery = PackDelivery(
             staging: staging,
-            job: job,
+            archive: job.archive,
             itemCount: items.count,
             packedBytes: ArchiveSourceEnumerator.totalByteSize(of: items),
             archiveBytes: staging.builtByteSize
         )
-        if let refusal = deliver(
-            delivery,
-            using: backend,
-            onProgress: onProgress,
-            isCancelled: isCancelled
-        ) {
-            return refusal
+        switch delivery.run(using: backend, onProgress: onProgress, isCancelled: isCancelled) {
+        case .delivered: break
+        case .cancelled: return report(job: job, outcome: nil, wasCancelled: true)
+        case let .failed(error): return failed(job, with: error)
         }
         return report(
             job: job,
@@ -151,24 +148,6 @@ public enum PackRunner {
         )
     }
 
-    /// What the delivery step needs to know, as one value.
-    ///
-    /// A struct rather than six arguments because two of them are byte counts that mean different
-    /// things — what the *sources* weighed and what the *archive* weighs — and a parameter list is
-    /// where those two get swapped.
-    private struct Delivery {
-        let staging: PackStaging
-        let job: PackJob
-        let itemCount: Int
-        /// What the walk measured, which is what the bar counted up to during the write.
-        let packedBytes: Int64
-        /// What the finished archive weighs, which is what a transfer then moves.
-        let archiveBytes: Int64
-
-        /// The bar's denominator once the transfer is part of the job.
-        var total: Int64 { packedBytes + (staging.needsDelivery ? archiveBytes : 0) }
-    }
-
     /// One failed path, as this job's whole report.
     private static func failed(_ job: PackJob, with error: VFSError) -> OperationReport {
         OperationReport(
@@ -178,54 +157,6 @@ public enum PackRunner {
             failures: [OperationItemFailure(path: job.archive, error: error)],
             wasCancelled: false
         )
-    }
-
-    /// Put the finished archive where the job asked for it, reporting as it moves — or hand back the
-    /// report that says why it could not.
-    ///
-    /// `nil` means delivered (or that there was nothing to deliver, which is every local pack).
-    ///
-    /// **The upload's bytes are added to the total rather than replacing it**, so the bar grows once
-    /// at the transition and then runs on to the end. Both alternatives are things this project has
-    /// already paid for: leaving the total alone parks a *full* bar for the length of a network
-    /// transfer, which reads as a finished job that has hung, and starting a fresh total walks the
-    /// aggregate backwards.
-    private static func deliver(
-        _ delivery: Delivery,
-        using backend: any VFSBackend,
-        onProgress: @escaping @Sendable (OperationProgress) -> Void,
-        isCancelled: @escaping @Sendable () -> Bool
-    ) -> OperationReport? {
-        let job = delivery.job
-        do {
-            try delivery.staging.deliver(
-                to: job.archive,
-                byteSize: delivery.archiveBytes,
-                using: backend,
-                onBytes: { moved in
-                    onProgress(
-                        OperationProgress(
-                            totalBytes: delivery.total,
-                            completedBytes: delivery.packedBytes + moved,
-                            totalItems: delivery.itemCount,
-                            completedItems: delivery.itemCount,
-                            currentItem: job.archive
-                        )
-                    )
-                },
-                isCancelled: isCancelled
-            )
-            return nil
-        } catch is CancellationError {
-            return report(job: job, outcome: nil, wasCancelled: true)
-        } catch {
-            // The write succeeded and the transfer did not, so the honest report is neither
-            // `.created` nor an `EncryptedArchiveError`: it is the backend's own refusal about the
-            // path it refused (the rule `ChecksumRunContext.recordFailure` follows — a `VFSError`
-            // normalized through an errno becomes `.io`, a code nobody can look up standing in for
-            // "the bucket is read-only").
-            return failed(job, with: (error as? VFSError) ?? .io(path: job.archive, code: 0))
-        }
     }
 
     private static func report(

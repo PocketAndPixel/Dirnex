@@ -50,7 +50,6 @@ extension PanelViewController {
         let sources = selectionTargets()
         guard !sources.isEmpty, let destPane = host?.panelCounterpart(of: self) else { return }
         guard destinationAcceptsArchive(destPane) else { return }
-        guard packableSources(sources) else { return }
 
         let defaults = PackAccessory.Defaults(
             baseName: ArchivePacking.defaultBaseName(
@@ -85,34 +84,6 @@ extension PanelViewController {
                 Open a folder that can be written to in the other panel to hold the new archive.
                 """,
                 comment: "Pack failure detail when the other panel cannot receive an archive."
-            )
-        )
-        return false
-    }
-
-    /// Whether every source can become a file, reporting the first that cannot.
-    ///
-    /// **A folder that is not already on this disk is refused**, in the hand-off's own words and
-    /// for its own reason: it stands for an unknown number of objects in an unknown number of
-    /// requests, which is exactly why `MaterializationPlan` names those rows rather than weighing
-    /// them. Bringing a whole remote tree down to pack it is F5 followed by ⌥F5, and both halves of
-    /// that already exist. A **local** folder is untouched and packs as it always has — that is the
-    /// ordinary ⌥F5 and the walk `ArchiveSourceEnumerator` was written for.
-    private func packableSources(_ sources: [FileEntry]) -> Bool {
-        guard let folder = materializationPlan(for: sources).pendingDirectories.first else {
-            return true
-        }
-        presentOperationFailure(
-            message: String(
-                localized: "Can’t pack a folder that isn’t on this Mac",
-                comment: "Pack failure title when a selected folder is on a server or in an archive."
-            ),
-            detail: String(
-                localized: """
-                “\(folder.name)” would have to be downloaded in full first, and there is no way to \
-                tell in advance how much that is. Copy it over with F5 and pack the copy.
-                """,
-                comment: "Pack failure detail; %@ is the folder's name. F5 is the copy key."
             )
         )
         return false
@@ -376,60 +347,37 @@ extension PanelViewController {
         )
     }
 
-    /// Spawn `bsdtar` off-main to create the archive, then re-list the destination pane with the
-    /// new archive selected. On failure the partial file is already cleaned up by `ArchivePacker`.
+    /// Queue the `bsdtar` pack, exactly as the encrypted path queues its own writer.
     ///
-    /// **A destination on a server adds a transfer after the spawn**, through the same
-    /// ``DirnexCore/PackStaging`` the queued encrypted path uses — one definition of *where does the
-    /// archive go*, rather than two that drift. What this path does **not** get is a bar or a Stop
-    /// for that transfer: a plain pack has never been a queue job, because the whole reason the
-    /// encrypted one is one is that `bsdtar` cannot take a passphrase safely (PLAN.md §M19). So the
-    /// build is unreported here exactly as it always was, and the upload is reported by the status
-    /// line rather than by a bar. Encrypting the same archive puts both halves on the queue.
+    /// **This was a spawn on this thread until 2026-08-30**, with no job, no bar and no Stop — so a
+    /// pack bound for a server reported its upload through the status line while encrypting the same
+    /// archive put both halves on the queue. The split was never about the work (both are minutes of
+    /// reading and then a transfer); it was about the passphrase, which is why libarchive is linked
+    /// at all. What the queue needed to take a `bsdtar` job was a way to see inside one, and there
+    /// is one: the tool answers **SIGINFO** with the bytes it has read (``DirnexCore/BsdtarProgress``).
+    ///
+    /// The status line stays, because it says the thing a bar cannot — *which* archive — and it is
+    /// what a user watching the pane rather than the queue reads.
     private func runPlainPack(_ packing: [PackSource], for request: PackRequest) {
         let target = request.target
-        let format = request.defaults.format
-        let level = request.defaults.level
-        Task {
-            do {
-                let staging = try PackStaging(for: target)
-                defer { staging.clean() }
-                let backend = backend
-                let buildPath = staging.buildPath
-                if staging.needsDelivery { showTransientStatus(packingStatus(for: target)) }
-                try await BlockingWork.run {
-                    Result {
-                        try ArchivePacker.pack(
-                            sources: packing,
-                            toArchiveAt: buildPath,
-                            format: format,
-                            level: level
-                        )
-                    }
-                }.get()
-                if staging.needsDelivery {
-                    showTransientStatus(sendingStatus(for: target))
-                    let byteSize = staging.builtByteSize
-                    try await BlockingWork.run {
-                        Result {
-                            try staging.deliver(
-                                to: target,
-                                byteSize: byteSize,
-                                using: backend,
-                                onBytes: { _ in },
-                                isCancelled: { false }
-                            )
-                        }
-                    }.get()
-                }
-                request.destinationPane.refreshCurrentDirectory(selecting: target)
-            } catch {
-                presentOperationFailure(
-                    message: String(localized: "Couldn’t create the archive"),
-                    detail: describe(error)
-                )
-            }
-        }
+        host?.enqueue(
+            FileOperation(
+                kind: .plainPack(
+                    PlainPackJob(
+                        sources: packing,
+                        archive: target,
+                        format: request.defaults.format,
+                        level: request.defaults.level
+                    )
+                ),
+                sources: request.sources,
+                destinationDirectory: request.destinationPane.panel.path
+            ),
+            conflictPolicy: .fail,
+            resolveConflict: nil,
+            onError: nil
+        )
+        showTransientStatus(packingStatus(for: target))
     }
 
     /// The status line while a server-bound archive is being written on this Mac.

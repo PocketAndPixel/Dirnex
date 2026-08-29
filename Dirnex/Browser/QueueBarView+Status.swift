@@ -41,12 +41,17 @@ extension QueueBarView {
                 comment: "Queue-bar status; %@ is the item whose attributes are being changed."
             )
         case .pack:
-            // "Encrypting" rather than "Packing": only the encrypted path is queued at all (an
-            // ordinary pack is one `bsdtar` spawn), and encryption is the reason this job is slow
-            // enough to have a bar in the first place — so it is what the user needs told.
+            // "Encrypting" rather than "Packing", now that both are queued: it is the reason this
+            // job is the slow one, and it is what distinguishes it from the plain pack below.
+            // (Until 2026-08-30 the reason was different — an ordinary pack was not a job at all.)
             return String(
                 localized: "Encrypting \(name)",
                 comment: "Queue-bar status; %@ is the file being added to an encrypted archive."
+            )
+        case .plainPack:
+            return String(
+                localized: "Packing \(name)",
+                comment: "Queue-bar status; %@ is the file being added to an archive."
             )
         case .materialize:
             // "Downloading" rather than naming the gesture that asked: one job can stand behind a
@@ -85,6 +90,11 @@ extension QueueBarView {
             return String(
                 localized: "Encrypting…",
                 comment: "Queue-bar status while an encrypted archive is being prepared."
+            )
+        case .plainPack:
+            return String(
+                localized: "Packing…",
+                comment: "Queue-bar status while an archive is being prepared."
             )
         case .materialize:
             return String(

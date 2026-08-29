@@ -29,6 +29,7 @@ public actor FileOperationQueue {
     private let backend: any VFSBackend
     private let maxConcurrent: Int
     private let now: @Sendable () -> Date
+    private let plainPackWriter: (any PlainPackWriting)?
 
     /// Every job ever enqueued, keyed by id; finished and canceled jobs stay so the
     /// snapshot can show their outcome until the caller clears them.
@@ -53,14 +54,21 @@ public actor FileOperationQueue {
     ///   - maxConcurrent: a ceiling on simultaneously-running jobs, on top of the volume
     ///     rule — a backstop so a machine with many volumes doesn't spawn unbounded work.
     ///   - now: the clock, injectable so throughput/ETA is testable.
+    ///   - plainPackWriter: the app's `bsdtar`, for `.plainPack` jobs. Injected here rather than
+    ///     carried on the job for the reason ``PlainPackWriting`` gives — a job is a description,
+    ///     and it must stay `Equatable`. `nil` is the honest default for a caller that has no such
+    ///     tool (every test that never packs), and a `.plainPack` job reaching a queue without one
+    ///     is reported as a failure rather than quietly doing nothing.
     public init(
         backend: any VFSBackend,
         maxConcurrent: Int = 8,
-        now: @escaping @Sendable () -> Date = { Date() }
+        now: @escaping @Sendable () -> Date = { Date() },
+        plainPackWriter: (any PlainPackWriting)? = nil
     ) {
         self.backend = backend
         self.maxConcurrent = max(1, maxConcurrent)
         self.now = now
+        self.plainPackWriter = plainPackWriter
     }
 
     // MARK: - Enqueue
@@ -155,6 +163,7 @@ public actor FileOperationQueue {
         let resolveConflict = job.resolveConflict
         let onError = job.onError
         let backend = backend
+        let plainPackWriter = plainPackWriter
         let (progressStream, progressContinuation) = AsyncStream<OperationProgress>.makeStream()
 
         // The engine is synchronous and blocks its thread, so it runs through `BlockingWork` — a
@@ -168,48 +177,20 @@ public actor FileOperationQueue {
         // which is why a checksum could join without a scheduler of its own.
         let runTask = Task.detached(priority: .userInitiated) { () -> OperationReport in
             await BlockingWork.run {
-                let report: OperationReport
-                switch operation.kind {
-                case .copy, .move:
-                    report = CopyEngine.run(
-                        operation,
-                        using: backend,
-                        conflictPolicy: policy,
-                        resolveConflict: resolveConflict,
-                        onError: onError,
+                let report = FileOperationQueue.report(
+                    for: operation,
+                    in: Context(
+                        backend: backend,
+                        plainPackWriter: plainPackWriter,
                         onProgress: { progressContinuation.yield($0) },
-                        isCancelled: { control.checkpoint() }
+                        isCancelled: { control.checkpoint() },
+                        resolvers: Resolvers(
+                            policy: policy,
+                            resolveConflict: resolveConflict,
+                            onError: onError
+                        )
                     )
-                case let .attributes(job):
-                    report = AttributeApplyRunner.run(
-                        job,
-                        sources: operation.sources,
-                        using: backend,
-                        onProgress: { progressContinuation.yield($0) },
-                        isCancelled: { control.checkpoint() }
-                    )
-                case .checksum:
-                    report = ChecksumRunner.run(
-                        operation,
-                        using: backend,
-                        onProgress: { progressContinuation.yield($0) },
-                        isCancelled: { control.checkpoint() }
-                    )
-                case .pack:
-                    report = PackRunner.run(
-                        operation,
-                        using: backend,
-                        onProgress: { progressContinuation.yield($0) },
-                        isCancelled: { control.checkpoint() }
-                    )
-                case .materialize:
-                    report = MaterializeRunner.run(
-                        operation,
-                        using: backend,
-                        onProgress: { progressContinuation.yield($0) },
-                        isCancelled: { control.checkpoint() }
-                    )
-                }
+                )
                 progressContinuation.finish()
                 return report
             }

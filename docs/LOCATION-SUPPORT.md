@@ -420,14 +420,17 @@ child ~71 ms (PLAN.md §4 ▸ *Smaller than a milestone*).
 | Create / verify checksum files | yes | yes | verify only<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | n/a | no<sup>xx</sup> | no<sup>xx</sup> |
 | Open in Terminal | yes | yes | n/a | **no**<sup>gg</sup> | n/a | n/a | n/a | no | no |
 | Run a user script | yes | yes | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | no<sup>aaa</sup> | yes, limited<sup>aaa</sup> | yes, limited<sup>aaa</sup> |
-| Pack `⌥F5` (create an archive) | yes | yes | yes<sup>hh</sup> | yes, partially<sup>hh</sup> | yes, partially<sup>hh</sup> | yes, partially<sup>hh</sup> | n/a | yes, partially<sup>hh</sup> | yes |
-| Encrypted archives / hidden member names | yes | yes | yes | yes, partially<sup>hh</sup> | yes, partially<sup>hh</sup> | yes, partially<sup>hh</sup> | n/a | yes, partially<sup>hh</sup> | yes |
+| Pack `⌥F5` (create an archive) | yes | yes | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | n/a | yes<sup>hh</sup> | yes |
+| Encrypted archives / hidden member names | yes | yes | yes | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | n/a | yes<sup>hh</sup> | yes |
 | Create / unlock an encrypted vault | yes | yes | n/a | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a | no | n/a |
 | Saved connection in the sidebar | n/a | n/a | n/a | yes | yes | yes | yes | n/a | n/a |
 | Pin to Favorites / Places menu | yes | yes | no | yes, partially<sup>ii</sup> | yes, partially<sup>ii</sup> | yes, partially<sup>ii</sup> | yes, partially | no | n/a |
 
-<sup>ee</sup> Gated per **row**, not per pane — a search hit or a trashed file is an ordinary local
-file, so it carries a mode, an ACL and tags like any other.
+<sup>ee</sup> Gated per **row**, not per pane. A trashed file is an ordinary local file, so it
+carries a mode, an ACL and tags like any other; a search hit is whatever it happens to be, and since
+M22 it can be on a server — `AttributesRoute` then opens the *remote* panel for that row and the tag
+and ACL rows are absent, exactly as they would be in the pane the hit lives in. Asking the pane
+instead of the row would offer a control from the wrong account.
 
 <sup>ff</sup> Neither `sftp` nor `curl` can hash server-side, so a remote checksum is a full
 download of everything in scope — the marked-set fetch note <sup>rr</sup> describes, with
@@ -453,16 +456,15 @@ directory, so a set staged off a server, a browsed archive's members and a tree'
 all pack alike. The **destination** is asked `capabilities(for:)` on its own directory, so a writable
 bucket or SFTP folder takes the archive and a read-only one is refused before anything is written; an
 archive bound for a server is built in a temp directory and transferred, and the temp is swept
-whatever happens. Three limits. A **folder** that is not already here is refused, in the hand-off's
-words and for its reason — it stands for an unknown number of objects in an unknown number of
-requests, so copy it over with F5 and pack the copy. A **browsed archive cannot receive** one, because
-`ArchiveBackend` advertises `.read` alone and writing into an archive is a repack. And a *plain* pack
-to a server has no bar and no Stop for its upload: a plain pack has never been a queue job — that is
-the libarchive boundary §M19 drew, and it is the encrypted path alone that runs on the queue — so the
-upload is reported by the status line. Encrypting the same archive puts both halves on the bar.
-Both of the last two are ours to close rather than the protocol's, which is why these cells read
-*partially*: staging a remote subtree is F5's engine pointed at a temp directory, and a plain pack on
-the queue is a `bsdtar` job the queue does not yet have a kind for.
+whatever happens. **A folder that is not already here is staged whole and packed** since 2026-08-30:
+it is brought down by `CopyEngine` — F5's own engine pointed at a temp directory, which is what the
+old refusal told the user to do by hand — and the staged tree is swept when the job finishes rather
+than cached, since a directory's staleness cannot be read off a size and a date. **Every pack is a
+queue job** since the same day, plain or encrypted, so the build and the upload both have a bar and a
+Stop: `bsdtar` prints no progress of its own, but it answers **SIGINFO** with the bytes it has read,
+which is the quantity the walk measures in advance (docs/NOTES.md ▸ bsdtar). One limit is left and it
+is not ours: a **browsed archive cannot receive** an archive, because `ArchiveBackend` advertises
+`.read` alone and writing into one is a repack.
 
 <sup>ii</sup> A remote folder can be pinned from the menu, but the pin is not restored at launch
 and is not a drag target in the sidebar (PLAN.md §M8's deliberate omission). The **Servers** section
@@ -498,7 +500,7 @@ command" has the control withdrawn for the rest of that connection. Owner and gr
 redraws from what the item carries rather than from what was sent — `sftp`'s `chmod` reports success
 for a mode the server did not store, measured (docs/NOTES.md ▸ sftp / ssh). It is **not undoable**,
 which the panel states: ⌘Z reverses an attribute change through local syscalls, and a backend-driven
-undo step is not built.
+undo step is not built (PLAN.md §4 ▸ *Smaller than a milestone*).
 
 <sup>uu</sup> A vault is an encrypted disk image that macOS mounts as a volume, so it is a *local*
 thing by construction; `hdiutil` cannot attach one over SFTP, FTP or S3. Copying the image file to a

@@ -12303,6 +12303,50 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there.
 
+**2026-08-30 — ⌥F5 packs a folder off a server, and every pack is a queue job.** Two cells from
+PLAN.md §4's *Smaller than a milestone* list, closed together because they are the same gesture:
+packing refused a folder that is not on this disk, and a plain pack had no bar and no Stop for its
+upload.
+
+**The refusal's own advice was the implementation.** It told the user to *"copy it over with F5 and
+pack the copy"* — and `CopyEngine.preScan` has sized remote directories through `DirectorySizer`
+since M5, so F5 on a remote folder already paid a recursive walk for its denominator. So
+`MaterializeRunner` grew a directory branch that hands the folder to that engine, and packing one
+now costs exactly what the user was being told to spend by hand. Two properties keep it honest: a
+staged tree is **not adopted** into `RemoteFileCache` (a directory's staleness cannot be read off a
+size and a date, and a tree can be gigabytes held for the session), and a **partial tree fails the
+whole source** rather than packing quietly short — the shape M24 Slice 6 had to fix once already.
+The confirmation needed nothing: `MaterializationPlan.totalsAreExact` has answered `false` for a
+pending directory since it was written, with the sentence to match, and its doc comment named this
+slice as the gesture that would build on it.
+
+**`bsdtar` answers SIGINFO, which is what made the queue affordable.** The tool prints no progress
+and no flag turns one on, so a plain pack had been a spawn on the app's own thread since M4 — the
+libarchive split was about the *passphrase*, never about the work. Probed first: signalled, it writes
+`In: 3 files, 42894848 bytes; Out: 32440320 bytes` to stderr and carries on at exit status 0, over a
+real **pipe** rather than a terminal (where `sftp`'s meter cannot be had at all), and SIGTERM stops
+it promptly leaving a partial to sweep. So the bar's numerator is *bytes read*, which is the same
+quantity the walk measures in advance — the archive's own growth could not serve, its denominator
+being a compression ratio nobody knows until the end. `FileOperation.Kind.plainPack` and
+`PlainPackRunner` are the core half, `BsdtarProgress` parses the answer, and `ArchivePacker` — now
+`PlainPackWriting` — spawns, signals every fourth poll and terminates on Stop. `PackDelivery` was
+lifted out of `PackRunner` so both packs share one definition of *what the bar sees while the
+archive goes to a server*, and the queue's dispatch moved to `FileOperationQueue+Runners` on the file
+ceiling. Taken at open by the user: **every** ⌥F5 queues, including a local one, rather than keeping
+two paths through one gesture.
+
+**Verified live, and the live run is what found the one real bug.** Against a throwaway `sshd`: a
+two-level remote folder staged and packed, with the deep file's bytes read back out of the archive by
+`bsdtar` itself — after a first run failed `pathOutsideConnection` before staging anything, because
+**a tree needs a routing backend where a file does not** (`CopyEngine` writes on the destination side;
+a bare `SFTPBackend` refuses the local temp path). The app always holds a `CompositeBackend`, so
+production was never wrong and the test was. The other two claims were measured against the real tool:
+a 200 MB pack reported **5 progress samples** (29 MB → 150 MB read, naming the live member) across
+2.68 s, and a Stop at 0.5 s returned at **0.51 s** with no archive left behind. Headlessly, the folder
+half is controlled by neutering the branch — 4 of 6 tests fail, the file case and the narrowness
+control staying green — and the app suite keeps only what a sheet lets it see, which is that the pack
+sheet goes up where a refusal used to.
+
 **2026-08-26 — a pane on a server keeps itself current, and the first gap in
 LOCATION-SUPPORT.md closes.** *"No live refresh on a server. A file added by somebody else never
 appears until the folder is re-listed by hand"* headed that document's ranked list of what still

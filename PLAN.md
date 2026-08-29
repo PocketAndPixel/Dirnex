@@ -264,6 +264,12 @@ small to be a slice of either milestone above and too real to leave unwritten:
 - **An archive rewrite is not undoable.** Deleting a member rewrites the container, and the journal
   has nowhere to put the bytes that left. Reversing it means keeping them, which is a storage
   decision rather than a missing hook.
+- **A remote attribute change cannot be undone.** M25 Slice 5a writes a mode over SFTP and a mode
+  and a time over FTP, and the panel says plainly that ⌘Z will not reverse it: `restoreAttributes`
+  applies through `FileAttributeIO` — local syscalls — and `RemoteAttributesController` records no
+  undo at all, where the local panel hands one to the window. Closing it is a journal step that
+  writes back through the backend's own `applyMetadata`, so it is a pair of small pieces rather than
+  a hook that already exists.
 - **Many remote write-backs do not coordinate.** A user script that rewrites forty files on a server
   produces forty independent uploads, each re-`stat`ing and uploading on its own the way F4's single
   save does — no combined bar, no Stop, no ordering. M24 Slice 2 (HISTORY.md) gave the *download*

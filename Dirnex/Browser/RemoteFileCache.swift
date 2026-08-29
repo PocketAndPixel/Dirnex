@@ -101,7 +101,13 @@ final class RemoteFileCache {
     /// Adopting is what makes the second gesture over the same rows free — mark four objects, run a
     /// checksum, then ⌥F3 two of them, and only the first run transfers anything.
     func adopt(_ files: [MaterializedFile]) {
-        for file in files {
+        // **A staged folder is not cached, and the flag on the copy is how this knows.** Everything
+        // here is keyed by a row and re-checked against a size and a modification time, which for a
+        // *directory* answers a question nobody asked — a file three levels down can change without
+        // moving either — so a tree adopted here would be handed back stale with no way to tell.
+        // The other half is size: a staged tree can be gigabytes, and this cache holds what it is
+        // given for the life of the window (PLAN.md §4 ▸ *Smaller than a milestone*).
+        for file in files where !file.isDirectory {
             record(
                 file.source,
                 url: URL(fileURLWithPath: file.localPath),
