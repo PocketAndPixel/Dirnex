@@ -1,7 +1,7 @@
 # What works where
 
 Every user-facing capability against every kind of location Dirnex can open, as of
-**2026-08-27** (M0–M23 shipped, plus the post-M19 passes). The purpose is the parity question:
+**2026-08-30** (M0–M25 shipped). The purpose is the parity question:
 *where does working on a server still feel unlike working on the disk, and which of those gaps are
 ours to close?*
 
@@ -18,7 +18,7 @@ closed simply reads differently — it is not explained here.
 |---|---|
 | **yes** | Fully done. Behaves as it does on the local disk. |
 | **yes, limited** | Fully done for what the technology allows. The remaining difference **cannot** be closed from our side — the protocol, the service or macOS does not expose it. |
-| **yes, partially** | Done, and the gap **could** be narrowed to look more local. Parity backlog: PLAN.md §4, M24 or M25. |
+| **yes, partially** | Done, and the gap **could** be narrowed to look more local. What is left of the parity backlog is the short list at PLAN.md §4 ▸ *Smaller than a milestone*. |
 | **no** | Not implemented, and nothing structural prevents it — so it is backlog too, and its footnote names the milestone. A "no" with no route to a yes is written **n/a** instead. |
 | **n/a** | The concept does not exist there (a Trash inside the Trash, a checksum of a bucket list). |
 
@@ -84,8 +84,8 @@ to walk to.
 <sup>d</sup> An archive re-reads when its file on disk changes identity (device/inode/size/mtime),
 so repacking it under the same name is picked up — but only when something asks it to: `startWatching`
 returns early for any backend but `.local`, so nothing wakes the pane. The decision is already made
-and tested (`ArchiveIdentity`); the stream over the archive file is not built (PLAN.md §M25, smaller
-than a milestone). There is no watcher on the members, and there cannot be one.
+and tested (`ArchiveIdentity`); the stream over the archive file is not built (PLAN.md §4 ▸
+*Smaller than a milestone*). There is no watcher on the members, and there cannot be one.
 
 <sup>e</sup> Bounded at **1000 directories** (`DirectorySizeBudget.remote`) because a remote walk
 is a billed request and a round trip each — measured 0.601–0.699 s per `ListObjectsV2`, so
@@ -112,7 +112,7 @@ rather than the cursor's — remotely that is N bounded walks where the `Space` 
 an archive it is cheap (the whole table of contents is already in hand) and simply gated with the
 rest; on a virtual listing whose rows live in a dozen different folders "share of this directory" has
 no referent, which is why those two read n/a. So what is missing is a budget for the set, not a
-capability (PLAN.md §M25, smaller than a milestone).
+capability (PLAN.md §4 ▸ *Smaller than a milestone*).
 
 <sup>oo</sup> Recents is Spotlight's `kMDItemLastUsedDate` over the local index, so a location macOS
 does not index cannot appear in it whatever Dirnex does. The same is true of the ⌘L fuzzy jump, which
@@ -204,7 +204,11 @@ Box — those origins are opaque provider references with no path in them.
 
 <sup>p</sup> Rename, move and New Folder are journaled and reversed through the backend, so they
 undo remotely. A **permanent delete is not reversible anywhere** — which is every remote delete,
-since no remote backend has a Trash.
+since no remote backend has a Trash. That is a **decision rather than a gap**: inventing one — a
+managed `.dirnex-trash/` prefix and a sidecar naming the origin — was weighed and declined
+(PLAN.md §7, 2026-08-29), because it costs one cheap rename over SFTP and FTP against N copies plus
+N deletes on S3, and a Trash that exists on some backends and not others is a worse promise than
+none. What stands in for it is the confirmation, which says outright that nothing can be undone.
 
 <sup>q</sup> **The mode and the modification time are carried in both directions; extended
 attributes and ACLs are not, and cannot be** — neither protocol has anywhere to put them, which is a
@@ -268,7 +272,7 @@ connection. FTP has no symlink verb at all.
 
 <sup>qq</sup> Deleting a member **rewrites the container**, and the journal has nowhere to put the
 bytes that left. Reversing it means keeping them, which is a storage decision rather than a missing
-hook (PLAN.md §M25, smaller than a milestone).
+hook (PLAN.md §4 ▸ *Smaller than a milestone*).
 
 ## 3. Preview, open and edit
 
@@ -402,7 +406,7 @@ per connection at run time.
 <sup>ss</sup> FTP has neither an exec channel nor a delimiter-less listing, so its search is one
 `LIST` per directory. `curl` reuses one connection across many `ftp://` URLs, which is the shape
 worth measuring — and worth much less than it looks now that `ProcessWaiting` no longer taxes every
-child ~71 ms (PLAN.md §M25, smaller than a milestone).
+child ~71 ms (PLAN.md §4 ▸ *Smaller than a milestone*).
 
 ## 5. Metadata and macOS integration
 
@@ -464,13 +468,14 @@ the queue is a `bsdtar` job the queue does not yet have a kind for.
 and is not a drag target in the sidebar (PLAN.md §M8's deliberate omission). The **Servers** section
 is the reconnectable surface. A `FavoriteEntry` carries a `VFSPath`, whose `VFSBackendID` says nothing
 about the auth method — which is exactly the gap `PersistedTab` closed by carrying a
-`StoredServerEndpoint`, so the same fix one type along is what would make the pin reconnect (PLAN.md
-§M25, smaller than a milestone).
+`StoredServerEndpoint`, so the same fix one type along is what would make the pin reconnect
+(PLAN.md §4 ▸ *Smaller than a milestone*).
 
 <sup>tt</sup> Read-only since M24 Slice 7: a row that is not on this Mac opens
 `RemoteAttributesController`, which states **what the listing actually reported** and nothing else.
-*Editing* is §M25, because the two fail differently — a panel showing a mode it cannot change is
-honest, and one offering a change it cannot make is not.
+*Editing* arrived at M25 Slice 5a and is narrower than reading (below), because the two fail
+differently — a panel showing a mode it cannot change is honest, and one offering a change it
+cannot make is not.
 
 What each backend reports differs, and the panel says so rather than filling a gap: `sftp`'s
 `ls -la` and FTP's Unix `LIST` carry a real mode plus an owner and group **as the server spelled
@@ -531,7 +536,7 @@ local one.
 | Split one file over several connections | n/a | n/a | n/a | yes | yes | yes | n/a |
 | Multipart upload for very large files | n/a | n/a | n/a | no<sup>vv</sup> | no<sup>vv</sup> | yes | n/a |
 | Stop actually stops the bytes | yes | yes | yes | yes | yes | yes | n/a |
-| Server-side copy (bytes never touch this Mac) | yes<sup>kk</sup> | yes<sup>kk</sup> | n/a | **no**<sup>ll</sup> | **no**<sup>ll</sup> | yes | n/a |
+| Server-side copy (bytes never touch this Mac) | yes<sup>kk</sup> | yes<sup>kk</sup> | n/a | yes, limited<sup>ll</sup> | **no**<sup>ll</sup> | yes | n/a |
 | Duplicate a file inside one account | yes | yes | n/a | yes, limited<sup>ll</sup> | yes, limited<sup>ll</sup> | yes | n/a |
 | Conditional write (nobody overwrote it meanwhile) | n/a | n/a | n/a | yes, limited<sup>mm</sup> | yes, limited<sup>mm</sup> | yes | n/a |
 | Certificate / host-key trust prompt, saved | n/a | n/a | n/a | yes | yes | yes | yes |
@@ -544,31 +549,34 @@ at the end.
 
 <sup>kk</sup> An APFS clone, which is instant and costs no bytes.
 
-<sup>ll</sup> Neither backend uses a copy verb — their `copyFile` *is* an upload or a download — so
-a duplicate inside one account, or a copy between two accounts, is staged through this Mac
-(`RelayCopy`), costing the file's size in temp space and moving the bytes twice. Correct, and slower
-than it looks. **One qualifier, unmeasured:** `sftp(1)` on macOS 26 (OpenSSH 10.2p1) documents a
-`copy` / `cp` command, "only supported by servers that implement the `copy-data` extension". Nobody
-here has asked a real server whether it does, which is where PLAN.md §M25 opens; `RelayCopy` stays
-the answer for every server that does not. FTP has no such verb at all.
+<sup>ll</sup> **SFTP has one and FTP has none.** A duplicate inside one SFTP account is the
+server's own work through OpenSSH's `copy-data` extension, measured against a real `sshd` at M25
+Slice 3 — what it costs is the modification time, and the rest of the detail is under
+<sup>bbb</sup>. A server that does not advertise the extension makes the client refuse, the refusal
+is latched for that connection, and the copy is staged instead. FTP has no copy verb at all, so its
+`copyFile` *is* an upload or a download. Everything the fast path cannot serve — a refusing server,
+and **every** pair of ends on two different backends, which no server-side verb can address — is
+staged through this Mac (`RelayCopy`), costing the file's size in temp space and moving the bytes
+twice.
 
 <sup>mm</sup> S3 sends `If-Match`; SFTP and FTP re-`stat` before uploading and tell you if the
 file changed since it was fetched, which is a narrower window and not a guarantee.
 
 <sup>vv</sup> S3 splits a large upload into parts that fail and retry independently; the other two
 send one stream, so a transfer that dies late resumes from wherever `-C -` or `put -a` can pick it up
-rather than from a part boundary (PLAN.md §M25, smaller than a milestone).
+rather than from a part boundary (PLAN.md §4 ▸ *Smaller than a milestone*).
 
 ---
 
 ## Where remote still feels unlike local
 
-Every **"no"** and **"yes, partially"** cell above that is *ours* to close is scheduled in
-[PLAN.md](../PLAN.md) §4, as **M24** (every local-only feature, on a file that is not local) and
-**M25** (what a remote write carries, and what a remote delete costs), with the cells too small for
-either listed beside them. This file is the status; the plan is the work. Nothing that has already
-shipped is argued here — a closed gap is simply a changed cell, and why it changed is in
-[HISTORY.md](HISTORY.md).
+The two milestones this list was written for have closed: **M24** (every local-only feature, on a
+file that is not local) on 2026-08-28 and **M25** (what a remote write carries, and what a remote
+delete costs) on 2026-08-29, both archived in [HISTORY.md](HISTORY.md). What is left of the **"no"**
+and **"yes, partially"** cells that are *ours* to close is the short list at [PLAN.md](../PLAN.md)
+§4 ▸ *Smaller than a milestone* — the cells that were too small to be a slice of either. This file is
+the status; the plan is the work. Nothing that has already shipped is argued here — a closed gap is
+simply a changed cell, and why it changed is in [HISTORY.md](HISTORY.md).
 
 What is **not** scheduled, because it cannot be closed from here — these are the "yes, limited"
 rows, and the app is already as close as the technology permits:

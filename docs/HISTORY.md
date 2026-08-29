@@ -1,4 +1,4 @@
-# Dirnex — build history (M0 → M23)
+# Dirnex — build history (M0 → M25)
 
 The shipped record of Dirnex's milestones: the milestone checklists as they were completed,
 plus the per-pass progress log — what was probed, what was decided, what was rejected and why.
@@ -9,8 +9,12 @@ opened and closed 08-06; M18 opened 08-06 and closed 08-07; M19 (encryption) ope
 08-09. M20 opened and closed 08-12 and M22 opened and closed 08-16, both inside the span of
 **M21** (Amazon S3), which opened 08-12 and closed 08-19 — the longest of them, and the one every
 other milestone in that fortnight was cut around. M23 (the pasteboard and drag-and-drop reaching
-every backend) opened and closed 08-26. A final section, **After M19**, carries the thirty-one dated
-passes from 2026-08-07 → 08-25 that landed outside a milestone of their own.
+every backend) opened and closed 08-26. The parity backlog then closed in two: **M24** (every
+local-only feature, on a file that is not local) opened 08-27 and closed 08-28, and **M25** (what a
+remote write carries, and what a remote delete costs) opened alongside it and closed 08-29, taking
+the plan's last open question with it. A final section, **After M19**, carries the thirty-one dated
+passes from 2026-08-07 → 08-25 that landed outside a milestone of their own — it sits at the end
+rather than in date order, because it is the file's catch-all rather than a numeric slot.
 
 This file is **archive, not instruction.** It moved out of [PLAN.md](../PLAN.md) once M7
 closed, so the plan could go back to being a plan, and each milestone since is archived
@@ -11374,6 +11378,917 @@ it is the same rule `moveToOtherPane` enforces by returning — stated once, in 
 **Left for a human**, since a drag *session* cannot be synthesized: an actual drag between two panes,
 a Finder drag onto a connected server, and a drag from a connected server into Finder. The AppKit
 plumbing between the registration and the promise is the one link no test in this milestone reaches.
+
+---
+
+### M24 — Every local-only feature, on a file that is not local (M)
+
+Opened 2026-08-27 and closed 2026-08-28: slices 1–6 landed 08-27 and slice 7 on 08-28, each with
+its own progress note below. The premise is left standing as it read at open — the seven one-line
+refusals it names are gone. Four of those files now carry a doc comment explaining the removal
+instead, and where a `backend == .local` survives in them it asks a different question: which rows
+are *already* files on this disk for a hand-off that cannot wait for a download
+(`handoffTargets`), and which directory a user script can be given as its working directory
+(`localPanelDirectory`).
+
+**Seven features refuse anything that is not on this disk, and each refuses it in one line.**
+`PanelViewController+OpenWith.swift:25` filters the selection to `backend == .local`;
+`+Compare.swift:86` requires it of both sides; `+Checksum.swift:60`, `+UserScript.swift:25`,
+`+ArchivePack.swift:28`, `+Attributes.swift:146` and `+Sync.swift:68` each say the same thing about
+their own gesture. Fifty-five sites in the app read that comparison and most of them are right — Git
+status, Finder tags, vaults, the terminal drawer and the cloud-download prompt are all genuinely
+about *this disk*. These seven are not: nothing about them needs the file to be local, only to be
+**a file**.
+
+The bytes are already reachable, which is what makes this a milestone rather than a rewrite.
+`fetchRemoteFile(_:for:)` has pulled a remote row down for ⏎, F4 and every preview since M21 Slice
+10, under a size policy that decides whether to ask first (`RemoteFetchPolicy`, four purposes and a
+table of thresholds); `ArchiveExtractor` has placed a member since M4, and M19's member filter made
+that 0.001 s for one member of a 600 MB encrypted archive. What is missing is not a download. It is
+a download of **a marked set**, with a determinate bar and a Stop — which is the operation queue's
+job and not a cache's.
+
+#### Three things to settle before any Swift
+
+- **A gesture over N remote files has to say what it will cost before it starts.**
+  `RemoteFetchPolicy` answers per file, for the one file under a cursor, because that is the only
+  shape that existed. ⌥F3 is two files; a checksum run and ⌥F5 are a marked set; a user script is
+  whatever the user marked. So the plan itself is the deliverable — which of the set is already
+  cached, what the rest weighs, and how many billed requests it is — and the confirmation names that
+  total rather than asking once per file.
+- **The engine must never materialize; the gesture must.** `ByteComparator` refuses an evicted cloud
+  placeholder rather than reading through it, and that rule arrives here one protocol out: the
+  compare was asked for, so the *gesture* fetches and reports, and the comparator still only ever
+  sees files that are already here. Anything else puts a silent multi-gigabyte download behind a
+  keystroke — which is the failure `SF_DATALESS` exists to prevent, wearing a network instead of a
+  file provider.
+- **A `.zip` on a server is the whole file.** `ArchiveBackend.init(archiveOnDiskPath:)` needs a real
+  path, so browsing one is fetch-all-then-mount and writing into one is repack-then-upload. Both are
+  affordable and neither is free, and the difference from ⏎ on a small text file is exactly that the
+  user should be told before it starts.
+
+#### Slices
+
+Core first, app untouched until (2), as usual. Each lands runnable.
+
+1. **`MaterializationPlan` in `DirnexCore`** — given a set of `FileEntry` and what the cache already
+   holds, what must be fetched, its total bytes and its request count, and whether that total is
+   over the threshold a given purpose confirms at. `RemoteFetchPurpose` grows the cases these
+   gestures need, so each one's threshold is a line in the existing table rather than a constant at
+   a call site. Pure, tested, additive; no app rebuild.
+   **Landed 2026-08-27**, and three things came out of building it that the slice did not predict.
+   `MaterializationSource` has **five** cases rather than two, because the reasons a row is not yet a
+   readable path cost different amounts and are paid by different people — a remote transfer is ours
+   and S3 bills it, an evicted `SF_DATALESS` placeholder is a wait the file provider owns, and an
+   archive member is neither. The placeholder case is the one that had to be there: its name, size
+   and dates are all real, so nothing but that flag separates it from a file that is genuinely here,
+   and it is exactly the row a plan built on `backend == .local` would have called present. Second,
+   the decision needed a **second rule, not a second table**: `unaskedRequestLimit` (20) is derived
+   from the measured 0.512–0.519 s to first byte for a *small* S3 object, because 10 000 objects of
+   500 bytes is 5 MB — under every row of the size table — and about **83 minutes**, which a policy
+   expressed in bytes is structurally blind to. Third, all six new purposes sit on the existing
+   open/edit row deliberately: they are the same commitment ⏎ carries, and six constants a few
+   megabytes apart would each mean *approximately* 64 MiB and drift on the first visit anybody paid
+   to one of them. The cases exist anyway, because `threshold(for:previewLimit:)` switches
+   exhaustively — which is what stops the next gesture reaching a number by inheriting one.
+   Both directions are controlled: removing the request rule fails only the four tests about it and
+   leaves the "few requests still start" control green, and over-correcting to always-confirm fails
+   exactly the five that say a local, cached or small set must never ask.
+2. **Bulk materialize as a queue job.** An N-file fetch is a `FileOperation`, which buys the
+   determinate bar, Stop, per-item failure reporting and the pause/resume the queue already has —
+   and stops a second copy of the transfer loop existing. `RemoteFileCache` stays the *store* and
+   gains no second way to be filled.
+   **Landed 2026-08-27.** `FileOperation.Kind.materialize` joins `.checksum`, `.attributes` and
+   `.pack` as a kind that produces **no `outcomes`**, which is how "nothing here is undoable" is a
+   property rather than a rule — `UndoJournal` has nothing to build a record from, and reversing a
+   download into a temp directory is not a thing to offer. That is also why it is not expressed as a
+   `.copy` into that root, which the journal would dutifully record as a transfer; it needs no
+   payload either, since `destinationDirectory` already means "where this job puts things" and
+   `sources` is which rows.
+   The loop **keeps going past a failure** and names the row, because that is right for a checksum
+   over forty objects and wrong for ⌥F3 — so the decision belongs to the gesture reading
+   `report.failures`, not to the runner. Two things came out of writing it. `MaterializeRunner
+   .materialize` is now the **one definition of "fetch this row"**, called by the queued loop *and*
+   by `RemoteFileCache.fetch`, so the directory-per-file layout (two objects called `report.pdf` from
+   different prefixes) and the leaves-nothing-behind rule have one home rather than two. And the
+   cache gained one private `record` that `fetch`, `rebaseline` and the new `adopt` all go through,
+   which is what makes "no second way to be filled" a property of the type instead of a rule three
+   call sites keep — the runner produces `MaterializedFile` values and the window adopts them,
+   because `DirnexCore` cannot see a `@MainActor` window-scoped cache at all.
+   Controlled in four directions: one shared directory instead of one per file, a failed transfer
+   keeping its partial, the loop stopping at the first failure, and the queue never dispatching the
+   kind — each fails only the tests that name it.
+3. **Open With… and the Share sheet.** The cheapest of the seven: one file, one URL, and ⏎ already
+   fetches exactly that. The only new question is what a *marked set* of remote rows means for Open
+   With, which is the plan from (1) with a different verb after it.
+   **Landed 2026-08-27**, and the two verbs turned out not to be one gesture with one shape. **Open
+   With pops its menu before anything is downloaded**: a row that is not on this disk is typed by
+   its *name* rather than by a file, which is what LaunchServices types an ordinary file by anyway,
+   so the app list costs nothing and a user who presses Escape has paid nothing — the transfer
+   starts when they pick an application. **Share cannot do that**, because `NSSharingServicePicker`
+   derives its services, their icons and their order from the *items*; there is no list to show
+   before the files exist, so it fetches and then presents. Typing by name is deliberately *not* a
+   fallback: it applies to a non-local row whether or not its bytes happen to be cached, so the menu
+   cannot change depending on what some earlier preview downloaded, and a local row goes on reading
+   the real file — which is what preserves the existing rule that a file deleted between the listing
+   and the right-click offers nothing.
+   **Services is the one that stays local, and it is now a limit rather than a gap.** AppKit fills
+   the pasteboard **synchronously**, inside `writeSelection(to:types:)` as the menu opens, and there
+   is nowhere in that call to put a download — so `canSendToServices` is a second, narrower gate,
+   because asking the wider one would advertise the pane for a selection `writeSelection` then
+   declines to write, leaving Services items that do nothing.
+   Three things fell out of building the funnel (`PanelViewController+Materialize`), which Slices
+   4–6 inherit. A **cloud placeholder is handed over as its own path** and neither confirmed nor
+   fetched: those bytes are the file provider's when the receiving application reads them, exactly
+   as Finder does it — hence `MaterializationPlan.excluding(_:)`, since counting them would put a
+   *"download this from the server"* dialog in front of a file already on this disk. A **folder that
+   is not here is not a hand-off target** at all (`pendingDirectories`, the same rows that make the
+   totals a floor, read from the other side): it stands for an unknown number of objects in an
+   unknown number of requests, and copying a tree out is F5's. And a **short set is a failure**
+   rather than a smaller success — an application given three of the five files somebody marked has
+   been told something untrue — with the server's own reason used for the wording where there is
+   one, which is all `report.failures` is read for: what decides is whether every row *resolved*,
+   since a row that failed while an earlier copy of it is still current costs the user nothing.
+   The queue side needed one thing the other kinds did not: `MaterializeDeliveries`, because
+   `FileOperationQueue.enqueue` is an actor method and the job id the two halves share exists only
+   *after* the job has been accepted and could already have run — so the report and the gesture
+   waiting for it pair in whichever order they arrive. A `.materialize` job is also the one kind
+   that does **not** re-list the panes when it finishes: its destination is a temp root, so a
+   refresh would spend a request per remote pane to redraw rows that cannot have moved.
+   Controlled in seven directions, each failing only the tests that name it: refusing no folder,
+   weighing placeholders, dropping the report's error, handing a short set over anyway, typing a
+   non-local row as untypeable, losing a report that arrives before its gesture, and letting
+   Services ask the wider question.
+   **Verified live against a real `sshd`**, and the gesture that makes the whole chain drivable
+   headlessly is **Share** — it fetches *before* it presents, so `run operation "file.share"` runs
+   the plan, the decision, the queued job, the adoption and the delivery with no UI to click. Two
+   marked SFTP rows produced **two** `Accepted publickey` sessions in the server's own log and two
+   copies under `DirnexRemote`, each in its own directory under its real name with the right bytes.
+   The measurement that separates a cache hit from a gesture that did nothing is the sharp one:
+   deleting **one** of the two copies and repeating the gesture cost exactly **one** session and
+   brought back exactly that file, leaving the other untouched — "nothing changed" would have been
+   true of a dead gesture too. And `run operation "file.openWith"` over the same rows opened its
+   menu (the verb does not return: the menu runs a nested event loop) having moved **zero** bytes,
+   which is the asymmetry the slice was designed around, measured rather than argued.
+   Two things about the instrument are worth keeping. The pane's own **background remote poll**
+   makes a session *count* useless as evidence — it drifted by four over ten idle seconds — so the
+   measurement has to be the delta across the gesture, or better, whether any **bytes** landed,
+   which nothing but a fetch produces. And the cursor of a restored tab lands on the first row,
+   which sorting puts on the *folder* — so the first run measured the refusal rather than the
+   transfer, and the marked set had to be seeded (`markedPaths`) to reach the claim.
+4. **Compare By Contents and checksums.** ⌥F3 fetches both sides and hands `ByteComparator` two
+   local files; a checksum run fetches the marked set and hands `ChecksumEngine` real paths.
+   `ChecksumScope` and the manifest's *stored* names must stay the remote names, or a manifest
+   written beside a bucket's objects names temp directories.
+   **Landed 2026-08-27.** The name-versus-bytes split turned out to be **one line**, because
+   `ChecksumWalkedFile` had carried the two apart since M14 — a manifest-relative *name* and the
+   *entry* whose bytes are read — and only the byte-reading site had ever conflated them. So
+   ``MaterializedPaths`` is consulted in `ChecksumRunContext.digest` and nowhere else: the engine is
+   handed a temp copy while the progress label, the failure path and the manifest's own spelling go
+   on naming the object on the server. A row with no stand-in is
+   ``ChecksumEntryStatus/notDownloaded`` — the answer an evicted cloud placeholder already gave,
+   which is the same fact about a different provider — and it is *reported* rather than thrown, so it
+   cannot be `try?`-ed out of a manifest that would then verify clean while covering less than it
+   claims. A **local path stands for itself**, placeholder included, which is what keeps every
+   ordinary run reaching the identical code with an empty map.
+   **The manifest is written beside the objects it describes, so a bucket's checksum is an upload.**
+   That is forced rather than chosen: every format spells its names relative to the checksum file's
+   own location, so there is no third option where the names still resolve. It needed no new policy —
+   `capabilities(for:)` asked of the **manifest's own directory** already answers per backend, so a
+   writable bucket says yes, a read-only one says no, and a browsed archive refuses itself because
+   `ArchiveBackend` advertises `.read` alone. And there is deliberately **no pre-flight guard on the
+   manifest's backend**: the sentence a user reads should be the one the thing that declined actually
+   said, which is what made `ChecksumRunContext.recordFailure` stop normalizing a `VFSError` through
+   an errno — that had been flattening every backend's own refusal to `.io`, a code nobody can look
+   up standing in for "the bucket is read-only".
+   **Verifying is two-phase, because nothing can know what to fetch until the manifest has been
+   read** — and that is what forced the walk out into ``ChecksumVerifyScope``, shared by the gesture
+   that weighs the set and the run that hashes it. Two spellings of *which files does this manifest
+   claim* would fail in the quiet direction: every file the gesture failed to predict comes back "not
+   downloaded" while sitting right in front of the user. The walk between the phases costs listings
+   and no transfers, so by the time anything is downloaded the total is exact rather than a floor. A
+   **local** manifest short-circuits before phase one and is byte-identical to what M14 shipped,
+   which is what keeps the common case free of a second directory walk.
+   Three things fell out. A **placeholder is fetched but never weighed**, whichever gesture is
+   fetching it: `CloudDownloadPrompt` already names the file and its size and carries a Stop, so a
+   confirmation in front of it is one reporter too many for one transfer — and it would have to lie
+   about where the bytes come from, since a plan with no `requestCount` says "from the archive".
+   A **folder that is not already here is refused**, in the hand-off's own words and for its own
+   reason. And M14's rule — *a file somebody pointed at downloads, a tree sweep refuses* — is
+   unchanged but widened to the set the user actually **marked**, where before only a lone selected
+   file qualified; a file the runner *discovers* by descending into a marked folder is in no plan and
+   still meets the engine's refusal.
+   Compare needed the pair itself to change shape: the `backend == .local` gate lived in
+   `comparablePaths`, so it had to answer with **entries** — what the pair costs to read is now part
+   of the question, and only an entry carries the size that decides.
+   Controlled in nine directions, each failing only the tests that name it: reading the row's own
+   path instead of the stand-in, writing the manifest locally whatever its backend, flattening the
+   backend's refusal through an errno, claiming the whole walk rather than the intersection, queueing
+   a create with no map, refusing no folder, asking the pane's path instead of the manifest's, never
+   going two-phase, and Compare's local gate restored.
+   **One control was vacuous and had to be fixed before it meant anything** — the folder refusal
+   asserted only that *a* sheet appeared, which passed against a build that refused nothing, because
+   the sheet it then raised was the *create* sheet. Counting the sheet's buttons is the
+   language-independent discriminator (one for a refusal, three for the create sheet, whose accessory
+   carries a popup).
+   **Verified live against a throwaway `sshd`**, and the evidence is the files rather than a session
+   count, which the pane's own background poll makes useless. `run operation "file.checksumVerify"`
+   over a manifest on the server landed **three** copies under `DirnexRemote` — `files.md5` first,
+   then `a.bin` and `b.bin`, each in its own directory under its real name with the right bytes —
+   which is the two-phase gesture with nothing to click. The measurement that separates it from a
+   cache hit is the sharp one: deleting **one** copy and repeating brought back exactly that file and
+   left the other two untouched. `run operation "file.compareByContents"` over two marked SFTP rows
+   fetched both and opened FileMerge on them. Creating a manifest on a server is the half that is
+   **not** reachable headlessly — the gesture ends in a sheet, so the upload is covered by the core
+   suite against a receiving backend rather than by a live run, which is the same asymmetry Slice 3
+   recorded between Share and Open With.
+   The live run is also what caught a flaw the suite could not: Compare fetched **before** asking
+   whether a diff tool was installed, so a user with none would have paid for a download to be told
+   so. The tool question now comes first.
+5. **User scripts.** Hand the script real paths and let it run. The interesting half is a script
+   that *edits* its argument: that is the `EditedFileRegistry` watch F4 already installs, so a save
+   is offered back up rather than lost in a temp directory nobody will look in again.
+   **Landed 2026-08-27.** The write-back half was one function because it was *two and about to be
+   three*: F4-inside-an-archive and F4-on-a-server each built their own `EditedFile` behind their own
+   gate, and a script would have been the third spelling, written by somebody who had not read the
+   other two. `PanelViewController+WriteBack` is now the one place that answers *where does an edited
+   copy of this row go back to* — `nil` meaning **not watched** rather than not writable, which is
+   what keeps the nested-archive refusal F4 owns (it drops the write bits) from leaking into Open
+   With and a checksum, who read the same extraction and are not about to write.
+   **The fork that needed settling was not the files but the *directory*.** A script has one working
+   directory for the whole run and `DIRNEX_CURRENT_DIR` claimed to be "the active panel's directory",
+   which on a server, in an archive or in a results tab is a folder that does not exist — so the
+   variable is now **absent** there, exactly as `DIRNEX_OTHER_DIR` already is when there is no second
+   local pane, and a script branches on `[ -n "$DIRNEX_CURRENT_DIR" ]`. Naming the temp directory one
+   copy happens to sit in would have been a plausible answer to *where is the user looking* that is
+   not one — the same thing this repo says about a cache miss, which is "not known here" and never a
+   stand-in. Where the process *starts* is a separate question with a separate answer that is always
+   real (`UserScriptContext.workingDirectory`, derived rather than stored so the two cannot be given
+   different answers by two callers): the panel's folder when it has one, else the folder holding the
+   first file handed over — which is what a results tab had always done, now the *only* rule rather
+   than a second one. A context with neither makes **no invocations**, because a `combined` script
+   with nothing marked acts on a directory and there is none.
+   Two smaller things fell out. `localPanelDirectory` goes through **`writeDirectory`** rather than a
+   fresh `backend == .local`, which is the same question already answered once and gets the merged
+   iCloud listing right for free — its own path is synthetic while the folder underneath it is
+   perfectly real. And both panes' directories now go through that one property; the counterpart used
+   to be asked with its own inline comparison, which is one rule in two spellings.
+   Controlled in eight directions, each failing only the tests that name it and leaving Slice 3's
+   suite green: always exporting the panel variable, never falling back to the first file, always
+   having a working directory, the gate back to local-only, dropping the watch, watching every row
+   (which also fails the narrowness control that a local run watches nothing), dropping the pairing
+   guard, and reading `panel.path` instead of `writeDirectory`.
+   **Verified live against a throwaway `sshd`**, and the evidence is the server's own bytes. Two
+   marked SFTP rows through `run operation "userScript.ProbeRead"` reached the shell as
+   `…/DirnexRemote/<uuid>/alpha.txt` and `…/beta.txt` — each in its own directory under its real
+   name, holding the server's content — with `DIRNEX_CURRENT_DIR` printing **empty**, which is the
+   design decision measured rather than argued. Then `ProbeEdit`, appending a line to `"$1"`, left
+   **both files on the server** carrying that line: fetched, handed over, edited, noticed, uploaded,
+   with nothing to click. The control is the one that separates it from "any script run uploads" —
+   the read-only script ran again afterwards and the server's checksums did not move — and the
+   deletion control is the sharp one, since "nothing changed" would also be true of a dead gesture:
+   removing **one** copy and repeating brought back exactly that file, in a new directory, carrying
+   the server's *current* bytes including the edit the earlier run had uploaded, and left the other
+   untouched.
+   **The one thing it does not do is coordinate.** A script that rewrites forty remote files produces
+   forty independent write-backs, each re-`stat`ing and uploading on its own the way F4's single save
+   does — no combined bar, no Stop, no ordering. That is the shape M24 Slice 2 gave the *download*
+   direction and the upload direction has never had. It was handed to M25 here and M25 never took a
+   slice for it; **demoted 2026-08-30** to PLAN.md §4 ▸ *Smaller than a milestone*, which is where its
+   size honestly puts it — one `FileOperation` kind over the queue that already exists, not a design.
+6. **Pack in both directions, and browsing a `.zip` on a server.** Both ends of ⌥F5 stage — build
+   into temp, upload the archive — and browsing one is the mirror. This is the slice that needs the
+   "the whole file is coming down" sentence, and the one where a *nested* archive stays out of
+   scope for the reason it always has: its bytes are already a temp copy.
+   **Landed 2026-08-27**, and the source half needed no staging directory at all — which was the
+   measurement that decided the design. `bsdtar` accepts `-C` **interleaved with the names** in
+   create mode (probed against libarchive 3.7.4: `-c -f out.zip -C /a alpha.txt -C /b beta.txt`
+   writes both members correctly), and `ArchiveSourceItem` has split the absolute `onDiskPath` from
+   the relative `archivePath` since M19 — so both writers already wanted a per-source directory and
+   only their entry points did not. ``PackSource`` is that pair, `-C` is emitted **only where the
+   directory changes**, and an ordinary pack's argv is byte-identical to what it always sent. No
+   hardlinks, no gathering, nobody's bytes copied twice.
+   **It fixes a bug nothing had reported: ⌥F5 in a *tree* has been wrong since trees shipped.** The
+   pack was handed `panel.path` plus bare names, so a marked row inside an expanded folder named a
+   file that is not in the pane's own directory — `bsdtar` failed, and the encrypted walk skipped
+   the missing name and wrote a **smaller archive without saying so**. The same fix covers it,
+   because the answer to *where are this row's bytes* is now asked of the row.
+   **A folder that is not already here is refused**, in the hand-off's own words and for its reason,
+   which is a *correction* to the claim `MaterializationPlan.pendingDirectories` carried from Slice
+   1 — it said a pack would stage the subtree. Written before any gesture read it, and wrong by the
+   time one did: all four that read it now refuse, staging a remote tree is F5's engine pointed at a
+   temp directory, and nobody has built that.
+   The **destination** is asked `capabilities(for:)` on its own directory rather than "is it on this
+   Mac", so a writable bucket takes the archive and a read-only one is refused before a byte is
+   written. `PackStaging` is the one definition of *where does the archive go* — nothing at all for
+   a local destination, and build-in-temp-then-transfer for a server, swept whatever happens — and
+   both pack paths use it, which is what stops the two from drifting. A refused upload comes home as
+   the backend's own `VFSError` about the archive's path rather than as an `EncryptedArchiveError`:
+   the write worked and the transfer did not, and those are different sentences. The upload's bytes
+   are **added** to the bar's total rather than replacing it, so it grows once at the transition and
+   runs on to the end — the two alternatives are a full bar parked for the length of a network
+   transfer, and an aggregate that walks backwards.
+   `EncryptedArchiveError.needsLocalFile` went with it, catalog entries and all: its own doc comment
+   said "until then a non-local job fails fast", and *then* is now.
+   **Browsing a `.zip` on a server reuses the nested-archive registry rather than growing a second
+   one**, because it is the same shape — a mount whose bytes are a temp copy — and three things fall
+   out of that which are exactly what is wanted: the way up goes back to the *server's* directory,
+   the breadcrumb names the server (the crumb builder had to learn that, or it drew
+   `Macintosh HD › private › tmp › DirnexRemote › <uuid>`), and the mount is **read-only**, since a
+   write would land in the temp copy rather than in the archive on the server. Repack-then-upload is
+   its own pass and is reachable now that the pack half exists.
+   Controlled in ten directions, each failing only the tests that name it: the folder refusal
+   dropped, the destination gate back to local-only, `canPackFromHere` back to local-only, sources
+   named from the row instead of the file, one leading `-C` for the whole set, staging disabled, the
+   ⏎ route removed, the crumbs rooted at the extraction again, a placeholder *directory* classified
+   as one, and the remote origin walked as an enclosing archive. The narrowness controls are the
+   half that matters most and all stayed green throughout: a **local** folder still packs, an
+   ordinary remote **file** still opens in its own application rather than being mounted, and the
+   nested and top-level crumb chains are untouched.
+   **Verified live against a throwaway `sshd`**, and unlike Slices 3–5 the gesture is *not* drivable
+   headlessly — ⌥F5 ends in the pack sheet, which is a nested question no AppleScript verb gets past.
+   So the live half is a checked-in suite gated on the same config file `SFTPLiveIntegrationTests`
+   uses (`PackLiveIntegrationTests`), driving the real `SFTPProcessTransport`, the real `bsdtar` and
+   the real mount. Two objects staged off the server into **two different directories** packed into
+   one archive whose members came back with the server's exact bytes, under the names the user
+   marked and with no trace of where they were staged; an encrypted archive built here landed on the
+   server, where **`bsdtar` — which is not ours — listed `payload.txt` in it and then demanded a
+   passphrase to extract it**, so it is a real zip and really encrypted; and a `.zip` on the server
+   came down whole and listed `one.txt`, `two.txt`. The independent read is the point in each case:
+   the upload is checked by a *fresh* download rather than by asking the writer what it wrote, which
+   is the trap Slice 10's own probe fell into one milestone ago.
+   **A stronger assertion found a bug three green runs had not**, and it is worth the sentence: the
+   crumb test first asserted a *suffix*, which is true of a trail carrying everything twice
+   (`… › srv › backup.zip › srv › backup.zip › docs`) — the remote origin was being walked as though
+   it were an enclosing archive, whose `path` is an archive-inner path where a server's is not. The
+   same run showed the root crumb reading "Macintosh HD", because the fixture's backend id was a
+   hand-built string `backendRootTitle` cannot parse, so the test had been measuring the fallback.
+   Both are fixed and both are now pinned by an equality over the whole list.
+   **The one thing it does not do is put a plain pack's upload on the queue.** A plain pack has never
+   been a queue job — that is the libarchive boundary §M19 drew, and it is the *encrypting* that
+   earns the queue — so a `.tar.gz` bound for a server is reported by the status line and has no bar
+   and no Stop for its transfer. Encrypting the same archive puts both halves on the bar.
+7. **Get Info, read-only, on a remote row.** The SFTP and FTP listings already carry mode, owner,
+   group and modification date into `FileEntry`; `AttributesController` refuses to draw them. Read
+   first and write in M25, because the two fail differently — a panel that shows a mode it cannot
+   change is honest, and one that offers a change it cannot make is not.
+   **Landed 2026-08-28, and the premise above was half wrong — which is what the slice turned out to
+   be about.** Probed before any Swift: the listings carry mode and date, and **owner and group were
+   read and thrown away** — `ColumnarListing.unixRow` reads columns 0 and 4–7 and skipped 2 and 3, so
+   every remote `FileEntry` carried `ownerID == 0` while the answer had been arriving in the same line
+   as the mode since M5. And they are **names**, not ids (`oleg     staff`), which is why they could
+   never have gone into `ownerID`: `AttributesSnapshot` resolves an id through this Mac's `getpwuid`,
+   so a server's `501` would have drawn the local account of whoever is reading the panel over a file
+   belonging to a stranger.
+   **The finding that decided the design is that two backends *invented* a mode.** S3 and FTP's
+   DOS/IIS dialect both answered `0o755`/`0o644`, each under a comment explaining that `0` "would
+   render every remote row as unreadable in the permissions column" — and the columns are `name`,
+   `size` and `date`. There is no permissions column, and there never was: the fabrication was
+   harmless for exactly as long as nothing displayed it, and this slice is the reader that would have
+   drawn it as the server's own word. So `FileEntry.permissions` is now **optional**, because `0`
+   cannot stand in for the absence — `chmod 000` is a legal mode — and the compiler is what stops the
+   next display site inheriting a stand-in. The blast radius was one pass-through: `ArchiveSourceItem`
+   takes its mode from a real `stat`, so packing never read it.
+   Two things came out of it that the slice did not predict. The mode reader was **approximate** —
+   `s`/`S`/`t`/`T` were all read as a plain execute bit, which is fine for a row that draws no
+   permissions and wrong in a panel whose job is to state a fact, so a `rwsr-xr-x` binary would have
+   been disclaimed as `rwxr-xr-x`; it is exact now, and `POSIXPermissions` already stored and rendered
+   all twelve bits. And the **archive** was throwing its mode away too, using only the leading kind
+   character while `bsdtar -tvf` printed the real one in the same column — with the owner arriving as
+   *names* for a tar and *bare numbers* for a zip, which stores none, so even one tool's answer changes
+   shape with the format.
+   **A separate read-only panel rather than the four-tab one degraded**, because three of its four
+   tabs would have had nothing to say: no remote listing carries an ACL, an extended attribute, an
+   access time or a birth time. `RemoteAttributesController` is built on one rule — *a field with no
+   answer is absent, never blank and never a stand-in* — with notes that explain the absence, so a
+   short panel reads as a fact about the server rather than as a panel that failed to load. Which
+   rows it will draw is a pure `fields(for:)`, and which panel a selection deserves is a pure
+   `AttributesRoute`, so both are testable with nothing presented — a real window in the test host
+   makes it do real pane work and destabilizes its neighbours (docs/NOTES.md ▸ Testing).
+   The routing is **per row, not per pane**, which is the shape §M24 Slice 6 had already paid for in
+   the pack sources: a results tab holds hits from anywhere and a tree draws several directories at
+   once. That retired the `!isVirtualDirectory` gate in favour of `nameMatchesPath`, which is the
+   honest form of it — the old one refused every ordinary file standing beside iCloud's app rows, and
+   every hit in a results tab, for the sake of a handful of synthetic ones. A **mixed** marked set is
+   now refused rather than served short: the bulk panel is an editor, and the old local-only filter
+   quietly opened it over the local subset, editing fewer items than the user marked.
+   Controlled in nine directions, each failing only the tests that name it: S3 and the DOS dialect
+   inventing a mode again, the archive dropping its mode, `UnixRow` dropping owner and group, the
+   local-only filter back in `attributesTargets`, the route ignoring the backend, the panel drawing a
+   permissions row unconditionally — plus two narrowness controls that stayed green throughout (an
+   ordinary mode gains no special bits, and no entry produces an empty panel).
+   **Verified live against a throwaway `sshd`, with the OS as the independent judge.** The real
+   parser fed the real bytes a real server printed agreed with this Mac's own `lstat` on all six
+   files, including `setuid.bin` at **4755** and a sticky directory at **1777** — the two the old
+   approximating reader flattened to 0755 and 0777, which is the control that makes the agreement
+   evidence rather than a coincidence. Then the whole gesture in the built app, restored onto that
+   server: `targets=1` on a remote row (the old filter would have made it 0), the panel opened, and
+   it drew `mode=4755 owner=oleg group=wheel` — the server's own words, end to end.
+   One thing about the instrument is worth keeping: `TabPersistence` reads `data(forKey:)`, so a tab
+   seeded with `defaults write -string` is silently **not restored** and the pane falls back to Home.
+   It cost two runs, and the tell was a false one — the server's log showed sessions that were the
+   probe's own earlier `sftp` calls, which is this file's own warning that a session count is not
+   evidence, met from the other side. Seed with `-data <hex>`.
+
+**Deliberately not in scope.** Content-grep and tag search on a server, both withheld at M22 for
+the reason that has not changed — no remote backend can answer either without reading every file.
+ACLs and extended attributes remotely, which SFTP and FTP do not carry at all. Open in Terminal for
+an SFTP account, which is an `ssh` session and a different feature. And Get Info's **write** half,
+which is M25's.
+
+### M25 — What a remote write carries, and what a remote delete costs (M)
+
+Opened 2026-08-27 alongside M24 and closed 2026-08-29. Eight slices, of which the fifth landed as
+**5a–5d**; every one of them opened with probes against a real `sshd` (OpenSSH 10.2p1) and a real
+FTP server rather than a man page, and three of the five opening measurements changed the design —
+including a correction this repo owed itself, since `sftp` has had a server-side `copy` verb all
+along and NOTES.md said twice that it had not. Its third part, **a Trash where no protocol has
+one**, closed on 2026-08-29 as a decision *not* to build one; the reasoning is
+[PLAN.md](../PLAN.md) §7, and what stands in for it is the confirmation that already says nothing
+can be undone.
+
+Three parts, and they share a subject: a remote operation that succeeds while quietly doing less
+than the local one it stands in for. Two of them are slices; the third was a format commitment and
+closed as a decision **not** to build (PLAN.md §7, 2026-08-29).
+
+**A copy that carries more than bytes.** `VFSBackend.copyMetadata` defaults to a no-op and SFTP and
+FTP both take the default, so a mode and a timestamp are dropped on every transfer with nothing said.
+Extended attributes and ACLs are out of scope in both directions — neither protocol carries them, and
+that is a limit rather than a gap. What the protocol *does* offer is more than "wire up `chmod`", and **the five lines below were
+probed 2026-08-28 against a real `sshd` (OpenSSH 10.2p1) and a real FTP server** before any Swift,
+because a man page is not a server. Three of them changed the design and one is a correction this
+repo owed itself; the detail is in docs/NOTES.md.
+
+- **`get -p` / `put -p` carry more than the man page promises and less than it implies.** Measured
+  in both directions: the low nine permission bits and **both** timestamps arrive exactly — it says
+  "permissions and access times" and the *modification* time comes too — while **set-uid, set-gid
+  and the sticky bit are silently dropped**, on a mode the server itself puts on the wire (`ls -la`
+  prints `-rwsr-xr-x`). Plain `get`/`put` carries the mode only approximately: the umask applies
+  and a download's local `open` forces owner-write, so `0777` lands as `0755` and `0444` as `0644`
+  while `0600`, `0640`, `0700` and `0754` all survive untouched — so a probe that happens to pick
+  one of the second group measures a preservation that is not there.
+- **`chmod` is therefore strictly more capable than `-p`, not merely its fallback**: `chmod 4755`
+  over the wire really does produce `-rwsr-xr-x`. A mode carrying special bits costs one extra
+  round trip and an ordinary mode costs none. `chmod`, `chown` and `chgrp` all take **`-h`**,
+  verified in both directions — with it the *link* changed and its target did not, without it the
+  target changed and the link did not. `chown` to another uid is refused unprivileged (exit 1,
+  `remote setstat "…": Permission denied`), which is the ordinary answer rather than a fault.
+- **`copy`/`cp` exists, is genuinely server-side, and settles the correction.** OpenSSH advertises
+  **`copy-data revision 1`**, and it duplicated **64 MiB in 0.08 s** — the whole session, connect
+  and authentication included — with the two files SHA-256 identical. A server without it makes the
+  client print its own **`Server does not support copy-data extension`**, so it degrades per
+  connection exactly as M22's exec walk does, and `RelayCopy` stays the only mechanism for a pair
+  of ends on *different* backends. `cp` preserves the low nine bits and drops the special ones, so
+  it needs the same corrective `chmod` as `-p` — one place that finishes a copy's mode, not two.
+- **A symlink's target is unreadable over `sftp` and readable over the exec channel**, as
+  predicted. `ls -la` of a directory prints the kind and no ` -> target`, and `ls -la` of the link
+  **follows it**, reporting the target's mode and size — the same trap this repo already records
+  for classifying an item before a recursive delete. `readlink` over `ssh` returns the raw text for
+  relative, absolute and dangling links alike, so this degrades per connection and an `sftp`-only
+  account keeps today's refusal. `CopyEngine` passes `entry.symlinkDestination ?? ""`, so
+  proceeding without a target would write `ln -s "" link`.
+- **FTP is richer than "the mode alone", and that assumption was wrong.** `SITE CHMOD` carries the
+  mode, and **`MFMT` writes an exact, UTC-anchored modification time** (RFC 3659) which `MDTM`
+  reads back — round-tripped against the local truth on a host at `+0300`, so a timezone error
+  could not have hidden. The coarse, year-less, zone-less stamp belongs to **`LIST`**, not to the
+  protocol. Every `-Q` refusal is `curl` exit 21 with the reply code separating the two cases that
+  need different sentences: **500** for an unimplemented verb, **550** for a file problem — already
+  what `FTPTransportError.classify` reads.
+
+**Get Info's write half, and Synchronize on a side with no exact clock.** M24 draws a remote row's
+mode and dates; this makes them editable through the same verbs above, with the same per-connection
+degradation. `DirectorySync` is the other consumer of the same fact: comparing by timestamp is
+deliberately refused for FTP and S3 and always will be, but comparing by **size** is honest and is
+simply not built — and once ⌥F3 can fetch two sides (M24 Slice 4), comparing by *contents* is
+reachable too, at a price the plan from M24 Slice 1 can state up front.
+
+**A Trash where no protocol has one — closed by not building one (2026-08-29).** Every remote
+delete is permanent and unreversible, because `deleteStrategy` degrades to `.permanent` wherever
+`.trash` is absent and it is absent everywhere remote. Inventing one — a managed `.dirnex-trash/`
+prefix, a rename into it, and a sidecar naming the origin the way a trash folder's `.DS_Store`
+carries `ptbL`/`ptbN` — was a **format commitment that outlives the code**, so it was §7's open
+question rather than a slice. It closed against: the price is not uniform (one cheap rename over
+SFTP and FTP, N copies plus N deletes on S3), and a Trash that exists on some backends and not
+others is a worse promise than none. The confirmation stays what stands in for it and already says
+there is nothing to undo, so this milestone builds nothing here; §7 carries the reasoning.
+
+#### Slices
+
+Core first, then the app, as usual. Each lands runnable, and each degrades **per connection at run
+time** rather than by asking a server in advance — none of these capabilities can be queried, so
+the shape is M22's: attempt the verb, read the refusal, remember it for that connection, and leave
+the old behaviour standing where it cannot be established.
+
+1. **The metadata carry, in the core.** ``RemoteMetadataPlan`` decides what one transfer must do to
+   carry its source's mode and times, and — the half that matters — what it will *lose*, so a
+   caller can say so instead of approximating. `SFTPBatchCommand` grows `-p` on both transfer verbs
+   and the `chmod`/`chown`/`chgrp` builders (each with `-h`); `FTPQuoteCommand` grows `SITE CHMOD`
+   and `MFMT`. Pure, tested, additive; no app rebuild.
+   **Landed 2026-08-28.** The rule needed **two capabilities, not one flag**, because `-p` and
+   `chmod` are not fallbacks for each other: `-p` is exact for the nine bits and both timestamps
+   and cannot express a special bit, while `chmod` expresses all twelve and knows nothing about
+   time. So an ordinary mode rides `-p` alone and costs exactly what it always did, only a mode
+   carrying set-uid, set-gid or the sticky bit pays for the corrective round trip, and an account
+   that has refused `chmod` keeps the nine bits and **reports the loss** rather than claiming the
+   mode.
+   **A `nil` mode is not a loss**, which is the distinction the whole type turns on and the one a
+   sentinel would have destroyed: S3 and FTP's DOS/IIS dialect report no mode at all, so folding
+   "absent" together with "dropped" would make every S3 copy claim damage it did not do — the same
+   fact ``FileEntry/permissions`` became optional for one milestone earlier. The access time gets
+   the same treatment for the same reason, and reading a file over `sftp` **bumps the source's own
+   atime to now**, so even a carried access time is a copy of a value the act of copying has
+   changed.
+   Controlled in four directions, each failing only the tests that name it: the corrective `chmod`
+   dropped (three failures, one per special bit), an absent mode reported as a loss, `MFMT` written
+   in the local zone rather than UTC — which produced `20180607110910` against a truth of
+   `…080910`, the exact three-hour error that would have reached a server silently and only for
+   some users — and the over-correction of sending a `chmod` for every mode, which fails the
+   narrowness control that an ordinary transfer is byte-identical to what it always sent.
+   **Verified live against the same `sshd` and FTP server**, and the point is that nothing was
+   hand-typed: a throwaway package built against `DirnexCore` emitted the batch lines and the
+   server executed *those*, so what was measured is the builder rather than agreement between two
+   things we wrote. A set-uid source came down **104755** carrying its exact mtime, the `-h` line
+   left the link at `700` and its target untouched at `644`, and the generated `SITE CHMOD`/`MFMT`
+   pair moved a real FTP file to `100754` and `1528358950`. The narrowness control is what makes
+   that evidence: a plain `get` of the same source gives **100755** and a mtime of *now*.
+2. **Wiring the carry through the transports**, so `copyFile` in both directions asks the plan what
+   it needs and the app reports what a copy could not keep. This is where the per-connection latch
+   lands, and where `copyMetadata` — today a no-op default the engine calls only for a directory it
+   recreated by hand — stops being a no-op for SFTP and FTP.
+   **Landed 2026-08-28.** Four things were measured against the real `sshd` and a real FTP server
+   before any Swift, and three of them changed the shape.
+   **A refused follow-up must not fail a transfer whose bytes have landed.** Under `sftp -b` a batch
+   **aborts on the first failed command and exits 1**, so a `chmod` refused after a `put` reported a
+   perfectly good copy as a failure; `sftp`'s `-` prefix fixes it exactly — exit 0, the bytes still
+   there, and the refusal **still on stderr**, which is what keeps the loss reportable rather than
+   merely swallowed. A step that succeeds prints nothing at all (measured: stderr exactly 0 bytes),
+   so the ordinary transfer is untouched. The same hazard over FTP is worse: a quote command sent
+   alongside the transfer is refused as `curl` **exit 21** *after* the upload, and `curl`'s
+   continue-on-failure prefix avoids that only by destroying the attribution — `%{http_code}` reports
+   the **last** reply, so a refused `SITE CHMOD` behind a good `MFMT` is invisible. Hence FTP's steps
+   run in one invocation of their own, where reply **500** (a verb this server lacks, so latch it)
+   and **550** (that file's problem, so do not) separate cleanly. `curl`'s prefix order is its own
+   trap and fails silently: `*-CMD` sends the literal `-SITE …` **before** the transfer, is answered
+   500, and still exits 0 — the mode never applied, on a run reporting complete success.
+   **A metadata refusal must never be read as the transfer's failure**, which is the bug the split
+   (`SFTPMetadataStderr`) exists for: `detect(stderr:)` scans the whole stream for `permission
+   denied` and `no such file` first, so a refused `chmod` turned a completed copy into
+   `.permissionDenied`. It has a family in **each** direction, both read out of `/usr/bin/sftp`
+   rather than guessed — `remote setstat "…"` from `put -p`/`chmod`, and `local chmod` / `local set
+   times` from `get -p`, the latter equally able to make a finished download classify as denied.
+   **The capabilities describe the *destination*, not the wire.** A download lands on this machine,
+   where `chmod` and `utimes` always work, so it carries everything the hint holds even on a
+   connection whose server has refused to keep anything — reading the wire's limits into that
+   direction would drop a time the disk was perfectly able to take and blame the protocol for it.
+   That asymmetry is also what makes both directions **free**: the hint (`CopySourceHint`) comes from
+   the listing `CopyEngine` already made, where asking would be a whole connection — 71 ms against a
+   loopback `sshd`, a real handshake over a network.
+   Controlled in five directions, each failing only the tests that name it: the corrective `chmod`
+   dropped, a download reading the wire's capabilities, latching a refusal `curl` cannot attribute,
+   a transport's declared capabilities defaulting to SFTP's rather than to nothing, and a refusal
+   recorded as no loss at all. Two of the controls were **inert on first writing** and that is the
+   finding worth keeping: `.ftp` and `.localDestination` happen to be the same set, so the download
+   test discriminated nothing until the connection was latched first; and the fake *declares* its
+   capabilities, so it shadows the protocol default the test was aimed at.
+   **Verified live end to end**, through the real `SFTPProcessTransport` and `FTPCurlTransport`
+   rather than any double: a set-uid source landed **04755** with its exact mtime, an FTP upload
+   landed **0754** with an exact `MFMT` time, and a `chmod` at a path that is not there came back as
+   an *answer* rather than a thrown failure. The controls are what make that evidence — with the
+   corrective `chmod` removed the same server reports **0755**, and with FTP's step invocation
+   removed the mode is the umask's and the time is the moment the upload ran.
+   Two limits of the read-back were paid for in wrong assertions first, and both are the *listing's*
+   rather than the carry's: `ls -la` drops the time of day for a file older than about six months, so
+   a 2018 fixture failed by exactly its own time of day; and an FTP `LIST` stamp is zone-less on the
+   server's clock, so the same assertion failed by exactly this machine's +0300.
+   **What is deliberately not here is the sentence a user reads.** The loss is accumulated per
+   connection (`RemoteMetadataSupport.loss`, aspects and a count) and nothing on screen consults it
+   yet: where it belongs — a status line, the operation report, Get Info — is a surface decision that
+   travels with Slice 5's Get Info write half rather than one to settle in the transports. A draining
+   `takeLoss()` was written alongside the accumulator and deleted, because the run boundary it marked
+   is the reporting caller's to define and this repo has paid before for API justified by a reader
+   that does not exist.
+3. **Server-side `copy`.** A duplicate inside one SFTP account stops being a download and an upload
+   through this Mac, latched per connection on the client's own refusal, with `RelayCopy` unchanged
+   beneath it. `RelayCopy`'s doc comment and docs/NOTES.md both said no remote protocol has a copy
+   verb; this slice is where that correction lands in the code rather than only in the notes.
+   **Landed 2026-08-28.** The probe found one thing the earlier pass had not measured and it decided
+   the slice: **`cp` carries no timestamp at all.** With an *old* source the copy comes back stamped
+   `now` where the relay's `get -p`/`put -p` reproduces 2018 exactly, in the same run against the
+   same server — and `sftp`'s batch language has no verb that sets a time. So the fast path is the
+   **less faithful** one, which inverts what "server-side" suggests, and the trade was Oleg's to make
+   rather than mine: `cp` at 0.09 s for 64 MiB against 0.5 s staged over *loopback* (and zero bytes
+   on the wire against two copies of the file over a real link), with the modification time counted
+   as **dropped** through the accumulator Slice 2 built. That is what separates this from the failure
+   the milestone exists to prevent — the speed is bought with a report, not with silence.
+   The mode is carried whole, and the corrective `chmod` is sent for an *ordinary* mode too, which is
+   a second measurement rather than caution: an occupied destination is overwritten **in place** and
+   keeps its own mode (`100600` stayed `100600` while its bytes became the source's). `cp` is regular
+   files only and follows a symlink; neither reaches `CopyEngine`, which walks a tree itself.
+   **The refusal is a *fact about the account*, so it latches and nothing else does.** The route is
+   `.serverSide` rather than `.direct` — the shape S3's cross-bucket copy already had, an attempt
+   with `RelayCopy` behind it — because a server either advertises `copy-data` or does not and
+   nothing asks in advance. `VFSCapabilities.internalCopy` deliberately stays absent: a promise the
+   next server can withdraw is not a capability, so it is a method (`mayAttemptInternalCopy`) that
+   goes false after one refusal and costs every later copy nothing.
+   Six controls, each failing only the tests that name it: the plan built **with** the preserve flag
+   (which claims a modification time it never wrote — `dropped → []`, `loss → nil`, the exact silent
+   failure), latching on any failure rather than the client's own sentence, the matcher shortened
+   from OpenSSH's whole sentence to the token `copy-data` (which a file *called* `copy-data.txt`
+   would then trip), reporting no progress at all, and the router sending the pair back to staging.
+   **Verified live against a real `sshd`, and against one built to refuse.** `sftp-server -P copy-data`
+   bans the request, so a server without the extension is reachable on this Mac on demand rather than
+   waited for: there the account-level suite reports `.unsupported(.remoteToRemoteCopy)` — the right
+   answer — and the *route* test still lands the file, which is the degradation end to end. On an
+   ordinary server the same route test passes unchanged, which is why it asserts what holds on both
+   and never which route ran.
+   **The first live control was inert and that is the finding worth keeping.** Removing the
+   corrective `chmod` left the live suite green, because a plan built with `-p` still emits a `chmod`
+   for a *special* bit — so the test that named the fix could not see it. The discriminating case is
+   the **occupied destination**, and adding it made the same control fail on demand. A green live run
+   with the fix removed is not a passing control; it is a test measuring something else.
+4. **Symlink targets over the exec channel**, degrading exactly as M22's search walk does, so a
+   link is copied faithfully on an account that has one and goes on being refused on an account
+   that does not.
+   **Landed 2026-08-28.** The probe overturned the verb the slice was written around and found the
+   bug to be worse than the plan recorded, and both are corrections this repo owed itself.
+   **`readlink` is the obvious verb and loses on all three counts that matter**, each measured
+   against a real `sshd`: it cannot be **authenticated** — `runCommand` hands back stdout and no exit
+   status, and an `sftp`-only account answers exec with prose *on stdout*, so a bare reader would
+   recreate the link pointing at an English sentence; it cannot be **batched** — with several
+   operands it prints one line per *successful* one and silently skips failures (three arguments,
+   two lines), so a reader zipping outputs to inputs gives one link another's target, which is worse
+   than having none; and it cannot be **framed**, since a target may contain a newline. `ls -ldn`
+   answers all three: every row echoes the path it describes and carries a mode field, so prose
+   cannot pass, and its **size column is the target's byte length**, which is what says where the
+   target starts. The cost is the *connection* and not the row — 77 ms for one link, 79 ms for
+   twelve — so the seam takes a **batch**, and the engine resolves a directory's children in one go.
+   **A first-arrow split is wrong in both directions, and the size column is the only thing that
+   knows.** ` -> ` is four ordinary characters a name and a target may each contain: a link *named*
+   `a -> b` pointing at `c` prints `…/a -> b -> c`, where the shipped reading answers `b -> c`. Nine
+   adversarial targets were checked against the server — two with newlines, one a tab, one a trailing
+   space, one containing ` -> ` and one ending in it — and the column equalled the true byte length
+   every time, which is POSIX's definition of a symlink's size rather than one `ls`'s habit. The
+   shared lexer takes the size when it fits and falls back to the first arrow otherwise, so it can
+   only ever *sharpen* a target; the exec parser additionally **requires** the match and drops what
+   it cannot verify, because there the alternative is a real link pointing somewhere nobody wrote.
+   **The correction: the failure this slice prevents was a crash, not a broken link.** This file and
+   docs/NOTES.md both recorded that proceeding with no target "would write `ln -s "" link`" — true of
+   the *syscall* (`symlink("")` returns 0 and leaves a 0-byte dangling link, measured) and true over
+   SFTP, and **not** true of a download, which is the common direction: `LocalBackend` puts the target
+   through `fileSystemRepresentation`, which raises `NSInvalidArgumentException` for the empty string
+   — an Objective-C exception nothing can catch, so copying a folder of links off a server terminated
+   the process. Two independent fixes, and the controls show they are independent: the engine now
+   refuses a `nil` target by name, and `LocalBackend` passes an **empty** one to `symlink(2)` directly
+   so a link that really does point at nothing stays copyable. That distinction — absent is not empty
+   — is Slice 1's rule about a `nil` mode arriving one type along.
+   Controlled in six directions, each failing only the tests that name it: the size column ignored,
+   the refusal removed (which reports `succeeded → true` over a broken link — the shipped bug), the
+   latch fired on any unanswered path rather than on no answer at all, the parser accepting a target
+   the size contradicts (which hands over the truncated `weird`), the children resolved one at a time,
+   and the empty-target guard removed — the last terminating the host with the exact exception, which
+   is the control saying what kind of bug it is.
+   **Verified live against a throwaway `sshd`**, through the real `SFTPProcessTransport` and the real
+   `CompositeBackend`: the server's own links come back with the targets it was given, a dangling one
+   keeps its text, a target containing ` -> ` survives, and a downloaded folder of links lands as
+   links pointing where the server's do. The live control is what makes that evidence — with the exec
+   read removed the same run fails all three tests and the copy comes back
+   `symbolicLinkTargetUnreadable(name: "abs")`, which is the degradation end to end rather than a
+   silent empty link.
+   **And one bug found a layer earlier, fixed on Oleg's call because the fix deletes shipped
+   behaviour**: `SFTPListingParser` split a name at ` -> ` as well, so a link *named* `a -> b` was
+   listed under the shorter name `a` before anything asked about a target — a wrong **file name**,
+   which a copy then writes to disk, and one the size column cannot rescue because the coincidence is
+   exact (size 1, trailing `b`). `sftp`'s own `ls` provably never prints a target (re-measured against
+   OpenSSH 10.2), so every arrow it emits belongs to a name and the split was answering a dialect this
+   parser is never fed — its "compatibility with a plain shell `ls -la`" test was pinning a fiction.
+   `unixRow` grew a `splitsLinkTarget` seam so only this dialect opts out; the control reproduces the
+   old reading exactly (`name: "a"`, target `"b"`) and fails only the one test that names it, and the
+   live run now reads `a -> b` end to end against a real server.
+5. **Get Info's write half**, on the verbs slices 1–2 establish. Landed as **5a** below; the two
+   halves it was bundled with are 5b and 5c, split on Oleg's call because each is a pass of its own.
+   **Landed 2026-08-28.** The probe overturned the design the slice opened with, and it is the
+   milestone's own subject arriving one layer further in.
+   **`sftp`'s `chmod` reports success for a mode the server did not store.** Measured against a real
+   `sshd`: `chmod 2755` on a file whose group the account is not a member of exits **0**, prints
+   **nothing**, and leaves `100755` — set-group-ID silently gone. It is POSIX's rule for `chmod(2)`
+   rather than OpenSSH's choice, so it is true of every server, and the control is what makes it a
+   fact about the write rather than about this one: the identical command on a file in a group the
+   account *is* in stores `102755`, same session, same binary. Set-uid and sticky are unaffected, so
+   a probe testing either reports a preservation that is only two-thirds there.
+   So a panel that reported "saved" on a clean exit would be doing exactly what this milestone exists
+   to prevent, and **Save ends in a re-read** (``RemoteAttributeVerdict``): what is on screen
+   afterwards is what the item carries, never what was sent. A gesture the user made can afford one
+   round trip where the bulk carry cannot — which is why Slice 2 pays nothing per file and this pays
+   once. The asymmetry that keeps it honest is that the **mode** is verifiable this way and a
+   **timestamp is not**: a remote `stat` is a listing row, minute-resolution over `sftp` and
+   zone-less over FTP's `LIST`, so judging a written time against one would report a false refusal
+   for an exact `MFMT` — an hour off for every user in a different zone from their server.
+   **What is offered is decided per connection and per row**, both gates and both necessary: the
+   listing must have reported the field (a control for a mode the server never named would invent
+   its own starting value) and the account must still honour the verb. That makes it a mode over
+   SFTP, a mode **and** a modification time over FTP — the richer protocol here, which inverts the
+   expectation the rest of this milestone sets — and nothing over an object store or an archive.
+   **Owner and group are deliberately absent, and the probe is why**: `chown`/`chgrp` take a numeric
+   id while `sftp`'s `ls -la` prints *names*, so a panel built on a listing has nothing to send — and
+   a remote `chgrp` clears set-uid and set-gid as a side effect (`106755` → `100755`, exit 0, nothing
+   printed), so offering it would need both the missing id and the ordering rule
+   ``AttributeChangePlan`` already encodes locally.
+   **Not undoable, and the panel says so.** ⌘Z reverses an attribute change through
+   `FileAttributeIO`'s syscalls, a local-only executor; a backend-driven undo step is its own piece
+   of work. §6 is explicit that a non-reversible operation is marked rather than silently dropped,
+   and the note is that mark.
+   Controlled in seven directions, each failing only the tests that name it: the read-back removed
+   (which reports the silent downgrade as a success — the shipped bug), the timestamp judged against
+   the listing that reads it back, the change ignoring what the connection can do, editability
+   ignoring whether the listing reported the field, the composite's forward dropped, the pane always
+   answering read-only, and the save believing the clean exit.
+   **Two of those controls were inert on first writing and that is the finding worth keeping.**
+   Every panel test built the controller directly, so a pane that opened *every* remote panel
+   read-only left them all green — the pane's own decision had to be split out
+   (`remoteEditability(for:)`) before anything could see it; and the silent-downgrade test asserted
+   the redraw rather than the report, which is true under both branches, so the panel had to hold
+   what the last Save achieved (`lastVerdict`) before a control could move it. A control that does
+   not fire is not a passing control.
+   **Verified live twice over**: a checked-in suite driving the real `SFTPProcessTransport` against a
+   throwaway `sshd` (16 real sessions in one run, counted in the server's own log), and then the
+   built app on a restored SFTP tab — the panel drew 9 mode boxes and 3 special bits with no date
+   control, ticking set-GID enabled Save and produced `2755`, and the verdict came back
+   `refused=[permissions] landed=755`. The narrowness half ran in the same shape with only the
+   file's group changed: `refused=[] complete=1 landed=2755`, and the file on disk `-rwxr-sr-x`.
+6. **The sentence that says what a copy could not keep** — Slice 2 accumulates the loss and left
+   choosing its surface here. Oleg's call: a **status line after the job**, non-modal, because the
+   routine case is not rare — the server-side `cp` route drops the modification time on *every*
+   same-account SFTP duplicate, so anything modal would fire constantly.
+   **Landed 2026-08-28 as 5b.** The surface was the decided part; the *window* was not, and it is
+   what the slice is really about. Slice 2's accumulator spans a **connection's whole life**, which
+   is the right expiry for a fact about a server and the wrong one for a sentence about a copy — read
+   directly it would tell a user about their previous transfer every time. So the answer is a
+   **difference of two readings** (``RemoteMetadataTally``, sampled by `CopyEngine` at each end and
+   subtracted), which is also why the draining `takeLoss()` Slice 2 wrote and deleted stays deleted:
+   a drain has to be called exactly once by exactly one caller and nothing says so, where two
+   readings can be taken by anybody in any order.
+   **Counts per aspect, not a set**, and that is the load-bearing detail: a set difference cannot
+   tell "lost again" from "lost earlier", so a connection that ever dropped a mode would go on
+   reporting it for the rest of its life. And the reading is **per path**, because a job with ends on
+   two accounts must add up *those* two while a job running concurrently on a third must not be
+   counted into it — the queue serializes jobs sharing an account, not jobs on different ones.
+   The wording collapses the core's four aspects into the two families a user can act on
+   (permissions, dates); the carry needs the finer distinction and a reader cannot use it. Measured
+   across all fourteen catalogs before being written: widest **363 pt** against the status line's
+   **542 pt** budget, and unlike M21 Slice 11's give-up message this one interpolates no file name,
+   so its length is bounded. Plural variations in every language, Slavic `one/few/many/other`
+   included.
+   Controlled in six directions, each failing only the tests that name it: the report giving the
+   connection's whole life instead of the job's delta, a set-shaped difference, no clamp across a
+   reconnection, one sentence for every loss, the special bits falling out of the permissions family,
+   and a skipped item's landing guessed from its source.
+   **The forward shipped missing, and only the live run found it.** `CompositeBackend` never
+   forwarded `metadataTally(at:)`, so it inherited `VFSBackend`'s `.zero`, every job's delta was
+   zero, and every copy looked lossless — with both full suites green and nothing logged. That is the
+   M22 `subtreeListing` failure exactly, one milestone later, in a session that had *already* written
+   a routing test for the sibling verb for that very reason. The regression test is the interesting
+   part: a healthy connection's tally and a missing forward's are **both zero**, so the discriminator
+   had to be a fake transport declaring *no* capabilities, which makes every transfer through it
+   record a loss.
+   **Verified live against a real `sshd`, with a narrowness control in the same shape.** A
+   same-account duplicate of a file stamped 2018 landed stamped *now* — the `cp` route carrying no
+   timestamp, as Slice 3 measured — and the pane read
+   `Copied — the modification time wasn't kept on 1 item`, the singular plural form chosen correctly.
+   The same build, same gesture, two local panes: the copy kept 2018 **exactly** and produced **zero**
+   status lines.
+7. **Synchronize by size** — the comparison that is honest on a side with no exact clock, which
+   comparing by *contents* now joins, since M24 Slice 4 taught ⌥F3 to fetch both sides at a price
+   the plan can state up front. Note that Synchronize is gated `backend == .local` on **both** panes
+   today (`PanelViewController.canSync`), so this slice widens a gate before it adds a comparison.
+   **Landed 2026-08-28 as 5c**, less the contents half, which was a slice of its own on Oleg's call:
+   comparing contents across a server is a fetch per candidate pair inside a scan that had no
+   progress bar and no Stop, and doing both at once would have made each one's evidence weaker. That
+   half landed as **5d** below, and the deferral's own reason is what its shape answers — the fetch
+   is a queued job, which has both by construction, and the scan gained a Stop of its own.
+   **The probe overturned the sentence this slice was written around.** It says timestamp comparison
+   is refused "for FTP and S3 and always will be", which names two of the three: measured against a
+   real `sshd`, **SFTP's listing is coarse too**. `ls -la` prints `Aug 20 11:33` for a file whose
+   true mtime is `11:33:37` — the seconds are gone — and `Dec 20  2025` for one older than about six
+   months, where the time of day goes entirely and the parse lands at local midnight, **41 617 s**
+   from the truth. Against the two-second tolerance that reports a difference for fifty-nine of every
+   sixty recent files and for every old one. The half that reads as safe and is not: **two sides of
+   the same dialect are no better**, since two files thirty seconds apart both list as the same
+   minute, so a mirror calls them identical and skips the one that changed. So the rule is a clock on
+   **both** sides, and only the local disk has one — a predicate under a new name rather than the
+   deleted `hasApproximateTimestamps`, which asked the narrower question (two readings of *one* file)
+   and answered FTP alone.
+   **The scan is a connection per directory, and the seam to fix it already existed.** Seventeen
+   directories cost **1010 ms** as separate `sftp` invocations against **76 ms** for one exec walk on
+   loopback, so a side is gathered through `VFSBackend.subtreeListing` — M22's search seam, which
+   turns out to encode "everything under here" rather than anything about searching — and a backend
+   without one answers `nil` and the walk is unchanged. The hazard it brings is the whole of its
+   design: a **capped** answer falls back to the walk rather than being used, because a mirror over a
+   subtree that stopped early deletes the other side's matching files. The control is sharp — using a
+   capped listing anyway reports **zero rows** for a tree whose difference sits at depth two, which
+   is "already in sync" about the top of it.
+   **And the sentence the sheet showed before deleting anything was a lie about a server.** It
+   promised the Trash unconditionally — true while both sides were on this disk, and false the moment
+   one is an account, where no backend implements `trashItem` and the files are gone. It is the
+   worst-placed lie available, since it is what somebody reads *while deciding*. `SyncDeletePlan`
+   splits the counts by each path's own `deleteStrategy`, a mixed run says both halves in sentences
+   carrying one count each (so every plural stays expressible without the `substitutions` machinery),
+   and the run is two `DeletePass` passes rather than one guessed flag. A read-only side's items are
+   a third bucket: named, and counted nowhere.
+   Controlled in six directions, each failing only the tests that name it: the clockless comparison
+   ranking by the stamp after all (which answers `.leftNewer` — what a bidirectional sync would act
+   on), a capped subtree used anyway, a prefetched side falling through to a listing, the gate back
+   at `backend == .local`, the gate asking `capabilities` instead of `capabilities(for:)`, and the
+   one sentence promising the Trash for every run.
+   **Verified live three ways.** A checked-in suite (`SyncLiveIntegrationTests`) drives the real
+   `SFTPProcessTransport` against a throwaway `sshd`: a local tree and the server's compare across
+   two backends, the equal files are omitted, the differing one is `.differ` and deliberately not
+   ranked — and the same pair compared *by date* reports a difference in a file nothing has touched,
+   which is the withdrawal's own justification measured rather than asserted. Then the same suite
+   against a server built to refuse (`ForceCommand internal-sftp`): the shortcut answers `nil` and
+   every other test passes through the walk, which is the degradation end to end. Then the built app
+   on a restored SFTP tab, where the server's log is the judge: the gesture produced **one** exec
+   session against **zero** for eight idle seconds — and the control, the gate reverted, produced
+   **zero** for the same gesture on the same seeded session while the pane went on listing.
+8. **Synchronize by contents, on a side that is not local** — the half 5c deferred, landed as
+   **5d 2026-08-29**. Comparing bytes was never dishonest over a server; it was **unbuilt**, because
+   the engine reads through an injected comparator that only ever sees real local paths. So the rule
+   `SyncComparison.available` applied — both sides on this disk — was a fact about the code rather
+   than about the answer, and what replaces it is a fetch the user is shown the price of.
+   **Two phases over one walk, which is the shape and the whole economy.** Nothing can know which
+   files a content comparison will read until both trees have been walked, so the scan walks once
+   (``DirectorySync.survey`` — classify by size, keep the identical rows), names the pairs whose
+   bytes decide the answer (``contentCandidates`` — both sides present, both regular files, same
+   size), hands *those* to the M24 funnel to be weighed, confirmed and fetched, and re-answers the
+   same rows (``recompare``) with the copies that arrived. One walk rather than the two checksum
+   verification had to settle for: the rows **are** the plan, so the set the confirmation counted
+   and the set the comparison reads cannot drift. It also made switching the picker free — a
+   comparison is a question about the same snapshot, and over a server re-walking is a connection
+   per directory for rows nothing has moved.
+   **The clock rule had to split in two, and that is the bug this slice would otherwise have
+   shipped.** Reading bytes settles *whether* two files are equal and says nothing about which came
+   later, so `.content` still ranks by the stamp — and it can now span a pair whose listings have
+   none. `usesModificationDates` is a fact about the comparison; whether the clock may be *believed*
+   is a fact about the **pair** (`believesModificationDates(between:and:)`), derived inside `compare`
+   from the two roots it already holds so no caller can get it wrong. Its second half is the
+   fallback: what a content scan cannot read — a symlink, a special file — falls back to **size
+   alone** over a coarse pair, or every link in the tree reports a difference on every scan.
+   **An evicted cloud placeholder is refused, not fetched**, which is the one place this differs from
+   ⌥F3 over the same bytes. A placeholder cannot be *weighed* — `MaterializationPlan` excludes it,
+   since `CloudDownloadPrompt` is its own progress surface — so fetching every one a tree walk
+   discovered would be an unbounded download with no total in front of it. M14's rule unchanged: a
+   file somebody pointed at downloads, a tree sweep refuses. A remote row is the opposite case and is
+   why the slice exists — it is not a file at all until it is fetched, and what it costs is exact.
+   The funnel grew the one thing it lacked: `onAbandon`, because a declined download has to reach a
+   caller that is **showing** something. Every other M24 gesture leaves nothing behind when it does
+   not happen; the sheet asks while displaying a comparison, so a decline puts the picker back rather
+   than leaving it saying "Downloading files to compare…" for the session. The sheet's scan also
+   gained the Stop it never had, tied to the sheet going away — which is the other half of what made
+   this a slice of its own, the fetch itself having the queue's bar and Stop by construction.
+   Controlled in eleven directions, each failing only the tests that name it: five in the core (the
+   pair's clock ignored when ranking, the content fallback reading a date it cannot believe, the
+   survey dropping its identical rows, every both-sides row a candidate, structural rows re-derived)
+   and six in the app (the fetch asked for every row, a comparison change re-walking, a stopped
+   transfer telling the sheet nothing, the comparison applied before the download is answered, the
+   map built from what moved rather than from what is readable, the pass reading the rows' own paths).
+   **Two controls were inert on first writing and both are the finding worth keeping.** The
+   re-walk control passed because the test waited on `comparison`, which is assigned *synchronously*
+   on the way in — so it was satisfied long before any walk landed, and the listing count was read
+   too early. A wait on a value the code under test sets before doing the work is a wait on nothing.
+   And a control's own edit did not match the file it was aimed at, so it reverted nothing and
+   reported a pass; the text has to be checked, not assumed.
+   **Verified live against a throwaway `sshd`**, through the real `SFTPProcessTransport`: a local
+   tree against the server's, walked once, three candidates fetched, and `same-size.bin` — five bytes
+   on both sides and different bytes — reported as a difference no size or date comparison can see,
+   still deliberately unranked, with the byte-identical pairs read and dropped. Both live controls
+   fire on demand (no pair ever read, and the survey dropping its identical rows: 6 issues each
+   against a green baseline), and the server's own log prices the candidate rule at **98 sessions
+   against 99** when every both-sides row is treated as a candidate — one extra login for the one
+   pair a size mismatch had already settled.
+   One thing about reading that run is worth keeping: an assertion inside `offCooperativePool` is
+   filed under **`Test «unknown»`** while its test still prints a tick, so a grep for `✘ Test "`
+   matches nothing and the control reads as inert. The run summary's **issue count** is the
+   instrument. The same shape one door along: `-only-testing:` naming a single Swift Testing function
+   selected **0 tests** and reported success — again, read the count, not the verdict.
+   **And the gesture itself in the built app**, on two seeded local panes: `run operation
+   "file.syncDirectories"` surveys four rows and names two candidates, `Size & Date` draws
+   `only-left.txt` and `sizes.txt` — and `pair.txt`, five bytes on both sides with the same mtime and
+   different bytes, is **invisible** to it. The content pass finds exactly that row, while
+   `twin.txt`, byte-identical, stays omitted: the claim and its narrowness control in one run. Two
+   things about driving it are worth keeping — the sheet is app-**modal**, so `quit` is refused and a
+   `Timer.scheduledTimer` never fires (a `.default`-mode timer is not serviced in `.modalPanel`; add
+   it to `RunLoop.main` in `.common`), and the panel's segmented control cannot be reached from
+   AppleScript at all, which is why the picker had to be poked by a temporary action.
+   **The live suite then destabilised a neighbour, and the bisect is the reason that is a sentence
+   rather than a suspicion.** With a live server configured the app suite failed **4 full runs of
+   6**, always in `RemotePreviewFetchTests` — a suite docs/NOTES.md already records as starving on a
+   busy main actor. Skipping *this slice's* three suites gave 1 of 6; skipping only the **live** one
+   gave 1 of 6 as well, so the load is five live tests holding the main actor for seconds at a time
+   and not anything the headless additions do. The repair is the one that entry licenses: a wait
+   **for** something is free to be generous, so its 10 s budget became 30 s — a satisfied predicate
+   returns on the next poll, and the budget only decides how much scheduling delay is absorbed
+   before the code gets the blame. Re-measured: **1 in 6**, the tree's own baseline, with no test of
+   this slice's among the failures. Its `hold(until:)` neighbour is deliberately untouched: there
+   the length *is* the claim.
 
 ---
 
