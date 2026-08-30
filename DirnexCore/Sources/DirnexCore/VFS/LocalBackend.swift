@@ -15,7 +15,14 @@ public struct LocalBackend: VFSBackend {
     public let capabilities: VFSCapabilities =
         [.read, .write, .trash, .clone, .rename, .watch, .internalCopy]
 
-    public init() {}
+    /// How the Trash move is actually performed — injected, because the only spelling that works
+    /// for a File Provider item lives in AppKit (▸ ``TrashPerformer``). Defaulted so every caller
+    /// that never trashes, and every test, keeps constructing `LocalBackend()`.
+    public let trashPerformer: any TrashPerformer
+
+    public init(trashPerformer: any TrashPerformer = FileManagerTrashPerformer()) {
+        self.trashPerformer = trashPerformer
+    }
 
     /// Disambiguates the `stat` struct from the `stat` free function (both are in
     /// scope from Darwin); we call `fstatat` for all stat operations.
@@ -122,20 +129,23 @@ public struct LocalBackend: VFSBackend {
     ///
     /// **A volume that has no Trash refuses here, and only here** — see ``trashFailure(_:path:)``
     /// for why that refusal cannot be asked about in advance.
+    ///
+    /// **The move itself belongs to the injected ``TrashPerformer``** (PLAN.md §M26), because
+    /// `FileManager.trashItem` refuses every item inside a File Provider domain — every Dropbox,
+    /// OneDrive, Box, Drive and iCloud file — when the app is responsible for itself. Both refusals
+    /// above are still decided here, on whatever the performer threw.
     @discardableResult
     public func trashItem(at path: VFSPath) throws -> VFSPath? {
         guard !TrashLocations.isInsideTrash(path) else {
             throw VFSError.unsupported(.alreadyInTrash(name: path.lastComponent))
         }
-        var resultingURL: NSURL?
-        let url = URL(fileURLWithPath: path.path)
         do {
-            try FileManager.default.trashItem(at: url, resultingItemURL: &resultingURL)
+            let landed = try trashPerformer.moveToTrash(URL(fileURLWithPath: path.path))
+            guard let landed else { return nil }
+            return .local(landed.path)
         } catch {
             throw Self.trashFailure(error, path: path)
         }
-        guard let resolved = resultingURL as URL? else { return nil }
-        return .local(resolved.path)
     }
 
     /// Translate a `trashItem` failure, which has one outcome the shared mapper cannot express:

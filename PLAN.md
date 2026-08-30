@@ -277,6 +277,109 @@ small to be a slice of either milestone above and too real to leave unwritten:
   that already exists rather than a new one: M24 Slice 5 handed it to M25, M25 took no slice for it,
   and it was demoted here on 2026-08-30, because one queue kind is not a milestone's worth of design.
 
+### Open: M26 — Move to Trash, wherever the file lives (2026-08-31)
+
+**F8 does nothing for any file inside a File Provider domain** — Dropbox, OneDrive, Box, Google
+Drive and iCloud Drive alike — and reports *"Couldn't move “x” to the Trash · You don't have
+permission. Dirnex may need Full Disk Access in System Settings."* Reported by a user 2026-08-30,
+present since those mounts became browsable, and the sentence is the worst part: Full Disk Access is
+granted, is *correct*, and toggling it does nothing, so the report reads as the app being confused
+about a permission the user can see is switched on.
+
+**It is not a permission the app lacks, and the probe that says so is the whole finding.** At the
+instant `FileManager.trashItem` throws — `NSCocoaErrorDomain` **513**, with **no underlying POSIX
+errno**, so nothing beneath it refused anything — the same process was asked what it could actually
+do with that file:
+
+```
+[trashItem]             NSCocoaErrorDomain 513   under=nil
+[read ~/.Trash]         OK  3 entries
+[open O_RDONLY]         OK
+[rename in place]       OK
+[rename into ~/.Trash]  OK
+[stat]                  OK
+```
+
+It can perform the very move `trashItem` claims it may not. So `FileManager` is declining on its
+own, and no grant the user can reach changes it: `tccutil reset FileProviderDomain com.dirnex.Dirnex`
+removed every per-provider row and nothing changed, macOS never prompts, and no TCC service is
+consulted during the call at all.
+
+**What decides it is how the app was launched, which is why it survived every pass.** Same binary,
+same Developer ID signature, back to back: launched from a shell it trashes fine (**2/2**), launched
+by LaunchServices — the Dock, Finder, `open` — it fails (**2/2**). A shell-launched app inherits the
+launching process as its TCC *responsible* process, so a developer running from a terminal borrows
+that process's Full Disk Access and sees a working feature. Every automated signal is clean, both
+suites and both linters are green, the pane lists the folder perfectly, and only pressing F8 from a
+normally launched app shows it. The same trap wasted the first two diagnoses of this bug (▸
+docs/NOTES.md), which is the reason it is written down here rather than only in the fix.
+
+**`NSWorkspace.recycle` is *not* the answer, and the run that said it was is the lesson.** It was
+measured succeeding in the failing context on all five domains — and that measurement was
+contaminated by the diagnostic probe sitting a few lines above it, which had renamed each item out
+to `~/.Trash` and straight back before `recycle` was asked. Implemented for real, with no probe in
+front of it, `recycle` fails with the byte-identical `NSCocoaErrorDomain` 513 — it wraps the same
+`trashItem` refusal. Re-adding the bounce as a control flips it back to succeeding, 1/1 each way.
+The probe had **detached the item from its provider**, so what was being measured was a trash of an
+ordinary file. This is docs/NOTES.md's own rule about a probe's actions being part of the experiment,
+met for the third time in one investigation.
+
+**What is established, and what is not.** Established: the refusal is exact and reproducible; it
+covers every File Provider domain and nothing else; it follows the TCC *responsible* process, not
+the app's own grants; and the process is not missing any file permission — at the instant of the
+throw the same process can `open` the item, `rename` it in place, `rename` it into `~/.Trash`, and
+read `~/.Trash`. **Full Disk Access is effective in both cases and is not the gate** — the failing
+LaunchServices-launched process read the system TCC database and `~/Library/Mail`, both FDA-only,
+in the same call that was refused. Three candidate mechanisms have been measured and eliminated:
+the per-provider `kTCCServiceFileProviderDomain` grants (resetting them changes nothing, and macOS
+never prompts), Full Disk Access (above), and `kTCCServiceSystemPolicyAppData`'s odd `auth_value 5`
+(shared with the process that *succeeds*). Not established: which policy actually denies, and
+therefore whether any grant the user can reach would fix it.
+
+So the milestone is **open on its design**, not on its implementation, and the fork is worth putting
+to a person rather than guessing:
+
+- **Perform the move ourselves.** A plain `rename` into the right trash is measured working from the
+  failing process, so this cannot be refused. It costs Finder parity: the collision-safe naming and,
+  more seriously, the `ptbL`/`ptbN` **Put Back** record, which this package can read (`DSStoreReader`)
+  and cannot write. Trading "delete does not work at all" for "delete works, Put Back does not" is a
+  real improvement and a real regression, and which one is a person's call.
+- **Ask Finder**, whose own delete succeeds on these files. That is an Apple event, so it needs the
+  Automation grant and Finder running, and it makes the most ordinary gesture in the app depend on
+  another process.
+- **Keep looking for the grant**, which is the only route that ends with the platform doing this
+  properly — and the three cheapest candidates are already eliminated.
+
+**The design is one path, not a fallback.** `NSWorkspace` and any Apple event are AppKit, and
+`LocalBackend.trashItem` is headless core, so whichever route wins takes the seam the project already
+uses for `bsdtar` and `sftp`: the core keeps the decision (the already-in-a-trash refusal, the
+Trash-less-volume refusal ``trashFailure`` reads, the landing path a `Restoration` needs) and an
+injected performer does the byte-touching. Keeping a second route alive as a fallback is rejected at
+open: two paths differing only by which one macOS happens to refuse is exactly the shape this
+codebase keeps paying for.
+
+- **Slice 1 — core.** ``TrashPerformer``, a one-method seam returning where the item landed; the
+  `alreadyInTrash` guard and ``trashFailure`` stay where they are; tests drive a fake.
+  **Landed 2026-08-31**, and it is the half that holds whichever way the fork above goes: every
+  candidate performer plugs in here, and the suite already pins that both refusals the backend owns
+  survive the seam (negative control: neutering it fails 4 of the 5 tests, and correctly leaves the
+  already-in-a-trash one green, since that never reaches a performer either way).
+- **Slice 2 — the performer that works.** Blocked on the fork above. `WorkspaceTrashPerformer` was
+  written, live-tested and **removed**: it is not a fix, and leaving it in the tree would have been a
+  second route that fails exactly where the first one does.
+- **Slice 3 — the sentence.** Whatever lands, a refusal here is not about Full Disk Access, so
+  ``VFSErrorText`` must stop saying it is for a path inside a provider domain — the advice that cost
+  a user an evening of toggling a switch that was already correct. New catalog key, 14 languages, and
+  `scripts/check_localization_keys.py` in CI. Held until Slice 2 settles what the surviving refusals
+  actually are.
+
+Left deliberately undone: **the remote backends**, which have no Trash at all and are already
+degraded to a confirmed permanent delete (§M5, and M25 §7's decision not to invent one); **any
+workaround inside F8 while this is open**, since ⇧F8's confirmed permanent delete already works — it uses
+`removeItem` and consults no Trash, so it is unaffected; and **chasing the refusal further into TCC
+and `fileproviderd`**, which is not observable from here past the three candidates already
+eliminated, and which the two implementable routes above do not depend on.
+
 ## 5. Cross-cutting: testing strategy
 
 | Layer | Approach |
